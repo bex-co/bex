@@ -1,0 +1,1392 @@
+{
+  "pass": "a570",
+  "active": false,
+  "finding": "A two-operation hosting membership batch loses its response at the HTTP write deadline while changes subsequently commit",
+  "severity": "major",
+  "researchMain": "f497ddab6",
+  "captureDriver": "async function captureMove(page,targetId,screenName){\n const cdp=await page.context().newCDPSession(page);await cdp.send(\"Network.enable\");\n const started=Date.now(),requests=new Map(),meta=new Map(),events=[],toasts=new Set(),bodyTasks=[];\n const headers=(all)=>Object.fromEntries(Object.entries(all||{}).filter(([k])=>[\"access-control-allow-origin\",\"access-control-allow-credentials\",\"content-type\",\"server\",\"cf-ray\"].includes(k.toLowerCase())));\n cdp.on(\"Network.requestWillBeSent\",e=>{try{if(!e.request.url.startsWith(\"https://api.bex.co/graphql\")||e.request.method!==\"POST\")return;const raw=JSON.parse(e.request.postData||\"null\"),qs=Array.isArray(raw)?raw:[raw];if(!qs.some(x=>x?.variables?.id===targetId&&([\"SetEnvironmentServices\",\"SetEnvironmentEnvGroups\"].includes(x.operationName)||/setEnvironment(?:Services|EnvGroups)\\b/.test(x.query||\"\"))))return;requests.set(e.requestId,{requestId:e.requestId,at:new Date().toISOString(),offsetMs:Date.now()-started,timestamp:e.timestamp,url:e.request.url,method:e.request.method,body:raw});}catch{}});\n cdp.on(\"Network.responseReceivedExtraInfo\",e=>{meta.set(e.requestId,{status:e.statusCode,headers:headers(e.headers),offsetMs:Date.now()-started});});\n cdp.on(\"Network.responseReceived\",e=>{if(requests.has(e.requestId))events.push({requestId:e.requestId,kind:\"response\",offsetMs:Date.now()-started,status:e.response.status,headers:headers(e.response.headers)});});\n cdp.on(\"Network.loadingFailed\",e=>{if(requests.has(e.requestId))events.push({requestId:e.requestId,kind:\"failed\",offsetMs:Date.now()-started,errorText:e.errorText,blockedReason:e.blockedReason,corsErrorStatus:e.corsErrorStatus,canceled:e.canceled});});\n cdp.on(\"Network.loadingFinished\",e=>{if(!requests.has(e.requestId))return;events.push({requestId:e.requestId,kind:\"finished\",offsetMs:Date.now()-started});bodyTasks.push(cdp.send(\"Network.getResponseBody\",{requestId:e.requestId}).then(r=>{try{events.push({requestId:e.requestId,kind:\"jsonBody\",body:JSON.parse(r.body)});}catch{events.push({requestId:e.requestId,kind:\"nonJsonBody\",bodyBytes:r.body.length});}}).catch(()=>{}));});\n let screenTaken=false,error;\n try{\n  await page.getByRole(\"button\",{name:\"Move\",exact:true}).click();\n  for(let i=0;i<48;i++){await page.waitForTimeout(1000);const now=await page.locator(\"[data-sonner-toast]\").allTextContents();for(const t of now)toasts.add(t);if(!screenTaken&&now.some(t=>/fail|unknown|could|took|retry|cannot|error/i.test(t))){await page.screenshot({path:screenName,fullPage:false});screenTaken=true;}}\n }catch(e){error=String(e).split(\"\\n\")[0];}\n await Promise.race([Promise.allSettled(bodyTasks),page.waitForTimeout(2000)]);\n const result={at:new Date().toISOString(),durationMs:Date.now()-started,targetId,requests:[...requests.values()].map(r=>({...r,http:meta.get(r.requestId)})),events,toasts:[...toasts],screenTaken,error,ariaTail:(await page.getByRole(\"main\").ariaSnapshot()).slice(-2800)};\n await cdp.detach();return result;\n}",
+  "limits": [
+    "Observation only: native UI calls were not delayed, intercepted, modified or automatically replayed.",
+    "The 502 body is unreadable to page JavaScript because that edge response lacks ACAO; CDP retains the exact native POST, status and selected response headers plus failure metadata. No body was invented.",
+    "One fresh 390px failed batch at 31.032s, one desktop passing batch at 26.502s; timing conditional, not a viewport-causal claim.",
+    "Both memberships were confirmed committed at 11:02:14Z, later than the network failure; their exact commit times and individual resolver durations are unmeasured.",
+    "No origin logs or deployed Go patch version inspected; HTTP-budget attribution follows the current source and matching timing."
+  ],
+  "receipts": {
+    "Baseline": {
+      "at": "2026-10-15T10:50:50.200Z",
+      "status": 200,
+      "inventory": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      }
+    },
+    "BrowserBatchControl": {
+      "at": "2026-10-15T10:51:23.160Z",
+      "request": {
+        "operationName": "Qaa467Inventory",
+        "query": "query Qaa467Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name}}",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        }
+      },
+      "single": {
+        "status": 200,
+        "body": {
+          "data": {
+            "blueprints": [
+              {
+                "id": "blp-d9nqg95cavls73fp8m10",
+                "name": "discourse_docker"
+              }
+            ],
+            "databases": [
+              {
+                "id": "dpg-d9nqg95cavls73fp8m20",
+                "name": "beancount-forum-db"
+              },
+              {
+                "id": "dpg-d9rrkoc4h4mc73edurp0",
+                "name": "tianpan-forum-db"
+              },
+              {
+                "id": "dpg-d9rs3ee0ccis738kc7c0",
+                "name": "blockeden-forum-db"
+              },
+              {
+                "id": "dpg-db34l9bor55s73cqpq9g",
+                "name": "qa-20261007-r16-owner-f208ab"
+              }
+            ],
+            "envGroups": [
+              {
+                "id": "evg-db0s94c48ccs739jikr0",
+                "name": "qa-20261003-keys-r85"
+              }
+            ],
+            "keyValues": [
+              {
+                "id": "red-d9p49kdrtmes73c34ovg",
+                "name": "beancount-forum-redis"
+              },
+              {
+                "id": "red-da4086iii7bs73drbqh0",
+                "name": "blockeden-forum-redis"
+              }
+            ],
+            "projects": [
+              {
+                "id": "prj-d9dgeo0bd9nc73a0vh1g",
+                "name": "bex.co"
+              },
+              {
+                "id": "prj-d9e5qct5qe4s73b1mjn0",
+                "name": "beancount.io"
+              },
+              {
+                "id": "prj-d9sgfnbjghus73cg6hg0",
+                "name": "forums"
+              }
+            ],
+            "services": [
+              {
+                "id": "srv-d9bkcspg9s7c73d0n8ug",
+                "name": "agentmarketcap-1",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9bj8s3eg85c7390eb9g",
+                "name": "beancount-cms-v2",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9nqg9dcavls73fp8m2g",
+                "name": "beancount-forum",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9ndt8hmcglc739fkp50",
+                "name": "eden-dash-v3",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9e40ei9086p3l1jri30",
+                "name": "eden-cms-v2",
+                "type": "web_service"
+              }
+            ],
+            "webhookEndpoints": []
+          }
+        }
+      },
+      "batch": {
+        "status": 200,
+        "body": [
+          {
+            "data": {
+              "blueprints": [
+                {
+                  "id": "blp-d9nqg95cavls73fp8m10",
+                  "name": "discourse_docker"
+                }
+              ],
+              "databases": [
+                {
+                  "id": "dpg-d9nqg95cavls73fp8m20",
+                  "name": "beancount-forum-db"
+                },
+                {
+                  "id": "dpg-d9rrkoc4h4mc73edurp0",
+                  "name": "tianpan-forum-db"
+                },
+                {
+                  "id": "dpg-d9rs3ee0ccis738kc7c0",
+                  "name": "blockeden-forum-db"
+                },
+                {
+                  "id": "dpg-db34l9bor55s73cqpq9g",
+                  "name": "qa-20261007-r16-owner-f208ab"
+                }
+              ],
+              "envGroups": [
+                {
+                  "id": "evg-db0s94c48ccs739jikr0",
+                  "name": "qa-20261003-keys-r85"
+                }
+              ],
+              "keyValues": [
+                {
+                  "id": "red-d9p49kdrtmes73c34ovg",
+                  "name": "beancount-forum-redis"
+                },
+                {
+                  "id": "red-da4086iii7bs73drbqh0",
+                  "name": "blockeden-forum-redis"
+                }
+              ],
+              "projects": [
+                {
+                  "id": "prj-d9dgeo0bd9nc73a0vh1g",
+                  "name": "bex.co"
+                },
+                {
+                  "id": "prj-d9e5qct5qe4s73b1mjn0",
+                  "name": "beancount.io"
+                },
+                {
+                  "id": "prj-d9sgfnbjghus73cg6hg0",
+                  "name": "forums"
+                }
+              ],
+              "services": [
+                {
+                  "id": "srv-d9bkcspg9s7c73d0n8ug",
+                  "name": "agentmarketcap-1",
+                  "type": "web_service"
+                },
+                {
+                  "id": "srv-d9bj8s3eg85c7390eb9g",
+                  "name": "beancount-cms-v2",
+                  "type": "web_service"
+                },
+                {
+                  "id": "srv-d9nqg9dcavls73fp8m2g",
+                  "name": "beancount-forum",
+                  "type": "web_service"
+                },
+                {
+                  "id": "srv-d9ndt8hmcglc739fkp50",
+                  "name": "eden-dash-v3",
+                  "type": "web_service"
+                },
+                {
+                  "id": "srv-d9e40ei9086p3l1jri30",
+                  "name": "eden-cms-v2",
+                  "type": "web_service"
+                }
+              ],
+              "webhookEndpoints": []
+            }
+          },
+          {
+            "data": {
+              "blueprints": [
+                {
+                  "id": "blp-d9nqg95cavls73fp8m10",
+                  "name": "discourse_docker"
+                }
+              ],
+              "databases": [
+                {
+                  "id": "dpg-d9nqg95cavls73fp8m20",
+                  "name": "beancount-forum-db"
+                },
+                {
+                  "id": "dpg-d9rrkoc4h4mc73edurp0",
+                  "name": "tianpan-forum-db"
+                },
+                {
+                  "id": "dpg-d9rs3ee0ccis738kc7c0",
+                  "name": "blockeden-forum-db"
+                },
+                {
+                  "id": "dpg-db34l9bor55s73cqpq9g",
+                  "name": "qa-20261007-r16-owner-f208ab"
+                }
+              ],
+              "envGroups": [
+                {
+                  "id": "evg-db0s94c48ccs739jikr0",
+                  "name": "qa-20261003-keys-r85"
+                }
+              ],
+              "keyValues": [
+                {
+                  "id": "red-d9p49kdrtmes73c34ovg",
+                  "name": "beancount-forum-redis"
+                },
+                {
+                  "id": "red-da4086iii7bs73drbqh0",
+                  "name": "blockeden-forum-redis"
+                }
+              ],
+              "projects": [
+                {
+                  "id": "prj-d9dgeo0bd9nc73a0vh1g",
+                  "name": "bex.co"
+                },
+                {
+                  "id": "prj-d9e5qct5qe4s73b1mjn0",
+                  "name": "beancount.io"
+                },
+                {
+                  "id": "prj-d9sgfnbjghus73cg6hg0",
+                  "name": "forums"
+                }
+              ],
+              "services": [
+                {
+                  "id": "srv-d9bkcspg9s7c73d0n8ug",
+                  "name": "agentmarketcap-1",
+                  "type": "web_service"
+                },
+                {
+                  "id": "srv-d9bj8s3eg85c7390eb9g",
+                  "name": "beancount-cms-v2",
+                  "type": "web_service"
+                },
+                {
+                  "id": "srv-d9nqg9dcavls73fp8m2g",
+                  "name": "beancount-forum",
+                  "type": "web_service"
+                },
+                {
+                  "id": "srv-d9ndt8hmcglc739fkp50",
+                  "name": "eden-dash-v3",
+                  "type": "web_service"
+                },
+                {
+                  "id": "srv-d9e40ei9086p3l1jri30",
+                  "name": "eden-cms-v2",
+                  "type": "web_service"
+                }
+              ],
+              "webhookEndpoints": []
+            }
+          }
+        ]
+      }
+    },
+    "CreateProject": {
+      "at": "2026-10-15T10:53:04.350Z",
+      "request": {
+        "operationName": "CreateProject",
+        "variables": {
+          "name": "qa-20261015-a570-project",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateProject($name: String!, $ownerId: String!) {\n  createProject(name: $name, ownerId: $ownerId) {\n    ...ProjectFields\n    __typename\n  }\n}\n\nfragment ProjectFields on Project {\n  id\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  __typename\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createProject": {
+            "__typename": "Project",
+            "createdAt": "2026-10-15T10:53:03Z",
+            "databaseIds": [],
+            "id": "prj-db8b13rh673c73birsj0",
+            "keyValueIds": [],
+            "name": "qa-20261015-a570-project",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "serviceIds": []
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/project/prj-db8b13rh673c73birsj0"
+    },
+    "CreateAlpha": {
+      "at": "2026-10-15T10:53:13.328Z",
+      "request": {
+        "operationName": "CreateEnvironment",
+        "variables": {
+          "name": "qa-a570-alpha",
+          "projectId": "prj-db8b13rh673c73birsj0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateEnvironment($name: String!, $projectId: String!) {\n  createEnvironment(name: $name, projectId: $projectId) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createEnvironment": {
+            "__typename": "Environment",
+            "createdAt": "2026-10-15T10:53:12Z",
+            "databaseIds": [],
+            "envGroupIds": [],
+            "id": "evm-db8b165eelgc73d2i33g",
+            "ipAllowList": ["0.0.0.0/0", "::/0"],
+            "ipAllowListEntries": [
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "0.0.0.0/0",
+                "description": "Allow all (default)"
+              },
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "::/0",
+                "description": "Allow all (default)"
+              }
+            ],
+            "ipAllowListProxiedDomains": [],
+            "keyValueIds": [],
+            "name": "qa-a570-alpha",
+            "networkIsolationEnabled": false,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "projectId": "prj-db8b13rh673c73birsj0",
+            "protectedStatus": "unprotected",
+            "serviceIds": []
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/project/prj-db8b13rh673c73birsj0"
+    },
+    "CreateBeta": {
+      "at": "2026-10-15T10:53:16.102Z",
+      "request": {
+        "operationName": "CreateEnvironment",
+        "variables": {
+          "name": "qa-a570-beta",
+          "projectId": "prj-db8b13rh673c73birsj0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateEnvironment($name: String!, $projectId: String!) {\n  createEnvironment(name: $name, projectId: $projectId) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createEnvironment": {
+            "__typename": "Environment",
+            "createdAt": "2026-10-15T10:53:15Z",
+            "databaseIds": [],
+            "envGroupIds": [],
+            "id": "evm-db8b16teelgc73d2i350",
+            "ipAllowList": ["0.0.0.0/0", "::/0"],
+            "ipAllowListEntries": [
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "0.0.0.0/0",
+                "description": "Allow all (default)"
+              },
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "::/0",
+                "description": "Allow all (default)"
+              }
+            ],
+            "ipAllowListProxiedDomains": [],
+            "keyValueIds": [],
+            "name": "qa-a570-beta",
+            "networkIsolationEnabled": false,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "projectId": "prj-db8b13rh673c73birsj0",
+            "protectedStatus": "unprotected",
+            "serviceIds": []
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/project/prj-db8b13rh673c73birsj0"
+    },
+    "ServiceForm": {
+      "at": "2026-10-15T10:53:19.414Z",
+      "enabled": true,
+      "name": "qa-20261015-a570-move"
+    },
+    "ServicePlacement": {
+      "at": "2026-10-15T10:53:41.400Z",
+      "ready": true,
+      "environment": "qa-a570-alpha"
+    },
+    "CreateService": {
+      "at": "2026-10-15T10:53:43.593Z",
+      "request": {
+        "operationName": "CreateService",
+        "variables": {
+          "image": "busybox:1.37",
+          "name": "qa-20261015-a570-move",
+          "type": "web_service",
+          "environmentId": "evm-db8b165eelgc73d2i33g",
+          "registryCredentialId": "",
+          "runtime": "image",
+          "startCommand": "sh -c 'mkdir -p /www; printf \"VALUE=%s\\n\" \"${QA_A570_VALUE-FALLBACK}\" > /www/index.html; exec httpd -f -p 8886 -h /www'",
+          "plan": "free",
+          "port": 8886,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": "evm-db8b165eelgc73d2i33g",
+            "id": "srv-db8b1djh673c73birsl0",
+            "latestDeployId": "dep-db8b1djh673c73birslg",
+            "name": "qa-20261015-a570-move",
+            "phase": "",
+            "projectId": "prj-db8b13rh673c73birsj0",
+            "registryCredentialId": "",
+            "type": "web_service"
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/services/srv-db8b1djh673c73birsl0/deploys/dep-db8b1djh673c73birslg"
+    },
+    "InitialRead": {
+      "at": "2026-10-15T10:54:06.064Z",
+      "request": {
+        "operationName": "Qaa570Read",
+        "query": "query Qaa570Read($id:String!){server(id:$id){id name phase revision projectId environmentId linkedEnvGroupIds} deploys(serviceId:$id){id status trigger}}",
+        "variables": {
+          "id": "srv-db8b1djh673c73birsl0"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "id": "dep-db8b1djh673c73birslg",
+              "status": "live",
+              "trigger": "create"
+            }
+          ],
+          "server": {
+            "environmentId": "evm-db8b165eelgc73d2i33g",
+            "id": "srv-db8b1djh673c73birsl0",
+            "linkedEnvGroupIds": [],
+            "name": "qa-20261015-a570-move",
+            "phase": "Running",
+            "projectId": "prj-db8b13rh673c73birsj0",
+            "revision": "rev-1"
+          }
+        }
+      },
+      "public": {
+        "at": "2026-10-15T10:54:06.686Z",
+        "status": 200,
+        "body": "VALUE=FALLBACK\n"
+      }
+    },
+    "GroupReady": {
+      "at": "2026-10-15T10:54:46.709Z",
+      "checked": 1,
+      "ready": true
+    },
+    "CreateGroup": {
+      "at": "2026-10-15T10:55:07.412Z",
+      "request": {
+        "operationName": "CreateEnvGroup",
+        "variables": {
+          "name": "qa-20261015-a570-group",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "envVars": [
+            {
+              "key": "QA_A570_VALUE",
+              "value": "MOVE_PRESERVED"
+            }
+          ],
+          "secretFiles": [],
+          "serviceIds": ["srv-db8b1djh673c73birsl0"],
+          "environmentId": "evm-db8b165eelgc73d2i33g"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateEnvGroup($name: String!, $ownerId: String, $envVars: [EnvGroupVarInput!], $secretFiles: [EnvGroupSecretFileInput!], $serviceIds: [String!], $environmentId: String) {\n  createEnvGroup(\n    name: $name\n    ownerId: $ownerId\n    envVars: $envVars\n    secretFiles: $secretFiles\n    serviceIds: $serviceIds\n    environmentId: $environmentId\n  ) {\n    id\n    name\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createEnvGroup": {
+            "__typename": "EnvGroup",
+            "id": "evg-db8b203h673c73birsn0",
+            "name": "qa-20261015-a570-group"
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/env-groups"
+    },
+    "LinkedRead": {
+      "at": "2026-10-15T10:55:22.107Z",
+      "request": {
+        "operationName": "Qaa570Read",
+        "query": "query Qaa570Read($id:String!,$groupId:String!,$projectId:String!){server(id:$id){id name phase revision projectId environmentId linkedEnvGroupIds} deploys(serviceId:$id){id status trigger} envGroup(id:$groupId){id name environmentId serviceLinks revision} envGroupVar(id:$groupId,key:\"QA_A570_VALUE\"){key value} project(id:$projectId){id name serviceIds databaseIds keyValueIds} environments(projectId:$projectId){id name projectId serviceIds databaseIds keyValueIds envGroupIds}}",
+        "variables": {
+          "id": "srv-db8b1djh673c73birsl0",
+          "groupId": "evg-db8b203h673c73birsn0",
+          "projectId": "prj-db8b13rh673c73birsj0"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "id": "dep-db8b22jh673c73birsng",
+              "status": "live",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db8b1djh673c73birslg",
+              "status": "deactivated",
+              "trigger": "create"
+            }
+          ],
+          "envGroup": {
+            "environmentId": "evm-db8b165eelgc73d2i33g",
+            "id": "evg-db8b203h673c73birsn0",
+            "name": "qa-20261015-a570-group",
+            "revision": "egr1_AAAAAAAAAAE",
+            "serviceLinks": ["srv-db8b1djh673c73birsl0"]
+          },
+          "envGroupVar": {
+            "key": "QA_A570_VALUE",
+            "value": "MOVE_PRESERVED"
+          },
+          "environments": [
+            {
+              "databaseIds": [],
+              "envGroupIds": ["evg-db8b203h673c73birsn0"],
+              "id": "evm-db8b165eelgc73d2i33g",
+              "keyValueIds": [],
+              "name": "qa-a570-alpha",
+              "projectId": "prj-db8b13rh673c73birsj0",
+              "serviceIds": ["srv-db8b1djh673c73birsl0"]
+            },
+            {
+              "databaseIds": [],
+              "envGroupIds": [],
+              "id": "evm-db8b16teelgc73d2i350",
+              "keyValueIds": [],
+              "name": "qa-a570-beta",
+              "projectId": "prj-db8b13rh673c73birsj0",
+              "serviceIds": []
+            }
+          ],
+          "project": {
+            "databaseIds": [],
+            "id": "prj-db8b13rh673c73birsj0",
+            "keyValueIds": [],
+            "name": "qa-20261015-a570-project",
+            "serviceIds": ["srv-db8b1djh673c73birsl0"]
+          },
+          "server": {
+            "environmentId": "evm-db8b165eelgc73d2i33g",
+            "id": "srv-db8b1djh673c73birsl0",
+            "linkedEnvGroupIds": ["evg-db8b203h673c73birsn0"],
+            "name": "qa-20261015-a570-move",
+            "phase": "Running",
+            "projectId": "prj-db8b13rh673c73birsj0",
+            "revision": "rev-2"
+          }
+        }
+      },
+      "public": {
+        "at": "2026-10-15T10:55:22.278Z",
+        "status": 200,
+        "body": "VALUE=MOVE_PRESERVED\n"
+      }
+    },
+    "MoveReady": {
+      "at": "2026-10-15T10:56:47.008Z",
+      "url": "https://dashboard.bex.co/project/prj-db8b13rh673c73birsj0?env=evm-db8b165eelgc73d2i33g",
+      "moveEnabled": true,
+      "target": "qa-a570-beta"
+    },
+    "TimedMove": {
+      "at": "2026-10-15T10:57:50.203Z",
+      "durationMs": 48205,
+      "targetId": "evm-db8b16teelgc73d2i350",
+      "requests": [
+        {
+          "requestId": "64087.3762",
+          "at": "2026-10-15T10:57:02.035Z",
+          "offsetMs": 37,
+          "timestamp": 920745.296753,
+          "url": "https://api.bex.co/graphql",
+          "method": "POST",
+          "body": [
+            {
+              "operationName": "SetEnvironmentServices",
+              "variables": {
+                "id": "evm-db8b16teelgc73d2i350",
+                "serviceIds": ["srv-db8b1djh673c73birsl0"]
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "mutation SetEnvironmentServices($id: String!, $serviceIds: [String!]!) {\n  setEnvironmentServices(id: $id, serviceIds: $serviceIds) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+            },
+            {
+              "operationName": "SetEnvironmentEnvGroups",
+              "variables": {
+                "id": "evm-db8b16teelgc73d2i350",
+                "envGroupIds": ["evg-db8b203h673c73birsn0"]
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "mutation SetEnvironmentEnvGroups($id: String!, $envGroupIds: [String!]!) {\n  setEnvironmentEnvGroups(id: $id, envGroupIds: $envGroupIds) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+            }
+          ],
+          "http": {
+            "status": 200,
+            "headers": {
+              "access-control-allow-credentials": "true",
+              "access-control-allow-origin": "https://dashboard.bex.co",
+              "cf-ray": "a4ae4cf3e81cbffc-SJC",
+              "content-type": "application/json",
+              "server": "cloudflare"
+            },
+            "offsetMs": 26502
+          }
+        }
+      ],
+      "events": [
+        {
+          "requestId": "64087.3762",
+          "kind": "response",
+          "offsetMs": 26502,
+          "status": 200,
+          "headers": {
+            "content-type": "application/json",
+            "access-control-allow-credentials": "true",
+            "cf-ray": "a4ae4cf3e81cbffc-SJC",
+            "access-control-allow-origin": "https://dashboard.bex.co",
+            "server": "cloudflare"
+          }
+        },
+        {
+          "requestId": "64087.3762",
+          "kind": "finished",
+          "offsetMs": 26502
+        },
+        {
+          "requestId": "64087.3762",
+          "kind": "jsonBody",
+          "body": [
+            {
+              "data": {
+                "setEnvironmentServices": {
+                  "__typename": "Environment",
+                  "createdAt": "2026-10-15T10:53:15Z",
+                  "databaseIds": [],
+                  "envGroupIds": [],
+                  "id": "evm-db8b16teelgc73d2i350",
+                  "ipAllowList": ["0.0.0.0/0", "::/0"],
+                  "ipAllowListEntries": [
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "0.0.0.0/0",
+                      "description": "Allow all (default)"
+                    },
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "::/0",
+                      "description": "Allow all (default)"
+                    }
+                  ],
+                  "ipAllowListProxiedDomains": [],
+                  "keyValueIds": [],
+                  "name": "qa-a570-beta",
+                  "networkIsolationEnabled": false,
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "projectId": "prj-db8b13rh673c73birsj0",
+                  "protectedStatus": "unprotected",
+                  "serviceIds": ["srv-db8b1djh673c73birsl0"]
+                }
+              }
+            },
+            {
+              "data": {
+                "setEnvironmentEnvGroups": {
+                  "__typename": "Environment",
+                  "createdAt": "2026-10-15T10:53:15Z",
+                  "databaseIds": [],
+                  "envGroupIds": ["evg-db8b203h673c73birsn0"],
+                  "id": "evm-db8b16teelgc73d2i350",
+                  "ipAllowList": ["0.0.0.0/0", "::/0"],
+                  "ipAllowListEntries": [
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "0.0.0.0/0",
+                      "description": "Allow all (default)"
+                    },
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "::/0",
+                      "description": "Allow all (default)"
+                    }
+                  ],
+                  "ipAllowListProxiedDomains": [],
+                  "keyValueIds": [],
+                  "name": "qa-a570-beta",
+                  "networkIsolationEnabled": false,
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "projectId": "prj-db8b13rh673c73birsj0",
+                  "protectedStatus": "unprotected",
+                  "serviceIds": ["srv-db8b1djh673c73birsl0"]
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "toasts": [
+        "Environment groups for \"qa-a570-beta\" updated.",
+        "Services for \"qa-a570-beta\" updated."
+      ],
+      "screenTaken": false,
+      "ariaTail": "- main:\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261015-a570-project\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - paragraph: Project\n  - heading \"qa-20261015-a570-project\" [level=1]\n  - button \"Edit\"\n  - heading \"Environments\" [level=2]\n  - combobox \"Selected environment\": qa-a570-alpha\n  - link \"New Service\":\n    - /url: /services/new?projectId=prj-db8b13rh673c73birsj0&environmentId=evm-db8b165eelgc73d2i33g\n  - button \"New Environment\"\n  - text: qa-a570-alpha 0 resources\n  - button \"Manage resources\"\n  - button \"More actions\"\n  - button \"All (0)\"\n  - button \"Services (0)\"\n  - button \"Databases (0)\"\n  - button \"Key Values (0)\"\n  - button \"Env Groups (0)\"\n  - searchbox \"Search resources in qa-a570-alpha\"\n  - paragraph: No resources in this environment yet."
+    },
+    "AfterTimedMove": {
+      "at": "2026-10-15T10:59:06.901Z",
+      "request": {
+        "operationName": "Qaa570Read",
+        "query": "query Qaa570Read($id:String!,$groupId:String!,$projectId:String!){server(id:$id){id name phase revision projectId environmentId linkedEnvGroupIds} deploys(serviceId:$id){id status trigger} envGroup(id:$groupId){id name environmentId serviceLinks revision} envGroupVar(id:$groupId,key:\"QA_A570_VALUE\"){key value} project(id:$projectId){id name serviceIds databaseIds keyValueIds} environments(projectId:$projectId){id name projectId serviceIds databaseIds keyValueIds envGroupIds}}",
+        "variables": {
+          "id": "srv-db8b1djh673c73birsl0",
+          "groupId": "evg-db8b203h673c73birsn0",
+          "projectId": "prj-db8b13rh673c73birsj0"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "id": "dep-db8b22jh673c73birsng",
+              "status": "live",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db8b1djh673c73birslg",
+              "status": "deactivated",
+              "trigger": "create"
+            }
+          ],
+          "envGroup": {
+            "environmentId": "evm-db8b16teelgc73d2i350",
+            "id": "evg-db8b203h673c73birsn0",
+            "name": "qa-20261015-a570-group",
+            "revision": "egr1_AAAAAAAAAAE",
+            "serviceLinks": ["srv-db8b1djh673c73birsl0"]
+          },
+          "envGroupVar": {
+            "key": "QA_A570_VALUE",
+            "value": "MOVE_PRESERVED"
+          },
+          "environments": [
+            {
+              "databaseIds": [],
+              "envGroupIds": [],
+              "id": "evm-db8b165eelgc73d2i33g",
+              "keyValueIds": [],
+              "name": "qa-a570-alpha",
+              "projectId": "prj-db8b13rh673c73birsj0",
+              "serviceIds": []
+            },
+            {
+              "databaseIds": [],
+              "envGroupIds": ["evg-db8b203h673c73birsn0"],
+              "id": "evm-db8b16teelgc73d2i350",
+              "keyValueIds": [],
+              "name": "qa-a570-beta",
+              "projectId": "prj-db8b13rh673c73birsj0",
+              "serviceIds": ["srv-db8b1djh673c73birsl0"]
+            }
+          ],
+          "project": {
+            "databaseIds": [],
+            "id": "prj-db8b13rh673c73birsj0",
+            "keyValueIds": [],
+            "name": "qa-20261015-a570-project",
+            "serviceIds": ["srv-db8b1djh673c73birsl0"]
+          },
+          "server": {
+            "environmentId": "evm-db8b16teelgc73d2i350",
+            "id": "srv-db8b1djh673c73birsl0",
+            "linkedEnvGroupIds": ["evg-db8b203h673c73birsn0"],
+            "name": "qa-20261015-a570-move",
+            "phase": "Running",
+            "projectId": "prj-db8b13rh673c73birsj0",
+            "revision": "rev-2"
+          }
+        }
+      },
+      "public": {
+        "status": 200,
+        "body": "VALUE=MOVE_PRESERVED\n"
+      }
+    },
+    "InverseReady": {
+      "at": "2026-10-15T10:59:33.672Z",
+      "url": "https://dashboard.bex.co/project/prj-db8b13rh673c73birsj0?env=evm-db8b16teelgc73d2i350",
+      "ready": true,
+      "target": "qa-a570-alpha"
+    },
+    "TimedInverse": {
+      "at": "2026-10-15T11:00:33.214Z",
+      "durationMs": 48268,
+      "targetId": "evm-db8b165eelgc73d2i33g",
+      "requests": [
+        {
+          "requestId": "64087.3813",
+          "at": "2026-10-15T10:59:44.980Z",
+          "offsetMs": 34,
+          "timestamp": 920908.24083,
+          "url": "https://api.bex.co/graphql",
+          "method": "POST",
+          "body": [
+            {
+              "operationName": "SetEnvironmentServices",
+              "variables": {
+                "id": "evm-db8b165eelgc73d2i33g",
+                "serviceIds": ["srv-db8b1djh673c73birsl0"]
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "mutation SetEnvironmentServices($id: String!, $serviceIds: [String!]!) {\n  setEnvironmentServices(id: $id, serviceIds: $serviceIds) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+            },
+            {
+              "operationName": "SetEnvironmentEnvGroups",
+              "variables": {
+                "id": "evm-db8b165eelgc73d2i33g",
+                "envGroupIds": ["evg-db8b203h673c73birsn0"]
+              },
+              "extensions": {
+                "clientLibrary": {
+                  "name": "@apollo/client",
+                  "version": "4.1.3"
+                }
+              },
+              "query": "mutation SetEnvironmentEnvGroups($id: String!, $envGroupIds: [String!]!) {\n  setEnvironmentEnvGroups(id: $id, envGroupIds: $envGroupIds) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+            }
+          ],
+          "http": {
+            "status": 502,
+            "headers": {
+              "cf-ray": "a4ae50ee4e88bffc-SJC",
+              "content-type": "application/problem+json; charset=utf-8",
+              "server": "cloudflare"
+            },
+            "offsetMs": 31032
+          }
+        }
+      ],
+      "events": [
+        {
+          "requestId": "64087.3813",
+          "kind": "failed",
+          "offsetMs": 31032,
+          "errorText": "net::ERR_FAILED",
+          "corsErrorStatus": {
+            "corsError": "MissingAllowOriginHeader",
+            "failedParameter": ""
+          },
+          "canceled": false
+        }
+      ],
+      "toasts": [
+        "Failed to update environment groups for \"qa-a570-alpha\".",
+        "Failed to update services for \"qa-a570-alpha\"."
+      ],
+      "screenTaken": true,
+      "ariaTail": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261015-a570-project\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - paragraph: Project\n  - heading \"qa-20261015-a570-project\" [level=1]\n  - button \"Edit\"\n  - heading \"Environments\" [level=2]\n  - combobox \"Selected environment\": qa-a570-beta\n  - link \"New Service\":\n    - /url: /services/new?projectId=prj-db8b13rh673c73birsj0&environmentId=evm-db8b16teelgc73d2i350\n  - button \"New Environment\"\n  - text: qa-a570-beta 1 resource\n  - button \"Manage resources\"\n  - button \"More actions\"\n  - button \"All (1)\"\n  - button \"Services (0)\"\n  - button \"Databases (0)\"\n  - button \"Key Values (0)\"\n  - button \"Env Groups (1)\"\n  - searchbox \"Search resources in qa-a570-beta\"\n  - text: \"Selected: 1\"\n  - combobox \"Move selected resources to environment\" [disabled]: qa-a570-alpha\n  - button \"Move\" [disabled]\n  - table:\n    - rowgroup:\n      - row \"Select all visible resources Name Status Actions\":\n        - columnheader \"Select all visible resources\":\n          - checkbox \"Select all visible resources\" [checked]\n        - columnheader \"Name\"\n        - columnheader \"Status\"\n        - columnheader \"Actions\"\n    - rowgroup:\n      - row \"Select qa-20261015-a570-group qa-20261015-a570-group Env Group Not available\":\n        - cell \"Select qa-20261015-a570-group\":\n          - checkbox \"Select qa-20261015-a570-group\" [checked]\n        - cell \"qa-20261015-a570-group Env Group\":\n          - link \"qa-20261015-a570-group\":\n            - /url: /env-groups/evg-db8b203h673c73birsn0\n          - text: Env Group\n        - cell \"Not available\": —\n        - cell"
+    },
+    "AfterTimedInverse": {
+      "at": "2026-10-15T11:02:14.390Z",
+      "request": {
+        "operationName": "Qaa570Read",
+        "query": "query Qaa570Read($id:String!,$groupId:String!,$projectId:String!){server(id:$id){id name phase revision projectId environmentId linkedEnvGroupIds} deploys(serviceId:$id){id status trigger} envGroup(id:$groupId){id name environmentId serviceLinks revision} envGroupVar(id:$groupId,key:\"QA_A570_VALUE\"){key value} project(id:$projectId){id name serviceIds databaseIds keyValueIds} environments(projectId:$projectId){id name projectId serviceIds databaseIds keyValueIds envGroupIds}}",
+        "variables": {
+          "id": "srv-db8b1djh673c73birsl0",
+          "groupId": "evg-db8b203h673c73birsn0",
+          "projectId": "prj-db8b13rh673c73birsj0"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "id": "dep-db8b22jh673c73birsng",
+              "status": "live",
+              "trigger": "config_change"
+            },
+            {
+              "id": "dep-db8b1djh673c73birslg",
+              "status": "deactivated",
+              "trigger": "create"
+            }
+          ],
+          "envGroup": {
+            "environmentId": "evm-db8b165eelgc73d2i33g",
+            "id": "evg-db8b203h673c73birsn0",
+            "name": "qa-20261015-a570-group",
+            "revision": "egr1_AAAAAAAAAAE",
+            "serviceLinks": ["srv-db8b1djh673c73birsl0"]
+          },
+          "envGroupVar": {
+            "key": "QA_A570_VALUE",
+            "value": "MOVE_PRESERVED"
+          },
+          "environments": [
+            {
+              "databaseIds": [],
+              "envGroupIds": ["evg-db8b203h673c73birsn0"],
+              "id": "evm-db8b165eelgc73d2i33g",
+              "keyValueIds": [],
+              "name": "qa-a570-alpha",
+              "projectId": "prj-db8b13rh673c73birsj0",
+              "serviceIds": ["srv-db8b1djh673c73birsl0"]
+            },
+            {
+              "databaseIds": [],
+              "envGroupIds": [],
+              "id": "evm-db8b16teelgc73d2i350",
+              "keyValueIds": [],
+              "name": "qa-a570-beta",
+              "projectId": "prj-db8b13rh673c73birsj0",
+              "serviceIds": []
+            }
+          ],
+          "project": {
+            "databaseIds": [],
+            "id": "prj-db8b13rh673c73birsj0",
+            "keyValueIds": [],
+            "name": "qa-20261015-a570-project",
+            "serviceIds": ["srv-db8b1djh673c73birsl0"]
+          },
+          "server": {
+            "environmentId": "evm-db8b165eelgc73d2i33g",
+            "id": "srv-db8b1djh673c73birsl0",
+            "linkedEnvGroupIds": ["evg-db8b203h673c73birsn0"],
+            "name": "qa-20261015-a570-move",
+            "phase": "Running",
+            "projectId": "prj-db8b13rh673c73birsj0",
+            "revision": "rev-2"
+          }
+        }
+      },
+      "public": {
+        "status": 200,
+        "body": "VALUE=MOVE_PRESERVED\n"
+      },
+      "ariaTail": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261015-a570-project\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - paragraph: Project\n  - heading \"qa-20261015-a570-project\" [level=1]\n  - button \"Edit\"\n  - heading \"Environments\" [level=2]\n  - combobox \"Selected environment\": qa-a570-beta\n  - link \"New Service\":\n    - /url: /services/new?projectId=prj-db8b13rh673c73birsj0&environmentId=evm-db8b16teelgc73d2i350\n  - button \"New Environment\"\n  - text: qa-a570-beta 0 resources\n  - button \"Manage resources\"\n  - button \"More actions\"\n  - button \"All (0)\"\n  - button \"Services (0)\"\n  - button \"Databases (0)\"\n  - button \"Key Values (0)\"\n  - button \"Env Groups (0)\"\n  - searchbox \"Search resources in qa-a570-beta\"\n  - paragraph: No resources in this environment yet."
+    },
+    "Console": {
+      "error": false,
+      "summary": "### Result\n- [Console](./qa-a570-console.txt)"
+    },
+    "Network": {
+      "error": false,
+      "summary": "### Result\n- [Network](./qa-a570-network.txt)"
+    },
+    "DeleteService": {
+      "at": "2026-10-15T11:03:41.382Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db8b1djh673c73birsl0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "DeleteGroup": {
+      "at": "2026-10-15T11:03:47.133Z",
+      "request": {
+        "operationName": "DeleteEnvGroup",
+        "variables": {
+          "id": "evg-db8b203h673c73birsn0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation DeleteEnvGroup($id: String!) {\n  deleteEnvGroup(id: $id)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteEnvGroup": true
+        }
+      },
+      "url": "https://dashboard.bex.co/env-groups"
+    },
+    "ProjectEmptyGuard": {
+      "at": "2026-10-15T11:03:57.058Z",
+      "request": {
+        "operationName": "Qaa570ProjectEmptyGuard",
+        "query": "query Qaa570ProjectEmptyGuard($id:String!){project(id:$id){id name serviceIds databaseIds keyValueIds} environments(projectId:$id){id name serviceIds databaseIds keyValueIds envGroupIds}}",
+        "variables": {
+          "id": "prj-db8b13rh673c73birsj0"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "environments": [
+            {
+              "databaseIds": [],
+              "envGroupIds": [],
+              "id": "evm-db8b165eelgc73d2i33g",
+              "keyValueIds": [],
+              "name": "qa-a570-alpha",
+              "serviceIds": []
+            },
+            {
+              "databaseIds": [],
+              "envGroupIds": [],
+              "id": "evm-db8b16teelgc73d2i350",
+              "keyValueIds": [],
+              "name": "qa-a570-beta",
+              "serviceIds": []
+            }
+          ],
+          "project": {
+            "databaseIds": [],
+            "id": "prj-db8b13rh673c73birsj0",
+            "keyValueIds": [],
+            "name": "qa-20261015-a570-project",
+            "serviceIds": []
+          }
+        }
+      }
+    },
+    "DeleteProject": {
+      "at": "2026-10-15T11:04:14.219Z",
+      "request": {
+        "operationName": "DeleteProject",
+        "variables": {
+          "id": "prj-db8b13rh673c73birsj0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation DeleteProject($id: String!) {\n  deleteProject(id: $id)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteProject": "prj-db8b13rh673c73birsj0"
+        }
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "Cleanup": {
+      "at": "2026-10-15T11:04:33.262Z",
+      "statuses": {
+        "/v1/services/srv-db8b1djh673c73birsl0": 404,
+        "/v1/env-groups/evg-db8b203h673c73birsn0": 404,
+        "/v1/projects/prj-db8b13rh673c73birsj0": 404,
+        "/v1/environments/evm-db8b165eelgc73d2i33g": 404,
+        "/v1/environments/evm-db8b16teelgc73d2i350": 404
+      },
+      "publicStatus": 404,
+      "inventoryStatus": 200,
+      "idSetsRestored": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "inventory": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      }
+    },
+    "Logout": {
+      "chunk_id": "43f90f",
+      "wall_time_seconds": 0.000015834,
+      "exit_code": 0,
+      "original_token_count": 4,
+      "output": "ok logged-out\n"
+    },
+    "SessionClear": {
+      "at": "2026-10-15T11:05:22.922Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  },
+  "baselineRequest": {
+    "operationName": "Qaa467Inventory",
+    "query": "query Qaa467Inventory($ownerId:String!){services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name}}",
+    "variables": {
+      "ownerId": "tea-d98210cbbpdc73dcrkvg"
+    }
+  },
+  "relatedEarlierPass": {
+    "pass": "a569",
+    "finding": "Two native mixed moves changed placement while their mutation response watchers saw no response; four console messages reported missing ACAO/failed fetch.",
+    "limitation": "Earlier requests did not retain a complete native mutation wire receipt, so a570 is the decisive reproduction."
+  },
+  "sources": {
+    "researchMain": "f497ddab6",
+    "boardMarkdownFilesSearched": 9156,
+    "openMilestoneReadmesScanned": 72,
+    "renderProjects": "https://render.com/docs/projects",
+    "apolloBatchHttpLink": "https://www.apollographql.com/docs/react/api/link/apollo-link-batch-http",
+    "pinnedApollo": "4.1.3",
+    "pinnedGraphqlGo": "v0.8.1",
+    "buildGo": "lego/Dockerfile pins golang:1.26 by digest; local Go 1.26.8 net/http source inspected, deployed patch unverified"
+  },
+  "derivedTimings": {
+    "passingBatchResponseMs": 26465,
+    "failingBatchResponseMs": 30998,
+    "clock": "Date.now callback offsets in the CDP observer; rounded to 26.5s/31.0s in the finding."
+  }
+}
