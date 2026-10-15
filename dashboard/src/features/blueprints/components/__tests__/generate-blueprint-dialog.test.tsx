@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import i18n from "@/i18n/init";
 import { GenerateBlueprintDialog } from "../generate-blueprint-dialog";
 
 const generate = vi.fn(async () => ({
@@ -10,6 +11,13 @@ const generate = vi.fn(async () => ({
       filename: "render.yaml",
     },
   },
+}));
+const { toastSuccess, toastError } = vi.hoisted(() => ({
+  toastSuccess: vi.fn(),
+  toastError: vi.fn(),
+}));
+vi.mock("sonner", () => ({
+  toast: { success: toastSuccess, error: toastError },
 }));
 vi.mock("@apollo/client/react", () => ({
   useLazyQuery: () => [generate, { loading: false }],
@@ -99,5 +107,80 @@ describe("GenerateBlueprintDialog with a wide manifest", () => {
     expect(pre.closest('[data-slot="dialog-content"]')).toHaveClass(
       "grid-cols-[minmax(0,1fr)]",
     );
+  });
+});
+
+// w4/314: Copy announced success before the clipboard answered, so a denied
+// write showed "render.yaml copied" and left an unhandled rejection.
+describe("GenerateBlueprintDialog Copy", () => {
+  async function generated(generate: RegExp | string = /^generate$/i) {
+    const user = userEvent.setup();
+    render(<GenerateBlueprintDialog open onOpenChange={() => {}} />);
+    await user.click(screen.getByText("shared-config"));
+    await user.click(screen.getByRole("button", { name: generate }));
+    await screen.findByText(/services:/);
+    return user;
+  }
+
+  beforeEach(() => {
+    toastSuccess.mockClear();
+    toastError.mockClear();
+  });
+
+  it("toasts success only after the write resolves, and a failure as a failure", async () => {
+    const user = await generated();
+    let resolve!: () => void;
+    const write = vi
+      .spyOn(navigator.clipboard, "writeText")
+      .mockImplementationOnce(
+        () => new Promise<void>((done) => (resolve = done)),
+      )
+      .mockRejectedValueOnce(
+        new DOMException("Write permission denied.", "NotAllowedError"),
+      )
+      .mockResolvedValueOnce(undefined);
+    const copy = screen.getByRole("button", { name: /^copy$/i });
+
+    await user.click(copy);
+    expect(write).toHaveBeenLastCalledWith("services:\n  - name: web\n");
+    expect(toastSuccess).not.toHaveBeenCalled();
+    await act(async () => resolve());
+    expect(toastSuccess).toHaveBeenCalledTimes(1);
+    expect(toastSuccess).toHaveBeenLastCalledWith("render.yaml copied");
+
+    toastSuccess.mockClear();
+    await user.click(copy);
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledWith(
+        "Couldn't copy render.yaml. Allow clipboard access and try again, or download it.",
+      ),
+    );
+    expect(toastSuccess).not.toHaveBeenCalled();
+    // The preview, Copy and Download stay usable, and a retry succeeds.
+    expect(screen.getByText(/services:/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /download render\.yaml/i }),
+    ).toBeEnabled();
+    await user.click(copy);
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledTimes(1));
+    write.mockRestore();
+  });
+
+  it("has a Chinese failure message", async () => {
+    await i18n.changeLanguage("zh");
+    try {
+      const user = await generated("生成");
+      vi.spyOn(navigator.clipboard, "writeText").mockRejectedValueOnce(
+        new DOMException("denied", "NotAllowedError"),
+      );
+      await user.click(screen.getByRole("button", { name: "复制" }));
+      await waitFor(() =>
+        expect(toastError).toHaveBeenCalledWith(
+          "无法复制 render.yaml。请允许访问剪贴板后重试，或直接下载。",
+        ),
+      );
+    } finally {
+      await i18n.changeLanguage("en");
+    }
   });
 });

@@ -451,6 +451,11 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message: "render.yaml 已复制",
     description: "Toast after copying the generated manifest",
   },
+  "blueprints.generateCopyFailed": {
+    message: "无法复制 render.yaml。请允许访问剪贴板后重试，或直接下载。",
+    description:
+      "Toast when the browser refuses to copy the generated manifest to the clipboard",
+  },
   "blueprints.generateDownload": {
     message: "下载 render.yaml",
     description: "Generate dialog — download the manifest file",
