@@ -1,0 +1,321 @@
+{
+  "pass": "a606",
+  "date": "2026-10-15",
+  "mode": "Read-only signed-in dashboard QA; no workload, project or Blueprint created",
+  "researchHead": "e84ee60cc55cc44f4eb3b47ee62a3df38b4f406d",
+  "issues": ["w4/312", "w4/313"],
+  "actions": {
+    "search": [
+      "Open topbar Search in English; Escape",
+      "Avatar P > Language > 中文; open 搜索",
+      "Filter qa-a606-no-such-fixture; observe translated dialog/input/groups/status and English listbox name",
+      "Fresh reload at 390×844, open 搜索 and repeat",
+      "Restore English, fresh reload and repeat as control; Escape restores Search-button focus"
+    ],
+    "combobox": [
+      "At 390×844 open /blueprints/new while locale is Chinese; select 公开 Git URL",
+      "Set 仓库 URL to https://github.com/bex-co/bex; type qa-a606-missing-branch in 分支",
+      "Observe English empty/custom-value copy and Clear input label",
+      "Fresh reload at 1440×1000 with Chinese document; repeat using qa-a606-fresh-branch",
+      "Clear input: value becomes empty and focus stays on input; select real main suggestion: value main and popup closes",
+      "Restore English, fresh reload, repeat unmatched branch as appropriate-English control",
+      "Do not click Deploy Blueprint or change any resource"
+    ]
+  },
+  "observations": {
+    "a606SearchChinese": {
+      "at": "2026-10-15T16:49:22.538Z",
+      "lang": "zh",
+      "initial": [
+        "- dialog \"搜索\":",
+        "  - heading \"搜索\" [level=2]",
+        "  - paragraph: 搜索控制台页面和工作区资源。",
+        "  - combobox \"搜索\" [expanded]",
+        "  - listbox \"Suggestions\":",
+        "    - group \"导航\":",
+        "    - separator",
+        "    - group \"资源\":",
+        "  - button \"Close\""
+      ],
+      "filtered": "- dialog \"搜索\":\n  - text: 搜索\n  - heading \"搜索\" [level=2]\n  - paragraph: 搜索控制台页面和工作区资源。\n  - combobox \"搜索\" [expanded]: qa-a606-no-such-fixture\n  - listbox \"Suggestions\":\n    - status: 没有匹配的页面或资源。\n  - button \"Close\""
+    },
+    "a606ChineseProjectsSearch": {
+      "at": "2026-10-15T16:49:46.918Z",
+      "dialog": [
+        "- dialog \"搜索\":",
+        "  - combobox \"搜索\" [expanded]: 项目",
+        "  - listbox \"Suggestions\":",
+        "      - option \"项目\" [selected]",
+        "      - option \"bex.co 项目\"",
+        "      - option \"beancount.io 项目\"",
+        "      - option \"forums 项目\""
+      ]
+    },
+    "a606ChineseMobileFresh": {
+      "at": "2026-10-15T16:50:01.042Z",
+      "lang": "zh",
+      "dialog": "- dialog \"搜索\":\n  - text: 搜索\n  - heading \"搜索\" [level=2]\n  - paragraph: 搜索控制台页面和工作区资源。\n  - combobox \"搜索\" [expanded]: qa-a606-no-such-fixture\n  - listbox \"Suggestions\":\n    - group \"资源\":\n      - option \"加载中…\" [disabled]\n  - button \"Close\"",
+      "box": {
+        "x": 16,
+        "y": 356.5,
+        "width": 358,
+        "height": 131
+      },
+      "focus": true
+    },
+    "a606ChineseDesktopBranchFresh": {
+      "at": "2026-10-15T16:52:18.619Z",
+      "width": 1440,
+      "lang": "zh",
+      "listbox": "- listbox \"Suggestions\":\n  - text: No results found Press Enter to use \"qa-a606-fresh-branch\"\n  - group",
+      "clear": 1
+    },
+    "a606EnglishFreshControls": {
+      "at": "2026-10-15T16:54:16.880Z",
+      "branch": {
+        "at": "2026-10-15T16:54:14.936Z",
+        "lang": "en",
+        "listbox": "- listbox \"Suggestions\":\n  - text: No results found Press Enter to use \"qa-a606-en-fresh\"\n  - group",
+        "clear": 1
+      },
+      "search": {
+        "at": "2026-10-15T16:54:16.580Z",
+        "dialog": "- dialog \"Search\":\n  - text: Search\n  - heading \"Search\" [level=2]\n  - paragraph: Search dashboard pages and workspace resources.\n  - combobox \"Search\" [expanded]: qa-a606-no-such-fixture\n  - listbox \"Suggestions\":\n    - group \"Resources\":\n      - option \"Loading…\" [disabled]\n  - button \"Close\""
+      },
+      "focusReturned": true
+    },
+    "a606BrowserClean": {
+      "at": "2026-10-15T16:56:58.630Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "a606ChineseBranchEmpty": {
+      "at": "2026-10-15T16:51:38.866Z",
+      "lang": "zh",
+      "listbox": "- listbox \"Suggestions\":\n  - text: No results found Press Enter to use \"qa-a606-missing-branch\"\n  - group",
+      "clearButtons": ["Clear input"],
+      "url": "https://dashboard.bex.co/blueprints/new"
+    },
+    "a606BranchPassingControls": {
+      "at": "2026-10-15T16:53:13.647Z",
+      "cleared": {
+        "value": "",
+        "focused": true
+      },
+      "selected": {
+        "value": "main",
+        "expanded": "false"
+      },
+      "englishControlReplacedBy": "a606EnglishFreshControls (fresh document lang=en)"
+    }
+  },
+  "cleanup": {
+    "inventoryAt": "2026-10-15T16:56:39.247Z",
+    "baselineIds": {
+      "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+      "databases": [
+        "dpg-d9nqg95cavls73fp8m20",
+        "dpg-d9rrkoc4h4mc73edurp0",
+        "dpg-d9rs3ee0ccis738kc7c0",
+        "dpg-db34l9bor55s73cqpq9g"
+      ],
+      "envGroups": ["evg-db0s94c48ccs739jikr0"],
+      "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+      "projects": [
+        "prj-d9dgeo0bd9nc73a0vh1g",
+        "prj-d9e5qct5qe4s73b1mjn0",
+        "prj-d9sgfnbjghus73cg6hg0"
+      ],
+      "services": [
+        "srv-d9bj8s3eg85c7390eb9g",
+        "srv-d9bkcspg9s7c73d0n8ug",
+        "srv-d9e40ei9086p3l1jri30",
+        "srv-d9ndt8hmcglc739fkp50",
+        "srv-d9nqg9dcavls73fp8m2g"
+      ],
+      "webhookEndpoints": []
+    },
+    "afterIds": {
+      "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+      "databases": [
+        "dpg-d9nqg95cavls73fp8m20",
+        "dpg-d9rrkoc4h4mc73edurp0",
+        "dpg-d9rs3ee0ccis738kc7c0",
+        "dpg-db34l9bor55s73cqpq9g"
+      ],
+      "envGroups": ["evg-db0s94c48ccs739jikr0"],
+      "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+      "projects": [
+        "prj-d9dgeo0bd9nc73a0vh1g",
+        "prj-d9e5qct5qe4s73b1mjn0",
+        "prj-d9sgfnbjghus73cg6hg0"
+      ],
+      "services": [
+        "srv-d9bj8s3eg85c7390eb9g",
+        "srv-d9bkcspg9s7c73d0n8ug",
+        "srv-d9e40ei9086p3l1jri30",
+        "srv-d9ndt8hmcglc739fkp50",
+        "srv-d9nqg9dcavls73fp8m2g"
+      ],
+      "webhookEndpoints": []
+    },
+    "allSevenFamiliesMatch": {
+      "blueprints": true,
+      "databases": true,
+      "envGroups": true,
+      "keyValues": true,
+      "projects": true,
+      "services": true,
+      "webhookEndpoints": true
+    },
+    "restoredLocale": {
+      "document": "en",
+      "storage": "en",
+      "cookie": "i18nextLng=en"
+    },
+    "logout": "canonical helper exit 0: ok logged-out",
+    "browser": {
+      "at": "2026-10-15T16:56:58.630Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "console": "0 errors, 0 warnings"
+  },
+  "limits": [
+    "No assistive-technology audio session; accessible names were observed through the actual browser accessibility tree.",
+    "Only global Search and Blueprint branch picker were exercised live. Other Combobox consumers are source-established.",
+    "The generic Select an option placeholder was not observed as a production fallback; concrete callers supply placeholders.",
+    "Source-changing service dialogs and Settings repository/branch edits were not opened or saved on pre-existing resources.",
+    "Separate English Dialog Close label is already w4/310.",
+    "One optional keyboard-navigation check used an incorrect /projects wait (the configured Projects target is /); it is excluded from passing evidence. No product failure inferred.",
+    "Installed cmdk 1.1.1 source was inspected; exact deployed library patch and independent Render production UI were not measured."
+  ],
+  "research": {
+    "census": {
+      "head": "e84ee60cc55cc44f4eb3b47ee62a3df38b4f406d",
+      "rows": [
+        {
+          "file": "dashboard/src/routes/blueprints.new.tsx",
+          "line": 275,
+          "tag": "Combobox",
+          "props": {
+            "options": "{branchOptions}",
+            "value": "{branch}",
+            "onValueChange": "{setBranch}",
+            "placeholder": "{t(\"blueprints.createBranchPlaceholder\")}",
+            "ariaLabel": "{t(\"blueprints.createBranchLabel\")}",
+            "allowCustom": true
+          }
+        },
+        {
+          "file": "dashboard/src/common/components/dashboard-layout/global-search-dialog.tsx",
+          "line": 95,
+          "tag": "CommandList",
+          "props": {}
+        },
+        {
+          "file": "dashboard/src/common/components/dashboard-layout/global-search.tsx",
+          "line": 103,
+          "tag": "GlobalSearchDialog",
+          "props": {
+            "open": "{open}",
+            "onOpenChange": "{setOpen}",
+            "returnFocus": "{returnFocus}"
+          }
+        },
+        {
+          "file": "dashboard/src/common/components/ui/combobox.tsx",
+          "line": 245,
+          "tag": "CommandList",
+          "props": {}
+        },
+        {
+          "file": "dashboard/src/features/services/components/service-source-card.tsx",
+          "line": 227,
+          "tag": "Combobox",
+          "props": {
+            "value": "{branch}",
+            "onValueChange": "{setBranch}",
+            "options": "{branchOptions}",
+            "allowCustom": true,
+            "placeholder": "{t(\"services.buildDeployBranchPlaceholder\")}",
+            "emptyText": "{t(\"services.sourceBranchEmpty\")}",
+            "ariaLabel": "{t(\"services.buildDeployBranchLabel\")}",
+            "className": "\"font-mono\""
+          }
+        },
+        {
+          "file": "dashboard/src/features/services/components/build-deploy-section.tsx",
+          "line": 345,
+          "tag": "EditableFieldRow",
+          "props": {
+            "label": "{t(\"services.buildDeploySourceLabel\")}",
+            "hint": "{t(\"services.buildDeploySourceHint\")}",
+            "value": "{repo}",
+            "placeholder": "{t(\"services.buildDeploySourcePlaceholder\")}",
+            "editLabel": "{t(\"services.buildDeploySourceEdit\")}",
+            "mono": true,
+            "busy": "{repoBusy}",
+            "comboboxOptions": "{repoOptions}",
+            "confirm": "{{\n          title: (value) =>\n            t(\"services.buildDeploySourceConfirmTitle\", { value }),\n          body: t(\"services.sourceNoAutoDeploy\"),\n        }}",
+            "disabled": "{disabled}",
+            "disabledReason": "{disabledReason}",
+            "onSave": "{(value) => setRepo(serviceId, { repo: value })}"
+          }
+        },
+        {
+          "file": "dashboard/src/features/services/components/build-deploy-section.tsx",
+          "line": 363,
+          "tag": "EditableFieldRow",
+          "props": {
+            "label": "{t(\"services.buildDeployBranchLabel\")}",
+            "hint": "{t(\"services.buildDeployBranchHint\")}",
+            "value": "{branch ?? \"\"}",
+            "placeholder": "{t(\"services.buildDeployBranchPlaceholder\")}",
+            "editLabel": "{t(\"services.buildDeployBranchEdit\")}",
+            "mono": true,
+            "busy": "{branchBusy}",
+            "comboboxOptions": "{branchOptions}",
+            "confirm": "{{\n          title: (value) =>\n            t(\"services.buildDeployBranchConfirmTitle\", { value }),\n          body: t(\"services.sourceNoAutoDeploy\"),\n          emptyValue: t(\"services.buildDeployBranchEmpty\"),\n        }}",
+            "disabled": "{disabled}",
+            "disabledReason": "{disabledReason}",
+            "onSave": "{(value) => setBranch(serviceId, value)}"
+          }
+        },
+        {
+          "file": "dashboard/src/features/services/components/editable-field-row.tsx",
+          "line": 234,
+          "tag": "Combobox",
+          "props": {
+            "options": "{[...comboboxOptions]}",
+            "value": "{shown}",
+            "onValueChange": "{setDraft}",
+            "disabled": "{disabled || !editing || busy}",
+            "allowCustom": true,
+            "ariaLabel": "{label}",
+            "placeholder": "{placeholder}",
+            "className": "{mono ? \"font-mono text-sm\" : undefined}"
+          }
+        }
+      ],
+      "cmdkVersion": "1.1.1",
+      "cmdkListDefault": "}})}),Ce=t.forwardRef((r,o)=>{let{children:n,label:u=\"Suggestions\",...c}=r,d=t.useRef(null),f=t.useRef(null),p=P(m=>m.selectedItemId),b=K();retur",
+      "cmdkListAttribute": "{ref:G(d,o),...c,\"cmdk-list\":\"\",role:\"listbox\",tabIndex:-1,\"aria-activedescendant\":p,\"aria-label\":u,id:b.listId},B(r,m=>t.cre"
+    },
+    "dedupe": {
+      "boardMarkdownFiles": 9173,
+      "actualOpenMilestones": 72,
+      "relatedHitFiles": [
+        ".pm/w4/done/229.md",
+        ".pm/w4/done/265.md",
+        ".pm/w4/blocked/282.md",
+        ".pm/w4/done/m101/t011.md"
+      ],
+      "nextInbox": 312
+    }
+  }
+}
