@@ -270,6 +270,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **309** — [Static sites return 404 for uppercase or mixed-case URL hostnames](309.md) (minor, 45m) ← functional QA 2026-10-15 a585; 27 native reads reproduce case-sensitive lookup, browser normalization and public Render controls verified; owned site/session cleaned.
+
 - [ ] **308** — [PostgreSQL upgrades offer and accept targets the operator rejects](308.md) (major, 55m) ← functional QA 2026-10-15 a580/a581; native 13→14/15 writes fail CNPG's target≥16 guard while original SQL remains available; seeded 13→16 control succeeds, both owned databases/sessions cleaned.
 
 - [ ] **307** — [Resuming a published static site briefly reports that its host does not exist](307.md) (minor, 55m) ← functional QA 2026-10-15 a520; three native resumes expose an absent-host 404 before the static resolver refreshes, with original publication/rules retained; own fixture/session cleanup verified.

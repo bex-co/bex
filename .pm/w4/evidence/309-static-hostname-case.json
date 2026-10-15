@@ -1,0 +1,1129 @@
+{
+  "pass": "a585",
+  "findingCandidate": "Known static-site host is matched case-sensitively: uppercase/mixed-case HTTPS URLs return native404 while canonical lowercase works",
+  "fixture": {
+    "id": "srv-db8dat5eelgc73d2i4k0",
+    "name": "qa-20261015-a585-hostcase",
+    "url": "https://qa-20261015-a585-hostcase.onbex.co"
+  },
+  "create": {
+    "at": "2026-10-15T13:30:29.992Z",
+    "request": {
+      "operationName": "CreateService",
+      "variables": {
+        "repo": "https://github.com/bex-co/bex",
+        "branch": "main",
+        "name": "qa-20261015-a585-hostcase",
+        "type": "static_site",
+        "rootDir": "examples/static-site",
+        "autoDeploy": false,
+        "publishPath": ".",
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "createService": {
+          "__typename": "Service",
+          "environmentId": null,
+          "id": "srv-db8dat5eelgc73d2i4k0",
+          "latestDeployId": "dep-db8dat5eelgc73d2i4kg",
+          "name": "qa-20261015-a585-hostcase",
+          "phase": "",
+          "projectId": null,
+          "registryCredentialId": null,
+          "type": "static_site"
+        }
+      }
+    },
+    "url": "https://dashboard.bex.co/services/srv-db8dat5eelgc73d2i4k0/deploys/dep-db8dat5eelgc73d2i4kg"
+  },
+  "live": {
+    "at": "2026-10-15T13:30:52.089Z",
+    "request": {
+      "operationName": "Qaa585Read",
+      "query": "query Qaa585Read($id:String!){server(id:$id){id name phase revision url} deploys(serviceId:$id){id status trigger}}",
+      "variables": {
+        "id": "srv-db8dat5eelgc73d2i4k0"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deploys": [
+          {
+            "id": "dep-db8dat5eelgc73d2i4kg",
+            "status": "live",
+            "trigger": "create"
+          }
+        ],
+        "server": {
+          "id": "srv-db8dat5eelgc73d2i4k0",
+          "name": "qa-20261015-a585-hostcase",
+          "phase": "Running",
+          "revision": "rev-1",
+          "url": "https://qa-20261015-a585-hostcase.onbex.co"
+        }
+      }
+    },
+    "public": {
+      "at": "2026-10-15T13:30:52.742Z",
+      "status": 200,
+      "body": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>bex static site</title>\n    <style>\n      *,\n      *::before,\n      *::after {\n        box-sizing: border-box;\n        margin: 0;\n        padding: 0;\n      }\n      body {\n        font-family: system-ui, sans-serif;\n        background: #0f172a;\n        color: #e2e8f0;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        min-height: 100vh;\n      }\n      .card {\n        text-align: center;\n        padding: 3rem 4rem;\n        border: 1px solid #1e293b;\n        border-radius: 1rem;\n        background: #1e293b;\n        max-width: 480px;\n      }\n      h1 {\n        font-size: 2rem;\n        font-weight: 700;\n        letter-spacing: -0.03em;\n        color: #f8fafc;\n      }\n      p {\n        margin-top: 0.75rem;\n        color: #94a3b8;\n        line-height: 1.6;\n      }\n      .badge {\n        display: inline-block;\n        margin-top: 1.5rem;\n        padding: 0.35rem 0.85rem;\n        border-radius: 9999px;\n        font-size: 0.8rem;\n        font-weight: 600;\n        background: #6366f1;\n        color: #fff;\n      }\n    </style>\n  </head>\n  <body>\n    <div class=\"card\">\n      <h1>Hello from bex</h1>\n      <p>\n        This static site is served by bex — no server, no Dockerfile. Edit\n        <code>index.html</code>, push to git, and bex redeploys instantly.\n      </p>\n      <span class=\"badge\">static_site</span>\n    </div>\n  </body>\n</html>\n"
+    }
+  },
+  "finalLive": {
+    "at": "2026-10-15T13:37:36.384Z",
+    "request": {
+      "operationName": "Qaa585Read",
+      "query": "query Qaa585Read($id:String!){server(id:$id){id name phase revision url} deploys(serviceId:$id){id status trigger}}",
+      "variables": {
+        "id": "srv-db8dat5eelgc73d2i4k0"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deploys": [
+          {
+            "id": "dep-db8dat5eelgc73d2i4kg",
+            "status": "live",
+            "trigger": "create"
+          }
+        ],
+        "server": {
+          "id": "srv-db8dat5eelgc73d2i4k0",
+          "name": "qa-20261015-a585-hostcase",
+          "phase": "Running",
+          "revision": "rev-1",
+          "url": "https://qa-20261015-a585-hostcase.onbex.co"
+        }
+      }
+    }
+  },
+  "browserNormalization": [
+    {
+      "at": "2026-10-15T13:33:44.824Z",
+      "inputURL": "https://QA-20261015-A585-HOSTCASE.ONBEX.CO/",
+      "finalURL": "https://qa-20261015-a585-hostcase.onbex.co/",
+      "status": 200,
+      "body": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>bex static site</title>\n    <style>\n      *,\n      *::before,\n      *::after {\n        box-sizing: border-box;\n        margin: 0;\n        padding: 0;\n      }\n      body {\n        font-family: system-ui, sans-serif;\n        background: #0f172a;\n        color: #e2e8f0;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        min-height: 100vh;\n      }\n      .card {\n        text-align: center;\n        padding: 3rem 4rem;\n        border: 1px solid #1e293b;\n        border-radius: 1rem;\n        background: #1e293b;\n        max-width: 480px;\n      }\n      h1 {\n        font-size: 2rem;\n        font-weight: 700;\n        letter-spacing: -0.03em;\n        color: #f8fafc;\n      }\n      p {\n        margin-top: 0.75rem;\n        color: #94a3b8;\n        line-height: 1.6;\n      }\n      .badge {\n        display: inline-block;\n        margin-top: 1.5rem;\n        padding: 0.35rem 0.85rem;\n        border-radius: 9999px;\n        font-size: 0.8rem;\n        font-weight: 600;\n        background: #6366f1;\n        color: #fff;\n      }\n    </style>\n  </head>\n  <body>\n    <div class=\"card\">\n      <h1>Hello from bex</h1>\n      <p>\n        This static site is served by bex — no server, no Dockerfile. Edit\n        <code>index.html</code>, push to git, and bex redeploys instantly.\n      </p>\n      <span class=\"badge\">static_site</span>\n    </div>\n  </body>\n</html>\n"
+    },
+    {
+      "at": "2026-10-15T13:37:01.160Z",
+      "inputURL": "https://Qa-20261015-A585-HostCase.OnBex.Co/",
+      "requestURL": "https://qa-20261015-a585-hostcase.onbex.co/",
+      "redirectedFrom": null,
+      "finalURL": "https://qa-20261015-a585-hostcase.onbex.co/",
+      "status": 200,
+      "body": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>bex static site</title>\n    <style>\n      *,\n      *::before,\n      *::after {\n        box-sizing: border-box;\n        margin: 0;\n        padding: 0;\n      }\n      body {\n        font-family: system-ui, sans-serif;\n        background: #0f172a;\n        color: #e2e8f0;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        min-height: 100vh;\n      }\n      .card {\n        text-align: center;\n        padding: 3rem 4rem;\n        border: 1px solid #1e293b;\n        border-radius: 1rem;\n        background: #1e293b;\n        max-width: 480px;\n      }\n      h1 {\n        font-size: 2rem;\n        font-weight: 700;\n        letter-spacing: -0.03em;\n        color: #f8fafc;\n      }\n      p {\n        margin-top: 0.75rem;\n        color: #94a3b8;\n        line-height: 1.6;\n      }\n      .badge {\n        display: inline-block;\n        margin-top: 1.5rem;\n        padding: 0.35rem 0.85rem;\n        border-radius: 9999px;\n        font-size: 0.8rem;\n        font-weight: 600;\n        background: #6366f1;\n        color: #fff;\n      }\n    </style>\n  </head>\n  <body>\n    <div class=\"card\">\n      <h1>Hello from bex</h1>\n      <p>\n        This static site is served by bex — no server, no Dockerfile. Edit\n        <code>index.html</code>, push to git, and bex redeploys instantly.\n      </p>\n      <span class=\"badge\">static_site</span>\n    </div>\n  </body>\n</html>\n"
+    }
+  ],
+  "nativeArtifacts": [
+    ".playwright-mcp/qa-static-hostcase-a585-native.json",
+    ".playwright-mcp/qa-static-hostcase-a585-repro.json",
+    ".playwright-mcp/qa-static-hostcase-a585-go.json"
+  ],
+  "sampleUTF8Bytes": 1548,
+  "sampleSHA256": "1eb4041e1174aaf5fc0d19dc504fccca37749fd03e73974ed230433614d7e8bb",
+  "deletion": {
+    "at": "2026-10-15T13:37:40.930Z",
+    "request": {
+      "operationName": "DeleteService",
+      "variables": {
+        "id": "srv-db8dat5eelgc73d2i4k0"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deleteService": true
+      }
+    },
+    "url": "https://dashboard.bex.co/"
+  },
+  "cleanup": {
+    "at": "2026-10-15T13:37:50.806Z",
+    "deletedStatus": 404,
+    "publicStatus": 404,
+    "publicBody": "404 page not found\n",
+    "inventoryStatus": 200,
+    "inventory": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    },
+    "setsRestored": true
+  },
+  "logout": {
+    "exit_code": 0,
+    "output": "ok logged-out\n"
+  },
+  "session": {
+    "at": "2026-10-15T13:39:30.971Z",
+    "whoami": 401,
+    "cookies": 0,
+    "pages": 1,
+    "url": "about:blank"
+  },
+  "harnessNotes": [
+    "First Python artifact ended with a literal backslash-n. It was normalized without changing the captured receipt data, and a fresh independent curl run was captured separately.",
+    "Initial Python console summary called character counts bodyBytes. Full stored response bodies and UTF8 SHA256 agree with the independent Go client at1548 actual bytes."
+  ],
+  "limits": [
+    "27 actual native reads:24 curl GET/HEAD plus3 Go GET/HTTP2. Browser input normalizes before network and succeeds.",
+    "No custom domain, trailing dot, IDNA, unknown-host variant, paid resource or foreign hosting resource mutated."
+  ],
+  "finding": "w4/309",
+  "sourceHead": "44ac07f7fca8a2ef672c3ee0eb6e6eabef0db91e",
+  "nativeRuns": {
+    "native": {
+      "pass": "a585",
+      "receipts": [
+        {
+          "at": "2026-10-15T13:31:57.098464+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261015-a585-hostcase.onbex.co/",
+            "mode": "default",
+            "wireHosts": ["qa-20261015-a585-hostcase.onbex.co"]
+          },
+          "nativeExit": 0,
+          "response": {
+            "status": 200,
+            "headers": {
+              "content-type": "text/html",
+              "content-length": "1548"
+            },
+            "body": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>bex static site</title>\n    <style>\n      *,\n      *::before,\n      *::after {\n        box-sizing: border-box;\n        margin: 0;\n        padding: 0;\n      }\n      body {\n        font-family: system-ui, sans-serif;\n        background: #0f172a;\n        color: #e2e8f0;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        min-height: 100vh;\n      }\n      .card {\n        text-align: center;\n        padding: 3rem 4rem;\n        border: 1px solid #1e293b;\n        border-radius: 1rem;\n        background: #1e293b;\n        max-width: 480px;\n      }\n      h1 {\n        font-size: 2rem;\n        font-weight: 700;\n        letter-spacing: -0.03em;\n        color: #f8fafc;\n      }\n      p {\n        margin-top: 0.75rem;\n        color: #94a3b8;\n        line-height: 1.6;\n      }\n      .badge {\n        display: inline-block;\n        margin-top: 1.5rem;\n        padding: 0.35rem 0.85rem;\n        border-radius: 9999px;\n        font-size: 0.8rem;\n        font-weight: 600;\n        background: #6366f1;\n        color: #fff;\n      }\n    </style>\n  </head>\n  <body>\n    <div class=\"card\">\n      <h1>Hello from bex</h1>\n      <p>\n        This static site is served by bex — no server, no Dockerfile. Edit\n        <code>index.html</code>, push to git, and bex redeploys instantly.\n      </p>\n      <span class=\"badge\">static_site</span>\n    </div>\n  </body>\n</html>\n"
+          }
+        },
+        {
+          "at": "2026-10-15T13:31:57.738842+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://qa-20261015-a585-hostcase.onbex.co/",
+            "mode": "default",
+            "wireHosts": ["qa-20261015-a585-hostcase.onbex.co"]
+          },
+          "nativeExit": 0,
+          "response": {
+            "status": 200,
+            "headers": {
+              "content-type": "text/html",
+              "content-length": "1548"
+            },
+            "body": ""
+          }
+        },
+        {
+          "at": "2026-10-15T13:31:58.283575+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://QA-20261015-A585-HOSTCASE.ONBEX.CO/",
+            "mode": "default",
+            "wireHosts": ["QA-20261015-A585-HOSTCASE.ONBEX.CO"]
+          },
+          "nativeExit": 0,
+          "response": {
+            "status": 404,
+            "headers": {
+              "content-type": "text/plain; charset=utf-8",
+              "content-length": "24"
+            },
+            "body": "no static site for host\n"
+          }
+        },
+        {
+          "at": "2026-10-15T13:31:58.818825+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://QA-20261015-A585-HOSTCASE.ONBEX.CO/",
+            "mode": "default",
+            "wireHosts": ["QA-20261015-A585-HOSTCASE.ONBEX.CO"]
+          },
+          "nativeExit": 0,
+          "response": {
+            "status": 404,
+            "headers": {
+              "content-type": "text/plain; charset=utf-8",
+              "content-length": "24"
+            },
+            "body": ""
+          }
+        },
+        {
+          "at": "2026-10-15T13:31:59.362451+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://Qa-20261015-A585-HostCase.OnBex.Co/",
+            "mode": "default",
+            "wireHosts": ["Qa-20261015-A585-HostCase.OnBex.Co"]
+          },
+          "nativeExit": 0,
+          "response": {
+            "status": 404,
+            "headers": {
+              "content-type": "text/plain; charset=utf-8",
+              "content-length": "24"
+            },
+            "body": "no static site for host\n"
+          }
+        },
+        {
+          "at": "2026-10-15T13:31:59.913904+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://Qa-20261015-A585-HostCase.OnBex.Co/",
+            "mode": "default",
+            "wireHosts": ["Qa-20261015-A585-HostCase.OnBex.Co"]
+          },
+          "nativeExit": 0,
+          "response": {
+            "status": 404,
+            "headers": {
+              "content-type": "text/plain; charset=utf-8",
+              "content-length": "24"
+            },
+            "body": ""
+          }
+        },
+        {
+          "at": "2026-10-15T13:32:00.458848+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261015-a585-hostcase.onbex.co/",
+            "mode": "http1.1",
+            "wireHosts": ["qa-20261015-a585-hostcase.onbex.co"]
+          },
+          "nativeExit": 0,
+          "response": {
+            "status": 200,
+            "headers": {
+              "content-length": "1548",
+              "content-type": "text/html"
+            },
+            "body": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>bex static site</title>\n    <style>\n      *,\n      *::before,\n      *::after {\n        box-sizing: border-box;\n        margin: 0;\n        padding: 0;\n      }\n      body {\n        font-family: system-ui, sans-serif;\n        background: #0f172a;\n        color: #e2e8f0;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        min-height: 100vh;\n      }\n      .card {\n        text-align: center;\n        padding: 3rem 4rem;\n        border: 1px solid #1e293b;\n        border-radius: 1rem;\n        background: #1e293b;\n        max-width: 480px;\n      }\n      h1 {\n        font-size: 2rem;\n        font-weight: 700;\n        letter-spacing: -0.03em;\n        color: #f8fafc;\n      }\n      p {\n        margin-top: 0.75rem;\n        color: #94a3b8;\n        line-height: 1.6;\n      }\n      .badge {\n        display: inline-block;\n        margin-top: 1.5rem;\n        padding: 0.35rem 0.85rem;\n        border-radius: 9999px;\n        font-size: 0.8rem;\n        font-weight: 600;\n        background: #6366f1;\n        color: #fff;\n      }\n    </style>\n  </head>\n  <body>\n    <div class=\"card\">\n      <h1>Hello from bex</h1>\n      <p>\n        This static site is served by bex — no server, no Dockerfile. Edit\n        <code>index.html</code>, push to git, and bex redeploys instantly.\n      </p>\n      <span class=\"badge\">static_site</span>\n    </div>\n  </body>\n</html>\n"
+          }
+        },
+        {
+          "at": "2026-10-15T13:32:00.996206+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://qa-20261015-a585-hostcase.onbex.co/",
+            "mode": "http1.1",
+            "wireHosts": ["qa-20261015-a585-hostcase.onbex.co"]
+          },
+          "nativeExit": 0,
+          "response": {
+            "status": 200,
+            "headers": {
+              "content-length": "1548",
+              "content-type": "text/html"
+            },
+            "body": ""
+          }
+        },
+        {
+          "at": "2026-10-15T13:32:01.526340+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://QA-20261015-A585-HOSTCASE.ONBEX.CO/",
+            "mode": "http1.1",
+            "wireHosts": ["QA-20261015-A585-HOSTCASE.ONBEX.CO"]
+          },
+          "nativeExit": 0,
+          "response": {
+            "status": 404,
+            "headers": {
+              "content-length": "24",
+              "content-type": "text/plain; charset=utf-8"
+            },
+            "body": "no static site for host\n"
+          }
+        },
+        {
+          "at": "2026-10-15T13:32:02.069628+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://QA-20261015-A585-HOSTCASE.ONBEX.CO/",
+            "mode": "http1.1",
+            "wireHosts": ["QA-20261015-A585-HOSTCASE.ONBEX.CO"]
+          },
+          "nativeExit": 0,
+          "response": {
+            "status": 404,
+            "headers": {
+              "content-length": "24",
+              "content-type": "text/plain; charset=utf-8"
+            },
+            "body": ""
+          }
+        },
+        {
+          "at": "2026-10-15T13:32:02.608283+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://Qa-20261015-A585-HostCase.OnBex.Co/",
+            "mode": "http1.1",
+            "wireHosts": ["Qa-20261015-A585-HostCase.OnBex.Co"]
+          },
+          "nativeExit": 0,
+          "response": {
+            "status": 404,
+            "headers": {
+              "content-length": "24",
+              "content-type": "text/plain; charset=utf-8"
+            },
+            "body": "no static site for host\n"
+          }
+        },
+        {
+          "at": "2026-10-15T13:32:03.150875+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://Qa-20261015-A585-HostCase.OnBex.Co/",
+            "mode": "http1.1",
+            "wireHosts": ["Qa-20261015-A585-HostCase.OnBex.Co"]
+          },
+          "nativeExit": 0,
+          "response": {
+            "status": 404,
+            "headers": {
+              "content-length": "24",
+              "content-type": "text/plain; charset=utf-8"
+            },
+            "body": ""
+          }
+        }
+      ]
+    },
+    "repro": {
+      "pass": "a585",
+      "receipts": [
+        {
+          "at": "2026-10-15T13:33:43.659645+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261015-a585-hostcase.onbex.co/",
+            "mode": "default",
+            "wireHosts": ["qa-20261015-a585-hostcase.onbex.co"]
+          },
+          "nativeExit": 0,
+          "response": {
+            "status": 200,
+            "headers": {
+              "content-type": "text/html",
+              "content-length": "1548"
+            },
+            "body": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>bex static site</title>\n    <style>\n      *,\n      *::before,\n      *::after {\n        box-sizing: border-box;\n        margin: 0;\n        padding: 0;\n      }\n      body {\n        font-family: system-ui, sans-serif;\n        background: #0f172a;\n        color: #e2e8f0;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        min-height: 100vh;\n      }\n      .card {\n        text-align: center;\n        padding: 3rem 4rem;\n        border: 1px solid #1e293b;\n        border-radius: 1rem;\n        background: #1e293b;\n        max-width: 480px;\n      }\n      h1 {\n        font-size: 2rem;\n        font-weight: 700;\n        letter-spacing: -0.03em;\n        color: #f8fafc;\n      }\n      p {\n        margin-top: 0.75rem;\n        color: #94a3b8;\n        line-height: 1.6;\n      }\n      .badge {\n        display: inline-block;\n        margin-top: 1.5rem;\n        padding: 0.35rem 0.85rem;\n        border-radius: 9999px;\n        font-size: 0.8rem;\n        font-weight: 600;\n        background: #6366f1;\n        color: #fff;\n      }\n    </style>\n  </head>\n  <body>\n    <div class=\"card\">\n      <h1>Hello from bex</h1>\n      <p>\n        This static site is served by bex — no server, no Dockerfile. Edit\n        <code>index.html</code>, push to git, and bex redeploys instantly.\n      </p>\n      <span class=\"badge\">static_site</span>\n    </div>\n  </body>\n</html>\n"
+          }
+        },
+        {
+          "at": "2026-10-15T13:33:44.203686+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://qa-20261015-a585-hostcase.onbex.co/",
+            "mode": "default",
+            "wireHosts": ["qa-20261015-a585-hostcase.onbex.co"]
+          },
+          "nativeExit": 0,
+          "response": {
+            "status": 200,
+            "headers": {
+              "content-type": "text/html",
+              "content-length": "1548"
+            },
+            "body": ""
+          }
+        },
+        {
+          "at": "2026-10-15T13:33:44.742386+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://QA-20261015-A585-HOSTCASE.ONBEX.CO/",
+            "mode": "default",
+            "wireHosts": ["QA-20261015-A585-HOSTCASE.ONBEX.CO"]
+          },
+          "nativeExit": 0,
+          "response": {
+            "status": 404,
+            "headers": {
+              "content-type": "text/plain; charset=utf-8",
+              "content-length": "24"
+            },
+            "body": "no static site for host\n"
+          }
+        },
+        {
+          "at": "2026-10-15T13:33:45.290256+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://QA-20261015-A585-HOSTCASE.ONBEX.CO/",
+            "mode": "default",
+            "wireHosts": ["QA-20261015-A585-HOSTCASE.ONBEX.CO"]
+          },
+          "nativeExit": 0,
+          "response": {
+            "status": 404,
+            "headers": {
+              "content-type": "text/plain; charset=utf-8",
+              "content-length": "24"
+            },
+            "body": ""
+          }
+        },
+        {
+          "at": "2026-10-15T13:33:45.826847+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://Qa-20261015-A585-HostCase.OnBex.Co/",
+            "mode": "default",
+            "wireHosts": ["Qa-20261015-A585-HostCase.OnBex.Co"]
+          },
+          "nativeExit": 0,
+          "response": {
+            "status": 404,
+            "headers": {
+              "content-type": "text/plain; charset=utf-8",
+              "content-length": "24"
+            },
+            "body": "no static site for host\n"
+          }
+        },
+        {
+          "at": "2026-10-15T13:33:46.372235+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://Qa-20261015-A585-HostCase.OnBex.Co/",
+            "mode": "default",
+            "wireHosts": ["Qa-20261015-A585-HostCase.OnBex.Co"]
+          },
+          "nativeExit": 0,
+          "response": {
+            "status": 404,
+            "headers": {
+              "content-type": "text/plain; charset=utf-8",
+              "content-length": "24"
+            },
+            "body": ""
+          }
+        },
+        {
+          "at": "2026-10-15T13:33:46.915223+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261015-a585-hostcase.onbex.co/",
+            "mode": "http1.1",
+            "wireHosts": ["qa-20261015-a585-hostcase.onbex.co"]
+          },
+          "nativeExit": 0,
+          "response": {
+            "status": 200,
+            "headers": {
+              "content-length": "1548",
+              "content-type": "text/html"
+            },
+            "body": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>bex static site</title>\n    <style>\n      *,\n      *::before,\n      *::after {\n        box-sizing: border-box;\n        margin: 0;\n        padding: 0;\n      }\n      body {\n        font-family: system-ui, sans-serif;\n        background: #0f172a;\n        color: #e2e8f0;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        min-height: 100vh;\n      }\n      .card {\n        text-align: center;\n        padding: 3rem 4rem;\n        border: 1px solid #1e293b;\n        border-radius: 1rem;\n        background: #1e293b;\n        max-width: 480px;\n      }\n      h1 {\n        font-size: 2rem;\n        font-weight: 700;\n        letter-spacing: -0.03em;\n        color: #f8fafc;\n      }\n      p {\n        margin-top: 0.75rem;\n        color: #94a3b8;\n        line-height: 1.6;\n      }\n      .badge {\n        display: inline-block;\n        margin-top: 1.5rem;\n        padding: 0.35rem 0.85rem;\n        border-radius: 9999px;\n        font-size: 0.8rem;\n        font-weight: 600;\n        background: #6366f1;\n        color: #fff;\n      }\n    </style>\n  </head>\n  <body>\n    <div class=\"card\">\n      <h1>Hello from bex</h1>\n      <p>\n        This static site is served by bex — no server, no Dockerfile. Edit\n        <code>index.html</code>, push to git, and bex redeploys instantly.\n      </p>\n      <span class=\"badge\">static_site</span>\n    </div>\n  </body>\n</html>\n"
+          }
+        },
+        {
+          "at": "2026-10-15T13:33:47.446238+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://qa-20261015-a585-hostcase.onbex.co/",
+            "mode": "http1.1",
+            "wireHosts": ["qa-20261015-a585-hostcase.onbex.co"]
+          },
+          "nativeExit": 0,
+          "response": {
+            "status": 200,
+            "headers": {
+              "content-length": "1548",
+              "content-type": "text/html"
+            },
+            "body": ""
+          }
+        },
+        {
+          "at": "2026-10-15T13:33:47.990600+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://QA-20261015-A585-HOSTCASE.ONBEX.CO/",
+            "mode": "http1.1",
+            "wireHosts": ["QA-20261015-A585-HOSTCASE.ONBEX.CO"]
+          },
+          "nativeExit": 0,
+          "response": {
+            "status": 404,
+            "headers": {
+              "content-length": "24",
+              "content-type": "text/plain; charset=utf-8"
+            },
+            "body": "no static site for host\n"
+          }
+        },
+        {
+          "at": "2026-10-15T13:33:48.526409+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://QA-20261015-A585-HOSTCASE.ONBEX.CO/",
+            "mode": "http1.1",
+            "wireHosts": ["QA-20261015-A585-HOSTCASE.ONBEX.CO"]
+          },
+          "nativeExit": 0,
+          "response": {
+            "status": 404,
+            "headers": {
+              "content-length": "24",
+              "content-type": "text/plain; charset=utf-8"
+            },
+            "body": ""
+          }
+        },
+        {
+          "at": "2026-10-15T13:33:49.071516+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://Qa-20261015-A585-HostCase.OnBex.Co/",
+            "mode": "http1.1",
+            "wireHosts": ["Qa-20261015-A585-HostCase.OnBex.Co"]
+          },
+          "nativeExit": 0,
+          "response": {
+            "status": 404,
+            "headers": {
+              "content-length": "24",
+              "content-type": "text/plain; charset=utf-8"
+            },
+            "body": "no static site for host\n"
+          }
+        },
+        {
+          "at": "2026-10-15T13:33:49.605595+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://Qa-20261015-A585-HostCase.OnBex.Co/",
+            "mode": "http1.1",
+            "wireHosts": ["Qa-20261015-A585-HostCase.OnBex.Co"]
+          },
+          "nativeExit": 0,
+          "response": {
+            "status": 404,
+            "headers": {
+              "content-length": "24",
+              "content-type": "text/plain; charset=utf-8"
+            },
+            "body": ""
+          }
+        }
+      ]
+    },
+    "go": {
+      "pass": "a585",
+      "receipts": [
+        {
+          "at": "2026-10-15T13:34:49.036994Z",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261015-a585-hostcase.onbex.co/",
+            "requestHost": "qa-20261015-a585-hostcase.onbex.co"
+          },
+          "response": {
+            "body": "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <title>bex static site</title>\n    <style>\n      *,\n      *::before,\n      *::after {\n        box-sizing: border-box;\n        margin: 0;\n        padding: 0;\n      }\n      body {\n        font-family: system-ui, sans-serif;\n        background: #0f172a;\n        color: #e2e8f0;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        min-height: 100vh;\n      }\n      .card {\n        text-align: center;\n        padding: 3rem 4rem;\n        border: 1px solid #1e293b;\n        border-radius: 1rem;\n        background: #1e293b;\n        max-width: 480px;\n      }\n      h1 {\n        font-size: 2rem;\n        font-weight: 700;\n        letter-spacing: -0.03em;\n        color: #f8fafc;\n      }\n      p {\n        margin-top: 0.75rem;\n        color: #94a3b8;\n        line-height: 1.6;\n      }\n      .badge {\n        display: inline-block;\n        margin-top: 1.5rem;\n        padding: 0.35rem 0.85rem;\n        border-radius: 9999px;\n        font-size: 0.8rem;\n        font-weight: 600;\n        background: #6366f1;\n        color: #fff;\n      }\n    </style>\n  </head>\n  <body>\n    <div class=\"card\">\n      <h1>Hello from bex</h1>\n      <p>\n        This static site is served by bex — no server, no Dockerfile. Edit\n        <code>index.html</code>, push to git, and bex redeploys instantly.\n      </p>\n      <span class=\"badge\">static_site</span>\n    </div>\n  </body>\n</html>\n",
+            "headers": {
+              "content-length": "1548",
+              "content-type": "text/html"
+            },
+            "protocol": "HTTP/2.0",
+            "status": 200
+          }
+        },
+        {
+          "at": "2026-10-15T13:34:49.558259Z",
+          "request": {
+            "method": "GET",
+            "url": "https://QA-20261015-A585-HOSTCASE.ONBEX.CO/",
+            "requestHost": "QA-20261015-A585-HOSTCASE.ONBEX.CO"
+          },
+          "response": {
+            "body": "no static site for host\n",
+            "headers": {
+              "content-length": "24",
+              "content-type": "text/plain; charset=utf-8"
+            },
+            "protocol": "HTTP/2.0",
+            "status": 404
+          }
+        },
+        {
+          "at": "2026-10-15T13:34:50.087278Z",
+          "request": {
+            "method": "GET",
+            "url": "https://Qa-20261015-A585-HostCase.OnBex.Co/",
+            "requestHost": "Qa-20261015-A585-HostCase.OnBex.Co"
+          },
+          "response": {
+            "body": "no static site for host\n",
+            "headers": {
+              "content-length": "24",
+              "content-type": "text/plain; charset=utf-8"
+            },
+            "protocol": "HTTP/2.0",
+            "status": 404
+          }
+        }
+      ]
+    }
+  },
+  "renderControl": {
+    "referenceSource": "https://render.com/docs/deploy-vue-js",
+    "publicReferenceOnly": true,
+    "receipts": [
+      {
+        "at": "2026-10-15T13:43:20.916157+00:00",
+        "request": {
+          "method": "GET",
+          "url": "https://vue.onrender.com/",
+          "protocol": "http1.1",
+          "wireHosts": ["vue.onrender.com"]
+        },
+        "nativeExit": 0,
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "bytes": 778,
+          "sha256": "cbd704407edefea27595472a4e09a83a7bd3587ac4863d4529382826704b17db"
+        }
+      },
+      {
+        "at": "2026-10-15T13:43:21.021673+00:00",
+        "request": {
+          "method": "GET",
+          "url": "https://VUE.ONRENDER.COM/",
+          "protocol": "http1.1",
+          "wireHosts": ["VUE.ONRENDER.COM"]
+        },
+        "nativeExit": 0,
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "bytes": 778,
+          "sha256": "cbd704407edefea27595472a4e09a83a7bd3587ac4863d4529382826704b17db"
+        }
+      }
+    ],
+    "sameBody": true
+  },
+  "replaySources": {
+    "qa-static-hostcase-a585.py": "import datetime,json,subprocess,tempfile,sys\nfrom pathlib import Path\nhosts=[\"qa-20261015-a585-hostcase.onbex.co\",\"QA-20261015-A585-HOSTCASE.ONBEX.CO\",\"Qa-20261015-A585-HostCase.OnBex.Co\"]\nrows=[]\nwith tempfile.TemporaryDirectory(prefix=\"qa-a585-http-\",dir=\".playwright-mcp\") as td:\n for mode in (\"default\",\"http1.1\"):\n  for host in hosts:\n   for method in (\"GET\",\"HEAD\"):\n    url=\"https://\"+host+\"/\";hp=Path(td)/\"headers\";bp=Path(td)/\"body\"\n    args=[\"curl\",\"--silent\",\"--show-error\",\"--verbose\",\"--connect-timeout\",\"5\",\"--max-time\",\"15\",\"--dump-header\",str(hp),\"--output\",str(bp),\"--write-out\",\"%{http_code}\"]\n    if mode==\"http1.1\":args+=[\"--http1.1\"]\n    if method==\"HEAD\":args+=[\"--head\"]\n    r=subprocess.run(args+[url],capture_output=True,text=True)\n    wire_hosts=[line.split(\":\",1)[1].strip() for line in r.stderr.splitlines() if line.startswith(\"> Host:\")]\n    if not wire_hosts:\n     wire_hosts=[line.split(\":authority: \",1)[1].split(\"]\",1)[0] for line in r.stderr.splitlines() if \":authority: \" in line]\n    status=int(r.stdout) if r.stdout.isdigit() else None;headers={}\n    if hp.exists():\n     for line in hp.read_text().splitlines():\n      if line.startswith(\"HTTP/\"):headers={};continue\n      k,sep,v=line.partition(\":\")\n      if sep and k.lower() in (\"content-type\",\"content-length\",\"location\"):headers[k.lower()]=v.strip()\n    body=bp.read_text() if bp.exists() and method==\"GET\" else \"\"\n    rows.append({\"at\":datetime.datetime.now(datetime.timezone.utc).isoformat(),\"request\":{\"method\":method,\"url\":url,\"mode\":mode,\"wireHosts\":wire_hosts},\"nativeExit\":r.returncode,\"response\":{\"status\":status,\"headers\":headers,\"body\":body}})\nPath(sys.argv[1] if len(sys.argv)>1 else \".playwright-mcp/qa-static-hostcase-a585-native.json\").write_text(json.dumps({\"pass\":\"a585\",\"receipts\":rows},indent=2)+chr(10))\nprint(json.dumps({\"receipts\":[{\"method\":x[\"request\"][\"method\"],\"url\":x[\"request\"][\"url\"],\"mode\":x[\"request\"][\"mode\"],\"wireHosts\":x[\"request\"][\"wireHosts\"],\"nativeExit\":x[\"nativeExit\"],\"status\":x[\"response\"][\"status\"],\"bodyBytes\":len(x[\"response\"][\"body\"].encode(\"utf-8\"))} for x in rows]}))\n\n",
+    "qa-static-hostcase-a585.go": "package main\nimport(\"encoding/json\";\"fmt\";\"io\";\"net/http\";\"os\";\"time\")\nfunc main(){\n hosts:=[]string{\"qa-20261015-a585-hostcase.onbex.co\",\"QA-20261015-A585-HOSTCASE.ONBEX.CO\",\"Qa-20261015-A585-HostCase.OnBex.Co\"}\n rows:=[]map[string]any{};summary:=[]map[string]any{};c:=http.Client{Timeout:15*time.Second}\n for _,host:=range hosts{u:=\"https://\"+host+\"/\";r,err:=c.Get(u);if err!=nil{fmt.Fprintln(os.Stderr,err);os.Exit(1)};b,err:=io.ReadAll(r.Body);r.Body.Close();if err!=nil{fmt.Fprintln(os.Stderr,err);os.Exit(1)}\n rows=append(rows,map[string]any{\"at\":time.Now().UTC().Format(time.RFC3339Nano),\"request\":map[string]any{\"method\":\"GET\",\"url\":u,\"requestHost\":r.Request.Host},\"response\":map[string]any{\"status\":r.StatusCode,\"protocol\":r.Proto,\"headers\":map[string]string{\"content-type\":r.Header.Get(\"Content-Type\"),\"content-length\":r.Header.Get(\"Content-Length\")},\"body\":string(b)}})\n summary=append(summary,map[string]any{\"host\":host,\"requestHost\":r.Request.Host,\"status\":r.StatusCode,\"protocol\":r.Proto,\"bodyBytes\":len(b)})\n }\n f,err:=os.Create(\".playwright-mcp/qa-static-hostcase-a585-go.json\");if err!=nil{panic(err)};defer f.Close();enc:=json.NewEncoder(f);enc.SetIndent(\"\",\"  \");if err:=enc.Encode(map[string]any{\"pass\":\"a585\",\"receipts\":rows});err!=nil{panic(err)};b,_:=json.Marshal(summary);fmt.Println(string(b))\n}\n\n"
+  },
+  "dedupe": {
+    "markdownFiles": 9170,
+    "activeMilestoneTitles": [
+      {
+        "path": ".pm/w8/blocked/m62/README.md",
+        "title": "# w8 · m62 — Reject unlaunchable environment values"
+      },
+      {
+        "path": ".pm/w8/blocked/m65/README.md",
+        "title": "# w8 · m65 — Retain PostgreSQL process logs during bursts"
+      },
+      {
+        "path": ".pm/w8/blocked/m64/README.md",
+        "title": "# w8 · m64 — Keep Blueprint environment copies consistent across applies"
+      },
+      {
+        "path": ".pm/w8/blocked/m63/README.md",
+        "title": "# w8 · m63 — Keep completed initial hooks out of later deploys"
+      },
+      {
+        "path": ".pm/w8/blocked/m59/README.md",
+        "title": "# w8 · m59 — Return static sites to direct publication after clearing their build command"
+      },
+      {
+        "path": ".pm/w8/blocked/m66/README.md",
+        "title": "# w8 · m66 — Keep Blueprint service updates in canonical intent"
+      },
+      {
+        "path": ".pm/w8/blocked/m68/README.md",
+        "title": "# w8 · m68 — Preserve executable command text"
+      },
+      {
+        "path": ".pm/w8/blocked/m57/README.md",
+        "title": "# w8 · m57 — Preserve literal string lists in interactive CLI forms"
+      },
+      {
+        "path": ".pm/w8/blocked/m69/README.md",
+        "title": "# w8 · m69 — Preserve native cron startup semantics"
+      },
+      {
+        "path": ".pm/w8/blocked/m60/README.md",
+        "title": "# w8 · m60 — Preserve accepted arguments when copying CLI commands"
+      },
+      {
+        "path": ".pm/w8/blocked/m67/README.md",
+        "title": "# w8 · m67 — Keep native live logs running after a transient disconnect"
+      },
+      {
+        "path": ".pm/w1/blocked/m171/README.md",
+        "title": "# w1 · m171 — Warn when an inbound IP allowlist sits behind a Cloudflare-proxied custom domain"
+      },
+      {
+        "path": ".pm/w1/blocked/m174/README.md",
+        "title": "# w1 · m174 — Get main's red checks passing again: x/net CVEs, lint OOM, flaky tests, Dependabot, schema re-pin"
+      },
+      {
+        "path": ".pm/w1/blocked/m173/README.md",
+        "title": "# w1 · m173 — Free web services go to sleep again: the production canary was held awake by a local cluster's ACME self-check"
+      },
+      {
+        "path": ".pm/w6/blocked/m146/README.md",
+        "title": "# w6 · m146 — Keep service action permissions current through confirmation"
+      },
+      {
+        "path": ".pm/w7/blocked/m156/README.md",
+        "title": "# w7 · m156 — Repair CNPG replica WAL metric collection"
+      },
+      {
+        "path": ".pm/w7/blocked/m158/README.md",
+        "title": "# w7 · m158 — Repair recurring registry garbage-collection failures"
+      },
+      {
+        "path": ".pm/w9/m166/README.md",
+        "title": "# w9 · m166 — Reject invalid service patches before applying any settings"
+      },
+      {
+        "path": ".pm/w9/blocked/m164/README.md",
+        "title": "# w9 · m164 — Dual-stack IP allow-list trap: a datastore denies the client's IPv6 with an opaque TLS EOF"
+      },
+      {
+        "path": ".pm/w5/blocked/m114/README.md",
+        "title": "# w5 · m114 — Suspend ends the release it interrupts, not just its deploy row"
+      },
+      {
+        "path": ".pm/w5/blocked/m105/README.md",
+        "title": "# w5 · m105 — Settings command edits take effect in the deployed artifact"
+      },
+      {
+        "path": ".pm/w5/blocked/m118/README.md",
+        "title": "# w5 · m118 — One source of truth for naming and config-key rules across Go, TypeScript, Kubernetes and CNPG"
+      },
+      {
+        "path": ".pm/w5/blocked/m111/README.md",
+        "title": "# w5 · m111 — `instance_seconds` stops metering terminated pods through Prometheus's 5-minute lookback"
+      },
+      {
+        "path": ".pm/w2/blocked/m162/README.md",
+        "title": "# w2 · m162 — One GitHub account, many workspaces: the N:N connection model"
+      },
+      {
+        "path": ".pm/w2/blocked/m96/README.md",
+        "title": "# w2 · m96 — Charges and webhook deliveries name their resource, even after deletion"
+      },
+      {
+        "path": ".pm/w3/blocked/m79/README.md",
+        "title": "# w3 · m79 — Run the full agent-session stack locally on `dev-N`"
+      },
+      {
+        "path": ".pm/w4/m211/README.md",
+        "title": "# w4 · m211 — Keep batched hosting changes inside one response budget"
+      },
+      {
+        "path": ".pm/w4/blocked/m162/README.md",
+        "title": "# w4 · m162 — Keep platform health checks off tenant HTTP paths"
+      },
+      {
+        "path": ".pm/w4/blocked/m165/README.md",
+        "title": "# w4 · m165 — Loop1: workspace-switch navigation + identical-cancel undeployed flag"
+      },
+      {
+        "path": ".pm/w4/blocked/m164/README.md",
+        "title": "# w4 · m164 — Count initial and newly scraped traffic before free web auto-sleep"
+      },
+      {
+        "path": ".pm/w4/blocked/m163/README.md",
+        "title": "# w4 · m163 — Make saved secret files available to native builds"
+      },
+      {
+        "path": ".pm/w4/blocked/m130/README.md",
+        "title": "# w4 · m130 — `patchServiceEnvironment` applies the write and then reports a conflict"
+      },
+      {
+        "path": ".pm/w4/blocked/m139/README.md",
+        "title": "# w4 · m139 — Billing's Charges card: a subscription-period total labelled \"month to date\" over a calendar-month tree, and a coverage watermark that never leaves the 1st"
+      },
+      {
+        "path": ".pm/w4/blocked/m179/README.md",
+        "title": "# w4 · m179 — Revoke deleted Postgres logins even when objects reference the role"
+      },
+      {
+        "path": ".pm/w4/blocked/m184/README.md",
+        "title": "# w4 · m184 — Say \"applying\" while the carrying deploy runs, not \"deploy to apply\""
+      },
+      {
+        "path": ".pm/w4/blocked/m170/README.md",
+        "title": "# w4 · m170 — Refuse reserved Postgres identifiers so a database name or user can't break or wedge a database"
+      },
+      {
+        "path": ".pm/w4/blocked/m177/README.md",
+        "title": "# w4 · m177 — Report container startup failures as startup failures"
+      },
+      {
+        "path": ".pm/w4/blocked/m183/README.md",
+        "title": "# w4 · m183 — Make SSH remedies truthful and usable"
+      },
+      {
+        "path": ".pm/w4/blocked/m182/README.md",
+        "title": "# w4 · m182 — Keep configured port changes available"
+      },
+      {
+        "path": ".pm/w4/blocked/m176/README.md",
+        "title": "# w4 · m176 — Protected environments: a deploy with `imageUrl`/`commitId` or a rollback swaps the running code without the \"repoint\" confirmation"
+      },
+      {
+        "path": ".pm/w4/blocked/m171/README.md",
+        "title": "# w4 · m171 — A deploy cut off by a user suspend closes canceled, not as a false health-gate failure"
+      },
+      {
+        "path": ".pm/w4/blocked/m200/README.md",
+        "title": "# w4 · m200 — Preserve logical records in mixed stdout/stderr pod logs"
+      },
+      {
+        "path": ".pm/w4/blocked/m207/README.md",
+        "title": "# w4 · m207 — Make card-radio pickers work with the keyboard"
+      },
+      {
+        "path": ".pm/w4/blocked/m209/README.md",
+        "title": "# w4 · m209 — Keep metrics geometry stable and labels readable"
+      },
+      {
+        "path": ".pm/w4/blocked/m208/README.md",
+        "title": "# w4 · m208 — Datastore plan previews match their ready cards"
+      },
+      {
+        "path": ".pm/w4/blocked/m206/README.md",
+        "title": "# w4 · m206 — Make environment-group creation and moves recoverable"
+      },
+      {
+        "path": ".pm/w4/blocked/m210/README.md",
+        "title": "# w4 · m210 — Keep capped cron history chronological"
+      },
+      {
+        "path": ".pm/w4/blocked/m166/README.md",
+        "title": "# w4 · m166 — Loop2: Docker Command for image-source services"
+      },
+      {
+        "path": ".pm/w4/blocked/m159/README.md",
+        "title": "# w4 · m159 — Keep confirmations open through permission refresh"
+      },
+      {
+        "path": ".pm/w4/blocked/m161/README.md",
+        "title": "# w4 · m161 — Bind environment-group revisions to editing drafts"
+      },
+      {
+        "path": ".pm/w4/blocked/m157/README.md",
+        "title": "# w4 · m157 — Preserve typed Postgres query values"
+      },
+      {
+        "path": ".pm/w4/blocked/m168/README.md",
+        "title": "# w4 · m168 — Loop6: bound env/secret-file key length so a long name can't wedge a service's environment"
+      },
+      {
+        "path": ".pm/w4/blocked/m156/README.md",
+        "title": "# w4 · m156 — Report honest start times for successful deploys"
+      },
+      {
+        "path": ".pm/w4/blocked/m169/README.md",
+        "title": "# w4 · m169 — Blueprint by-id verbs resolve the Blueprint's own workspace"
+      },
+      {
+        "path": ".pm/w4/blocked/m160/README.md",
+        "title": "# w4 · m160 — Revalidate static files across deployments"
+      },
+      {
+        "path": ".pm/w4/blocked/m167/README.md",
+        "title": "# w4 · m167 — Loop5: redact secrets from Postgres Insights query text"
+      },
+      {
+        "path": ".pm/w4/blocked/m158/README.md",
+        "title": "# w4 · m158 — Preserve exact SQL numbers in MCP responses"
+      },
+      {
+        "path": ".pm/w4/blocked/m174/README.md",
+        "title": "# w4 · m174 — Fast-exiting App containers intermittently lose stderr lines from their logs"
+      },
+      {
+        "path": ".pm/w4/blocked/m180/README.md",
+        "title": "# w4 · m180 — Save and deploy reuses the serving artifact"
+      },
+      {
+        "path": ".pm/w4/blocked/m173/README.md",
+        "title": "# w4 · m173 — `instance_seconds` meters how many container series appeared in an hour, not how long instances ran"
+      },
+      {
+        "path": ".pm/w4/blocked/m116/README.md",
+        "title": "# w4 · m116 — CLI hunt sweep 1: psql trust, KV publish, one-off jobs, resume path"
+      },
+      {
+        "path": ".pm/w4/blocked/m172/README.md",
+        "title": "# w4 · m172 — By-id REST verbs resolve the resource's own workspace, not the caller's default"
+      },
+      {
+        "path": ".pm/w4/blocked/m181/README.md",
+        "title": "# w4 · m181 — Keep pre-deploy jobs out of serving endpoints"
+      },
+      {
+        "path": ".pm/w4/blocked/m175/README.md",
+        "title": "# w4 · m175 — Include newest request buckets and clip them to the selected window"
+      },
+      {
+        "path": ".pm/w4/blocked/m204/README.md",
+        "title": "# w4 · m204 — Keep service Logs filters aligned with navigation"
+      },
+      {
+        "path": ".pm/w4/blocked/m203/README.md",
+        "title": "# w4 · m203 — Anchor a newly selected relative range at the current time"
+      },
+      {
+        "path": ".pm/w4/blocked/m202/README.md",
+        "title": "# w4 · m202 — Honor image commands after switching from native Git"
+      },
+      {
+        "path": ".pm/w4/blocked/m205/README.md",
+        "title": "# w4 · m205 — Keep overlapping file uploads unique"
+      },
+      {
+        "path": ".pm/w11/blocked/m8/README.md",
+        "title": "# w11 · m8 — Tier-2 mobile quick actions"
+      },
+      {
+        "path": ".pm/w11/blocked/m6/README.md",
+        "title": "# w11 · m6 — Phase-1 agent mission control"
+      },
+      {
+        "path": ".pm/w11/blocked/m7/README.md",
+        "title": "# w11 · m7 — Live agent attach and needs-decision steering"
+      },
+      {
+        "path": ".pm/w11/blocked/m5/README.md",
+        "title": "# w11 · m5 — Push channel + notification hygiene"
+      }
+    ],
+    "nextInbox": 309,
+    "termMatches": [".pm/w6/README.md", ".pm/w4/done/235.md"],
+    "disposition": "AddDomain write normalization and mobile rule editor sizing, neither covers inbound static Host lookup."
+  },
+  "transportNotes": [
+    "Native HTTP receipts retain full response bodies and selected content-type/content-length/location headers, not an unrestricted header dump.",
+    "Go requestHost records Request.Host, not a packet capture; curl wireHosts is extracted from verbose Host/authority output.",
+    "GraphQL request objects were POSTed to https://api.bex.co/graphql using the authenticated QA browser context.",
+    "Fixtures and public Render URLs were read without custom Host overrides or disabled TLS verification; no credentials are present in replay sources."
+  ],
+  "replayInstructions": [
+    "Create a fresh owned Free no-build static fixture from the captured native CreateService request, supplying a new qa-prefixed name; wait for Live.",
+    "Substitute that new fixture hostname for the deleted a585 hostname in each replay source, preserve lower/upper/mixed spellings, and run the Python and Go sources.",
+    "Replay helpers do public reads only. Delete the new fixture and revoke only its own QA session after verification."
+  ]
+}
