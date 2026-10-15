@@ -3274,6 +3274,11 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 		currentMaintenance = existing.Spec.MaintenanceMode.DeepCopy()
 	}
 	deploySpecChanged := actualSpecChanged && !maintenanceOnly
+	if deploySpecChanged {
+		if err := s.persistBlueprintIntent(ctx, existing, final.Spec); err != nil {
+			return AppView{}, fmt.Errorf("update source of truth: %w", err)
+		}
+	}
 	base := client.MergeFrom(existing.DeepCopy())
 	if deploySpecChanged {
 		metav1.SetMetaDataAnnotation(&existing.ObjectMeta, appv1alpha1.AnnotationReleaseGeneration, strconv.FormatInt(existing.Generation+1, 10))
@@ -3308,6 +3313,15 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 		if secretName != "" {
 			existing.Spec.CloneSecret = secretName
 		}
+		// An explicit registry binding is projector-owned and names a
+		// deterministic Secret; materialize it as a redeploy does.
+		if existing.Spec.RegistryCredentialID != nil {
+			pullSecretName, err := s.ensureExternalRegistryPullSecret(ctx, existing)
+			if err != nil {
+				return AppView{}, err
+			}
+			existing.Spec.ExternalRegistryPullSecret = pullSecretName
+		}
 		existing.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 	}
 	// Mark the initialDeployHook as ran so subsequent syncs skip it (w2/m45).
@@ -3327,6 +3341,68 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 		return s.ConfigureMaintenanceMode(verbCtx, ref, maintenanceModeView(final.Spec.MaintenanceMode))
 	}
 	return s.view(existing), nil
+}
+
+// persistBlueprintIntent writes the projector-owned fields a Blueprint update
+// changes (source, plan, instance count, disk) onto the managed App row before
+// the CR patch — writeThroughStoreFetched's row-first order — because the
+// projector restores the CR from that row on every resync. Domains are claimed
+// separately. A source change is marked pending first, as
+// SetSourceAndRegistryCredential does, so if the CR patch then fails a resync
+// that carries the new source onto the CR cannot roll it without a deploy.
+func (s *Service) persistBlueprintIntent(ctx context.Context, a *appv1alpha1.App, want appv1alpha1.AppSpec) error {
+	id := managedAppID(a)
+	if s.Store == nil || id == "" {
+		return nil
+	}
+	cur := a.Spec
+	if cur.Repo != want.Repo || cur.Image != want.Image || cur.Branch != want.Branch ||
+		!sameStringPtr(cur.RegistryCredentialID, want.RegistryCredentialID) {
+		if err := s.markSourcePending(ctx, a); err != nil {
+			return err
+		}
+		if err := s.Store.SetAppSource(ctx, id, want.Repo, want.Image, want.Branch, clonePtr(want.RegistryCredentialID)); err != nil {
+			return err
+		}
+	}
+	if cur.Tier != want.Tier {
+		if err := s.Store.SetAppTier(ctx, id, want.Tier); err != nil {
+			return err
+		}
+	}
+	if cur.Replicas != want.Replicas {
+		if err := s.Store.SetAppReplicas(ctx, id, want.Replicas); err != nil {
+			return err
+		}
+	}
+	if want.Disk != nil && !equalDiskFields(cur.Disk, want.Disk) {
+		return s.persistBlueprintDisk(ctx, a, id, *want.Disk)
+	}
+	return nil
+}
+
+// persistBlueprintDisk creates or grows/remounts the App's one disk row. A
+// Blueprint never detaches a disk (omission preserves), and a shrink was
+// refused before any write.
+func (s *Service) persistBlueprintDisk(ctx context.Context, a *appv1alpha1.App, appID string, disk appv1alpha1.DiskSpec) error {
+	tenantID := a.Labels[core.LabelTenant]
+	rows, err := s.Store.ListDisks(ctx, tenantID, appID)
+	if err != nil {
+		return err
+	}
+	if len(rows) == 0 {
+		_, err = s.Store.CreateDisk(ctx, tenantID, appID, disk.Name, disk.MountPath, disk.SizeGB)
+		return err
+	}
+	_, err = s.Store.UpdateDisk(ctx, rows[0].ID, &disk.Name, &disk.MountPath, &disk.SizeGB)
+	return err
+}
+
+func equalDiskFields(a, b *appv1alpha1.DiskSpec) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return a.Name == b.Name && a.MountPath == b.MountPath && a.SizeGB == b.SizeGB
 }
 
 // recordBlueprintRedeploy records the blueprint redeploy row, building commit,

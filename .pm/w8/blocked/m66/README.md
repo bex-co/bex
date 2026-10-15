@@ -1,17 +1,17 @@
 # w8 · m66 — Keep Blueprint service updates in canonical intent
 
-**Worker:** worker8 **Goal:** an accepted Blueprint source/config update survives control-plane convergence and deploys the declared configuration. **Status:** todo
+**Worker:** worker8 **Goal:** an accepted Blueprint source/config update survives control-plane convergence and deploys the declared configuration. **Status:** blocked — t001–t005 done; t006 needs the API deployed to production and the sweep230 source-update replay (inline apply plus owned persistent sync, both native clients) with cleanup
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Persist effective Blueprint intent before projector convergence | 55m | — |
-| t002 | Audit owned fields, callers and release sequencing | 40m | t001 |
-| t003 | Render parity | 20m | t002 |
-| t004 | Simplify | 15m | t003 |
-| t005 | Test coverage | 35m | t003 |
-| t006 | Closeout | 20m | t004, t005 |
+| t001 | Persist effective Blueprint intent before projector convergence — **DONE** | 55m | — |
+| t002 | Audit owned fields, callers and release sequencing — **DONE** | 40m | t001 |
+| t003 | Render parity — **DONE** | 20m | t002 |
+| t004 | Simplify — **DONE** | 15m | t003 |
+| t005 | Test coverage — **DONE** | 35m | t003 |
+| t006 | Closeout — **BLOCKED (backend deploy + live replay)** | 20m | t004, t005 |
 
 ## Definition of done
 
@@ -30,3 +30,7 @@
 - **Render parity included:** the shared API, Blueprint preview/readback and both native CLI clients expose the behavior. Only the source loss is live-proven; field siblings and non-REST surfaces remain scoped checks.
 
 No QA product implementation, commit/push or external submission is authorized by this filing.
+
+## Canonical intent persisted — 2026-10-14 (`/loopx w8`)
+
+t001–t005 are done; see `done/`. Parked in `blocked/`: closeout needs bex-api deployed, then QA replays sweep230. An own Free service changes repo/branch through inline apply and an owned persistent sync. After a resync it must still read Express/master, its deploy must build that source's commit without spontaneous cancellation, a repeated identical apply must be a no-op, and owned teardown must follow.
