@@ -13,12 +13,17 @@
 #     the node's hostname must resolve, and every SAN IP must be one of the
 #     addresses it resolves to. providerIpPrefixes stays open: a CAPH kubelet's
 #     SANs carry its public ExternalIP beside its 10.10.0.0/16 InternalIP (prod
-#     CSRs read 2026-10-15), so no private-network prefix fits (w1/128). Prod
-#     node names do not resolve in cluster DNS, so in prod this check denies
-#     and CAPH's own CSR validation approves first (w1/129).
-#   - ignoreNonSystemNode/skipDenyStep/bypassDnsResolution/bypassHostnameCheck
-#     all stay false (chart defaults) — every non-conforming CSR is actively
-#     Denied, never silently left Pending or waved through.
+#     CSRs read 2026-10-15), so no private-network prefix fits (w1/128).
+#   - ignoreNonSystemNode and bypassHostnameCheck stay false (chart defaults).
+#   - skipDenyStep: true, for prod (w1/129). There CAPH approves kubelet-serving
+#     CSRs itself (cluster-api-provider-hetzner v1.1.7): it checks every SAN
+#     against the HCloudMachine's addresses and Denies a CSR that fails. This
+#     approver cannot approve in prod, since node names do not resolve in
+#     cluster DNS, and with the deny step on it raced CAPH to deny every
+#     6-hourly rotation (385 denials in the week to 2026-10-15, all lost so
+#     far). Skipping the deny leaves those CSRs to CAPH, which still actively
+#     Denies a non-conforming one. The local overlay has no CAPH, so it keeps
+#     skipDenyStep false and Denies non-conforming CSRs itself.
 # Verified (2026-08-19, isolated kind cluster): a CSR for a matching node name
 # is Approved,Issued; an impersonated `system:node:evilname` kubelet-serving
 # CSR is Denied with "SAN DNS name ... not allowed by the Cloud provider regex".
@@ -40,7 +45,7 @@ spec:
         providerRegex: '^bex(-[a-z0-9]+)+$'
         allowedDnsNames: 1
         ignoreNonSystemNode: false
-        skipDenyStep: false
+        skipDenyStep: true
         bypassDnsResolution: false
         bypassHostnameCheck: false
         # w1/m19 t003: platform pool, same as metrics-server.
