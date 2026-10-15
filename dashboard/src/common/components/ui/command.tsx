@@ -4,6 +4,7 @@ import { type DialogProps } from "@radix-ui/react-dialog";
 import { Command as CommandPrimitive } from "cmdk";
 
 import { cn } from "@/common/lib/utils/utils.ts";
+import { useTranslations } from "@/common/hooks/use-translations";
 import { Dialog, DialogContent } from "@/common/components/ui/dialog.tsx";
 
 function Command({
@@ -76,16 +77,21 @@ function CommandInput({
   );
 }
 
+// cmdk names the listbox through its `label` prop (default "Suggestions"),
+// applied after spread props, so an aria-label cannot override it (w4/312).
 function CommandList({
   className,
+  label,
   ...props
 }: React.ComponentPropsWithoutRef<typeof CommandPrimitive.List>) {
+  const { t } = useTranslations();
   return (
     <CommandPrimitive.List
       className={cn(
         "max-h-[300px] overflow-y-auto overflow-x-hidden",
         className,
       )}
+      label={label ?? t("common.commandSuggestions")}
       {...props}
     />
   );
