@@ -144,6 +144,7 @@ if [ "$status" != "200" ]; then
   exit 3
 fi
 echo "  ok: 200 in ${waited}s (nonce recorded, not a secret: $NONCE)"
+wake_seconds=$waited
 
 # --- Stage 2: bex-api reports that request back through the logs pipeline ------
 echo "==> 2/4 logs: bex-api must return this run's request line and the app stream (budget ${LOG_BUDGET}s)"
@@ -264,9 +265,19 @@ fi
 newest="$(jq -r '[.[]? | (.event // .).timestamp] | sort | last // empty' "$TMP_DIR/events.json")"
 if [ -z "$newest" ]; then
   echo "FAIL(4/4 events): the canary's events feed is empty for the probe window."
-  echo "      A hibernated free service that is woken by a request emits an event"
-  echo "      (service_woken); an empty feed means the events projection is not"
-  echo "      recording, so no tenant can see why their service changed state."
+  if [ "$wake_seconds" -eq 0 ]; then
+    # w1/m173: from 2026-10-07 to 10-15 this read as a projection fault, but the
+    # canary had simply never slept: a local cert-manager's ACME self-check hit
+    # its public URL every ~10s. No sleep means no wake and no event.
+    echo "      Stage 1 answered at once, so the service was already awake: it has"
+    echo "      not slept for the whole window, and a service that never sleeps"
+    echo "      emits no service_woken. Look for whatever keeps it awake first:"
+    echo "      its request logs (GET /v1/logs?type=request) name a repeating caller."
+  else
+    echo "      A hibernated free service that is woken by a request emits an event"
+    echo "      (service_woken); an empty feed means the events projection is not"
+    echo "      recording, so no tenant can see why their service changed state."
+  fi
   exit 6
 fi
 newest_epoch="$(date -u -d "$newest" +%s 2>/dev/null || echo 0)"
