@@ -1023,6 +1023,10 @@ func yamlNodeToBlueprintValue(node *yaml.Node, path []string, locations map[stri
 	}
 }
 
+// blueprintEnvValuePath matches an envVars[].value under a service or env
+// group, at any nesting the Blueprint allows.
+var blueprintEnvValuePath = regexp.MustCompile(`^#/((ungrouped|projects/[0-9]+/environments/[0-9]+)/)?(services|envVarGroups)/[0-9]+/envVars/[0-9]+/value$`)
+
 func blueprintJSONScalar(node *yaml.Node, pointer string) (any, []BlueprintSourceProblem) {
 	problem := func(code, message string) (any, []BlueprintSourceProblem) {
 		return nil, []BlueprintSourceProblem{{Code: code, Path: pointer, Message: message, Line: node.Line, Column: node.Column}}
@@ -1045,6 +1049,12 @@ func blueprintJSONScalar(node *yaml.Node, pointer string) (any, []BlueprintSourc
 		}
 		integer, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
+			// An env value is passed on as its decimal text, so one past int64
+			// but within uint64 keeps every digit (w8/104). Bounded numeric
+			// settings keep the int64 refusal at their own field.
+			if unsigned, uerr := strconv.ParseUint(value, 10, 64); uerr == nil && blueprintEnvValuePath.MatchString(pointer) {
+				return json.Number(strconv.FormatUint(unsigned, 10)), nil
+			}
 			return problem("BLUEPRINT_YAML_SCALAR", "Blueprint contains an invalid integer")
 		}
 		return integer, nil
