@@ -144,7 +144,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 ## Inbox
 
 - [ ] **108** — [Same-type clones silently ignore explicit empty overrides](108.md) — minor upstream CLI,55m; both native clients retain cleared fields and run the source step; four fixtures cleaned, private proposal qualified.
-- [ ] **107** — [A valid output flag cannot override an invalid output default](107.md) — **TODO (sweep279: installed/published/same-pin/2.29 all fail before HTTP;32 controls pass, private upstream prototype passes12 cases;35m)**
+- [ ] **107** — [A valid output flag cannot override an invalid output default](blocked/107.md) — **BLOCKED (2026-10-15: upstream root-init patch + real-detector regression prepared in `evidence/107/upstream-output-priority.patch`; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release and the sweep279 native replays; no fork/bridge workaround per DO_NOT_DO)**
 
 - [x] **106** — [Served deploys settle Live after auto-hibernation](done/106.md) — **DONE2026-10-15:** sweep287 passes the parked two-client live gate with exact-owned cleanup; source fix and regressions already landed.
 
