@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import i18n from "@/i18n/init";
 import { GlobalSearchDialog } from "../global-search-dialog";
 
 // The dialog resolves resources through six feature hooks + the router; mock
@@ -157,5 +158,17 @@ describe("GlobalSearchDialog", () => {
     expect(screen.queryByText("Resources")).toBeNull();
     expect(screen.queryByText("Navigation")).toBeNull();
     expect(document.querySelector("[cmdk-separator]")).toBeNull();
+  });
+
+  // w4/312: cmdk names the results listbox "Suggestions" unless the wrapper
+  // passes its own label, so the name must follow the selected language.
+  it("names the results list in the selected language", async () => {
+    render(<GlobalSearchDialog open onOpenChange={vi.fn()} />);
+    expect(
+      screen.getByRole("listbox", { name: "Suggestions" }),
+    ).toBeInTheDocument();
+    await act(() => i18n.changeLanguage("zh"));
+    expect(screen.getByRole("listbox", { name: "建议" })).toBeInTheDocument();
+    await act(() => i18n.changeLanguage("en"));
   });
 });

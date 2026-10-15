@@ -51,6 +51,11 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "拖动调整宽度 · 双击展开或收起",
     description: "Hover tooltip on the sidebar's resize separator.",
   },
+  "common.commandSuggestions": {
+    message: "建议",
+    description:
+      "Accessible name of a search or picker results list (the command menu's listbox).",
+  },
   "common.cancel": {
     message: "取消",
     description:
