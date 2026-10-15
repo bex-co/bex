@@ -1,0 +1,383 @@
+{
+  "pass": "a633",
+  "date": "2026-10-15",
+  "kind": "Functional hosting QA; m206 follow-up, filing only",
+  "sourceHead": "c11f86235",
+  "provenance": "The in-memory capture store was lost in a server restart. The two normalized GraphQL mutation receipts and REST controls below are transcribed from their complete tool results in this conversation. Cleanup and the local probe are recovered from actual on-disk artifacts. No missing production timing profile or tombstone count is inferred.",
+  "nativeFailures": [
+    {
+      "at": "2026-10-15T21:57:24.872Z",
+      "request": {
+        "operationName": "CloneEnvGroup",
+        "variables": {
+          "id": "evg-db8kna88j59c73ejkpd0",
+          "name": "qa-20261015-a633-copy",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "environmentId": null
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CloneEnvGroup($id: String!, $name: String!, $ownerId: String, $environmentId: String) {\n  cloneEnvGroup(\n    id: $id\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n  ) {\n    id\n    name\n    ownerId\n    environmentId\n    __typename\n  }\n}"
+      },
+      "httpStatus": 200,
+      "response": {
+        "data": null,
+        "errors": [
+          {
+            "message": "the change ran out of time and may have been applied in part or in full; reload to see its outcome before trying again",
+            "locations": [],
+            "extensions": {
+              "code": "WRITE_OUTCOME_UNKNOWN"
+            }
+          }
+        ]
+      },
+      "outcome": "The clone was discoverable as evg-db8kodo8j59c73ejkph0; fresh reads found both original values and both exact files, without links."
+    },
+    {
+      "at": "2026-10-15T22:01:58.894Z",
+      "request": {
+        "operationName": "CloneEnvGroup",
+        "variables": {
+          "id": "evg-db8kna88j59c73ejkpd0",
+          "name": "qa-20261015-a633-check2",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "environmentId": null
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CloneEnvGroup($id: String!, $name: String!, $ownerId: String, $environmentId: String) {\n  cloneEnvGroup(\n    id: $id\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n  ) {\n    id\n    name\n    ownerId\n    environmentId\n    __typename\n  }\n}"
+      },
+      "httpStatus": 200,
+      "response": {
+        "data": null,
+        "errors": [
+          {
+            "message": "the change ran out of time and may have been applied in part or in full; reload to see its outcome before trying again",
+            "locations": [],
+            "extensions": {
+              "code": "WRITE_OUTCOME_UNKNOWN"
+            }
+          }
+        ]
+      },
+      "timing": {
+        "startTime": 1792101692966.3718,
+        "requestStart": 0.142,
+        "responseStart": 25222.492,
+        "responseEnd": 25222.934
+      },
+      "outcome": "Complete owner inventories at22:02:25 and22:02:50 omitted this name. It was later recovered by a distinct empty-group create, then deleted."
+    }
+  ],
+  "restControls": [
+    {
+      "before": "2026-10-15T22:04:52.365Z",
+      "at": "2026-10-15T22:05:17.137Z",
+      "elapsedMs": 24772,
+      "request": {
+        "method": "POST",
+        "url": "https://api.bex.co/v1/env-groups/evg-db8kna88j59c73ejkpd0/clone",
+        "body": {
+          "name": "qa-20261015-a633-rest3",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "environmentId": null
+        }
+      },
+      "httpStatus": 201,
+      "response": {
+        "id": "evg-db8ks43kk9ls7380lke0",
+        "name": "qa-20261015-a633-rest3",
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "envVars": [
+          {
+            "key": "QA_A633_EMPTY"
+          },
+          {
+            "key": "QA_A633_GROUP"
+          }
+        ],
+        "secretFiles": [
+          {
+            "name": "qa-a633-empty.txt"
+          },
+          {
+            "name": "qa-a633.txt"
+          }
+        ],
+        "createdAt": "2026-10-15T22:05:16.567872311Z",
+        "updatedAt": "2026-10-15T22:05:16.567872311Z",
+        "revision": "egr1_AAAAAAAAAAE",
+        "serviceLinks": []
+      }
+    },
+    {
+      "before": "2026-10-15T22:09:07.740Z",
+      "at": "2026-10-15T22:09:31.775Z",
+      "elapsedMs": 24035,
+      "request": {
+        "method": "POST",
+        "url": "https://api.bex.co/v1/env-groups",
+        "body": {
+          "name": "qa-20261015-a633-check2",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        }
+      },
+      "httpStatus": 201,
+      "response": {
+        "id": "evg-db8ku3g8j59c73ejkpng",
+        "name": "qa-20261015-a633-check2",
+        "ownerId": "tea-d98210cbbpdc73dcrkvg",
+        "envVars": [],
+        "secretFiles": [],
+        "createdAt": "2026-10-15T22:09:30.99635639Z",
+        "updatedAt": "2026-10-15T22:09:30.99635639Z",
+        "revision": "egr1_AAAAAAAAAAE",
+        "serviceLinks": []
+      },
+      "purpose": "Cleanup recovery of the uncertain clone name; this empty group is not evidence of successful second cloning."
+    }
+  ],
+  "passingControls": {
+    "sourceGroupId": "evg-db8kna88j59c73ejkpd0",
+    "sourceServiceId": "srv-db8knng8j59c73ejkpfg",
+    "sourceValues": {
+      "QA_A633_GROUP": "source",
+      "QA_A633_EMPTY": ""
+    },
+    "sourceFiles": {
+      "qa-a633.txt": "QA_A633_SOURCE_FILE\ncafé 雪\tEND\n\n",
+      "qa-a633-empty.txt": ""
+    },
+    "sourceRuntime": "GROUP=source\nEMPTY=<>\nQA_A633_SOURCE_FILE\ncafé 雪\tEND\n\nEMPTY_BYTES=0\n",
+    "clonedValuesMatched": true,
+    "clonedFilesMatched": true,
+    "sourceLinksPreservedAndCloneLinksEmpty": true,
+    "independentCloneEdit": {
+      "value": "copy-independent",
+      "affectedServiceIds": [],
+      "rolledOut": false,
+      "sourceRuntimeUnchanged": true
+    },
+    "unlinkRuntime": "GROUP=unset\nEMPTY=<unset>\nMISSING_FILE\nMISSING_EMPTY\n",
+    "editedCloneRuntime": "GROUP=copy-independent\nEMPTY=<>\nQA_A633_SOURCE_FILE\ncafé 雪\tEND\n\nEMPTY_BYTES=0\n",
+    "limits": "These control observations are transcribed summaries; they do not replace the full failing-operation receipts above or establish untested modes."
+  },
+  "localProbe": {
+    "method": "Go test overlay adds a disposable probe to the existing envgroups test package; tracked source unchanged. It creates/deletes real fixture groups against the repository fake Store, then clones a remaining live source.",
+    "command": "go test -overlay .playwright-mcp/qa-a633-admission-overlay.json ./internal/envgroups -run '^TestQaA633AdmissionReadGrowth$' -count=1 -v (from lego/backend; overlay path is absolute in actual invocation)",
+    "source": "package envgroups\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"github.com/bex-co/bex/lego/backend/internal/core\"\n\t\"github.com/bex-co/bex/lego/backend/internal/core/coretest\"\n\t\"strings\"\n\t\"testing\"\n)\n\ntype qaA633CountStore struct {\n\t*fakeStore\n\tmetaGets, lists int\n}\n\nfunc (s *qaA633CountStore) Get(ctx context.Context, path string) (map[string]string, error) {\n\tif strings.HasSuffix(path, \"/meta\") {\n\t\ts.metaGets++\n\t}\n\treturn s.fakeStore.Get(ctx, path)\n}\nfunc (s *qaA633CountStore) List(ctx context.Context, path string) ([]string, error) {\n\ts.lists++\n\treturn s.fakeStore.List(ctx, path)\n}\nfunc TestQaA633AdmissionReadGrowth(t *testing.T) {\n\tfor _, scope := range []string{\"\", \"tea-a\"} {\n\t\tfor _, retired := range []int{0, 20, 100} {\n\t\t\tstore := &qaA633CountStore{fakeStore: newFakeStore()}\n\t\t\tsvc := newService(store)\n\t\t\tsvc.MaxEnvGroups = 100\n\t\t\tvar ctx context.Context = context.Background()\n\t\t\tif scope != \"\" {\n\t\t\t\tsvc.Workspace = coretest.Members{\"dana\": {\"tea-a\"}}\n\t\t\t\tctx = core.WithIdentity(ctx, core.Identity{Subject: \"dana\", Method: \"session\"})\n\t\t\t}\n\t\t\tsource, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: \"qa-a633-source\", OwnerID: scope})\n\t\t\tif err != nil {\n\t\t\t\tt.Fatal(err)\n\t\t\t}\n\t\t\tfor i := 0; i < retired; i++ {\n\t\t\t\tg, e := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: fmt.Sprintf(\"qa-a633-retired-%d\", i), OwnerID: scope})\n\t\t\t\tif e != nil {\n\t\t\t\t\tt.Fatal(e)\n\t\t\t\t}\n\t\t\t\tif e = svc.DeleteEnvGroup(ctx, g.ID); e != nil {\n\t\t\t\t\tt.Fatal(e)\n\t\t\t\t}\n\t\t\t}\n\t\t\tlisted, e := svc.ListEnvGroups(ctx, scope)\n\t\t\tif e != nil || len(listed) != 1 {\n\t\t\t\tt.Fatalf(\"live before clone=%d err=%v\", len(listed), e)\n\t\t\t}\n\t\t\tstore.metaGets = 0\n\t\t\tstore.lists = 0\n\t\t\tclone, e := svc.CloneEnvGroup(ctx, source.ID, CloneEnvGroupRequest{Name: \"qa-a633-clone\", OwnerID: scope})\n\t\t\tif e != nil || clone.ID == source.ID || len(clone.ServiceLinks) != 0 {\n\t\t\t\tt.Fatalf(\"clone=%+v err=%v\", clone, e)\n\t\t\t}\n\t\t\tt.Logf(\"scope=%q retired=%d activeBefore=1 cloneMetaGets=%d cloneLists=%d\", scope, retired, store.metaGets, store.lists)\n\t\t}\n\t}\n}\n",
+    "stdout": "=== RUN   TestQaA633AdmissionReadGrowth\n    qa_a633_probe_test.go:61: scope=\"\" retired=0 activeBefore=1 cloneMetaGets=3 cloneLists=2\n    qa_a633_probe_test.go:61: scope=\"\" retired=20 activeBefore=1 cloneMetaGets=43 cloneLists=2\n    qa_a633_probe_test.go:61: scope=\"\" retired=100 activeBefore=1 cloneMetaGets=203 cloneLists=2\n    qa_a633_probe_test.go:61: scope=\"tea-a\" retired=0 activeBefore=1 cloneMetaGets=7 cloneLists=4\n    qa_a633_probe_test.go:61: scope=\"tea-a\" retired=20 activeBefore=1 cloneMetaGets=87 cloneLists=4\n    qa_a633_probe_test.go:61: scope=\"tea-a\" retired=100 activeBefore=1 cloneMetaGets=407 cloneLists=4\n--- PASS: TestQaA633AdmissionReadGrowth (0.49s)\nPASS\nok  \tgithub.com/bex-co/bex/lego/backend/internal/envgroups\t1.050s\n",
+    "exitCode": 0,
+    "limit": "Counts metadata Get calls and List calls in the fake, not production OpenBao timings. Both unscoped and tea-a cases exercised; production retired-group count not measured."
+  },
+  "baseline": {
+    "idSets": {
+      "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+      "databases": [
+        "dpg-d9nqg95cavls73fp8m20",
+        "dpg-d9rrkoc4h4mc73edurp0",
+        "dpg-d9rs3ee0ccis738kc7c0",
+        "dpg-db34l9bor55s73cqpq9g"
+      ],
+      "envGroups": ["evg-db0s94c48ccs739jikr0"],
+      "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+      "projects": [
+        "prj-d9dgeo0bd9nc73a0vh1g",
+        "prj-d9e5qct5qe4s73b1mjn0",
+        "prj-d9sgfnbjghus73cg6hg0"
+      ],
+      "services": [
+        "srv-d9bj8s3eg85c7390eb9g",
+        "srv-d9bkcspg9s7c73d0n8ug",
+        "srv-d9e40ei9086p3l1jri30",
+        "srv-d9ndt8hmcglc739fkp50",
+        "srv-d9nqg9dcavls73fp8m2g"
+      ],
+      "webhookEndpoints": []
+    },
+    "provenance": "Matches the a633 prepass inventory recorded at21:52:54.521Z in this conversation; cross-checked against the identical a632 saved baseline and current recovered cleanup receipt."
+  },
+  "cleanup": {
+    "at": "2026-10-15T22:11:32.676Z",
+    "groups": [
+      {
+        "id": "evg-db8kna88j59c73ejkpd0",
+        "status": 404,
+        "body": {
+          "code": "NOT_FOUND",
+          "error": "not found",
+          "id": "not_found",
+          "message": "not found",
+          "params": null
+        }
+      },
+      {
+        "id": "evg-db8kodo8j59c73ejkph0",
+        "status": 404,
+        "body": {
+          "code": "NOT_FOUND",
+          "error": "not found",
+          "id": "not_found",
+          "message": "not found",
+          "params": null
+        }
+      },
+      {
+        "id": "evg-db8ks43kk9ls7380lke0",
+        "status": 404,
+        "body": {
+          "code": "NOT_FOUND",
+          "error": "not found",
+          "id": "not_found",
+          "message": "not found",
+          "params": null
+        }
+      },
+      {
+        "id": "evg-db8ku3g8j59c73ejkpng",
+        "status": 404,
+        "body": {
+          "code": "NOT_FOUND",
+          "error": "not found",
+          "id": "not_found",
+          "message": "not found",
+          "params": null
+        }
+      }
+    ],
+    "service": {
+      "status": 404,
+      "body": {
+        "code": "NOT_FOUND",
+        "error": "not found",
+        "id": "not_found",
+        "message": "not found",
+        "params": null
+      }
+    },
+    "status": 200,
+    "inventory": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    }
+  },
+  "session": {
+    "at": "2026-10-15T22:12:59.445Z",
+    "whoami": 401,
+    "cookies": 0,
+    "pages": 1,
+    "url": "about:blank"
+  },
+  "console": {
+    "errors": 1,
+    "message": "Failed to load resource: net::ERR_CONNECTION_CLOSED at https://api.bex.co/graphql",
+    "limit": "An additional unqualified transport observation, not attributed to either clone response."
+  },
+  "dedupe": {
+    "boardMarkdownCount": 9240,
+    "actualOpenMilestones": 75,
+    "owner": "w4/m206",
+    "relationship": "t001 done notes explicitly leave name-sweep cost unmeasured/untouched; extend the existing create/clone admission owner. m211 covers batch envelopes and m97/m98/m80 supply constraints, not a new ticket here.",
+    "latestPulledHead": "e949b9914",
+    "latestMarkdownCount": 9285,
+    "latestActualOpenMilestones": 79,
+    "incoming": "e949b9914 adds CLI runtime/Blueprint/branch filings; the envgroups, secret-store and GraphQL producer files are unchanged from the research head."
+  },
+  "unverified": [
+    "Production stage timing and retired-entry count",
+    "First lost New Group click: no fresh deterministic reproduction; not filed",
+    "Authenticated Render execution",
+    "CLI/MCP replay, cross-workspace clone, migration or concurrent mutation scenarios"
+  ]
+}

@@ -1,6 +1,6 @@
 # w4 · m206 — Make environment-group creation and moves recoverable
 
-**Worker:** worker4 **Goal:** ordinary scoped group creation and a two-group move complete within the existing API budget, and an interrupted write has a discoverable, recoverable outcome. **Status:** blocked (release pipeline deploys backend + dashboard; then QA replays the DoD and confirms the production name residue freed itself, for t008). t001–t007 done.
+**Worker:** worker4 **Goal:** ordinary scoped group creation, cloning and a two-group move complete within the existing API budget, and an interrupted write has a discoverable, recoverable outcome. **Status:** blocked for final live closeout — t001–t007 done; t009 is actionable follow-up on the remaining create/clone admission cost, then release + t008 replay and name-residue confirmation remain.
 
 ## Tasks (in order)
 
@@ -10,10 +10,11 @@
 | t002 | Recover failed creation and its owned name reservation — **DONE** | 50m | t001 |
 | t003 | Reconcile interrupted membership moves and source selection — **DONE** | 45m | t001, t002 |
 | t004 | Audit shared callers, aliases and passing controls — **DONE** | 30m | t003 |
+| t009 | Keep small native group clones within the existing response budget | 60m | t001, t002 |
 | t005 | Render parity — **DONE** | 15m | t004 |
 | t006 | Simplify — **DONE** | 15m | t005 |
 | t007 | Test coverage — **DONE** | 40m | t005, t006 |
-| t008 | Closeout | 20m | t007 |
+| t008 | Closeout | 20m | t007, t009 |
 
 ## Definition of done
 
@@ -25,7 +26,9 @@ Repeat [the actual native journeys](finding.md) with fresh owned qa-prefixed emp
 - If the move times out, the client reads the authoritative source and target before offering another write. It shows the actual complete or partial outcome, and selection contains only groups still in the canonical source membership. The recorded desktop case must never show one source row with “Selected: 2.” Preserve selected groups hidden only by search.
 - Delete each visible fixture by exact ID; its REST read returns 404 and all seven starting inventory ID sets are restored. Record any failed-name recovery residue separately from visible cleanup. Revoke only this QA session.
 
-Injected late-acknowledgment, compensation failure, concurrent writer and linked-service cases are verification work in t002/t003/t007, not claims of observed production failures.
+From [a633](evidence-a633-clone.json): clone the recorded small group (two variables and two files, including empty entries) from fresh desktop and 390px pages. One click returns a new ID within the existing 25s GraphQL budget; the clone appears exactly once, preserves the exact contents and copies no service links. An independent clone edit leaves the source service unchanged, and linking the edited clone delivers its values/files. The two native attempts returned WRITE_OUTCOME_UNKNOWN; REST cloning took24.772s and an empty-create recovery took24.035s. t009 owns the remaining admission work and repeats the scoped parity/simplify/regression checks before t008. Production stage timings remain unmeasured.
+
+Injected late-acknowledgment, compensation failure and concurrent writer cases remain verification work, not claims of observed production failures.
 
 ## Source + Goal linkage
 
@@ -36,3 +39,7 @@ Injected late-acknowledgment, compensation failure, concurrent writer and linked
 - **Sizing:** 255m across bounded lookup work, creation recovery, membership outcome/UI reconciliation, a dedicated shared-caller audit and standing closing tasks. These are separate write-lifecycle gaps; reducing lookup work alone cannot guarantee recovery.
 - **Render parity included:** REST, GraphQL, MCP and dashboard share these customer workflows. Render documents create/list and environment moves; authenticated Render timeout behavior was not measured.
 - **Cleanup:** five visible fixtures deleted and QA session revoked. **Residual:** failed name `qa-20261013-a385-first` still returned ENV_GROUP_NAME_EXISTS at 22:07:02.632Z, without a group ID. No administrative repair was attempted.
+
+## Additional live evidence — a633, 2026-10-15
+
+[Full normalized mutation requests/responses, controls, probe and cleanup](evidence-a633-clone.json). The existing t001 note leaves name-sweep cost unresolved. Current source runs independent quota/name metadata sweeps; the local scoped probe shows7/87/407 metadata Gets for0/20/100 retired groups with one active source. This establishes read growth, while the production contribution of each stage is unprofiled. Extend this milestone instead of filing a duplicate of its shared create/clone admission work. All four known a633 group IDs and the owned service return404, seven baseline inventories match, and the exact QA session is revoked. The old a385 residual was not touched. Source unchanged; this ships the filing only.
