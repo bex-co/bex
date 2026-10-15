@@ -1,6 +1,6 @@
 # w8 · m61 — Honor application PATH during native builds
 
-**Worker:** worker8 **Goal:** exact application PATH reaches native build and runtime commands independently of platform helpers and inherited image entrypoints. **Status:** blocked — t001–t005, t007, t008 done; t006 needs the operator deployed to production and a fresh two-client native pre-deploy replay with empty/narrow PATH plus cleanup
+**Worker:** worker8 **Goal:** exact application PATH reaches native build and runtime commands independently of platform helpers and inherited image entrypoints. **Status:** done — sweep289 accepts the final two-client empty/narrow PATH pre-deploy gate with owned cleanup; recorded coverage limits remain explicit
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t003 | Render parity — **DONE** | 20m | t002, t008 |
 | t004 | Simplify — **DONE** | 15m | t003 |
 | t005 | Test coverage — **DONE** | 35m | t003 |
-| t006 | Closeout — **BLOCKED (operator deploy + live replay)** | 20m | t004, t005 |
+| t006 | Closeout — **DONE 2026-10-15** | 20m | t004, t005 |
 
 ## Definition of done
 
@@ -31,11 +31,11 @@
 - **2026-10-13 UTC, sweep183:** [fresh Python live acceptance](evidence/live-python-sweep183/README.md) reproduces both initial narrow-PATH build failures through released Bex and pinned Render. Changing only PATH through owned save-only setup, then native deployment of the exact initial commit, produces Live/HTTP200 and matching build/runtime PATH plus variable/file bytes in both controls. Seven targeted local tests pass; current source has 137820b94, exact deployed SHA unknown. Both fixtures/four child records reconciled, baseline6/quota termination0, own notes/config copies removed. Existing m61 stays blocked; no duplicate issue or QA implementation/ship.
 
 - **2026-10-12:** the native RUN loader resolves its decoder once under the image PATH, and the preparer carries literals under private `BEX_NATIVE_LITERAL_<i>` names, so a custom PATH (Secret-backed or literal) reaches the build command exactly while platform helpers keep working (`lego/operator/internal/build/native.go`). `TestNativeEnvironmentKeepsApplicationPATH` fails on the original source and passes fixed; operator `make test`/`make lint` pass.
-- **Current remaining work:** t008 repairs pre-deploy shell lookup after empty-PATH startup acceptance; t003–t006 retain parity, quality and complete literal/runtime/surface checks. Earlier native repairs and observations remain historical; deployed SHA is unknown.
+- **Current remaining work:** none for the implemented scope and explicitly parked gate. Sweep289 supplies four native pre-deploy startup passes and exact build/runtime bytes; direct output for one successful step remains unobserved as documented below.
 
 ## Source + Goal linkage
 
-- **Source:** user-requested continuous `$qa-find-bugs-cli` in w8, sweep163, 2026-10-12 UTC. [Finding](finding.md) and [sanitized evidence](../evidence/m61/README.md).
+- **Source:** user-requested continuous `$qa-find-bugs-cli` in w8, sweep163, 2026-10-12 UTC. [Finding](finding.md) and [sanitized evidence](../../evidence/m61/README.md).
 - **Goal linkage:** ADR008 core hosting, ADR004 source builds and ADR018 Render compatibility. Accepted application configuration must not stop the platform before the user command runs.
 - **Expected outcome:** a custom application PATH works for an absolute build command, independently of the names or order of other configured variables.
 - **Why now:** two fresh native clients produce `build_failed`; changing only PATH and redeploying the same commit recovers both. Actual generated-loader and generated-preparer executions identify two affected stages.
@@ -66,7 +66,7 @@ Commit 9f507a2a7 closed the prior build-helper scope using Python/Node narrow-PA
 
 ## Independent source replay — sweep226
 
-[Current-source verification](../evidence/current-source-sweep226/README.md) reruns the original relevant diagnostics after the fix. Its source-only scope and remaining production/native/runtime gates are explicit; this receipt does not close the milestone. No QA product implementation or ship.
+[Current-source verification](../../evidence/current-source-sweep226/README.md) reruns the original relevant diagnostics after the fix. Its source-only scope and remaining production/native/runtime gates are explicit; this receipt does not close the milestone. No QA product implementation or ship.
 
 ## Empty-PATH startup accepted; pre-deploy neighbor remains — sweep228
 
@@ -78,28 +78,32 @@ Add t00835m for the pre-deploy boundary. Preserve the now-passing generated-imag
 
 ## Live native static-build acceptance — sweep232
 
-[Published Bex and pinned Render static journeys](../evidence/static-native-sweep232/README.md) preserve exact empty and narrow PATH plus Unicode/multiline values in all five published artifacts. Interior-space directories, native publish-only selection/restoration and eight exact-ID native request-filter controls pass. Both owned Free static services and their recorded deploy children are cleaned. This certifies static build inputs, not a tenant runtime process; source-only tests, browser/shared-surface/cache limits and the two excluded local argument mistakes are explicit. No new defect, product implementation or QA ship.
+[Published Bex and pinned Render static journeys](../../evidence/static-native-sweep232/README.md) preserve exact empty and narrow PATH plus Unicode/multiline values in all five published artifacts. Interior-space directories, native publish-only selection/restoration and eight exact-ID native request-filter controls pass. Both owned Free static services and their recorded deploy children are cleaned. This certifies static build inputs, not a tenant runtime process; source-only tests, browser/shared-surface/cache limits and the two excluded local argument mistakes are explicit. No new defect, product implementation or QA ship.
 
 ## Live native clone/files acceptance — sweep233
 
-[Four owned Node services and actual pinned clone wire](../evidence/native-clone-files-sweep233/README.md) accept explicit Unicode/multiline file and marker overrides, with empty and narrow PATH reaching both build and runtime. Two file-only save_only updates plus native original-commit deploys yield exact new file hashes without changing env/commands; parents retain original values. Bex's240-second QA wait timed out during a reported platform-capacity queue, then the same deploy converged correctly; Render async creation exits0 and converges. All four services and deploy children are cleaned. These are partial Node transport/cache receipts, not successful Bex wait or full m61 closeout. No new defect or QA ship.
+[Four owned Node services and actual pinned clone wire](../../evidence/native-clone-files-sweep233/README.md) accept explicit Unicode/multiline file and marker overrides, with empty and narrow PATH reaching both build and runtime. Two file-only save_only updates plus native original-commit deploys yield exact new file hashes without changing env/commands; parents retain original values. Bex's240-second QA wait timed out during a reported platform-capacity queue, then the same deploy converged correctly; Render async creation exits0 and converges. All four services and deploy children are cleaned. These are partial Node transport/cache receipts, not successful Bex wait or full m61 closeout. No new defect or QA ship.
 
 ## Live native Go acceptance — sweep237
 
-[Two Free native-Go fixtures](../evidence/native-go-sweep237/README.md) preserve exact empty/narrow PATH and Unicode/multiline file bytes at both build and runtime. Absolute compiler/application paths and CGO_ENABLED=0 keep the fixture independent of optional external compiler tools. Both asynchronous native original-commit deploys converge to identical snapshots. All services/deploy children are cleaned. Native mutation-wire, deployed toolchain identity, other language/predeploy and shared-surface limits remain explicit; this is partial m61 acceptance, not closeout or a new defect.
+[Two Free native-Go fixtures](../../evidence/native-go-sweep237/README.md) preserve exact empty/narrow PATH and Unicode/multiline file bytes at both build and runtime. Absolute compiler/application paths and CGO_ENABLED=0 keep the fixture independent of optional external compiler tools. Both asynchronous native original-commit deploys converge to identical snapshots. All services/deploy children are cleaned. Native mutation-wire, deployed toolchain identity, other language/predeploy and shared-surface limits remain explicit; this is partial m61 acceptance, not closeout or a new defect.
 
 ## Live native Ruby acceptance — sweep238
 
-[Two Free native-Ruby fixtures](../evidence/native-ruby-sweep238/README.md) preserve exact empty/narrow PATH and Unicode/multiline file bytes at both build and runtime. Absolute interpreter/application paths and standard-library networking keep the fixture independent of application package dependencies. Both asynchronous native original-commit deploys converge to identical snapshots. All services/deploy children are cleaned. Native mutation-wire, deployed toolchain identity, other language/predeploy and shared-surface limits remain explicit; this is partial m61 acceptance, not closeout or a new defect.
+[Two Free native-Ruby fixtures](../../evidence/native-ruby-sweep238/README.md) preserve exact empty/narrow PATH and Unicode/multiline file bytes at both build and runtime. Absolute interpreter/application paths and standard-library networking keep the fixture independent of application package dependencies. Both asynchronous native original-commit deploys converge to identical snapshots. All services/deploy children are cleaned. Native mutation-wire, deployed toolchain identity, other language/predeploy and shared-surface limits remain explicit; this is partial m61 acceptance, not closeout or a new defect.
 
 ## Live native Rust acceptance — sweep239
 
-[Two Free native-Rust fixtures](../evidence/native-rust-sweep239/README.md) preserve exact empty/narrow PATH and Unicode/multiline file bytes at both build and runtime. Absolute compiler/linker/application paths and standard-library networking keep the fixture independent of external crates and runtime PATH lookups. Both asynchronous native original-commit deploys converge to identical snapshots. All services/deploy children are cleaned. Native mutation-wire, deployed toolchain identity, other language/predeploy and shared-surface limits remain explicit; this is partial m61 acceptance, not closeout or a new defect.
+[Two Free native-Rust fixtures](../../evidence/native-rust-sweep239/README.md) preserve exact empty/narrow PATH and Unicode/multiline file bytes at both build and runtime. Absolute compiler/linker/application paths and standard-library networking keep the fixture independent of external crates and runtime PATH lookups. Both asynchronous native original-commit deploys converge to identical snapshots. All services/deploy children are cleaned. Native mutation-wire, deployed toolchain identity, other language/predeploy and shared-surface limits remain explicit; this is partial m61 acceptance, not closeout or a new defect.
 
 ## Live native Elixir acceptance — sweep240
 
-[Two Free native-Elixir fixtures](../evidence/native-elixir-sweep240/README.md) preserve exact omitted/narrow shell-delivered PATH and Unicode/multiline file bytes at both build and runtime. The standard-library probe preserves a narrow PATH containing the launcher prerequisites, alongside an omitted-PATH control. The Bex fixture token-spacing correction is an explicit setup limitation. Both final asynchronous native commit-pinned deploys converge to identical snapshots. All services/deploy children are cleaned. Native mutation-wire, deployed toolchain identity, other language/predeploy and shared-surface limits remain explicit; this is partial m61 acceptance, not closeout or a new defect.
+[Two Free native-Elixir fixtures](../../evidence/native-elixir-sweep240/README.md) preserve exact omitted/narrow shell-delivered PATH and Unicode/multiline file bytes at both build and runtime. The standard-library probe preserves a narrow PATH containing the launcher prerequisites, alongside an omitted-PATH control. The Bex fixture token-spacing correction is an explicit setup limitation. Both final asynchronous native commit-pinned deploys converge to identical snapshots. All services/deploy children are cleaned. Native mutation-wire, deployed toolchain identity, other language/predeploy and shared-surface limits remain explicit; this is partial m61 acceptance, not closeout or a new defect.
 
 ## Pre-deploy shell fixed — 2026-10-14 (`/loopx w8`)
 
 t008 code and regression are done (see `done/t008.md`, `done/t005.md`). Parked in `blocked/`: closeout needs the operator deployed to production, then QA replays the sweep228 pre-deploy journeys through published Bex and the pinned Render client with empty and narrow PATH (marker printed, Live/HTTP200, exact bytes, owned cleanup). The other DoD gaps already recorded stay open: hosted literal Blueprint, non-REST live writes and Kubernetes descendant teardown.
+
+## Final live pre-deploy acceptance — sweep289
+
+[Four native startup/runtime passes and complete cleanup](evidence/live-node-predeploy-sweep289/README.md) complete the remaining empty/narrow PATH gate through published Bex and pinned Render without any PATH rewrite. Three actual pre-deploy outputs verify exact bytes; Bex/narrow has successful durable step events and exact build/runtime checks, while its direct Job output remains unavailable and explicitly unclaimed. All four parents/four deployment children are removed, six baseline services/quota terminating0 preserved. The earlier source fixes, worker checks and historical runtime/literal/caller evidence remain intact. Actual deployed artifact and previously documented unexercised surfaces are not inferred. Closeout is complete and the milestone moves to done; no QA product edit or ship.
