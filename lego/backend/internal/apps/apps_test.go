@@ -720,8 +720,9 @@ type recordingStore struct {
 	// priorCommit is what LatestDeployCommit returns — set in tests that assert
 	// config_change rows inherit the running release's provenance (w4/m100).
 	priorCommit store.CommitInfo
-	imageCalls  []struct{ id, image string }
-	sourceCalls int
+	imageCalls   []struct{ id, image string }
+	sourceCalls  int
+	sourceWrites []struct{ id, repo, image, branch string }
 	// notFoundOnDelete makes DeleteApp report the row is already gone, so a test
 	// can assert the verb still deletes the CR (idempotent end state).
 	notFoundOnDelete bool
@@ -905,6 +906,9 @@ func (r *recordingStore) SetAppDisplayName(_ context.Context, id string, display
 
 func (r *recordingStore) SetAppSource(_ context.Context, id, repo, image, branch string, registryCredentialID *string) error {
 	r.sourceCalls++
+	if r.err == nil {
+		r.sourceWrites = append(r.sourceWrites, struct{ id, repo, image, branch string }{id, repo, image, branch})
+	}
 	return r.err
 }
 
