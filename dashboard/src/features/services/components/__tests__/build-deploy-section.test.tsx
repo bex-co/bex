@@ -720,8 +720,12 @@ describe("BuildDeploySection", () => {
     await user.type(input, "  npm run migrate  ");
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
-    // Trimmed before the mutation; no confirm dialog for this field.
-    expect(setPreDeployCommand).toHaveBeenCalledWith("app", "npm run migrate");
+    // A nonblank command reaches the mutation as typed, padding included
+    // (w8/m68); no confirm dialog for this field.
+    expect(setPreDeployCommand).toHaveBeenCalledWith(
+      "app",
+      "  npm run migrate  ",
+    );
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
 

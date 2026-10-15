@@ -350,7 +350,7 @@ var servicePatchTable = []servicePatchOp{
 			if err := s.checkPreDeployCommand(ctx, probe); err != nil {
 				return err
 			}
-			probe.Spec.PreDeployCommand = strings.TrimSpace(*p.PreDeployCommand)
+			probe.Spec.PreDeployCommand = commandText(*p.PreDeployCommand)
 			return nil
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {

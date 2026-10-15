@@ -137,20 +137,25 @@ func TestSetPreDeployCommandSetsAndClears(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SetPreDeployCommand: %v", err)
 	}
-	// Trimmed before it reaches the spec.
-	if v.PreDeployCommand != "npm run migrate" {
-		t.Errorf("view PreDeployCommand = %q, want npm run migrate", v.PreDeployCommand)
+	// Nonblank command text is stored verbatim, padding included (w8/m68).
+	if v.PreDeployCommand != "  npm run migrate  " {
+		t.Errorf("view PreDeployCommand = %q, want the exact command", v.PreDeployCommand)
 	}
-	if got := getApp(t, cl, "web").Spec.PreDeployCommand; got != "npm run migrate" {
-		t.Errorf("spec.preDeployCommand = %q, want npm run migrate", got)
+	if got := getApp(t, cl, "web").Spec.PreDeployCommand; got != "  npm run migrate  " {
+		t.Errorf("spec.preDeployCommand = %q, want the exact command", got)
 	}
 
-	// Empty clears the step.
-	if _, err := svc.SetPreDeployCommand(context.Background(), "web", ""); err != nil {
-		t.Fatalf("SetPreDeployCommand(\"\"): %v", err)
-	}
-	if got := getApp(t, cl, "web").Spec.PreDeployCommand; got != "" {
-		t.Errorf("spec.preDeployCommand = %q, want empty (cleared)", got)
+	// Empty and whitespace-only clear the step.
+	for _, blank := range []string{"", " \t "} {
+		if _, err := svc.SetPreDeployCommand(context.Background(), "web", "npm run migrate"); err != nil {
+			t.Fatalf("SetPreDeployCommand: %v", err)
+		}
+		if _, err := svc.SetPreDeployCommand(context.Background(), "web", blank); err != nil {
+			t.Fatalf("SetPreDeployCommand(%q): %v", blank, err)
+		}
+		if got := getApp(t, cl, "web").Spec.PreDeployCommand; got != "" {
+			t.Errorf("SetPreDeployCommand(%q): spec.preDeployCommand = %q, want empty (cleared)", blank, got)
+		}
 	}
 }
 

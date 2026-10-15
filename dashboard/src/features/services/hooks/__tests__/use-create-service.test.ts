@@ -110,6 +110,33 @@ describe("useCreateService", () => {
     );
   });
 
+  it("forwards command bytes to createService unchanged (w8/m68)", async () => {
+    const mutate = vi
+      .fn()
+      .mockResolvedValue({ data: { createService: { id: "srv-cmd" } } });
+    mockUseMutation.mockReturnValue([mutate, { loading: false }]);
+    const cmd = "printf '%s' tail\\ ";
+
+    const { result } = renderHook(() => useCreateService());
+    await act(async () => {
+      await result.current.create({
+        name: "tail",
+        type: "cron_job",
+        repo: "https://github.com/x/mono",
+        runtime: "node",
+        buildCommand: cmd,
+        startCommand: cmd,
+        schedule: "*/5 * * * *",
+        command: cmd,
+      });
+    });
+
+    const { variables } = mutate.mock.calls[0][0];
+    expect(variables.buildCommand).toBe(cmd);
+    expect(variables.startCommand).toBe(cmd);
+    expect(variables.command).toBe(cmd);
+  });
+
   it("follows a workspace switch — the next create carries the new ownerId", async () => {
     const mutate = vi
       .fn()

@@ -69,13 +69,13 @@ export interface EditableFieldRowProps {
   /** Display-only prefix shown before the value (e.g. "app/ $"); never saved. */
   valuePrefix?: string;
   /**
-   * Trim the draft before dirty-comparing and saving (default true). Set false
-   * for fields where surrounding whitespace is meaningful or normalized in onSave.
+   * Maps the draft to the value that is dirty-compared and saved (default:
+   * trim). Pass the identity, or a field's own policy, where surrounding
+   * whitespace is meaningful or normalized in onSave.
    */
-  trim?: boolean;
+  normalize?: (draft: string) => string;
   /** Whether the change counts as savable; default `normalized !== value`.
-   *  Receives the normalized draft (trimmed unless `trim` is false) — the same
-   *  value `onSave` gets. */
+   *  Receives the normalized draft — the same value `onSave` gets. */
   dirty?: (normalized: string) => boolean;
   /** Return an error to block save and show it inline; null ⇒ valid. Receives
    *  the raw draft (before normalization). */
@@ -89,6 +89,8 @@ export interface EditableFieldRowProps {
   /** Persist the (normalized) draft; return true on success to leave edit mode. */
   onSave: (value: string) => Promise<boolean>;
 }
+
+const trimDraft = (draft: string) => draft.trim();
 
 /**
  * Render's settings edit-in-place row (w5/m50): the field's current value always
@@ -121,7 +123,7 @@ export function EditableFieldRow({
   options,
   comboboxOptions,
   valuePrefix,
-  trim = true,
+  normalize = trimDraft,
   dirty,
   validate,
   describe,
@@ -165,7 +167,7 @@ export function EditableFieldRow({
     editButtonRef.current?.focus();
   }, [editing]);
 
-  const normalized = trim ? draft.trim() : draft;
+  const normalized = normalize(draft);
   const validationError = editing ? (validate?.(draft) ?? null) : null;
   const description =
     validationError === null ? (describe?.(shown) ?? null) : null;
