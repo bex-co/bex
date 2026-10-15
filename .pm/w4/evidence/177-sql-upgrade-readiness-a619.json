@@ -1,0 +1,842 @@
+{
+  "pass": "a619",
+  "sourceHead": "3ebd9f92bd31d42ece161e0e78aba22a094de444",
+  "surface": "Postgres SQL console known lifecycle readiness",
+  "classification": "Existing w4/blocked/177 follow-up, no duplicate item or product change",
+  "fixture": {
+    "id": "dpg-db8i70rh673c73bis1vg",
+    "name": "qa-20261015-a619-upgrade",
+    "plan": "free",
+    "version": "16",
+    "public": false
+  },
+  "readRequest": {
+    "operationName": "Qaa619Database",
+    "query": "query Qaa619Database($id:String!){database(id:$id){id name status version}}",
+    "variables": {
+      "id": "dpg-db8i70rh673c73bis1vg"
+    }
+  },
+  "receipts": {
+    "a619Created": {
+      "at": "2026-10-15T19:03:32.237Z",
+      "request": {
+        "operationName": "CreateDatabase",
+        "variables": {
+          "name": "qa-20261015-a619-upgrade",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "plan": "free",
+          "version": "16",
+          "public": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateDatabase($name: String!, $databaseName: String, $databaseUser: String, $ownerId: String, $environmentId: String, $plan: String, $version: String, $diskSizeGB: Int, $public: Boolean) {\n  createDatabase(\n    name: $name\n    databaseName: $databaseName\n    databaseUser: $databaseUser\n    ownerId: $ownerId\n    environmentId: $environmentId\n    plan: $plan\n    version: $version\n    diskSizeGB: $diskSizeGB\n    public: $public\n  ) {\n    id\n    name\n    databaseName\n    databaseUser\n    plan\n    status\n    projectId\n    environmentId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createDatabase": {
+            "__typename": "Database",
+            "databaseName": "dpg_db8i70rh673c73bis1vg",
+            "databaseUser": "dpg_db8i70rh673c73bis1vg_user",
+            "environmentId": null,
+            "id": "dpg-db8i70rh673c73bis1vg",
+            "name": "qa-20261015-a619-upgrade",
+            "plan": "free",
+            "projectId": null,
+            "status": "creating"
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db8i70rh673c73bis1vg"
+    },
+    "a619Table": {
+      "at": "2026-10-15T19:05:31.619Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8i70rh673c73bis1vg",
+          "sql": "CREATE TABLE qa_a619_items (id bigserial PRIMARY KEY, label text NOT NULL, qty integer NOT NULL CHECK (qty >= 0), tags jsonb NOT NULL DEFAULT '{}');",
+          "allowWrites": true
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": [],
+            "rowCount": 0,
+            "rows": [],
+            "truncated": false
+          }
+        }
+      },
+      "console": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": \"CREATE TABLE qa_a619_items (id bigserial PRIMARY KEY, label text NOT NULL, qty integer NOT NULL CHECK (qty >= 0), tags jsonb NOT NULL DEFAULT '{}');\"\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- paragraph: 0 rows affected\n- paragraph: Query history\n- button \"Clear\"\n- 'button \"CREATE TABLE qa_a619_items (id bigserial PRIMARY KEY, label text NOT NULL, qty integer NOT NULL CHECK (qty >= 0), tags jsonb NOT NULL DEFAULT ''{}'');\"'"
+    },
+    "a619Rows": {
+      "at": "2026-10-15T19:05:34.430Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8i70rh673c73bis1vg",
+          "sql": "INSERT INTO qa_a619_items (label,qty,tags) VALUES ('QA_A619_雪 & café',7,'{\"kind\":\"first\",\"empty\":\"\"}'),('QA_A619_TWO',11,'{\"list\":[1,2,3]}'),('QA_A619_THREE',0,'{}') RETURNING id,label,qty,tags::text;",
+          "allowWrites": true
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["id", "label", "qty", "tags"],
+            "rowCount": 3,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "1",
+                  "QA_A619_雪 & café",
+                  "7",
+                  "{\"kind\": \"first\", \"empty\": \"\"}"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["2", "QA_A619_TWO", "11", "{\"list\": [1, 2, 3]}"]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["3", "QA_A619_THREE", "0", "{}"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "console": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": \"INSERT INTO qa_a619_items (label,qty,tags) VALUES ('QA_A619_雪 & café',7,'{\\\"kind\\\":\\\"first\\\",\\\"empty\\\":\\\"\\\"}'),('QA_A619_TWO',11,'{\\\"list\\\":[1,2,3]}'),('QA_A619_THREE',0,'{}') RETURNING id,label,qty,tags::text;\"\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- paragraph: 3 rows returned\n- table:\n  - rowgroup:\n    - row \"id label qty tags\":\n      - columnheader \"id\"\n      - columnheader \"label\"\n      - columnheader \"qty\"\n      - columnheader \"tags\"\n  - rowgroup:\n    - 'row \"1 QA_A619_雪 & café 7 {\\\"kind\\\": \\\"first\\\", \\\"empty\\\": \\\"\\\"}\"':\n      - cell \"1\"\n      - cell \"QA_A619_雪 & café\"\n      - cell \"7\"\n      - 'cell \"{\\\"kind\\\": \\\"first\\\", \\\"empty\\\": \\\"\\\"}\"'\n    - 'row \"2 QA_A619_TWO 11 {\\\"list\\\": [1, 2, 3]}\"':\n      - cell \"2\"\n      - cell \"QA_A619_TWO\"\n      - cell \"11\"\n      - 'cell \"{\\\"list\\\": [1, 2, 3]}\"'\n    - 'row \"3 QA_A619_THREE 0 {}\"':\n      - cell \"3\"\n      - cell \"QA_A619_THREE\"\n      - cell \"0\"\n      - 'cell \"{}\"'\n- paragraph: Query history\n- button \"Clear\"\n- 'button \"INSERT INTO qa_a619_items (label,qty,tags) VALUES (''QA_A619_雪 & café'',7,''{\\\"kind\\\":\\\"first\\\",\\\"empty\\\":\\\"\\\"}''),(''QA_A619_TWO'',11,''{\\\"list\\\":[1,2,3]}''),(''QA_A619_THREE'',0,''{}'') RETURNING id,label,qty,tags::text;\"'\n- 'button \"CREATE TABLE qa_a619_items (id bigserial PRIMARY KEY, label text NOT NULL, qty integer NOT NULL CHECK (qty >= 0), tags jsonb NOT NULL DEFAULT ''{}'');\"'"
+    },
+    "a619View": {
+      "at": "2026-10-15T19:05:36.841Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8i70rh673c73bis1vg",
+          "sql": "CREATE VIEW qa_a619_summary AS SELECT count(*) AS total, sum(qty) AS quantity FROM qa_a619_items;",
+          "allowWrites": true
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": [],
+            "rowCount": 0,
+            "rows": [],
+            "truncated": false
+          }
+        }
+      },
+      "console": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": CREATE VIEW qa_a619_summary AS SELECT count(*) AS total, sum(qty) AS quantity FROM qa_a619_items;\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- paragraph: 0 rows affected\n- paragraph: Query history\n- button \"Clear\"\n- button \"CREATE VIEW qa_a619_summary AS SELECT count(*) AS total, sum(qty) AS quantity FROM qa_a619_items;\"\n- 'button \"INSERT INTO qa_a619_items (label,qty,tags) VALUES (''QA_A619_雪 & café'',7,''{\\\"kind\\\":\\\"first\\\",\\\"empty\\\":\\\"\\\"}''),(''QA_A619_TWO'',11,''{\\\"list\\\":[1,2,3]}''),(''QA_A619_THREE'',0,''{}'') RETURNING id,label,qty,tags::text;\"'\n- 'button \"CREATE TABLE qa_a619_items (id bigserial PRIMARY KEY, label text NOT NULL, qty integer NOT NULL CHECK (qty >= 0), tags jsonb NOT NULL DEFAULT ''{}'');\"'"
+    },
+    "a619DataBeforeUpgrade": {
+      "at": "2026-10-15T19:05:38.920Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8i70rh673c73bis1vg",
+          "sql": "SELECT current_setting('server_version_num') AS version, (SELECT jsonb_agg(to_jsonb(i) ORDER BY id)::text FROM qa_a619_items i) AS rows, (SELECT row_to_json(s)::text FROM qa_a619_summary s) AS summary;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["version", "rows", "summary"],
+            "rowCount": 1,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "160015",
+                  "[{\"id\": 1, \"qty\": 7, \"tags\": {\"kind\": \"first\", \"empty\": \"\"}, \"label\": \"QA_A619_雪 & café\"}, {\"id\": 2, \"qty\": 11, \"tags\": {\"list\": [1, 2, 3]}, \"label\": \"QA_A619_TWO\"}, {\"id\": 3, \"qty\": 0, \"tags\": {}, \"label\": \"QA_A619_THREE\"}]",
+                  "{\"total\":3,\"quantity\":18}"
+                ]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "console": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": SELECT current_setting('server_version_num') AS version, (SELECT jsonb_agg(to_jsonb(i) ORDER BY id)::text FROM qa_a619_items i) AS rows, (SELECT row_to_json(s)::text FROM qa_a619_summary s) AS summary;\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- paragraph: 1 row returned\n- table:\n  - rowgroup:\n    - row \"version rows summary\":\n      - columnheader \"version\"\n      - columnheader \"rows\"\n      - columnheader \"summary\"\n  - rowgroup:\n    - 'row \"160015 [{\\\"id\\\": 1, \\\"qty\\\": 7, \\\"tags\\\": {\\\"kind\\\": \\\"first\\\", \\\"empty\\\": \\\"\\\"}, \\\"label\\\": \\\"QA_A619_雪 & café\\\"}, {\\\"id\\\": 2, \\\"qty\\\": 11, \\\"tags\\\": {\\\"list\\\": [1, 2, 3]}, \\\"label\\\": \\\"QA_A619_TWO\\\"}, {\\\"id\\\": 3, \\\"qty\\\": 0, \\\"tags\\\": {}, \\\"label\\\": \\\"QA_A619_THREE\\\"}] {\\\"total\\\":3,\\\"quantity\\\":18}\"':\n      - cell \"160015\"\n      - 'cell \"[{\\\"id\\\": 1, \\\"qty\\\": 7, \\\"tags\\\": {\\\"kind\\\": \\\"first\\\", \\\"empty\\\": \\\"\\\"}, \\\"label\\\": \\\"QA_A619_雪 & café\\\"}, {\\\"id\\\": 2, \\\"qty\\\": 11, \\\"tags\\\": {\\\"list\\\": [1, 2, 3]}, \\\"label\\\": \\\"QA_A619_TWO\\\"}, {\\\"id\\\": 3, \\\"qty\\\": 0, \\\"tags\\\": {}, \\\"label\\\": \\\"QA_A619_THREE\\\"}]\"'\n      - 'cell \"{\\\"total\\\":3,\\\"quantity\\\":18}\"'\n- paragraph: Query history\n- button \"Clear\"\n- button \"SELECT current_setting('server_version_num') AS version, (SELECT jsonb_agg(to_jsonb(i) ORDER BY id)::text FROM qa_a619_items i) AS rows, (SELECT row_to_json(s)::text FROM qa_a619_summary s) AS summary;\"\n- button \"CREATE VIEW qa_a619_summary AS SELECT count(*) AS total, sum(qty) AS quantity FROM qa_a619_items;\"\n- 'button \"INSERT INTO qa_a619_items (label,qty,tags) VALUES (''QA_A619_雪 & café'',7,''{\\\"kind\\\":\\\"first\\\",\\\"empty\\\":\\\"\\\"}''),(''QA_A619_TWO'',11,''{\\\"list\\\":[1,2,3]}''),(''QA_A619_THREE'',0,''{}'') RETURNING id,label,qty,tags::text;\"'\n- 'button \"CREATE TABLE qa_a619_items (id bigserial PRIMARY KEY, label text NOT NULL, qty integer NOT NULL CHECK (qty >= 0), tags jsonb NOT NULL DEFAULT ''{}'');\"'"
+    },
+    "a619UpgradeCanceled": {
+      "at": "2026-10-15T19:05:55.350Z",
+      "requests": [],
+      "status": 200,
+      "body": {
+        "data": {
+          "database": {
+            "id": "dpg-db8i70rh673c73bis1vg",
+            "name": "qa-20261015-a619-upgrade",
+            "status": "available",
+            "version": "16"
+          }
+        }
+      }
+    },
+    "a619MobileUpgradeReady": {
+      "at": "2026-10-15T19:05:57.205Z",
+      "dialog": "- dialog \"Upgrade PostgreSQL\":\n  - heading \"Upgrade PostgreSQL\" [level=2]\n  - paragraph: Upgrade this database from PostgreSQL 16 to a newer supported major version.\n  - text: Target version\n  - combobox \"Target version\": PostgreSQL 17\n  - paragraph: The database will be unavailable while the offline upgrade runs. Test compatibility first and schedule downtime; large databases can take up to an hour.\n  - button \"Cancel\"\n  - button \"Upgrade to PostgreSQL 17\"\n  - button \"Close\""
+    },
+    "a619UpgradeAccepted": {
+      "at": "2026-10-15T19:06:07.695Z",
+      "request": {
+        "operationName": "UpdateDatabaseVersion",
+        "variables": {
+          "id": "dpg-db8i70rh673c73bis1vg",
+          "version": "17"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation UpdateDatabaseVersion($id: String!, $version: String!) {\n  updateDatabaseVersion(id: $id, version: $version) {\n    id\n    version\n    status\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "updateDatabaseVersion": {
+            "__typename": "Database",
+            "id": "dpg-db8i70rh673c73bis1vg",
+            "status": "config_restart",
+            "version": "16"
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db8i70rh673c73bis1vg"
+    },
+    "a619SQLDuringUpgradeV2": {
+      "at": "2026-10-15T19:08:09.168Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8i70rh673c73bis1vg",
+          "sql": "SELECT current_setting('server_version_num') AS version, 'QA_A619_DURING' AS marker;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": null
+        },
+        "errors": [
+          {
+            "message": "internal error",
+            "locations": [
+              {
+                "line": 2,
+                "column": 3
+              }
+            ],
+            "path": ["executeDatabaseQuery"]
+          }
+        ]
+      },
+      "console": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": SELECT current_setting('server_version_num') AS version, 'QA_A619_DURING' AS marker;\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- alert: internal error\n- paragraph: Query history\n- button \"Clear\"\n- button \"SELECT current_setting('server_version_num') AS version, 'QA_A619_DURING' AS marker;\"\n- button \"SELECT current_setting('server_version_num') AS version, (SELECT jsonb_agg(to_jsonb(i) ORDER BY id)::text FROM qa_a619_items i) AS rows, (SELECT row_to_json(s)::text FROM qa_a619_summary s) AS summary;\"\n- button \"CREATE VIEW qa_a619_summary AS SELECT count(*) AS total, sum(qty) AS quantity FROM qa_a619_items;\"\n- 'button \"INSERT INTO qa_a619_items (label,qty,tags) VALUES (''QA_A619_雪 & café'',7,''{\\\"kind\\\":\\\"first\\\",\\\"empty\\\":\\\"\\\"}''),(''QA_A619_TWO'',11,''{\\\"list\\\":[1,2,3]}''),(''QA_A619_THREE'',0,''{}'') RETURNING id,label,qty,tags::text;\"'\n- 'button \"CREATE TABLE qa_a619_items (id bigserial PRIMARY KEY, label text NOT NULL, qty integer NOT NULL CHECK (qty >= 0), tags jsonb NOT NULL DEFAULT ''{}'');\"'"
+    },
+    "a619UpgradeRead2": {
+      "at": "2026-10-15T19:08:10.631Z",
+      "status": 200,
+      "body": {
+        "data": {
+          "database": {
+            "id": "dpg-db8i70rh673c73bis1vg",
+            "name": "qa-20261015-a619-upgrade",
+            "status": "upgrading",
+            "version": "16"
+          }
+        }
+      },
+      "ui": "Details\nName\nChange the display name. The database ID and all connection details stay the same.\nStatus\nUpgrading\nInstance type\nFree\nVersion\nPostgreSQL 16\nUpgrade in progress\nDatabase\ndpg_db8i70rh673c73bis1vg\nUser\ndpg_db8i70rh673c73bis1vg_user\nStorage\n1 GB\nHigh availability\nNo\nPublic access\nNo\nRegion\nfsn1\nCreated\n4m"
+    },
+    "a619FreshDesktopDuringUpgrade": {
+      "at": "2026-10-15T19:09:27.629Z",
+      "ui": "Details\nName\nChange the display name. The database ID and all connection details stay the same.\nStatus\nRestarting\nInstance type\nFree\nVersion\nPostgreSQL 17\nUpgrade\nDatabase\ndpg_db8i70rh673c73bis1vg\nUser\ndpg_db8i70rh673c73bis1vg_user\nStorage\n1 GB\nHigh availability\nNo\nPublic access\nNo\nRegion\nfsn1\nCreated\n5m",
+      "runEnabled": true,
+      "draft": "SELECT current_setting('server_version_num') AS version, 'QA_A619_DURING' AS marker;"
+    },
+    "a619FreshDesktopSQLDuringUpgrade": {
+      "at": "2026-10-15T19:09:29.796Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8i70rh673c73bis1vg",
+          "sql": "SELECT 'QA_A619_FRESH_UPGRADE_READ' AS marker;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": null
+        },
+        "errors": [
+          {
+            "message": "internal error",
+            "locations": [
+              {
+                "line": 2,
+                "column": 3
+              }
+            ],
+            "path": ["executeDatabaseQuery"]
+          }
+        ]
+      },
+      "console": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": SELECT 'QA_A619_FRESH_UPGRADE_READ' AS marker;\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- alert: internal error\n- paragraph: Query history\n- button \"Clear\"\n- button \"SELECT 'QA_A619_FRESH_UPGRADE_READ' AS marker;\"\n- button \"SELECT current_setting('server_version_num') AS version, 'QA_A619_DURING' AS marker;\"\n- button \"SELECT current_setting('server_version_num') AS version, (SELECT jsonb_agg(to_jsonb(i) ORDER BY id)::text FROM qa_a619_items i) AS rows, (SELECT row_to_json(s)::text FROM qa_a619_summary s) AS summary;\"\n- button \"CREATE VIEW qa_a619_summary AS SELECT count(*) AS total, sum(qty) AS quantity FROM qa_a619_items;\"\n- 'button \"INSERT INTO qa_a619_items (label,qty,tags) VALUES (''QA_A619_雪 & café'',7,''{\\\"kind\\\":\\\"first\\\",\\\"empty\\\":\\\"\\\"}''),(''QA_A619_TWO'',11,''{\\\"list\\\":[1,2,3]}''),(''QA_A619_THREE'',0,''{}'') RETURNING id,label,qty,tags::text;\"'\n- 'button \"CREATE TABLE qa_a619_items (id bigserial PRIMARY KEY, label text NOT NULL, qty integer NOT NULL CHECK (qty >= 0), tags jsonb NOT NULL DEFAULT ''{}'');\"'"
+    },
+    "a619DataAfterUpgrade": {
+      "at": "2026-10-15T19:10:06.489Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8i70rh673c73bis1vg",
+          "sql": "SELECT current_setting('server_version_num') AS version, (SELECT jsonb_agg(to_jsonb(i) ORDER BY id)::text FROM qa_a619_items i) AS rows, (SELECT row_to_json(s)::text FROM qa_a619_summary s) AS summary;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["version", "rows", "summary"],
+            "rowCount": 1,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "170011",
+                  "[{\"id\": 1, \"qty\": 7, \"tags\": {\"kind\": \"first\", \"empty\": \"\"}, \"label\": \"QA_A619_雪 & café\"}, {\"id\": 2, \"qty\": 11, \"tags\": {\"list\": [1, 2, 3]}, \"label\": \"QA_A619_TWO\"}, {\"id\": 3, \"qty\": 0, \"tags\": {}, \"label\": \"QA_A619_THREE\"}]",
+                  "{\"total\":3,\"quantity\":18}"
+                ]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "console": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": SELECT current_setting('server_version_num') AS version, (SELECT jsonb_agg(to_jsonb(i) ORDER BY id)::text FROM qa_a619_items i) AS rows, (SELECT row_to_json(s)::text FROM qa_a619_summary s) AS summary;\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- paragraph: 1 row returned\n- table:\n  - rowgroup:\n    - row \"version rows summary\":\n      - columnheader \"version\"\n      - columnheader \"rows\"\n      - columnheader \"summary\"\n  - rowgroup:\n    - 'row \"170011 [{\\\"id\\\": 1, \\\"qty\\\": 7, \\\"tags\\\": {\\\"kind\\\": \\\"first\\\", \\\"empty\\\": \\\"\\\"}, \\\"label\\\": \\\"QA_A619_雪 & café\\\"}, {\\\"id\\\": 2, \\\"qty\\\": 11, \\\"tags\\\": {\\\"list\\\": [1, 2, 3]}, \\\"label\\\": \\\"QA_A619_TWO\\\"}, {\\\"id\\\": 3, \\\"qty\\\": 0, \\\"tags\\\": {}, \\\"label\\\": \\\"QA_A619_THREE\\\"}] {\\\"total\\\":3,\\\"quantity\\\":18}\"':\n      - cell \"170011\"\n      - 'cell \"[{\\\"id\\\": 1, \\\"qty\\\": 7, \\\"tags\\\": {\\\"kind\\\": \\\"first\\\", \\\"empty\\\": \\\"\\\"}, \\\"label\\\": \\\"QA_A619_雪 & café\\\"}, {\\\"id\\\": 2, \\\"qty\\\": 11, \\\"tags\\\": {\\\"list\\\": [1, 2, 3]}, \\\"label\\\": \\\"QA_A619_TWO\\\"}, {\\\"id\\\": 3, \\\"qty\\\": 0, \\\"tags\\\": {}, \\\"label\\\": \\\"QA_A619_THREE\\\"}]\"'\n      - 'cell \"{\\\"total\\\":3,\\\"quantity\\\":18}\"'\n- paragraph: Query history\n- button \"Clear\"\n- button \"SELECT current_setting('server_version_num') AS version, (SELECT jsonb_agg(to_jsonb(i) ORDER BY id)::text FROM qa_a619_items i) AS rows, (SELECT row_to_json(s)::text FROM qa_a619_summary s) AS summary;\"\n- button \"SELECT 'QA_A619_FRESH_UPGRADE_READ' AS marker;\"\n- button \"SELECT current_setting('server_version_num') AS version, 'QA_A619_DURING' AS marker;\"\n- button \"CREATE VIEW qa_a619_summary AS SELECT count(*) AS total, sum(qty) AS quantity FROM qa_a619_items;\"\n- 'button \"INSERT INTO qa_a619_items (label,qty,tags) VALUES (''QA_A619_雪 & café'',7,''{\\\"kind\\\":\\\"first\\\",\\\"empty\\\":\\\"\\\"}''),(''QA_A619_TWO'',11,''{\\\"list\\\":[1,2,3]}''),(''QA_A619_THREE'',0,''{}'') RETURNING id,label,qty,tags::text;\"'\n- 'button \"CREATE TABLE qa_a619_items (id bigserial PRIMARY KEY, label text NOT NULL, qty integer NOT NULL CHECK (qty >= 0), tags jsonb NOT NULL DEFAULT ''{}'');\"'"
+    },
+    "a619SequenceAfterUpgrade": {
+      "at": "2026-10-15T19:10:09.137Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8i70rh673c73bis1vg",
+          "sql": "INSERT INTO qa_a619_items (label,qty) VALUES ('QA_A619_AFTER_UPGRADE',5) RETURNING id,label,qty;",
+          "allowWrites": true
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["id", "label", "qty"],
+            "rowCount": 1,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["4", "QA_A619_AFTER_UPGRADE", "5"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "console": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": INSERT INTO qa_a619_items (label,qty) VALUES ('QA_A619_AFTER_UPGRADE',5) RETURNING id,label,qty;\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- paragraph: 1 row returned\n- table:\n  - rowgroup:\n    - row \"id label qty\":\n      - columnheader \"id\"\n      - columnheader \"label\"\n      - columnheader \"qty\"\n  - rowgroup:\n    - row \"4 QA_A619_AFTER_UPGRADE 5\":\n      - cell \"4\"\n      - cell \"QA_A619_AFTER_UPGRADE\"\n      - cell \"5\"\n- paragraph: Query history\n- button \"Clear\"\n- button \"INSERT INTO qa_a619_items (label,qty) VALUES ('QA_A619_AFTER_UPGRADE',5) RETURNING id,label,qty;\"\n- button \"SELECT current_setting('server_version_num') AS version, (SELECT jsonb_agg(to_jsonb(i) ORDER BY id)::text FROM qa_a619_items i) AS rows, (SELECT row_to_json(s)::text FROM qa_a619_summary s) AS summary;\"\n- button \"SELECT 'QA_A619_FRESH_UPGRADE_READ' AS marker;\"\n- button \"SELECT current_setting('server_version_num') AS version, 'QA_A619_DURING' AS marker;\"\n- button \"CREATE VIEW qa_a619_summary AS SELECT count(*) AS total, sum(qty) AS quantity FROM qa_a619_items;\"\n- 'button \"INSERT INTO qa_a619_items (label,qty,tags) VALUES (''QA_A619_雪 & café'',7,''{\\\"kind\\\":\\\"first\\\",\\\"empty\\\":\\\"\\\"}''),(''QA_A619_TWO'',11,''{\\\"list\\\":[1,2,3]}''),(''QA_A619_THREE'',0,''{}'') RETURNING id,label,qty,tags::text;\"'\n- 'button \"CREATE TABLE qa_a619_items (id bigserial PRIMARY KEY, label text NOT NULL, qty integer NOT NULL CHECK (qty >= 0), tags jsonb NOT NULL DEFAULT ''{}'');\"'"
+    },
+    "a619RestartAccepted": {
+      "at": "2026-10-15T19:11:16.176Z",
+      "request": {
+        "operationName": "RestartDatabase",
+        "variables": {
+          "id": "dpg-db8i70rh673c73bis1vg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation RestartDatabase($id: String!) {\n  restartDatabase(id: $id) {\n    id\n    suspended\n    status\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "restartDatabase": {
+            "__typename": "Database",
+            "id": "dpg-db8i70rh673c73bis1vg",
+            "status": "config_restart",
+            "suspended": "not_suspended"
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db8i70rh673c73bis1vg#sql-console"
+    },
+    "a619FreshMobileRestarting": {
+      "at": "2026-10-15T19:11:18.318Z",
+      "status": 200,
+      "body": {
+        "data": {
+          "database": {
+            "id": "dpg-db8i70rh673c73bis1vg",
+            "name": "qa-20261015-a619-upgrade",
+            "status": "config_restart",
+            "version": "17"
+          }
+        }
+      },
+      "ui": "Details\nName\nChange the display name. The database ID and all connection details stay the same.\nStatus\nRestarting\nInstance type\nFree\nVersion\nPostgreSQL 17\nUpgrade\nDatabase\ndpg_db8i70rh673c73bis1vg\nUser\ndpg_db8i70rh673c73bis1vg_user\nStorage\n1 GB\nHigh availability\nNo\nPublic access\nNo\nRegion\nfsn1\nCreated\n7m",
+      "runEnabled": true
+    },
+    "a619FreshMobileSQLRestarting": {
+      "at": "2026-10-15T19:11:20.715Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8i70rh673c73bis1vg",
+          "sql": "SELECT 'QA_A619_RESTART_READ' AS marker;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": null
+        },
+        "errors": [
+          {
+            "message": "internal error",
+            "locations": [
+              {
+                "line": 2,
+                "column": 3
+              }
+            ],
+            "path": ["executeDatabaseQuery"]
+          }
+        ]
+      },
+      "console": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": SELECT 'QA_A619_RESTART_READ' AS marker;\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- alert: internal error\n- paragraph: Query history\n- button \"Clear\"\n- button \"SELECT 'QA_A619_RESTART_READ' AS marker;\"\n- button \"INSERT INTO qa_a619_items (label,qty) VALUES ('QA_A619_AFTER_UPGRADE',5) RETURNING id,label,qty;\"\n- button \"SELECT current_setting('server_version_num') AS version, (SELECT jsonb_agg(to_jsonb(i) ORDER BY id)::text FROM qa_a619_items i) AS rows, (SELECT row_to_json(s)::text FROM qa_a619_summary s) AS summary;\"\n- button \"SELECT 'QA_A619_FRESH_UPGRADE_READ' AS marker;\"\n- button \"SELECT current_setting('server_version_num') AS version, 'QA_A619_DURING' AS marker;\"\n- button \"CREATE VIEW qa_a619_summary AS SELECT count(*) AS total, sum(qty) AS quantity FROM qa_a619_items;\"\n- 'button \"INSERT INTO qa_a619_items (label,qty,tags) VALUES (''QA_A619_雪 & café'',7,''{\\\"kind\\\":\\\"first\\\",\\\"empty\\\":\\\"\\\"}''),(''QA_A619_TWO'',11,''{\\\"list\\\":[1,2,3]}''),(''QA_A619_THREE'',0,''{}'') RETURNING id,label,qty,tags::text;\"'\n- 'button \"CREATE TABLE qa_a619_items (id bigserial PRIMARY KEY, label text NOT NULL, qty integer NOT NULL CHECK (qty >= 0), tags jsonb NOT NULL DEFAULT ''{}'');\"'"
+    },
+    "a619RestartingScreenshotReceipt": {
+      "at": "2026-10-15T19:11:21.825Z",
+      "status": "Details\nName\nChange the display name. The database ID and all connection details stay the same.\nStatus\nRestarting\nInstance type\nFree\nVersion\nPostgreSQL 17\nUpgrade\nDatabase\ndpg_db8i70rh673c73bis1vg\nUser\ndpg_db8i70rh673c73bis1vg_user\nStorage\n1 GB\nHigh availability\nNo\nPublic access\nNo\nRegion\nfsn1\nCreated\n7m",
+      "console": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": SELECT 'QA_A619_RESTART_READ' AS marker;\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- alert: internal error\n- paragraph: Query history\n- button \"Clear\"\n- button \"SELECT 'QA_A619_RESTART_READ' AS marker;\"\n- button \"INSERT INTO qa_a619_items (label,qty) VALUES ('QA_A619_AFTER_UPGRADE',5) RETURNING id,label,qty;\"\n- button \"SELECT current_setting('server_version_num') AS version, (SELECT jsonb_agg(to_jsonb(i) ORDER BY id)::text FROM qa_a619_items i) AS rows, (SELECT row_to_json(s)::text FROM qa_a619_summary s) AS summary;\"\n- button \"SELECT 'QA_A619_FRESH_UPGRADE_READ' AS marker;\"\n- button \"SELECT current_setting('server_version_num') AS version, 'QA_A619_DURING' AS marker;\"\n- button \"CREATE VIEW qa_a619_summary AS SELECT count(*) AS total, sum(qty) AS quantity FROM qa_a619_items;\"\n- 'button \"INSERT INTO qa_a619_items (label,qty,tags) VALUES (''QA_A619_雪 & café'',7,''{\\\"kind\\\":\\\"first\\\",\\\"empty\\\":\\\"\\\"}''),(''QA_A619_TWO'',11,''{\\\"list\\\":[1,2,3]}''),(''QA_A619_THREE'',0,''{}'') RETURNING id,label,qty,tags::text;\"'\n- 'button \"CREATE TABLE qa_a619_items (id bigserial PRIMARY KEY, label text NOT NULL, qty integer NOT NULL CHECK (qty >= 0), tags jsonb NOT NULL DEFAULT ''{}'');\"'"
+    },
+    "a619RecoveryUnchangedDraft": {
+      "at": "2026-10-15T19:12:17.006Z",
+      "ui": "Details\nName\nChange the display name. The database ID and all connection details stay the same.\nStatus\nAvailable\nInstance type\nFree\nVersion\nPostgreSQL 17\nUpgrade\nDatabase\ndpg_db8i70rh673c73bis1vg\nUser\ndpg_db8i70rh673c73bis1vg_user\nStorage\n1 GB\nHigh availability\nNo\nPublic access\nNo\nRegion\nfsn1\nCreated\n8m",
+      "draft": "SELECT 'QA_A619_RESTART_READ' AS marker;",
+      "runEnabled": true
+    },
+    "a619SameQueryRecovered": {
+      "at": "2026-10-15T19:12:21.662Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8i70rh673c73bis1vg",
+          "sql": "SELECT 'QA_A619_RESTART_READ' AS marker;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["marker"],
+            "rowCount": 1,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["QA_A619_RESTART_READ"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db8i70rh673c73bis1vg#sql-console"
+    },
+    "a619AllDataAfterRestart": {
+      "at": "2026-10-15T19:12:24.097Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8i70rh673c73bis1vg",
+          "sql": "SELECT count(*)::text AS total, sum(qty)::text AS quantity FROM qa_a619_items;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["total", "quantity"],
+            "rowCount": 1,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["4", "23"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "console": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": SELECT count(*)::text AS total, sum(qty)::text AS quantity FROM qa_a619_items;\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- paragraph: 1 row returned\n- table:\n  - rowgroup:\n    - row \"total quantity\":\n      - columnheader \"total\"\n      - columnheader \"quantity\"\n  - rowgroup:\n    - row \"4 23\":\n      - cell \"4\"\n      - cell \"23\"\n- paragraph: Query history\n- button \"Clear\"\n- button \"SELECT count(*)::text AS total, sum(qty)::text AS quantity FROM qa_a619_items;\"\n- button \"SELECT 'QA_A619_RESTART_READ' AS marker;\"\n- button \"INSERT INTO qa_a619_items (label,qty) VALUES ('QA_A619_AFTER_UPGRADE',5) RETURNING id,label,qty;\"\n- button \"SELECT current_setting('server_version_num') AS version, (SELECT jsonb_agg(to_jsonb(i) ORDER BY id)::text FROM qa_a619_items i) AS rows, (SELECT row_to_json(s)::text FROM qa_a619_summary s) AS summary;\"\n- button \"SELECT 'QA_A619_FRESH_UPGRADE_READ' AS marker;\"\n- button \"SELECT current_setting('server_version_num') AS version, 'QA_A619_DURING' AS marker;\"\n- button \"CREATE VIEW qa_a619_summary AS SELECT count(*) AS total, sum(qty) AS quantity FROM qa_a619_items;\"\n- 'button \"INSERT INTO qa_a619_items (label,qty,tags) VALUES (''QA_A619_雪 & café'',7,''{\\\"kind\\\":\\\"first\\\",\\\"empty\\\":\\\"\\\"}''),(''QA_A619_TWO'',11,''{\\\"list\\\":[1,2,3]}''),(''QA_A619_THREE'',0,''{}'') RETURNING id,label,qty,tags::text;\"'\n- 'button \"CREATE TABLE qa_a619_items (id bigserial PRIMARY KEY, label text NOT NULL, qty integer NOT NULL CHECK (qty >= 0), tags jsonb NOT NULL DEFAULT ''{}'');\"'"
+    },
+    "a619DropView": {
+      "at": "2026-10-15T19:12:26.704Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8i70rh673c73bis1vg",
+          "sql": "DROP VIEW qa_a619_summary;",
+          "allowWrites": true
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": [],
+            "rowCount": 0,
+            "rows": [],
+            "truncated": false
+          }
+        }
+      },
+      "console": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": DROP VIEW qa_a619_summary;\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- paragraph: 0 rows affected\n- paragraph: Query history\n- button \"Clear\"\n- button \"DROP VIEW qa_a619_summary;\"\n- button \"SELECT count(*)::text AS total, sum(qty)::text AS quantity FROM qa_a619_items;\"\n- button \"SELECT 'QA_A619_RESTART_READ' AS marker;\"\n- button \"INSERT INTO qa_a619_items (label,qty) VALUES ('QA_A619_AFTER_UPGRADE',5) RETURNING id,label,qty;\"\n- button \"SELECT current_setting('server_version_num') AS version, (SELECT jsonb_agg(to_jsonb(i) ORDER BY id)::text FROM qa_a619_items i) AS rows, (SELECT row_to_json(s)::text FROM qa_a619_summary s) AS summary;\"\n- button \"SELECT 'QA_A619_FRESH_UPGRADE_READ' AS marker;\"\n- button \"SELECT current_setting('server_version_num') AS version, 'QA_A619_DURING' AS marker;\"\n- button \"CREATE VIEW qa_a619_summary AS SELECT count(*) AS total, sum(qty) AS quantity FROM qa_a619_items;\"\n- 'button \"INSERT INTO qa_a619_items (label,qty,tags) VALUES (''QA_A619_雪 & café'',7,''{\\\"kind\\\":\\\"first\\\",\\\"empty\\\":\\\"\\\"}''),(''QA_A619_TWO'',11,''{\\\"list\\\":[1,2,3]}''),(''QA_A619_THREE'',0,''{}'') RETURNING id,label,qty,tags::text;\"'\n- 'button \"CREATE TABLE qa_a619_items (id bigserial PRIMARY KEY, label text NOT NULL, qty integer NOT NULL CHECK (qty >= 0), tags jsonb NOT NULL DEFAULT ''{}'');\"'"
+    },
+    "a619DropTable": {
+      "at": "2026-10-15T19:12:29.307Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8i70rh673c73bis1vg",
+          "sql": "DROP TABLE qa_a619_items;",
+          "allowWrites": true
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": [],
+            "rowCount": 0,
+            "rows": [],
+            "truncated": false
+          }
+        }
+      },
+      "console": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": DROP TABLE qa_a619_items;\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- paragraph: 0 rows affected\n- paragraph: Query history\n- button \"Clear\"\n- button \"DROP TABLE qa_a619_items;\"\n- button \"DROP VIEW qa_a619_summary;\"\n- button \"SELECT count(*)::text AS total, sum(qty)::text AS quantity FROM qa_a619_items;\"\n- button \"SELECT 'QA_A619_RESTART_READ' AS marker;\"\n- button \"INSERT INTO qa_a619_items (label,qty) VALUES ('QA_A619_AFTER_UPGRADE',5) RETURNING id,label,qty;\"\n- button \"SELECT current_setting('server_version_num') AS version, (SELECT jsonb_agg(to_jsonb(i) ORDER BY id)::text FROM qa_a619_items i) AS rows, (SELECT row_to_json(s)::text FROM qa_a619_summary s) AS summary;\"\n- button \"SELECT 'QA_A619_FRESH_UPGRADE_READ' AS marker;\"\n- button \"SELECT current_setting('server_version_num') AS version, 'QA_A619_DURING' AS marker;\"\n- button \"CREATE VIEW qa_a619_summary AS SELECT count(*) AS total, sum(qty) AS quantity FROM qa_a619_items;\"\n- 'button \"INSERT INTO qa_a619_items (label,qty,tags) VALUES (''QA_A619_雪 & café'',7,''{\\\"kind\\\":\\\"first\\\",\\\"empty\\\":\\\"\\\"}''),(''QA_A619_TWO'',11,''{\\\"list\\\":[1,2,3]}''),(''QA_A619_THREE'',0,''{}'') RETURNING id,label,qty,tags::text;\"'\n- 'button \"CREATE TABLE qa_a619_items (id bigserial PRIMARY KEY, label text NOT NULL, qty integer NOT NULL CHECK (qty >= 0), tags jsonb NOT NULL DEFAULT ''{}'');\"'"
+    },
+    "a619Deleted": {
+      "at": "2026-10-15T19:12:42.938Z",
+      "request": {
+        "operationName": "DeleteDatabase",
+        "variables": {
+          "id": "dpg-db8i70rh673c73bis1vg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation DeleteDatabase($id: String!, $confirm: String) {\n  deleteDatabase(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteDatabase": true
+        }
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "a619CleanupInventory": {
+      "at": "2026-10-15T19:12:54.561Z",
+      "status": 200,
+      "inventory": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      },
+      "deletedStatus": 404,
+      "historyRemoved": true
+    },
+    "a619InventoryMatches": {
+      "blueprints": true,
+      "databases": true,
+      "envGroups": true,
+      "keyValues": true,
+      "projects": true,
+      "services": true,
+      "webhookEndpoints": true
+    },
+    "a619Cleared": {
+      "at": "2026-10-15T19:13:24.184Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  },
+  "upgradeDataMatches": {
+    "server17": true,
+    "rowsExact": true,
+    "viewExact": true
+  },
+  "cleanup": {
+    "logoutExit": 0,
+    "session": {
+      "at": "2026-10-15T19:13:24.184Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "inventoryMatches": {
+      "blueprints": true,
+      "databases": true,
+      "envGroups": true,
+      "keyValues": true,
+      "projects": true,
+      "services": true,
+      "webhookEndpoints": true
+    },
+    "apiStatus": 404,
+    "historyRemoved": true,
+    "consoleErrors": 0
+  },
+  "dedupe": {
+    "boardMarkdownFiles": 9194,
+    "openBlockedMilestoneReadmes": 73,
+    "existingOwner": "w4/blocked/177",
+    "sourceAlreadyFixesSuspended": true,
+    "knownFollowups": [
+      "initial Creating",
+      "pending write confirmation",
+      "required lifecycle audit for config_restart/upgrading"
+    ],
+    "newUIReadinessFixOnMain": false
+  },
+  "screenshot": {
+    "path": ".playwright-mcp/qa-a619-restarting-sql-mobile.png",
+    "viewed": true,
+    "role": "Supplement only; screenshot shows header Restarting beside enabled Run query and internal error"
+  },
+  "limits": [
+    "UI-only extension of planned lifecycle-readiness audit; no broader backend error-classification change scheduled",
+    "No fresh desktop Upgrading failure capture: the fresh desktop replay had advanced to config_restart; the initial mobile document captured Upgrading",
+    "No complete suspension UI/REST/GraphQL/MCP closeout, no real screen reader, paid/HA upgrade, direct REST/MCP restart query, interrupted-write confirmation or keyboard refusal replay",
+    "A short initial Available window after accepted upgrade was observed; no independent overlap with SQL outage was proven, so no additional status finding",
+    "Three-minute offline pg_upgrade completed with all seeded rows, view and sequence preserved; not a hang or data-loss finding",
+    "Harness errors for deferred SQL mount and dialog-vs-alertdialog are excluded; no mutation was blindly repeated"
+  ],
+  "postPull": {
+    "head": "fc4ff2b662ab534889ad26626e22945521d59969",
+    "review": "Incoming Postgres changes only refuse upgrade targets below16; SQLConsole, its route binding, execution hook and query.go are unchanged. No new readiness owner or pending-main fix."
+  }
+}
