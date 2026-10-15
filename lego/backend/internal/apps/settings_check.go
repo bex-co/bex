@@ -276,7 +276,7 @@ func (s *Service) checkPlan(ctx context.Context, a *appv1alpha1.App, plan string
 	tier := t.ID
 	// Paid-only types refuse a downgrade to free here, which is the SetPlan
 	// half (dry-run included) of the create-time rule in normalizeTierForType
-	// (ADR030 §7; private services added by w1/111).
+	// (ADR030 §7; private services added by w1/111, cron jobs by w8/048).
 	if paidOnlyServiceType(a.Spec.Type) && !core.PaidPlan(tier) {
 		return "", errFreePlanForType(a.Spec.Type)
 	}

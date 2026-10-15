@@ -3371,7 +3371,7 @@ func normalizeTierOrPlan(v string) (string, error) {
 // service the 0.5c-512mb compute plan, which is bex's cheapest paid rung, and
 // bex does the same for every type that runs an instance (w1/122, user
 // decision 2026-10-15); a static site runs none and keeps the catalog default.
-// A paid-only type (w6/025, w1/111) also refuses an explicit free plan.
+// A paid-only type (w6/025, w1/111, w8/048) also refuses an explicit free plan.
 func normalizeTierForType(svcType, plan string) (string, error) {
 	if plan == "" && svcType != appv1alpha1.TypeStaticSite {
 		return defaultPaidTierID(), nil
@@ -3396,11 +3396,17 @@ func normalizeTierForType(svcType, plan string) (string, error) {
 // a private service created with no plan came out `free` while a worker came out
 // `starter`, from this one function, for no recorded reason.
 //
-// Web services and cron jobs may still choose free explicitly — Render sells
-// both that way — and a static site runs no instance at all, so the rule is a
-// two-type allowlist rather than "everything but web".
+// Cron jobs joined them on 2026-10-15 (w8/048, user decision): Render's API
+// types every cron plan as paidPlan and its docs sell no free cron. Only a web
+// service may still choose free explicitly, and a static site runs no
+// instance at all, so the rule is an allowlist rather than "everything but
+// web".
 func paidOnlyServiceType(svcType string) bool {
-	return svcType == appv1alpha1.TypeBackgroundWorker || svcType == appv1alpha1.TypePrivateService
+	switch svcType {
+	case appv1alpha1.TypeBackgroundWorker, appv1alpha1.TypePrivateService, appv1alpha1.TypeCronJob:
+		return true
+	}
+	return false
 }
 
 // defaultPaidTierID is the cheapest paid rung of the compute ladder — the
@@ -3416,21 +3422,25 @@ func defaultPaidTierID() string {
 	return tiers.Compute.Default().ID
 }
 
-// errFreePlanForType refuses the free plan on a paid-only service type — a
-// background worker (w6/025) or a private service (w1/111). Built in one place so
-// the create path and both plan-change verbs word the refusal identically,
-// listing only the plans that type may use.
+// errFreePlanForType refuses the free plan on a paid-only service type
+// (paidOnlyServiceType). Built in one place so the create path, both
+// plan-change verbs, Blueprint validation and export word the refusal
+// identically, listing only the plans that type may use.
 func errFreePlanForType(svcType string) error {
+	return fmt.Errorf("%w: %s", core.ErrBadRequest, freePlanForTypeMessage(svcType))
+}
+
+// freePlanForTypeMessage names the type the caller actually asked for, not a
+// fixed noun: a message naming the wrong paid-only type sends the reader to
+// the wrong docs (w1/111).
+func freePlanForTypeMessage(svcType string) string {
 	paid := make([]string, 0, len(tiers.Compute.RenderPlans()))
 	for _, plan := range tiers.Compute.RenderPlans() {
 		if core.PaidPlan(plan) {
 			paid = append(paid, plan)
 		}
 	}
-	// Name the type the caller actually asked for, not a fixed noun: the same
-	// refusal now serves background_worker and private_service, and a message
-	// naming the wrong one sends the reader to the wrong docs (w1/111).
-	return fmt.Errorf("%w: a %s requires a paid plan; plan must be one of %s", core.ErrBadRequest, svcType, strings.Join(paid, "|"))
+	return fmt.Sprintf("a %s requires a paid plan; plan must be one of %s", svcType, strings.Join(paid, "|"))
 }
 
 // redeploy bumps spec.restartedAt to force the operator to roll a new revision

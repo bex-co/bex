@@ -174,8 +174,8 @@ func TestInstanceCapServiceTypeFamily(t *testing.T) {
 	}
 
 	// cron_job: a schedule, not a replica set — created at its single instance.
-	cron := CreateRequest{Name: "job", Type: appv1alpha1.TypeCronJob, Image: "job:1", Plan: "free", Schedule: "0 0 * * *", StartCommand: "bin/report"}
+	cron := CreateRequest{Name: "job", Type: appv1alpha1.TypeCronJob, Image: "job:1", Plan: "starter", Schedule: "0 0 * * *", StartCommand: "bin/report"}
 	if _, err := specFromCreate(cron); err != nil {
-		t.Errorf("free cron_job (no replica concept) must create cleanly, got %v", err)
+		t.Errorf("starter cron_job (no replica concept) must create cleanly, got %v", err)
 	}
 }

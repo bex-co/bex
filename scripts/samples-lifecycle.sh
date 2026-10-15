@@ -36,7 +36,8 @@
 # Knobs:
 #   BASE_DOMAIN       required safe app-hosting Public Suffix (URL = <name>.<BASE_DOMAIN>)
 #   REPO / BRANCH     repo-backed create source, default https://github.com/bex-co/bex, main
-#   PLAN              instance plan for created services, default free
+#   PLAN              instance plan for created web services, default free
+#   PAID_PLAN         plan for paid-only types (cron job, worker), default starter
 #   POLL_TIMEOUT      per-leg convergence budget in seconds, default 600
 #   POLL_INTERVAL     poll cadence in seconds, default 10
 #   DOWN_CONFIRM      consecutive "not serving" checks required to call a suspended
@@ -72,6 +73,7 @@ BASE_DOMAIN="${BASE_DOMAIN:-}"
 REPO="${REPO:-https://github.com/bex-co/bex}"
 BRANCH="${BRANCH:-main}"
 PLAN="${PLAN:-free}"
+PAID_PLAN="${PAID_PLAN:-starter}"
 POLL_TIMEOUT="${POLL_TIMEOUT:-600}"
 POLL_INTERVAL="${POLL_INTERVAL:-10}"
 DOWN_CONFIRM="${DOWN_CONFIRM:-3}"
@@ -266,7 +268,7 @@ load_spec() {
       # image-entrypoint cron still needs an explicit command via the CLI).
       CREATE_ARGS=(services create --name "$SVC_NAME" --type cron_job --confirm --output json
                    --repo "$REPO" --root-directory examples/cron-demo --branch "$BRANCH"
-                   --runtime docker --plan "$PLAN"
+                   --runtime docker --plan "$PAID_PLAN"
                    --cron-schedule "$CRON_SCHEDULE" --cron-command "/cron-demo"
                    --env-var "MESSAGE=$msg") ;;
     stack-demo)
@@ -478,7 +480,7 @@ stack_deploy() {
   CREATED_ID="$(printf '%s' "$webout" | json_find_id srv-)"
   log "$VIA_CLI creating worker $STACK_WORKER"
   local wkout; wkout="$(cli services create --name "$STACK_WORKER" --type background_worker --confirm --output json \
-    --repo "$REPO" --root-directory examples/stack-demo --branch "$BRANCH" --runtime docker --plan "$PLAN" \
+    --repo "$REPO" --root-directory examples/stack-demo --branch "$BRANCH" --runtime docker --plan "$PAID_PLAN" \
     --env-var "ROLE=worker" --env-var "DATABASE_URL=$conn" 2>&1)" || { fail "worker create failed: $wkout"; return 1; }
   STACK_WORKER_ID="$(printf '%s' "$wkout" | json_find_id srv-)"
   [ -z "$CREATED_ID" ] && { fail "web service id unresolved"; return 1; }

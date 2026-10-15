@@ -112,7 +112,10 @@ describe("InstanceTypePicker", () => {
     renderPicker("free");
     const free = await screen.findByRole("radio", { name: /^Free/ });
     expect(free).toHaveAttribute("tabindex", "0");
-    expect(screen.getByRole("radio", { name: /Standard/ })).toHaveAttribute("tabindex", "-1");
+    expect(screen.getByRole("radio", { name: /Standard/ })).toHaveAttribute(
+      "tabindex",
+      "-1",
+    );
     free.focus();
     await user.keyboard("{ArrowRight}");
     const standard = screen.getByRole("radio", { name: /Standard/ });
@@ -141,13 +144,20 @@ describe("InstanceTypePicker", () => {
     expect(screen.getAllByRole("radio")).toHaveLength(2); // Standard + Pro only
   });
 
-  it("still offers Free to the types Render sells on it (w1/111 control)", async () => {
-    // The rule is a two-type allowlist, not "everything but web": a cron job
-    // keeps Free, so narrowing it further would fail here.
-    renderPicker("standard", "cron_job");
+  it("still offers Free to the type Render sells on it (w1/111 control)", async () => {
+    // A web service keeps Free; cron jobs became paid-only with w8/048.
+    renderPicker("standard", "web_service");
 
     expect(await screen.findAllByText("Free")).toHaveLength(2); // group label + card title
     expect(screen.getByText("Paid")).toBeInTheDocument();
+  });
+
+  it("offers no Free tier for a cron job (w8/048 paid-only)", async () => {
+    renderPicker("standard", "cron_job");
+
+    expect(await screen.findByText("Paid")).toBeInTheDocument();
+    expect(screen.queryByText("Free")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("radio")).toHaveLength(2);
   });
 
   it("confirms and fires updateServicePlan with the picked Render-spelled id, then navigates to Settings on success", async () => {
@@ -212,7 +222,7 @@ describe("InstanceTypePicker", () => {
 
   it.each([
     ["web_service", ["Free", "Paid"]],
-    ["cron_job", ["Free", "Paid"]],
+    ["cron_job", ["Paid"]],
     ["background_worker", ["Paid"]],
     ["private_service", ["Paid"]],
   ])(

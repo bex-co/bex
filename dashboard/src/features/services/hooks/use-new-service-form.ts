@@ -123,7 +123,7 @@ export function useNewServiceForm(search: NewServiceSearch) {
     if (detectedRuntime) setDetectedRuntime(detectedRuntime);
   }, [detectedRuntime, setDetectedRuntime]);
 
-  // Background Workers are paid-only (w6/025): Free is not offered to them,
+  // Paid-only types (workers, private services, cron jobs; ADR030 §7) are not offered Free,
   // so the plan grid renders the filtered catalog, the default is its first
   // (cheapest paid) tier, and a Free selection made under another service type
   // never survives a switch into a paid-only-type submission — an override the current

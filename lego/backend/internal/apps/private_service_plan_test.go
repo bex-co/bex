@@ -91,13 +91,15 @@ func TestSetPlanPrivateServiceFreeRefused(t *testing.T) {
 	}
 }
 
-// TestPaidOnlyServiceTypesAreExactlyTwo guards the allowlist itself. Web services
-// and cron jobs are sold on Free by Render and must keep it; a static site runs no
-// instance. If a future change reads the rule as "everything but web", this fails.
-func TestPaidOnlyServiceTypesAreExactlyTwo(t *testing.T) {
+// TestPaidOnlyServiceTypes guards the allowlist itself. Web services are sold
+// on Free by Render and must keep it; cron jobs became paid-only with w8/048; a
+// static site runs no instance. If a future change reads the rule as
+// "everything but web", this fails.
+func TestPaidOnlyServiceTypes(t *testing.T) {
 	paidOnly := map[string]bool{
 		appv1alpha1.TypeBackgroundWorker: true,
 		appv1alpha1.TypePrivateService:   true,
+		appv1alpha1.TypeCronJob:          true,
 	}
 	for _, svcType := range []string{
 		appv1alpha1.TypeWebService,
@@ -112,11 +114,11 @@ func TestPaidOnlyServiceTypesAreExactlyTwo(t *testing.T) {
 	}
 }
 
-// TestFreeKeepingTypesStillAcceptFree is the control: the types Render sells on
-// Free still resolve an explicit free plan, so this milestone narrowed nothing it
-// should not have.
+// TestFreeKeepingTypesStillAcceptFree is the control: the type Render sells on
+// Free still resolves an explicit free plan, so this narrowed nothing it should
+// not have.
 func TestFreeKeepingTypesStillAcceptFree(t *testing.T) {
-	for _, svcType := range []string{appv1alpha1.TypeWebService, appv1alpha1.TypeCronJob} {
+	for _, svcType := range []string{appv1alpha1.TypeWebService} {
 		tier, err := normalizeTierForType(svcType, "free")
 		if err != nil {
 			t.Errorf("normalizeTierForType(%q, free) = %v, want free to be accepted", svcType, err)
@@ -125,5 +127,31 @@ func TestFreeKeepingTypesStillAcceptFree(t *testing.T) {
 		if tier != "free" {
 			t.Errorf("normalizeTierForType(%q, free) = %q, want free", svcType, tier)
 		}
+	}
+}
+
+// TestCronJobIsPaidOnly pins w8/048: Render types every cron plan as paidPlan,
+// so a cron job is refused free on create and plan change, names itself in the
+// refusal, and a plan-less one lands on starter.
+func TestCronJobIsPaidOnly(t *testing.T) {
+	ctx := context.Background()
+	svc, cl := newService(nil)
+	cron := CreateRequest{Name: "nightly", Type: appv1alpha1.TypeCronJob, Image: "job:1", Schedule: "0 0 * * *"}
+	free := cron
+	free.Plan = "free"
+	if _, err := svc.Create(ctx, free); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "a cron_job requires a paid plan") {
+		t.Fatalf("Create free cron_job = %v, want the paid-only refusal naming cron_job", err)
+	}
+	if _, err := svc.Create(ctx, cron); err != nil {
+		t.Fatalf("Create plan-less cron_job: %v", err)
+	}
+	if got := getApp(t, cl, "nightly").Spec.Tier; got != "starter" {
+		t.Errorf("plan-less cron_job tier = %q, want starter", got)
+	}
+	if _, err := svc.SetPlan(ctx, "nightly", "free"); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "requires a paid plan") {
+		t.Errorf("SetPlan cron_job -> free = %v, want the paid-only refusal", err)
+	}
+	if got := getApp(t, cl, "nightly").Spec.Tier; got != "starter" {
+		t.Errorf("a refused downgrade changed spec.tier to %q", got)
 	}
 }

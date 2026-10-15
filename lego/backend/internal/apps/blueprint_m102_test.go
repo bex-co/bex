@@ -171,7 +171,7 @@ func TestBlueprintSchemaControlMessages(t *testing.T) {
     repo: https://github.com/bex-co/bex
     branch: main
     schedule: "*/5 * * * *"
-    plan: free
+    plan: starter
 `, ""},
 		{"nonsense type lists cron", `services:
   - type: nonsense

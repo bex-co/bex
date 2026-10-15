@@ -9,7 +9,7 @@ services:
     rootDir: examples/cron-demo
     branch: main
     schedule: "*/5 * * * *" # every 5 minutes
-    plan: free
+    plan: starter # cron jobs are paid-only, as on Render (w8/048)
     envVars:
       - key: MESSAGE
         value: "hello from the bex cron job"

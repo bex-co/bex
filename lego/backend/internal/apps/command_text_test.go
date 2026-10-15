@@ -74,6 +74,7 @@ func (f commandField) restFixture(t *testing.T, command *string) (*Service, *htt
 	if f.cron {
 		kind, name = "cron_job", "nightly"
 		details["schedule"] = "0 0 1 1 *"
+		details["plan"] = "starter"
 	}
 	if command != nil {
 		if f.wireKey == "preDeployCommand" {

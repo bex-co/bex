@@ -408,7 +408,7 @@ describe("service plan pending groups (w4/m196)", () => {
 
   it.each([
     ["web_service", [1, 6]],
-    ["cron_job", [1, 6]],
+    ["cron_job", [6]],
     ["background_worker", [6]],
     ["private_service", [6]],
     // Undecided: never guess Free eligibility — only the shared paid ladder.

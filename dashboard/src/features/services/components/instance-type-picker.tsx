@@ -35,14 +35,14 @@ export interface InstanceTypePickerProps {
   serviceId: string;
   /** The App's current plan (Render spelling), or null if untiered. */
   currentPlan: string | null;
-  /** The service's type — a background_worker (w6/025) and a private_service (w1/111) are never offered Free. */
+  /** The service's type — a paid-only type (background_worker, private_service, cron_job) is never offered Free. */
   serviceType: string | null;
 }
 
 /**
  * Render's "Pick an Instance Type" page (captured live): a card per tier —
  * Free visually separated from the paid ladder (and absent entirely for a
- * paid-only background worker) — the current plan pre-selected, Save disabled
+ * paid-only service type) — the current plan pre-selected, Save disabled
  * until the selection changes. bex cards omit price (billing is separate from
  * this resource catalog) and the custom-instance contact link (no bex
  * equivalent).
