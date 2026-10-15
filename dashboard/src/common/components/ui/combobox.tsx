@@ -1,6 +1,7 @@
 import * as React from "react";
 import { X } from "lucide-react";
 import { cn } from "@/common/lib/utils/utils.ts";
+import { useTranslations } from "@/common/hooks/use-translations";
 import { Input } from "@/common/components/ui/input.tsx";
 import {
   Command,
@@ -45,8 +46,9 @@ export function Combobox({
   triggerOn = "change",
   ariaLabel,
 }: ComboboxProps) {
-  const defaultPlaceholder = placeholder || "Select an option";
-  const defaultEmptyText = emptyText || "No results found";
+  const { t } = useTranslations();
+  const defaultPlaceholder = placeholder || t("common.comboboxPlaceholder");
+  const defaultEmptyText = emptyText || t("common.comboboxEmpty");
 
   const [open, setOpen] = React.useState(false);
   const [inputValue, setInputValue] = React.useState(value);
@@ -220,7 +222,7 @@ export function Combobox({
                 onClick={handleClear}
                 onMouseDown={(e) => e.preventDefault()}
                 className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm hover:bg-muted p-1 z-10 cursor-pointer"
-                aria-label="Clear input"
+                aria-label={t("common.comboboxClear")}
                 tabIndex={-1}
               >
                 <X className="h-3 w-3 text-muted-foreground" />
@@ -247,7 +249,7 @@ export function Combobox({
                 {defaultEmptyText}
                 {allowCustom && inputValue && (
                   <div className="mt-2 text-xs">
-                    Press Enter to use "{inputValue}"
+                    {t("common.comboboxUseCustom", { value: inputValue })}
                   </div>
                 )}
               </CommandEmpty>

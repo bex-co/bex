@@ -113,3 +113,59 @@ describe("results list name (w4/312)", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("application-authored copy follows the selected language (w4/313)", () => {
+  afterEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  const typeMissing = (value: string) => {
+    const input = screen.getByRole("combobox");
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value } });
+    return input;
+  };
+
+  it("translates the empty guidance, custom-value hint and clear name", async () => {
+    await i18n.changeLanguage("zh");
+    render(<Combobox options={options} value="" onValueChange={vi.fn()} />);
+    const input = typeMissing("qa-missing-branch");
+    expect(input).toHaveAttribute("placeholder", "选择一个选项");
+    expect(screen.getByText("未找到结果")).toBeInTheDocument();
+    expect(
+      screen.getByText("按 Enter 使用“qa-missing-branch”"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "清除输入" }));
+    expect(input).toHaveValue("");
+  });
+
+  it("keeps English copy and the literal typed value", () => {
+    render(<Combobox options={options} value="" onValueChange={vi.fn()} />);
+    typeMissing('a"<b>{x}');
+    expect(screen.getByText("No results found")).toBeInTheDocument();
+    expect(
+      screen.getByText('Press Enter to use "a"<b>{x}"'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Clear input" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps caller placeholder and empty text, and omits the hint without custom values", async () => {
+    await i18n.changeLanguage("zh");
+    render(
+      <Combobox
+        options={options}
+        value=""
+        onValueChange={vi.fn()}
+        placeholder="选择分支"
+        emptyText="没有匹配的分支"
+        allowCustom={false}
+      />,
+    );
+    const input = typeMissing("qa-missing-branch");
+    expect(input).toHaveAttribute("placeholder", "选择分支");
+    expect(screen.getByText("没有匹配的分支")).toBeInTheDocument();
+    expect(screen.queryByText(/按 Enter/)).toBeNull();
+  });
+});
