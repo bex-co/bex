@@ -1,0 +1,47 @@
+services:
+- type: web
+  name: ghost
+  env: docker
+  autoDeploy: false
+  disk:
+    name: ghost
+    mountPath: /var/lib/ghost/content
+    sizeGB: 10 #Feel free to change this to suit your needs.
+  envVars:
+    - key: database__client
+      value: mysql
+    - key: database__connection__host
+      fromService:
+        type: pserv
+        name: mysql
+        property: host
+    - key: database__connection__database
+      value: ghostdb
+    - key: database__connection__user
+      value: mysql
+    - key: database__connection__password
+      fromService:
+        type: pserv
+        name: mysql
+        envVarKey: MYSQL_PASSWORD
+
+- type: pserv
+  name: mysql
+  plan: standard
+  env: docker
+  repo: https://github.com/render-examples/mysql
+  autoDeploy: false
+  disk:
+    name: mysql
+    mountPath: /var/lib/mysql
+    sizeGB: 10
+  envVars:
+    - key: MYSQL_DATABASE
+      value: ghostdb
+    - key: MYSQL_USER
+      value: mysql
+    - key: MYSQL_PASSWORD
+      generateValue: true
+    - key: MYSQL_ROOT_PASSWORD
+      generateValue: true
+

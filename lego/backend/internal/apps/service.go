@@ -215,6 +215,11 @@ type Service struct {
 	// later dashboard edit wins and a re-sync never overwrites/re-mints. nil => a
 	// manifest using those forms is rejected before any write.
 	EnvSeeder EnvSeeder
+	// EnvCopier, when set (OpenBao is wired), writes a fromService.envVarKey
+	// copy of a sibling's generateValue into the consumer's env store once the
+	// apply has minted it (w1/m175). nil => such a manifest is rejected before
+	// any write.
+	EnvCopier EnvCopier
 	// EnvNames lists a service's mutable-store env var NAMES for Blueprint
 	// generation (w8/m22) — never values. nil ⇒ those vars are omitted from
 	// generated manifests.
@@ -1756,6 +1761,9 @@ func readyCurrentAppPod(pod *corev1.Pod, activeImage, activeRevision string) boo
 type CreateRequest struct {
 	// Blueprint-only group names; never decoded from public create input.
 	initialEnvGroups []string
+	// storeEnvKeys are Blueprint-declared keys whose value lives in the env
+	// store (copies of a sibling's generated value), never on spec.Env.
+	storeEnvKeys []string
 	// Disk attaches a persistent volume at create time — the Blueprint path's
 	// only way in, since render.yaml declares a disk inline with its service.
 	// nil means no disk is being declared, which on a sync PRESERVES whatever
