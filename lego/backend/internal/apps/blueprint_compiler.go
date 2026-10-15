@@ -33,6 +33,8 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/santhosh-tekuri/jsonschema/v6/kind"
 	"gopkg.in/yaml.v3"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // BlueprintSourceLocation identifies an input value rather than a transformed
@@ -1108,9 +1110,6 @@ func renderBlueprintValidationSchema() ([]byte, error) {
 	if err := normalizeRenderResourceContainers(document); err != nil {
 		return nil, err
 	}
-	if err := admitBexFreeCronPlan(document); err != nil {
-		return nil, err
-	}
 	if err := addBlueprintExtension(document, extension); err != nil {
 		return nil, err
 	}
@@ -1188,32 +1187,6 @@ func normalizeRenderResourceContainers(document map[string]any) error {
 	ungrouped["additionalProperties"] = false
 	delete(ungrouped, "allOf")
 	delete(ungrouped, "unevaluatedProperties")
-	return nil
-}
-
-// admitBexFreeCronPlan is a documented bex divergence (ADR049 "Schema re-pin
-// 2026-10-02"): Render's cronPlan has no free rung, but bex keeps a free cron
-// tier (also the omitted-plan default), and tenant Blueprints already declare
-// `plan: free` on cron jobs. Rejecting it would break their next sync for no
-// gain, so the compiled schema — never the pinned upstream bytes — admits it.
-// The capability registry stays exhaustive over the pinned bytes only; this
-// value resolves through normalizeTierForType like any other plan.
-func admitBexFreeCronPlan(document map[string]any) error {
-	definitions, _ := document["definitions"].(map[string]any)
-	cronPlan, ok := definitions["cronPlan"].(map[string]any)
-	if !ok {
-		return fmt.Errorf("embedded Render Blueprint schema has no cronPlan definition")
-	}
-	values, ok := cronPlan["enum"].([]any)
-	if !ok {
-		return fmt.Errorf("embedded Render Blueprint schema cronPlan has no enum")
-	}
-	for _, value := range values {
-		if value == "free" {
-			return nil // upstream re-admitted it; nothing to overlay
-		}
-	}
-	cronPlan["enum"] = append([]any{"free"}, values...)
 	return nil
 }
 
@@ -1329,6 +1302,13 @@ const blueprintServiceTypeValues = "'web', 'worker', 'pserv', 'cron', 'keyvalue'
 
 func blueprintSchemaLeafMessage(validation *jsonschema.ValidationError) string {
 	message := validation.Error()
+	// Only cronPlan lacks free among the service plan enums, so a refused free
+	// plan is a cron job's: word it as every other paid-only type's (w8/048).
+	if loc := validation.InstanceLocation; blueprintServicePlanLocation(loc) {
+		if got, ok := blueprintSchemaGotValue(validation.ErrorKind); ok && got == "free" {
+			return freePlanForTypeMessage(appv1alpha1.TypeCronJob)
+		}
+	}
 	if loc := validation.InstanceLocation; blueprintServiceTypeLocation(loc) {
 		if got, ok := blueprintSchemaGotValue(validation.ErrorKind); ok && !blueprintKnownServiceType(got) {
 			if i := strings.LastIndex(message, ": "); i >= 0 {
@@ -1341,7 +1321,16 @@ func blueprintSchemaLeafMessage(validation *jsonschema.ValidationError) string {
 }
 
 func blueprintServiceTypeLocation(location []string) bool {
-	if len(location) < 3 || location[len(location)-1] != "type" {
+	return blueprintServiceFieldLocation(location, "type")
+}
+
+func blueprintServicePlanLocation(location []string) bool {
+	return blueprintServiceFieldLocation(location, "plan")
+}
+
+// blueprintServiceFieldLocation reports whether location is services/<n>/field.
+func blueprintServiceFieldLocation(location []string, field string) bool {
+	if len(location) < 3 || location[len(location)-1] != field {
 		return false
 	}
 	for i, token := range location[:len(location)-1] {

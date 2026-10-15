@@ -94,7 +94,7 @@ func TestRESTCreateKeepsDockerCronCommandFromNativeSpelling(t *testing.T) {
 
 	// Byte-for-byte the shape the pinned CLI builds for
 	// `--type cron_job --runtime docker --cron-command 'echo qa'`.
-	body := `{"name":"nightly","type":"cron_job","repo":"https://github.com/bex-co/example","serviceDetails":{"runtime":"docker","plan":"free",` +
+	body := `{"name":"nightly","type":"cron_job","repo":"https://github.com/bex-co/example","serviceDetails":{"runtime":"docker","plan":"starter",` +
 		`"schedule":"*/10 * * * *","envSpecificDetails":{"buildCommand":"","startCommand":"echo qa"}}}`
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
@@ -114,7 +114,7 @@ func TestRESTCreateDockerCronPrefersDockerCommandWhenBothSent(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
-	body := `{"name":"nightly","type":"cron_job","repo":"https://github.com/bex-co/example","serviceDetails":{"runtime":"docker","plan":"free",` +
+	body := `{"name":"nightly","type":"cron_job","repo":"https://github.com/bex-co/example","serviceDetails":{"runtime":"docker","plan":"starter",` +
 		`"schedule":"*/10 * * * *","envSpecificDetails":{"startCommand":"native","dockerCommand":"docker"}}}`
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
@@ -208,7 +208,7 @@ func TestNativeCronCommandUnchanged(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
-	body := `{"name":"ncron","type":"cron_job","repo":"https://github.com/bex-co/example","serviceDetails":{"runtime":"go","plan":"free",` +
+	body := `{"name":"ncron","type":"cron_job","repo":"https://github.com/bex-co/example","serviceDetails":{"runtime":"go","plan":"starter",` +
 		`"schedule":"*/10 * * * *","envSpecificDetails":{"buildCommand":"go build","startCommand":"echo native"}}}`
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))

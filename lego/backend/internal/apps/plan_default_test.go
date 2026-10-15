@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -40,7 +41,7 @@ func TestAnOmittedPlanFollowsRendersPaidDefault(t *testing.T) {
 		{svcType: appv1alpha1.TypePrivateService, want: "starter"},
 		{svcType: appv1alpha1.TypeStaticSite, want: tiers.Compute.Default().ID},
 		{svcType: appv1alpha1.TypeWebService, plan: "free", want: "free"},
-		{svcType: appv1alpha1.TypeCronJob, plan: "free", want: "free"},
+		{svcType: appv1alpha1.TypeCronJob, plan: "free", wantErr: "requires a paid plan"},
 		{svcType: appv1alpha1.TypeWebService, plan: "0.5c-512mb", want: "starter"},
 		{svcType: appv1alpha1.TypeBackgroundWorker, plan: "free", wantErr: "requires a paid plan"},
 		{svcType: appv1alpha1.TypePrivateService, plan: "free", wantErr: "requires a paid plan"},
@@ -110,5 +111,20 @@ func TestGenerateBlueprintSaysFreeForAFreeService(t *testing.T) {
 	spec, err := specFromCreate(stack.services[0].req)
 	if err != nil || spec.Tier != "free" {
 		t.Fatalf("the export re-creates tier %q (%v), want free", spec.Tier, err)
+	}
+}
+
+// A cron left on free before w8/048 keeps running, but no valid Blueprint can
+// declare it: the export names the service and the remedy rather than failing
+// its own validation as a bex bug.
+func TestGenerateBlueprintRefusesALegacyFreeCron(t *testing.T) {
+	legacy := cronApp("nightly")
+	legacy.Spec.Tier = "free"
+	svc, _ := newService(nil, legacy)
+	_, err := svc.GenerateBlueprint(context.Background(), GenerateBlueprintRequest{ServiceIDs: []string{"nightly"}})
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "BLUEPRINT_GENERATE_PAID_PLAN_REQUIRED" || !errors.Is(err, core.ErrBadRequest) ||
+		!strings.Contains(err.Error(), `service "nightly": a cron_job requires a paid plan`) {
+		t.Fatalf("GenerateBlueprint(legacy free cron) = %v, want the named paid-plan refusal", err)
 	}
 }
