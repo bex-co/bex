@@ -39,7 +39,7 @@ export function HealthCheckPathRow({
       // A path may carry meaningful characters, so compare the raw draft.
       // Empty is passed through, not coerced: it clears the path and selects
       // the TCP check.
-      trim={false}
+      normalize={(draft) => draft}
       onSave={(value) => setHealthCheckPath(serviceId, value)}
     />
   );

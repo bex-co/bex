@@ -12,6 +12,7 @@ import { DeployHookRows } from "@/features/services/components/deploy-hook-secti
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import { usePreDeployCommand } from "@/features/services/hooks/use-pre-deploy-command";
 import { useStartCommand } from "@/features/services/hooks/use-start-command";
+import { commandText } from "@/features/services/lib/command-text";
 import { commandPromptPrefix } from "@/features/services/lib/format";
 
 /**
@@ -109,6 +110,7 @@ export function DeployCard({
             editLabel={t("services.preDeployEdit")}
             optional
             mono
+            normalize={commandText}
             busy={preDeployBusy}
             disabled={createDisabled}
             disabledReason={createReason}
@@ -131,6 +133,7 @@ export function DeployCard({
             editLabel={t(copy.edit)}
             optional={!startCommand}
             mono
+            normalize={commandText}
             busy={commandBusy}
             confirm={{
               title: (value) => t(copy.confirmTitle, { value }),

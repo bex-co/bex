@@ -2897,8 +2897,8 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		Image:           req.Image,
 		Branch:          branch,
 		Runtime:         runtime,
-		BuildCommand:    req.BuildCommand,
-		StartCommand:    req.StartCommand,
+		BuildCommand:    commandText(req.BuildCommand),
+		StartCommand:    commandText(req.StartCommand),
 		Builder:         builder,
 		RootDir:         req.RootDir,
 		BuildFilter:     buildFilter,
@@ -2917,10 +2917,10 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		AutoDeploy:       autoDeploy,
 		NotifyOnFail:     notifyOnFail,
 		SubdomainPolicy:  subdomainPolicy,
-		PreDeployCommand: strings.TrimSpace(req.PreDeployCommand),
+		PreDeployCommand: commandText(req.PreDeployCommand),
 		// The one-time hook keeps its own role; the operator runs it in place of
 		// preDeployCommand until it succeeds (w8/m63).
-		InitialDeployHook: strings.TrimSpace(req.InitialDeployHook),
+		InitialDeployHook: commandText(req.InitialDeployHook),
 		// A web service and a static site are public: expose them at
 		// <name>.<BEX_BASE_DOMAIN> so the caller gets a live URL with no custom
 		// domain. Every other type opts out (private has no platform host;
@@ -3144,7 +3144,7 @@ func applyOptionalCreateSpec(spec *appv1alpha1.AppSpec, svcType string, req Crea
 	}
 	if svcType == appv1alpha1.TypeCronJob {
 		spec.Schedule = strings.TrimSpace(req.Schedule)
-		spec.Command = strings.TrimSpace(req.Command)
+		spec.Command = commandText(req.Command)
 	}
 	if svcType == appv1alpha1.TypeStaticSite {
 		spec.PublishPath = strings.TrimSpace(req.PublishPath)
@@ -4043,7 +4043,7 @@ func (s *Service) SetPreDeployCommand(ctx context.Context, name, command string)
 		return AppView{}, err
 	}
 	return s.recordedPatch(ctx, core.AuditVerbSetPreDeployCommand, a, func(a *appv1alpha1.App) {
-		a.Spec.PreDeployCommand = strings.TrimSpace(command)
+		a.Spec.PreDeployCommand = commandText(command)
 	})
 }
 

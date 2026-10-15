@@ -1,0 +1,781 @@
+diff --git a/cmd/servicecreate.go b/cmd/servicecreate.go
+index ebe790c..a1a58d0 100644
+--- a/cmd/servicecreate.go
++++ b/cmd/servicecreate.go
+@@ -16,22 +16,26 @@ import (
+ 	servicetypes "github.com/render-oss/cli/pkg/types/service"
+ )
+ 
+-var ServiceCreateCmd = &cobra.Command{
+-	Use:   "create",
+-	Args:  cobra.NoArgs,
+-	Short: "Create a new service or clone an existing one",
+-	Long:  `Create a new service on Render. This command only runs in non-interactive modes. Provide configuration options with flags.`,
+-	Example: `  # Create a service from repository configuration
++var ServiceCreateCmd = newServiceCreateCmd()
++
++func init() {
++	servicesCmd.AddCommand(ServiceCreateCmd)
++}
++
++func newServiceCreateCmd() *cobra.Command {
++	cmd := &cobra.Command{
++		Use:   "create",
++		Args:  cobra.NoArgs,
++		Short: "Create a new service or clone an existing one",
++		Long:  `Create a new service on Render. This command only runs in non-interactive modes. Provide configuration options with flags.`,
++		Example: `  # Create a service from repository configuration
+   render services create --name my-api --type web_service --repo https://github.com/org/repo --runtime node --build-command "npm install" --start-command "npm start" --output json
+ 
+   # Clone configuration from an existing service
+   render services create --from srv-abc123 --name my-api-clone --output json`,
+-}
+-
+-func init() {
+-	servicesCmd.AddCommand(ServiceCreateCmd)
++	}
+ 
+-	ServiceCreateCmd.RunE = func(cmd *cobra.Command, args []string) error {
++	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+ 		var cliInput servicetypes.ServiceCreateInput
+ 		if err := command.ParseCommand(cmd, args, &cliInput); err != nil {
+ 			return fmt.Errorf("failed to parse command: %w", err)
+@@ -59,69 +63,71 @@ func init() {
+ 		return fmt.Errorf("interactive mode not yet implemented")
+ 	}
+ 
+-	ServiceCreateCmd.Flags().String("name", "", "Set the service name")
++	cmd.Flags().String("name", "", "Set the service name")
+ 	serviceTypeFlag := command.NewEnumInput(servicetypes.ServiceTypeValues(), false)
+-	ServiceCreateCmd.Flags().Var(serviceTypeFlag, "type", "Set the service type")
+-	ServiceCreateCmd.Flags().String("from", "", "Clone configuration from an existing service ID or name and override cloned values with other flags")
+-	ServiceCreateCmd.Flags().String("repo", "", "Set the Git repository URL")
+-	ServiceCreateCmd.Flags().String("branch", "", "Set the Git branch")
+-	ServiceCreateCmd.Flags().String("image", "", "Set the Docker image URL")
++	cmd.Flags().Var(serviceTypeFlag, "type", "Set the service type")
++	cmd.Flags().String("from", "", "Clone configuration from an existing service ID or name and override cloned values with other flags")
++	cmd.Flags().String("repo", "", "Set the Git repository URL")
++	cmd.Flags().String("branch", "", "Set the Git branch")
++	cmd.Flags().String("image", "", "Set the Docker image URL")
+ 	regionFlag := command.NewEnumInput(types.RegionValues(), false)
+-	ServiceCreateCmd.Flags().Var(regionFlag, "region", "Set the deployment region")
+-	ServiceCreateCmd.Flags().String("plan", "", "Set the service plan")
++	cmd.Flags().Var(regionFlag, "region", "Set the deployment region")
++	cmd.Flags().String("plan", "", "Set the service plan")
+ 	runtimeFlag := command.NewEnumInput(servicetypes.ServiceRuntimeValues(), false)
+-	ServiceCreateCmd.Flags().Var(runtimeFlag, "runtime", "Set the runtime environment")
+-	ServiceCreateCmd.Flags().String("root-directory", "", "Set the root directory")
+-	ServiceCreateCmd.Flags().String("build-command", "", "Set the build command")
+-	ServiceCreateCmd.Flags().String("start-command", "", "Set the start command")
+-	ServiceCreateCmd.Flags().String("health-check-path", "", "Set the health check path")
+-	ServiceCreateCmd.Flags().String("publish-directory", "", "Set the publish directory")
+-	ServiceCreateCmd.Flags().String("cron-command", "", "Set the cron command")
+-	ServiceCreateCmd.Flags().String("cron-schedule", "", "Set the cron schedule")
+-	ServiceCreateCmd.Flags().String("environment-id", "", "Set the environment ID")
+-	ServiceCreateCmd.Flags().StringArray("env-var", nil, "Set environment variables in KEY=VALUE format (can be specified multiple times)")
+-	ServiceCreateCmd.Flags().StringArray("secret-file", nil, "Set secret files in NAME:LOCAL_PATH format (can be specified multiple times)")
+-	ServiceCreateCmd.Flags().String("registry-credential", "", "Set the registry credential")
+-	ServiceCreateCmd.Flags().Bool("auto-deploy", true, "Enable auto-deploy")
+-	ServiceCreateCmd.Flags().String("pre-deploy-command", "", "Set the pre-deploy command")
+-	ServiceCreateCmd.Flags().StringArray("build-filter-path", nil, "Set build filter paths (can be specified multiple times)")
+-	ServiceCreateCmd.Flags().StringArray("build-filter-ignored-path", nil, "Set build filter ignored paths (can be specified multiple times)")
+-	ServiceCreateCmd.Flags().Int("num-instances", 0, "Set the number of instances")
+-	ServiceCreateCmd.Flags().Int("max-shutdown-delay", 0, "Set max shutdown delay in seconds")
++	cmd.Flags().Var(runtimeFlag, "runtime", "Set the runtime environment")
++	cmd.Flags().String("root-directory", "", "Set the root directory")
++	cmd.Flags().String("build-command", "", "Set the build command")
++	cmd.Flags().String("start-command", "", "Set the start command")
++	cmd.Flags().String("health-check-path", "", "Set the health check path")
++	cmd.Flags().String("publish-directory", "", "Set the publish directory")
++	cmd.Flags().String("cron-command", "", "Set the cron command")
++	cmd.Flags().String("cron-schedule", "", "Set the cron schedule")
++	cmd.Flags().String("environment-id", "", "Set the environment ID")
++	cmd.Flags().StringArray("env-var", nil, "Set environment variables in KEY=VALUE format (can be specified multiple times)")
++	cmd.Flags().StringArray("secret-file", nil, "Set secret files in NAME:LOCAL_PATH format (can be specified multiple times)")
++	cmd.Flags().String("registry-credential", "", "Set the registry credential")
++	cmd.Flags().Bool("auto-deploy", true, "Enable auto-deploy")
++	cmd.Flags().String("pre-deploy-command", "", "Set the pre-deploy command")
++	cmd.Flags().StringArray("build-filter-path", nil, "Set build filter paths (can be specified multiple times)")
++	cmd.Flags().StringArray("build-filter-ignored-path", nil, "Set build filter ignored paths (can be specified multiple times)")
++	cmd.Flags().Int("num-instances", 0, "Set the number of instances")
++	cmd.Flags().Int("max-shutdown-delay", 0, "Set max shutdown delay in seconds")
+ 	previewsFlag := command.NewEnumInput(servicetypes.PreviewsGenerationValues(), false)
+-	ServiceCreateCmd.Flags().Var(previewsFlag, "previews", "Set preview generation mode")
+-	ServiceCreateCmd.Flags().Bool("maintenance-mode", false, "Enable maintenance mode")
+-	ServiceCreateCmd.Flags().String("maintenance-mode-uri", "", "Set the maintenance mode URI")
+-	ServiceCreateCmd.Flags().StringArray("ip-allow-list", nil, "Set IP allow list entries in cidr=..., description=... format (can be specified multiple times)")
+-
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "name", "NAME")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "type", "TYPE")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "from", "SERVICE_ID")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "repo", "REPO_URL")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "branch", "BRANCH")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "image", "IMAGE_URL")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "region", "REGION")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "plan", "PLAN")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "runtime", "RUNTIME")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "root-directory", "PATH")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "build-command", "COMMAND")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "start-command", "COMMAND")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "health-check-path", "PATH")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "publish-directory", "PATH")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "cron-command", "COMMAND")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "cron-schedule", "SCHEDULE")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "environment-id", "ENVIRONMENT_ID")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "env-var", "KEY_VALUE")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "secret-file", "NAME_PATH")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "registry-credential", "CREDENTIAL")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "pre-deploy-command", "COMMAND")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "build-filter-path", "PATHS")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "build-filter-ignored-path", "PATHS")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "num-instances", "COUNT")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "max-shutdown-delay", "SECONDS")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "previews", "PREVIEWS")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "maintenance-mode-uri", "URI")
+-	setFlagPlaceholder(ServiceCreateCmd.Flags(), "ip-allow-list", "CIDR_DESCRIPTION")
++	cmd.Flags().Var(previewsFlag, "previews", "Set preview generation mode")
++	cmd.Flags().Bool("maintenance-mode", false, "Enable maintenance mode")
++	cmd.Flags().String("maintenance-mode-uri", "", "Set the maintenance mode URI")
++	cmd.Flags().StringArray("ip-allow-list", nil, "Set IP allow list entries in cidr=..., description=... format (can be specified multiple times)")
++
++	setFlagPlaceholder(cmd.Flags(), "name", "NAME")
++	setFlagPlaceholder(cmd.Flags(), "type", "TYPE")
++	setFlagPlaceholder(cmd.Flags(), "from", "SERVICE_ID")
++	setFlagPlaceholder(cmd.Flags(), "repo", "REPO_URL")
++	setFlagPlaceholder(cmd.Flags(), "branch", "BRANCH")
++	setFlagPlaceholder(cmd.Flags(), "image", "IMAGE_URL")
++	setFlagPlaceholder(cmd.Flags(), "region", "REGION")
++	setFlagPlaceholder(cmd.Flags(), "plan", "PLAN")
++	setFlagPlaceholder(cmd.Flags(), "runtime", "RUNTIME")
++	setFlagPlaceholder(cmd.Flags(), "root-directory", "PATH")
++	setFlagPlaceholder(cmd.Flags(), "build-command", "COMMAND")
++	setFlagPlaceholder(cmd.Flags(), "start-command", "COMMAND")
++	setFlagPlaceholder(cmd.Flags(), "health-check-path", "PATH")
++	setFlagPlaceholder(cmd.Flags(), "publish-directory", "PATH")
++	setFlagPlaceholder(cmd.Flags(), "cron-command", "COMMAND")
++	setFlagPlaceholder(cmd.Flags(), "cron-schedule", "SCHEDULE")
++	setFlagPlaceholder(cmd.Flags(), "environment-id", "ENVIRONMENT_ID")
++	setFlagPlaceholder(cmd.Flags(), "env-var", "KEY_VALUE")
++	setFlagPlaceholder(cmd.Flags(), "secret-file", "NAME_PATH")
++	setFlagPlaceholder(cmd.Flags(), "registry-credential", "CREDENTIAL")
++	setFlagPlaceholder(cmd.Flags(), "pre-deploy-command", "COMMAND")
++	setFlagPlaceholder(cmd.Flags(), "build-filter-path", "PATHS")
++	setFlagPlaceholder(cmd.Flags(), "build-filter-ignored-path", "PATHS")
++	setFlagPlaceholder(cmd.Flags(), "num-instances", "COUNT")
++	setFlagPlaceholder(cmd.Flags(), "max-shutdown-delay", "SECONDS")
++	setFlagPlaceholder(cmd.Flags(), "previews", "PREVIEWS")
++	setFlagPlaceholder(cmd.Flags(), "maintenance-mode-uri", "URI")
++	setFlagPlaceholder(cmd.Flags(), "ip-allow-list", "CIDR_DESCRIPTION")
++
++	return cmd
+ }
+ 
+ func createServiceNonInteractive(ctx context.Context, cliInput servicetypes.ServiceCreateInput) (*client.Service, error) {
+diff --git a/cmd/servicecreate_test.go b/cmd/servicecreate_test.go
+index c82dc2c..ff238b8 100644
+--- a/cmd/servicecreate_test.go
++++ b/cmd/servicecreate_test.go
+@@ -1,9 +1,15 @@
+ package cmd
+ 
+ import (
++	"bytes"
++	"slices"
+ 	"testing"
+ 
++	renderapi "github.com/render-oss/cli/internal/fakes/renderapi"
++	"github.com/render-oss/cli/internal/testrequire"
++	"github.com/render-oss/cli/pkg/dependencies"
+ 	"github.com/spf13/cobra"
++	"github.com/stretchr/testify/assert"
+ 	"github.com/stretchr/testify/require"
+ )
+ 
+@@ -38,3 +44,190 @@ func TestServiceCreateNoArgsValidationPreventsExecution(t *testing.T) {
+ 	require.Error(t, err)
+ 	require.False(t, called)
+ }
++
++// Command flags carry shell text that the service runs verbatim, so whitespace
++// at either end can be significant: in `tail\ ` the escaped space belongs to
++// the final argument. The quoted form is a control that never relied on
++// trailing whitespace surviving.
++var serviceCommandTextCases = []struct {
++	name  string
++	value string
++}{
++	{name: "escaped trailing space", value: `printf '%s' tail\ `},
++	{name: "escaped trailing tab", value: "printf '%s' tail\\\t"},
++	{name: "quoted trailing space", value: `printf '%s' 'tail '`},
++}
++
++type serviceCreateHarness struct {
++	t      *testing.T
++	server *renderapi.Server
++	deps   *dependencies.Dependencies
++}
++
++func newServiceCreateHarness(t *testing.T) serviceCreateHarness {
++	t.Helper()
++
++	// Same fake API, workspace config, and non-TTY dependencies as update.
++	h := newServiceUpdateHarness(t)
++	return serviceCreateHarness{t: t, server: h.server, deps: h.deps}
++}
++
++// execute invokes `services create` on a freshly constructed command tree.
++func (h serviceCreateHarness) execute(extraArgs ...string) (CommandResult, error) {
++	h.t.Helper()
++
++	root := newRootCmd()
++	services := cobraServicesCommand()
++	services.AddCommand(newServiceCreateCmd())
++	root.AddCommand(services)
++	setupRootCmdPersistentRun(root, h.deps)
++
++	var stdout, stderr bytes.Buffer
++	root.SetOut(&stdout)
++	root.SetErr(&stderr)
++	root.SetArgs(append([]string{"services", "create"}, extraArgs...))
++
++	execErr := root.Execute()
++	return CommandResult{Stdout: stdout.String(), Stderr: stderr.String()}, execErr
++}
++
++// createServiceDetails returns the serviceDetails object of the recorded POST body.
++func (h serviceCreateHarness) createServiceDetails() map[string]any {
++	h.t.Helper()
++
++	rec, ok := h.server.LastRequest("POST", "/services")
++	require.True(h.t, ok, "expected a POST /services request to be recorded")
++	return testrequire.SubMap(h.t, testrequire.ParseJSONMap(h.t, string(rec.Body)), "serviceDetails")
++}
++
++var serviceCreateWebArgs = []string{
++	"--name", "command-text", "--type", "web_service", "--repo", "https://github.com/org/repo",
++	"--runtime", "node", "--output", "json",
++}
++
++func TestServiceCreate_CommandFlagsSendExactCommandText(t *testing.T) {
++	flags := []struct {
++		flag        string
++		args        func(command string) []string
++		wantDetails func(command string) map[string]any
++	}{
++		{
++			flag: "build-command",
++			args: func(command string) []string {
++				return append(slices.Clone(serviceCreateWebArgs), "--build-command", command, "--start-command", "npm start")
++			},
++			wantDetails: func(command string) map[string]any {
++				return map[string]any{
++					"runtime":            "node",
++					"envSpecificDetails": map[string]any{"buildCommand": command, "startCommand": "npm start"},
++				}
++			},
++		},
++		{
++			flag: "start-command",
++			args: func(command string) []string {
++				return append(slices.Clone(serviceCreateWebArgs), "--build-command", "npm ci", "--start-command", command)
++			},
++			wantDetails: func(command string) map[string]any {
++				return map[string]any{
++					"runtime":            "node",
++					"envSpecificDetails": map[string]any{"buildCommand": "npm ci", "startCommand": command},
++				}
++			},
++		},
++		{
++			flag: "pre-deploy-command",
++			args: func(command string) []string {
++				return append(slices.Clone(serviceCreateWebArgs),
++					"--build-command", "npm ci", "--start-command", "npm start", "--pre-deploy-command", command)
++			},
++			wantDetails: func(command string) map[string]any {
++				return map[string]any{
++					"runtime":            "node",
++					"envSpecificDetails": map[string]any{"buildCommand": "npm ci", "startCommand": "npm start"},
++					"preDeployCommand":   command,
++				}
++			},
++		},
++		{
++			// Cron jobs carry the cron command as envSpecificDetails.startCommand.
++			flag: "cron-command",
++			args: func(command string) []string {
++				return []string{
++					"--name", "command-text", "--type", "cron_job", "--repo", "https://github.com/org/repo",
++					"--runtime", "node", "--cron-schedule", "0 * * * *", "--build-command", "npm ci",
++					"--cron-command", command, "--output", "json",
++				}
++			},
++			wantDetails: func(command string) map[string]any {
++				return map[string]any{
++					"runtime":            "node",
++					"schedule":           "0 * * * *",
++					"envSpecificDetails": map[string]any{"buildCommand": "npm ci", "startCommand": command},
++				}
++			},
++		},
++	}
++
++	for _, ff := range flags {
++		for _, tc := range serviceCommandTextCases {
++			t.Run(ff.flag+"/"+tc.name, func(t *testing.T) {
++				harness := newServiceCreateHarness(t)
++
++				_, err := harness.execute(ff.args(tc.value)...)
++				require.NoError(t, err)
++
++				assert.Equal(t, ff.wantDetails(tc.value), harness.createServiceDetails())
++			})
++		}
++	}
++}
++
++func TestServiceCreate_BlankCommandFlagsAreTreatedAsUnset(t *testing.T) {
++	t.Run("pre-deploy-command is omitted", func(t *testing.T) {
++		harness := newServiceCreateHarness(t)
++
++		_, err := harness.execute(append(slices.Clone(serviceCreateWebArgs),
++			"--build-command", "npm ci", "--start-command", "npm start", "--pre-deploy-command", " \t ")...)
++		require.NoError(t, err)
++
++		assert.Equal(t, map[string]any{
++			"runtime":            "node",
++			"envSpecificDetails": map[string]any{"buildCommand": "npm ci", "startCommand": "npm start"},
++		}, harness.createServiceDetails())
++	})
++
++	t.Run("static site build-command is omitted", func(t *testing.T) {
++		harness := newServiceCreateHarness(t)
++
++		_, err := harness.execute(
++			"--name", "command-text", "--type", "static_site", "--repo", "https://github.com/org/repo",
++			"--build-command", " \t ", "--output", "json",
++		)
++		require.NoError(t, err)
++
++		assert.Equal(t, map[string]any{}, harness.createServiceDetails())
++	})
++
++	// A blank required command counts as missing rather than as an empty command.
++	t.Run("required start-command is rejected before POST", func(t *testing.T) {
++		harness := newServiceCreateHarness(t)
++
++		_, err := harness.execute(append(slices.Clone(serviceCreateWebArgs),
++			"--build-command", "npm ci", "--start-command", " \t ")...)
++		require.ErrorContains(t, err, "--build-command and --start-command are required when runtime is native")
++		assert.False(t, harness.server.HasRequest("POST", "/services"))
++	})
++
++	t.Run("required cron-command is rejected before POST", func(t *testing.T) {
++		harness := newServiceCreateHarness(t)
++
++		_, err := harness.execute(
++			"--name", "command-text", "--type", "cron_job", "--repo", "https://github.com/org/repo",
++			"--runtime", "node", "--cron-schedule", "0 * * * *", "--build-command", "npm ci",
++			"--cron-command", " \t ", "--output", "json",
++		)
++		require.ErrorContains(t, err, "cron-command and cron-schedule are required for cron jobs")
++		assert.False(t, harness.server.HasRequest("POST", "/services"))
++	})
++}
+diff --git a/cmd/serviceupdate_test.go b/cmd/serviceupdate_test.go
+index f9814d5..734d6be 100644
+--- a/cmd/serviceupdate_test.go
++++ b/cmd/serviceupdate_test.go
+@@ -284,6 +284,127 @@ func (h serviceUpdateHarness) addWebService(name string) *client.Service {
+ 	}))
+ }
+ 
++// addCronJob seeds a native cron job under a new project and returns it.
++func (h serviceUpdateHarness) addCronJob(name string) *client.Service {
++	h.t.Helper()
++
++	project := h.server.CreateProject(
++		renderapi.ProjectAttrs{Name: "Jobs", OwnerId: serviceTestWorkspaceID},
++		renderapi.EnvAttrs{Name: "production"},
++	)
++	return h.server.Services.Add(renderapi.NewCronJob(renderapi.CronJobAttrs{
++		Service: renderapi.CommonServiceAttrs{
++			Name:          name,
++			OwnerID:       serviceTestWorkspaceID,
++			EnvironmentID: project.Env("production").Id,
++		},
++	}))
++}
++
++// patchBody runs `services update` against a fresh service seeded by addService
++// and returns the decoded PATCH body.
++func (h serviceUpdateHarness) patchBody(addService func(string) *client.Service, args ...string) map[string]any {
++	h.t.Helper()
++
++	svc := addService("command-text")
++	_, err := h.execute(append(append([]string{svc.Id}, args...), "--output", "json")...)
++	require.NoError(h.t, err)
++
++	rec, ok := h.server.LastRequest("PATCH", "/services/"+svc.Id)
++	require.True(h.t, ok, "expected a PATCH request to be recorded")
++	return testrequire.ParseJSONMap(h.t, string(rec.Body))
++}
++
++// serviceUpdateCommandFlags maps each command flag to the service type that
++// accepts it and to the PATCH body that carries its value. Cron jobs carry the
++// cron command as envSpecificDetails.startCommand.
++var serviceUpdateCommandFlags = []struct {
++	flag     string
++	cronJob  bool
++	wantBody func(command string) map[string]any
++}{
++	{
++		flag: "build-command",
++		wantBody: func(command string) map[string]any {
++			return map[string]any{"serviceDetails": map[string]any{
++				"envSpecificDetails": map[string]any{"buildCommand": command},
++			}}
++		},
++	},
++	{
++		flag: "start-command",
++		wantBody: func(command string) map[string]any {
++			return map[string]any{"serviceDetails": map[string]any{
++				"envSpecificDetails": map[string]any{"startCommand": command},
++			}}
++		},
++	},
++	{
++		flag: "pre-deploy-command",
++		wantBody: func(command string) map[string]any {
++			return map[string]any{"serviceDetails": map[string]any{"preDeployCommand": command}}
++		},
++	},
++	{
++		flag:    "cron-command",
++		cronJob: true,
++		wantBody: func(command string) map[string]any {
++			return map[string]any{"serviceDetails": map[string]any{
++				"envSpecificDetails": map[string]any{"startCommand": command},
++			}}
++		},
++	},
++}
++
++func TestServiceUpdate_CommandFlagsSendExactCommandText(t *testing.T) {
++	for _, ff := range serviceUpdateCommandFlags {
++		for _, tc := range serviceCommandTextCases {
++			t.Run(ff.flag+"/"+tc.name, func(t *testing.T) {
++				harness := newServiceUpdateHarness(t)
++				addService := harness.addWebService
++				if ff.cronJob {
++					addService = harness.addCronJob
++				}
++
++				body := harness.patchBody(addService, "--"+ff.flag, tc.value)
++				assert.Equal(t, ff.wantBody(tc.value), body)
++			})
++		}
++	}
++}
++
++// A blank command flag explicitly clears the command, so it is sent as "".
++func TestServiceUpdate_BlankCommandFlagsSendEmptyCommand(t *testing.T) {
++	for _, ff := range serviceUpdateCommandFlags {
++		t.Run(ff.flag, func(t *testing.T) {
++			harness := newServiceUpdateHarness(t)
++			addService := harness.addWebService
++			if ff.cronJob {
++				addService = harness.addCronJob
++			}
++
++			body := harness.patchBody(addService, "--"+ff.flag, " \t ")
++			assert.Equal(t, ff.wantBody(""), body)
++		})
++	}
++}
++
++func TestServiceUpdate_UnsetCommandFlagsAreNotSent(t *testing.T) {
++	t.Run("web service", func(t *testing.T) {
++		harness := newServiceUpdateHarness(t)
++
++		body := harness.patchBody(harness.addWebService, "--health-check-path", "/ready")
++		assert.Equal(t, map[string]any{"serviceDetails": map[string]any{"healthCheckPath": "/ready"}}, body)
++	})
++
++	t.Run("cron job", func(t *testing.T) {
++		harness := newServiceUpdateHarness(t)
++
++		body := harness.patchBody(harness.addCronJob, "--cron-schedule", "0 * * * *")
++		assert.Equal(t, map[string]any{"serviceDetails": map[string]any{"schedule": "0 * * * *"}}, body)
++	})
++}
++
+ // TestServiceUpdate_ParseCommand_HappyPath verifies that every flag the update command
+ // registers binds to the expected ServiceUpdateInput field with the expected
+ // type. It drives the real command's flag set through ParseCommand in memory —
+diff --git a/internal/fakes/renderapi/services.go b/internal/fakes/renderapi/services.go
+index 13b026a..d6d83ed 100644
+--- a/internal/fakes/renderapi/services.go
++++ b/internal/fakes/renderapi/services.go
+@@ -635,6 +635,32 @@ func registerServiceRoutes(mux *http.ServeMux, s *Server, record func(*http.Requ
+ 		w.WriteHeader(http.StatusNotFound)
+ 	})
+ 
++	// POST /services - create a service. The response echoes the top-level
++	// fields only; tests assert on serviceDetails via the recorded request body.
++	mux.HandleFunc("POST /services", func(w http.ResponseWriter, r *http.Request) {
++		record(r)
++		if status, hasError := s.Services.nextError(); hasError {
++			w.WriteHeader(status)
++			return
++		}
++
++		var body client.CreateServiceJSONRequestBody
++		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
++			w.WriteHeader(http.StatusBadRequest)
++			return
++		}
++
++		svc := s.Services.Add(newService(CommonServiceAttrs{
++			Name:          body.Name,
++			OwnerID:       body.OwnerId,
++			EnvironmentID: pointers.ValueOrDefault(body.EnvironmentId, ""),
++			Repo:          pointers.ValueOrDefault(body.Repo, ""),
++			Branch:        pointers.ValueOrDefault(body.Branch, ""),
++			RootDir:       pointers.ValueOrDefault(body.RootDir, ""),
++		}, body.Type, client.Service_ServiceDetails{}))
++		writeJSON(w, http.StatusCreated, client.ServiceAndDeploy{Service: svc})
++	})
++
+ 	// PATCH /services/{id} - update a service
+ 	mux.HandleFunc("PATCH /services/{id}", func(w http.ResponseWriter, r *http.Request) {
+ 		record(r)
+diff --git a/pkg/types/service/servicecreate.go b/pkg/types/service/servicecreate.go
+index 1f36b9c..e025c40 100644
+--- a/pkg/types/service/servicecreate.go
++++ b/pkg/types/service/servicecreate.go
+@@ -222,15 +222,15 @@ func NormalizeServiceCreateCLIInput(input ServiceCreateInput) ServiceCreateInput
+ 	input.Plan = types.OptionalNonZeroString(input.Plan)
+ 	input.Runtime = types.OptionalAlias(input.Runtime)
+ 	input.RootDirectory = types.OptionalNonZeroString(input.RootDirectory)
+-	input.BuildCommand = types.OptionalNonZeroString(input.BuildCommand)
+-	input.StartCommand = types.OptionalNonZeroString(input.StartCommand)
++	input.BuildCommand = types.OptionalNonZeroCommandText(input.BuildCommand)
++	input.StartCommand = types.OptionalNonZeroCommandText(input.StartCommand)
+ 	input.HealthCheckPath = types.OptionalNonZeroString(input.HealthCheckPath)
+ 	input.PublishDirectory = types.OptionalNonZeroString(input.PublishDirectory)
+-	input.CronCommand = types.OptionalNonZeroString(input.CronCommand)
++	input.CronCommand = types.OptionalNonZeroCommandText(input.CronCommand)
+ 	input.CronSchedule = types.OptionalNonZeroString(input.CronSchedule)
+ 	input.EnvironmentID = types.OptionalNonZeroString(input.EnvironmentID)
+ 	input.RegistryCredential = types.OptionalNonZeroString(input.RegistryCredential)
+-	input.PreDeployCommand = types.OptionalNonZeroString(input.PreDeployCommand)
++	input.PreDeployCommand = types.OptionalNonZeroCommandText(input.PreDeployCommand)
+ 	input.Previews = types.OptionalAlias(input.Previews)
+ 	input.MaintenanceModeURI = types.OptionalNonZeroString(input.MaintenanceModeURI)
+ 	return input
+diff --git a/pkg/types/service/servicecreate_test.go b/pkg/types/service/servicecreate_test.go
+index 1b8c996..c95bead 100644
+--- a/pkg/types/service/servicecreate_test.go
++++ b/pkg/types/service/servicecreate_test.go
+@@ -430,6 +430,36 @@ func TestNormalizeAndValidateCreateInput(t *testing.T) {
+ 
+ }
+ 
++func TestNormalizeServiceCreateCLIInputCommandText(t *testing.T) {
++	t.Run("keeps command text exactly", func(t *testing.T) {
++		got := servicetypes.NormalizeServiceCreateCLIInput(servicetypes.ServiceCreateInput{
++			BuildCommand:     pointers.From(`printf '%s' tail\ `),
++			StartCommand:     pointers.From("printf '%s' tail\\\t"),
++			PreDeployCommand: pointers.From(" bin/migrate "),
++			CronCommand:      pointers.From(`printf '%s' 'tail '`),
++			CronSchedule:     pointers.From(" 0 * * * * "),
++		})
++		assert.Equal(t, `printf '%s' tail\ `, *got.BuildCommand)
++		assert.Equal(t, "printf '%s' tail\\\t", *got.StartCommand)
++		assert.Equal(t, " bin/migrate ", *got.PreDeployCommand)
++		assert.Equal(t, `printf '%s' 'tail '`, *got.CronCommand)
++		assert.Equal(t, "0 * * * *", *got.CronSchedule)
++	})
++
++	t.Run("whitespace-only commands are omitted", func(t *testing.T) {
++		got := servicetypes.NormalizeServiceCreateCLIInput(servicetypes.ServiceCreateInput{
++			BuildCommand:     pointers.From(" \t "),
++			StartCommand:     pointers.From(""),
++			PreDeployCommand: pointers.From("   "),
++			CronCommand:      pointers.From("\n"),
++		})
++		assert.Nil(t, got.BuildCommand)
++		assert.Nil(t, got.StartCommand)
++		assert.Nil(t, got.PreDeployCommand)
++		assert.Nil(t, got.CronCommand)
++	})
++}
++
+ func svcType(value servicetypes.ServiceType) *servicetypes.ServiceType {
+ 	v := value
+ 	return &v
+diff --git a/pkg/types/service/serviceupdate.go b/pkg/types/service/serviceupdate.go
+index 5b5abaa..7fe39bc 100644
+--- a/pkg/types/service/serviceupdate.go
++++ b/pkg/types/service/serviceupdate.go
+@@ -70,14 +70,14 @@ func NormalizeServiceUpdateCLIInput(input ServiceUpdateInput) ServiceUpdateInput
+ 	input.Plan = types.TrimOptionalString(input.Plan)
+ 	input.Runtime = types.OptionalAlias(input.Runtime)
+ 	input.RootDirectory = types.TrimOptionalString(input.RootDirectory)
+-	input.BuildCommand = types.TrimOptionalString(input.BuildCommand)
+-	input.StartCommand = types.TrimOptionalString(input.StartCommand)
++	input.BuildCommand = types.OptionalCommandText(input.BuildCommand)
++	input.StartCommand = types.OptionalCommandText(input.StartCommand)
+ 	input.HealthCheckPath = types.TrimOptionalString(input.HealthCheckPath)
+ 	input.PublishDirectory = types.TrimOptionalString(input.PublishDirectory)
+-	input.CronCommand = types.TrimOptionalString(input.CronCommand)
++	input.CronCommand = types.OptionalCommandText(input.CronCommand)
+ 	input.CronSchedule = types.TrimOptionalString(input.CronSchedule)
+ 	input.RegistryCredential = types.TrimOptionalString(input.RegistryCredential)
+-	input.PreDeployCommand = types.TrimOptionalString(input.PreDeployCommand)
++	input.PreDeployCommand = types.OptionalCommandText(input.PreDeployCommand)
+ 	input.Previews = types.OptionalAlias(input.Previews)
+ 	input.MaintenanceModeURI = types.TrimOptionalString(input.MaintenanceModeURI)
+ 	return input
+diff --git a/pkg/types/service/serviceupdate_test.go b/pkg/types/service/serviceupdate_test.go
+index 4724277..54cd91f 100644
+--- a/pkg/types/service/serviceupdate_test.go
++++ b/pkg/types/service/serviceupdate_test.go
+@@ -191,12 +191,16 @@ func TestNormalizeAndValidateUpdateInput(t *testing.T) {
+ 	t.Run("normalizes and validates", func(t *testing.T) {
+ 		input := servicetypes.ServiceUpdateInput{
+ 			Name:            " new-name ",
++			RootDirectory:   pointers.From(" app "),
+ 			BuildCommand:    pointers.From("  npm ci  "),
+ 			ServiceIDOrName: "my-service-id",
+ 		}
+ 		got, err := servicetypes.NormalizeAndValidateUpdateInput(input)
+ 		require.NoError(t, err)
+ 		require.Equal(t, "new-name", got.Name)
++		require.Equal(t, "app", *got.RootDirectory)
++		// Command text is sent byte-for-byte; only other fields are trimmed.
++		require.Equal(t, "  npm ci  ", *got.BuildCommand)
+ 	})
+ 
+ 	t.Run("empty build-command is preserved to allow clearing", func(t *testing.T) {
+@@ -344,3 +348,35 @@ func TestValidateForServiceType(t *testing.T) {
+ 		}
+ 	})
+ }
++
++func TestNormalizeServiceUpdateCLIInputCommandText(t *testing.T) {
++	t.Run("keeps command text exactly", func(t *testing.T) {
++		got := servicetypes.NormalizeServiceUpdateCLIInput(servicetypes.ServiceUpdateInput{
++			BuildCommand:     pointers.From(`printf '%s' tail\ `),
++			StartCommand:     pointers.From("printf '%s' tail\\\t"),
++			PreDeployCommand: pointers.From(" bin/migrate "),
++			CronCommand:      pointers.From(`printf '%s' 'tail '`),
++			CronSchedule:     pointers.From(" 0 * * * * "),
++		})
++		assert.Equal(t, `printf '%s' tail\ `, *got.BuildCommand)
++		assert.Equal(t, "printf '%s' tail\\\t", *got.StartCommand)
++		assert.Equal(t, " bin/migrate ", *got.PreDeployCommand)
++		assert.Equal(t, `printf '%s' 'tail '`, *got.CronCommand)
++		assert.Equal(t, "0 * * * *", *got.CronSchedule)
++	})
++
++	t.Run("whitespace-only commands clear and unset commands stay unset", func(t *testing.T) {
++		got := servicetypes.NormalizeServiceUpdateCLIInput(servicetypes.ServiceUpdateInput{
++			BuildCommand: pointers.From(" \t "),
++			StartCommand: pointers.From(""),
++			CronCommand:  pointers.From("   "),
++		})
++		require.NotNil(t, got.BuildCommand)
++		assert.Equal(t, "", *got.BuildCommand)
++		require.NotNil(t, got.StartCommand)
++		assert.Equal(t, "", *got.StartCommand)
++		require.NotNil(t, got.CronCommand)
++		assert.Equal(t, "", *got.CronCommand)
++		assert.Nil(t, got.PreDeployCommand)
++	})
++}
+diff --git a/pkg/types/util.go b/pkg/types/util.go
+index 65319ae..946c35a 100644
+--- a/pkg/types/util.go
++++ b/pkg/types/util.go
+@@ -24,6 +24,27 @@ func OptionalNonZeroString(value *string) *string {
+ 	return trimmed
+ }
+ 
++// OptionalCommandText preserves a *string holding shell command text without
++// trimming it, since surrounding whitespace can be part of the command (e.g. an
++// escaped trailing space). Whitespace-only values become "".
++func OptionalCommandText(value *string) *string {
++	if value == nil || strings.TrimSpace(*value) != "" {
++		return value
++	}
++	empty := ""
++	return &empty
++}
++
++// OptionalNonZeroCommandText is like OptionalCommandText but converts
++// empty/whitespace-only values to nil.
++func OptionalNonZeroCommandText(value *string) *string {
++	command := OptionalCommandText(value)
++	if command == nil || *command == "" {
++		return nil
++	}
++	return command
++}
++
+ // TrimmedNonEmpty trims whitespace from a plain string and reports if
+ // the result is non-empty.
+ func TrimmedNonEmpty(value string) (string, bool) {
+diff --git a/pkg/types/util_test.go b/pkg/types/util_test.go
+index bc0b224..0dc3c49 100644
+--- a/pkg/types/util_test.go
++++ b/pkg/types/util_test.go
+@@ -98,3 +98,46 @@ func TestOptionalNonZeroString(t *testing.T) {
+ 		require.Equal(t, "value", *result)
+ 	})
+ }
++
++func TestOptionalCommandText(t *testing.T) {
++	t.Run("returns nil for nil pointer", func(t *testing.T) {
++		require.Nil(t, types.OptionalCommandText(nil))
++	})
++
++	t.Run("returns empty string for whitespace-only string", func(t *testing.T) {
++		whitespace := " \t "
++		result := types.OptionalCommandText(&whitespace)
++		require.NotNil(t, result)
++		require.Equal(t, "", *result)
++	})
++
++	t.Run("keeps surrounding whitespace", func(t *testing.T) {
++		value := " printf '%s' tail\\ "
++		result := types.OptionalCommandText(&value)
++		require.NotNil(t, result)
++		require.Equal(t, " printf '%s' tail\\ ", *result)
++	})
++}
++
++func TestOptionalNonZeroCommandText(t *testing.T) {
++	t.Run("returns nil for nil pointer", func(t *testing.T) {
++		require.Nil(t, types.OptionalNonZeroCommandText(nil))
++	})
++
++	t.Run("returns nil for empty string", func(t *testing.T) {
++		empty := ""
++		require.Nil(t, types.OptionalNonZeroCommandText(&empty))
++	})
++
++	t.Run("returns nil for whitespace-only string", func(t *testing.T) {
++		whitespace := " \t "
++		require.Nil(t, types.OptionalNonZeroCommandText(&whitespace))
++	})
++
++	t.Run("keeps surrounding whitespace", func(t *testing.T) {
++		value := "printf '%s' tail\\\t"
++		result := types.OptionalNonZeroCommandText(&value)
++		require.NotNil(t, result)
++		require.Equal(t, "printf '%s' tail\\\t", *result)
++	})
++}

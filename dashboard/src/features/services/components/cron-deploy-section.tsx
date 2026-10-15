@@ -9,6 +9,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import { useCronJob } from "@/features/services/hooks/use-cron-job";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { commandText } from "@/features/services/lib/command-text";
 import {
   cronScheduleProblem,
   describeCron,
@@ -102,9 +103,11 @@ export function CronDeploySection({
           // sends null when there is not — null means "keep", so a commandless
           // reschedule stays a plain can_operate settings change rather than
           // becoming an explicit command write (w4/137). Sending "" here would
-          // silently turn every reschedule into a clear.
+          // silently turn every reschedule into a clear. The replay is the
+          // stored text byte for byte: trimming it would rewrite a command
+          // ending in an escaped space on every reschedule (w8/m68).
           onSave={(value) =>
-            updateCronJob(serviceId, value, hasCommand ? command!.trim() : null)
+            updateCronJob(serviceId, value, hasCommand ? command : null)
           }
         />
         <EditableFieldRow
@@ -120,6 +123,7 @@ export function CronDeploySection({
           disabledReason={refreshStaleReason ?? commandReason}
           // The Command row forwards exactly what the user left behind,
           // including "" — the blank the field's hint invites.
+          normalize={commandText}
           onSave={(value) =>
             updateCronJob(serviceId, (schedule ?? "").trim(), value)
           }

@@ -158,7 +158,8 @@ describe("buildCreateServiceInput", () => {
         imageCommand: "  /http-echo -text=hello  ",
       }),
     );
-    expect(withCommand.startCommand).toBe("/http-echo -text=hello");
+    // A nonblank command ships as typed, padding included (w8/m68).
+    expect(withCommand.startCommand).toBe("  /http-echo -text=hello  ");
 
     for (const serviceType of [
       "private_service",
@@ -359,5 +360,134 @@ describe("isSubmittable", () => {
         form({ serviceType: "background_worker", port: "nonsense" }),
       ),
     ).toBe(true);
+  });
+});
+
+describe("command drafts on create (w8/m68)", () => {
+  const cmd = "printf '%s' tail\\ ";
+  const BLANK = " \t ";
+  const SCHEDULE = "*/5 * * * *";
+
+  it("keeps a native build's Build and Start Commands", () => {
+    const input = buildCreateServiceInput(
+      form({ buildCommand: cmd, startCommand: cmd }),
+    );
+    expect(input.buildCommand).toBe(cmd);
+    expect(input.startCommand).toBe(cmd);
+  });
+
+  it("keeps a Dockerfile build's Docker Command (startCommand)", () => {
+    const input = buildCreateServiceInput(
+      form({ runtime: "docker", startCommand: cmd }),
+    );
+    expect(input.startCommand).toBe(cmd);
+  });
+
+  it("keeps an Existing Image's Docker Command (startCommand)", () => {
+    const input = buildCreateServiceInput(
+      form({ tab: "image", image: "alpine:3.20", imageCommand: cmd }),
+    );
+    expect(input.startCommand).toBe(cmd);
+  });
+
+  it("keeps a static site's Build Command", () => {
+    const input = buildCreateServiceInput(
+      form({ serviceType: "static_site", staticBuildCommand: cmd }),
+    );
+    expect(input.buildCommand).toBe(cmd);
+  });
+
+  it("keeps a native cron job's Command in both startCommand and command", () => {
+    const input = buildCreateServiceInput(
+      form({ serviceType: "cron_job", schedule: SCHEDULE, command: cmd }),
+    );
+    expect(input.startCommand).toBe(cmd);
+    expect(input.command).toBe(cmd);
+  });
+
+  it("keeps an image cron job's Command", () => {
+    const input = buildCreateServiceInput(
+      form({
+        serviceType: "cron_job",
+        tab: "image",
+        image: "alpine:3.20",
+        schedule: SCHEDULE,
+        command: cmd,
+      }),
+    );
+    expect(input.command).toBe(cmd);
+    expect(input.startCommand).toBeUndefined();
+  });
+
+  it("omits a whitespace-only optional command exactly as an empty one", () => {
+    for (const draft of ["", BLANK]) {
+      expect(
+        buildCreateServiceInput(form({ startCommand: draft })).startCommand,
+      ).toBeUndefined();
+      expect(
+        buildCreateServiceInput(
+          form({ runtime: "docker", startCommand: draft }),
+        ).startCommand,
+      ).toBeUndefined();
+      expect(
+        buildCreateServiceInput(
+          form({ tab: "image", image: "alpine:3.20", imageCommand: draft }),
+        ).startCommand,
+      ).toBeUndefined();
+      expect(
+        buildCreateServiceInput(
+          form({ serviceType: "static_site", staticBuildCommand: draft }),
+        ).buildCommand,
+      ).toBeUndefined();
+      const imageCron = buildCreateServiceInput(
+        form({
+          serviceType: "cron_job",
+          tab: "image",
+          image: "alpine:3.20",
+          schedule: SCHEDULE,
+          command: draft,
+        }),
+      );
+      expect(imageCron.command).toBeUndefined();
+    }
+  });
+
+  it("sends a whitespace-only required native command as the same empty string", () => {
+    const build = buildCreateServiceInput(form({ buildCommand: BLANK }));
+    expect(build.buildCommand).toBe("");
+    const cron = buildCreateServiceInput(
+      form({ serviceType: "cron_job", schedule: SCHEDULE, command: BLANK }),
+    );
+    expect(cron.startCommand).toBe("");
+    expect(cron.command).toBeUndefined();
+  });
+
+  it("still treats a whitespace-only required native command as missing", () => {
+    expect(isSubmittable(form({ buildCommand: BLANK }))).toBe(false);
+    expect(isSubmittable(form({ startCommand: BLANK }))).toBe(false);
+    expect(
+      isSubmittable(
+        form({ serviceType: "cron_job", schedule: SCHEDULE, command: BLANK }),
+      ),
+    ).toBe(false);
+  });
+
+  it("keeps trimming the Dockerfile path, publish directory, and schedule", () => {
+    const docker = buildCreateServiceInput(
+      form({ runtime: "docker", dockerfilePath: "  ./Dockerfile  " }),
+    );
+    expect(docker.dockerfilePath).toBe("./Dockerfile");
+    const site = buildCreateServiceInput(
+      form({ serviceType: "static_site", publishPath: "  dist  " }),
+    );
+    expect(site.publishPath).toBe("dist");
+    const cron = buildCreateServiceInput(
+      form({
+        serviceType: "cron_job",
+        schedule: `  ${SCHEDULE}  `,
+        command: cmd,
+      }),
+    );
+    expect(cron.schedule).toBe(SCHEDULE);
   });
 });

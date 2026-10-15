@@ -23,6 +23,7 @@ import { useBuildFilter } from "@/features/services/hooks/use-build-filter";
 import { useRepoBranches } from "@/features/services/hooks/use-repo-branches";
 import { useSetRepo } from "@/features/services/hooks/use-set-repo";
 import { useRepos } from "@/features/services/hooks/use-repos";
+import { commandText } from "@/features/services/lib/command-text";
 import { commandPromptPrefix } from "@/features/services/lib/format";
 import { isDockerBuild } from "@/features/services/lib/service-type";
 import type { BuildFilterView } from "@/features/services/types";
@@ -239,6 +240,7 @@ export function BuildDeploySection({
               editLabel={t("services.buildCommandEdit")}
               optional
               mono
+              normalize={commandText}
               busy={buildCommandBusy}
               confirm={{
                 title: (value) =>

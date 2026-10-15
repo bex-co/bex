@@ -73,12 +73,23 @@ func buildStrategy(spec appv1alpha1.AppSpec) string {
 	return buildPublish
 }
 
+// commandText is the stored form of an executable command: nonblank text is
+// kept byte for byte, because trailing whitespace can belong to the last shell
+// argument (`printf '%s' tail\ ` passes "tail "), and whitespace-only is empty
+// so it still clears or omits the command (w8/m68).
+func commandText(command string) string {
+	if strings.TrimSpace(command) == "" {
+		return ""
+	}
+	return command
+}
+
 // setBuildCommand is an explicit build-command write. A static site's native
 // builder with no runtime only projects its build command (effectiveBuilder
 // re-derives it), so clearing the command drops it too and the site publishes
 // directly, as one created without a command does (w8/m59).
 func setBuildCommand(spec *appv1alpha1.AppSpec, command string) {
-	spec.BuildCommand = strings.TrimSpace(command)
+	spec.BuildCommand = commandText(command)
 	if spec.BuildCommand == "" && spec.Type == appv1alpha1.TypeStaticSite &&
 		spec.Runtime == "" && spec.Builder == buildNative {
 		spec.Builder = ""
@@ -144,7 +155,7 @@ func cronCommand(spec appv1alpha1.AppSpec) string {
 // of running the image's own (w4/m194); a native or buildpack cron keeps its
 // baked start command.
 func setCronCommand(spec *appv1alpha1.AppSpec, command string) {
-	spec.Command = strings.TrimSpace(command)
+	spec.Command = commandText(command)
 	if spec.Command == "" && cronStartCommandOverrides(*spec) {
 		spec.StartCommand = ""
 	}
@@ -211,5 +222,5 @@ func setStartCommand(spec *appv1alpha1.AppSpec, command string) {
 		setCronCommand(spec, command)
 		return
 	}
-	spec.StartCommand = strings.TrimSpace(command)
+	spec.StartCommand = commandText(command)
 }
