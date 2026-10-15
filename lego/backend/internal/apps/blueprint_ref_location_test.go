@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -62,7 +63,7 @@ func TestBlueprintReferenceErrorsLocateTheEnvEntry(t *testing.T) {
 	}{
 		{"root pool first", poolDB + caller("", pool("")), "services[0].envVars[0]", "DB_URL"},
 		{"root pool second", poolDB + caller("", literal("")+pool("")), "services[0].envVars[1]", "DB_URL"},
-		{"nested pool second", nest(pad+"databases:\n"+pad+"  - name: db\n"+pad+"    plan: free\n"+caller(pad, literal(pad)+pool(pad))), "projects[0].environments[0].services[0].envVars[1]", "DB_URL"},
+		{"nested pool second", nest(pad + "databases:\n" + pad + "  - name: db\n" + pad + "    plan: free\n" + caller(pad, literal(pad)+pool(pad))), "projects[0].environments[0].services[0].envVars[1]", "DB_URL"},
 		{"unknown target", caller("", literal("")+env("", "COPY_VALUE", "fromService: {name: ghost, type: web, envVarKey: X}")), "services[0].envVars[1]", "COPY_VALUE"},
 	}
 	for _, key := range []string{"IMAGE", "PLAN", "TYPE", "CONNECTIONPOOL"} {
@@ -162,14 +163,16 @@ func TestBlueprintRepeatedKeyRefusalLocatesTheInvalidEntry(t *testing.T) {
 	valid, invalid := `{"key":"VALUE","value":"ok"}`, `{"key":"VALUE","value":"","generateValue":true}`
 	service := func(envs string) string { return `{"name":"api","type":"web",` + image + `,"envVars":[` + envs + `]}` }
 	group := func(envs string) string { return `{"name":"shared","envVars":[` + envs + `]}` }
-	nest := func(body string) string { return `{"projects":[{"name":"p","environments":[{"name":"e",` + body + `}]}]}` }
+	nest := func(body string) string {
+		return `{"projects":[{"name":"p","environments":[{"name":"e",` + body + `}]}]}`
+	}
 	const plainSvc = `{"name":"api","type":"web",` + image + `}`
 	for _, tc := range []struct{ name, manifest, wantPath string }{
 		{"service second invalid", `{"services":[` + service(valid+","+invalid) + `]}`, "services[0].envVars[1]"},
 		{"service first invalid", `{"services":[` + service(invalid+","+valid) + `]}`, "services[0].envVars[0]"},
 		{"group second invalid", `{"services":[` + plainSvc + `],"envVarGroups":[` + group(valid+","+invalid) + `]}`, "envVarGroups[0].envVars[1]"},
-		{"nested service second invalid", nest(`"services":[`+service(valid+","+invalid)+`]`), "projects[0].environments[0].services[0].envVars[1]"},
-		{"nested group second invalid", nest(`"services":[`+plainSvc+`],"envVarGroups":[`+group(valid+","+invalid)+`]`), "projects[0].environments[0].envVarGroups[0].envVars[1]"},
+		{"nested service second invalid", nest(`"services":[` + service(valid+","+invalid) + `]`), "projects[0].environments[0].services[0].envVars[1]"},
+		{"nested group second invalid", nest(`"services":[` + plainSvc + `],"envVarGroups":[` + group(valid+","+invalid) + `]`), "projects[0].environments[0].envVarGroups[0].envVars[1]"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			result, err := svc.ValidateBlueprint(context.Background(), "", tc.manifest, "")
@@ -181,5 +184,49 @@ func TestBlueprintRepeatedKeyRefusalLocatesTheInvalidEntry(t *testing.T) {
 	both := `{"services":[` + service(valid+`,{"key":"VALUE","value":"again"}`) + `]}`
 	if result, err := svc.ValidateBlueprint(context.Background(), "", both, ""); err != nil || !result.Valid {
 		t.Fatalf("both-valid repeated key = %+v, %v; want valid", result, err)
+	}
+}
+
+// w8/100 (sweep227/242): a refused reference after a valid literal with the
+// same key locates the reference entry itself. An earlier unrelated literal
+// keeps the authored index apart from both the reference-only slice index and
+// the first same-key match.
+func TestBlueprintDeferredReferenceRefusalLocatesItsOwnEntry(t *testing.T) {
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	const image = `"runtime":"image","image":{"url":"nginx:1"}`
+	caller := func(ref string) string {
+		return `{"name":"api","type":"web",` + image + `,"envVars":[{"key":"OTHER","value":"x"},{"key":"V","value":"ok"},{"key":"V",` + ref + `}]}`
+	}
+	web := `{"name":"target","type":"web",` + image + `}`
+	worker := `{"name":"bg","type":"worker",` + image + `}`
+	db := `"databases":[{"name":"db","plan":"free"}]`
+	pool := `"fromDatabase":{"name":"db","property":"connectionPoolString"}`
+	nest := func(body string) string {
+		return `{"projects":[{"name":"p","environments":[{"name":"e",` + body + `}]}]}`
+	}
+	for _, tc := range []struct{ name, manifest, wantPath string }{
+		{"pooler required", `{` + db + `,"services":[` + caller(pool) + `]}`, "services[0].envVars[2]"},
+		{"nested pooler required", nest(db + `,"services":[` + caller(pool) + `]`), "projects[0].environments[0].services[0].envVars[2]"},
+		{"missing sibling key", `{"services":[` + caller(`"fromService":{"name":"target","type":"web","envVarKey":"MISSING"}`) + `,` + web + `]}`, "services[0].envVars[2]"},
+		{"type mismatch", `{"services":[` + caller(`"fromService":{"name":"target","type":"pserv","envVarKey":"X"}`) + `,` + web + `]}`, "services[0].envVars[2].fromService.type"},
+		{"worker host", `{"services":[` + caller(`"fromService":{"name":"bg","type":"worker","property":"host"}`) + `,` + worker + `]}`, "services[0].envVars[2]"},
+		{"nested worker host", nest(`"services":[` + caller(`"fromService":{"name":"bg","type":"worker","property":"host"}`) + `,` + worker + `]`), "projects[0].environments[0].services[0].envVars[2]"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := svc.ValidateBlueprint(context.Background(), "", tc.manifest, "")
+			if err != nil || result.Valid || len(result.Errors) != 1 || result.Errors[0].Path == nil || *result.Errors[0].Path != tc.wantPath {
+				t.Fatalf("validation = %+v, %v; want one refusal at %s", result, err, tc.wantPath)
+			}
+		})
+	}
+}
+
+// A current-state copy refusal carries the authored entry of its copy.
+func TestCopyRefusalCarriesTheAuthoredEntry(t *testing.T) {
+	consumer := &parsedService{req: CreateRequest{Name: "api"}}
+	refusal := copyRefusal(consumer, stateCopy{key: "COPY", index: 3, source: "src", sourceKey: "K"}, "which is seeded")
+	var entry *envEntryError
+	if !errors.As(refusal.err, &entry) || entry.index != 3 {
+		t.Fatalf("copy refusal = %#v, want envVars entry 3", refusal.err)
 	}
 }
