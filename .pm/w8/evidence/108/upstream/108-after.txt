@@ -1,0 +1,68 @@
+# 108 tests with the fix (render-oss/cli main 28b233e + 108-upstream.patch)
+# go test -v ./cmd/ -run 'TestServiceCreate_Clone'
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory/omitted_inherits_the_source_value
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory/non-empty_overrides_the_source_value
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory/empty_clears_the_source_value
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory/whitespace-only_clears_the_source_value
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory/empty_on_a_direct_create_is_omitted
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path/omitted_inherits_the_source_value
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path/non-empty_overrides_the_source_value
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path/empty_clears_the_source_value
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path/whitespace-only_clears_the_source_value
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path/empty_on_a_direct_create_is_omitted
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command/omitted_inherits_the_source_value
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command/non-empty_overrides_the_source_value
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command/empty_clears_the_source_value
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command/whitespace-only_clears_the_source_value
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command/empty_on_a_direct_create_is_omitted
+--- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue (0.06s)
+    --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory (0.03s)
+        --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory/omitted_inherits_the_source_value (0.01s)
+        --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory/non-empty_overrides_the_source_value (0.00s)
+        --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory/empty_clears_the_source_value (0.00s)
+        --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory/whitespace-only_clears_the_source_value (0.01s)
+        --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/root-directory/empty_on_a_direct_create_is_omitted (0.00s)
+    --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path (0.01s)
+        --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path/omitted_inherits_the_source_value (0.00s)
+        --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path/non-empty_overrides_the_source_value (0.00s)
+        --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path/empty_clears_the_source_value (0.00s)
+        --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path/whitespace-only_clears_the_source_value (0.00s)
+        --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/health-check-path/empty_on_a_direct_create_is_omitted (0.00s)
+    --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command (0.02s)
+        --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command/omitted_inherits_the_source_value (0.00s)
+        --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command/non-empty_overrides_the_source_value (0.00s)
+        --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command/empty_clears_the_source_value (0.00s)
+        --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command/whitespace-only_clears_the_source_value (0.00s)
+        --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsSourceValue/pre-deploy-command/empty_on_a_direct_create_is_omitted (0.00s)
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsAcrossServiceTypes
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsAcrossServiceTypes/static_site_root_directory
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsAcrossServiceTypes/private_service_pre-deploy_command
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsAcrossServiceTypes/background_worker_pre-deploy_command
+=== RUN   TestServiceCreate_CloneBlankOptionalFlagClearsAcrossServiceTypes/cron_job_ignores_blank_web-only_flags
+--- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsAcrossServiceTypes (0.01s)
+    --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsAcrossServiceTypes/static_site_root_directory (0.00s)
+    --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsAcrossServiceTypes/private_service_pre-deploy_command (0.01s)
+    --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsAcrossServiceTypes/background_worker_pre-deploy_command (0.00s)
+    --- PASS: TestServiceCreate_CloneBlankOptionalFlagClearsAcrossServiceTypes/cron_job_ignores_blank_web-only_flags (0.00s)
+=== RUN   TestServiceCreate_CloneBlankRequiredFlagsInheritSourceValue
+--- PASS: TestServiceCreate_CloneBlankRequiredFlagsInheritSourceValue (0.00s)
+PASS
+ok  	github.com/render-oss/cli/cmd	0.545s
+# exit=0
+
+# go test -v ./pkg/types/service/ -run TestNormalizeServiceCloneCLIInput
+=== RUN   TestNormalizeServiceCloneCLIInput
+=== RUN   TestNormalizeServiceCloneCLIInput/keeps_blank_clearable_settings_as_empty
+=== RUN   TestNormalizeServiceCloneCLIInput/normalizes_set_and_unset_clearable_settings_as_for_create
+=== RUN   TestNormalizeServiceCloneCLIInput/other_blank_settings_still_count_as_unset
+--- PASS: TestNormalizeServiceCloneCLIInput (0.00s)
+    --- PASS: TestNormalizeServiceCloneCLIInput/keeps_blank_clearable_settings_as_empty (0.00s)
+    --- PASS: TestNormalizeServiceCloneCLIInput/normalizes_set_and_unset_clearable_settings_as_for_create (0.00s)
+    --- PASS: TestNormalizeServiceCloneCLIInput/other_blank_settings_still_count_as_unset (0.00s)
+PASS
+ok  	github.com/render-oss/cli/pkg/types/service	0.187s
+# exit=0
