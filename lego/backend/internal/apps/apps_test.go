@@ -719,7 +719,7 @@ type recordingStore struct {
 	deployCalls []store.Deploy
 	// priorCommit is what LatestDeployCommit returns — set in tests that assert
 	// config_change rows inherit the running release's provenance (w4/m100).
-	priorCommit store.CommitInfo
+	priorCommit  store.CommitInfo
 	imageCalls   []struct{ id, image string }
 	sourceCalls  int
 	sourceWrites []struct{ id, repo, image, branch string }
