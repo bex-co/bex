@@ -20,6 +20,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/graphql-go/graphql"
@@ -83,6 +85,11 @@ func TestSetVersionValidationAndBackupGuard(t *testing.T) {
 		{name: "unknown", plan: "free", target: "19", wantCode: "POSTGRES_VERSION_UNKNOWN", wantVersion: "16"},
 		{name: "same", plan: "free", target: "16", wantCode: "POSTGRES_VERSION_NOT_NEWER", wantVersion: "16"},
 		{name: "downgrade", plan: "free", target: "15", wantCode: "POSTGRES_VERSION_NOT_NEWER", wantVersion: "16"},
+		{name: "13 to 14 below upgrade floor", plan: "free", current: "13", target: "14", wantCode: "POSTGRES_UPGRADE_TARGET_UNSUPPORTED", wantVersion: "13"},
+		{name: "13 to 15 below upgrade floor", plan: "free", current: "13", target: "15", wantCode: "POSTGRES_UPGRADE_TARGET_UNSUPPORTED", wantVersion: "13"},
+		{name: "14 to 15 below upgrade floor", plan: "free", current: "14", target: "15", wantCode: "POSTGRES_UPGRADE_TARGET_UNSUPPORTED", wantVersion: "14"},
+		{name: "13 to floor", plan: "free", current: "13", target: "16", wantVersion: "16"},
+		{name: "15 to 18", plan: "free", current: "15", target: "18", wantVersion: "18"},
 		{name: "durable backup disabled", plan: "basic-1gb", target: "17", wantCode: "POSTGRES_UPGRADE_BACKUP_REQUIRED", wantVersion: "16"},
 		{name: "durable backup pending", plan: "basic-1gb", target: "17", backupsEnabled: true, wantCode: "POSTGRES_UPGRADE_BACKUP_REQUIRED", wantVersion: "16"},
 		{name: "durable completed backup", plan: "basic-1gb", target: "17", backupsEnabled: true, backupObjectServer: "upgrade-db", wantVersion: "17"},
@@ -189,6 +196,101 @@ func TestGraphQLAndMCPVersionUpgradeParity(t *testing.T) {
 		_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "mcp-upgrade"}, &got)
 		if got.Spec.Version != "17" {
 			t.Errorf("spec.version = %q", got.Spec.Version)
+		}
+	})
+}
+
+// A target below CNPG's in-place upgrade floor is refused on every surface,
+// real and dry-run, before any write (w4/308): the stored intent and its
+// generation stay on the running major.
+func TestUpgradeTargetBelowFloorRefusedEverywhere(t *testing.T) {
+	ctx := context.Background()
+	const name = "floor-db"
+	assertUnchanged := func(t *testing.T, cl client.Client, generation int64) {
+		t.Helper()
+		var got appv1alpha1.Database
+		if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: name}, &got); err != nil {
+			t.Fatal(err)
+		}
+		if got.Spec.Version != "13" || got.Generation != generation {
+			t.Errorf("spec.version=%q generation=%d, want 13 at %d", got.Spec.Version, got.Generation, generation)
+		}
+	}
+	generationOf := func(cl client.Client) int64 {
+		var got appv1alpha1.Database
+		_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: name}, &got)
+		return got.Generation
+	}
+
+	for _, body := range []string{`{"version":"14"}`, `{"version":"15","dryRun":true}`} {
+		t.Run("rest "+body, func(t *testing.T) {
+			svc, cl := newService(versionDatabase(name, "free", "13", false))
+			gen := generationOf(cl)
+			rec := serveREST(svc, "PATCH", "/v1/postgres/"+name, body)
+			var resp map[string]any
+			_ = json.Unmarshal(rec.Body.Bytes(), &resp)
+			if rec.Code != 400 || resp["code"] != "POSTGRES_UPGRADE_TARGET_UNSUPPORTED" {
+				t.Fatalf("PATCH %s = %d %s", body, rec.Code, rec.Body.String())
+			}
+			assertUnchanged(t, cl, gen)
+		})
+	}
+
+	t.Run("graphql", func(t *testing.T) {
+		svc, cl := newService(versionDatabase(name, "free", "13", false))
+		gen := generationOf(cl)
+		schema, err := graphql.NewSchema(graphql.SchemaConfig{
+			Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+			Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		res := graphql.Do(graphql.Params{Schema: schema, Context: ctx, RequestString: `mutation { updateDatabaseVersion(id:"floor-db", version:"14") { id version } }`})
+		if len(res.Errors) != 1 || res.Errors[0].Extensions["code"] != "POSTGRES_UPGRADE_TARGET_UNSUPPORTED" {
+			t.Fatalf("errors = %+v", res.Errors)
+		}
+		assertUnchanged(t, cl, gen)
+	})
+
+	for _, dryRun := range []bool{false, true} {
+		t.Run(fmt.Sprintf("mcp dryRun=%v", dryRun), func(t *testing.T) {
+			svc, cl := newService(versionDatabase(name, "free", "13", false))
+			gen := generationOf(cl)
+			server := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+			svc.RegisterMCP(server)
+			serverTransport, clientTransport := mcp.NewInMemoryTransports()
+			if _, err := server.Connect(ctx, serverTransport, nil); err != nil {
+				t.Fatal(err)
+			}
+			session, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientTransport, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer session.Close()
+			result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "update_postgres", Arguments: map[string]any{"postgresId": name, "version": "15", "dryRun": dryRun}})
+			if err != nil || !result.IsError {
+				t.Fatalf("tool: err=%v result=%+v, want a tool error", err, result)
+			}
+			text, _ := result.Content[0].(*mcp.TextContent)
+			if text == nil || !strings.Contains(text.Text, "POSTGRES_UPGRADE_TARGET_UNSUPPORTED") {
+				t.Fatalf("tool error = %+v", result.Content)
+			}
+			assertUnchanged(t, cl, gen)
+		})
+	}
+
+	// A patch without a version is not an upgrade and is unaffected.
+	t.Run("omitted version", func(t *testing.T) {
+		svc, cl := newService(versionDatabase(name, "free", "13", false))
+		rec := serveREST(svc, "PATCH", "/v1/postgres/"+name, `{"name":"renamed"}`)
+		if rec.Code != 200 {
+			t.Fatalf("rename = %d %s", rec.Code, rec.Body.String())
+		}
+		var got appv1alpha1.Database
+		_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: name}, &got)
+		if got.Spec.Version != "13" {
+			t.Errorf("spec.version = %q, want 13", got.Spec.Version)
 		}
 	})
 }
