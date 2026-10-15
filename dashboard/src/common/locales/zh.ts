@@ -56,6 +56,25 @@ const zhCommon: Record<string, TranslationEntry> = {
     description:
       "Accessible name of a search or picker results list (the command menu's listbox).",
   },
+  "common.comboboxPlaceholder": {
+    message: "选择一个选项",
+    description:
+      "Fallback placeholder of a searchable picker when its caller supplies none.",
+  },
+  "common.comboboxEmpty": {
+    message: "未找到结果",
+    description:
+      "Fallback text when a searchable picker's filter matches no option.",
+  },
+  "common.comboboxUseCustom": {
+    message: "按 Enter 使用“{value}”",
+    description:
+      "Hint under a picker's empty results: Enter keeps the typed value as entered. {value} is the typed text.",
+  },
+  "common.comboboxClear": {
+    message: "清除输入",
+    description: "Accessible name of a searchable picker's clear (X) button.",
+  },
   "common.cancel": {
     message: "取消",
     description:
