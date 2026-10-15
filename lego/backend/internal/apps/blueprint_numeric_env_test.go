@@ -143,3 +143,74 @@ func TestBlueprintEnvValueStillRefusesBooleans(t *testing.T) {
 		}
 	}
 }
+
+// An unquoted env value beyond int64 but within uint64 keeps every digit in a
+// root service, an env group and a project-nested service (w8/104).
+func TestBlueprintEnvValueAcceptsUnsigned64(t *testing.T) {
+	const above, max = "9223372036854775808", "18446744073709551615"
+	stack := compileNumericEnvStack(t, `envVarGroups:
+  - name: shared
+    envVars:
+      - key: G
+        value: `+max+`
+services:
+  - type: web
+    name: root
+    runtime: go
+    repo: https://github.com/bex-co/bex
+    plan: free
+    buildCommand: go build -o app .
+    startCommand: ./app
+    envVars:
+      - key: ABOVE
+        value: `+above+`
+      - key: MAX
+        value: `+max+`
+projects:
+  - name: proj
+    environments:
+      - name: production
+        services:
+          - type: web
+            name: nested
+            runtime: go
+            repo: https://github.com/bex-co/bex
+            plan: free
+            buildCommand: go build -o app .
+            startCommand: ./app
+            envVars:
+              - key: NESTED
+                value: `+max+`
+`)
+	if len(stack.envGroups) != 1 || stack.envGroups[0].literals["G"] != max {
+		t.Errorf("env group literals = %+v", stack.envGroups)
+	}
+	got := map[string]string{}
+	for _, svc := range stack.services {
+		for _, e := range svc.req.Env {
+			got[e.Name] = e.Value
+		}
+	}
+	for k, v := range map[string]string{"ABOVE": above, "MAX": max, "NESTED": max} {
+		if got[k] != v {
+			t.Errorf("%s = %q, want %q", k, got[k], v)
+		}
+	}
+}
+
+// The unsigned allowance is for env values only: a bounded numeric setting
+// keeps the located invalid-integer refusal.
+func TestBlueprintUnsignedOutsideEnvValueStillRefused(t *testing.T) {
+	for name, manifest := range map[string]string{
+		"numInstances": strings.Replace(numericEnvService(`      - key: A
+        value: 1
+`), "    plan: free\n", "    plan: free\n    numInstances: 9223372036854775808\n", 1),
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, _, problems := CompileBlueprintIR(manifest)
+			if len(problems) == 0 || !strings.Contains(problems[0].Message, "invalid integer") || problems[0].Line == 0 {
+				t.Fatalf("problems = %+v, want a located invalid-integer refusal", problems)
+			}
+		})
+	}
+}
