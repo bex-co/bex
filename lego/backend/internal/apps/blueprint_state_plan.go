@@ -19,7 +19,9 @@ package apps
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
+	"strings"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
@@ -158,6 +160,9 @@ func (r *blueprintActionResolver) PlanBlueprintResource(_ context.Context, resou
 			}
 		}
 		action.Operation = BlueprintPlanCreate
+		if svc, ok := parsedBlueprintService(r.parsed, resource.Name); ok && resource.Kind == BlueprintResourceService && len(svc.generatedCopies) > 0 {
+			action.Message = generatedCopyMessage(svc.generatedCopies)
+		}
 		return action, nil
 	}
 	switch resource.Kind {
@@ -185,6 +190,19 @@ func (r *blueprintActionResolver) PlanBlueprintResource(_ context.Context, resou
 				probe := *live.DeepCopy()
 				return ApplyBlueprintServiceSpec(&probe, want, oneField(svc.fields, name))
 			})
+		}
+		// A copy of a sibling's generated value lands in the store, which the
+		// plan does not read: like a group's write-only values, it is a
+		// possible update, named but never valued (w1/m175).
+		if len(svc.generatedCopies) > 0 {
+			action.Operation = BlueprintPlanUpdate
+			if !slices.ContainsFunc(action.ChangedFields, func(c BlueprintFieldChange) bool { return c.Path == "envVars" }) {
+				action.ChangedFields = append(action.ChangedFields, BlueprintFieldChange{Path: "envVars"})
+				sort.Slice(action.ChangedFields, func(i, j int) bool { return action.ChangedFields[i].Path < action.ChangedFields[j].Path })
+			}
+			action.Message = generatedCopyMessage(svc.generatedCopies)
+		}
+		if action.Operation == BlueprintPlanUpdate {
 			return action, nil
 		}
 	case BlueprintResourcePostgres:
@@ -313,4 +331,14 @@ func oneField(fields map[string]BlueprintField, name string) map[string]Blueprin
 		return map[string]BlueprintField{name: f}
 	}
 	return nil
+}
+
+// generatedCopyMessage names a service's copies of generated values for the
+// plan, keys only.
+func generatedCopyMessage(copies []generatedCopy) string {
+	parts := make([]string, 0, len(copies))
+	for _, c := range copies {
+		parts = append(parts, fmt.Sprintf("%s from %s's generated %s", c.key, c.source, c.sourceKey))
+	}
+	return "copies at apply: " + strings.Join(parts, ", ")
 }

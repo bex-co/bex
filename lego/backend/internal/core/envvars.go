@@ -71,3 +71,10 @@ func EnvVarsFrom(ctx context.Context) (EnvVarReader, bool) {
 	r, ok := ctx.Value(envVarReaderCtxKey{}).(EnvVarReader)
 	return r, ok && r != nil
 }
+
+// EnvVarCopy is one Blueprint fromService.envVarKey copy of a sibling's
+// generated value: ToKey on the receiving service takes FromKey's value from
+// service From.
+type EnvVarCopy struct {
+	From, FromKey, ToKey string
+}
