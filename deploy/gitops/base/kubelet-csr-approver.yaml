@@ -9,10 +9,13 @@
 #                          "bex-<segment>(-<segment>)*", e.g. bex-tenant-0-fhk8x
 #                          or bex-control-plane-abcde).
 #   - allowedDnsNames: 1   exactly one DNS SAN — the node's own hostname.
-#   - the built-in IP-address check (always on) requires every SAN IP to be one
-#     of the Node object's own addresses; the prod overlay narrows this further
-#     to the Hetzner private network (overlays/prod/values/kubelet-csr-approver
-#     .values.yaml).
+#   - the DNS check (bypassDnsResolution: false; local bypasses it, w1/127):
+#     the node's hostname must resolve, and every SAN IP must be one of the
+#     addresses it resolves to. providerIpPrefixes stays open: a CAPH kubelet's
+#     SANs carry its public ExternalIP beside its 10.10.0.0/16 InternalIP (prod
+#     CSRs read 2026-10-15), so no private-network prefix fits (w1/128). Prod
+#     node names do not resolve in cluster DNS, so in prod this check denies
+#     and CAPH's own CSR validation approves first (w1/129).
 #   - ignoreNonSystemNode/skipDenyStep/bypassDnsResolution/bypassHostnameCheck
 #     all stay false (chart defaults) — every non-conforming CSR is actively
 #     Denied, never silently left Pending or waved through.
