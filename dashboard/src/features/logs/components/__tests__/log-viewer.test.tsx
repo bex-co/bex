@@ -719,3 +719,117 @@ describe("LogViewer adopts navigation it did not write (w4/m204)", () => {
     expect(tail()).toMatchObject({ enabled: true });
   });
 });
+
+describe("LogViewer search committed while paused (w4/306)", () => {
+  const T0 = Date.parse("2026-10-15T00:59:00.000Z");
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(T0);
+  });
+  afterEach(() => vi.useRealTimers());
+
+  const hour = RANGE_PRESETS.find((preset) => preset.id === "1h")!;
+  type Window = { startTime: string; endTime: string };
+  const queries = () =>
+    useHistorySpy.mock.calls.map(([, filters, window]) => ({
+      text: (filters as { text: string }).text,
+      type: (filters as { type: string }).type,
+      ...(window as Window),
+    }));
+  const search = (value: string) =>
+    fireEvent.change(screen.getByLabelText("Search logs"), {
+      target: { value },
+    });
+  const at = (ms: number) => new Date(T0 + ms).toISOString();
+
+  it("queries a newly committed search up to its commit, before the next tick", () => {
+    render(<LogViewer resource="web" range={hour} />);
+    // A matching line arrives live at T0+10s and stays visible on pause.
+    act(() => vi.advanceTimersByTime(10_000));
+    fireEvent.click(screen.getByRole("switch", { name: /live/i }));
+    act(() => vi.advanceTimersByTime(4_700));
+    useHistorySpy.mockClear();
+    search("QA_A497_THIRD_LITERAL");
+    act(() => vi.advanceTimersByTime(300)); // the commit debounce, T0+15s
+
+    const searched = queries().filter(
+      (q) => q.text === "QA_A497_THIRD_LITERAL",
+    );
+    expect(searched.length).toBeGreaterThan(0);
+    // Not one query for the new search ends at the mount sample.
+    for (const q of searched) {
+      expect(q.endTime).toBe(at(15_000));
+      expect(Date.parse(q.endTime) - Date.parse(q.startTime)).toBe(3600_000);
+    }
+    // The commit owns one cadence: the next tick is 30s after it.
+    act(() => vi.advanceTimersByTime(29_999));
+    expect(queries().at(-1)?.endTime).toBe(at(15_000));
+    act(() => vi.advanceTimersByTime(1));
+    expect(queries().at(-1)?.endTime).toBe(at(45_000));
+    expect(vi.getTimerCount()).toBe(1);
+
+    // Clearing the search is a new predicate too, over the same span.
+    act(() => vi.advanceTimersByTime(5_000));
+    search("");
+    act(() => vi.advanceTimersByTime(300));
+    expect(queries().at(-1)).toMatchObject({ text: "", endTime: at(50_300) });
+  });
+
+  it("does not resample while typing or on a rerender that changes nothing", () => {
+    const { rerender } = render(<LogViewer resource="web" range={hour} />);
+    act(() => vi.advanceTimersByTime(10_000));
+    search("QA");
+    act(() => vi.advanceTimersByTime(100));
+    search("QA_A");
+    act(() => vi.advanceTimersByTime(100));
+    // Drafts are not committed predicates: still the mount sample.
+    expect(queries().at(-1)).toMatchObject({ text: "", endTime: at(0) });
+    rerender(<LogViewer resource="web" range={hour} />);
+    expect(queries().at(-1)?.endTime).toBe(at(0));
+    const calls = useHistorySpy.mock.calls.length;
+    act(() => vi.advanceTimersByTime(300));
+    expect(queries().at(-1)).toMatchObject({
+      text: "QA_A",
+      endTime: at(10_500),
+    });
+    // Settling takes a bounded number of renders, not a reset loop.
+    expect(useHistorySpy.mock.calls.length - calls).toBeLessThan(6);
+  });
+
+  it("samples again for a new resource or a structured filter", () => {
+    const { rerender } = render(<LogViewer resource="web" range={hour} />);
+    act(() => vi.advanceTimersByTime(7_000));
+    rerender(<LogViewer resource="worker" range={hour} />);
+    expect(queries().at(-1)?.endTime).toBe(at(7_000));
+    act(() => vi.advanceTimersByTime(3_000));
+    rerender(
+      <LogViewer
+        resource="worker"
+        range={hour}
+        urlFilters={{ ...EMPTY_LOG_FILTERS, type: "app" }}
+      />,
+    );
+    expect(queries().at(-1)).toMatchObject({
+      type: "app",
+      endTime: at(10_000),
+    });
+  });
+
+  it("keeps a custom window fixed when the search changes", () => {
+    const custom = {
+      id: "custom" as const,
+      startTime: "2026-10-14T00:00:00.000Z",
+      endTime: "2026-10-14T01:00:00.000Z",
+      resolutionSeconds: 30,
+    };
+    render(<LogViewer resource="web" range={custom} />);
+    act(() => vi.advanceTimersByTime(60_000));
+    search("QA");
+    act(() => vi.advanceTimersByTime(300));
+    expect(queries().at(-1)).toMatchObject({
+      text: "QA",
+      startTime: custom.startTime,
+      endTime: custom.endTime,
+    });
+  });
+});

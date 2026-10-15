@@ -170,7 +170,12 @@ export function LogViewer({
     [patchFilters],
   );
 
-  const historyWindow = useLiveRange(range);
+  // A newly committed predicate samples the clock in this render, so its first
+  // history query reaches lines already on screen (w4/306).
+  const historyWindow = useLiveRange(
+    range,
+    JSON.stringify([resource, queryFilters]),
+  );
   const history = useLogHistory(
     resource,
     queryFilters,

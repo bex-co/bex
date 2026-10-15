@@ -167,4 +167,46 @@ describe("Metrics selected range clock", () => {
     act(() => vi.advanceTimersByTime(840_000));
     expect(result.current.endTime).toBe("2026-10-02T12:24:00.000Z");
   });
+
+  it("samples again when a new reset key is named under the same preset (w4/306)", () => {
+    const hourly = RANGE_PRESETS.find((preset) => preset.id === "1h")!;
+    const seen: string[] = [];
+    const { result, rerender } = renderHook(
+      ({ resetKey }: { resetKey?: string }) => {
+        const window = useLiveRange(hourly, resetKey);
+        seen.push(window.endTime);
+        return window;
+      },
+      { initialProps: { resetKey: "a" as string | undefined } },
+    );
+    act(() => vi.advanceTimersByTime(15_000));
+    seen.length = 0;
+    rerender({ resetKey: "b" });
+    // The first bounds the new key sees end at its commit, not the mount.
+    expect(seen).not.toContain("2026-10-02T12:00:00.000Z");
+    expect(result.current.endTime).toBe("2026-10-02T12:00:15.000Z");
+    // The new key owns one cadence, counted from its own sample.
+    expect(vi.getTimerCount()).toBe(1);
+    act(() => vi.advanceTimersByTime(hourly.resolutionSeconds * 1000 - 1));
+    expect(result.current.endTime).toBe("2026-10-02T12:00:15.000Z");
+    act(() => vi.advanceTimersByTime(1));
+    expect(result.current.endTime).toBe("2026-10-02T12:00:45.000Z");
+    // The same key again is not a new selection, nor is an unchanged one.
+    const renders = seen.length;
+    rerender({ resetKey: "b" });
+    expect(seen.length).toBe(renders + 1);
+    expect(result.current.endTime).toBe("2026-10-02T12:00:45.000Z");
+  });
+
+  it("keeps a custom window fixed when its reset key changes", () => {
+    const { result, rerender } = renderHook(
+      ({ resetKey }: { resetKey: string }) => useLiveRange(absolute, resetKey),
+      { initialProps: { resetKey: "a" } },
+    );
+    act(() => vi.advanceTimersByTime(60_000));
+    rerender({ resetKey: "b" });
+    expect(result.current.startTime).toBe(absolute.startTime);
+    expect(result.current.endTime).toBe(absolute.endTime);
+    expect(vi.getTimerCount()).toBe(0);
+  });
 });
