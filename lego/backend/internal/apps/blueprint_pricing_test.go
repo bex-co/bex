@@ -99,6 +99,7 @@ func TestValidateBlueprintEstimatedPricingAllFree(t *testing.T) {
     type: web
     runtime: image
     image: {url: nginx:1}
+    plan: free
 databases:
   - name: db
     plan: free
@@ -107,8 +108,8 @@ databases:
 	if err != nil || !v.Valid {
 		t.Fatalf("ValidateBlueprint: validation=%+v err=%v", v, err)
 	}
-	// Plan-less services default to bex's free tier; the object is present
-	// (surfaces stay deterministic) but empty, and the dashboard hides the panel.
+	// Every resource is on a free plan; the object is present (surfaces stay
+	// deterministic) but empty, and the dashboard hides the panel.
 	if v.EstimatedPricing == nil || len(v.EstimatedPricing.Lines) != 0 || v.EstimatedPricing.TotalUSD != "0.00" {
 		t.Fatalf("all-free estimate = %+v, want empty lines at 0.00", v.EstimatedPricing)
 	}

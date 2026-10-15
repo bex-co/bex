@@ -218,8 +218,10 @@ func TestSpecFromCreateDefaults(t *testing.T) {
 		if err != nil {
 			t.Fatalf("specFromCreate: %v", err)
 		}
-		if spec.Tier != tiers.Compute.Default().ID {
-			t.Errorf("tier = %q, want default %q", spec.Tier, tiers.Compute.Default().ID)
+		// An omitted plan follows Render's 0.5c-512mb default: bex's starter
+		// (w1/122).
+		if spec.Tier != "starter" {
+			t.Errorf("tier = %q, want the paid default starter", spec.Tier)
 		}
 		if spec.Port != appv1alpha1.DefaultPort {
 			t.Errorf("port = %d, want %d", spec.Port, appv1alpha1.DefaultPort)
@@ -340,7 +342,7 @@ func TestSpecFromCreateNormalizationErrors(t *testing.T) {
 		{
 			name:    "maintenanceMode on the free plan",
 			svcType: appv1alpha1.TypeWebService,
-			req:     CreateRequest{MaintenanceMode: &MaintenanceModeView{Enabled: true}},
+			req:     CreateRequest{Plan: "free", MaintenanceMode: &MaintenanceModeView{Enabled: true}},
 			wantErr: "bad request: maintenanceMode requires a paid web service plan",
 		},
 		{
