@@ -57,6 +57,25 @@ const enCommon: Record<string, TranslationEntry> = {
     description:
       "Accessible name of a search or picker results list (the command menu's listbox).",
   },
+  "common.comboboxPlaceholder": {
+    message: "Select an option",
+    description:
+      "Fallback placeholder of a searchable picker when its caller supplies none.",
+  },
+  "common.comboboxEmpty": {
+    message: "No results found",
+    description:
+      "Fallback text when a searchable picker's filter matches no option.",
+  },
+  "common.comboboxUseCustom": {
+    message: 'Press Enter to use "{value}"',
+    description:
+      "Hint under a picker's empty results: Enter keeps the typed value as entered. {value} is the typed text.",
+  },
+  "common.comboboxClear": {
+    message: "Clear input",
+    description: "Accessible name of a searchable picker's clear (X) button.",
+  },
   "common.cancel": {
     message: "Cancel",
     description:
