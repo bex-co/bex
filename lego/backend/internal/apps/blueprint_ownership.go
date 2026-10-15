@@ -677,9 +677,9 @@ func blueprintReferenceMessage(err error) string {
 	return msg
 }
 
-// blueprintReferencePointers is every service envVars entry whose key
-// (fromDatabase, or a Key Value fromService) names target, in document order.
-func blueprintReferencePointers(ir BlueprintIR, key, target string) []string {
+// blueprintEnvRefPointers is every service envVars entry whose reference
+// under key (fromDatabase or fromService) matches, in document order.
+func blueprintEnvRefPointers(ir BlueprintIR, key string, match func(name, refType string) bool) []string {
 	var pointers []string
 	for _, resource := range ir.Resources {
 		if resource.Kind != BlueprintResourceService {
@@ -689,10 +689,9 @@ func blueprintReferencePointers(ir BlueprintIR, key, target string) []string {
 		for i, raw := range envVars {
 			env, _ := raw.(map[string]any)
 			ref, _ := env[key].(map[string]any)
-			if refType, _ := ref["type"].(string); key == "fromService" && !isKeyValueType(refType) {
-				continue // a service reference that happens to share the name
-			}
-			if name, _ := ref["name"].(string); name == target {
+			name, _ := ref["name"].(string)
+			refType, _ := ref["type"].(string)
+			if name != "" && match(name, refType) {
 				pointers = append(pointers, fmt.Sprintf("%s/envVars/%d", resource.SourcePath, i))
 			}
 		}
@@ -700,26 +699,27 @@ func blueprintReferencePointers(ir BlueprintIR, key, target string) []string {
 	return pointers
 }
 
-// blueprintReferencePointer finds the first service envVars entry whose
-// fromDatabase/fromService names the resource the message quotes — the
-// resolver's error names the target, not the service that referenced it.
+// blueprintReferencePointers is every service envVars entry whose key
+// (fromDatabase, or a Key Value fromService) names target, in document order.
+func blueprintReferencePointers(ir BlueprintIR, key, target string) []string {
+	return blueprintEnvRefPointers(ir, key, func(name, refType string) bool {
+		// A service reference that happens to share the name is not one.
+		return name == target && (key != "fromService" || isKeyValueType(refType))
+	})
+}
+
+// blueprintReferencePointer finds the first service fromService entry naming
+// the service the message quotes; the resolver's error names the target, not
+// the service that referenced it. Database and Key Value entries never match,
+// so a resource sharing the service's name never takes the pointer (w1/126).
 func blueprintReferencePointer(ir BlueprintIR, msg string) string {
-	for _, resource := range ir.Resources {
-		if resource.Kind != BlueprintResourceService {
-			continue
-		}
-		envVars, _ := resource.Fields["envVars"].Value.([]any)
-		for i, raw := range envVars {
-			env, _ := raw.(map[string]any)
-			for _, key := range []string{"fromDatabase", "fromService"} {
-				ref, _ := env[key].(map[string]any)
-				if name, _ := ref["name"].(string); name != "" && strings.Contains(msg, fmt.Sprintf("%q", name)) {
-					return fmt.Sprintf("%s/envVars/%d", resource.SourcePath, i)
-				}
-			}
-		}
+	pointers := blueprintEnvRefPointers(ir, "fromService", func(name, refType string) bool {
+		return !isKeyValueType(refType) && strings.Contains(msg, fmt.Sprintf("%q", name))
+	})
+	if len(pointers) == 0 {
+		return ""
 	}
-	return ""
+	return pointers[0]
 }
 
 func blueprintDeclaredClaims(st parsedStack) map[store.BlueprintResourceKey]bool {

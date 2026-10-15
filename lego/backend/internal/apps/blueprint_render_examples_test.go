@@ -19,7 +19,6 @@ package apps
 import (
 	"os"
 	"slices"
-	"strings"
 	"testing"
 )
 
@@ -37,26 +36,18 @@ func TestRenderExampleBlueprintsCopyTheirGeneratedPasswords(t *testing.T) {
 		example  string
 		consumer string
 		want     []generatedCopy
-		// refused is the one unrelated refusal the unchanged file still meets,
-		// and rename makes a copy of the file that avoids it, so the copies are
-		// checked anyway.
-		refused string
-		rename  func(string) string
 	}{
 		{"ghost", "ghost", []generatedCopy{
 			{key: "database__connection__password", source: "mysql", sourceKey: "MYSQL_PASSWORD"},
-		}, "", nil},
+		}},
 		{"wordpress", "wordpress", []generatedCopy{
 			{key: "WORDPRESS_DB_PASSWORD", source: "mysql-wordpress", sourceKey: "MYSQL_PASSWORD"},
-		}, "", nil},
-		// mattermost names its database and its web service alike, which bex
-		// refuses and Render accepts (w1/126); that is not the copy.
+		}},
+		// mattermost names its database and its web service alike, which
+		// Render accepts: names are unique per kind (w1/126).
 		{"mattermost", "mattermost", []generatedCopy{
 			{key: "MM_FILESETTINGS_AMAZONS3ACCESSKEYID", source: "mattermost-minio", sourceKey: "MINIO_ACCESS_KEY"},
 			{key: "MM_FILESETTINGS_AMAZONS3SECRETACCESSKEY", source: "mattermost-minio", sourceKey: "MINIO_SECRET_KEY"},
-		}, `duplicate name "mattermost"`, func(m string) string {
-			m = strings.Replace(m, "- name: mattermost\n  plan: basic-256mb", "- name: mattermost-db\n  plan: basic-256mb", 1)
-			return strings.ReplaceAll(m, "fromDatabase:\n      name: mattermost\n", "fromDatabase:\n      name: mattermost-db\n")
 		}},
 	} {
 		t.Run(tc.example, func(t *testing.T) {
@@ -66,12 +57,6 @@ func TestRenderExampleBlueprintsCopyTheirGeneratedPasswords(t *testing.T) {
 			}
 			repo := "https://github.com/render-examples/" + tc.example
 			stack, err := parseStack(DeployRequest{Manifest: string(manifest), Repo: repo, Branch: "master"})
-			if tc.refused != "" {
-				if err == nil || !strings.Contains(err.Error(), tc.refused) {
-					t.Fatalf("unchanged file: err = %v, want only the unrelated %q refusal", err, tc.refused)
-				}
-				stack, err = parseStack(DeployRequest{Manifest: tc.rename(string(manifest)), Repo: repo, Branch: "master"})
-			}
 			if err != nil {
 				t.Fatalf("the upstream Blueprint was refused: %v", err)
 			}
