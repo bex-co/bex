@@ -1,3 +1,7 @@
+// @vitest-environment node
+// These handlers run only on Node. Under jsdom 29 the Blob global is jsdom's,
+// which undici's Request reads as an empty body, so readBoundedFormData would
+// see no form here while working in production.
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   BodyTooLargeError,

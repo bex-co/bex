@@ -187,7 +187,9 @@ describe("NewEnvGroupDialog", () => {
     await user.type(screen.getByLabelText("Key"), "PEM");
     const value = screen.getByLabelText("Value");
     expect(value.tagName).toBe("TEXTAREA");
-    expect(value).toHaveStyle({ WebkitTextSecurity: "disc" });
+    // jsdom ignores -webkit-text-security, so the mask is checked as the class
+    // that sets it.
+    expect(value).toHaveClass("[-webkit-text-security:disc]");
 
     await user.click(value);
     await user.paste("-----BEGIN KEY-----\nline-one\n-----END KEY-----");

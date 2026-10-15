@@ -3,12 +3,12 @@ import { Link } from "@tanstack/react-router";
 import {
   AlertTriangle,
   ChevronDown,
-  Github,
   KeyRound,
   Network,
   SquareTerminal,
   Terminal,
 } from "lucide-react";
+import { GithubIcon } from "@/common/components/github-icon";
 import { Badge } from "@/common/components/ui/badge.tsx";
 import {
   Alert,
@@ -187,7 +187,7 @@ export function ServiceDetailHeader({
 
         {service.repo ? (
           <div className="text-muted-foreground flex min-w-0 items-center gap-1.5">
-            <Github className="size-3.5 shrink-0" />
+            <GithubIcon className="size-3.5 shrink-0" />
             {repoUrl ? (
               <a
                 href={repoUrl}

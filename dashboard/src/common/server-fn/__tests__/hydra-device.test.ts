@@ -1,3 +1,6 @@
+// @vitest-environment node
+// Node, as in production: see bounded-body.test.ts for why jsdom cannot host
+// readBoundedFormData.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // fetchSession is mocked so the device handler's session check is deterministic:
@@ -241,9 +244,11 @@ describe("handleDeviceConfirm", () => {
     );
     const expired = await confirm();
     expect(expired.status).toBe(303);
-    expect(new URL(expired.headers.get("location")!).searchParams.get(
-      "device_error",
-    )).toBe("invalid_code");
+    expect(
+      new URL(expired.headers.get("location")!).searchParams.get(
+        "device_error",
+      ),
+    ).toBe("invalid_code");
 
     vi.stubGlobal(
       "fetch",
@@ -255,9 +260,11 @@ describe("handleDeviceConfirm", () => {
     );
     const foreign = await confirm();
     expect(foreign.status).toBe(303);
-    expect(new URL(foreign.headers.get("location")!).searchParams.get(
-      "device_error",
-    )).toBe("unexpected_client");
+    expect(
+      new URL(foreign.headers.get("location")!).searchParams.get(
+        "device_error",
+      ),
+    ).toBe("unexpected_client");
   });
 
   it("still answers 502 for a genuinely down Hydra (not a recoverable/user-facing state)", async () => {

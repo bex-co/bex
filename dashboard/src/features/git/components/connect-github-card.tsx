@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Github, PlugZap, ShieldAlert, AlertTriangle } from "lucide-react";
+import { PlugZap, ShieldAlert, AlertTriangle } from "lucide-react";
+import { GithubIcon } from "@/common/components/github-icon";
 import {
   Card,
   CardHeader,
@@ -104,7 +105,7 @@ export function ConnectGithubCard({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Github className="size-4" />
+          <GithubIcon className="size-4" />
           {t("git.title")}
         </CardTitle>
         <CardDescription>{t("git.description")}</CardDescription>
@@ -140,7 +141,7 @@ export function ConnectGithubCard({
                   onClick={claim}
                   disabled={claiming}
                 >
-                  <Github className="size-4" />
+                  <GithubIcon className="size-4" />
                   {t("git.claimButton")}
                 </Button>
               )}
@@ -203,7 +204,7 @@ function DisconnectedState({
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <Button onClick={onConnect} disabled={connecting}>
-          <Github className="size-4" />
+          <GithubIcon className="size-4" />
           {t("git.connectButton")}
         </Button>
         <Button variant="outline" onClick={onClaim} disabled={claiming}>
@@ -253,7 +254,7 @@ function ConnectedList({
           onClick={onConnectAnother}
           disabled={connecting}
         >
-          <Github className="size-4" />
+          <GithubIcon className="size-4" />
           {t("git.connectAnotherButton")}
         </Button>
         <Button
@@ -390,7 +391,7 @@ function ClaimAccountPicker({
               disabled={selecting}
               onClick={() => onSelect(c.installationId)}
             >
-              <Github className="size-4" />
+              <GithubIcon className="size-4" />
               {c.accountLogin}
             </Button>
           </li>

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Github,
   ChevronDown,
   ExternalLink,
   Settings2,
@@ -9,6 +8,7 @@ import {
   ShieldAlert,
   AlertTriangle,
 } from "lucide-react";
+import { GithubIcon } from "@/common/components/github-icon";
 import {
   Popover,
   PopoverTrigger,
@@ -90,7 +90,7 @@ export function GitCredentialsMenu() {
       <Popover>
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" className="gap-1.5">
-            <Github className="size-4" />
+            <GithubIcon className="size-4" />
             {t("git.credentialsTrigger", { count: connections.length })}
             <ChevronDown className="size-3.5 text-muted-foreground" />
           </Button>
@@ -158,7 +158,7 @@ export function GitCredentialsMenu() {
                   onClick={claim}
                   disabled={claiming}
                 >
-                  <Github className="size-4" />
+                  <GithubIcon className="size-4" />
                   {t("git.claimButton")}
                 </Button>
               </div>
@@ -202,7 +202,7 @@ function AccountRow({
   return (
     <div className="flex items-center justify-between gap-2 px-3 py-2">
       <div className="flex min-w-0 items-center gap-2">
-        <Github className="size-4 shrink-0 text-muted-foreground" />
+        <GithubIcon className="size-4 shrink-0 text-muted-foreground" />
         <a
           href={`https://github.com/${connection.accountLogin}`}
           target="_blank"

@@ -58,6 +58,11 @@ function emptyResult() {
 
 // The Status Code + Percentile controls live on the card itself now (w5/m42),
 // so the render takes no filter props — tests drive the card's own dropdowns.
+/** The options of the newest useMetrics call for metric: what the card shows. */
+function latestOptions(metric: string) {
+  return mockUseMetrics.mock.calls.filter(([, m]) => m === metric).at(-1)?.[2];
+}
+
 function renderCard() {
   return render(
     <NetworkMetricsCard resource="beancount-cms" window={WINDOW} />,
@@ -127,10 +132,7 @@ describe("NetworkMetricsCard", () => {
       expect.objectContaining({ quantiles: [0.5, 0.9, 0.99] }),
     );
     // In All mode the single-quantile arg is not sent (the overlay path).
-    const latest = mockUseMetrics.mock.calls
-      .filter(([, metric]) => metric === "http_latency")
-      .at(-1);
-    expect(latest?.[2]).not.toHaveProperty("quantile");
+    expect(latestOptions("http_latency")).not.toHaveProperty("quantile");
   });
 
   it("labels each overlaid latency line p50/p90/p99 in 'All' mode (w5/m56)", async () => {
@@ -299,13 +301,15 @@ describe("NetworkMetricsCard", () => {
       expect.objectContaining({ path: "/api" }),
     );
 
-    // The × button clears the active filter (path back to undefined).
+    // The × button clears the active filter (path back to undefined). The
+    // click first blurs the input, which re-commits "/api", so judge the
+    // query the card settles on, not the first render after the click.
     mockUseMetrics.mockClear();
     await user.click(screen.getByLabelText("Clear path filter"));
-    const requestsCall = mockUseMetrics.mock.calls.find(
-      ([, metric]) => metric === "http_requests",
-    );
-    expect(requestsCall?.[2]?.path).toBeUndefined();
+    for (const metric of ["http_requests", "http_latency"]) {
+      expect(latestOptions(metric), metric).toBeDefined();
+      expect(latestOptions(metric)?.path, metric).toBeUndefined();
+    }
   });
 
   it("shows the store-unavailable state on the request sections when a host/path filter hits no log store (w5/m58)", () => {
