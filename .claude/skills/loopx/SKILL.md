@@ -114,6 +114,19 @@ Invoke **`/ship`**. Because you made the changes this session, `/ship` runs sess
 
 `/ship` ends at a successful push — it does not watch CI or the deploy. Do not start the next item until `/ship` reports the shipped HEAD. If `/ship` surfaces a failure it cannot fix (a rebase conflict it can't resolve, a rejected push), treat it as a **run-level block** and stop.
 
+#### 4a. Main is red: pause the item, fix CI, then resume
+
+When `/ship`'s gate refuses because **main is red**, do not keep draining with commits piling up locally. Unpushed commits in a checkout other sessions share look like unexplained divergence, and a teammate's `git reset` can discard them. Pause the current item, with its commit made locally, and make main green first:
+
+1. **Diagnose the red run.** Read the failing job's log (`gh run view <id> --log-failed`) and compare against the last green run (`gh run list --workflow deploy.yml`), including what changed between the two SHAs.
+2. **Fix it, whatever the cause.** Fixing main is in scope for every workstream; the **Stay in `<wN>`** rule does not apply.
+   - **Code or test failure** (yours or anyone's): make the smallest correct fix with a regression test where one fits. Ship it alone as `fix(ci): …`, saying in the commit that it fixes red main, and pass the gate with `--fixes-red-main`.
+   - **Flake or infra fault** (runner crash, emulation SIGSEGV, network, setup failure): rerun only the failed jobs once (`gh run rerun <id> --failed`), then wait for that run, using a background wait and doing nothing else meanwhile. If the same failure repeats, treat it as persistent. Find the root cause and land a repo-side fix: a retry, a pinned toolchain or runner setting, or splitting or caching the failing build step. Ship that as `fix(ci): …` with `--fixes-red-main`. Never fix it by weakening a gate, deleting a test, skipping a job or reverting runners to GitHub-hosted (`DO_NOT_DO.md` #CI-RUNNERS).
+3. **Resume.** Once the fix is pushed, or the rerun is green, ship the paused item's commit or commits through `/ship`. Post a checkpoint naming the red cause and the fix, then continue the loop.
+4. **Only if you truly cannot fix it** — the fix needs credentials, runner or host access, or a decision only the user has: that is a **run-level block**. Stop and report the failing run, what you tried, and every unpushed local commit (`git log origin/main..HEAD`), so the user knows that work exists and is waiting. Never leave unpushed commits behind silently.
+
+Never push past red main without `--fixes-red-main`, and never use that flag for a push that is not itself the fix.
+
 ### 5. Continue
 
 Refresh the queue (the board changed) and loop back to triage the next item. The refresh reads the board as it is **now**, so items a teammate filed since you started are simply part of the queue — triage them in the normal order alongside the ones you began with.
@@ -125,7 +138,7 @@ Refresh the queue (the board changed) and loop back to triage the next item. The
 Stop and give a final summary when any of these holds:
 
 - **Drained:** a queue refresh returns **zero** open items in `<wN>`. Report every item and its outcome, grouped: shipped, closed as already met, parked in `blocked/` (with each gate), deleted (with each reason). "Drained" is measured against the queue as it stands at that refresh, never against the queue as it stood at invocation — items others filed while you worked are part of it, and a workstream under active filing may legitimately keep you working for a long time. That is the requested behavior.
-- **Run-level block:** a ship failure you can't resolve, or the tree is in a state you shouldn't push. Per-item blocks do **not** stop the run — they get parked and the loop continues.
+- **Run-level block:** a ship failure you can't resolve (including a red main that step 4a could not fix), or the tree is in a state you shouldn't push. Per-item blocks do **not** stop the run — they get parked and the loop continues.
 - **Interrupt:** the user sends a new message, or the context budget is genuinely exhausted — you cannot fit another item's work. **Running for a long time is not an exit**, and neither is a queue that keeps growing; both are checkpoints. See below.
 
 **Not exit conditions**, and never a reason to pause mid-drain: an item that is a record rather than a task; an item you yourself withdrew or filed earlier; a duplicate; an empty note; an item already fixed upstream; a verdict that feels unusual. Each of those has a row in the triage tables — apply it and keep going.
