@@ -1,0 +1,1125 @@
+{
+  "finding": "w4/318",
+  "pass": "a643",
+  "scope": "Ordinary functional responsive QA, one owned Free/private PostgreSQL18 instance. Parameter changes were unsaved drafts only.",
+  "resource": {
+    "id": "dpg-db8m6355hbds738pbqr0",
+    "name": "qa-20261015-a643-layout",
+    "ownerId": "tea-d98210cbbpdc73dcrkvg"
+  },
+  "provenance": "Native page actions and DOM geometry from Chromium; no intercepted requests or artificial latency. Temporary inline position trial was reverted in the same evaluation.",
+  "geometryProbe": "async(page)=>page.evaluate(()=>{const title=[...document.querySelectorAll(\"h3\")].find(e=>e.textContent===\"Parameter overrides\");const editor=title?.parentElement?.parentElement;const measure=e=>{if(!e)return null;const r=e.getBoundingClientRect(),s=getComputedStyle(e);return{tag:e.tagName,id:e.id,slot:e.getAttribute(\"data-slot\"),className:typeof e.className===\"string\"?e.className:\"\",x:r.x,right:r.right,width:r.width,clientWidth:e.clientWidth,scrollWidth:e.scrollWidth,overflowX:s.overflowX,minWidth:s.minWidth,display:s.display}};const table=editor?.querySelector(\"table\");const chain=[];for(let e=table;e;e=e.parentElement)chain.push(measure(e));return{at:new Date().toISOString(),viewport:{width:innerWidth,height:innerHeight,documentWidth:document.documentElement.scrollWidth},editor:measure(editor),table:measure(table),scroller:measure(table?.parentElement),chain,controls:editor?[...editor.querySelectorAll(\"input,button\")].map(e=>({label:e.getAttribute(\"aria-label\")||e.textContent,value:e instanceof HTMLInputElement?e.value:null,...measure(e)})):[]}})",
+  "currentMainAtResearch": "a5ae1f21d",
+  "root": "dashboard/src/features/databases/components/parameter-overrides-editor.tsx:184-198",
+  "dedupe": {
+    "markdownFiles": 9286,
+    "matchingOwner": null,
+    "related": ["w4/done/238", "w4/done/253", "w4/done/255", "w4/317"]
+  },
+  "receipts": {
+    "a643Created": {
+      "at": "2026-10-15T23:34:37.147Z",
+      "request": {
+        "operationName": "CreateDatabase",
+        "variables": {
+          "name": "qa-20261015-a643-layout",
+          "databaseName": "qa_a643",
+          "databaseUser": "qa_a643",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "plan": "free",
+          "version": "18",
+          "public": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateDatabase($name: String!, $databaseName: String, $databaseUser: String, $ownerId: String, $environmentId: String, $plan: String, $version: String, $diskSizeGB: Int, $public: Boolean) {\n  createDatabase(\n    name: $name\n    databaseName: $databaseName\n    databaseUser: $databaseUser\n    ownerId: $ownerId\n    environmentId: $environmentId\n    plan: $plan\n    version: $version\n    diskSizeGB: $diskSizeGB\n    public: $public\n  ) {\n    id\n    name\n    databaseName\n    databaseUser\n    plan\n    status\n    projectId\n    environmentId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createDatabase": {
+            "__typename": "Database",
+            "databaseName": "qa_a643",
+            "databaseUser": "qa_a643",
+            "environmentId": null,
+            "id": "dpg-db8m6355hbds738pbqr0",
+            "name": "qa-20261015-a643-layout",
+            "plan": "free",
+            "projectId": null,
+            "status": "creating"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792107275750.958,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.131,
+        "responseStart": 683.412,
+        "responseEnd": 683.791
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db8m6355hbds738pbqr0"
+    },
+    "a643ReadyMetadata": {
+      "at": "2026-10-15T23:36:55.117Z",
+      "metadata": "- text: Details Name Change the display name. The database ID and all connection details stay the same.\n- textbox \"Name\" [disabled]: qa-20261015-a643-layout\n- button \"Edit database name\"\n- term: Status\n- definition: Available\n- term: Instance type\n- definition: free\n- term: Version\n- definition: PostgreSQL 18\n- term: Database\n- definition: qa_a643\n- term: User\n- definition: qa_a643\n- term: Storage\n- definition: 1 GB\n- term: High availability\n- definition: \"No\"\n- term: Public access\n- definition: \"No\"\n- term: Region\n- definition: fsn1\n- term: Created\n- definition:\n  - time: 2m"
+    },
+    "a643EmptyEditor": {
+      "at": "2026-10-15T23:37:14.878Z",
+      "ready": true,
+      "editor": "- heading \"Parameter overrides\" [level=3]\n- paragraph: The postgresql.conf settings this database declares. Saving replaces the whole set.\n- paragraph: This database sets no parameter overrides.\n- button \"Add override\"\n- button \"Save overrides\" [disabled]"
+    },
+    "a643EmptyGeometry": {
+      "at": "2026-10-15T23:37:15.956Z",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 390
+      },
+      "editor": {
+        "tag": "DIV",
+        "id": "",
+        "slot": null,
+        "className": "space-y-2",
+        "x": 37,
+        "right": 353,
+        "width": 316,
+        "clientWidth": 316,
+        "scrollWidth": 316,
+        "overflowX": "visible",
+        "minWidth": "0px",
+        "display": "block"
+      },
+      "table": null,
+      "scroller": null,
+      "chain": [],
+      "controls": [
+        {
+          "label": "Add override",
+          "value": null,
+          "tag": "BUTTON",
+          "id": "",
+          "slot": "button",
+          "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
+          "x": 37,
+          "right": 165.453125,
+          "width": 128.453125,
+          "clientWidth": 126,
+          "scrollWidth": 126,
+          "overflowX": "visible",
+          "minWidth": "auto",
+          "display": "flex"
+        },
+        {
+          "label": "Save overrides",
+          "value": null,
+          "tag": "BUTTON",
+          "id": "",
+          "slot": "button",
+          "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
+          "x": 173.453125,
+          "right": 294.640625,
+          "width": 121.1875,
+          "clientWidth": 121,
+          "scrollWidth": 121,
+          "overflowX": "visible",
+          "minWidth": "auto",
+          "display": "flex"
+        }
+      ]
+    },
+    "a643DraftAdded": {
+      "at": "2026-10-15T23:37:16.557Z",
+      "editor": "- heading \"Parameter overrides\" [level=3]\n- paragraph: The postgresql.conf settings this database declares. Saving replaces the whole set.\n- table:\n  - rowgroup:\n    - row \"Parameter Declared value Observed setting Actions\":\n      - columnheader \"Parameter\"\n      - columnheader \"Declared value\"\n      - columnheader \"Observed setting\"\n      - columnheader \"Actions\"\n  - rowgroup:\n    - row \"work_mem 6MB No observation for this value yet. Remove work_mem\":\n      - cell \"work_mem\":\n        - textbox \"Parameter 1 name\": work_mem\n      - cell \"6MB\":\n        - textbox \"Parameter 1 value\": 6MB\n      - cell \"No observation for this value yet.\"\n      - cell \"Remove work_mem\":\n        - button \"Remove work_mem\"\n- button \"Add override\"\n- button \"Save overrides\"\n- button \"Discard changes\""
+    },
+    "a643DraftGeometry": {
+      "at": "2026-10-15T23:37:17.133Z",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "documentWidth": 637
+      },
+      "editor": {
+        "tag": "DIV",
+        "id": "",
+        "slot": null,
+        "className": "space-y-2",
+        "x": 37,
+        "right": 353,
+        "width": 316,
+        "clientWidth": 316,
+        "scrollWidth": 316,
+        "overflowX": "visible",
+        "minWidth": "0px",
+        "display": "block"
+      },
+      "table": {
+        "tag": "TABLE",
+        "id": "",
+        "slot": null,
+        "className": "w-full text-xs",
+        "x": 37,
+        "right": 669,
+        "width": 632,
+        "clientWidth": 632,
+        "scrollWidth": 632,
+        "overflowX": "visible",
+        "minWidth": "0px",
+        "display": "table"
+      },
+      "scroller": {
+        "tag": "DIV",
+        "id": "",
+        "slot": null,
+        "className": "overflow-x-auto",
+        "x": 37,
+        "right": 353,
+        "width": 316,
+        "clientWidth": 316,
+        "scrollWidth": 632,
+        "overflowX": "auto",
+        "minWidth": "0px",
+        "display": "block"
+      },
+      "chain": [
+        {
+          "tag": "TABLE",
+          "id": "",
+          "slot": null,
+          "className": "w-full text-xs",
+          "x": 37,
+          "right": 669,
+          "width": 632,
+          "clientWidth": 632,
+          "scrollWidth": 632,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "table"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "slot": null,
+          "className": "overflow-x-auto",
+          "x": 37,
+          "right": 353,
+          "width": 316,
+          "clientWidth": 316,
+          "scrollWidth": 632,
+          "overflowX": "auto",
+          "minWidth": "0px",
+          "display": "block"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "slot": null,
+          "className": "space-y-3",
+          "x": 37,
+          "right": 353,
+          "width": 316,
+          "clientWidth": 316,
+          "scrollWidth": 316,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "block"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "slot": null,
+          "className": "space-y-2",
+          "x": 37,
+          "right": 353,
+          "width": 316,
+          "clientWidth": 316,
+          "scrollWidth": 316,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "block"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "slot": "card-content",
+          "className": "px-5 space-y-6",
+          "x": 17,
+          "right": 373,
+          "width": 356,
+          "clientWidth": 356,
+          "scrollWidth": 356,
+          "overflowX": "visible",
+          "minWidth": "auto",
+          "display": "block"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "slot": "card",
+          "className": "bg-card text-card-foreground flex flex-col gap-4 rounded-xl border py-5 shadow-sm",
+          "x": 16,
+          "right": 374,
+          "width": 358,
+          "clientWidth": 356,
+          "scrollWidth": 356,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "flex"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "slot": null,
+          "className": "",
+          "x": 16,
+          "right": 374,
+          "width": 358,
+          "clientWidth": 358,
+          "scrollWidth": 358,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "block"
+        },
+        {
+          "tag": "SECTION",
+          "id": "insights",
+          "slot": null,
+          "className": "scroll-mt-6",
+          "x": 16,
+          "right": 374,
+          "width": 358,
+          "clientWidth": 358,
+          "scrollWidth": 358,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "block"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "slot": null,
+          "className": "min-w-0 space-y-6 lg:col-start-1 lg:row-start-1",
+          "x": 16,
+          "right": 374,
+          "width": 358,
+          "clientWidth": 358,
+          "scrollWidth": 358,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "block"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "slot": null,
+          "className": "mx-auto grid w-full max-w-6xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10",
+          "x": 16,
+          "right": 374,
+          "width": 358,
+          "clientWidth": 358,
+          "scrollWidth": 374,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "grid"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "slot": null,
+          "className": "flex-1 overflow-auto p-4 sm:p-6",
+          "x": 0,
+          "right": 390,
+          "width": 390,
+          "clientWidth": 390,
+          "scrollWidth": 390,
+          "overflowX": "auto",
+          "minWidth": "auto",
+          "display": "block"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "slot": null,
+          "className": "contents",
+          "x": 0,
+          "right": 0,
+          "width": 0,
+          "clientWidth": 0,
+          "scrollWidth": 0,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "contents"
+        },
+        {
+          "tag": "MAIN",
+          "id": "",
+          "slot": null,
+          "className": "flex flex-1 flex-col min-w-0 w-full",
+          "x": 0,
+          "right": 390,
+          "width": 390,
+          "clientWidth": 390,
+          "scrollWidth": 390,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "flex"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "slot": null,
+          "className": "flex h-(--visual-viewport-height,100vh) w-full",
+          "x": 0,
+          "right": 390,
+          "width": 390,
+          "clientWidth": 390,
+          "scrollWidth": 390,
+          "overflowX": "visible",
+          "minWidth": "auto",
+          "display": "flex"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "slot": "sidebar-wrapper",
+          "className": "group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-svh w-full",
+          "x": 0,
+          "right": 390,
+          "width": 390,
+          "clientWidth": 390,
+          "scrollWidth": 390,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "flex"
+        },
+        {
+          "tag": "BODY",
+          "id": "",
+          "slot": null,
+          "className": "font-sans antialiased [overflow-wrap:anywhere] selection:bg-[rgba(79,184,178,0.24)]",
+          "x": 0,
+          "right": 390,
+          "width": 390,
+          "clientWidth": 390,
+          "scrollWidth": 390,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "block"
+        },
+        {
+          "tag": "HTML",
+          "id": "",
+          "slot": null,
+          "className": "light",
+          "x": 0,
+          "right": 390,
+          "width": 390,
+          "clientWidth": 390,
+          "scrollWidth": 637,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "block"
+        }
+      ],
+      "controls": [
+        {
+          "label": "Parameter 1 name",
+          "value": "work_mem",
+          "tag": "INPUT",
+          "id": "",
+          "slot": "input",
+          "className": "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input flex w-full rounded-md border bg-transparent px-3 py-1 shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive h-8 min-w-48 font-mono text-xs",
+          "x": 37,
+          "right": 229,
+          "width": 192,
+          "clientWidth": 190,
+          "scrollWidth": 190,
+          "overflowX": "clip",
+          "minWidth": "192px",
+          "display": "flex"
+        },
+        {
+          "label": "Parameter 1 value",
+          "value": "6MB",
+          "tag": "INPUT",
+          "id": "",
+          "slot": "input",
+          "className": "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input flex w-full rounded-md border bg-transparent px-3 py-1 shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive h-8 min-w-40 font-mono text-xs",
+          "x": 241,
+          "right": 401,
+          "width": 160,
+          "clientWidth": 158,
+          "scrollWidth": 158,
+          "overflowX": "clip",
+          "minWidth": "160px",
+          "display": "flex"
+        },
+        {
+          "label": "Remove work_mem",
+          "value": null,
+          "tag": "BUTTON",
+          "id": "",
+          "slot": "button",
+          "className": "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 size-8",
+          "x": 637,
+          "right": 669,
+          "width": 32,
+          "clientWidth": 32,
+          "scrollWidth": 32,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "inline-flex"
+        },
+        {
+          "label": "Add override",
+          "value": null,
+          "tag": "BUTTON",
+          "id": "",
+          "slot": "button",
+          "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
+          "x": 37,
+          "right": 165.453125,
+          "width": 128.453125,
+          "clientWidth": 126,
+          "scrollWidth": 126,
+          "overflowX": "visible",
+          "minWidth": "auto",
+          "display": "flex"
+        },
+        {
+          "label": "Save overrides",
+          "value": null,
+          "tag": "BUTTON",
+          "id": "",
+          "slot": "button",
+          "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
+          "x": 173.453125,
+          "right": 294.640625,
+          "width": 121.1875,
+          "clientWidth": 121,
+          "scrollWidth": 121,
+          "overflowX": "visible",
+          "minWidth": "auto",
+          "display": "flex"
+        },
+        {
+          "label": "Discard changes",
+          "value": null,
+          "tag": "BUTTON",
+          "id": "",
+          "slot": "button",
+          "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
+          "x": 37,
+          "right": 171.09375,
+          "width": 134.09375,
+          "clientWidth": 134,
+          "scrollWidth": 134,
+          "overflowX": "visible",
+          "minWidth": "auto",
+          "display": "flex"
+        }
+      ]
+    },
+    "a643NativeTablePan": {
+      "at": "2026-10-15T23:37:52.851Z",
+      "before": {
+        "scrollLeft": 0,
+        "clientWidth": 316,
+        "scrollWidth": 632,
+        "windowX": 0,
+        "htmlWidth": 637
+      },
+      "after": {
+        "scrollLeft": 316,
+        "windowX": 0,
+        "htmlWidth": 637
+      },
+      "remove": {
+        "x": 321,
+        "y": 597,
+        "width": 32,
+        "height": 32
+      },
+      "root": {
+        "x": 0,
+        "htmlOverflow": "visible",
+        "bodyOverflow": "visible",
+        "bodyWidth": 390,
+        "htmlWidth": 637
+      }
+    },
+    "a643DraftDiscarded": {
+      "at": "2026-10-15T23:37:53.445Z",
+      "editor": "- heading \"Parameter overrides\" [level=3]\n- paragraph: The postgresql.conf settings this database declares. Saving replaces the whole set.\n- paragraph: This database sets no parameter overrides.\n- button \"Add override\"\n- button \"Save overrides\" [disabled]",
+      "width": {
+        "viewport": 390,
+        "documentWidth": 390,
+        "windowX": 0
+      }
+    },
+    "a643FreshRepeatGeometry": {
+      "at": "2026-10-15T23:38:26.391Z",
+      "freshRepeat": {
+        "viewport": 390,
+        "htmlWidth": 637,
+        "span": {
+          "text": "Actions",
+          "x": 636,
+          "right": 637,
+          "width": 1,
+          "position": "absolute",
+          "clip": "auto",
+          "offsetParent": "BODY",
+          "offsetParentClass": "font-sans antialiased [overflow-wrap:anywhere] selection:bg-[rgba(79,184,178,0.24)]"
+        }
+      }
+    },
+    "a643RootPanAndContainingBlockTrial": {
+      "at": "2026-10-15T23:38:43.361Z",
+      "panned": {
+        "windowX": 247,
+        "htmlLeft": 247,
+        "htmlWidth": 637,
+        "viewport": 390
+      },
+      "trial": {
+        "before": {
+          "htmlWidth": 637,
+          "windowX": 247,
+          "boxWidth": 316,
+          "boxScrollWidth": 632,
+          "spanOffsetParent": "font-sans antialiased [overflow-wrap:anywhere] selection:bg-[rgba(79,184,178,0.24)]"
+        },
+        "relative": {
+          "htmlWidth": 390,
+          "windowX": 0,
+          "boxWidth": 316,
+          "boxScrollWidth": 632,
+          "spanOffsetParent": "overflow-x-auto"
+        },
+        "restored": {
+          "htmlWidth": 637,
+          "windowX": 0,
+          "boxWidth": 316,
+          "boxScrollWidth": 632,
+          "spanOffsetParent": "font-sans antialiased [overflow-wrap:anywhere] selection:bg-[rgba(79,184,178,0.24)]"
+        },
+        "temporaryOnly": true
+      }
+    },
+    "a643MobilePagePanned": {
+      "at": "2026-10-15T23:39:09.170Z",
+      "pagePan": {
+        "windowX": 247,
+        "viewport": 390,
+        "htmlWidth": 637
+      }
+    },
+    "a643DesktopGeometry": {
+      "at": "2026-10-15T23:39:11.061Z",
+      "viewport": {
+        "width": 1440,
+        "height": 1000,
+        "documentWidth": 1440
+      },
+      "editor": {
+        "tag": "DIV",
+        "id": "",
+        "slot": null,
+        "className": "space-y-2",
+        "x": 301,
+        "right": 1147,
+        "width": 846,
+        "clientWidth": 846,
+        "scrollWidth": 846,
+        "overflowX": "visible",
+        "minWidth": "0px",
+        "display": "block"
+      },
+      "table": {
+        "tag": "TABLE",
+        "id": "",
+        "slot": null,
+        "className": "w-full text-xs",
+        "x": 301,
+        "right": 1147,
+        "width": 846,
+        "clientWidth": 846,
+        "scrollWidth": 846,
+        "overflowX": "visible",
+        "minWidth": "0px",
+        "display": "table"
+      },
+      "scroller": {
+        "tag": "DIV",
+        "id": "",
+        "slot": null,
+        "className": "overflow-x-auto",
+        "x": 301,
+        "right": 1147,
+        "width": 846,
+        "clientWidth": 846,
+        "scrollWidth": 846,
+        "overflowX": "auto",
+        "minWidth": "0px",
+        "display": "block"
+      },
+      "chain": [
+        {
+          "tag": "TABLE",
+          "id": "",
+          "slot": null,
+          "className": "w-full text-xs",
+          "x": 301,
+          "right": 1147,
+          "width": 846,
+          "clientWidth": 846,
+          "scrollWidth": 846,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "table"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "slot": null,
+          "className": "overflow-x-auto",
+          "x": 301,
+          "right": 1147,
+          "width": 846,
+          "clientWidth": 846,
+          "scrollWidth": 846,
+          "overflowX": "auto",
+          "minWidth": "0px",
+          "display": "block"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "slot": null,
+          "className": "space-y-3",
+          "x": 301,
+          "right": 1147,
+          "width": 846,
+          "clientWidth": 846,
+          "scrollWidth": 846,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "block"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "slot": null,
+          "className": "space-y-2",
+          "x": 301,
+          "right": 1147,
+          "width": 846,
+          "clientWidth": 846,
+          "scrollWidth": 846,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "block"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "slot": "card-content",
+          "className": "px-5 space-y-6",
+          "x": 281,
+          "right": 1167,
+          "width": 886,
+          "clientWidth": 886,
+          "scrollWidth": 886,
+          "overflowX": "visible",
+          "minWidth": "auto",
+          "display": "block"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "slot": "card",
+          "className": "bg-card text-card-foreground flex flex-col gap-4 rounded-xl border py-5 shadow-sm",
+          "x": 280,
+          "right": 1168,
+          "width": 888,
+          "clientWidth": 886,
+          "scrollWidth": 886,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "flex"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "slot": null,
+          "className": "",
+          "x": 280,
+          "right": 1168,
+          "width": 888,
+          "clientWidth": 888,
+          "scrollWidth": 888,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "block"
+        },
+        {
+          "tag": "SECTION",
+          "id": "insights",
+          "slot": null,
+          "className": "scroll-mt-6",
+          "x": 280,
+          "right": 1168,
+          "width": 888,
+          "clientWidth": 888,
+          "scrollWidth": 888,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "block"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "slot": null,
+          "className": "min-w-0 space-y-6 lg:col-start-1 lg:row-start-1",
+          "x": 280,
+          "right": 1168,
+          "width": 888,
+          "clientWidth": 888,
+          "scrollWidth": 888,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "block"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "slot": null,
+          "className": "mx-auto grid w-full max-w-6xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10",
+          "x": 280,
+          "right": 1416,
+          "width": 1136,
+          "clientWidth": 1136,
+          "scrollWidth": 1136,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "grid"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "slot": null,
+          "className": "flex-1 overflow-auto p-4 sm:p-6",
+          "x": 256,
+          "right": 1440,
+          "width": 1184,
+          "clientWidth": 1184,
+          "scrollWidth": 1184,
+          "overflowX": "auto",
+          "minWidth": "auto",
+          "display": "block"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "slot": null,
+          "className": "contents",
+          "x": 0,
+          "right": 0,
+          "width": 0,
+          "clientWidth": 0,
+          "scrollWidth": 0,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "contents"
+        },
+        {
+          "tag": "MAIN",
+          "id": "",
+          "slot": null,
+          "className": "flex flex-1 flex-col min-w-0 w-full",
+          "x": 256,
+          "right": 1440,
+          "width": 1184,
+          "clientWidth": 1184,
+          "scrollWidth": 1184,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "flex"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "slot": null,
+          "className": "flex h-(--visual-viewport-height,100vh) w-full",
+          "x": 0,
+          "right": 1440,
+          "width": 1440,
+          "clientWidth": 1440,
+          "scrollWidth": 1440,
+          "overflowX": "visible",
+          "minWidth": "auto",
+          "display": "flex"
+        },
+        {
+          "tag": "DIV",
+          "id": "",
+          "slot": "sidebar-wrapper",
+          "className": "group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-svh w-full",
+          "x": 0,
+          "right": 1440,
+          "width": 1440,
+          "clientWidth": 1440,
+          "scrollWidth": 1440,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "flex"
+        },
+        {
+          "tag": "BODY",
+          "id": "",
+          "slot": null,
+          "className": "font-sans antialiased [overflow-wrap:anywhere] selection:bg-[rgba(79,184,178,0.24)]",
+          "x": 0,
+          "right": 1440,
+          "width": 1440,
+          "clientWidth": 1440,
+          "scrollWidth": 1440,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "block"
+        },
+        {
+          "tag": "HTML",
+          "id": "",
+          "slot": null,
+          "className": "light",
+          "x": 0,
+          "right": 1440,
+          "width": 1440,
+          "clientWidth": 1440,
+          "scrollWidth": 1440,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "block"
+        }
+      ],
+      "controls": [
+        {
+          "label": "Parameter 1 name",
+          "value": "work_mem",
+          "tag": "INPUT",
+          "id": "",
+          "slot": "input",
+          "className": "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input flex w-full rounded-md border bg-transparent px-3 py-1 shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive h-8 min-w-48 font-mono text-xs",
+          "x": 301,
+          "right": 554,
+          "width": 253,
+          "clientWidth": 251,
+          "scrollWidth": 251,
+          "overflowX": "clip",
+          "minWidth": "192px",
+          "display": "flex"
+        },
+        {
+          "label": "Parameter 1 value",
+          "value": "6MB",
+          "tag": "INPUT",
+          "id": "",
+          "slot": "input",
+          "className": "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input flex w-full rounded-md border bg-transparent px-3 py-1 shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive h-8 min-w-40 font-mono text-xs",
+          "x": 566,
+          "right": 819,
+          "width": 253,
+          "clientWidth": 251,
+          "scrollWidth": 251,
+          "overflowX": "clip",
+          "minWidth": "160px",
+          "display": "flex"
+        },
+        {
+          "label": "Remove work_mem",
+          "value": null,
+          "tag": "BUTTON",
+          "id": "",
+          "slot": "button",
+          "className": "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 size-8",
+          "x": 1115,
+          "right": 1147,
+          "width": 32,
+          "clientWidth": 32,
+          "scrollWidth": 32,
+          "overflowX": "visible",
+          "minWidth": "0px",
+          "display": "inline-flex"
+        },
+        {
+          "label": "Add override",
+          "value": null,
+          "tag": "BUTTON",
+          "id": "",
+          "slot": "button",
+          "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
+          "x": 301,
+          "right": 429.453125,
+          "width": 128.453125,
+          "clientWidth": 126,
+          "scrollWidth": 126,
+          "overflowX": "visible",
+          "minWidth": "auto",
+          "display": "flex"
+        },
+        {
+          "label": "Save overrides",
+          "value": null,
+          "tag": "BUTTON",
+          "id": "",
+          "slot": "button",
+          "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
+          "x": 437.453125,
+          "right": 558.640625,
+          "width": 121.1875,
+          "clientWidth": 121,
+          "scrollWidth": 121,
+          "overflowX": "visible",
+          "minWidth": "auto",
+          "display": "flex"
+        },
+        {
+          "label": "Discard changes",
+          "value": null,
+          "tag": "BUTTON",
+          "id": "",
+          "slot": "button",
+          "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
+          "x": 566.640625,
+          "right": 700.734375,
+          "width": 134.09375,
+          "clientWidth": 134,
+          "scrollWidth": 134,
+          "overflowX": "visible",
+          "minWidth": "auto",
+          "display": "flex"
+        }
+      ]
+    },
+    "a643DiscardAndNoWrites": {
+      "at": "2026-10-15T23:39:32.632Z",
+      "parameterWriteCount": 0,
+      "state": {
+        "request": {
+          "operationName": "Qaa643EmptySpec",
+          "variables": {
+            "id": "dpg-db8m6355hbds738pbqr0"
+          },
+          "query": "query Qaa643EmptySpec($id:String!){databaseParameterSpec(id:$id){name value observationStatus}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "databaseParameterSpec": []
+          }
+        },
+        "layout": {
+          "viewport": 390,
+          "documentWidth": 390,
+          "windowX": 0
+        }
+      }
+    },
+    "a643Deleted": {
+      "at": "2026-10-15T23:40:04.656Z",
+      "request": {
+        "operationName": "DeleteDatabase",
+        "variables": {
+          "id": "dpg-db8m6355hbds738pbqr0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteDatabase($id: String!, $confirm: String) {\n  deleteDatabase(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteDatabase": true
+        }
+      },
+      "timing": {
+        "startTime": 1792107603631.874,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.139,
+        "responseStart": 316.383,
+        "responseEnd": 316.782
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "a643SessionCleared": {
+      "at": "2026-10-15T23:40:54.012Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  },
+  "cleanup": {
+    "at": "2026-10-15T23:40:27.817Z",
+    "deletedDatabase": {
+      "status": 404,
+      "body": {
+        "code": "NOT_FOUND",
+        "error": "not found",
+        "id": "not_found",
+        "message": "not found",
+        "params": null
+      }
+    },
+    "allSevenSortedIdFamilies": {
+      "blueprints": true,
+      "databases": true,
+      "envGroups": true,
+      "keyValues": true,
+      "projects": true,
+      "services": true,
+      "webhookEndpoints": true
+    },
+    "ownResources": {
+      "pods": {
+        "exit": 0,
+        "count": 0
+      },
+      "pvc": {
+        "exit": 0,
+        "count": 0
+      }
+    },
+    "parameterWriteCount": 0,
+    "exactSessionLogoutExit": 0,
+    "sessionReceipt": "a643SessionCleared",
+    "ownHandlesRemoved": true
+  },
+  "supplementalScreenshot": {
+    "path": ".playwright-mcp/qa-a643-page-overflow-mobile.png",
+    "opened": true,
+    "supports": "Native root scrolling left247px produces clipped page and blank right-hand area."
+  },
+  "limits": [
+    "Saved-row geometry, touch gestures, other browsers and Chinese labels not measured.",
+    "No parameter save or SQL query was needed for the draft-only reproduction.",
+    "Browser-only containing-block style is diagnostic, not a shipped fix."
+  ]
+}
