@@ -19,6 +19,7 @@ package staticserver
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -56,11 +57,13 @@ func NewCachedResolver(reader client.Reader, namespace, baseDomain string) *Cach
 	}
 }
 
-// Resolve returns the Site serving host, or ok=false when none does.
+// Resolve returns the Site serving host, or ok=false when none does. Hostnames
+// compare case-insensitively (RFC 9110 §4.2.3, w4/309), so the snapshot is
+// keyed lowercase and so is the lookup.
 func (c *CachedResolver) Resolve(host string) (Site, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	s, ok := c.sites[host]
+	s, ok := c.sites[strings.ToLower(host)]
 	return s, ok
 }
 
@@ -92,7 +95,7 @@ func (c *CachedResolver) Refresh(ctx context.Context) error {
 			Unavailable: app.Spec.Suspended,
 		}
 		for _, h := range effectiveHosts(app, c.baseDomain) {
-			next[h] = site
+			next[strings.ToLower(h)] = site
 		}
 	}
 	c.mu.Lock()
