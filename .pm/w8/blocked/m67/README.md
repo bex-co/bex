@@ -1,13 +1,13 @@
 # w8 · m67 — Keep native live logs running after a transient disconnect
 
-**Worker:** worker8 **Goal:** the released Bex CLI follows logs through transient connection loss with visible retry status and exact record resumption. **Status:** todo
+**Worker:** worker8 **Goal:** the released Bex CLI follows logs through transient connection loss with visible retry status and exact record resumption. **Status:** blocked — t001 done (v2.29 candidate qualified; the reconnect fix works, but its retry of normal closes conflicts with Bex's terminal build-tail close); t002–t007 wait on a user decision about how a tail ends, then a requested CLI release
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Qualify the released reconnecting tail against Bex lifecycle controls](t001.md) | 45m | — |
-| t002 | [Adopt the qualified upstream pin and review its hosting wire delta](t002.md) | 35m | t001 |
+| t001 | [Qualify the released reconnecting tail against Bex lifecycle controls](t001.md) — **DONE** | 45m | — |
+| t002 | [Adopt the qualified upstream pin and review its hosting wire delta](t002.md) — **BLOCKED (build-tail end-of-stream decision)** | 35m | t001 |
 | t003 | [Verify affected hosting callers through candidate Bex and upstream CLI](t003.md) | 30m | t002 |
 | t004 | [Render parity](t004.md) | 20m | t003 |
 | t005 | [Simplify](t005.md) | 10m | t004 |
@@ -35,3 +35,13 @@ Total: 2h50m, seven tasks. [Researched finding](finding.md), [native fault/recov
 ## Boundaries
 
 Current pin remains2.27/a764810a7682; it is the contract oracle until qualified adoption. The new2.29 comparison is an unmodified tag build, not a Bex candidate or installed release. No production failure was induced. The hunt changed only PM evidence, with no dependency edit, commit/push, external submission or release. See finding.md for source locations, controls, dedupe and unverified areas.
+
+## Qualified, parked on a lifecycle decision — 2026-10-14 (`/loopx w8`)
+
+The v2.29 candidate fixes silent termination (see [evidence](evidence/candidate-2.29-20261014/README.md)), but it retries 1000 closes. Bex's w8/020 terminal build-tail refusal closes with 1000, so adoption needs the user to choose:
+
+- **(A)** Send a non-retryable close code for named refusals; v2.29 then exits non-zero with the reason.
+- **(B)** Accept indefinite retry for finished build tails.
+- **(C)** Wait for an upstream end-of-stream signal.
+
+After that, t002–t006 can proceed. t007 also needs an explicitly requested CLI release. No pin change is committed.

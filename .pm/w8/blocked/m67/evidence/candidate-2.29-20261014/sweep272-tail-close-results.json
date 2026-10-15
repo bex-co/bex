@@ -1,0 +1,756 @@
+[
+  {
+    "client": "bex",
+    "scenario": "abrupt_empty",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-00000000000000000000",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "endpoint": "http://127.0.0.1:62552/v1/",
+    "credentials": "synthetic local fixture only; no QA credential/config copied",
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62552",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "EYvrxxxu4x7eXOJl4IEpRg==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62552",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "P1HJ3WpqZfsEOO3UiUkFrg==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62552",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "lyET0XAseOifh7CQoeVuvQ==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62552",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "/GEkmvp83XHUOYRdiZRYaQ==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      }
+    ],
+    "server_events": [
+      {
+        "HTTP": 101
+      },
+      {
+        "transport": "TCP shutdown without WebSocket close frame"
+      },
+      {
+        "HTTP": 101
+      },
+      {
+        "transport": "TCP shutdown without WebSocket close frame"
+      },
+      {
+        "HTTP": 101
+      },
+      {
+        "transport": "TCP shutdown without WebSocket close frame"
+      },
+      {
+        "HTTP": 101
+      },
+      {
+        "transport": "TCP shutdown without WebSocket close frame"
+      }
+    ],
+    "native_exit": null,
+    "harness_timeout": true,
+    "elapsed": 8.075,
+    "stdout": "",
+    "stderr": "Unable to connect to logs. Retrying in 1s.\nLog connection restored.\nUnable to connect to logs. Retrying in 2s.\nLog connection restored.\nUnable to connect to logs. Retrying in 4s.\nLog connection restored.\nUnable to connect to logs. Retrying in 8s.\n",
+    "cleanup": {
+      "server_stopped": true,
+      "config_removed": true,
+      "native_reaped": true
+    }
+  },
+  {
+    "client": "bex",
+    "scenario": "abrupt_after_line",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-00000000000000000000",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "endpoint": "http://127.0.0.1:62619/v1/",
+    "credentials": "synthetic local fixture only; no QA credential/config copied",
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62619",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "BsVKHYwKUHSemcBZO/UEzg==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&startTime=2026-10-15T05%3A15%3A47.612434Z&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62619",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "n1uRCFCQLVAzOHZ3DLgXow==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&startTime=2026-10-15T05%3A15%3A47.612434Z&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62619",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "W84pffgSxJ1n8QMGFhmUFA==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&startTime=2026-10-15T05%3A15%3A47.612434Z&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62619",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "+dgqwb/kLnscpkHFDYUZTQ==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      }
+    ],
+    "server_events": [
+      {
+        "HTTP": 101
+      },
+      {
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "qa272-line-1",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 exact line before disconnect",
+          "timestamp": "2026-10-15T05:15:47.612434Z"
+        }
+      },
+      {
+        "transport": "TCP shutdown without WebSocket close frame"
+      },
+      {
+        "HTTP": 101
+      },
+      {
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "qa272-line-1",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 exact line before disconnect",
+          "timestamp": "2026-10-15T05:15:47.612434Z"
+        }
+      },
+      {
+        "transport": "TCP shutdown without WebSocket close frame"
+      },
+      {
+        "HTTP": 101
+      },
+      {
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "qa272-line-1",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 exact line before disconnect",
+          "timestamp": "2026-10-15T05:15:47.612434Z"
+        }
+      },
+      {
+        "transport": "TCP shutdown without WebSocket close frame"
+      },
+      {
+        "HTTP": 101
+      },
+      {
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "qa272-line-1",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 exact line before disconnect",
+          "timestamp": "2026-10-15T05:15:47.612434Z"
+        }
+      },
+      {
+        "transport": "TCP shutdown without WebSocket close frame"
+      }
+    ],
+    "native_exit": null,
+    "harness_timeout": true,
+    "elapsed": 8.388,
+    "stdout": "{\n  \"id\": \"qa272-line-1\",\n  \"labels\": [\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-00000000000000000000\"\n    },\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA272 exact line before disconnect\",\n  \"timestamp\": \"2026-10-15T05:15:47.612434Z\"\n}",
+    "stderr": "Unable to connect to logs. Retrying in 1s.\nLog connection restored.\nUnable to connect to logs. Retrying in 2s.\nLog connection restored.\nUnable to connect to logs. Retrying in 4s.\nLog connection restored.\nUnable to connect to logs. Retrying in 8s.\n",
+    "cleanup": {
+      "server_stopped": true,
+      "config_removed": true,
+      "native_reaped": true
+    }
+  },
+  {
+    "client": "bex",
+    "scenario": "error1011_after_line",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-00000000000000000000",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "endpoint": "http://127.0.0.1:62670/v1/",
+    "credentials": "synthetic local fixture only; no QA credential/config copied",
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62670",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "vwvLWj7ebexjhcM93MbFCg==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&startTime=2026-10-15T05%3A15%3A47.612434Z&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62670",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "B5hoEIdeYnsaftoMU5Pkdw==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&startTime=2026-10-15T05%3A15%3A47.612434Z&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62670",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "MLktkCuRLCI1H4Hdp9wk1Q==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&startTime=2026-10-15T05%3A15%3A47.612434Z&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62670",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "sdZ4Yl7UkXpjfDUwqyZnIA==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      }
+    ],
+    "server_events": [
+      {
+        "HTTP": 101
+      },
+      {
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "qa272-line-1",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 exact line before disconnect",
+          "timestamp": "2026-10-15T05:15:47.612434Z"
+        }
+      },
+      {
+        "websocket_opcode": 8,
+        "close_code": 1011,
+        "reason": "QA272 planned server error"
+      },
+      {
+        "HTTP": 101
+      },
+      {
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "qa272-line-1",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 exact line before disconnect",
+          "timestamp": "2026-10-15T05:15:47.612434Z"
+        }
+      },
+      {
+        "websocket_opcode": 8,
+        "close_code": 1011,
+        "reason": "QA272 planned server error"
+      },
+      {
+        "HTTP": 101
+      },
+      {
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "qa272-line-1",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 exact line before disconnect",
+          "timestamp": "2026-10-15T05:15:47.612434Z"
+        }
+      },
+      {
+        "websocket_opcode": 8,
+        "close_code": 1011,
+        "reason": "QA272 planned server error"
+      },
+      {
+        "HTTP": 101
+      },
+      {
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "qa272-line-1",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 exact line before disconnect",
+          "timestamp": "2026-10-15T05:15:47.612434Z"
+        }
+      },
+      {
+        "websocket_opcode": 8,
+        "close_code": 1011,
+        "reason": "QA272 planned server error"
+      }
+    ],
+    "native_exit": null,
+    "harness_timeout": true,
+    "elapsed": 8.372,
+    "stdout": "{\n  \"id\": \"qa272-line-1\",\n  \"labels\": [\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-00000000000000000000\"\n    },\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA272 exact line before disconnect\",\n  \"timestamp\": \"2026-10-15T05:15:47.612434Z\"\n}",
+    "stderr": "Unable to connect to logs. Retrying in 1s.\nLog connection restored.\nUnable to connect to logs. Retrying in 2s.\nLog connection restored.\nUnable to connect to logs. Retrying in 4s.\nLog connection restored.\nUnable to connect to logs. Retrying in 8s.\n",
+    "cleanup": {
+      "server_stopped": true,
+      "config_removed": true,
+      "native_reaped": true
+    }
+  },
+  {
+    "client": "bex",
+    "scenario": "normal1000_after_line",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-00000000000000000000",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "endpoint": "http://127.0.0.1:62853/v1/",
+    "credentials": "synthetic local fixture only; no QA credential/config copied",
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62853",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "V5dmoA4tuDscDaos4oynzg==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&startTime=2026-10-15T05%3A15%3A47.612434Z&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62853",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "52uZS60sXup2rC4Gesgt+A==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&startTime=2026-10-15T05%3A15%3A47.612434Z&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62853",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "MRLE5r+Wfo9wcAJGyGgMmA==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&startTime=2026-10-15T05%3A15%3A47.612434Z&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62853",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "4FHIBSxCvKrzQJIN5iDZ2g==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      }
+    ],
+    "server_events": [
+      {
+        "HTTP": 101
+      },
+      {
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "qa272-line-1",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 exact line before disconnect",
+          "timestamp": "2026-10-15T05:15:47.612434Z"
+        }
+      },
+      {
+        "websocket_opcode": 8,
+        "close_code": 1000,
+        "reason": "QA272 normal completion"
+      },
+      {
+        "HTTP": 101
+      },
+      {
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "qa272-line-1",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 exact line before disconnect",
+          "timestamp": "2026-10-15T05:15:47.612434Z"
+        }
+      },
+      {
+        "websocket_opcode": 8,
+        "close_code": 1000,
+        "reason": "QA272 normal completion"
+      },
+      {
+        "HTTP": 101
+      },
+      {
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "qa272-line-1",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 exact line before disconnect",
+          "timestamp": "2026-10-15T05:15:47.612434Z"
+        }
+      },
+      {
+        "websocket_opcode": 8,
+        "close_code": 1000,
+        "reason": "QA272 normal completion"
+      },
+      {
+        "HTTP": 101
+      },
+      {
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "qa272-line-1",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 exact line before disconnect",
+          "timestamp": "2026-10-15T05:15:47.612434Z"
+        }
+      },
+      {
+        "websocket_opcode": 8,
+        "close_code": 1000,
+        "reason": "QA272 normal completion"
+      }
+    ],
+    "native_exit": null,
+    "harness_timeout": true,
+    "elapsed": 8.405,
+    "stdout": "{\n  \"id\": \"qa272-line-1\",\n  \"labels\": [\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-00000000000000000000\"\n    },\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA272 exact line before disconnect\",\n  \"timestamp\": \"2026-10-15T05:15:47.612434Z\"\n}",
+    "stderr": "Unable to connect to logs. Retrying in 1s.\nLog connection restored.\nUnable to connect to logs. Retrying in 2s.\nLog connection restored.\nUnable to connect to logs. Retrying in 4s.\nLog connection restored.\nUnable to connect to logs. Retrying in 8s.\n",
+    "cleanup": {
+      "server_stopped": true,
+      "config_removed": true,
+      "native_reaped": true
+    }
+  },
+  {
+    "client": "bex",
+    "scenario": "handshake503",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-00000000000000000000",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "endpoint": "http://127.0.0.1:62989/v1/",
+    "credentials": "synthetic local fixture only; no QA credential/config copied",
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62989",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "IGPWxptFpozDU2ScUSLObA==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62989",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "HBNPh1Fk62a7XUlNfMZ67Q==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62989",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "vybcLw/vb2Z3oilPDIaghg==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62989",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "2cR7TuuR0woUIuZ3/hc0Jg==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      }
+    ],
+    "server_events": [
+      {
+        "HTTP": 503,
+        "body": "{\"id\":\"QA272_UNAVAILABLE\",\"message\":\"planned local fixture unavailable\"}"
+      },
+      {
+        "HTTP": 503,
+        "body": "{\"id\":\"QA272_UNAVAILABLE\",\"message\":\"planned local fixture unavailable\"}"
+      },
+      {
+        "HTTP": 503,
+        "body": "{\"id\":\"QA272_UNAVAILABLE\",\"message\":\"planned local fixture unavailable\"}"
+      },
+      {
+        "HTTP": 503,
+        "body": "{\"id\":\"QA272_UNAVAILABLE\",\"message\":\"planned local fixture unavailable\"}"
+      }
+    ],
+    "native_exit": null,
+    "harness_timeout": true,
+    "elapsed": 8.043,
+    "stdout": "",
+    "stderr": "Unable to connect to logs. Retrying in 1s.\nUnable to connect to logs. Retrying in 2s.\nUnable to connect to logs. Retrying in 4s.\nUnable to connect to logs. Retrying in 8s.\n",
+    "cleanup": {
+      "server_stopped": true,
+      "config_removed": true,
+      "native_reaped": true
+    }
+  }
+]
