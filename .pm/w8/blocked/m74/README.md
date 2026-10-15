@@ -1,17 +1,17 @@
 # w8 · m74 — Preserve Blueprint host-reference origins and target checks
 
-**Worker:** worker8 **Goal:** each host reference is checked against its actual target and every refusal identifies its own authored field before apply writes. **Status:** todo
+**Worker:** worker8 **Goal:** each host reference is checked against its actual target and every refusal identifies its own authored field before apply writes. **Status:** blocked
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Preserve authored host-reference origins | 35m | — |
-| t002 | Validate existing host target type and addressability | 40m | t001 |
-| t003 | Audit shared consumers and pre-write behavior | 25m | t002 |
-| t004 | Render parity | 20m | t003 |
-| t005 | Simplify | 10m | t004 |
-| t006 | Meaningful regression coverage | 35m | t004 |
+| [t001](done/t001.md) | Preserve authored host-reference origins | 35m | — — **DONE 2026-10-15** |
+| [t002](done/t002.md) | Validate existing host target type and addressability | 40m | t001 — **DONE 2026-10-15** |
+| [t003](done/t003.md) | Audit shared consumers and pre-write behavior | 25m | t002 — **DONE 2026-10-15** |
+| [t004](done/t004.md) | Render parity | 20m | t003 — **DONE 2026-10-15** |
+| [t005](done/t005.md) | Simplify | 10m | t004 — **DONE 2026-10-15** |
+| [t006](done/t006.md) | Meaningful regression coverage | 35m | t004 — **DONE 2026-10-15** |
 | t007 | Live closeout | 20m | t005, t006 |
 
 ## Definition of done
@@ -24,7 +24,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** promoted unshipped w8/110 from functional CLI sweep314 ([preserved note](110.md), [31 native receipts](../evidence/110/README.md)) plus sweep316's [existing-target finding](finding-targets.md) and [native/source evidence](evidence/cli-sweep316/README.md),2026-10-15 UTC.
+- **Source:** promoted unshipped w8/110 from functional CLI sweep314 ([preserved note](110.md), [31 native receipts](../../evidence/110/README.md)) plus sweep316's [existing-target finding](finding-targets.md) and [native/source evidence](evidence/cli-sweep316/README.md),2026-10-15 UTC.
 - **Goal linkage:** ADR008 dependable hosting, ADR018 unchanged CLI compatibility, ADR041 internal service addresses and ADR049 actionable Blueprint diagnostics.
 - **Expected outcome:** validation and apply reject invalid existing targets before writes, and each error identifies its actual caller occurrence.
 - **Why now:**314 loses origin and316 loses supplied/actual target metadata in the same hostRef/unknownServiceReferences path. Separate implementation tasks within one coordinated change avoid parallel incompatible rewrites; original evidence and done-neighbor behavior remain preserved.

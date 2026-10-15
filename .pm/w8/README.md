@@ -19,7 +19,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m75** — [Validate Blueprints with an implicit repository](m75/README.md) (6 tasks;180m) ← CLI sweep318;22 qualified false refusals/62 controls, no allocations; exact1GB Mattermost scope excluded.
 
-- [ ] **m74** — [Preserve Blueprint host-reference origins and target checks](m74/README.md) (7 tasks;185m) ← promoted110/sweep314 + new316 target-metadata gap; all owned fixtures cleaned.
+- [ ] **m74** — [Preserve Blueprint host-reference origins and target checks](blocked/m74/README.md) (7 tasks;185m) — **BLOCKED (2026-10-15: t001–t006 done — every host-reference refusal is located at its own authored envVars entry, and an existing target's actual kind/type/addressability is checked exactly like a same-file target before apply writes; REST/GraphQL/MCP agree. Needs the backend deploy, then the hosted replay of the nine .pm/w8/evidence/110 files and the eight cli-sweep316 files (fresh owned Free static + web targets; four located refusals, four unchanged controls) through published Bex and the unchanged Render 2.27 pin, and exact-owned cleanup (t007))**
 
 - [ ] **m73** — [Supply pnpm in native Node builds and runtime](blocked/m73/README.md) (6 tasks;155m) — **BLOCKED (2026-10-15: t001–t005 done — every native Node build (and static site) now installs a sha256-pinned pnpm 10.34.6 before the authored build and keeps it at runtime; Docker-executed on Node 22/24/26 + static. Needs the operator deploy, then the hosted two-client pnpm replay (build/runtime markers, Node/npm/Yarn controls, build pods reaching registry.npmjs.org) and exact-owned cleanup (t006))**
 
