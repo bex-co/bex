@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ThemeProviderContext } from "./context.ts";
 import type { Theme } from "./type.ts";
-import { getSystemTheme, THEME_STORAGE_KEY } from "./utils.ts";
+import {
+  getSystemTheme,
+  SYSTEM_DARK_QUERY,
+  THEME_STORAGE_KEY,
+} from "./utils.ts";
 
 type ThemeProviderProps = {
   children: React.ReactNode;
@@ -90,23 +94,34 @@ export function ThemeProvider({
   useEffect(() => {
     if (!isHydrated) return; // Wait for hydration to complete
 
-    const root = window.document.documentElement;
+    const apply = () => {
+      const root = window.document.documentElement;
 
-    // Detect currently applied theme from DOM class
-    const currentClass = root.classList.contains("dark")
-      ? "dark"
-      : root.classList.contains("light")
-        ? "light"
-        : null;
+      // Detect currently applied theme from DOM class
+      const currentClass = root.classList.contains("dark")
+        ? "dark"
+        : root.classList.contains("light")
+          ? "light"
+          : null;
 
-    // Resolve "system" theme to actual "light" or "dark" based on user's OS preference
-    const targetTheme = theme === "system" ? getSystemTheme() : theme;
+      // Resolve "system" theme to actual "light" or "dark" based on user's OS preference
+      const targetTheme = theme === "system" ? getSystemTheme() : theme;
 
-    // Only update DOM if theme actually changed (prevents unnecessary reflows)
-    if (currentClass !== targetTheme) {
-      root.classList.remove("light", "dark");
-      root.classList.add(targetTheme);
-    }
+      // Only update DOM if theme actually changed (prevents unnecessary reflows)
+      if (currentClass !== targetTheme) {
+        root.classList.remove("light", "dark");
+        root.classList.add(targetTheme);
+      }
+    };
+    apply();
+
+    // "System" follows the preference while the page is open, not only the
+    // value it had when System was chosen (w4/315). The stored choice stays
+    // "system"; only the applied class changes.
+    if (theme !== "system") return;
+    const query = window.matchMedia(SYSTEM_DARK_QUERY);
+    query.addEventListener("change", apply);
+    return () => query.removeEventListener("change", apply);
   }, [theme, isHydrated]);
 
   const updateTheme = useCallback(
