@@ -196,7 +196,7 @@ type createWebServiceArgs struct {
 	DockerContext           string                  `json:"dockerContext,omitempty" jsonschema:"Docker build context directory, relative to the repository root, for a Dockerfile build: runtime docker, or no runtime with builder auto or dockerfile (default the repo root)"`
 	DockerCommand           string                  `json:"dockerCommand,omitempty" jsonschema:"overrides the image's startup command; omitted or empty uses the image's ENTRYPOINT and CMD. Applies to a Dockerfile build or a prebuilt image, not to a native runtime or buildpacks; do not combine with startCommand"`
 	Builder                 string                  `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
-	Plan                    string                  `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free; a background_worker is paid-only — free is rejected and an omitted plan defaults to starter)"`
+	Plan                    string                  `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default starter, Render's 0.5c-512mb; a background_worker or private_service is paid-only, so free is rejected)"`
 	EnvVars                 []envVarInput           `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
 	SecretFiles             []secretFileInput       `json:"secretFiles,omitempty" jsonschema:"secret files mounted under /etc/secrets from first boot"`
 	AutoDeploy              string                  `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
@@ -311,7 +311,7 @@ type createCronJobArgs struct {
 	DockerContext  string            `json:"dockerContext,omitempty" jsonschema:"Docker build context directory, relative to the repository root, for a Dockerfile build: runtime docker, or no runtime with builder auto or dockerfile (default the repo root)"`
 	DockerCommand  string            `json:"dockerCommand,omitempty" jsonschema:"overrides the image's command for each run; omitted or empty uses the image's ENTRYPOINT and CMD. Applies to a Dockerfile build or a prebuilt image, not to a native runtime or buildpacks; do not combine with startCommand or command"`
 	Builder        string            `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
-	Plan           string            `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro (default free)"`
+	Plan           string            `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro (default starter, Render's 0.5c-512mb)"`
 	EnvVars        []envVarInput     `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the job"`
 	SecretFiles    []secretFileInput `json:"secretFiles,omitempty" jsonschema:"secret files mounted under /etc/secrets from first boot"`
 	AutoDeploy     string            `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`

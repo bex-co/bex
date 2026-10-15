@@ -3367,22 +3367,20 @@ func normalizeTierOrPlan(v string) (string, error) {
 }
 
 // normalizeTierForType resolves a create's plan for its (already normalized)
-// service type. A background worker is paid-only (w6/025, matching Render,
-// whose worker picker has no free rung): an omitted plan lands on the cheapest
-// paid tier instead of the catalog's free default, and an explicit free plan is
-// refused. Every other type keeps normalizeTierOrPlan's defaulting.
+// service type. An omitted plan follows Render: its Blueprint spec gives a new
+// service the 0.5c-512mb compute plan, which is bex's cheapest paid rung, and
+// bex does the same for every type that runs an instance (w1/122, user
+// decision 2026-10-15); a static site runs none and keeps the catalog default.
+// A paid-only type (w6/025, w1/111) also refuses an explicit free plan.
 func normalizeTierForType(svcType, plan string) (string, error) {
-	if !paidOnlyServiceType(svcType) {
-		return normalizeTierOrPlan(plan)
-	}
-	if plan == "" {
+	if plan == "" && svcType != appv1alpha1.TypeStaticSite {
 		return defaultPaidTierID(), nil
 	}
 	tier, err := normalizeTierOrPlan(plan)
 	if err != nil {
 		return "", err
 	}
-	if !core.PaidPlan(tier) {
+	if paidOnlyServiceType(svcType) && !core.PaidPlan(tier) {
 		return "", errFreePlanForType(svcType)
 	}
 	return tier, nil
@@ -3398,16 +3396,16 @@ func normalizeTierForType(svcType, plan string) (string, error) {
 // a private service created with no plan came out `free` while a worker came out
 // `starter`, from this one function, for no recorded reason.
 //
-// Web services and cron jobs keep free — Render sells both that way — and a
-// static site runs no instance at all, so the rule is a two-type allowlist
-// rather than "everything but web".
+// Web services and cron jobs may still choose free explicitly — Render sells
+// both that way — and a static site runs no instance at all, so the rule is a
+// two-type allowlist rather than "everything but web".
 func paidOnlyServiceType(svcType string) bool {
 	return svcType == appv1alpha1.TypeBackgroundWorker || svcType == appv1alpha1.TypePrivateService
 }
 
 // defaultPaidTierID is the cheapest paid rung of the compute ladder — the
 // catalog is ordered smallest-first, so the first non-free id is the tier a
-// plan-less background worker falls to. The catalog-default fallback is
+// plan-less service falls to (starter, Render's 0.5c-512mb). The catalog-default fallback is
 // unreachable with the reviewed tiers.yaml, which always carries paid rungs.
 func defaultPaidTierID() string {
 	for _, tierID := range tiers.Compute.IDs() {

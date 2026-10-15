@@ -399,7 +399,9 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 	if a.Spec.StartCommand != "" && !static {
 		entry[blueprintCommandField(a.Spec)] = a.Spec.StartCommand
 	}
-	if !static && a.Spec.Tier != "" && a.Spec.Tier != tiers.Compute.Default().ID {
+	// Always written: an omitted plan now means Render's paid default (w1/122),
+	// so a generated file must say free when the service is free.
+	if !static && a.Spec.Tier != "" {
 		entry["plan"] = blueprintPlanSpelling(a.Spec.Tier)
 	}
 	if svcType == appv1alpha1.TypeCronJob {
