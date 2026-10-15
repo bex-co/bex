@@ -281,4 +281,4 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **104** — [Blueprint numeric env values reject unsigned 64-bit integers](104.md) — **TODO (sweep243:12 live refusals across both clients; signed/quoted controls pass; signed-only compiler normalization, 55m)**
 
-- [ ] **105** — [CLI compatibility checklist advertises cross-repository image overrides](105.md) — **TODO (sweep245: both clients refuse before allocation; same-repository cancel/wake passes; current docs correction,15m)**
+- [x] **105** — [CLI compatibility checklist advertises cross-repository image overrides](done/105.md) — **DONE 2026-10-14** (checklist `--image` row corrected to the same-repository rule)
