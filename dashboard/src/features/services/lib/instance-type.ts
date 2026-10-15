@@ -19,15 +19,16 @@ export function formatInstanceMemory(memory: string): string {
 
 /**
  * Service types bex never offers the compute `free` tier, because Render sells
- * neither on it: Background Workers (w6/025) and Private Services (w1/111).
+ * none of them on it: Background Workers (w6/025), Private Services (w1/111)
+ * and Cron Jobs (w8/048).
  *
- * Web services and cron jobs keep Free — Render sells both that way — and a
- * static site runs no instance at all, so this is a two-type allowlist rather
- * than "everything but web".
+ * Web services keep Free, and a static site runs no instance at all, so this
+ * is an allowlist rather than "everything but web".
  */
 const PAID_ONLY_SERVICE_TYPES = new Set([
   "background_worker",
   "private_service",
+  "cron_job",
 ]);
 
 /**

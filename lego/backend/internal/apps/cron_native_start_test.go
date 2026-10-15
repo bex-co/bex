@@ -49,7 +49,7 @@ func TestNativeCronCreateKeepsTheStartCommand(t *testing.T) {
 			svc.RegisterREST(mux)
 			rec := serveJSON(t, mux, http.MethodPost, "/v1/services", map[string]any{
 				"name": "nightly", "type": "cron_job", "repo": "https://github.com/acme/jobs",
-				"serviceDetails": map[string]any{"runtime": runtime, "plan": "free", "schedule": "0 0 1 1 *",
+				"serviceDetails": map[string]any{"runtime": runtime, "plan": "starter", "schedule": "0 0 1 1 *",
 					"envSpecificDetails": map[string]any{"buildCommand": "printf control", "startCommand": bashCronCommand}},
 			})
 			if rec.Code != http.StatusCreated {

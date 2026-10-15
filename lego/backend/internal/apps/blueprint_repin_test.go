@@ -139,23 +139,19 @@ func TestBlueprintRejectsComputePlanSizesBexDoesNotOffer(t *testing.T) {
 	}
 }
 
-// Render's cronPlan has no free rung, but bex keeps a free cron tier (it is
-// also the omitted-plan default), and tenant Blueprints already say plan: free
-// on cron jobs. That stays valid — a documented bex divergence (ADR049) — and
-// lands on the free tier; the rest of cronPlan is unchanged.
-func TestBlueprintCronPlanFreeStaysValidOnBex(t *testing.T) {
+// Render's cronPlan has no free rung, and since w8/048 bex sells no free cron
+// either: the pinned schema refuses plan: free on a cron job, and a paid plan
+// still compiles.
+func TestBlueprintCronPlanFreeIsRefused(t *testing.T) {
 	manifest := "services:\n  - type: cron\n    name: c\n    runtime: image\n    image: {url: nginx:1.27}\n    schedule: '* * * * *'\n    plan: free\n"
-	st := parseBlueprintStackForTest(t, manifest)
-	if len(st.services) != 1 {
-		t.Fatalf("services = %+v, want one cron job", st.services)
+	_, problems := CompileBlueprintSource(manifest)
+	if len(problems) != 1 || problems[0].Code != "BLUEPRINT_SCHEMA_INVALID" || problems[0].Path != "#/services/0/plan" ||
+		!strings.Contains(problems[0].Message, "a cron_job requires a paid plan") {
+		t.Fatalf("cron plan: free problems = %+v, want the named paid-plan refusal at #/services/0/plan", problems)
 	}
-	tier, err := normalizeTierForType(effectiveType(st.services[0].req.Type), st.services[0].req.Plan)
-	if err != nil || tier != "free" {
-		t.Fatalf("cron plan: free => tier %q, %v; want free", tier, err)
-	}
-	_, problems := CompileBlueprintSource(strings.Replace(manifest, "plan: free", "plan: nonsense", 1))
-	if len(problems) != 1 || problems[0].Code != "BLUEPRINT_SCHEMA_INVALID" || problems[0].Path != "#/services/0/plan" {
-		t.Fatalf("cron plan: nonsense problems = %+v, want one schema error at #/services/0/plan", problems)
+	st := parseBlueprintStackForTest(t, strings.Replace(manifest, "plan: free", "plan: starter", 1))
+	if tier, err := normalizeTierForType(effectiveType(st.services[0].req.Type), st.services[0].req.Plan); err != nil || tier != "starter" {
+		t.Fatalf("cron plan: starter => tier %q, %v; want starter", tier, err)
 	}
 }
 
