@@ -589,12 +589,16 @@ type parsedService struct {
 // sibling render.yaml name it targets, that sibling's effective port (declared or
 // the 3000 default — known at parse), and whether the literal is host-only or
 // host:port. The hostname half is the sibling's slug, minted at create, so
-// resolution happens at apply (docs/ADR041-service-addresses.md D3).
+// resolution happens at apply (docs/ADR041-service-addresses.md D3). refType
+// and index are the authored fromService.type and envVars entry, which check
+// and locate a reference to an existing workspace App (hostReferenceProblems).
 type hostRef struct {
 	key      string
 	target   string
 	port     int32
 	hostport bool
+	refType  string
+	index    int
 }
 
 // env materializes the reference once the target's slug is known.
@@ -778,8 +782,8 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if err != nil {
 		return StackResult{}, err
 	}
-	if unknown := unknownServiceReferences(st, existingServices); len(unknown) > 0 {
-		return StackResult{}, fmt.Errorf("%w: %s", core.ErrBadRequest, unknown[0])
+	if refused := hostReferenceProblems(st, existingServices); len(refused) > 0 {
+		return StackResult{}, refused[0].err
 	}
 	// Pre-flight the env-groups + env-vars seams BEFORE any write (all-or-nothing):
 	// a manifest that uses envVarGroups/fromGroup or sync:false/generateValue but
@@ -2254,19 +2258,19 @@ func (idx *stackIndex) classifyRef(svc *parsedService, r envRef) error {
 	}
 	// A supplied type must describe the declared target, or a reference
 	// meant for a worker silently resolves against a web service (w8/096).
-	if r.FromService != nil {
-		if target, declared := idx.serviceTypes[r.FromService.Name]; declared && !slices.Contains(serviceRefTypes[target], r.FromService.Type) {
-			return fmt.Errorf("%w: service %q: envVars[%q] fromService.type %q does not match %q (want type %s)",
-				core.ErrBadRequest, svc.req.Name, r.Key, r.FromService.Type, r.FromService.Name, strings.Join(serviceRefTypes[target], " or "))
+	if declaredService {
+		if err := serviceRefTypeError(svc.req.Name, r.Key, r.FromService.Type, r.FromService.Name, idx.serviceTypes[r.FromService.Name]); err != nil {
+			return err
 		}
 	}
 	// host, hostport and port all name a declared sibling's network address,
 	// which only web/private services have; a worker, cron job or static
 	// site has no port to resolve (it would become "0"/"<slug>:0", w8/081).
-	// An undeclared host target is resolved out-of-file at apply instead.
-	if r.FromService != nil && r.FromService.EnvVarKey == "" && declaredService && serviceRefProperty[r.FromService.Property] {
+	// An undeclared host target gets the same checks against the existing
+	// workspace App (hostReferenceProblems).
+	if declaredService && r.FromService.EnvVarKey == "" && serviceRefProperty[r.FromService.Property] {
 		if _, addressable := idx.servicePorts[r.FromService.Name]; !addressable {
-			return fmt.Errorf("%w: service %q: envVars[%q] fromService %s references %q which has no network address (only web/private services are addressable)", core.ErrBadRequest, svc.req.Name, r.Key, r.FromService.Property, r.FromService.Name)
+			return serviceRefUnaddressable(svc.req.Name, r.Key, r.FromService.Property, r.FromService.Name)
 		}
 	}
 	// host/hostport inject the sibling's slug — minted at create (w4/m19),
@@ -2278,6 +2282,7 @@ func (idx *stackIndex) classifyRef(svc *parsedService, r envRef) error {
 		svc.hostRefs = append(svc.hostRefs, hostRef{
 			key: r.Key, target: r.FromService.Name, port: port,
 			hostport: r.FromService.Property == serviceRefPropertyHostPort,
+			refType:  r.FromService.Type, index: r.index,
 		})
 		return nil
 	}
@@ -2477,6 +2482,24 @@ func knownServiceEnv(se serviceEnv, groups []parsedEnvGroup) (known map[string]k
 		delete(generated, r.Key)
 	}
 	return known, generated
+}
+
+// serviceRefTypeError refuses a supplied fromService.type that does not name
+// the target's App type — a declared sibling's (w8/096) or an existing
+// workspace App's (w8/m74) — so a reference meant for a worker never silently
+// resolves against a web service.
+func serviceRefTypeError(service, key, refType, target, targetType string) error {
+	if slices.Contains(serviceRefTypes[targetType], refType) {
+		return nil
+	}
+	return fmt.Errorf("%w: service %q: envVars[%q] fromService.type %q does not match %q (want type %s)",
+		core.ErrBadRequest, service, key, refType, target, strings.Join(serviceRefTypes[targetType], " or "))
+}
+
+// serviceRefUnaddressable refuses a network-address reference to a target with
+// no Service: only web/private services are addressable (ADR041 D1, w8/081).
+func serviceRefUnaddressable(service, key, property, target string) error {
+	return fmt.Errorf("%w: service %q: envVars[%q] fromService %s references %q which has no network address (only web/private services are addressable)", core.ErrBadRequest, service, key, property, target)
 }
 
 // knownValue is one plainly-known source value and where it comes from: the
