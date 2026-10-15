@@ -1,0 +1,1652 @@
+{
+  "finding": "w4/307",
+  "pass": "a520",
+  "date": "2026-10-15 UTC",
+  "scope": "Functional QA; own Free static site; filing only",
+  "fixture": {
+    "id": "srv-db86ojgumfhs73fe7l30",
+    "name": "qa-20261015-a520-resume",
+    "publicURL": "https://qa-20261015-a520-resume.onbex.co",
+    "initialDeployId": "dep-db86ojgumfhs73fe7l3g"
+  },
+  "commonReadRequest": {
+    "operationName": "Qaa520Read",
+    "query": "query Qaa520Read($id:String!){server(id:$id){id name phase revision suspended routes{type source destination} headers{path name value}} deploys(serviceId:$id){id status trigger}}",
+    "variables": {
+      "id": "srv-db86ojgumfhs73fe7l30"
+    }
+  },
+  "requestsWithoutInlineDefinition": "Each status/body read below used commonReadRequest unchanged. Public read method is GET; paths are under fixture.publicURL.",
+  "create": {
+    "at": "2026-10-15T06:01:51.854Z",
+    "request": {
+      "operationName": "CreateService",
+      "variables": {
+        "repo": "https://github.com/bex-co/bex",
+        "branch": "main",
+        "name": "qa-20261015-a520-resume",
+        "type": "static_site",
+        "rootDir": "examples/static-site",
+        "buildCommand": "printf \"QA_A520_ROOT\\n\" > index.html; printf \"QA_A520_VERSION\\n\" > version.txt",
+        "autoDeploy": false,
+        "publishPath": ".",
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "createService": {
+          "__typename": "Service",
+          "environmentId": null,
+          "id": "srv-db86ojgumfhs73fe7l30",
+          "latestDeployId": "dep-db86ojgumfhs73fe7l3g",
+          "name": "qa-20261015-a520-resume",
+          "phase": "",
+          "projectId": null,
+          "registryCredentialId": null,
+          "type": "static_site"
+        }
+      }
+    },
+    "url": "https://dashboard.bex.co/services/srv-db86ojgumfhs73fe7l30/deploys/dep-db86ojgumfhs73fe7l3g"
+  },
+  "routes": {
+    "at": "2026-10-15T06:02:08.545Z",
+    "request": {
+      "operationName": "SetStaticRoutes",
+      "variables": {
+        "id": "srv-db86ojgumfhs73fe7l30",
+        "routes": [
+          {
+            "type": "rewrite",
+            "source": "/friendly",
+            "destination": "/version.txt"
+          }
+        ]
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "mutation SetStaticRoutes($id: String!, $routes: [StaticRouteInput]) {\n  setStaticRoutes(id: $id, routes: $routes) {\n    id\n    routes {\n      type\n      source\n      destination\n      __typename\n    }\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "setStaticRoutes": {
+          "__typename": "Service",
+          "id": "srv-db86ojgumfhs73fe7l30",
+          "routes": [
+            {
+              "__typename": "StaticRoute",
+              "destination": "/version.txt",
+              "source": "/friendly",
+              "type": "rewrite"
+            }
+          ]
+        }
+      }
+    },
+    "url": "https://dashboard.bex.co/static/srv-db86ojgumfhs73fe7l30/redirects"
+  },
+  "headers": {
+    "at": "2026-10-15T06:02:11.587Z",
+    "request": {
+      "operationName": "SetStaticHeaders",
+      "variables": {
+        "id": "srv-db86ojgumfhs73fe7l30",
+        "headers": [
+          {
+            "path": "/friendly",
+            "name": "X-QA-A520",
+            "value": "preserved"
+          }
+        ]
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.1.3"
+        }
+      },
+      "query": "mutation SetStaticHeaders($id: String!, $headers: [StaticHeaderInput]) {\n  setStaticHeaders(id: $id, headers: $headers) {\n    id\n    headers {\n      path\n      name\n      value\n      __typename\n    }\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "setStaticHeaders": {
+          "__typename": "Service",
+          "headers": [
+            {
+              "__typename": "StaticHeader",
+              "name": "X-QA-A520",
+              "path": "/friendly",
+              "value": "preserved"
+            }
+          ],
+          "id": "srv-db86ojgumfhs73fe7l30"
+        }
+      }
+    },
+    "url": "https://dashboard.bex.co/static/srv-db86ojgumfhs73fe7l30/headers"
+  },
+  "liveBaseline": {
+    "at": "2026-10-15T06:04:25.404Z",
+    "status": 200,
+    "body": {
+      "data": {
+        "deploys": [
+          {
+            "id": "dep-db86ojgumfhs73fe7l3g",
+            "status": "live",
+            "trigger": "create"
+          }
+        ],
+        "server": {
+          "headers": [
+            {
+              "name": "X-QA-A520",
+              "path": "/friendly",
+              "value": "preserved"
+            }
+          ],
+          "id": "srv-db86ojgumfhs73fe7l30",
+          "name": "qa-20261015-a520-resume",
+          "phase": "Running",
+          "revision": "rev-1",
+          "routes": [
+            {
+              "destination": "/version.txt",
+              "source": "/friendly",
+              "type": "rewrite"
+            }
+          ],
+          "suspended": "not_suspended"
+        }
+      }
+    },
+    "reads": [
+      {
+        "at": "2026-10-15T06:04:24.962Z",
+        "path": "/",
+        "status": 200,
+        "header": null,
+        "text": "QA_A520_ROOT\n"
+      },
+      {
+        "at": "2026-10-15T06:04:25.208Z",
+        "path": "/version.txt",
+        "status": 200,
+        "header": null,
+        "text": "QA_A520_VERSION\n"
+      },
+      {
+        "at": "2026-10-15T06:04:25.404Z",
+        "path": "/friendly",
+        "status": 200,
+        "header": "preserved",
+        "text": "QA_A520_VERSION\n"
+      }
+    ]
+  },
+  "first": {
+    "suspend": {
+      "at": "2026-10-15T06:04:37.974Z",
+      "request": {
+        "operationName": "SuspendService",
+        "variables": {
+          "id": "srv-db86ojgumfhs73fe7l30"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation SuspendService($id: String!, $confirm: String) {\n  suspendService(id: $id, confirm: $confirm) {\n    id\n    suspended\n    phase\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "suspendService": {
+            "__typename": "Service",
+            "id": "srv-db86ojgumfhs73fe7l30",
+            "phase": "Running",
+            "suspended": "suspended"
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/static/srv-db86ojgumfhs73fe7l30/settings#suspend"
+    },
+    "settledSuspended": {
+      "at": "2026-10-15T06:04:57.990Z",
+      "reads": [
+        {
+          "at": "2026-10-15T06:04:49.079Z",
+          "path": "/",
+          "status": 503,
+          "header": null,
+          "cache": "no-store",
+          "retry": "3600",
+          "text": "This service is suspended.\n",
+          "server": {
+            "headers": [
+              {
+                "name": "X-QA-A520",
+                "path": "/friendly",
+                "value": "preserved"
+              }
+            ],
+            "id": "srv-db86ojgumfhs73fe7l30",
+            "name": "qa-20261015-a520-resume",
+            "phase": "Hibernated",
+            "revision": "rev-1",
+            "routes": [
+              {
+                "destination": "/version.txt",
+                "source": "/friendly",
+                "type": "rewrite"
+              }
+            ],
+            "suspended": "suspended"
+          }
+        },
+        {
+          "at": "2026-10-15T06:04:49.321Z",
+          "path": "/friendly",
+          "status": 503,
+          "header": null,
+          "cache": "no-store",
+          "retry": "3600",
+          "text": "This service is suspended.\n",
+          "server": {
+            "headers": [
+              {
+                "name": "X-QA-A520",
+                "path": "/friendly",
+                "value": "preserved"
+              }
+            ],
+            "id": "srv-db86ojgumfhs73fe7l30",
+            "name": "qa-20261015-a520-resume",
+            "phase": "Hibernated",
+            "revision": "rev-1",
+            "routes": [
+              {
+                "destination": "/version.txt",
+                "source": "/friendly",
+                "type": "rewrite"
+              }
+            ],
+            "suspended": "suspended"
+          }
+        },
+        {
+          "at": "2026-10-15T06:04:52.725Z",
+          "path": "/",
+          "status": 503,
+          "header": null,
+          "cache": "no-store",
+          "retry": "3600",
+          "text": "This service is suspended.\n",
+          "server": {
+            "headers": [
+              {
+                "name": "X-QA-A520",
+                "path": "/friendly",
+                "value": "preserved"
+              }
+            ],
+            "id": "srv-db86ojgumfhs73fe7l30",
+            "name": "qa-20261015-a520-resume",
+            "phase": "Hibernated",
+            "revision": "rev-1",
+            "routes": [
+              {
+                "destination": "/version.txt",
+                "source": "/friendly",
+                "type": "rewrite"
+              }
+            ],
+            "suspended": "suspended"
+          }
+        },
+        {
+          "at": "2026-10-15T06:04:52.895Z",
+          "path": "/friendly",
+          "status": 503,
+          "header": null,
+          "cache": "no-store",
+          "retry": "3600",
+          "text": "This service is suspended.\n",
+          "server": {
+            "headers": [
+              {
+                "name": "X-QA-A520",
+                "path": "/friendly",
+                "value": "preserved"
+              }
+            ],
+            "id": "srv-db86ojgumfhs73fe7l30",
+            "name": "qa-20261015-a520-resume",
+            "phase": "Hibernated",
+            "revision": "rev-1",
+            "routes": [
+              {
+                "destination": "/version.txt",
+                "source": "/friendly",
+                "type": "rewrite"
+              }
+            ],
+            "suspended": "suspended"
+          }
+        },
+        {
+          "at": "2026-10-15T06:04:56.311Z",
+          "path": "/",
+          "status": 503,
+          "header": null,
+          "cache": "no-store",
+          "retry": "3600",
+          "text": "This service is suspended.\n",
+          "server": {
+            "headers": [
+              {
+                "name": "X-QA-A520",
+                "path": "/friendly",
+                "value": "preserved"
+              }
+            ],
+            "id": "srv-db86ojgumfhs73fe7l30",
+            "name": "qa-20261015-a520-resume",
+            "phase": "Hibernated",
+            "revision": "rev-1",
+            "routes": [
+              {
+                "destination": "/version.txt",
+                "source": "/friendly",
+                "type": "rewrite"
+              }
+            ],
+            "suspended": "suspended"
+          }
+        },
+        {
+          "at": "2026-10-15T06:04:56.483Z",
+          "path": "/friendly",
+          "status": 503,
+          "header": null,
+          "cache": "no-store",
+          "retry": "3600",
+          "text": "This service is suspended.\n",
+          "server": {
+            "headers": [
+              {
+                "name": "X-QA-A520",
+                "path": "/friendly",
+                "value": "preserved"
+              }
+            ],
+            "id": "srv-db86ojgumfhs73fe7l30",
+            "name": "qa-20261015-a520-resume",
+            "phase": "Hibernated",
+            "revision": "rev-1",
+            "routes": [
+              {
+                "destination": "/version.txt",
+                "source": "/friendly",
+                "type": "rewrite"
+              }
+            ],
+            "suspended": "suspended"
+          }
+        }
+      ],
+      "aria": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261015-a520-resume\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Static Site\n  - heading \"qa-20261015-a520-resume\" [level=1]\n  - text: Service Suspended\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db86ojgumfhs73fe7l30\"\n  - button \"Copy service ID\"\n  - link \"github.com · bex-co / bex\":\n    - /url: https://github.com/bex-co/bex/tree/main\n  - text: main\n  - link \"https://qa-20261015-a520-resume.onbex.co\":\n    - /url: https://qa-20261015-a520-resume.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261015-a520-resume\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 3m\n  - navigation \"Settings sections\":\n    - link \"General\":\n      - /url: \"#general\"\n    - link \"Build\":\n      - /url: \"#build\"\n    - link \"Static Site\":\n      - /url: \"#static-site\"\n    - link \"Custom Domains\":\n      - /url: \"#domains\"\n    - link \"Networking\":\n      - /url: \"#networking\"\n    - link \"Notifications\":\n      - /url: \"#notifications\"\n    - link \"Resume Service\":\n      - /url: \"#suspend\"\n    - link \"Danger Zone\":\n      - /url: \"#danger-zone\"\n  - text: General Configure this service's name, instance size, and other settings. Service Name The service ID remains srv-db86ojgumfhs73fe7l30; URLs and infrastructure do not change.\n  - textbox \"Service Name\" [disabled]: qa-20261015-a520-resume\n  - button \"Edit service name\"\n  - text: Build Configure how bex builds your service from your repository. Root Directory Optional If set, builds run from this subdirectory instead of the repository root. Code changes outside of it don't trigger an auto-deploy. Most commonly used with a monorepo.\n  - textbox \"Root Directory\" [disabled]:\n    - /placeholder: e.g. backend\n    - text: examples/static-site\n  - text: Build Command Optional The command that builds your service (e.g., npm run build). Leave blank to use the runtime default.\n  - code: examples/static-site/ $\n  - textbox \"Build Command\" [disabled]:\n    - /placeholder: npm run build\n    "
+    },
+    "resume": {
+      "at": "2026-10-15T06:05:07.861Z",
+      "request": {
+        "operationName": "ResumeService",
+        "variables": {
+          "id": "srv-db86ojgumfhs73fe7l30"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation ResumeService($id: String!) {\n  resumeService(id: $id) {\n    id\n    suspended\n    phase\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "resumeService": {
+            "__typename": "Service",
+            "id": "srv-db86ojgumfhs73fe7l30",
+            "phase": "Hibernated",
+            "suspended": "not_suspended"
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/static/srv-db86ojgumfhs73fe7l30/settings#suspend"
+    },
+    "reads": {
+      "reads": [
+        {
+          "at": "2026-10-15T06:05:09.281Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "id": "dep-db86ojgumfhs73fe7l3g",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "headers": [
+                  {
+                    "name": "X-QA-A520",
+                    "path": "/friendly",
+                    "value": "preserved"
+                  }
+                ],
+                "id": "srv-db86ojgumfhs73fe7l30",
+                "name": "qa-20261015-a520-resume",
+                "phase": "Running",
+                "revision": "rev-1",
+                "routes": [
+                  {
+                    "destination": "/version.txt",
+                    "source": "/friendly",
+                    "type": "rewrite"
+                  }
+                ],
+                "suspended": "not_suspended"
+              }
+            }
+          },
+          "publicStatus": 404,
+          "header": null,
+          "text": "no static site for host\n"
+        },
+        {
+          "at": "2026-10-15T06:05:12.675Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "id": "dep-db86ojgumfhs73fe7l3g",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "headers": [
+                  {
+                    "name": "X-QA-A520",
+                    "path": "/friendly",
+                    "value": "preserved"
+                  }
+                ],
+                "id": "srv-db86ojgumfhs73fe7l30",
+                "name": "qa-20261015-a520-resume",
+                "phase": "Running",
+                "revision": "rev-1",
+                "routes": [
+                  {
+                    "destination": "/version.txt",
+                    "source": "/friendly",
+                    "type": "rewrite"
+                  }
+                ],
+                "suspended": "not_suspended"
+              }
+            }
+          },
+          "publicStatus": 200,
+          "header": "preserved",
+          "text": "QA_A520_VERSION\n"
+        }
+      ],
+      "header": "- main:\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261015-a520-resume\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Static Site\n  - heading \"qa-20261015-a520-resume\" [level=1]\n  - text: Service Running\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db86ojgumfhs73fe7l30\"\n  - button \"Copy service ID\"\n  - link \"github.com · bex-co / bex\":\n    - /url: https://github.com/bex-co/bex/tree/main\n  - text: main\n  - link \"https://qa-20261015-a520-resume.onbex.co\":\n    - /url: https://qa-20261015-a520-resume.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261015-a520-resume\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 3m\n  - navigation \"Settings sections\":\n    - link \"General\":\n      - /url: \"#general\"\n    - link \"Build\":\n      - /url: \"#build\"\n    - link \"Static Site\":\n      - /url: \"#static-site\"\n    - link \"Custom Domains\":\n      - /url: \"#domains\"\n    - link \"Networking\":\n      - /url: \"#networking\"\n    - link \"Notifications\":\n      - /url: \"#notifications\"\n    - link \"Suspend Service\":\n      - /url: \"#suspend\"\n    - link \"Danger Zone\":\n      - /url: \"#danger-zone\"\n  - text: General Configure"
+    }
+  },
+  "second": {
+    "suspend": {
+      "at": "2026-10-15T06:06:22.313Z",
+      "request": {
+        "operationName": "SuspendService",
+        "variables": {
+          "id": "srv-db86ojgumfhs73fe7l30"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation SuspendService($id: String!, $confirm: String) {\n  suspendService(id: $id, confirm: $confirm) {\n    id\n    suspended\n    phase\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "suspendService": {
+            "__typename": "Service",
+            "id": "srv-db86ojgumfhs73fe7l30",
+            "phase": "Running",
+            "suspended": "suspended"
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/static/srv-db86ojgumfhs73fe7l30/settings#suspend"
+    },
+    "settledSuspended": {
+      "at": "2026-10-15T06:06:31.617Z",
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "id": "dep-db86ojgumfhs73fe7l3g",
+              "status": "live",
+              "trigger": "create"
+            }
+          ],
+          "server": {
+            "headers": [
+              {
+                "name": "X-QA-A520",
+                "path": "/friendly",
+                "value": "preserved"
+              }
+            ],
+            "id": "srv-db86ojgumfhs73fe7l30",
+            "name": "qa-20261015-a520-resume",
+            "phase": "Hibernated",
+            "revision": "rev-1",
+            "routes": [
+              {
+                "destination": "/version.txt",
+                "source": "/friendly",
+                "type": "rewrite"
+              }
+            ],
+            "suspended": "suspended"
+          }
+        }
+      },
+      "public": {
+        "status": 503,
+        "headers": {
+          "cache": "no-store",
+          "retry": "3600"
+        },
+        "text": "This service is suspended.\n"
+      }
+    },
+    "resume": {
+      "at": "2026-10-15T06:06:43.280Z",
+      "request": {
+        "operationName": "ResumeService",
+        "variables": {
+          "id": "srv-db86ojgumfhs73fe7l30"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation ResumeService($id: String!) {\n  resumeService(id: $id) {\n    id\n    suspended\n    phase\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "resumeService": {
+            "__typename": "Service",
+            "id": "srv-db86ojgumfhs73fe7l30",
+            "phase": "Hibernated",
+            "suspended": "not_suspended"
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/static/srv-db86ojgumfhs73fe7l30/settings#suspend"
+    },
+    "window": {
+      "reads": [
+        {
+          "at": "2026-10-15T06:06:44.876Z",
+          "request": {
+            "operationName": "Qaa520Read",
+            "query": "query Qaa520Read($id:String!){server(id:$id){id name phase revision suspended routes{type source destination} headers{path name value}} deploys(serviceId:$id){id status trigger}}",
+            "variables": {
+              "id": "srv-db86ojgumfhs73fe7l30"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "id": "dep-db86ojgumfhs73fe7l3g",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "headers": [
+                  {
+                    "name": "X-QA-A520",
+                    "path": "/friendly",
+                    "value": "preserved"
+                  }
+                ],
+                "id": "srv-db86ojgumfhs73fe7l30",
+                "name": "qa-20261015-a520-resume",
+                "phase": "Running",
+                "revision": "rev-1",
+                "routes": [
+                  {
+                    "destination": "/version.txt",
+                    "source": "/friendly",
+                    "type": "rewrite"
+                  }
+                ],
+                "suspended": "not_suspended"
+              }
+            }
+          },
+          "public": {
+            "method": "GET",
+            "url": "https://qa-20261015-a520-resume.onbex.co/",
+            "status": 404,
+            "headers": {
+              "contentType": "text/plain; charset=utf-8",
+              "cacheControl": null,
+              "retryAfter": null,
+              "qa": null
+            },
+            "body": "no static site for host\n"
+          }
+        },
+        {
+          "at": "2026-10-15T06:06:45.054Z",
+          "request": {
+            "operationName": "Qaa520Read",
+            "query": "query Qaa520Read($id:String!){server(id:$id){id name phase revision suspended routes{type source destination} headers{path name value}} deploys(serviceId:$id){id status trigger}}",
+            "variables": {
+              "id": "srv-db86ojgumfhs73fe7l30"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "id": "dep-db86ojgumfhs73fe7l3g",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "headers": [
+                  {
+                    "name": "X-QA-A520",
+                    "path": "/friendly",
+                    "value": "preserved"
+                  }
+                ],
+                "id": "srv-db86ojgumfhs73fe7l30",
+                "name": "qa-20261015-a520-resume",
+                "phase": "Running",
+                "revision": "rev-1",
+                "routes": [
+                  {
+                    "destination": "/version.txt",
+                    "source": "/friendly",
+                    "type": "rewrite"
+                  }
+                ],
+                "suspended": "not_suspended"
+              }
+            }
+          },
+          "public": {
+            "method": "GET",
+            "url": "https://qa-20261015-a520-resume.onbex.co/friendly",
+            "status": 404,
+            "headers": {
+              "contentType": "text/plain; charset=utf-8",
+              "cacheControl": null,
+              "retryAfter": null,
+              "qa": null
+            },
+            "body": "no static site for host\n"
+          }
+        },
+        {
+          "at": "2026-10-15T06:06:47.165Z",
+          "request": {
+            "operationName": "Qaa520Read",
+            "query": "query Qaa520Read($id:String!){server(id:$id){id name phase revision suspended routes{type source destination} headers{path name value}} deploys(serviceId:$id){id status trigger}}",
+            "variables": {
+              "id": "srv-db86ojgumfhs73fe7l30"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "id": "dep-db86ojgumfhs73fe7l3g",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "headers": [
+                  {
+                    "name": "X-QA-A520",
+                    "path": "/friendly",
+                    "value": "preserved"
+                  }
+                ],
+                "id": "srv-db86ojgumfhs73fe7l30",
+                "name": "qa-20261015-a520-resume",
+                "phase": "Running",
+                "revision": "rev-1",
+                "routes": [
+                  {
+                    "destination": "/version.txt",
+                    "source": "/friendly",
+                    "type": "rewrite"
+                  }
+                ],
+                "suspended": "not_suspended"
+              }
+            }
+          },
+          "public": {
+            "method": "GET",
+            "url": "https://qa-20261015-a520-resume.onbex.co/",
+            "status": 404,
+            "headers": {
+              "contentType": "text/plain; charset=utf-8",
+              "cacheControl": null,
+              "retryAfter": null,
+              "qa": null
+            },
+            "body": "no static site for host\n"
+          }
+        },
+        {
+          "at": "2026-10-15T06:06:47.336Z",
+          "request": {
+            "operationName": "Qaa520Read",
+            "query": "query Qaa520Read($id:String!){server(id:$id){id name phase revision suspended routes{type source destination} headers{path name value}} deploys(serviceId:$id){id status trigger}}",
+            "variables": {
+              "id": "srv-db86ojgumfhs73fe7l30"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "id": "dep-db86ojgumfhs73fe7l3g",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "headers": [
+                  {
+                    "name": "X-QA-A520",
+                    "path": "/friendly",
+                    "value": "preserved"
+                  }
+                ],
+                "id": "srv-db86ojgumfhs73fe7l30",
+                "name": "qa-20261015-a520-resume",
+                "phase": "Running",
+                "revision": "rev-1",
+                "routes": [
+                  {
+                    "destination": "/version.txt",
+                    "source": "/friendly",
+                    "type": "rewrite"
+                  }
+                ],
+                "suspended": "not_suspended"
+              }
+            }
+          },
+          "public": {
+            "method": "GET",
+            "url": "https://qa-20261015-a520-resume.onbex.co/friendly",
+            "status": 404,
+            "headers": {
+              "contentType": "text/plain; charset=utf-8",
+              "cacheControl": null,
+              "retryAfter": null,
+              "qa": null
+            },
+            "body": "no static site for host\n"
+          }
+        },
+        {
+          "at": "2026-10-15T06:06:48.620Z",
+          "request": {
+            "operationName": "Qaa520Read",
+            "query": "query Qaa520Read($id:String!){server(id:$id){id name phase revision suspended routes{type source destination} headers{path name value}} deploys(serviceId:$id){id status trigger}}",
+            "variables": {
+              "id": "srv-db86ojgumfhs73fe7l30"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "id": "dep-db86ojgumfhs73fe7l3g",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "headers": [
+                  {
+                    "name": "X-QA-A520",
+                    "path": "/friendly",
+                    "value": "preserved"
+                  }
+                ],
+                "id": "srv-db86ojgumfhs73fe7l30",
+                "name": "qa-20261015-a520-resume",
+                "phase": "Running",
+                "revision": "rev-1",
+                "routes": [
+                  {
+                    "destination": "/version.txt",
+                    "source": "/friendly",
+                    "type": "rewrite"
+                  }
+                ],
+                "suspended": "not_suspended"
+              }
+            }
+          },
+          "public": {
+            "method": "GET",
+            "url": "https://qa-20261015-a520-resume.onbex.co/",
+            "status": 404,
+            "headers": {
+              "contentType": "text/plain; charset=utf-8",
+              "cacheControl": null,
+              "retryAfter": null,
+              "qa": null
+            },
+            "body": "no static site for host\n"
+          }
+        },
+        {
+          "at": "2026-10-15T06:06:48.867Z",
+          "request": {
+            "operationName": "Qaa520Read",
+            "query": "query Qaa520Read($id:String!){server(id:$id){id name phase revision suspended routes{type source destination} headers{path name value}} deploys(serviceId:$id){id status trigger}}",
+            "variables": {
+              "id": "srv-db86ojgumfhs73fe7l30"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "id": "dep-db86ojgumfhs73fe7l3g",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "headers": [
+                  {
+                    "name": "X-QA-A520",
+                    "path": "/friendly",
+                    "value": "preserved"
+                  }
+                ],
+                "id": "srv-db86ojgumfhs73fe7l30",
+                "name": "qa-20261015-a520-resume",
+                "phase": "Running",
+                "revision": "rev-1",
+                "routes": [
+                  {
+                    "destination": "/version.txt",
+                    "source": "/friendly",
+                    "type": "rewrite"
+                  }
+                ],
+                "suspended": "not_suspended"
+              }
+            }
+          },
+          "public": {
+            "method": "GET",
+            "url": "https://qa-20261015-a520-resume.onbex.co/friendly",
+            "status": 404,
+            "headers": {
+              "contentType": "text/plain; charset=utf-8",
+              "cacheControl": null,
+              "retryAfter": null,
+              "qa": null
+            },
+            "body": "no static site for host\n"
+          }
+        },
+        {
+          "at": "2026-10-15T06:06:50.310Z",
+          "request": {
+            "operationName": "Qaa520Read",
+            "query": "query Qaa520Read($id:String!){server(id:$id){id name phase revision suspended routes{type source destination} headers{path name value}} deploys(serviceId:$id){id status trigger}}",
+            "variables": {
+              "id": "srv-db86ojgumfhs73fe7l30"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "id": "dep-db86ojgumfhs73fe7l3g",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "headers": [
+                  {
+                    "name": "X-QA-A520",
+                    "path": "/friendly",
+                    "value": "preserved"
+                  }
+                ],
+                "id": "srv-db86ojgumfhs73fe7l30",
+                "name": "qa-20261015-a520-resume",
+                "phase": "Running",
+                "revision": "rev-1",
+                "routes": [
+                  {
+                    "destination": "/version.txt",
+                    "source": "/friendly",
+                    "type": "rewrite"
+                  }
+                ],
+                "suspended": "not_suspended"
+              }
+            }
+          },
+          "public": {
+            "method": "GET",
+            "url": "https://qa-20261015-a520-resume.onbex.co/",
+            "status": 200,
+            "headers": {
+              "contentType": "text/html",
+              "cacheControl": "public, max-age=0, must-revalidate",
+              "retryAfter": null,
+              "qa": null
+            },
+            "body": "QA_A520_ROOT\n"
+          }
+        },
+        {
+          "at": "2026-10-15T06:06:50.505Z",
+          "request": {
+            "operationName": "Qaa520Read",
+            "query": "query Qaa520Read($id:String!){server(id:$id){id name phase revision suspended routes{type source destination} headers{path name value}} deploys(serviceId:$id){id status trigger}}",
+            "variables": {
+              "id": "srv-db86ojgumfhs73fe7l30"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "id": "dep-db86ojgumfhs73fe7l3g",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "headers": [
+                  {
+                    "name": "X-QA-A520",
+                    "path": "/friendly",
+                    "value": "preserved"
+                  }
+                ],
+                "id": "srv-db86ojgumfhs73fe7l30",
+                "name": "qa-20261015-a520-resume",
+                "phase": "Running",
+                "revision": "rev-1",
+                "routes": [
+                  {
+                    "destination": "/version.txt",
+                    "source": "/friendly",
+                    "type": "rewrite"
+                  }
+                ],
+                "suspended": "not_suspended"
+              }
+            }
+          },
+          "public": {
+            "method": "GET",
+            "url": "https://qa-20261015-a520-resume.onbex.co/friendly",
+            "status": 200,
+            "headers": {
+              "contentType": "text/plain",
+              "cacheControl": "public, max-age=0, must-revalidate",
+              "retryAfter": null,
+              "qa": "preserved"
+            },
+            "body": "QA_A520_VERSION\n"
+          }
+        },
+        {
+          "at": "2026-10-15T06:06:51.744Z",
+          "request": {
+            "operationName": "Qaa520Read",
+            "query": "query Qaa520Read($id:String!){server(id:$id){id name phase revision suspended routes{type source destination} headers{path name value}} deploys(serviceId:$id){id status trigger}}",
+            "variables": {
+              "id": "srv-db86ojgumfhs73fe7l30"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "id": "dep-db86ojgumfhs73fe7l3g",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "headers": [
+                  {
+                    "name": "X-QA-A520",
+                    "path": "/friendly",
+                    "value": "preserved"
+                  }
+                ],
+                "id": "srv-db86ojgumfhs73fe7l30",
+                "name": "qa-20261015-a520-resume",
+                "phase": "Running",
+                "revision": "rev-1",
+                "routes": [
+                  {
+                    "destination": "/version.txt",
+                    "source": "/friendly",
+                    "type": "rewrite"
+                  }
+                ],
+                "suspended": "not_suspended"
+              }
+            }
+          },
+          "public": {
+            "method": "GET",
+            "url": "https://qa-20261015-a520-resume.onbex.co/",
+            "status": 200,
+            "headers": {
+              "contentType": "text/html",
+              "cacheControl": "public, max-age=0, must-revalidate",
+              "retryAfter": null,
+              "qa": null
+            },
+            "body": "QA_A520_ROOT\n"
+          }
+        },
+        {
+          "at": "2026-10-15T06:06:52.011Z",
+          "request": {
+            "operationName": "Qaa520Read",
+            "query": "query Qaa520Read($id:String!){server(id:$id){id name phase revision suspended routes{type source destination} headers{path name value}} deploys(serviceId:$id){id status trigger}}",
+            "variables": {
+              "id": "srv-db86ojgumfhs73fe7l30"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "id": "dep-db86ojgumfhs73fe7l3g",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "headers": [
+                  {
+                    "name": "X-QA-A520",
+                    "path": "/friendly",
+                    "value": "preserved"
+                  }
+                ],
+                "id": "srv-db86ojgumfhs73fe7l30",
+                "name": "qa-20261015-a520-resume",
+                "phase": "Running",
+                "revision": "rev-1",
+                "routes": [
+                  {
+                    "destination": "/version.txt",
+                    "source": "/friendly",
+                    "type": "rewrite"
+                  }
+                ],
+                "suspended": "not_suspended"
+              }
+            }
+          },
+          "public": {
+            "method": "GET",
+            "url": "https://qa-20261015-a520-resume.onbex.co/friendly",
+            "status": 200,
+            "headers": {
+              "contentType": "text/plain",
+              "cacheControl": "public, max-age=0, must-revalidate",
+              "retryAfter": null,
+              "qa": "preserved"
+            },
+            "body": "QA_A520_VERSION\n"
+          }
+        },
+        {
+          "at": "2026-10-15T06:06:53.134Z",
+          "request": {
+            "operationName": "Qaa520Read",
+            "query": "query Qaa520Read($id:String!){server(id:$id){id name phase revision suspended routes{type source destination} headers{path name value}} deploys(serviceId:$id){id status trigger}}",
+            "variables": {
+              "id": "srv-db86ojgumfhs73fe7l30"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "id": "dep-db86ojgumfhs73fe7l3g",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "headers": [
+                  {
+                    "name": "X-QA-A520",
+                    "path": "/friendly",
+                    "value": "preserved"
+                  }
+                ],
+                "id": "srv-db86ojgumfhs73fe7l30",
+                "name": "qa-20261015-a520-resume",
+                "phase": "Running",
+                "revision": "rev-1",
+                "routes": [
+                  {
+                    "destination": "/version.txt",
+                    "source": "/friendly",
+                    "type": "rewrite"
+                  }
+                ],
+                "suspended": "not_suspended"
+              }
+            }
+          },
+          "public": {
+            "method": "GET",
+            "url": "https://qa-20261015-a520-resume.onbex.co/",
+            "status": 200,
+            "headers": {
+              "contentType": "text/html",
+              "cacheControl": "public, max-age=0, must-revalidate",
+              "retryAfter": null,
+              "qa": null
+            },
+            "body": "QA_A520_ROOT\n"
+          }
+        },
+        {
+          "at": "2026-10-15T06:06:53.309Z",
+          "request": {
+            "operationName": "Qaa520Read",
+            "query": "query Qaa520Read($id:String!){server(id:$id){id name phase revision suspended routes{type source destination} headers{path name value}} deploys(serviceId:$id){id status trigger}}",
+            "variables": {
+              "id": "srv-db86ojgumfhs73fe7l30"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "deploys": [
+                {
+                  "id": "dep-db86ojgumfhs73fe7l3g",
+                  "status": "live",
+                  "trigger": "create"
+                }
+              ],
+              "server": {
+                "headers": [
+                  {
+                    "name": "X-QA-A520",
+                    "path": "/friendly",
+                    "value": "preserved"
+                  }
+                ],
+                "id": "srv-db86ojgumfhs73fe7l30",
+                "name": "qa-20261015-a520-resume",
+                "phase": "Running",
+                "revision": "rev-1",
+                "routes": [
+                  {
+                    "destination": "/version.txt",
+                    "source": "/friendly",
+                    "type": "rewrite"
+                  }
+                ],
+                "suspended": "not_suspended"
+              }
+            }
+          },
+          "public": {
+            "method": "GET",
+            "url": "https://qa-20261015-a520-resume.onbex.co/friendly",
+            "status": 200,
+            "headers": {
+              "contentType": "text/plain",
+              "cacheControl": "public, max-age=0, must-revalidate",
+              "retryAfter": null,
+              "qa": "preserved"
+            },
+            "body": "QA_A520_VERSION\n"
+          }
+        }
+      ]
+    }
+  },
+  "third": {
+    "suspend": {
+      "at": "2026-10-15T06:08:21.340Z",
+      "request": {
+        "operationName": "SuspendService",
+        "variables": {
+          "id": "srv-db86ojgumfhs73fe7l30"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation SuspendService($id: String!, $confirm: String) {\n  suspendService(id: $id, confirm: $confirm) {\n    id\n    suspended\n    phase\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "suspendService": {
+            "__typename": "Service",
+            "id": "srv-db86ojgumfhs73fe7l30",
+            "phase": "Running",
+            "suspended": "suspended"
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/static/srv-db86ojgumfhs73fe7l30/settings#suspend"
+    },
+    "settledSuspended": {
+      "at": "2026-10-15T06:08:35.176Z",
+      "status": 503,
+      "body": "This service is suspended.\n"
+    },
+    "resume": {
+      "at": "2026-10-15T06:08:47.893Z",
+      "request": {
+        "operationName": "ResumeService",
+        "variables": {
+          "id": "srv-db86ojgumfhs73fe7l30"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation ResumeService($id: String!) {\n  resumeService(id: $id) {\n    id\n    suspended\n    phase\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "resumeService": {
+            "__typename": "Service",
+            "id": "srv-db86ojgumfhs73fe7l30",
+            "phase": "Hibernated",
+            "suspended": "not_suspended"
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/static/srv-db86ojgumfhs73fe7l30/settings#suspend"
+    },
+    "browser": {
+      "at": "2026-10-15T06:08:51.829Z",
+      "request": {
+        "operationName": "Qaa520Read",
+        "query": "query Qaa520Read($id:String!){server(id:$id){id name phase revision suspended routes{type source destination} headers{path name value}} deploys(serviceId:$id){id status trigger}}",
+        "variables": {
+          "id": "srv-db86ojgumfhs73fe7l30"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "id": "dep-db86ojgumfhs73fe7l3g",
+              "status": "live",
+              "trigger": "create"
+            }
+          ],
+          "server": {
+            "headers": [
+              {
+                "name": "X-QA-A520",
+                "path": "/friendly",
+                "value": "preserved"
+              }
+            ],
+            "id": "srv-db86ojgumfhs73fe7l30",
+            "name": "qa-20261015-a520-resume",
+            "phase": "Running",
+            "revision": "rev-1",
+            "routes": [
+              {
+                "destination": "/version.txt",
+                "source": "/friendly",
+                "type": "rewrite"
+              }
+            ],
+            "suspended": "not_suspended"
+          }
+        }
+      },
+      "visitor": {
+        "url": "https://qa-20261015-a520-resume.onbex.co/friendly",
+        "status": 404,
+        "body": "no static site for host\n",
+        "screenshot": "qa-a520-resume-browser-404.png"
+      },
+      "dashboardScreenshot": "qa-a520-resume-dashboard.png",
+      "dashboard": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261015-a520-resume\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Static Site\n  - heading \"qa-20261015-a520-resume\" [level=1]\n  - text: Service Running\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db86ojgumfhs73fe7l30\"\n  - button \"Copy service ID\"\n  - link \"github.com · bex-co / bex\":\n    - /url: https://github.com/bex-co/bex/tree/main\n  - text: main\n  - link \"https://qa-20261015-a520-resume.onbex.co\":\n    - /url: https://qa-20261015-a520-resume.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261015-a520-resume\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 6m\n  - navigation \"Settings sections\":\n    - link \"General\":\n      - /url: \"#general\"\n    - link \"Build\":\n      - /url: \"#build\"\n    - link \"Static Site\":\n      - /url: \"#static-site\"\n    - link \"Custom D"
+    },
+    "recovery": {
+      "at": "2026-10-15T06:09:01.764Z",
+      "publicStatus": 200,
+      "header": "preserved",
+      "text": "QA_A520_VERSION\n",
+      "aria": "- alertdialog \"Delete qa-20261015-a520-resume?\":\n  - heading \"Delete qa-20261015-a520-resume?\" [level=2]\n  - paragraph: This action cannot be undone. Are you sure you want to delete this static site?\n  - paragraph:\n    - text: Type\n    - strong: sudo delete static site qa-20261015-a520-resume\n    - text: below to confirm.\n  - text: Sudo Command\n  - textbox \"Sudo Command\":\n    - /placeholder: sudo delete static site qa-20261015-a520-resume\n  - button \"Cancel\"\n  - button \"Delete Service\" [disabled]"
+    }
+  },
+  "cleanup": {
+    "deletion": {
+      "at": "2026-10-15T06:09:17.713Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db86ojgumfhs73fe7l30"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "inventoryAnd404": {
+      "at": "2026-10-15T06:09:28.780Z",
+      "serviceStatus": 404,
+      "publicStatus": 404,
+      "inventory": {
+        "status": 200,
+        "body": {
+          "data": {
+            "blueprints": [
+              {
+                "id": "blp-d9nqg95cavls73fp8m10",
+                "name": "discourse_docker"
+              }
+            ],
+            "databases": [
+              {
+                "id": "dpg-d9nqg95cavls73fp8m20",
+                "name": "beancount-forum-db"
+              },
+              {
+                "id": "dpg-d9rrkoc4h4mc73edurp0",
+                "name": "tianpan-forum-db"
+              },
+              {
+                "id": "dpg-d9rs3ee0ccis738kc7c0",
+                "name": "blockeden-forum-db"
+              },
+              {
+                "id": "dpg-db34l9bor55s73cqpq9g",
+                "name": "qa-20261007-r16-owner-f208ab"
+              }
+            ],
+            "envGroups": [
+              {
+                "id": "evg-db0s94c48ccs739jikr0",
+                "name": "qa-20261003-keys-r85"
+              }
+            ],
+            "keyValues": [
+              {
+                "id": "red-d9p49kdrtmes73c34ovg",
+                "name": "beancount-forum-redis"
+              },
+              {
+                "id": "red-da4086iii7bs73drbqh0",
+                "name": "blockeden-forum-redis"
+              }
+            ],
+            "projects": [
+              {
+                "id": "prj-d9dgeo0bd9nc73a0vh1g",
+                "name": "bex.co"
+              },
+              {
+                "id": "prj-d9e5qct5qe4s73b1mjn0",
+                "name": "beancount.io"
+              },
+              {
+                "id": "prj-d9sgfnbjghus73cg6hg0",
+                "name": "forums"
+              }
+            ],
+            "services": [
+              {
+                "id": "srv-d9bkcspg9s7c73d0n8ug",
+                "name": "agentmarketcap-1",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9bj8s3eg85c7390eb9g",
+                "name": "beancount-cms-v2",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9nqg9dcavls73fp8m2g",
+                "name": "beancount-forum",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9ndt8hmcglc739fkp50",
+                "name": "eden-dash-v3",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9e40ei9086p3l1jri30",
+                "name": "eden-cms-v2",
+                "type": "web_service"
+              }
+            ],
+            "webhookEndpoints": []
+          }
+        }
+      }
+    },
+    "baseline": {
+      "at": "2026-10-15T06:01:46.912Z",
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      }
+    },
+    "logoutHelperExitCode": 0,
+    "browser": {
+      "at": "2026-10-15T06:09:42.625Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "ownedSessionHandlesRemoved": true
+  },
+  "observations": {
+    "first": "Running/not_suspended rev1, one original Live deploy; friendly GET404 at06:05:09.281Z then200+preserved at06:05:12.675Z.",
+    "second": "Six404s across root/friendly from06:06:44.876 through06:06:48.867; then both200from06:06:50.310. These are sampled bounds, not an exact outage duration.",
+    "third": "Normal browser goto friendly returns404; accompanying API reportsRunning/not_suspended/rev1. Subsequent GET200exactbody+header.",
+    "screenshots": {
+      "visitor": ".playwright-mcp/qa-a520-resume-browser-404.png",
+      "context": ".playwright-mcp/qa-a520-resume-dashboard.png",
+      "reviewed": true,
+      "contextLimit": "Dashboard screenshot is scrolled to settings; it does not show the Running header. API receipt and captured accessibility header prove that state."
+    }
+  },
+  "limits": [
+    "No capture of production resolver refresh or Ingress event timestamps; exact clock ordering is inferred from current source and repeated wire behavior.",
+    "No authenticated Render resume comparison.",
+    "No browser-cache retention or crawler behavior tested; no claim of actual cached404 or indexing harm.",
+    "No production custom-domain, HEAD, held-newer-build, failed-refresh, web/private/worker/cron/datastore transition controls; required regression/source census only.",
+    "No product code edited or implementation test suite run."
+  ]
+}
