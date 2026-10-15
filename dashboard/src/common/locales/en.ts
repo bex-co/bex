@@ -31,6 +31,27 @@ const enCommon: Record<string, TranslationEntry> = {
     description:
       "Accessible name of the shared dialog's built-in close (X) button.",
   },
+  "common.sidebarTitle": {
+    message: "Sidebar",
+    description: "Screen-reader title of the mobile navigation drawer.",
+  },
+  "common.sidebarMobileDescription": {
+    message: "Displays the mobile sidebar.",
+    description: "Screen-reader description of the mobile navigation drawer.",
+  },
+  "common.sidebarToggle": {
+    message: "Toggle Sidebar",
+    description:
+      "Accessible name of the button that opens or collapses the navigation sidebar.",
+  },
+  "common.sidebarResize": {
+    message: "Resize sidebar",
+    description: "Accessible name of the sidebar's draggable resize separator.",
+  },
+  "common.sidebarResizeHint": {
+    message: "Drag to resize · double-click to toggle",
+    description: "Hover tooltip on the sidebar's resize separator.",
+  },
   "common.cancel": {
     message: "Cancel",
     description:
