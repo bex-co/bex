@@ -1,6 +1,6 @@
 # Blueprint validation accepts values that cannot reach the application environment
 
-**Severity:** minor (confirmed false-positive validation; downstream production failure not exercised). **Attribution:** server semantic validation. **Source:** sweep171, 2026-10-12 UTC / 2026-10-11 America/Los_Angeles. **Status:** researched; fix scheduled, unimplemented.
+**Severity:** minor (confirmed false-positive validation; downstream production failure not exercised). **Attribution:** server semantic validation. **Source:** sweep171, 2026-10-12 UTC / 2026-10-11 America/Los_Angeles. **Status:** common guard implemented; sweep295 native validation/source checks accepted, remaining live writer/surface acceptance blocked.
 
 Published Bex v0.3.2 and unmodified Render v2.27.0 at a764810a768202704e7206eb7b87a47211fcd98e both target `https://api.bex.co/v1/` with the isolated QA human OAuth grant in `bex-canary` (`tea-daif693dqjvc73e7as3g`). Source HEAD is 97ce481c8eabb13025c118ea9fa96d0aa83832d3; deployed revision is unknown. Commands use non-TTY JSON output.
 
@@ -63,3 +63,7 @@ Open/done board searches found no NUL environment-value admission finding. m61 i
 Live direct environment writes, Blueprint apply, production NUL runtime, other runtimes/App kinds and full REST/GraphQL/MCP/dashboard behavior remain unverified. The Go probes diagnose current behavior and are not a full suite or an implemented regression test. All five local containers are confirmed absent; no hosting resource or group was created. The cached image is preserved. Filing is uncommitted.
 
 **Estimate:** 155m across common validation, writer census and standing closing tasks.
+
+## Native validator acceptance — sweep295
+
+[72 fresh native receipts](../../evidence/m62/native-validation-sweep295/README.md) now pass across installed/published/actual-current Bex and the unchanged pin:28 invalid NUL documents return valid:false/located key-level errors/exit1,44 representable controls return valid:true/exit0. Original literal/seed/group shapes and all four NUL positions are covered; marked invalid values are not echoed. Existing focused checks pass34 named events across10 top-level tests, including legacy repair and binary-file controls. No production resource/env mutation; final services6/terminating0, copied config/authored documents removed. The native validator gate passes. Keep the milestone blocked on remaining live direct-writer and non-REST/UI surface receipts; no complete deployed-writer/runtime or full real-DB suite claim.

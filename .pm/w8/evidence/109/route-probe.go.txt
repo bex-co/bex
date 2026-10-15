@@ -1,0 +1,22 @@
+package api
+import (
+ "bytes"
+ "net/http"
+ "net/http/httptest"
+ "strings"
+ "testing"
+)
+func TestQA297EnvGroupBulkRoute(t *testing.T){
+ const gid="evg-00000000000000000000"
+ for _,tc:=range []struct{name,method,path,body string;want int;call bool}{
+  {"native-bulk-valid","PUT","/v1/env-groups/"+gid+"/env-vars",`[{"key":"QA_LITERAL","value":"qa"}]`,200,true},
+  {"native-bulk-empty","PUT","/v1/env-groups/"+gid+"/env-vars",`[]`,200,true},
+  {"genuine-single-valid","PUT","/v1/env-groups/"+gid+"/env-vars/QA_LITERAL",`{"value":"qa"}`,200,true},
+  {"genuine-single-invalid-body","PUT","/v1/env-groups/"+gid+"/env-vars/QA_LITERAL",`{"value":42}`,400,false},
+  {"unknown-route","PUT","/v1/env-groups/"+gid+"/unknown",`{}`,404,false},
+ }{t.Run(tc.name,func(t *testing.T){
+  mux:=http.NewServeMux();called:=false;fn:=func(w http.ResponseWriter,r *http.Request){called=true;w.Header().Set("Content-Type","application/json");w.WriteHeader(200);_,_=w.Write([]byte(`{"called":true}`))};mux.HandleFunc("PUT /v1/env-groups/{id}/env-vars",fn);mux.HandleFunc("PUT /v1/env-groups/{id}/env-vars/{key}",fn)
+  h,err:=newRenderRequestValidator(mux);if err!=nil{t.Fatal(err)};r:=httptest.NewRequest(tc.method,"http://localhost"+tc.path,bytes.NewBufferString(tc.body));r.Header.Set("Content-Type","application/json");contract,err:=renderContractOnce();if err!=nil{t.Fatal(err)};clone:=r.Clone(r.Context());u:=*r.URL;u.Path=strings.TrimPrefix(u.Path,"/v1");clone.URL=&u;route,params,matchErr:=contract.router.FindRoute(clone);template:="";if route!=nil{template=route.Path};t.Logf("QA297_MATCH path=%s matched=%s params=%v err=%v",tc.path,template,params,matchErr)
+  rec:=httptest.NewRecorder();h.ServeHTTP(rec,r);t.Logf("QA297_ROUTE status=%d handler=%v response=%s",rec.Code,called,rec.Body.String());if rec.Code!=tc.want||called!=tc.call{t.Errorf("status=%d handler=%v want %d/%v",rec.Code,called,tc.want,tc.call)}
+ })}
+}

@@ -1,0 +1,24 @@
+--- a/lego/backend/internal/apps/blueprint_plan.go
++++ b/lego/backend/internal/apps/blueprint_plan.go
+@@ -158,9 +158,10 @@
+ }{
+ 	{names: []string{"type"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Type = want.Type }},
+ 	{names: []string{"schedule"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Schedule = want.Schedule }},
+-	{names: []string{"repo"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Repo = want.Repo }},
++	{names: []string{"repo"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Repo = want.Repo; if want.Repo != "" { dst.Image = "" } }},
+ 	{names: []string{"image"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
+ 		dst.Image = want.Image
++		if want.Image != "" { dst.Repo = "" }
+ 		// image.creds rides the image field's presence: a resolved credential
+ 		// rebinding applies with it, while a creds-less image change leaves an
+ 		// existing binding untouched (preserve-on-omission, like the field).
+@@ -316,7 +317,8 @@
+ 		if present("builder") {
+ 			next.Builder = want.Builder
+ 		}
+-		if buildStrategy(next) != buildStrategy(*dst) {
++		sourceKindChanged := (before.Image != "" && before.Repo == "") != (dst.Image != "" && dst.Repo == "")
++		if sourceKindChanged || buildStrategy(next) != buildStrategy(*dst) {
+ 			dst.Runtime, dst.Builder = next.Runtime, next.Builder
+ 			// The Dockerfile-build settings an omission would keep do nothing
+ 			// on another build, which create and update refuse (w5/090). One

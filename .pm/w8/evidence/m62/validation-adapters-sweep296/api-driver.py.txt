@@ -1,0 +1,38 @@
+from pathlib import Path
+import copy,datetime,json,os,secrets,subprocess,time,yaml
+os.umask(0o077);P=Path(__file__).resolve().parent;p=P;root=Path('/Volumes/nvme4tbfish/projects/bex8');cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json';c=json.loads(cp.read_text());assert c.get('sync296_result')==0 and not c.get('active_sync_stash') and 'sweep296_validation_adapters' not in c
+ws='tea-daif693dqjvc73e7as3g';nonce=secrets.token_hex(3);old_nonce=c['sweep295_env_validation']['nonce'];cases=[r for r in c['sweep295_env_validation']['results'] if r['client']=='installed'];assert len(cases)==18
+x={'sweep':296,'nonce':nonce,'source_head':c['head'],'workspace':ws,'mode':'API-only validation; no applies/writes/resources','results':[]};c['sweep296_validation_adapters']=x;OUT=P/'sweep296-validation-adapters.json';assert not OUT.exists()
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():
+ c['last_updated']=now();cp.write_text(json.dumps(c,indent=2));cp.chmod(0o600);OUT.write_text(json.dumps(x,indent=2)+'\n')
+def post(path,body):
+ cfg=yaml.safe_load((p/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token
+ ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')'
+ auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+ws+'"\n'
+ f=p/'sweep296-api-request.json';f.write_text(json.dumps(body));started=time.monotonic()
+ try:r=subprocess.run(['curl','--disable','-sS','--max-time','30','--config','-','-H','Content-Type: application/json','-H','Accept: application/json, text/event-stream','-H','MCP-Protocol-Version: 2025-03-26','--data-binary','@'+str(f),'-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=36)
+ finally:f.unlink(missing_ok=True)
+ text,_,status=r.stdout.rpartition('\n');record={'at':now(),'api_only':True,'request':{'method':'POST','path':path,'body':body,'workspace':ws,'user_agent':ua,'authorization':'REDACTED'},'status':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-started,3),'response':text,'stderr':r.stderr};assert token not in json.dumps(record);return record
+def decode(r):
+ assert r['status']=='200' and r['curl_exit']==0;text=r['response']
+ if not text.lstrip().startswith('{'):
+  data=[v[5:].strip() for v in text.splitlines() if v.startswith('data:')];assert len(data)==1;text=data[0]
+ return json.loads(text)
+
+for adapter in ['GraphQL','MCP']:
+ for item in cases:
+  doc=json.loads(json.dumps(item['document']).replace('qa295-'+old_nonce,'qa296-'+nonce).replace('QA295_VALUE_'+old_nonce,'QA296_VALUE_'+nonce));manifest=json.dumps(doc,indent=2)+'\n';expected_valid=item['expected_valid'];reference=[{k:e[k].replace('qa295-'+old_nonce,'qa296-'+nonce) if isinstance(e[k],str) else e[k] for k in ('error','path','line','column') if k in e} for e in item['decoded'].get('errors',[])]
+  if adapter=='GraphQL':
+   path='/graphql';body={'query':'query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}','variables':{'yaml':manifest,'ws':ws}}
+  else:path='/mcp';body={'jsonrpc':'2.0','id':296000+len(x['results']),'method':'tools/call','params':{'name':'validate_bex_yml','arguments':{'workspaceId':ws,'bexYaml':manifest}}}
+  row={'adapter':adapter,'kind':item['kind'],'variant':item['variant'],'expected_valid':expected_valid,'expected_errors_from_native':reference,'document':doc,'request_path':path,'request_body':body,'state':'read-only API validation intent persisted'};x['results'].append(row);save();receipt=post(path,body);row['receipt']=receipt;save();envelope=decode(receipt);row['envelope']=envelope
+  if adapter=='GraphQL':
+   assert not envelope.get('errors');value=envelope['data']['validateBlueprint'];errors=value.get('errorDetails') or [];string_errors=value.get('errors') or []
+  else:
+   assert not envelope.get('error');result=envelope['result'];assert not result.get('isError');value=result.get('structuredContent')
+   if value is None:
+    texts=[b['text'] for b in result.get('content',[]) if b.get('type')=='text'];assert len(texts)==1;value=json.loads(texts[0])
+   errors=value.get('errors') or [];string_errors=[e['error'] for e in errors]
+  normalized=[{k:e[k] for k in ('error','path','line','column') if k in e} for e in errors];passed=value.get('valid') is expected_valid and normalized==reference and string_errors==[e['error'] for e in reference] and (expected_valid or 'QA296_VALUE_' not in receipt['response']);row.update(decoded=value,normalized_errors=normalized,acceptance_pass=passed,state='API-only validation completed');save();print(json.dumps({'adapter':adapter,'kind':item['kind'],'variant':item['variant'],'HTTP':receipt['status'],'valid':value.get('valid'),'exact_native_error_match':normalized==reference,'pass':passed}),flush=True);time.sleep(.45)
+x['temporary_request_removed']=not (P/'sweep296-api-request.json').exists();save();print(json.dumps({'API_calls':len(x['results']),'pass':sum(r['acceptance_pass'] for r in x['results']),'production_resource_mutations':0}),flush=True)

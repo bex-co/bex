@@ -1,0 +1,125 @@
+from pathlib import Path
+import datetime,hashlib,json,os,secrets,shlex,shutil,subprocess,sys,time,yaml
+os.umask(0o077);P=Path(__file__).resolve().parent;root=Path('/Volumes/nvme4tbfish/projects/bex8');cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json';c=json.loads(cp.read_text());assert c.get('sync297_result')==0 and not c.get('active_sync_stash');mode,case=sys.argv[1:3];assert case in ('service','group');ws='tea-daif693dqjvc73e7as3g';baseline={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']}
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,indent=2));cp.chmod(0o600)
+def cli(args,client='bex',bound=45):
+ cfg=P/'render-config/cli.yaml'
+ try:
+  if client=='render':assert not cfg.exists();shutil.copyfile(P/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  runner=['python3',str(P/'run-render.py')] if client=='render' else ['python3',str(P/'run.py'),'--release'];r=json.loads(subprocess.check_output([*runner,'--bound='+str(bound),*args],text=True,timeout=bound+15));r['native_exit']=None if r['exit']==124 else r['exit'];return r
+ finally:
+  if client=='render':cfg.unlink(missing_ok=True)
+def api(method,path,body=None):
+ cfg=yaml.safe_load((P/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token;ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')';auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+ws+'"\n';f=P/'sweep297-request.json';assert not f.exists();args=['curl','--disable','-sS','--max-time','30','--config','-','-X',method,'-H','Accept: application/json, text/event-stream','-H','MCP-Protocol-Version: 2025-03-26']
+ if body is not None:f.write_text(json.dumps(body));args+=['-H','Content-Type: application/json','--data-binary','@'+str(f)]
+ start=time.monotonic()
+ try:r=subprocess.run([*args,'-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=36)
+ finally:f.unlink(missing_ok=True)
+ raw,_,status=r.stdout.rpartition('\n');out={'at':now(),'API_only':True,'request':{'method':method,'path':path,'body':body,'workspace':ws,'user_agent':ua,'authorization':'REDACTED'},'status':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-start,3),'response':raw,'stderr':r.stderr};assert token not in json.dumps(out);return out
+def decode(r):
+ text=r['response']
+ if not text.lstrip().startswith(('{','[')):
+  texts=[s[5:].strip() for s in text.splitlines() if s.startswith('data:')];assert len(texts)==1;text=texts[0]
+ return json.loads(text)
+def inventory():
+ r=cli(['services','--confirm','-o','json']);assert r['native_exit']==0;vs=[v.get('service',v) for v in json.loads(r['stdout']) or []];assert baseline<={v['id'] for v in vs};return r,vs
+def groupinv():
+ r=api('GET','/v1/env-groups?ownerId='+ws);assert r['status']=='200';return r,[v.get('envGroup',v) for v in decode(r)]
+def own(x):
+ assert x['sweep']==297 and x['workspace']==ws and x['id']==x['create_view']['id'] and x['create_view']['ownerId']==ws and not x['state'].startswith('deleted:')
+ if x['type']=='web_service':assert x['id'] not in baseline and x['create_result']['native_exit']==0 and x['create_view']['serviceDetails']['plan']=='free'
+ else:assert x['create_result']['status']=='201' and x['id'] not in x['pre_ids']
+def history(x):
+ r=cli(['deploys','list',x['id'],'--confirm','-o','json']);assert r['native_exit']==0;rows=json.loads(r['stdout']);x.setdefault('history_receipts',[]).append({'at':now(),'result':r});x['deploy_children']=rows
+ for v in rows:
+  if v['id'] not in x['recorded_child_ids']:x['recorded_child_ids'].append(v['id'])
+ save();return rows
+def http(x):
+ url=x['create_view']['serviceDetails']['url'];r=subprocess.run(['curl','--disable','-sS','--max-time','10','-w','\n%{http_code}',url],text=True,capture_output=True,timeout=15);raw,_,status=r.stdout.rpartition('\n')
+ try:value=json.loads(raw)
+ except ValueError:value=None
+ return {'at':now(),'url':url,'HTTP':status,'curl_exit':r.returncode,'body':raw,'decoded':value,'stderr':r.stderr}
+def raw_group_links(x):
+ r=api('POST','/graphql',{'query':'query QA297Links($id:String!){envGroup(id:$id){id serviceLinks}}','variables':{'id':x['id']}});assert r['status']=='200';v=decode(r);assert not v.get('errors');g=v['data']['envGroup'];assert g['id']==x['id'] and 'serviceLinks' in g and g['serviceLinks'] in (None,[]);x.setdefault('raw_group_link_receipts',[]).append({'at':now(),'receipt':r,'linked_ids':g['serviceLinks'] or []});save();return g['serviceLinks'] or []
+def current_state(x):
+ if case=='service':r=api('GET','/v1/services/'+x['id']+'/env-vars');assert r['status']=='200';vs={v.get('envVar',v)['key']:v.get('envVar',v).get('value') for v in decode(r)};detail=None
+ else:
+  r=api('GET','/v1/env-groups/'+x['id']+'/env-vars/QA_LITERAL');assert r['status']=='200';vs={'QA_LITERAL':decode(r)['value']};detail=api('GET','/v1/env-groups/'+x['id']);assert detail['status']=='200';v=decode(detail);assert 'serviceLinks' in v and v['serviceLinks']==[];assert {z['key'] for z in v.get('envVars',[])}=={'QA_LITERAL'}
+ return {'at':now(),'receipt':r,'detail':detail,'values':vs}
+if mode=='create':
+ assert not any(v.get('sweep')==297 and v.get('case')==case for v in c['resources']);nonce=secrets.token_hex(3);marker='QA297_'+nonce;value=marker+'\n☃=baseline\r\n';name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-'+case;x={'sweep':297,'case':case,'type':'web_service' if case=='service' else 'env_group','workspace':ws,'nonce':nonce,'marker':marker,'baseline_value':value,'name':name,'time':now(),'source_head':c['head'],'dependency_ids':[],'recorded_child_ids':[],'state':'creation intent being prepared'}
+ if case=='service':
+  q=api('GET','/v1/owners/'+ws+'/limits');assert q['status']=='200';limit=decode(q)['services'];assert limit['used']+limit['terminating']<limit['limit'];inv,rows=inventory();x.update(capacity=q,pre_inventory=inv,pre_ids=[v['id'] for v in rows]);assert name not in {v['name'] for v in rows};data=(marker+'\0binary\n').encode();f=P/('sweep297-'+nonce+'-file.bin');assert not f.exists();f.write_bytes(data);x.update(binary_input_path=str(f),binary_expected_length=len(data),binary_expected_sha256=hashlib.sha256(data).hexdigest())
+  snapshot="const fs=require('node:fs'),crypto=require('node:crypto');function snap(){const b=fs.readFileSync('/etc/secrets/qa297.bin');return {literal:process.env.QA_LITERAL,file_length:b.length,file_sha256:crypto.createHash('sha256').update(b).digest('hex')};}"
+  build=snapshot+"fs.writeFileSync('qa-built.json',JSON.stringify(snap()));";start=snapshot+"const built=JSON.parse(fs.readFileSync('/opt/render/project/src/qa-built.json'));require('node:http').createServer((q,r)=>{r.setHeader('Content-Type','application/json');r.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),'0.0.0.0');"
+  args=['services','create','--name',name,'--type','web_service','--runtime','node','--repo','https://github.com/expressjs/serve-static','--branch','master','--build-command','/usr/local/bin/node -e '+shlex.quote(build),'--start-command','/usr/local/bin/node -e '+shlex.quote(start),'--health-check-path','/','--plan','free','--region','frankfurt','--auto-deploy=false','--env-var','QA_LITERAL='+value,'--secret-file','qa297.bin:'+str(f),'--confirm','-o','json'];x['create_command']=['bex',*args];c['resources'].append(x);save()
+  try:r=cli(args)
+  finally:f.unlink(missing_ok=True);x['binary_input_removed']=not f.exists();save()
+  x['create_result']=r;x['state']='native create result received; reconcile before retry';save();assert r['native_exit']==0;v=json.loads(r['stdout']);v=v.get('data',v).get('service',v.get('data',v))
+ else:
+  inv,rows=groupinv();x.update(pre_inventory=inv,pre_ids=[v['id'] for v in rows]);assert name not in {v['name'] for v in rows};body={'ownerId':ws,'name':name,'envVars':[{'key':'QA_LITERAL','value':value}],'serviceIds':[]};x['create_body']=body;c['resources'].append(x);save();r=api('POST','/v1/env-groups',body);x['create_result']=r;x['state']='group create response received; reconcile before retry';save();assert r['status']=='201';v=decode(r);v=v.get('envGroup',v)
+ assert v['id'] not in x['pre_ids'] and v['name']==name and v['ownerId']==ws;x.update(id=v['id'],create_view=v,state='created: own response and baseline absence proved');save()
+ if case=='service':history(x)
+ print(json.dumps({'case':case,'id':v['id'],'creation_success':True}),flush=True);raise SystemExit(0)
+x=next(v for v in c['resources'] if v.get('sweep')==297 and v.get('case')==case);own(x);sid=x['id']
+if mode=='observe':
+ assert case=='service';rows=history(x);r=http(x);v=r['decoded'];expected={'literal':x['baseline_value'],'file_length':x['binary_expected_length'],'file_sha256':x['binary_expected_sha256']};passed=rows[0]['status']=='live' and r['HTTP']=='200' and isinstance(v,dict) and v.get('built')==v.get('runtime')==expected;x.setdefault('runtime_receipts',[]).append({'at':now(),'latest_deploy':rows[0],'runtime':r,'expected':expected,'pass':passed});save();print(json.dumps({'case':case,'status':rows[0]['status'],'HTTP':r['HTTP'],'exact_env_and_NUL_file':passed}),flush=True)
+elif mode=='bulk-route-control':
+ assert case=='group' and 'bulk_route_control_intent' not in x;raw_group_links(x);before=current_state(x);body=[{'key':'QA_LITERAL','value':x['baseline_value']}];x['bulk_route_control_intent']={'at':now(),'request_method':'PUT','request_path':'/v1/env-groups/'+sid+'/env-vars','request_body':body,'before':before};save();r=api('PUT',x['bulk_route_control_intent']['request_path'],body);x['bulk_route_control_result']=r;save();x['bulk_route_control_after']=current_state(x);save();print(json.dumps({'case':case,'valid_control_HTTP':r['status'],'reply':decode(r),'own_values_unchanged':x['bulk_route_control_after']['values']==before['values']}),flush=True)
+elif mode in ('matrix','group-remaining'):
+ continuing=mode=='group-remaining'
+ if continuing:assert case=='group' and 'matrix_intent' in x and 'group_remaining_intent' not in x and x['bulk_route_control_result']['status']=='400'
+ else:assert 'matrix_intent' not in x
+ if case=='group':raw_group_links(x)
+ before=current_state(x);assert before['values']=={'QA_LITERAL':x['baseline_value']};service=next(v for v in c['resources'] if v.get('sweep')==297 and v.get('case')=='service');own(service);assert service['runtime_receipts'][-1]['pass'];before_deploys=history(service);x['group_remaining_intent' if continuing else 'matrix_intent']={'at':now(),'before':before,'before_service_deploy_ids':[v['id'] for v in before_deploys]};x.setdefault('writer_cases',[]);save()
+ for adapter in ('REST','GraphQL','MCP'):
+  for variant in ('full','single','sparse'):
+   if continuing and adapter=='REST' and variant=='full':continue
+   for invalid in (True,False):
+    key='QA_LITERAL';val='QA297_INVALID_'+x['nonce']+'\0tail' if invalid else x['baseline_value'];items=([{'key':'QA_SHOULD_NOT_APPEAR','value':'QA297_STAGED_'+x['nonce']}] if invalid and variant!='single' else [])+[{'key':key,'value':val}];patch={'envVars':items,'saveMode':'deploy' if invalid else 'save_only'}
+    if adapter=='REST':
+     base='/v1/services/'+sid if case=='service' else '/v1/env-groups/'+sid;method='PATCH' if variant=='sparse' else 'PUT';path=base+('/environment' if case=='service' else '/contents') if variant=='sparse' else base+'/env-vars'+('/'+key if variant=='single' else '');body=patch if variant=='sparse' else {'value':val} if variant=='single' else items
+    elif adapter=='GraphQL':
+     method='POST';path='/graphql';idarg='serviceId' if case=='service' else 'id';field=('setEnvVars' if case=='service' else 'setEnvGroupVars') if variant=='full' else ('setEnvVar' if case=='service' else 'setEnvGroupVar') if variant=='single' else ('patchServiceEnvironment' if case=='service' else 'patchEnvGroupEnvironment');variables={'id':sid};typename='EnvVarInput' if case=='service' else 'EnvGroupVarInput'
+     if variant=='full':query='mutation QA297($id:String!,$vars:['+typename+'!]!){'+field+'('+idarg+':$id,envVars:$vars)}';variables['vars']=items
+     elif variant=='single':query='mutation QA297($id:String!,$key:String!,$value:String!){'+field+'('+idarg+':$id,key:$key,value:$value)}';variables.update(key=key,value=val)
+     else:
+      typename='EnvironmentEnvVarPatchInput' if case=='service' else 'EnvGroupVarPatchInput';query='mutation QA297($id:String!,$vars:['+typename+'!],$mode:String!){'+field+'('+idarg+':$id,envVars:$vars,saveMode:$mode){envVarKeys}}';variables.update(vars=items,mode=patch['saveMode'])
+     body={'query':query,'variables':variables}
+    else:
+     method='POST';path='/mcp';args={'workspaceId':ws,('serviceId' if case=='service' else 'id'):sid};tool=('update_env_vars' if case=='service' else 'update_env_group_vars') if variant=='full' else ('set_env_var' if case=='service' else 'set_env_group_var') if variant=='single' else ('patch_service_environment' if case=='service' else 'patch_env_group_environment')
+     if variant=='single':args.update(key=key,value=val)
+     else:args['envVars']=items
+     if variant=='sparse':args['saveMode']=patch['saveMode']
+     body={'jsonrpc':'2.0','id':297000+len(x['writer_cases']),'method':'tools/call','params':{'name':tool,'arguments':args}}
+    row={'at':now(),'adapter':adapter,'variant':variant,'invalid':invalid,'request_method':method,'request_path':path,'request_body':body,'state':'exact-owned writer intent persisted'};x['writer_cases'].append(row);save();r=api(method,path,body);row['receipt']=r;save();v=decode(r)
+    if adapter=='REST':accepted=r['status']=='200' and r['curl_exit']==0;refused=r['status']=='400' and 'ENVIRONMENT_VARIABLE_VALUE_INVALID' in r['response']
+    elif adapter=='GraphQL':accepted=r['status']=='200' and not v.get('errors');refused=r['status']=='200' and bool(v.get('errors')) and all(e.get('extensions',{}).get('code')=='ENVIRONMENT_VARIABLE_VALUE_INVALID' for e in v['errors'])
+    else:accepted=r['status']=='200' and not v.get('error') and not v.get('result',{}).get('isError');refused=r['status']=='200' and v.get('result',{}).get('isError') and 'ENVIRONMENT_VARIABLE_VALUE_INVALID' in r['response']
+    after=current_state(x);row['after']=after;unchanged=after['values']=={'QA_LITERAL':x['baseline_value']};value_not_echoed=not invalid or 'QA297_INVALID_' not in r['response'];passed=(refused if invalid else accepted) and unchanged and value_not_echoed;row.update(decoded=v,refused=bool(refused),accepted=bool(accepted),unchanged_values=unchanged,value_not_echoed=value_not_echoed,acceptance_pass=bool(passed),state='writer completed and state reconciled');save();print(json.dumps({'case':case,'adapter':adapter,'variant':variant,'invalid':invalid,'HTTP':r['status'],'pass':bool(passed),'unchanged':unchanged}),flush=True)
+    if not passed:raise SystemExit('Inspect exact-owned writer result before any further write; no retry')
+    time.sleep(.5)
+ after_deploys=history(service);x['no_new_service_deploys']={v['id'] for v in before_deploys}=={v['id'] for v in after_deploys};x['matrix_complete']=True;save();print(json.dumps({'case':case,'writer_runs':len(x['writer_cases']),'no_new_service_deploys':x['no_new_service_deploys']}),flush=True)
+elif mode=='deploy':
+ assert case=='service' and 'native_wait_intent' not in x and x.get('matrix_complete');history(x);x['native_wait_intent']={'at':now(),'client':'render','before_ids':x['recorded_child_ids'][:]};save();x['native_wait_result']=cli(['deploys','create',sid,'--wait','--confirm','-o','json'],'render',240);save();rows=history(x);print(json.dumps({'case':case,'native_exit':x['native_wait_result']['native_exit'],'latest':rows[0]['status']}),flush=True)
+elif mode=='delete':
+ assert 'delete_result' not in x
+ if case=='group':
+  raw_group_links(x)
+  detail=api('GET','/v1/env-groups/'+sid);assert detail['status']=='200';v=decode(detail);assert 'serviceLinks' in v and v['serviceLinks']==[];x['delete_intent']={'at':now(),'before_detail':detail,'linked_services':[]};save();x['delete_result']=api('DELETE','/v1/env-groups/'+sid);save();assert x['delete_result']['status']=='204'
+ else:
+  rows=history(x);assert all(v['id'] in x['recorded_child_ids'] for v in rows)
+  for row in rows:
+   if row['status'] not in ('live','deactivated','canceled','build_failed','update_failed','pre_deploy_failed'):
+    r=cli(['deploys','cancel',sid,row['id'],'--confirm','-o','json']);x.setdefault('cleanup_child_cancels',[]).append({'id':row['id'],'result':r});save()
+  x['delete_intent']={'at':now(),'children':[v['id'] for v in rows]};save();x['delete_result']=cli(['services','delete',sid,'--confirm','-o','json']);save();assert x['delete_result']['native_exit']==0
+ print(json.dumps({'case':case,'delete_acknowledged':True}),flush=True)
+elif mode=='reconcile':
+ assert 'delete_result' in x
+ if case=='group':
+  detail=api('GET','/v1/env-groups/'+sid);inv,rows=groupinv();done=detail['status']=='404' and sid not in {v['id'] for v in rows};before={v.get('envGroup',v)['id'] for v in decode(x['pre_inventory'])};assert before<={v['id'] for v in rows};receipt={'at':now(),'detail':detail,'inventory':inv,'baseline_preserved':True}
+ else:
+  detail=api('GET','/v1/services/'+sid);inv,rows=inventory();r=http(x);q=api('GET','/v1/owners/'+ws+'/limits');assert q['status']=='200';done=detail['status']=='404' and sid not in {v['id'] for v in rows} and r['HTTP']=='404' and r['curl_exit']==0 and decode(q)['services']['terminating']==0;receipt={'at':now(),'detail':detail,'inventory':inv,'runtime':r,'quota':q,'baseline_preserved':True}
+ x.setdefault('cleanup_reconciliations',[]).append(receipt);x['state']='deleted: own detail/list/runtime or group-link enumeration, baseline/quota reconciled' if done else 'delete acknowledged: bounded convergence pending';save();print(json.dumps({'case':case,'cleanup_complete':done}),flush=True)
+else:raise ValueError(mode)

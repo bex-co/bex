@@ -1,0 +1,8 @@
+{
+  "command": "GOWORK=off GOTOOLCHAIN=go1.26.8 go test -json ./internal/apps -run Test(RESTCommandWritesKeepAuthoredText|GraphQLAndMCPCommandWritesKeepAuthoredText|WhitespaceCreateCommandsAreEmpty|BlueprintCommandsKeepAuthoredText)$ -count=1",
+  "exit": 0,
+  "named_parent_subtest_passes": 41,
+  "top_level_tests": 4,
+  "source_head": "f497ddab6a1aab07923513b62efac5da97d2b2f6",
+  "product_source_unchanged_by_QA": true
+}

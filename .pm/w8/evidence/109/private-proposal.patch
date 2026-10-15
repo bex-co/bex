@@ -1,0 +1,31 @@
+--- a/lego/backend/internal/api/render_openapi.go
++++ b/lego/backend/internal/api/render_openapi.go
+@@ -537,6 +537,19 @@
+ 	return false
+ }
+ 
++// isBexNativeShortRoute excludes a registered native endpoint when the legacy
++// router matches a longer Render template with empty trailing parameters.
++func isBexNativeShortRoute(contract *renderOpenAPIContract, pattern, matchedPath string) bool {
++ _, path, ok := bexPatternPath(pattern)
++ if !ok || strings.Contains(path, "...}") || contract.document.Paths.Find(path) != nil { return false }
++ have, want := strings.Split(strings.Trim(path, "/"), "/"), strings.Split(strings.Trim(matchedPath, "/"), "/")
++ if len(have) >= len(want) { return false }
++ parameter := func(s string) bool { return strings.HasPrefix(s, "{") && strings.HasSuffix(s, "}") }
++ for i, segment := range have { if !parameter(want[i]) && segment != want[i] { return false } }
++ for _, segment := range want[len(have):] { if !parameter(segment) { return false } }
++ return true
++}
++
+ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+ 	if retiredPublicRESTAlias(r) {
+ 		http.NotFound(w, r)
+@@ -570,7 +583,7 @@
+ 	// Render's `GET /webhooks/{webhookId}`, failed the id pattern, and died
+ 	// with 400 before its handler ever ran — the route was registered,
+ 	// authz-classified and documented, and unreachable.
+-	if isBexNativeLiteralRoute(v.contract, pattern) {
++	if isBexNativeLiteralRoute(v.contract, pattern) || isBexNativeShortRoute(v.contract, pattern, route.Path) {
+ 		v.next.ServeHTTP(w, r)
+ 		return
+ 	}

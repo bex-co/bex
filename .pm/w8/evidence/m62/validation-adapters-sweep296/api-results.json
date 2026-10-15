@@ -1,0 +1,3800 @@
+{
+  "sweep": 296,
+  "nonce": "c1ee3c",
+  "source_head": "cf4f75672cf7e566e44c4fe5250fa750102dac91",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "mode": "API-only validation; no applies/writes/resources",
+  "results": [
+    {
+      "adapter": "GraphQL",
+      "kind": "service-literal",
+      "variant": "nul",
+      "expected_valid": false,
+      "expected_errors_from_native": [
+        {
+          "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "services[0].envVars[0]",
+          "line": 12,
+          "column": 9
+        }
+      ],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\u0000after"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/graphql",
+      "request_body": {
+        "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+        "variables": {
+          "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\u0000after\"\n        }\n      ]\n    }\n  ]\n}\n",
+          "ws": "tea-daif693dqjvc73e7as3g"
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:01.250957+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+            "variables": {
+              "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\u0000after\"\n        }\n      ]\n    }\n  ]\n}\n",
+              "ws": "tea-daif693dqjvc73e7as3g"
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.334,
+        "response": "{\"data\":{\"validateBlueprint\":{\"errorDetails\":[{\"code\":\"\",\"column\":9,\"error\":\"qa296-c1ee3c-web envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\",\"line\":12,\"path\":\"services[0].envVars[0]\"}],\"errors\":[\"qa296-c1ee3c-web envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\"],\"valid\":false}}}\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "data": {
+          "validateBlueprint": {
+            "errorDetails": [
+              {
+                "code": "",
+                "column": 9,
+                "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+                "line": 12,
+                "path": "services[0].envVars[0]"
+              }
+            ],
+            "errors": [
+              "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content"
+            ],
+            "valid": false
+          }
+        }
+      },
+      "decoded": {
+        "errorDetails": [
+          {
+            "code": "",
+            "column": 9,
+            "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+            "line": 12,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "errors": [
+          "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content"
+        ],
+        "valid": false
+      },
+      "normalized_errors": [
+        {
+          "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "services[0].envVars[0]",
+          "line": 12,
+          "column": 9
+        }
+      ],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "GraphQL",
+      "kind": "service-literal",
+      "variant": "newline-control",
+      "expected_valid": true,
+      "expected_errors_from_native": [],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\nafter"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/graphql",
+      "request_body": {
+        "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+        "variables": {
+          "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\nafter\"\n        }\n      ]\n    }\n  ]\n}\n",
+          "ws": "tea-daif693dqjvc73e7as3g"
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:02.797875+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+            "variables": {
+              "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\nafter\"\n        }\n      ]\n    }\n  ]\n}\n",
+              "ws": "tea-daif693dqjvc73e7as3g"
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.809,
+        "response": "{\"data\":{\"validateBlueprint\":{\"errorDetails\":[],\"errors\":[],\"valid\":true}}}\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "data": {
+          "validateBlueprint": {
+            "errorDetails": [],
+            "errors": [],
+            "valid": true
+          }
+        }
+      },
+      "decoded": {
+        "errorDetails": [],
+        "errors": [],
+        "valid": true
+      },
+      "normalized_errors": [],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "GraphQL",
+      "kind": "service-seed",
+      "variant": "nul",
+      "expected_valid": false,
+      "expected_errors_from_native": [
+        {
+          "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "services[0].envVars[0]",
+          "line": 12,
+          "column": 9
+        }
+      ],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\u0000after",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/graphql",
+      "request_body": {
+        "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+        "variables": {
+          "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\u0000after\",\n          \"sync\": false\n        }\n      ]\n    }\n  ]\n}\n",
+          "ws": "tea-daif693dqjvc73e7as3g"
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:04.199650+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+            "variables": {
+              "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\u0000after\",\n          \"sync\": false\n        }\n      ]\n    }\n  ]\n}\n",
+              "ws": "tea-daif693dqjvc73e7as3g"
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.672,
+        "response": "{\"data\":{\"validateBlueprint\":{\"errorDetails\":[{\"code\":\"\",\"column\":9,\"error\":\"qa296-c1ee3c-web envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\",\"line\":12,\"path\":\"services[0].envVars[0]\"}],\"errors\":[\"qa296-c1ee3c-web envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\"],\"valid\":false}}}\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "data": {
+          "validateBlueprint": {
+            "errorDetails": [
+              {
+                "code": "",
+                "column": 9,
+                "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+                "line": 12,
+                "path": "services[0].envVars[0]"
+              }
+            ],
+            "errors": [
+              "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content"
+            ],
+            "valid": false
+          }
+        }
+      },
+      "decoded": {
+        "errorDetails": [
+          {
+            "code": "",
+            "column": 9,
+            "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+            "line": 12,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "errors": [
+          "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content"
+        ],
+        "valid": false
+      },
+      "normalized_errors": [
+        {
+          "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "services[0].envVars[0]",
+          "line": 12,
+          "column": 9
+        }
+      ],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "GraphQL",
+      "kind": "service-seed",
+      "variant": "newline-control",
+      "expected_valid": true,
+      "expected_errors_from_native": [],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\nafter",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/graphql",
+      "request_body": {
+        "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+        "variables": {
+          "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\nafter\",\n          \"sync\": false\n        }\n      ]\n    }\n  ]\n}\n",
+          "ws": "tea-daif693dqjvc73e7as3g"
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:05.367600+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+            "variables": {
+              "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\nafter\",\n          \"sync\": false\n        }\n      ]\n    }\n  ]\n}\n",
+              "ws": "tea-daif693dqjvc73e7as3g"
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.443,
+        "response": "{\"data\":{\"validateBlueprint\":{\"errorDetails\":[],\"errors\":[],\"valid\":true}}}\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "data": {
+          "validateBlueprint": {
+            "errorDetails": [],
+            "errors": [],
+            "valid": true
+          }
+        }
+      },
+      "decoded": {
+        "errorDetails": [],
+        "errors": [],
+        "valid": true
+      },
+      "normalized_errors": [],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "GraphQL",
+      "kind": "group-literal",
+      "variant": "nul",
+      "expected_valid": false,
+      "expected_errors_from_native": [
+        {
+          "error": "env group \"qa296-c1ee3c-group\" envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "envVarGroups[0].envVars[0]",
+          "line": 6,
+          "column": 9
+        }
+      ],
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa296-c1ee3c-group",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\u0000after"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/graphql",
+      "request_body": {
+        "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+        "variables": {
+          "yaml": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa296-c1ee3c-group\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\u0000after\"\n        }\n      ]\n    }\n  ]\n}\n",
+          "ws": "tea-daif693dqjvc73e7as3g"
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:06.400188+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+            "variables": {
+              "yaml": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa296-c1ee3c-group\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\u0000after\"\n        }\n      ]\n    }\n  ]\n}\n",
+              "ws": "tea-daif693dqjvc73e7as3g"
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.314,
+        "response": "{\"data\":{\"validateBlueprint\":{\"errorDetails\":[{\"code\":\"\",\"column\":9,\"error\":\"env group \\\"qa296-c1ee3c-group\\\" envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\",\"line\":6,\"path\":\"envVarGroups[0].envVars[0]\"}],\"errors\":[\"env group \\\"qa296-c1ee3c-group\\\" envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\"],\"valid\":false}}}\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "data": {
+          "validateBlueprint": {
+            "errorDetails": [
+              {
+                "code": "",
+                "column": 9,
+                "error": "env group \"qa296-c1ee3c-group\" envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+                "line": 6,
+                "path": "envVarGroups[0].envVars[0]"
+              }
+            ],
+            "errors": [
+              "env group \"qa296-c1ee3c-group\" envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content"
+            ],
+            "valid": false
+          }
+        }
+      },
+      "decoded": {
+        "errorDetails": [
+          {
+            "code": "",
+            "column": 9,
+            "error": "env group \"qa296-c1ee3c-group\" envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+            "line": 6,
+            "path": "envVarGroups[0].envVars[0]"
+          }
+        ],
+        "errors": [
+          "env group \"qa296-c1ee3c-group\" envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content"
+        ],
+        "valid": false
+      },
+      "normalized_errors": [
+        {
+          "error": "env group \"qa296-c1ee3c-group\" envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "envVarGroups[0].envVars[0]",
+          "line": 6,
+          "column": 9
+        }
+      ],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "GraphQL",
+      "kind": "group-literal",
+      "variant": "newline-control",
+      "expected_valid": true,
+      "expected_errors_from_native": [],
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa296-c1ee3c-group",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\nafter"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/graphql",
+      "request_body": {
+        "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+        "variables": {
+          "yaml": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa296-c1ee3c-group\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\nafter\"\n        }\n      ]\n    }\n  ]\n}\n",
+          "ws": "tea-daif693dqjvc73e7as3g"
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:07.957288+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+            "variables": {
+              "yaml": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa296-c1ee3c-group\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\nafter\"\n        }\n      ]\n    }\n  ]\n}\n",
+              "ws": "tea-daif693dqjvc73e7as3g"
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.843,
+        "response": "{\"data\":{\"validateBlueprint\":{\"errorDetails\":[],\"errors\":[],\"valid\":true}}}\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "data": {
+          "validateBlueprint": {
+            "errorDetails": [],
+            "errors": [],
+            "valid": true
+          }
+        }
+      },
+      "decoded": {
+        "errorDetails": [],
+        "errors": [],
+        "valid": true
+      },
+      "normalized_errors": [],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "GraphQL",
+      "kind": "service-literal",
+      "variant": "nul-position-start",
+      "expected_valid": false,
+      "expected_errors_from_native": [
+        {
+          "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "services[0].envVars[0]",
+          "line": 12,
+          "column": 9
+        }
+      ],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "\u0000QA296_VALUE_c1ee3c"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/graphql",
+      "request_body": {
+        "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+        "variables": {
+          "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"\\u0000QA296_VALUE_c1ee3c\"\n        }\n      ]\n    }\n  ]\n}\n",
+          "ws": "tea-daif693dqjvc73e7as3g"
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:08.997622+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+            "variables": {
+              "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"\\u0000QA296_VALUE_c1ee3c\"\n        }\n      ]\n    }\n  ]\n}\n",
+              "ws": "tea-daif693dqjvc73e7as3g"
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.326,
+        "response": "{\"data\":{\"validateBlueprint\":{\"errorDetails\":[{\"code\":\"\",\"column\":9,\"error\":\"qa296-c1ee3c-web envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\",\"line\":12,\"path\":\"services[0].envVars[0]\"}],\"errors\":[\"qa296-c1ee3c-web envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\"],\"valid\":false}}}\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "data": {
+          "validateBlueprint": {
+            "errorDetails": [
+              {
+                "code": "",
+                "column": 9,
+                "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+                "line": 12,
+                "path": "services[0].envVars[0]"
+              }
+            ],
+            "errors": [
+              "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content"
+            ],
+            "valid": false
+          }
+        }
+      },
+      "decoded": {
+        "errorDetails": [
+          {
+            "code": "",
+            "column": 9,
+            "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+            "line": 12,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "errors": [
+          "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content"
+        ],
+        "valid": false
+      },
+      "normalized_errors": [
+        {
+          "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "services[0].envVars[0]",
+          "line": 12,
+          "column": 9
+        }
+      ],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "GraphQL",
+      "kind": "service-literal",
+      "variant": "nul-position-middle",
+      "expected_valid": false,
+      "expected_errors_from_native": [
+        {
+          "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "services[0].envVars[0]",
+          "line": 12,
+          "column": 9
+        }
+      ],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\u0000after"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/graphql",
+      "request_body": {
+        "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+        "variables": {
+          "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\u0000after\"\n        }\n      ]\n    }\n  ]\n}\n",
+          "ws": "tea-daif693dqjvc73e7as3g"
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:10.027099+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+            "variables": {
+              "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\u0000after\"\n        }\n      ]\n    }\n  ]\n}\n",
+              "ws": "tea-daif693dqjvc73e7as3g"
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.315,
+        "response": "{\"data\":{\"validateBlueprint\":{\"errorDetails\":[{\"code\":\"\",\"column\":9,\"error\":\"qa296-c1ee3c-web envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\",\"line\":12,\"path\":\"services[0].envVars[0]\"}],\"errors\":[\"qa296-c1ee3c-web envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\"],\"valid\":false}}}\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "data": {
+          "validateBlueprint": {
+            "errorDetails": [
+              {
+                "code": "",
+                "column": 9,
+                "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+                "line": 12,
+                "path": "services[0].envVars[0]"
+              }
+            ],
+            "errors": [
+              "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content"
+            ],
+            "valid": false
+          }
+        }
+      },
+      "decoded": {
+        "errorDetails": [
+          {
+            "code": "",
+            "column": 9,
+            "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+            "line": 12,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "errors": [
+          "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content"
+        ],
+        "valid": false
+      },
+      "normalized_errors": [
+        {
+          "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "services[0].envVars[0]",
+          "line": 12,
+          "column": 9
+        }
+      ],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "GraphQL",
+      "kind": "service-literal",
+      "variant": "nul-position-end",
+      "expected_valid": false,
+      "expected_errors_from_native": [
+        {
+          "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "services[0].envVars[0]",
+          "line": 12,
+          "column": 9
+        }
+      ],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\u0000"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/graphql",
+      "request_body": {
+        "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+        "variables": {
+          "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\u0000\"\n        }\n      ]\n    }\n  ]\n}\n",
+          "ws": "tea-daif693dqjvc73e7as3g"
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:11.066363+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+            "variables": {
+              "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\u0000\"\n        }\n      ]\n    }\n  ]\n}\n",
+              "ws": "tea-daif693dqjvc73e7as3g"
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.321,
+        "response": "{\"data\":{\"validateBlueprint\":{\"errorDetails\":[{\"code\":\"\",\"column\":9,\"error\":\"qa296-c1ee3c-web envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\",\"line\":12,\"path\":\"services[0].envVars[0]\"}],\"errors\":[\"qa296-c1ee3c-web envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\"],\"valid\":false}}}\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "data": {
+          "validateBlueprint": {
+            "errorDetails": [
+              {
+                "code": "",
+                "column": 9,
+                "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+                "line": 12,
+                "path": "services[0].envVars[0]"
+              }
+            ],
+            "errors": [
+              "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content"
+            ],
+            "valid": false
+          }
+        }
+      },
+      "decoded": {
+        "errorDetails": [
+          {
+            "code": "",
+            "column": 9,
+            "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+            "line": 12,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "errors": [
+          "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content"
+        ],
+        "valid": false
+      },
+      "normalized_errors": [
+        {
+          "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "services[0].envVars[0]",
+          "line": 12,
+          "column": 9
+        }
+      ],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "GraphQL",
+      "kind": "service-literal",
+      "variant": "nul-position-only",
+      "expected_valid": false,
+      "expected_errors_from_native": [
+        {
+          "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "services[0].envVars[0]",
+          "line": 12,
+          "column": 9
+        }
+      ],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "\u0000"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/graphql",
+      "request_body": {
+        "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+        "variables": {
+          "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"\\u0000\"\n        }\n      ]\n    }\n  ]\n}\n",
+          "ws": "tea-daif693dqjvc73e7as3g"
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:12.428555+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+            "variables": {
+              "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"\\u0000\"\n        }\n      ]\n    }\n  ]\n}\n",
+              "ws": "tea-daif693dqjvc73e7as3g"
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.646,
+        "response": "{\"data\":{\"validateBlueprint\":{\"errorDetails\":[{\"code\":\"\",\"column\":9,\"error\":\"qa296-c1ee3c-web envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\",\"line\":12,\"path\":\"services[0].envVars[0]\"}],\"errors\":[\"qa296-c1ee3c-web envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\"],\"valid\":false}}}\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "data": {
+          "validateBlueprint": {
+            "errorDetails": [
+              {
+                "code": "",
+                "column": 9,
+                "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+                "line": 12,
+                "path": "services[0].envVars[0]"
+              }
+            ],
+            "errors": [
+              "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content"
+            ],
+            "valid": false
+          }
+        }
+      },
+      "decoded": {
+        "errorDetails": [
+          {
+            "code": "",
+            "column": 9,
+            "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+            "line": 12,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "errors": [
+          "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content"
+        ],
+        "valid": false
+      },
+      "normalized_errors": [
+        {
+          "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "services[0].envVars[0]",
+          "line": 12,
+          "column": 9
+        }
+      ],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "GraphQL",
+      "kind": "service-literal",
+      "variant": "empty",
+      "expected_valid": true,
+      "expected_errors_from_native": [],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": ""
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/graphql",
+      "request_body": {
+        "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+        "variables": {
+          "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"\"\n        }\n      ]\n    }\n  ]\n}\n",
+          "ws": "tea-daif693dqjvc73e7as3g"
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:13.488831+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+            "variables": {
+              "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"\"\n        }\n      ]\n    }\n  ]\n}\n",
+              "ws": "tea-daif693dqjvc73e7as3g"
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.345,
+        "response": "{\"data\":{\"validateBlueprint\":{\"errorDetails\":[],\"errors\":[],\"valid\":true}}}\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "data": {
+          "validateBlueprint": {
+            "errorDetails": [],
+            "errors": [],
+            "valid": true
+          }
+        }
+      },
+      "decoded": {
+        "errorDetails": [],
+        "errors": [],
+        "valid": true
+      },
+      "normalized_errors": [],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "GraphQL",
+      "kind": "service-literal",
+      "variant": "unicode",
+      "expected_valid": true,
+      "expected_errors_from_native": [],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\u2603"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/graphql",
+      "request_body": {
+        "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+        "variables": {
+          "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\u2603\"\n        }\n      ]\n    }\n  ]\n}\n",
+          "ws": "tea-daif693dqjvc73e7as3g"
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:14.528003+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+            "variables": {
+              "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\u2603\"\n        }\n      ]\n    }\n  ]\n}\n",
+              "ws": "tea-daif693dqjvc73e7as3g"
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.317,
+        "response": "{\"data\":{\"validateBlueprint\":{\"errorDetails\":[],\"errors\":[],\"valid\":true}}}\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "data": {
+          "validateBlueprint": {
+            "errorDetails": [],
+            "errors": [],
+            "valid": true
+          }
+        }
+      },
+      "decoded": {
+        "errorDetails": [],
+        "errors": [],
+        "valid": true
+      },
+      "normalized_errors": [],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "GraphQL",
+      "kind": "service-literal",
+      "variant": "newline",
+      "expected_valid": true,
+      "expected_errors_from_native": [],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\nnext"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/graphql",
+      "request_body": {
+        "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+        "variables": {
+          "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\nnext\"\n        }\n      ]\n    }\n  ]\n}\n",
+          "ws": "tea-daif693dqjvc73e7as3g"
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:15.974155+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+            "variables": {
+              "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\nnext\"\n        }\n      ]\n    }\n  ]\n}\n",
+              "ws": "tea-daif693dqjvc73e7as3g"
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.715,
+        "response": "{\"data\":{\"validateBlueprint\":{\"errorDetails\":[],\"errors\":[],\"valid\":true}}}\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "data": {
+          "validateBlueprint": {
+            "errorDetails": [],
+            "errors": [],
+            "valid": true
+          }
+        }
+      },
+      "decoded": {
+        "errorDetails": [],
+        "errors": [],
+        "valid": true
+      },
+      "normalized_errors": [],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "GraphQL",
+      "kind": "service-literal",
+      "variant": "tab",
+      "expected_valid": true,
+      "expected_errors_from_native": [],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\tnext"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/graphql",
+      "request_body": {
+        "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+        "variables": {
+          "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\tnext\"\n        }\n      ]\n    }\n  ]\n}\n",
+          "ws": "tea-daif693dqjvc73e7as3g"
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:17.045627+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+            "variables": {
+              "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\tnext\"\n        }\n      ]\n    }\n  ]\n}\n",
+              "ws": "tea-daif693dqjvc73e7as3g"
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.346,
+        "response": "{\"data\":{\"validateBlueprint\":{\"errorDetails\":[],\"errors\":[],\"valid\":true}}}\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "data": {
+          "validateBlueprint": {
+            "errorDetails": [],
+            "errors": [],
+            "valid": true
+          }
+        }
+      },
+      "decoded": {
+        "errorDetails": [],
+        "errors": [],
+        "valid": true
+      },
+      "normalized_errors": [],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "GraphQL",
+      "kind": "service-literal",
+      "variant": "CRLF",
+      "expected_valid": true,
+      "expected_errors_from_native": [],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\r\nnext"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/graphql",
+      "request_body": {
+        "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+        "variables": {
+          "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\r\\nnext\"\n        }\n      ]\n    }\n  ]\n}\n",
+          "ws": "tea-daif693dqjvc73e7as3g"
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:18.058574+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+            "variables": {
+              "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\r\\nnext\"\n        }\n      ]\n    }\n  ]\n}\n",
+              "ws": "tea-daif693dqjvc73e7as3g"
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.289,
+        "response": "{\"data\":{\"validateBlueprint\":{\"errorDetails\":[],\"errors\":[],\"valid\":true}}}\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "data": {
+          "validateBlueprint": {
+            "errorDetails": [],
+            "errors": [],
+            "valid": true
+          }
+        }
+      },
+      "decoded": {
+        "errorDetails": [],
+        "errors": [],
+        "valid": true
+      },
+      "normalized_errors": [],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "GraphQL",
+      "kind": "service-literal",
+      "variant": "literal-backslash-u0000",
+      "expected_valid": true,
+      "expected_errors_from_native": [],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\\u0000"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/graphql",
+      "request_body": {
+        "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+        "variables": {
+          "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\\\u0000\"\n        }\n      ]\n    }\n  ]\n}\n",
+          "ws": "tea-daif693dqjvc73e7as3g"
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:19.233107+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+            "variables": {
+              "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\\\u0000\"\n        }\n      ]\n    }\n  ]\n}\n",
+              "ws": "tea-daif693dqjvc73e7as3g"
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.446,
+        "response": "{\"data\":{\"validateBlueprint\":{\"errorDetails\":[],\"errors\":[],\"valid\":true}}}\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "data": {
+          "validateBlueprint": {
+            "errorDetails": [],
+            "errors": [],
+            "valid": true
+          }
+        }
+      },
+      "decoded": {
+        "errorDetails": [],
+        "errors": [],
+        "valid": true
+      },
+      "normalized_errors": [],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "GraphQL",
+      "kind": "service-literal",
+      "variant": "numeric-string",
+      "expected_valid": true,
+      "expected_errors_from_native": [],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "42"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/graphql",
+      "request_body": {
+        "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+        "variables": {
+          "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"42\"\n        }\n      ]\n    }\n  ]\n}\n",
+          "ws": "tea-daif693dqjvc73e7as3g"
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:20.463437+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+            "variables": {
+              "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"42\"\n        }\n      ]\n    }\n  ]\n}\n",
+              "ws": "tea-daif693dqjvc73e7as3g"
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.507,
+        "response": "{\"data\":{\"validateBlueprint\":{\"errorDetails\":[],\"errors\":[],\"valid\":true}}}\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "data": {
+          "validateBlueprint": {
+            "errorDetails": [],
+            "errors": [],
+            "valid": true
+          }
+        }
+      },
+      "decoded": {
+        "errorDetails": [],
+        "errors": [],
+        "valid": true
+      },
+      "normalized_errors": [],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "GraphQL",
+      "kind": "service-literal",
+      "variant": "ordinary",
+      "expected_valid": true,
+      "expected_errors_from_native": [],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/graphql",
+      "request_body": {
+        "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+        "variables": {
+          "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\"\n        }\n      ]\n    }\n  ]\n}\n",
+          "ws": "tea-daif693dqjvc73e7as3g"
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:21.679602+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA296($yaml:String!,$ws:String!){validateBlueprint(bexYaml:$yaml,ownerId:$ws){valid errors errorDetails{code error path line column}}}",
+            "variables": {
+              "yaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\"\n        }\n      ]\n    }\n  ]\n}\n",
+              "ws": "tea-daif693dqjvc73e7as3g"
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.488,
+        "response": "{\"data\":{\"validateBlueprint\":{\"errorDetails\":[],\"errors\":[],\"valid\":true}}}\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "data": {
+          "validateBlueprint": {
+            "errorDetails": [],
+            "errors": [],
+            "valid": true
+          }
+        }
+      },
+      "decoded": {
+        "errorDetails": [],
+        "errors": [],
+        "valid": true
+      },
+      "normalized_errors": [],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "MCP",
+      "kind": "service-literal",
+      "variant": "nul",
+      "expected_valid": false,
+      "expected_errors_from_native": [
+        {
+          "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "services[0].envVars[0]",
+          "line": 12,
+          "column": 9
+        }
+      ],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\u0000after"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/mcp",
+      "request_body": {
+        "jsonrpc": "2.0",
+        "id": 296018,
+        "method": "tools/call",
+        "params": {
+          "name": "validate_bex_yml",
+          "arguments": {
+            "workspaceId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\u0000after\"\n        }\n      ]\n    }\n  ]\n}\n"
+          }
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:22.726069+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/mcp",
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 296018,
+            "method": "tools/call",
+            "params": {
+              "name": "validate_bex_yml",
+              "arguments": {
+                "workspaceId": "tea-daif693dqjvc73e7as3g",
+                "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\u0000after\"\n        }\n      ]\n    }\n  ]\n}\n"
+              }
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.317,
+        "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":296018,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"errors\\\":[{\\\"column\\\":9,\\\"error\\\":\\\"qa296-c1ee3c-web envVars[\\\\\\\"QA_LITERAL\\\\\\\"]: environment variable \\\\\\\"QA_LITERAL\\\\\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\\\",\\\"line\\\":12,\\\"path\\\":\\\"services[0].envVars[0]\\\"}],\\\"valid\\\":false}\"}],\"structuredContent\":{\"errors\":[{\"column\":9,\"error\":\"qa296-c1ee3c-web envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\",\"line\":12,\"path\":\"services[0].envVars[0]\"}],\"valid\":false}}}\n\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 296018,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"errors\":[{\"column\":9,\"error\":\"qa296-c1ee3c-web envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\",\"line\":12,\"path\":\"services[0].envVars[0]\"}],\"valid\":false}"
+            }
+          ],
+          "structuredContent": {
+            "errors": [
+              {
+                "column": 9,
+                "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+                "line": 12,
+                "path": "services[0].envVars[0]"
+              }
+            ],
+            "valid": false
+          }
+        }
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+            "line": 12,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "normalized_errors": [
+        {
+          "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "services[0].envVars[0]",
+          "line": 12,
+          "column": 9
+        }
+      ],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "MCP",
+      "kind": "service-literal",
+      "variant": "newline-control",
+      "expected_valid": true,
+      "expected_errors_from_native": [],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\nafter"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/mcp",
+      "request_body": {
+        "jsonrpc": "2.0",
+        "id": 296019,
+        "method": "tools/call",
+        "params": {
+          "name": "validate_bex_yml",
+          "arguments": {
+            "workspaceId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\nafter\"\n        }\n      ]\n    }\n  ]\n}\n"
+          }
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:23.897127+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/mcp",
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 296019,
+            "method": "tools/call",
+            "params": {
+              "name": "validate_bex_yml",
+              "arguments": {
+                "workspaceId": "tea-daif693dqjvc73e7as3g",
+                "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\nafter\"\n        }\n      ]\n    }\n  ]\n}\n"
+              }
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.444,
+        "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":296019,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"estimatedPricing\\\":{\\\"lines\\\":[],\\\"totalUsd\\\":\\\"0.00\\\",\\\"variable\\\":[]},\\\"plan\\\":{\\\"actions\\\":[{\\\"kind\\\":\\\"service\\\",\\\"name\\\":\\\"qa296-c1ee3c-web\\\",\\\"operation\\\":\\\"create\\\",\\\"sourcePath\\\":\\\"#/services/0\\\"}],\\\"mode\\\":\\\"current_state\\\",\\\"services\\\":[\\\"qa296-c1ee3c-web\\\"],\\\"totalActions\\\":1},\\\"valid\\\":true}\"}],\"structuredContent\":{\"estimatedPricing\":{\"lines\":[],\"totalUsd\":\"0.00\",\"variable\":[]},\"plan\":{\"actions\":[{\"kind\":\"service\",\"name\":\"qa296-c1ee3c-web\",\"operation\":\"create\",\"sourcePath\":\"#/services/0\"}],\"mode\":\"current_state\",\"services\":[\"qa296-c1ee3c-web\"],\"totalActions\":1},\"valid\":true}}}\n\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 296019,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"estimatedPricing\":{\"lines\":[],\"totalUsd\":\"0.00\",\"variable\":[]},\"plan\":{\"actions\":[{\"kind\":\"service\",\"name\":\"qa296-c1ee3c-web\",\"operation\":\"create\",\"sourcePath\":\"#/services/0\"}],\"mode\":\"current_state\",\"services\":[\"qa296-c1ee3c-web\"],\"totalActions\":1},\"valid\":true}"
+            }
+          ],
+          "structuredContent": {
+            "estimatedPricing": {
+              "lines": [],
+              "totalUsd": "0.00",
+              "variable": []
+            },
+            "plan": {
+              "actions": [
+                {
+                  "kind": "service",
+                  "name": "qa296-c1ee3c-web",
+                  "operation": "create",
+                  "sourcePath": "#/services/0"
+                }
+              ],
+              "mode": "current_state",
+              "services": [
+                "qa296-c1ee3c-web"
+              ],
+              "totalActions": 1
+            },
+            "valid": true
+          }
+        }
+      },
+      "decoded": {
+        "estimatedPricing": {
+          "lines": [],
+          "totalUsd": "0.00",
+          "variable": []
+        },
+        "plan": {
+          "actions": [
+            {
+              "kind": "service",
+              "name": "qa296-c1ee3c-web",
+              "operation": "create",
+              "sourcePath": "#/services/0"
+            }
+          ],
+          "mode": "current_state",
+          "services": [
+            "qa296-c1ee3c-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "normalized_errors": [],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "MCP",
+      "kind": "service-seed",
+      "variant": "nul",
+      "expected_valid": false,
+      "expected_errors_from_native": [
+        {
+          "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "services[0].envVars[0]",
+          "line": 12,
+          "column": 9
+        }
+      ],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\u0000after",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/mcp",
+      "request_body": {
+        "jsonrpc": "2.0",
+        "id": 296020,
+        "method": "tools/call",
+        "params": {
+          "name": "validate_bex_yml",
+          "arguments": {
+            "workspaceId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\u0000after\",\n          \"sync\": false\n        }\n      ]\n    }\n  ]\n}\n"
+          }
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:25.026718+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/mcp",
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 296020,
+            "method": "tools/call",
+            "params": {
+              "name": "validate_bex_yml",
+              "arguments": {
+                "workspaceId": "tea-daif693dqjvc73e7as3g",
+                "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\u0000after\",\n          \"sync\": false\n        }\n      ]\n    }\n  ]\n}\n"
+              }
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.396,
+        "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":296020,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"errors\\\":[{\\\"column\\\":9,\\\"error\\\":\\\"qa296-c1ee3c-web envVars[\\\\\\\"QA_LITERAL\\\\\\\"]: environment variable \\\\\\\"QA_LITERAL\\\\\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\\\",\\\"line\\\":12,\\\"path\\\":\\\"services[0].envVars[0]\\\"}],\\\"valid\\\":false}\"}],\"structuredContent\":{\"errors\":[{\"column\":9,\"error\":\"qa296-c1ee3c-web envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\",\"line\":12,\"path\":\"services[0].envVars[0]\"}],\"valid\":false}}}\n\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 296020,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"errors\":[{\"column\":9,\"error\":\"qa296-c1ee3c-web envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\",\"line\":12,\"path\":\"services[0].envVars[0]\"}],\"valid\":false}"
+            }
+          ],
+          "structuredContent": {
+            "errors": [
+              {
+                "column": 9,
+                "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+                "line": 12,
+                "path": "services[0].envVars[0]"
+              }
+            ],
+            "valid": false
+          }
+        }
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+            "line": 12,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "normalized_errors": [
+        {
+          "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "services[0].envVars[0]",
+          "line": 12,
+          "column": 9
+        }
+      ],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "MCP",
+      "kind": "service-seed",
+      "variant": "newline-control",
+      "expected_valid": true,
+      "expected_errors_from_native": [],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\nafter",
+                "sync": false
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/mcp",
+      "request_body": {
+        "jsonrpc": "2.0",
+        "id": 296021,
+        "method": "tools/call",
+        "params": {
+          "name": "validate_bex_yml",
+          "arguments": {
+            "workspaceId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\nafter\",\n          \"sync\": false\n        }\n      ]\n    }\n  ]\n}\n"
+          }
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:26.143648+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/mcp",
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 296021,
+            "method": "tools/call",
+            "params": {
+              "name": "validate_bex_yml",
+              "arguments": {
+                "workspaceId": "tea-daif693dqjvc73e7as3g",
+                "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\nafter\",\n          \"sync\": false\n        }\n      ]\n    }\n  ]\n}\n"
+              }
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.38,
+        "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":296021,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"estimatedPricing\\\":{\\\"lines\\\":[],\\\"totalUsd\\\":\\\"0.00\\\",\\\"variable\\\":[]},\\\"plan\\\":{\\\"actions\\\":[{\\\"kind\\\":\\\"service\\\",\\\"name\\\":\\\"qa296-c1ee3c-web\\\",\\\"operation\\\":\\\"create\\\",\\\"sourcePath\\\":\\\"#/services/0\\\"}],\\\"mode\\\":\\\"current_state\\\",\\\"services\\\":[\\\"qa296-c1ee3c-web\\\"],\\\"syncFalseVars\\\":[\\\"QA_LITERAL\\\"],\\\"totalActions\\\":1},\\\"valid\\\":true}\"}],\"structuredContent\":{\"estimatedPricing\":{\"lines\":[],\"totalUsd\":\"0.00\",\"variable\":[]},\"plan\":{\"actions\":[{\"kind\":\"service\",\"name\":\"qa296-c1ee3c-web\",\"operation\":\"create\",\"sourcePath\":\"#/services/0\"}],\"mode\":\"current_state\",\"services\":[\"qa296-c1ee3c-web\"],\"syncFalseVars\":[\"QA_LITERAL\"],\"totalActions\":1},\"valid\":true}}}\n\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 296021,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"estimatedPricing\":{\"lines\":[],\"totalUsd\":\"0.00\",\"variable\":[]},\"plan\":{\"actions\":[{\"kind\":\"service\",\"name\":\"qa296-c1ee3c-web\",\"operation\":\"create\",\"sourcePath\":\"#/services/0\"}],\"mode\":\"current_state\",\"services\":[\"qa296-c1ee3c-web\"],\"syncFalseVars\":[\"QA_LITERAL\"],\"totalActions\":1},\"valid\":true}"
+            }
+          ],
+          "structuredContent": {
+            "estimatedPricing": {
+              "lines": [],
+              "totalUsd": "0.00",
+              "variable": []
+            },
+            "plan": {
+              "actions": [
+                {
+                  "kind": "service",
+                  "name": "qa296-c1ee3c-web",
+                  "operation": "create",
+                  "sourcePath": "#/services/0"
+                }
+              ],
+              "mode": "current_state",
+              "services": [
+                "qa296-c1ee3c-web"
+              ],
+              "syncFalseVars": [
+                "QA_LITERAL"
+              ],
+              "totalActions": 1
+            },
+            "valid": true
+          }
+        }
+      },
+      "decoded": {
+        "estimatedPricing": {
+          "lines": [],
+          "totalUsd": "0.00",
+          "variable": []
+        },
+        "plan": {
+          "actions": [
+            {
+              "kind": "service",
+              "name": "qa296-c1ee3c-web",
+              "operation": "create",
+              "sourcePath": "#/services/0"
+            }
+          ],
+          "mode": "current_state",
+          "services": [
+            "qa296-c1ee3c-web"
+          ],
+          "syncFalseVars": [
+            "QA_LITERAL"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "normalized_errors": [],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "MCP",
+      "kind": "group-literal",
+      "variant": "nul",
+      "expected_valid": false,
+      "expected_errors_from_native": [
+        {
+          "error": "env group \"qa296-c1ee3c-group\" envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "envVarGroups[0].envVars[0]",
+          "line": 6,
+          "column": 9
+        }
+      ],
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa296-c1ee3c-group",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\u0000after"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/mcp",
+      "request_body": {
+        "jsonrpc": "2.0",
+        "id": 296022,
+        "method": "tools/call",
+        "params": {
+          "name": "validate_bex_yml",
+          "arguments": {
+            "workspaceId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa296-c1ee3c-group\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\u0000after\"\n        }\n      ]\n    }\n  ]\n}\n"
+          }
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:27.180521+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/mcp",
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 296022,
+            "method": "tools/call",
+            "params": {
+              "name": "validate_bex_yml",
+              "arguments": {
+                "workspaceId": "tea-daif693dqjvc73e7as3g",
+                "bexYaml": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa296-c1ee3c-group\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\u0000after\"\n        }\n      ]\n    }\n  ]\n}\n"
+              }
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.297,
+        "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":296022,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"errors\\\":[{\\\"column\\\":9,\\\"error\\\":\\\"env group \\\\\\\"qa296-c1ee3c-group\\\\\\\" envVars[\\\\\\\"QA_LITERAL\\\\\\\"]: environment variable \\\\\\\"QA_LITERAL\\\\\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\\\",\\\"line\\\":6,\\\"path\\\":\\\"envVarGroups[0].envVars[0]\\\"}],\\\"valid\\\":false}\"}],\"structuredContent\":{\"errors\":[{\"column\":9,\"error\":\"env group \\\"qa296-c1ee3c-group\\\" envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\",\"line\":6,\"path\":\"envVarGroups[0].envVars[0]\"}],\"valid\":false}}}\n\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 296022,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"errors\":[{\"column\":9,\"error\":\"env group \\\"qa296-c1ee3c-group\\\" envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\",\"line\":6,\"path\":\"envVarGroups[0].envVars[0]\"}],\"valid\":false}"
+            }
+          ],
+          "structuredContent": {
+            "errors": [
+              {
+                "column": 9,
+                "error": "env group \"qa296-c1ee3c-group\" envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+                "line": 6,
+                "path": "envVarGroups[0].envVars[0]"
+              }
+            ],
+            "valid": false
+          }
+        }
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "env group \"qa296-c1ee3c-group\" envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+            "line": 6,
+            "path": "envVarGroups[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "normalized_errors": [
+        {
+          "error": "env group \"qa296-c1ee3c-group\" envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "envVarGroups[0].envVars[0]",
+          "line": 6,
+          "column": 9
+        }
+      ],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "MCP",
+      "kind": "group-literal",
+      "variant": "newline-control",
+      "expected_valid": true,
+      "expected_errors_from_native": [],
+      "document": {
+        "envVarGroups": [
+          {
+            "name": "qa296-c1ee3c-group",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\nafter"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/mcp",
+      "request_body": {
+        "jsonrpc": "2.0",
+        "id": 296023,
+        "method": "tools/call",
+        "params": {
+          "name": "validate_bex_yml",
+          "arguments": {
+            "workspaceId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa296-c1ee3c-group\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\nafter\"\n        }\n      ]\n    }\n  ]\n}\n"
+          }
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:29.107645+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/mcp",
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 296023,
+            "method": "tools/call",
+            "params": {
+              "name": "validate_bex_yml",
+              "arguments": {
+                "workspaceId": "tea-daif693dqjvc73e7as3g",
+                "bexYaml": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa296-c1ee3c-group\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\nafter\"\n        }\n      ]\n    }\n  ]\n}\n"
+              }
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 1.166,
+        "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":296023,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"estimatedPricing\\\":{\\\"lines\\\":[],\\\"totalUsd\\\":\\\"0.00\\\",\\\"variable\\\":[]},\\\"plan\\\":{\\\"actions\\\":[{\\\"kind\\\":\\\"env_var_group\\\",\\\"name\\\":\\\"qa296-c1ee3c-group\\\",\\\"operation\\\":\\\"create\\\",\\\"sourcePath\\\":\\\"#/envVarGroups/0\\\"}],\\\"envGroups\\\":[\\\"qa296-c1ee3c-group\\\"],\\\"mode\\\":\\\"current_state\\\",\\\"totalActions\\\":1},\\\"valid\\\":true}\"}],\"structuredContent\":{\"estimatedPricing\":{\"lines\":[],\"totalUsd\":\"0.00\",\"variable\":[]},\"plan\":{\"actions\":[{\"kind\":\"env_var_group\",\"name\":\"qa296-c1ee3c-group\",\"operation\":\"create\",\"sourcePath\":\"#/envVarGroups/0\"}],\"envGroups\":[\"qa296-c1ee3c-group\"],\"mode\":\"current_state\",\"totalActions\":1},\"valid\":true}}}\n\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 296023,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"estimatedPricing\":{\"lines\":[],\"totalUsd\":\"0.00\",\"variable\":[]},\"plan\":{\"actions\":[{\"kind\":\"env_var_group\",\"name\":\"qa296-c1ee3c-group\",\"operation\":\"create\",\"sourcePath\":\"#/envVarGroups/0\"}],\"envGroups\":[\"qa296-c1ee3c-group\"],\"mode\":\"current_state\",\"totalActions\":1},\"valid\":true}"
+            }
+          ],
+          "structuredContent": {
+            "estimatedPricing": {
+              "lines": [],
+              "totalUsd": "0.00",
+              "variable": []
+            },
+            "plan": {
+              "actions": [
+                {
+                  "kind": "env_var_group",
+                  "name": "qa296-c1ee3c-group",
+                  "operation": "create",
+                  "sourcePath": "#/envVarGroups/0"
+                }
+              ],
+              "envGroups": [
+                "qa296-c1ee3c-group"
+              ],
+              "mode": "current_state",
+              "totalActions": 1
+            },
+            "valid": true
+          }
+        }
+      },
+      "decoded": {
+        "estimatedPricing": {
+          "lines": [],
+          "totalUsd": "0.00",
+          "variable": []
+        },
+        "plan": {
+          "actions": [
+            {
+              "kind": "env_var_group",
+              "name": "qa296-c1ee3c-group",
+              "operation": "create",
+              "sourcePath": "#/envVarGroups/0"
+            }
+          ],
+          "envGroups": [
+            "qa296-c1ee3c-group"
+          ],
+          "mode": "current_state",
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "normalized_errors": [],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "MCP",
+      "kind": "service-literal",
+      "variant": "nul-position-start",
+      "expected_valid": false,
+      "expected_errors_from_native": [
+        {
+          "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "services[0].envVars[0]",
+          "line": 12,
+          "column": 9
+        }
+      ],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "\u0000QA296_VALUE_c1ee3c"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/mcp",
+      "request_body": {
+        "jsonrpc": "2.0",
+        "id": 296024,
+        "method": "tools/call",
+        "params": {
+          "name": "validate_bex_yml",
+          "arguments": {
+            "workspaceId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"\\u0000QA296_VALUE_c1ee3c\"\n        }\n      ]\n    }\n  ]\n}\n"
+          }
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:30.178551+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/mcp",
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 296024,
+            "method": "tools/call",
+            "params": {
+              "name": "validate_bex_yml",
+              "arguments": {
+                "workspaceId": "tea-daif693dqjvc73e7as3g",
+                "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"\\u0000QA296_VALUE_c1ee3c\"\n        }\n      ]\n    }\n  ]\n}\n"
+              }
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.345,
+        "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":296024,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"errors\\\":[{\\\"column\\\":9,\\\"error\\\":\\\"qa296-c1ee3c-web envVars[\\\\\\\"QA_LITERAL\\\\\\\"]: environment variable \\\\\\\"QA_LITERAL\\\\\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\\\",\\\"line\\\":12,\\\"path\\\":\\\"services[0].envVars[0]\\\"}],\\\"valid\\\":false}\"}],\"structuredContent\":{\"errors\":[{\"column\":9,\"error\":\"qa296-c1ee3c-web envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\",\"line\":12,\"path\":\"services[0].envVars[0]\"}],\"valid\":false}}}\n\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 296024,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"errors\":[{\"column\":9,\"error\":\"qa296-c1ee3c-web envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\",\"line\":12,\"path\":\"services[0].envVars[0]\"}],\"valid\":false}"
+            }
+          ],
+          "structuredContent": {
+            "errors": [
+              {
+                "column": 9,
+                "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+                "line": 12,
+                "path": "services[0].envVars[0]"
+              }
+            ],
+            "valid": false
+          }
+        }
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+            "line": 12,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "normalized_errors": [
+        {
+          "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "services[0].envVars[0]",
+          "line": 12,
+          "column": 9
+        }
+      ],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "MCP",
+      "kind": "service-literal",
+      "variant": "nul-position-middle",
+      "expected_valid": false,
+      "expected_errors_from_native": [
+        {
+          "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "services[0].envVars[0]",
+          "line": 12,
+          "column": 9
+        }
+      ],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\u0000after"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/mcp",
+      "request_body": {
+        "jsonrpc": "2.0",
+        "id": 296025,
+        "method": "tools/call",
+        "params": {
+          "name": "validate_bex_yml",
+          "arguments": {
+            "workspaceId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\u0000after\"\n        }\n      ]\n    }\n  ]\n}\n"
+          }
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:31.306181+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/mcp",
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 296025,
+            "method": "tools/call",
+            "params": {
+              "name": "validate_bex_yml",
+              "arguments": {
+                "workspaceId": "tea-daif693dqjvc73e7as3g",
+                "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\u0000after\"\n        }\n      ]\n    }\n  ]\n}\n"
+              }
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.388,
+        "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":296025,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"errors\\\":[{\\\"column\\\":9,\\\"error\\\":\\\"qa296-c1ee3c-web envVars[\\\\\\\"QA_LITERAL\\\\\\\"]: environment variable \\\\\\\"QA_LITERAL\\\\\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\\\",\\\"line\\\":12,\\\"path\\\":\\\"services[0].envVars[0]\\\"}],\\\"valid\\\":false}\"}],\"structuredContent\":{\"errors\":[{\"column\":9,\"error\":\"qa296-c1ee3c-web envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\",\"line\":12,\"path\":\"services[0].envVars[0]\"}],\"valid\":false}}}\n\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 296025,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"errors\":[{\"column\":9,\"error\":\"qa296-c1ee3c-web envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\",\"line\":12,\"path\":\"services[0].envVars[0]\"}],\"valid\":false}"
+            }
+          ],
+          "structuredContent": {
+            "errors": [
+              {
+                "column": 9,
+                "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+                "line": 12,
+                "path": "services[0].envVars[0]"
+              }
+            ],
+            "valid": false
+          }
+        }
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+            "line": 12,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "normalized_errors": [
+        {
+          "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "services[0].envVars[0]",
+          "line": 12,
+          "column": 9
+        }
+      ],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "MCP",
+      "kind": "service-literal",
+      "variant": "nul-position-end",
+      "expected_valid": false,
+      "expected_errors_from_native": [
+        {
+          "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "services[0].envVars[0]",
+          "line": 12,
+          "column": 9
+        }
+      ],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\u0000"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/mcp",
+      "request_body": {
+        "jsonrpc": "2.0",
+        "id": 296026,
+        "method": "tools/call",
+        "params": {
+          "name": "validate_bex_yml",
+          "arguments": {
+            "workspaceId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\u0000\"\n        }\n      ]\n    }\n  ]\n}\n"
+          }
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:32.562816+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/mcp",
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 296026,
+            "method": "tools/call",
+            "params": {
+              "name": "validate_bex_yml",
+              "arguments": {
+                "workspaceId": "tea-daif693dqjvc73e7as3g",
+                "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\u0000\"\n        }\n      ]\n    }\n  ]\n}\n"
+              }
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.522,
+        "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":296026,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"errors\\\":[{\\\"column\\\":9,\\\"error\\\":\\\"qa296-c1ee3c-web envVars[\\\\\\\"QA_LITERAL\\\\\\\"]: environment variable \\\\\\\"QA_LITERAL\\\\\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\\\",\\\"line\\\":12,\\\"path\\\":\\\"services[0].envVars[0]\\\"}],\\\"valid\\\":false}\"}],\"structuredContent\":{\"errors\":[{\"column\":9,\"error\":\"qa296-c1ee3c-web envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\",\"line\":12,\"path\":\"services[0].envVars[0]\"}],\"valid\":false}}}\n\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 296026,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"errors\":[{\"column\":9,\"error\":\"qa296-c1ee3c-web envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\",\"line\":12,\"path\":\"services[0].envVars[0]\"}],\"valid\":false}"
+            }
+          ],
+          "structuredContent": {
+            "errors": [
+              {
+                "column": 9,
+                "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+                "line": 12,
+                "path": "services[0].envVars[0]"
+              }
+            ],
+            "valid": false
+          }
+        }
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+            "line": 12,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "normalized_errors": [
+        {
+          "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "services[0].envVars[0]",
+          "line": 12,
+          "column": 9
+        }
+      ],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "MCP",
+      "kind": "service-literal",
+      "variant": "nul-position-only",
+      "expected_valid": false,
+      "expected_errors_from_native": [
+        {
+          "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "services[0].envVars[0]",
+          "line": 12,
+          "column": 9
+        }
+      ],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "\u0000"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/mcp",
+      "request_body": {
+        "jsonrpc": "2.0",
+        "id": 296027,
+        "method": "tools/call",
+        "params": {
+          "name": "validate_bex_yml",
+          "arguments": {
+            "workspaceId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"\\u0000\"\n        }\n      ]\n    }\n  ]\n}\n"
+          }
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:33.716623+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/mcp",
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 296027,
+            "method": "tools/call",
+            "params": {
+              "name": "validate_bex_yml",
+              "arguments": {
+                "workspaceId": "tea-daif693dqjvc73e7as3g",
+                "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"\\u0000\"\n        }\n      ]\n    }\n  ]\n}\n"
+              }
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.405,
+        "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":296027,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"errors\\\":[{\\\"column\\\":9,\\\"error\\\":\\\"qa296-c1ee3c-web envVars[\\\\\\\"QA_LITERAL\\\\\\\"]: environment variable \\\\\\\"QA_LITERAL\\\\\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\\\",\\\"line\\\":12,\\\"path\\\":\\\"services[0].envVars[0]\\\"}],\\\"valid\\\":false}\"}],\"structuredContent\":{\"errors\":[{\"column\":9,\"error\":\"qa296-c1ee3c-web envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\",\"line\":12,\"path\":\"services[0].envVars[0]\"}],\"valid\":false}}}\n\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 296027,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"errors\":[{\"column\":9,\"error\":\"qa296-c1ee3c-web envVars[\\\"QA_LITERAL\\\"]: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\",\"line\":12,\"path\":\"services[0].envVars[0]\"}],\"valid\":false}"
+            }
+          ],
+          "structuredContent": {
+            "errors": [
+              {
+                "column": 9,
+                "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+                "line": 12,
+                "path": "services[0].envVars[0]"
+              }
+            ],
+            "valid": false
+          }
+        }
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+            "line": 12,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "normalized_errors": [
+        {
+          "error": "qa296-c1ee3c-web envVars[\"QA_LITERAL\"]: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content",
+          "path": "services[0].envVars[0]",
+          "line": 12,
+          "column": 9
+        }
+      ],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "MCP",
+      "kind": "service-literal",
+      "variant": "empty",
+      "expected_valid": true,
+      "expected_errors_from_native": [],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": ""
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/mcp",
+      "request_body": {
+        "jsonrpc": "2.0",
+        "id": 296028,
+        "method": "tools/call",
+        "params": {
+          "name": "validate_bex_yml",
+          "arguments": {
+            "workspaceId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"\"\n        }\n      ]\n    }\n  ]\n}\n"
+          }
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:34.865745+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/mcp",
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 296028,
+            "method": "tools/call",
+            "params": {
+              "name": "validate_bex_yml",
+              "arguments": {
+                "workspaceId": "tea-daif693dqjvc73e7as3g",
+                "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"\"\n        }\n      ]\n    }\n  ]\n}\n"
+              }
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.401,
+        "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":296028,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"estimatedPricing\\\":{\\\"lines\\\":[],\\\"totalUsd\\\":\\\"0.00\\\",\\\"variable\\\":[]},\\\"plan\\\":{\\\"actions\\\":[{\\\"kind\\\":\\\"service\\\",\\\"name\\\":\\\"qa296-c1ee3c-web\\\",\\\"operation\\\":\\\"create\\\",\\\"sourcePath\\\":\\\"#/services/0\\\"}],\\\"mode\\\":\\\"current_state\\\",\\\"services\\\":[\\\"qa296-c1ee3c-web\\\"],\\\"totalActions\\\":1},\\\"valid\\\":true}\"}],\"structuredContent\":{\"estimatedPricing\":{\"lines\":[],\"totalUsd\":\"0.00\",\"variable\":[]},\"plan\":{\"actions\":[{\"kind\":\"service\",\"name\":\"qa296-c1ee3c-web\",\"operation\":\"create\",\"sourcePath\":\"#/services/0\"}],\"mode\":\"current_state\",\"services\":[\"qa296-c1ee3c-web\"],\"totalActions\":1},\"valid\":true}}}\n\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 296028,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"estimatedPricing\":{\"lines\":[],\"totalUsd\":\"0.00\",\"variable\":[]},\"plan\":{\"actions\":[{\"kind\":\"service\",\"name\":\"qa296-c1ee3c-web\",\"operation\":\"create\",\"sourcePath\":\"#/services/0\"}],\"mode\":\"current_state\",\"services\":[\"qa296-c1ee3c-web\"],\"totalActions\":1},\"valid\":true}"
+            }
+          ],
+          "structuredContent": {
+            "estimatedPricing": {
+              "lines": [],
+              "totalUsd": "0.00",
+              "variable": []
+            },
+            "plan": {
+              "actions": [
+                {
+                  "kind": "service",
+                  "name": "qa296-c1ee3c-web",
+                  "operation": "create",
+                  "sourcePath": "#/services/0"
+                }
+              ],
+              "mode": "current_state",
+              "services": [
+                "qa296-c1ee3c-web"
+              ],
+              "totalActions": 1
+            },
+            "valid": true
+          }
+        }
+      },
+      "decoded": {
+        "estimatedPricing": {
+          "lines": [],
+          "totalUsd": "0.00",
+          "variable": []
+        },
+        "plan": {
+          "actions": [
+            {
+              "kind": "service",
+              "name": "qa296-c1ee3c-web",
+              "operation": "create",
+              "sourcePath": "#/services/0"
+            }
+          ],
+          "mode": "current_state",
+          "services": [
+            "qa296-c1ee3c-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "normalized_errors": [],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "MCP",
+      "kind": "service-literal",
+      "variant": "unicode",
+      "expected_valid": true,
+      "expected_errors_from_native": [],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\u2603"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/mcp",
+      "request_body": {
+        "jsonrpc": "2.0",
+        "id": 296029,
+        "method": "tools/call",
+        "params": {
+          "name": "validate_bex_yml",
+          "arguments": {
+            "workspaceId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\u2603\"\n        }\n      ]\n    }\n  ]\n}\n"
+          }
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:35.987332+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/mcp",
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 296029,
+            "method": "tools/call",
+            "params": {
+              "name": "validate_bex_yml",
+              "arguments": {
+                "workspaceId": "tea-daif693dqjvc73e7as3g",
+                "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\u2603\"\n        }\n      ]\n    }\n  ]\n}\n"
+              }
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.377,
+        "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":296029,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"estimatedPricing\\\":{\\\"lines\\\":[],\\\"totalUsd\\\":\\\"0.00\\\",\\\"variable\\\":[]},\\\"plan\\\":{\\\"actions\\\":[{\\\"kind\\\":\\\"service\\\",\\\"name\\\":\\\"qa296-c1ee3c-web\\\",\\\"operation\\\":\\\"create\\\",\\\"sourcePath\\\":\\\"#/services/0\\\"}],\\\"mode\\\":\\\"current_state\\\",\\\"services\\\":[\\\"qa296-c1ee3c-web\\\"],\\\"totalActions\\\":1},\\\"valid\\\":true}\"}],\"structuredContent\":{\"estimatedPricing\":{\"lines\":[],\"totalUsd\":\"0.00\",\"variable\":[]},\"plan\":{\"actions\":[{\"kind\":\"service\",\"name\":\"qa296-c1ee3c-web\",\"operation\":\"create\",\"sourcePath\":\"#/services/0\"}],\"mode\":\"current_state\",\"services\":[\"qa296-c1ee3c-web\"],\"totalActions\":1},\"valid\":true}}}\n\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 296029,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"estimatedPricing\":{\"lines\":[],\"totalUsd\":\"0.00\",\"variable\":[]},\"plan\":{\"actions\":[{\"kind\":\"service\",\"name\":\"qa296-c1ee3c-web\",\"operation\":\"create\",\"sourcePath\":\"#/services/0\"}],\"mode\":\"current_state\",\"services\":[\"qa296-c1ee3c-web\"],\"totalActions\":1},\"valid\":true}"
+            }
+          ],
+          "structuredContent": {
+            "estimatedPricing": {
+              "lines": [],
+              "totalUsd": "0.00",
+              "variable": []
+            },
+            "plan": {
+              "actions": [
+                {
+                  "kind": "service",
+                  "name": "qa296-c1ee3c-web",
+                  "operation": "create",
+                  "sourcePath": "#/services/0"
+                }
+              ],
+              "mode": "current_state",
+              "services": [
+                "qa296-c1ee3c-web"
+              ],
+              "totalActions": 1
+            },
+            "valid": true
+          }
+        }
+      },
+      "decoded": {
+        "estimatedPricing": {
+          "lines": [],
+          "totalUsd": "0.00",
+          "variable": []
+        },
+        "plan": {
+          "actions": [
+            {
+              "kind": "service",
+              "name": "qa296-c1ee3c-web",
+              "operation": "create",
+              "sourcePath": "#/services/0"
+            }
+          ],
+          "mode": "current_state",
+          "services": [
+            "qa296-c1ee3c-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "normalized_errors": [],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "MCP",
+      "kind": "service-literal",
+      "variant": "newline",
+      "expected_valid": true,
+      "expected_errors_from_native": [],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\nnext"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/mcp",
+      "request_body": {
+        "jsonrpc": "2.0",
+        "id": 296030,
+        "method": "tools/call",
+        "params": {
+          "name": "validate_bex_yml",
+          "arguments": {
+            "workspaceId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\nnext\"\n        }\n      ]\n    }\n  ]\n}\n"
+          }
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:37.150472+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/mcp",
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 296030,
+            "method": "tools/call",
+            "params": {
+              "name": "validate_bex_yml",
+              "arguments": {
+                "workspaceId": "tea-daif693dqjvc73e7as3g",
+                "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\nnext\"\n        }\n      ]\n    }\n  ]\n}\n"
+              }
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.433,
+        "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":296030,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"estimatedPricing\\\":{\\\"lines\\\":[],\\\"totalUsd\\\":\\\"0.00\\\",\\\"variable\\\":[]},\\\"plan\\\":{\\\"actions\\\":[{\\\"kind\\\":\\\"service\\\",\\\"name\\\":\\\"qa296-c1ee3c-web\\\",\\\"operation\\\":\\\"create\\\",\\\"sourcePath\\\":\\\"#/services/0\\\"}],\\\"mode\\\":\\\"current_state\\\",\\\"services\\\":[\\\"qa296-c1ee3c-web\\\"],\\\"totalActions\\\":1},\\\"valid\\\":true}\"}],\"structuredContent\":{\"estimatedPricing\":{\"lines\":[],\"totalUsd\":\"0.00\",\"variable\":[]},\"plan\":{\"actions\":[{\"kind\":\"service\",\"name\":\"qa296-c1ee3c-web\",\"operation\":\"create\",\"sourcePath\":\"#/services/0\"}],\"mode\":\"current_state\",\"services\":[\"qa296-c1ee3c-web\"],\"totalActions\":1},\"valid\":true}}}\n\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 296030,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"estimatedPricing\":{\"lines\":[],\"totalUsd\":\"0.00\",\"variable\":[]},\"plan\":{\"actions\":[{\"kind\":\"service\",\"name\":\"qa296-c1ee3c-web\",\"operation\":\"create\",\"sourcePath\":\"#/services/0\"}],\"mode\":\"current_state\",\"services\":[\"qa296-c1ee3c-web\"],\"totalActions\":1},\"valid\":true}"
+            }
+          ],
+          "structuredContent": {
+            "estimatedPricing": {
+              "lines": [],
+              "totalUsd": "0.00",
+              "variable": []
+            },
+            "plan": {
+              "actions": [
+                {
+                  "kind": "service",
+                  "name": "qa296-c1ee3c-web",
+                  "operation": "create",
+                  "sourcePath": "#/services/0"
+                }
+              ],
+              "mode": "current_state",
+              "services": [
+                "qa296-c1ee3c-web"
+              ],
+              "totalActions": 1
+            },
+            "valid": true
+          }
+        }
+      },
+      "decoded": {
+        "estimatedPricing": {
+          "lines": [],
+          "totalUsd": "0.00",
+          "variable": []
+        },
+        "plan": {
+          "actions": [
+            {
+              "kind": "service",
+              "name": "qa296-c1ee3c-web",
+              "operation": "create",
+              "sourcePath": "#/services/0"
+            }
+          ],
+          "mode": "current_state",
+          "services": [
+            "qa296-c1ee3c-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "normalized_errors": [],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "MCP",
+      "kind": "service-literal",
+      "variant": "tab",
+      "expected_valid": true,
+      "expected_errors_from_native": [],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\tnext"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/mcp",
+      "request_body": {
+        "jsonrpc": "2.0",
+        "id": 296031,
+        "method": "tools/call",
+        "params": {
+          "name": "validate_bex_yml",
+          "arguments": {
+            "workspaceId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\tnext\"\n        }\n      ]\n    }\n  ]\n}\n"
+          }
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:38.292118+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/mcp",
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 296031,
+            "method": "tools/call",
+            "params": {
+              "name": "validate_bex_yml",
+              "arguments": {
+                "workspaceId": "tea-daif693dqjvc73e7as3g",
+                "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\tnext\"\n        }\n      ]\n    }\n  ]\n}\n"
+              }
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.396,
+        "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":296031,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"estimatedPricing\\\":{\\\"lines\\\":[],\\\"totalUsd\\\":\\\"0.00\\\",\\\"variable\\\":[]},\\\"plan\\\":{\\\"actions\\\":[{\\\"kind\\\":\\\"service\\\",\\\"name\\\":\\\"qa296-c1ee3c-web\\\",\\\"operation\\\":\\\"create\\\",\\\"sourcePath\\\":\\\"#/services/0\\\"}],\\\"mode\\\":\\\"current_state\\\",\\\"services\\\":[\\\"qa296-c1ee3c-web\\\"],\\\"totalActions\\\":1},\\\"valid\\\":true}\"}],\"structuredContent\":{\"estimatedPricing\":{\"lines\":[],\"totalUsd\":\"0.00\",\"variable\":[]},\"plan\":{\"actions\":[{\"kind\":\"service\",\"name\":\"qa296-c1ee3c-web\",\"operation\":\"create\",\"sourcePath\":\"#/services/0\"}],\"mode\":\"current_state\",\"services\":[\"qa296-c1ee3c-web\"],\"totalActions\":1},\"valid\":true}}}\n\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 296031,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"estimatedPricing\":{\"lines\":[],\"totalUsd\":\"0.00\",\"variable\":[]},\"plan\":{\"actions\":[{\"kind\":\"service\",\"name\":\"qa296-c1ee3c-web\",\"operation\":\"create\",\"sourcePath\":\"#/services/0\"}],\"mode\":\"current_state\",\"services\":[\"qa296-c1ee3c-web\"],\"totalActions\":1},\"valid\":true}"
+            }
+          ],
+          "structuredContent": {
+            "estimatedPricing": {
+              "lines": [],
+              "totalUsd": "0.00",
+              "variable": []
+            },
+            "plan": {
+              "actions": [
+                {
+                  "kind": "service",
+                  "name": "qa296-c1ee3c-web",
+                  "operation": "create",
+                  "sourcePath": "#/services/0"
+                }
+              ],
+              "mode": "current_state",
+              "services": [
+                "qa296-c1ee3c-web"
+              ],
+              "totalActions": 1
+            },
+            "valid": true
+          }
+        }
+      },
+      "decoded": {
+        "estimatedPricing": {
+          "lines": [],
+          "totalUsd": "0.00",
+          "variable": []
+        },
+        "plan": {
+          "actions": [
+            {
+              "kind": "service",
+              "name": "qa296-c1ee3c-web",
+              "operation": "create",
+              "sourcePath": "#/services/0"
+            }
+          ],
+          "mode": "current_state",
+          "services": [
+            "qa296-c1ee3c-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "normalized_errors": [],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "MCP",
+      "kind": "service-literal",
+      "variant": "CRLF",
+      "expected_valid": true,
+      "expected_errors_from_native": [],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\r\nnext"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/mcp",
+      "request_body": {
+        "jsonrpc": "2.0",
+        "id": 296032,
+        "method": "tools/call",
+        "params": {
+          "name": "validate_bex_yml",
+          "arguments": {
+            "workspaceId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\r\\nnext\"\n        }\n      ]\n    }\n  ]\n}\n"
+          }
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:39.522165+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/mcp",
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 296032,
+            "method": "tools/call",
+            "params": {
+              "name": "validate_bex_yml",
+              "arguments": {
+                "workspaceId": "tea-daif693dqjvc73e7as3g",
+                "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\r\\nnext\"\n        }\n      ]\n    }\n  ]\n}\n"
+              }
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.487,
+        "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":296032,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"estimatedPricing\\\":{\\\"lines\\\":[],\\\"totalUsd\\\":\\\"0.00\\\",\\\"variable\\\":[]},\\\"plan\\\":{\\\"actions\\\":[{\\\"kind\\\":\\\"service\\\",\\\"name\\\":\\\"qa296-c1ee3c-web\\\",\\\"operation\\\":\\\"create\\\",\\\"sourcePath\\\":\\\"#/services/0\\\"}],\\\"mode\\\":\\\"current_state\\\",\\\"services\\\":[\\\"qa296-c1ee3c-web\\\"],\\\"totalActions\\\":1},\\\"valid\\\":true}\"}],\"structuredContent\":{\"estimatedPricing\":{\"lines\":[],\"totalUsd\":\"0.00\",\"variable\":[]},\"plan\":{\"actions\":[{\"kind\":\"service\",\"name\":\"qa296-c1ee3c-web\",\"operation\":\"create\",\"sourcePath\":\"#/services/0\"}],\"mode\":\"current_state\",\"services\":[\"qa296-c1ee3c-web\"],\"totalActions\":1},\"valid\":true}}}\n\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 296032,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"estimatedPricing\":{\"lines\":[],\"totalUsd\":\"0.00\",\"variable\":[]},\"plan\":{\"actions\":[{\"kind\":\"service\",\"name\":\"qa296-c1ee3c-web\",\"operation\":\"create\",\"sourcePath\":\"#/services/0\"}],\"mode\":\"current_state\",\"services\":[\"qa296-c1ee3c-web\"],\"totalActions\":1},\"valid\":true}"
+            }
+          ],
+          "structuredContent": {
+            "estimatedPricing": {
+              "lines": [],
+              "totalUsd": "0.00",
+              "variable": []
+            },
+            "plan": {
+              "actions": [
+                {
+                  "kind": "service",
+                  "name": "qa296-c1ee3c-web",
+                  "operation": "create",
+                  "sourcePath": "#/services/0"
+                }
+              ],
+              "mode": "current_state",
+              "services": [
+                "qa296-c1ee3c-web"
+              ],
+              "totalActions": 1
+            },
+            "valid": true
+          }
+        }
+      },
+      "decoded": {
+        "estimatedPricing": {
+          "lines": [],
+          "totalUsd": "0.00",
+          "variable": []
+        },
+        "plan": {
+          "actions": [
+            {
+              "kind": "service",
+              "name": "qa296-c1ee3c-web",
+              "operation": "create",
+              "sourcePath": "#/services/0"
+            }
+          ],
+          "mode": "current_state",
+          "services": [
+            "qa296-c1ee3c-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "normalized_errors": [],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "MCP",
+      "kind": "service-literal",
+      "variant": "literal-backslash-u0000",
+      "expected_valid": true,
+      "expected_errors_from_native": [],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c\\u0000"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/mcp",
+      "request_body": {
+        "jsonrpc": "2.0",
+        "id": 296033,
+        "method": "tools/call",
+        "params": {
+          "name": "validate_bex_yml",
+          "arguments": {
+            "workspaceId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\\\u0000\"\n        }\n      ]\n    }\n  ]\n}\n"
+          }
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:40.653963+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/mcp",
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 296033,
+            "method": "tools/call",
+            "params": {
+              "name": "validate_bex_yml",
+              "arguments": {
+                "workspaceId": "tea-daif693dqjvc73e7as3g",
+                "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\\\\u0000\"\n        }\n      ]\n    }\n  ]\n}\n"
+              }
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.412,
+        "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":296033,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"estimatedPricing\\\":{\\\"lines\\\":[],\\\"totalUsd\\\":\\\"0.00\\\",\\\"variable\\\":[]},\\\"plan\\\":{\\\"actions\\\":[{\\\"kind\\\":\\\"service\\\",\\\"name\\\":\\\"qa296-c1ee3c-web\\\",\\\"operation\\\":\\\"create\\\",\\\"sourcePath\\\":\\\"#/services/0\\\"}],\\\"mode\\\":\\\"current_state\\\",\\\"services\\\":[\\\"qa296-c1ee3c-web\\\"],\\\"totalActions\\\":1},\\\"valid\\\":true}\"}],\"structuredContent\":{\"estimatedPricing\":{\"lines\":[],\"totalUsd\":\"0.00\",\"variable\":[]},\"plan\":{\"actions\":[{\"kind\":\"service\",\"name\":\"qa296-c1ee3c-web\",\"operation\":\"create\",\"sourcePath\":\"#/services/0\"}],\"mode\":\"current_state\",\"services\":[\"qa296-c1ee3c-web\"],\"totalActions\":1},\"valid\":true}}}\n\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 296033,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"estimatedPricing\":{\"lines\":[],\"totalUsd\":\"0.00\",\"variable\":[]},\"plan\":{\"actions\":[{\"kind\":\"service\",\"name\":\"qa296-c1ee3c-web\",\"operation\":\"create\",\"sourcePath\":\"#/services/0\"}],\"mode\":\"current_state\",\"services\":[\"qa296-c1ee3c-web\"],\"totalActions\":1},\"valid\":true}"
+            }
+          ],
+          "structuredContent": {
+            "estimatedPricing": {
+              "lines": [],
+              "totalUsd": "0.00",
+              "variable": []
+            },
+            "plan": {
+              "actions": [
+                {
+                  "kind": "service",
+                  "name": "qa296-c1ee3c-web",
+                  "operation": "create",
+                  "sourcePath": "#/services/0"
+                }
+              ],
+              "mode": "current_state",
+              "services": [
+                "qa296-c1ee3c-web"
+              ],
+              "totalActions": 1
+            },
+            "valid": true
+          }
+        }
+      },
+      "decoded": {
+        "estimatedPricing": {
+          "lines": [],
+          "totalUsd": "0.00",
+          "variable": []
+        },
+        "plan": {
+          "actions": [
+            {
+              "kind": "service",
+              "name": "qa296-c1ee3c-web",
+              "operation": "create",
+              "sourcePath": "#/services/0"
+            }
+          ],
+          "mode": "current_state",
+          "services": [
+            "qa296-c1ee3c-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "normalized_errors": [],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "MCP",
+      "kind": "service-literal",
+      "variant": "numeric-string",
+      "expected_valid": true,
+      "expected_errors_from_native": [],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "42"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/mcp",
+      "request_body": {
+        "jsonrpc": "2.0",
+        "id": 296034,
+        "method": "tools/call",
+        "params": {
+          "name": "validate_bex_yml",
+          "arguments": {
+            "workspaceId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"42\"\n        }\n      ]\n    }\n  ]\n}\n"
+          }
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:41.818056+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/mcp",
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 296034,
+            "method": "tools/call",
+            "params": {
+              "name": "validate_bex_yml",
+              "arguments": {
+                "workspaceId": "tea-daif693dqjvc73e7as3g",
+                "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"42\"\n        }\n      ]\n    }\n  ]\n}\n"
+              }
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.42,
+        "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":296034,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"estimatedPricing\\\":{\\\"lines\\\":[],\\\"totalUsd\\\":\\\"0.00\\\",\\\"variable\\\":[]},\\\"plan\\\":{\\\"actions\\\":[{\\\"kind\\\":\\\"service\\\",\\\"name\\\":\\\"qa296-c1ee3c-web\\\",\\\"operation\\\":\\\"create\\\",\\\"sourcePath\\\":\\\"#/services/0\\\"}],\\\"mode\\\":\\\"current_state\\\",\\\"services\\\":[\\\"qa296-c1ee3c-web\\\"],\\\"totalActions\\\":1},\\\"valid\\\":true}\"}],\"structuredContent\":{\"estimatedPricing\":{\"lines\":[],\"totalUsd\":\"0.00\",\"variable\":[]},\"plan\":{\"actions\":[{\"kind\":\"service\",\"name\":\"qa296-c1ee3c-web\",\"operation\":\"create\",\"sourcePath\":\"#/services/0\"}],\"mode\":\"current_state\",\"services\":[\"qa296-c1ee3c-web\"],\"totalActions\":1},\"valid\":true}}}\n\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 296034,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"estimatedPricing\":{\"lines\":[],\"totalUsd\":\"0.00\",\"variable\":[]},\"plan\":{\"actions\":[{\"kind\":\"service\",\"name\":\"qa296-c1ee3c-web\",\"operation\":\"create\",\"sourcePath\":\"#/services/0\"}],\"mode\":\"current_state\",\"services\":[\"qa296-c1ee3c-web\"],\"totalActions\":1},\"valid\":true}"
+            }
+          ],
+          "structuredContent": {
+            "estimatedPricing": {
+              "lines": [],
+              "totalUsd": "0.00",
+              "variable": []
+            },
+            "plan": {
+              "actions": [
+                {
+                  "kind": "service",
+                  "name": "qa296-c1ee3c-web",
+                  "operation": "create",
+                  "sourcePath": "#/services/0"
+                }
+              ],
+              "mode": "current_state",
+              "services": [
+                "qa296-c1ee3c-web"
+              ],
+              "totalActions": 1
+            },
+            "valid": true
+          }
+        }
+      },
+      "decoded": {
+        "estimatedPricing": {
+          "lines": [],
+          "totalUsd": "0.00",
+          "variable": []
+        },
+        "plan": {
+          "actions": [
+            {
+              "kind": "service",
+              "name": "qa296-c1ee3c-web",
+              "operation": "create",
+              "sourcePath": "#/services/0"
+            }
+          ],
+          "mode": "current_state",
+          "services": [
+            "qa296-c1ee3c-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "normalized_errors": [],
+      "acceptance_pass": true
+    },
+    {
+      "adapter": "MCP",
+      "kind": "service-literal",
+      "variant": "ordinary",
+      "expected_valid": true,
+      "expected_errors_from_native": [],
+      "document": {
+        "services": [
+          {
+            "name": "qa296-c1ee3c-web",
+            "type": "web",
+            "runtime": "image",
+            "image": {
+              "url": "nginx:1"
+            },
+            "plan": "free",
+            "envVars": [
+              {
+                "key": "QA_LITERAL",
+                "value": "QA296_VALUE_c1ee3c"
+              }
+            ]
+          }
+        ]
+      },
+      "request_path": "/mcp",
+      "request_body": {
+        "jsonrpc": "2.0",
+        "id": 296035,
+        "method": "tools/call",
+        "params": {
+          "name": "validate_bex_yml",
+          "arguments": {
+            "workspaceId": "tea-daif693dqjvc73e7as3g",
+            "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\"\n        }\n      ]\n    }\n  ]\n}\n"
+          }
+        }
+      },
+      "state": "API-only validation completed",
+      "receipt": {
+        "at": "2026-10-15T09:53:43.248130+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/mcp",
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 296035,
+            "method": "tools/call",
+            "params": {
+              "name": "validate_bex_yml",
+              "arguments": {
+                "workspaceId": "tea-daif693dqjvc73e7as3g",
+                "bexYaml": "{\n  \"services\": [\n    {\n      \"name\": \"qa296-c1ee3c-web\",\n      \"type\": \"web\",\n      \"runtime\": \"image\",\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"plan\": \"free\",\n      \"envVars\": [\n        {\n          \"key\": \"QA_LITERAL\",\n          \"value\": \"QA296_VALUE_c1ee3c\"\n        }\n      ]\n    }\n  ]\n}\n"
+              }
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.695,
+        "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":296035,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"estimatedPricing\\\":{\\\"lines\\\":[],\\\"totalUsd\\\":\\\"0.00\\\",\\\"variable\\\":[]},\\\"plan\\\":{\\\"actions\\\":[{\\\"kind\\\":\\\"service\\\",\\\"name\\\":\\\"qa296-c1ee3c-web\\\",\\\"operation\\\":\\\"create\\\",\\\"sourcePath\\\":\\\"#/services/0\\\"}],\\\"mode\\\":\\\"current_state\\\",\\\"services\\\":[\\\"qa296-c1ee3c-web\\\"],\\\"totalActions\\\":1},\\\"valid\\\":true}\"}],\"structuredContent\":{\"estimatedPricing\":{\"lines\":[],\"totalUsd\":\"0.00\",\"variable\":[]},\"plan\":{\"actions\":[{\"kind\":\"service\",\"name\":\"qa296-c1ee3c-web\",\"operation\":\"create\",\"sourcePath\":\"#/services/0\"}],\"mode\":\"current_state\",\"services\":[\"qa296-c1ee3c-web\"],\"totalActions\":1},\"valid\":true}}}\n\n",
+        "stderr": ""
+      },
+      "envelope": {
+        "jsonrpc": "2.0",
+        "id": 296035,
+        "result": {
+          "content": [
+            {
+              "type": "text",
+              "text": "{\"estimatedPricing\":{\"lines\":[],\"totalUsd\":\"0.00\",\"variable\":[]},\"plan\":{\"actions\":[{\"kind\":\"service\",\"name\":\"qa296-c1ee3c-web\",\"operation\":\"create\",\"sourcePath\":\"#/services/0\"}],\"mode\":\"current_state\",\"services\":[\"qa296-c1ee3c-web\"],\"totalActions\":1},\"valid\":true}"
+            }
+          ],
+          "structuredContent": {
+            "estimatedPricing": {
+              "lines": [],
+              "totalUsd": "0.00",
+              "variable": []
+            },
+            "plan": {
+              "actions": [
+                {
+                  "kind": "service",
+                  "name": "qa296-c1ee3c-web",
+                  "operation": "create",
+                  "sourcePath": "#/services/0"
+                }
+              ],
+              "mode": "current_state",
+              "services": [
+                "qa296-c1ee3c-web"
+              ],
+              "totalActions": 1
+            },
+            "valid": true
+          }
+        }
+      },
+      "decoded": {
+        "estimatedPricing": {
+          "lines": [],
+          "totalUsd": "0.00",
+          "variable": []
+        },
+        "plan": {
+          "actions": [
+            {
+              "kind": "service",
+              "name": "qa296-c1ee3c-web",
+              "operation": "create",
+              "sourcePath": "#/services/0"
+            }
+          ],
+          "mode": "current_state",
+          "services": [
+            "qa296-c1ee3c-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "normalized_errors": [],
+      "acceptance_pass": true
+    }
+  ],
+  "temporary_request_removed": true
+}

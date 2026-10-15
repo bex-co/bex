@@ -31,3 +31,9 @@
 - **Render parity:** included because this affects tenant-facing CLI/API/UI command semantics. Actual Render production is untested; unchanged exact-pin and released2.29 builds establish the upstream boundary.
 
 Severity minor. The private upstream/backend diagnostics are research material; QA has landed no product fix, dependency bump, deployment, commit/push or external submission. Two owned parents/two children are removed, baseline6/quota6/terminating0 verified. Browser/shared live writes and fixed-release acceptance remain open.
+
+## Current-source and remaining live pre-deploy bytes — sweep299
+
+[Focused source/live evidence](evidence/cli-sweep299/README.md) verifies41 named source-test passes at f497ddab6, but an actual raw API-created Free Node fixture still stores a shortened pre-deploy command and executes hex7461696c5c. Build/start controls execute the authored hex7461696c20. Both actual native clients read the same one program output from build history and exit0. Exact deployed revisions are unobserved; this is the existing live defect, not proof of a source regression or a new deploy-lag issue. No compound update/manual-deploy or fixed-release acceptance is claimed after this failure.
+
+Fresh upstream main remains28b233e, with the six inspected hosting files byte-identical to the pin. Upstream authorization/release/adoption and actual deployed backend/dashboard acceptance remain separate gates. The own Free parent/one child are fully cleaned, baseline6/quota6/terminating0. QA changed no product source and performed no external submission, release or new ship.

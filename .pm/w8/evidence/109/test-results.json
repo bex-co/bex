@@ -1,0 +1,21 @@
+{
+  "baseline": {
+    "exit": 1,
+    "named_passes": 3,
+    "top_level_passes": 0,
+    "failed_leaf_cases": [
+      "TestQA297EnvGroupBulkRoute/native-bulk-valid",
+      "TestQA297EnvGroupBulkRoute/native-bulk-empty"
+    ],
+    "skip_events": 0,
+    "command": "GOWORK=off GOTOOLCHAIN=go1.26.8 go test -json -overlay <canonical private overlay> ./internal/api -run ^TestQA297EnvGroupBulkRoute$ -count=1"
+  },
+  "private_candidate": {
+    "exit": 0,
+    "named_passes": 41,
+    "top_level_passes": 12,
+    "failed_leaf_cases": [],
+    "skip_events": 0,
+    "command": "GOWORK=off GOTOOLCHAIN=go1.26.8 go test -json -overlay <canonical private overlay> ./internal/api -run Test(QA297EnvGroupBulkRoute|RenderRequestValidator|RenderRouteIntersectionInventory|RenderOpenAPICompatibility|BlueprintIDRoutes|EveryConstrainedIDPathParameter) -count=1"
+  }
+}
