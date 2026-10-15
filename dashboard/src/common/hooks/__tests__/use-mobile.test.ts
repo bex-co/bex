@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
+import { createElement } from "react";
+import { hydrateRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 import { useIsMobile, MOBILE_BREAKPOINT } from "../use-mobile";
 
 describe("useIsMobile Hook", () => {
@@ -58,6 +61,7 @@ describe("useIsMobile Hook", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     // Restore original matchMedia
     Object.defineProperty(window, "matchMedia", {
       writable: true,
@@ -257,4 +261,53 @@ describe("useIsMobile Hook", () => {
     // After unmount, listeners should be cleaned up
     expect(listeners.length).toBe(0);
   });
+
+  it.each([
+    {
+      device: "a phone UA on a desktop-wide window",
+      userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      width: 1024,
+      server: "mobile",
+      client: "desktop",
+    },
+    {
+      device: "a desktop UA on a phone-wide window",
+      userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+      width: 375,
+      server: "desktop",
+      client: "mobile",
+    },
+  ])(
+    "hydrates $device from the UA guess, then follows the viewport",
+    ({ userAgent, width, server, client }) => {
+      vi.spyOn(navigator, "userAgent", "get").mockReturnValue(userAgent);
+      Object.defineProperty(window, "innerWidth", {
+        writable: true,
+        configurable: true,
+        value: width,
+      });
+      const Probe = () =>
+        createElement("span", null, useIsMobile() ? "mobile" : "desktop");
+
+      const html = renderToString(createElement(Probe));
+      expect(html).toContain(server);
+
+      const container = document.createElement("div");
+      container.innerHTML = html;
+      document.body.appendChild(container);
+      const recovered: unknown[] = [];
+      let root: ReturnType<typeof hydrateRoot> | undefined;
+      act(() => {
+        root = hydrateRoot(container, createElement(Probe), {
+          onRecoverableError: (error) => recovered.push(error),
+        });
+      });
+
+      expect(recovered).toEqual([]);
+      expect(container.textContent).toBe(client);
+
+      act(() => root?.unmount());
+      container.remove();
+    },
+  );
 });

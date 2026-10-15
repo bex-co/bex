@@ -25,8 +25,6 @@ export function useFetchedList<T>(url: string): UseFetchedListResult<T> {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(false);
     fetch(url)
       .then((res) => {
         if (!res.ok) throw new Error(`failed to fetch ${url}`);
@@ -54,6 +52,12 @@ export function useFetchedList<T>(url: string): UseFetchedListResult<T> {
     loading,
     error,
     setData,
-    refetch: () => setGeneration((g) => g + 1),
+    // The initial state already reads as loading; a refetch resets it here,
+    // with the request it starts.
+    refetch: () => {
+      setLoading(true);
+      setError(false);
+      setGeneration((g) => g + 1);
+    },
   };
 }

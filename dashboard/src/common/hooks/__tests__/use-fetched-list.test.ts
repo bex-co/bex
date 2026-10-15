@@ -62,4 +62,26 @@ describe("useFetchedList", () => {
       expect(result.current.data).toEqual([{ id: "call-2" }]),
     );
   });
+
+  it("refetch after a failure reports loading again with the error cleared", async () => {
+    let fail = true;
+    stubFetch(() =>
+      fail
+        ? new Response("boom", { status: 500 })
+        : Response.json([{ id: "a" }]),
+    );
+    const { result } = renderHook(() => useFetchedList<{ id: string }>("/x"));
+    await waitFor(() => expect(result.current.error).toBe(true));
+
+    fail = false;
+    act(() => {
+      result.current.refetch();
+    });
+    expect(result.current.loading).toBe(true);
+    expect(result.current.error).toBe(false);
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.data).toEqual([{ id: "a" }]);
+    expect(result.current.error).toBe(false);
+  });
 });

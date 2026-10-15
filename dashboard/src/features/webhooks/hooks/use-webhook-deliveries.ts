@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useApolloClient, useQuery } from "@apollo/client/react";
 import { type WebhookDeliveriesQuery } from "@/graphql/definitions";
 import {
@@ -93,6 +93,70 @@ function sameAttempt(
   );
 }
 
+interface PageState {
+  key: string;
+  retained: WebhookDeliveryView[];
+  loadedMore: boolean;
+  retainedLimit: number;
+  tailFull: boolean;
+}
+
+// Once an older page has been loaded, retain the stitched boundary so an
+// attempt displaced from the newest page does not disappear above that tail.
+// Before then, keep the view bounded to the server's newest page.
+function reconcileNewestPage(
+  previous: PageState,
+  firstPage: WebhookDeliveryView[],
+  filterKey: string,
+): PageState {
+  if (firstPage.length === 0) {
+    if (
+      previous.key === filterKey &&
+      previous.retained.length === 0 &&
+      !previous.tailFull
+    ) {
+      return previous;
+    }
+    return {
+      key: filterKey,
+      retained: [],
+      loadedMore: false,
+      retainedLimit: 0,
+      tailFull: false,
+    };
+  }
+
+  if (previous.key !== filterKey) {
+    return {
+      key: filterKey,
+      retained: [],
+      loadedMore: false,
+      retainedLimit: 0,
+      tailFull: true,
+    };
+  }
+
+  if (!previous.loadedMore) {
+    if (previous.retained.length === 0) return previous;
+    return { ...previous, retained: [] };
+  }
+
+  const next = mergeAttempts(firstPage, previous.retained).slice(
+    0,
+    previous.retainedLimit,
+  );
+  if (
+    next.length === previous.retained.length &&
+    next.every((attempt, index) => attempt === previous.retained[index])
+  ) {
+    return previous;
+  }
+  return {
+    ...previous,
+    retained: next,
+  };
+}
+
 export interface UseWebhookDeliveriesResult {
   deliveries: WebhookDeliveryView[];
   loading: boolean;
@@ -116,13 +180,7 @@ export function useWebhookDeliveries(
   const client = useApolloClient();
   const { currentWorkspaceId } = useWorkspace();
   const filterKey = `${currentWorkspaceId ?? ""}\n${endpointId}\n${filter.status ?? ""}\n${filter.sentAfter ?? ""}\n${filter.sentBefore ?? ""}`;
-  const [pageState, setPageState] = useState<{
-    key: string;
-    retained: WebhookDeliveryView[];
-    loadedMore: boolean;
-    retainedLimit: number;
-    tailFull: boolean;
-  }>({
+  const [pageState, setPageState] = useState<PageState>({
     key: filterKey,
     retained: [],
     loadedMore: false,
@@ -166,60 +224,18 @@ export function useWebhookDeliveries(
 
   const firstPage = useMemo(() => toViews(data?.webhookDeliveries), [data]);
 
-  // Once an older page has been loaded, retain the stitched boundary so an
-  // attempt displaced from the newest page does not disappear above that
-  // tail. Before then, keep the view bounded to the server's newest page.
-  useEffect(() => {
-    if (!data) return;
-    setPageState((previous) => {
-      if (firstPage.length === 0) {
-        if (
-          previous.key === filterKey &&
-          previous.retained.length === 0 &&
-          !previous.tailFull
-        ) {
-          return previous;
-        }
-        return {
-          key: filterKey,
-          retained: [],
-          loadedMore: false,
-          retainedLimit: 0,
-          tailFull: false,
-        };
-      }
-
-      if (previous.key !== filterKey) {
-        return {
-          key: filterKey,
-          retained: [],
-          loadedMore: false,
-          retainedLimit: 0,
-          tailFull: true,
-        };
-      }
-
-      if (!previous.loadedMore) {
-        if (previous.retained.length === 0) return previous;
-        return { ...previous, retained: [] };
-      }
-
-      const next = mergeAttempts(firstPage, previous.retained).slice(
-        0,
-        previous.retainedLimit,
-      );
-      if (
-        next.length === previous.retained.length &&
-        next.every((attempt, index) => attempt === previous.retained[index])
-      ) {
-        return previous;
-      }
-      return {
-        ...previous,
-        retained: next,
-      };
-    });
-  }, [data, filterKey, firstPage]);
+  // Fold each newest-page read (and each filter change) in while rendering,
+  // so the stitched window never paints a step behind the read.
+  const [reconciled, setReconciled] = useState<{
+    data: typeof data;
+    key: string;
+  }>({ data: undefined, key: filterKey });
+  if (data && (data !== reconciled.data || filterKey !== reconciled.key)) {
+    setReconciled({ data, key: filterKey });
+    setPageState((previous) =>
+      reconcileNewestPage(previous, firstPage, filterKey),
+    );
+  }
 
   const deliveries = useMemo(() => {
     if (!loadedMore) return firstPage;

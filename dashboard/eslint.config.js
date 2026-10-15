@@ -39,6 +39,18 @@ export default tseslint.config([
       },
     },
     rules: {
+      // A route module's Route export wraps its components, and TanStack
+      // Router's Vite plugin hot-reloads it, so the factories count as HOCs
+      // (react-refresh 0.5 knows only React's own). A route module's other
+      // non-component exports still count.
+      "react-refresh/only-export-components": [
+        "error",
+        {
+          allowConstantExport: true,
+          allowCompoundComponents: true,
+          extraHOCs: ["createFileRoute", "createRootRouteWithContext"],
+        },
+      ],
       "react-hooks/incompatible-library": "off",
       "@typescript-eslint/no-floating-promises": "error",
       "@typescript-eslint/no-unused-vars": [

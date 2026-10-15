@@ -69,7 +69,7 @@ export function useReauthDraft<T>(
 
   const consumeRestored = useCallback((): T | null => {
     if (typeof window === "undefined") return null;
-    let raw: string | null = null;
+    let raw: string | null;
     try {
       raw = window.sessionStorage.getItem(storageKey);
       if (raw !== null) window.sessionStorage.removeItem(storageKey);

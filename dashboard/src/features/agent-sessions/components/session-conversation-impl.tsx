@@ -197,18 +197,21 @@ export function SessionConversationImpl({
   // nothing", so calling it ourselves and tracking the promise gives an
   // unambiguous signal instead. `resumeStream` is a stable method bound once
   // per `useChat` instance (recreated only if `id` changes), so this doesn't
-  // re-fire on every render.
-  const [resuming, setResuming] = useState(true);
+  // re-fire on every render. Keying the settled marker on that method makes a
+  // new instance read as resuming from its very first render.
+  const [settledResume, setSettledResume] = useState<{
+    resumeStream: typeof resumeStream;
+  } | null>(null);
+  const resuming = settledResume?.resumeStream !== resumeStream;
   useEffect(() => {
     let live = true;
-    setResuming(true);
     resumeStream()
       // `makeRequest` already routes every failure into `error`/`status`
       // (read below) rather than rejecting; this trace is a backstop in case
       // that internal contract ever changes.
       .catch((err) => console.error(err))
       .finally(() => {
-        if (live) setResuming(false);
+        if (live) setSettledResume({ resumeStream });
       });
     return () => {
       live = false;
@@ -284,26 +287,25 @@ export function SessionConversationImpl({
   // token. The stable block reference is also what lets React.memo skip
   // re-rendering (and re-parsing Markdown for) every unchanged row. These hooks
   // run unconditionally (before the error early-return) per the Rules of Hooks.
-  const blockCacheRef = useRef(new WeakMap<object, DisplayBlock[]>());
+  const [blockCache] = useState(() => new WeakMap<object, DisplayBlock[]>());
   const rendered = useMemo(() => {
-    const cache = blockCacheRef.current;
     // Undo the stacking an in-place re-attach produces: the gateway packs the
     // whole conversation into ONE assistant message, so each `resumeStream`
     // re-appends the transcript to that message's parts. `keepLastReplay` keeps
     // only the newest, complete copy.
     return messages.map((message) => {
-      let blocks = cache.get(message);
+      let blocks = blockCache.get(message);
       if (!blocks) {
         const parts = keepLastReplay(
           message.parts as PartLike[],
           partSignature,
         ) as PartLike[];
         blocks = buildBlocks(parts);
-        cache.set(message, blocks);
+        blockCache.set(message, blocks);
       }
       return { message, blocks };
     });
-  }, [messages]);
+  }, [messages, blockCache]);
   // Render only the most recent window of messages; older rows are revealed on
   // demand. This bounds the mounted DOM for a very long transcript while always
   // keeping the live tail visible.

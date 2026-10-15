@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -76,6 +77,13 @@ export interface Capabilities {
 
 type RefreshReason = "poll" | "focus" | "reconnect" | "manual" | "workspace";
 
+type Eligibility = { state: CapabilityState; generation: number };
+
+const NO_ELIGIBILITY: Eligibility = {
+  state: checkingCapabilities,
+  generation: -1,
+};
+
 const CapabilitiesContext = createContext<Capabilities | null>(null);
 
 function booleansFrom(
@@ -124,23 +132,42 @@ export function CapabilitiesProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<CapabilityState>(checkingCapabilities);
   const [clock, setClock] = useState(() => Date.now());
   const lastResolved = useRef<CapabilityState>(checkingCapabilities);
-  const eligibility = useRef<{ state: CapabilityState; generation: number }>({
-    state: checkingCapabilities,
-    generation: -1,
-  });
+  // refresh() and allows() read the ref, so a check that has begun withdraws
+  // eligibility before any rerender; render reads the state copy.
+  const eligibility = useRef<Eligibility>(NO_ELIGIBILITY);
+  const [renderedEligibility, setRenderedEligibility] =
+    useState<Eligibility>(NO_ELIGIBILITY);
+  const setEligibility = useCallback((next: Eligibility) => {
+    eligibility.current = next;
+    setRenderedEligibility(next);
+  }, []);
   const workspaceRef = useRef(currentWorkspaceId);
-  workspaceRef.current = currentWorkspaceId;
   const inFlight = useRef<AbortController | null>(null);
   const refreshRef = useRef<(reason: RefreshReason) => Promise<void>>(
     async () => undefined,
   );
+
+  // A workspace or generation change voids the previous answer in the same
+  // render, before anything commits with it.
+  const [scope, setScope] = useState({
+    workspaceId: currentWorkspaceId,
+    generation,
+  });
+  if (
+    scope.workspaceId !== currentWorkspaceId ||
+    scope.generation !== generation
+  ) {
+    setScope({ workspaceId: currentWorkspaceId, generation });
+    setState(checkingCapabilities);
+    setRenderedEligibility(NO_ELIGIBILITY);
+  }
 
   const refresh = useCallback(
     async (reason: RefreshReason) => {
       const workspaceId = workspaceRef.current;
       if (!workspaceId) {
         lastResolved.current = checkingCapabilities;
-        eligibility.current = { state: checkingCapabilities, generation: -1 };
+        setEligibility(NO_ELIGIBILITY);
         setState(checkingCapabilities);
         return;
       }
@@ -152,7 +179,7 @@ export function CapabilitiesProvider({ children }: { children: ReactNode }) {
         snapshotIsFresh(previousEligibility.state.snapshot);
 
       if (reason !== "poll" || !stillFresh) {
-        eligibility.current = { state: checkingCapabilities, generation: -1 };
+        setEligibility(NO_ELIGIBILITY);
         if (reason !== "poll") setState(checkingCapabilities);
       }
 
@@ -225,31 +252,34 @@ export function CapabilitiesProvider({ children }: { children: ReactNode }) {
             grants: navigationGrants,
           },
         };
-        eligibility.current = {
+        setEligibility({
           state: next,
           generation: getAccessGeneration(),
-        };
+        });
         setState(next);
         setClock(Date.now());
       } catch {
         if (ac.signal.aborted || !current()) return;
-        eligibility.current = {
+        setEligibility({
           state: unavailableCapabilities,
           generation: -1,
-        };
+        });
         setState(unavailableCapabilities);
       } finally {
         if (inFlight.current === ac) inFlight.current = null;
       }
     },
-    [client],
+    [client, setEligibility],
   );
-  refreshRef.current = refresh;
+  // A layout effect, so every passive effect (below, and children's) already
+  // sees this commit's workspace and refresh.
+  useLayoutEffect(() => {
+    workspaceRef.current = currentWorkspaceId;
+    refreshRef.current = refresh;
+  }, [currentWorkspaceId, refresh]);
 
   useEffect(() => {
     lastResolved.current = checkingCapabilities;
-    eligibility.current = { state: checkingCapabilities, generation: -1 };
-    setState(checkingCapabilities);
     void refreshRef.current("workspace");
     return () => inFlight.current?.abort();
   }, [currentWorkspaceId, generation]);
@@ -295,8 +325,8 @@ export function CapabilitiesProvider({ children }: { children: ReactNode }) {
 
   const workspaceId = currentWorkspaceId;
   // Presentation follows `state` (including unavailable). Action eligibility is
-  // gated separately via eligibility.current so a failed refresh expires
-  // allows() without pretending the role changed.
+  // gated separately via eligibility so a failed refresh expires allows()
+  // without pretending the role changed.
   const resolved: CapabilityState = !workspaceId
     ? checkingCapabilities
     : state.status === "ready" &&
@@ -306,8 +336,8 @@ export function CapabilitiesProvider({ children }: { children: ReactNode }) {
       : state;
 
   const flags = booleansFrom(
-    eligibility.current.generation === generation
-      ? eligibility.current.state
+    renderedEligibility.generation === generation
+      ? renderedEligibility.state
       : checkingCapabilities,
     workspaceId,
     clock,
@@ -317,7 +347,7 @@ export function CapabilitiesProvider({ children }: { children: ReactNode }) {
     workspaceId !== null &&
     resolved.snapshot.workspaceId === workspaceId &&
     snapshotIsFresh(resolved.snapshot, clock) &&
-    eligibility.current.generation === generation;
+    renderedEligibility.generation === generation;
   const stale =
     state.status === "ready" &&
     workspaceId !== null &&

@@ -1,7 +1,14 @@
 // Resource action results are short-lived evaluations bound to the exact
 // workspace, resource and access generation that requested them.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useApolloClient } from "@apollo/client/react";
 import type { DocumentNode } from "graphql";
 import {
@@ -46,70 +53,87 @@ function useProjection(
     () => ({ workspaceId, resourceId, generation, checkedAt, eligible }),
     [workspaceId, resourceId, generation, checkedAt, eligible],
   );
+  // A layout effect, so the request effect below already sees this lease.
   const currentLease = useRef(lease);
-  currentLease.current = lease;
+  useLayoutEffect(() => {
+    currentLease.current = lease;
+  }, [lease]);
   const inFlight = useRef<AbortController | null>(null);
   const [result, setResult] = useState<{
     lease: typeof lease;
     value: ProjectionResult;
   } | null>(null);
+  const settle = useCallback(
+    (value: ProjectionResult) => setResult({ lease, value }),
+    [lease],
+  );
 
-  const refresh = useCallback(async () => {
-    if (
-      !workspaceId ||
-      !resourceId ||
-      !eligible ||
-      currentLease.current !== lease
-    )
-      return;
-    inFlight.current?.abort();
-    const ac = new AbortController();
-    inFlight.current = ac;
-    const accessGeneration = getAccessGeneration();
-    const current = () =>
-      !ac.signal.aborted &&
-      currentLease.current === lease &&
-      getAccessGeneration() === accessGeneration;
-    setResult({ lease, value: { status: "checking" } });
-    try {
-      const response = await client.query({
-        query: document,
-        variables:
-          field === "serverActions"
-            ? { id: resourceId, ownerId: workspaceId }
-            : { serviceId: resourceId, ownerId: workspaceId },
-        fetchPolicy: "no-cache",
-        errorPolicy: "none",
-        context: {
-          fetchOptions: { signal: ac.signal },
-          queryDeduplication: false,
-        },
-      });
-      if (!current()) return;
-      const rows = (
-        response.data as Record<string, ResourceActionInput[]> | undefined
-      )?.[field];
-      if (!Array.isArray(rows)) throw new Error("action check unavailable");
-      setResult({
-        lease,
-        value: {
+  // Answers through `onAnswer` only while this request is still the lease's
+  // newest. `announce` withdraws the answer this same lease already holds; a
+  // new lease has none and renders as checking until its first (see below).
+  const evaluate = useCallback(
+    async (
+      onAnswer: (value: ProjectionResult) => void,
+      { announce }: { announce: boolean },
+    ) => {
+      if (
+        !workspaceId ||
+        !resourceId ||
+        !eligible ||
+        currentLease.current !== lease
+      )
+        return;
+      inFlight.current?.abort();
+      const ac = new AbortController();
+      inFlight.current = ac;
+      const accessGeneration = getAccessGeneration();
+      const current = () =>
+        !ac.signal.aborted &&
+        currentLease.current === lease &&
+        getAccessGeneration() === accessGeneration;
+      if (announce) onAnswer({ status: "checking" });
+      try {
+        const response = await client.query({
+          query: document,
+          variables:
+            field === "serverActions"
+              ? { id: resourceId, ownerId: workspaceId }
+              : { serviceId: resourceId, ownerId: workspaceId },
+          fetchPolicy: "no-cache",
+          errorPolicy: "none",
+          context: {
+            fetchOptions: { signal: ac.signal },
+            queryDeduplication: false,
+          },
+        });
+        if (!current()) return;
+        const rows = (
+          response.data as Record<string, ResourceActionInput[]> | undefined
+        )?.[field];
+        if (!Array.isArray(rows)) throw new Error("action check unavailable");
+        onAnswer({
           status: "ready",
           snapshot: toResourceSnapshot(workspaceId, resourceId, rows),
-        },
-      });
-    } catch {
-      if (current()) setResult({ lease, value: { status: "unavailable" } });
-    } finally {
-      if (inFlight.current === ac) inFlight.current = null;
-    }
-  }, [client, document, field, workspaceId, resourceId, eligible, lease]);
+        });
+      } catch {
+        if (current()) onAnswer({ status: "unavailable" });
+      } finally {
+        if (inFlight.current === ac) inFlight.current = null;
+      }
+    },
+    [client, document, field, workspaceId, resourceId, eligible, lease],
+  );
+  const refresh = useCallback(
+    () => evaluate(settle, { announce: true }),
+    [evaluate, settle],
+  );
 
   // The provider's shared focus/reconnect/poll lifecycle supplies checkedAt.
   // Its expiry disables these results too, without adding one timer per row.
   useEffect(() => {
-    void refresh();
+    void evaluate(settle, { announce: false });
     return () => inFlight.current?.abort();
-  }, [refresh]);
+  }, [evaluate, settle]);
 
   if (capabilities.unavailable || capabilities.stale)
     return { status: "unavailable", refresh };

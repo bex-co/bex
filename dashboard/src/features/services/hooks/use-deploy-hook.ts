@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { toast } from "sonner";
 import {
@@ -46,9 +46,14 @@ export function useDeployHook(serviceId: string): UseDeployHookResult {
   const [url, setURL] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState(false);
 
-  useEffect(() => {
-    if (data?.deployHook?.url) setURL(data.deployHook.url);
-  }, [data]);
+  // Adopt each URL the read delivers; a read that delivers none (a failed
+  // refresh) leaves the last good one in place.
+  const queried = data?.deployHook?.url || null;
+  const [adopted, setAdopted] = useState<string | null>(null);
+  if (queried && queried !== adopted) {
+    setAdopted(queried);
+    setURL(queried);
+  }
 
   const regenerate = useCallback(async () => {
     setRegenerating(true);

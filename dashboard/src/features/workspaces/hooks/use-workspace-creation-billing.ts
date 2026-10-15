@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { toast } from "sonner";
 import {
@@ -88,14 +88,20 @@ export function useWorkspaceCreationBilling(
   const [finalizeMutation] = useMutation(FinalizeWorkspaceCreationDocument);
   const [cancelMutation] = useMutation(CancelWorkspaceCreationDocument);
 
-  useEffect(() => {
+  // Each new resume read replaces the attempt, and another plan starts without
+  // the last one's error — both settled while rendering, so neither paints a
+  // frame behind its input.
+  const [resumeData, setResumeData] = useState<typeof resumeQuery.data>();
+  if (resumeQuery.data !== resumeData) {
+    setResumeData(resumeQuery.data);
     const resumed = toAttempt(resumeQuery.data?.workspaceCreationAttempt);
     if (resumed) setAttempt(resumed);
-  }, [resumeQuery.data]);
-
-  useEffect(() => {
+  }
+  const [errorPlan, setErrorPlan] = useState(plan);
+  if (plan !== errorPlan) {
+    setErrorPlan(plan);
     setLocalError(null);
-  }, [plan]);
+  }
 
   const policy = useMemo(
     () => ({
@@ -108,6 +114,8 @@ export function useWorkspaceCreationBilling(
     [policyQuery.data],
   );
 
+  const attemptId = attempt?.id;
+  const attemptPlan = attempt?.plan;
   const prepare = useCallback(
     async (
       name: string,
@@ -120,9 +128,9 @@ export function useWorkspaceCreationBilling(
         const response = await prepareMutation({
           variables: {
             name,
-            plan: attempt?.plan ?? plan,
+            plan: attemptPlan ?? plan,
             billingEmail,
-            attemptId: attempt?.id || undefined,
+            attemptId: attemptId || undefined,
             collectPaymentMethod,
           },
         });
@@ -139,7 +147,7 @@ export function useWorkspaceCreationBilling(
         setBusy(false);
       }
     },
-    [attempt?.id, attempt?.plan, plan, prepareMutation, t],
+    [attemptId, attemptPlan, plan, prepareMutation, t],
   );
 
   const finalize = useCallback(
