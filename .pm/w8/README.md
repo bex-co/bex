@@ -21,7 +21,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m74** — [Preserve Blueprint host-reference origins and target checks](m74/README.md) (7 tasks;185m) ← promoted110/sweep314 + new316 target-metadata gap; all owned fixtures cleaned.
 
-- [ ] **m73** — [Supply pnpm in native Node builds and runtime](m73/README.md) (6 tasks;155m) ← native CLI QA sweep315; two build failures and two Live Node controls, exact-owned cleanup complete.
+- [ ] **m73** — [Supply pnpm in native Node builds and runtime](blocked/m73/README.md) (6 tasks;155m) — **BLOCKED (2026-10-15: t001–t005 done — every native Node build (and static site) now installs a sha256-pinned pnpm 10.34.6 before the authored build and keeps it at runtime; Docker-executed on Node 22/24/26 + static. Needs the operator deploy, then the hosted two-client pnpm replay (build/runtime markers, Node/npm/Yarn controls, build pods reaching registry.npmjs.org) and exact-owned cleanup (t006))**
 
 - [ ] **m72** — [Provide Poetry in native Python builds and runtime](blocked/m72/README.md) (7 tasks,3h10m) — **BLOCKED (2026-10-15: t001–t006 done — every native Python build now installs Poetry (POETRY_VERSION exact release, else default 2.1.3) into its own virtualenv before the authored build and keeps it at runtime; execution-tested with Docker on Python 3.12. Needs the operator deploy, then the hosted two-client Poetry replay (build/runtime version markers, omitted-override default, Python-only control) and exact-owned cleanup (t007))**
 

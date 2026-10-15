@@ -350,7 +350,7 @@ func runNativeBuildShell(t *testing.T, o Options, bundle string) ([]byte, error)
 			}
 		case inHeredoc:
 			heredoc = append(heredoc, line)
-		case strings.HasPrefix(line, "RUN "):
+		case strings.HasPrefix(line, "RUN --mount=type=secret,id=render-env,"): // the authored build, not bex's pnpm layer
 			if heredoc == nil {
 				t.Fatal("RUN precedes the env loader")
 			}
@@ -824,6 +824,70 @@ func TestNativeDockerfileClearsTheToolchainEntrypoint(t *testing.T) {
 	}
 }
 
+// w8/m73: every Node build — web/private/worker/cron share this generator, a
+// static site defaults to Node — installs the pinned pnpm between FROM and the
+// source, so the authored build and the started service both have it; no
+// other runtime gains a Node package manager.
+func TestNativeDockerfileSuppliesPnpmToNodeOnly(t *testing.T) {
+	add := "ADD --link --checksum=" + nativePnpm.checksum + " https://registry.npmjs.org/pnpm/-/pnpm-" + nativePnpm.version + ".tgz "
+	static := nativeOptions()
+	static.StaticSite, static.Runtime, static.StartCommand = true, "", ""
+	for name, o := range map[string]Options{"service": nativeOptions(), "static": static} {
+		df := nativeDockerfile(o)
+		from, pnpm, src := strings.Index(df, "\nFROM "), strings.Index(df, "\n"+add), strings.Index(df, "\nCOPY . .\n")
+		if from < 0 || pnpm < from || src < pnpm || !strings.Contains(df, "/usr/local/bin/pnpm && ln -sf ") {
+			t.Errorf("%s: pnpm must be installed after FROM and before the source:\n%s", name, df)
+		}
+	}
+	for runtime := range nativeToolchains {
+		if runtime == nativeNodeRuntime {
+			continue
+		}
+		o := nativeOptions()
+		o.Runtime = runtime
+		if df := nativeDockerfile(o); strings.Contains(df, "pnpm") {
+			t.Errorf("%s gained pnpm:\n%s", runtime, df)
+		}
+	}
+}
+
+// The pnpm pin is a generated-Dockerfile cache input: unchanged it is stable
+// (and independent of the env revision, so the pnpm layers stay warm across
+// env edits); a changed version or checksum changes the Dockerfile, so BuildKit
+// cannot reuse a layer holding the previous pnpm.
+func TestNativePnpmPinKeysTheCache(t *testing.T) {
+	pnpmLines := func(df string) []string {
+		var out []string
+		for line := range strings.SplitSeq(df, "\n") {
+			if strings.Contains(line, "pnpm") {
+				out = append(out, line)
+			}
+		}
+		return out
+	}
+	a, b := nativeOptions(), nativeOptions()
+	a.NativeEnvRevision, b.NativeEnvRevision = "1", "2"
+	if !slices.Equal(pnpmLines(nativeDockerfile(a)), pnpmLines(nativeDockerfile(b))) || len(pnpmLines(nativeDockerfile(a))) != 2 {
+		t.Fatalf("pnpm layers must not depend on the env revision:\n%v\n%v", pnpmLines(nativeDockerfile(a)), pnpmLines(nativeDockerfile(b)))
+	}
+	before := nativeDockerfile(a)
+	if before != nativeDockerfile(a) {
+		t.Fatal("unchanged inputs must keep a stable Dockerfile")
+	}
+	saved := nativePnpm
+	t.Cleanup(func() { nativePnpm = saved })
+	for _, change := range []func(){
+		func() { nativePnpm.version = "10.34.7" },
+		func() { nativePnpm.checksum = "sha256:" + strings.Repeat("0", 64) },
+	} {
+		nativePnpm = saved
+		change()
+		if after := nativeDockerfile(a); after == before {
+			t.Errorf("a changed pnpm pin %+v reused the Dockerfile", nativePnpm)
+		}
+	}
+}
+
 // TestNativeImageRunsAnOptedInBun is w8/m71's execution gate: for sweep306's
 // BUN_VERSION=1.3.4, the resolved Dockerfile builds on a node and a python
 // base (no node on PATH), the authored build runs bun and records the
@@ -911,4 +975,74 @@ func TestNativeImageRunsPoetry(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestNativeImageRunsPnpm is w8/m73's execution gate: sweep315's native Node
+// services ran `pnpm --version` and died 127 at build and runtime. For every
+// reviewed Node line the resolved Dockerfile must build with a real pnpm — its
+// version plus a dependency-free `pnpm run` script — while the primary version
+// choice, npm and Yarn keep working, and the started service must find the
+// same pnpm on the standard and a narrow PATH. A static site (Node is its
+// implicit toolchain) gets it for the build and keeps the output where the
+// publish Job extracts it. Opt-in: needs Docker, pulls the pinned node
+// toolchains and the pinned pnpm tarball.
+func TestNativeImageRunsPnpm(t *testing.T) {
+	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
+		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the generated image")
+	}
+	pkg := map[string]string{"package.json": `{"name":"bex-pnpm-fixture","version":"1.0.0","private":true,` +
+		`"scripts":{"marker":"node -e \"console.log('pnpm-script-ran')\""}}`}
+	const build = `pnpm --version > pnpm.txt && pnpm run --silent marker > marker.txt && npm --version > npm.txt && node --version > node.txt`
+	const report = `echo "pnpm=$(pnpm --version) built=$(cat pnpm.txt) script=$(cat marker.txt) node=$(cat node.txt) npm=$(cat npm.txt)` +
+		` yarn=$(yarn --version 2>/dev/null || echo absent)"`
+	dockerBuild := func(t *testing.T, o Options, line string) string {
+		t.Helper()
+		bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"NODE_VERSION": line}, pkg)
+		if _, err := ResolveNativeBuild(nativeRuntime(o), bundle, dockerfile, src); err != nil {
+			t.Fatal(err)
+		}
+		must(t, os.Rename(dockerfile, filepath.Join(src, "Dockerfile")))
+		tag := fmt.Sprintf("bex-native-pnpm-it-%s-%t:%d", line, o.StaticSite, os.Getpid())
+		t.Cleanup(func() { _ = exec.Command("docker", "image", "rm", "-f", tag).Run() })
+		cmd := exec.Command("docker", "build", "-q", "-t", tag, "--secret", "id=render-env,src="+bundle, src)
+		cmd.Env = append(os.Environ(), "DOCKER_BUILDKIT=1")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("build: %v\n%s", err, out)
+		}
+		return tag
+	}
+	for _, l := range nativeToolchains[nativeNodeRuntime].lines {
+		t.Run("node"+l.line, func(t *testing.T) {
+			o := nativeOptions()
+			o.BuildCommand, o.StartCommand = build, report
+			tag := dockerBuild(t, o, l.line)
+			want := "pnpm=" + nativePnpm.version + " built=" + nativePnpm.version + " script=pnpm-script-ran node=v" + l.version + " npm="
+			for _, path := range []string{"", "/usr/local/bin:/usr/bin:/bin"} {
+				args := []string{"run", "--rm", tag}
+				if path != "" {
+					args = []string{"run", "--rm", "-e", "PATH=" + path, tag}
+				}
+				out, err := exec.Command("docker", args...).CombinedOutput()
+				if err != nil || !strings.Contains(string(out), want) {
+					t.Fatalf("run PATH=%q = %v\n%s; want %q", path, err, out, want)
+				}
+				// Yarn is whatever the official image carries (1.22 through
+				// Node 24; Node 26's image ships none): pnpm must not replace it.
+				if l.line != "26" && !strings.Contains(string(out), " yarn=1.22.") {
+					t.Fatalf("yarn control lost:\n%s", out)
+				}
+				t.Logf("PATH=%q: %s", path, out)
+			}
+		})
+	}
+	t.Run("static", func(t *testing.T) {
+		o := nativeOptions()
+		o.StaticSite, o.Runtime, o.StartCommand = true, "", ""
+		o.BuildCommand = build + " && mkdir -p public && cp pnpm.txt marker.txt public/"
+		out, err := exec.Command("docker", "run", "--rm", "--entrypoint", "/bin/cat", dockerBuild(t, o, "24"),
+			"/opt/render/project/src/public/pnpm.txt", "/opt/render/project/src/public/marker.txt").CombinedOutput()
+		if want := nativePnpm.version + "\npnpm-script-ran\n"; err != nil || string(out) != want {
+			t.Fatalf("static publish dir = %v %q, want %q", err, out, want)
+		}
+	})
 }

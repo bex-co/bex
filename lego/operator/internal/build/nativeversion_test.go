@@ -137,6 +137,9 @@ func TestNativeToolchainLinesAreInventoried(t *testing.T) {
 			}
 		}
 	}
+	if pnpm := "pnpm-" + nativePnpm.version + ".tgz@" + nativePnpm.checksum; !committed[pnpm] {
+		t.Errorf("pnpm %s is not in toolchain-freshness.json", pnpm)
+	}
 }
 
 // writeResolveFixture lays out what the resolve phase sees: the preparer's
@@ -190,6 +193,35 @@ func TestResolveNativeBuildRewritesTheBase(t *testing.T) {
 	bundle, dockerfile, src = writeResolveFixture(t, o, nil, map[string]string{".nvmrc": "22\n"})
 	if choices, err := ResolveNativeBuild("node", bundle, dockerfile, src); err != nil || len(choices) != 1 || choices[0].Source != ".nvmrc" || choices[0].Line != "22" {
 		t.Fatalf("node resolve = %+v, %v", choices, err)
+	}
+}
+
+// w8/m73: choosing a Node line rewrites only the FROM, so every reviewed line
+// keeps the generated pnpm layers in front of the authored build, alongside an
+// opted-in Bun.
+func TestResolveNativeBuildKeepsPnpmOnEveryNodeLine(t *testing.T) {
+	for _, l := range nativeToolchains[nativeNodeRuntime].lines {
+		env := map[string]string{"NODE_VERSION": l.line}
+		if l.line == "26" {
+			env["BUN_VERSION"] = "1.3"
+		}
+		bundle, dockerfile, src := writeResolveFixture(t, nativeOptions(), env, nil)
+		before, _ := os.ReadFile(dockerfile)
+		if _, err := ResolveNativeBuild(nativeNodeRuntime, bundle, dockerfile, src); err != nil {
+			t.Fatal(err)
+		}
+		after, _ := os.ReadFile(dockerfile)
+		tools := nativeNodeTools(nativeOptions())
+		if !strings.Contains(string(after), "FROM "+l.image+"\n") || !strings.Contains(string(after), tools) ||
+			strings.Index(string(after), tools) > strings.Index(string(after), "\nCOPY . .\n") {
+			t.Fatalf("node %s Dockerfile lost its pnpm layers:\n%s", l.line, after)
+		}
+		if l.line == "26" && !strings.Contains(string(after), "/usr/local/bin/bun\n") {
+			t.Fatalf("Bun opt-in displaced:\n%s", after)
+		}
+		if l.line == "24" && string(after) != string(before) {
+			t.Fatalf("the default line must leave the Dockerfile unchanged:\n%s", after)
+		}
 	}
 }
 

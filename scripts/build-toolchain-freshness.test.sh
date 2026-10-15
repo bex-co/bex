@@ -169,6 +169,36 @@ else
   fails=$((fails + 1))
 fi
 
+# npm-package upstream (w8/m73 `native-pnpm`): resolve the dist-tag through
+# the npm registry and hash the tarball it names — never an image registry.
+if npm_out="$(python3 - "$here/lib/toolchain-freshness.py" <<'PY' 2>&1
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("freshness", sys.argv[1])
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+calls = []
+def fake_json(url, headers=None):
+    calls.append(url)
+    return {"dist": {"tarball": "https://registry.npmjs.org/pnpm/-/pnpm-10.0.0.tgz"}}
+def fake_sha256(url):
+    calls.append(url)
+    return "sha256:" + "e" * 64
+def no_image_registry(*args):
+    raise AssertionError("npm-package resolved through an image registry")
+m.http_json, m.http_sha256, m.http_digest = fake_json, fake_sha256, no_image_registry
+assert m.resolve_upstream("registry.npmjs.org/pnpm:latest-10") == "sha256:" + "e" * 64
+assert calls == [
+    "https://registry.npmjs.org/pnpm/latest-10",
+    "https://registry.npmjs.org/pnpm/-/pnpm-10.0.0.tgz",
+], calls
+PY
+)"; then
+  echo "ok: npm-package upstream resolves via npm dist-tag + tarball sha256"
+else
+  echo "FAIL: npm-package upstream resolve — $npm_out" >&2
+  fails=$((fails + 1))
+fi
+
 body="$(env "$SCRIPT" issue-body "$tmp/drift.json")"
 if ! printf '%s' "$body" | grep -qF "$DIGEST_A" || ! printf '%s' "$body" | grep -qF "$DIGEST_B"; then
   echo "FAIL: issue body omitted exact digests" >&2

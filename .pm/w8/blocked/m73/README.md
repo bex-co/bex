@@ -1,16 +1,16 @@
 # w8 · m73 — Supply pnpm in native Node builds and runtime
 
-**Worker:** worker8 **Goal:** a native Node service can run the documented pnpm command during its build and at runtime through the unchanged CLI. **Status:** todo
+**Worker:** worker8 **Goal:** a native Node service can run the documented pnpm command during its build and at runtime through the unchanged CLI. **Status:** blocked
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Supply pnpm before native Node build and retain it at runtime | 55m | — |
-| t002 | Audit shared callers and toolchain cache transitions | 20m | t001 |
-| t003 | Render parity | 15m | t002 |
-| t004 | Simplify | 10m | t003 |
-| t005 | Meaningful execution coverage | 35m | t003 |
+| [t001](done/t001.md) | Supply pnpm before native Node build and retain it at runtime | 55m | — — **DONE 2026-10-15** |
+| [t002](done/t002.md) | Audit shared callers and toolchain cache transitions | 20m | t001 — **DONE 2026-10-15** |
+| [t003](done/t003.md) | Render parity | 15m | t002 — **DONE 2026-10-15** |
+| [t004](done/t004.md) | Simplify | 10m | t003 — **DONE 2026-10-15** |
+| [t005](done/t005.md) | Meaningful execution coverage | 35m | t003 — **DONE 2026-10-15** |
 | t006 | Live closeout | 20m | t004, t005 |
 
 ## Definition of done
