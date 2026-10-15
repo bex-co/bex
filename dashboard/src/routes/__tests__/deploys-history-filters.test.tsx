@@ -79,7 +79,7 @@ const MOUNTS = [
   { name: "static site", route: StaticDeploysRoute, base: "/static" },
 ] as const;
 
-function renderAt(mount: (typeof MOUNTS)[number], href: string) {
+async function renderAt(mount: (typeof MOUNTS)[number], href: string) {
   const root = createRootRoute({
     component: () => (
       <>
@@ -119,6 +119,9 @@ function renderAt(mount: (typeof MOUNTS)[number], href: string) {
     history: createMemoryHistory({ initialEntries: [href] }),
     context: { client: {} as never, session: null },
   });
+  // Resolve the initial match before mounting: otherwise the first test in a
+  // cold worker can spend findByRole's whole timeout on an empty router outlet.
+  await router.load();
   render(<RouterProvider router={router} />);
   return router;
 }
@@ -145,7 +148,7 @@ describe.each(MOUNTS)("$name deploy history filters (w4/284)", (mount) => {
 
   it("returns to the filtered history on Back from a deploy, and to the deploy on Forward", async () => {
     const user = userEvent.setup();
-    const router = renderAt(mount, list);
+    const router = await renderAt(mount, list);
     await user.type(await searchBox(), "DEP-OLD");
     await pickStatus(user, "Deactivated");
     await waitFor(() =>
@@ -177,7 +180,7 @@ describe.each(MOUNTS)("$name deploy history filters (w4/284)", (mount) => {
   });
 
   it("opens a copied filtered link filtered, and a plain link unfiltered without touching the URL", async () => {
-    const filtered = renderAt(mount, `${list}?status=live&q=dep-new`);
+    const filtered = await renderAt(mount, `${list}?status=live&q=dep-new`);
     expect(await searchBox()).toHaveValue("dep-new");
     expect(statusFilter()).toHaveTextContent("Live");
     expect(statusCalls[0]?.statuses).toEqual(["live"]);
@@ -188,7 +191,7 @@ describe.each(MOUNTS)("$name deploy history filters (w4/284)", (mount) => {
   });
 
   it("ignores a status the history does not know and keeps numeric search text", async () => {
-    const router = renderAt(mount, `${list}?status=bogus&q=123`);
+    const router = await renderAt(mount, `${list}?status=bogus&q=123`);
     expect(await searchBox()).toHaveValue("123");
     expect(statusFilter()).toHaveTextContent("All statuses");
     expect(statusCalls.every((call) => call.statuses.length === 0)).toBe(true);
@@ -197,7 +200,7 @@ describe.each(MOUNTS)("$name deploy history filters (w4/284)", (mount) => {
 
   it("clears a filter's key from the URL when the filter is cleared", async () => {
     const user = userEvent.setup();
-    const router = renderAt(mount, `${list}?status=live&q=dep`);
+    const router = await renderAt(mount, `${list}?status=live&q=dep`);
     await user.clear(await searchBox());
     await waitFor(() =>
       expect(router.state.location.search).toEqual({ status: "live" }),
@@ -213,7 +216,7 @@ describe("service deploy history navigation (w4/284)", () => {
 
   it("drops its filters when a plain link to the same history is followed", async () => {
     const user = userEvent.setup();
-    const router = renderAt(mount, "/services/web/deploys?status=live&q=dep");
+    const router = await renderAt(mount, "/services/web/deploys?status=live&q=dep");
     expect(await searchBox()).toHaveValue("dep");
     await user.click(screen.getByText("Deploys nav"));
     await waitFor(() => expect(router.state.location.search).toEqual({}));
@@ -224,7 +227,7 @@ describe("service deploy history navigation (w4/284)", () => {
 
   it("keeps typing made faster than the URL can echo it", async () => {
     const user = userEvent.setup();
-    const router = renderAt(mount, "/services/web/deploys");
+    const router = await renderAt(mount, "/services/web/deploys");
     await user.type(await searchBox(), "dep-old-and-more");
     expect(await searchBox()).toHaveValue("dep-old-and-more");
     await waitFor(() =>
@@ -234,7 +237,7 @@ describe("service deploy history navigation (w4/284)", () => {
   });
 
   it("does not carry one service's filters to another service's history", async () => {
-    const router = renderAt(mount, "/services/web/deploys?status=live&q=dep");
+    const router = await renderAt(mount, "/services/web/deploys?status=live&q=dep");
     expect(await searchBox()).toHaveValue("dep");
     await act(() =>
       router.navigate({
