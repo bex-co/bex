@@ -208,3 +208,89 @@ func TestEventTypesRouteSurvivesTheRenderValidator(t *testing.T) {
 		}
 	})
 }
+
+// w8/109's reverse guard: the legacy router also matches a shorter bex route
+// to a longer Render template with empty trailing parameters. Every bex route
+// the short-route pass-through admits must be a known, deliberate extension.
+func TestRegisteredShortRoutesAreKnown(t *testing.T) {
+	contract, err := renderContractOnce()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var short []string
+	for _, pattern := range registeredBexRoutes(t) {
+		method, _, ok := bexPatternPath(pattern)
+		if !ok || method == "" {
+			continue
+		}
+		for path, item := range contract.document.Paths.Map() {
+			if item.GetOperation(method) != nil && isBexNativeShortRoute(contract, pattern, path) {
+				short = append(short, pattern+" < "+path)
+			}
+		}
+	}
+	sort.Strings(short)
+	expected := []string{"PUT /v1/env-groups/{id}/env-vars < /env-groups/{envGroupId}/env-vars/{envVarKey}"}
+	if got, want := strings.Join(short, ","), strings.Join(expected, ","); got != want {
+		t.Fatalf("bex routes a longer Render template overmatches changed.\n got: %s\nwant: %s", got, want)
+	}
+}
+
+func TestShortRoutePassThroughRuleIsNarrow(t *testing.T) {
+	contract, err := renderContractOnce()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name, pattern, template string
+		want                    bool
+	}{
+		{"the 109 case", "PUT /v1/env-groups/{id}/env-vars", "/env-groups/{envGroupId}/env-vars/{envVarKey}", true},
+		{"same length is the literal rule's business", "PUT /v1/env-groups/{id}/env-vars/{key}", "/env-groups/{envGroupId}/env-vars/{envVarKey}", false},
+		{"a literal trailing segment is a different path", "PUT /v1/env-groups/{id}", "/env-groups/{envGroupId}/env-vars", false},
+		{"a differing prefix literal", "PUT /v1/env-groups/{id}/files", "/env-groups/{envGroupId}/env-vars/{envVarKey}", false},
+		{"a path Render documents itself", "GET /v1/env-groups/{id}", "/env-groups/{envGroupId}/env-vars/{envVarKey}", false},
+		{"a catchall is not a short route", "GET /v1/env-groups/{rest...}", "/env-groups/{envGroupId}/env-vars/{envVarKey}", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := isBexNativeShortRoute(contract, tc.pattern, tc.template); got != tc.want {
+				t.Errorf("isBexNativeShortRoute(%q, %q) = %v, want %v", tc.pattern, tc.template, got, tc.want)
+			}
+		})
+	}
+}
+
+// Through the strict validator, the whole-list replace reaches its handler,
+// with a valid or empty array, while the genuine single-key operation keeps
+// its body validation.
+func TestEnvGroupBulkReplaceSurvivesTheRenderValidator(t *testing.T) {
+	mux := http.NewServeMux()
+	var reached []string
+	stub := func(name string) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			reached = append(reached, name)
+			w.WriteHeader(http.StatusOK)
+		}
+	}
+	mux.HandleFunc("PUT /v1/env-groups/{id}/env-vars", stub("bulk"))
+	mux.HandleFunc("PUT /v1/env-groups/{id}/env-vars/{key}", stub("single"))
+	h, err := newRenderRequestValidator(mux)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const group = "/v1/env-groups/evg-dajvu9ogsm7s73f64gc0/env-vars"
+	for _, body := range []string{`[{"key":"QA_LITERAL","value":"same harmless baseline"}]`, `[]`} {
+		if w := requestOpenAPITest(t, h, http.MethodPut, group, "application/json", body); w.Code != http.StatusOK {
+			t.Fatalf("bulk %s status=%d, want the handler's 200: %s", body, w.Code, w.Body.String())
+		}
+	}
+	if w := requestOpenAPITest(t, h, http.MethodPut, group+"/QA_LITERAL", "application/json", `{"value":"v"}`); w.Code != http.StatusOK {
+		t.Fatalf("single-key status=%d: %s", w.Code, w.Body.String())
+	}
+	if w := requestOpenAPITest(t, h, http.MethodPut, group+"/QA_LITERAL", "application/json", `{"value":7}`); w.Code != http.StatusBadRequest {
+		t.Fatalf("single-key invalid body status=%d, want the validator's 400: %s", w.Code, w.Body.String())
+	}
+	if got := strings.Join(reached, ","); got != "bulk,bulk,single" {
+		t.Errorf("handlers reached = %s, want bulk,bulk,single", got)
+	}
+}
