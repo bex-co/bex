@@ -108,9 +108,7 @@ lint: golangci-lint deadcode ## Run lint and reachability checks over all Go mod
 	( cd ../backend && "$(GOLANGCI_LINT)" run ) || rc=1; \
 	( cd ../types && "$(GOLANGCI_LINT)" run ) || rc=1; \
 	( cd ../cli && "$(GOLANGCI_LINT)" run ) || rc=1; \
-	output="$$(cd .. && "$(DEADCODE)" -tags=e2e -test -filter='^github.com/bex-co/bex/lego/' ./backend/... ./operator/... ./cli/... 2>&1)"; \
-	status=$$?; \
-	if [ $$status -ne 0 ] || [ -n "$$output" ]; then printf '%s\n' "$$output"; rc=1; fi; \
+	bash hack/deadcode.sh "$(DEADCODE)" || rc=1; \
 	exit $$rc
 
 .PHONY: lint-backend

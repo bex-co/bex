@@ -26,7 +26,7 @@ Parse `$ARGUMENTS`: `go` | `dashboard` | a path. Empty = both sides.
 
 ## Phase 2 — Run the analyzers
 
-- **Go** — exactly what CI runs: `deadcode` (pinned in `lego/operator/Makefile`) with `-tags=e2e -test -filter='^github.com/bex-co/bex/lego/' ./backend/... ./operator/... ./cli/...`. Easiest: `cd lego/operator && make lint` and capture the deadcode section, or invoke `lego/operator/bin/deadcode` with those flags for a raw list.
+- **Go** — exactly what CI runs: `cd lego/operator && make deadcode && bash hack/deadcode.sh "$PWD/bin/deadcode"` (the pinned `deadcode`, run per module with `-tags=e2e -test` and the shared `types` findings intersected; see the script header). `make lint` runs the same script after golangci-lint.
 - **Dashboard** — `cd dashboard && yarn lint:unused` (knip; config in `dashboard/knip.jsonc`).
 
 ## Phase 3 — Triage every hit

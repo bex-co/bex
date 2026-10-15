@@ -28,11 +28,11 @@ import (
 )
 
 // RenderBlueprintSchemaSHA256 is the digest of the reviewed Render schema
-// snapshot fetched on 2026-10-02 (w1/m170: Build Sources, workflow services
-// and the per-kind compute-plan split). Production never downloads this
+// snapshot fetched on 2026-10-15 (w1/m174: Build Sources' baseDir renamed
+// dockerContext; w1/m170 before it). Production never downloads this
 // unversioned upstream document: a deliberate update must change both the
 // bytes and this constant, then pass capability-registry exhaustiveness tests.
-const RenderBlueprintSchemaSHA256 = "a0d4e8a3eb119a1b63657741757e3c25c091b3ce463c4be8c90e8026678d8163"
+const RenderBlueprintSchemaSHA256 = "8a3fb8da6b4f55fe686fbefa790e011d3dd7895f013f355953c572a21ab6494a"
 
 //go:embed schema/render.yaml.json
 var renderBlueprintSchemaSource []byte

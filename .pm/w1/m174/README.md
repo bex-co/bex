@@ -1,17 +1,17 @@
 # w1 · m174 — Get main's red checks passing again: x/net CVEs, lint OOM, flaky tests, Dependabot, schema re-pin
 
-**Worker:** worker1 **Goal:** every check on `main` that is red today passes reliably, so a red check means something again and no known reachable Go vulnerability ships. **Status:** todo
+**Worker:** worker1 **Goal:** every check on `main` that is red today passes reliably, so a red check means something again and no known reachable Go vulnerability ships. **Status:** in progress (t001–t004, t006 done; t005 partly done: #78 landed, #83 parked as `w1/blocked/125`; DoD waits on CI runs)
 
 ## Tasks (in order)
 
 | id   | title                                                                                         | est | depends_on                    |
 | ---- | --------------------------------------------------------------------------------------------- | --- | ----------------------------- |
-| t001 | Bump `golang.org/x/net` to ≥ v0.60.0 in all four Go modules; govulncheck green                | 30m | —                             |
-| t002 | Add `gomod` ecosystems to `.github/dependabot.yml`                                            | 15m | t001                          |
-| t003 | Stop the whole-program dead-code pass being killed for memory (`make lint` Error 137)         | 45m | —                             |
-| t004 | Fix three flaky gitops tests (Zot GC replay, `closed_labels`, LogDelivery off by one second) | 45m | —                             |
+| t001 | Bump `golang.org/x/net` to ≥ v0.60.0 in all four Go modules; govulncheck green — **DONE**                | 30m | —                             |
+| t002 | Add `gomod` ecosystems to `.github/dependabot.yml` — **DONE**                                            | 15m | t001                          |
+| t003 | Stop the whole-program dead-code pass being killed for memory (`make lint` Error 137) — **DONE**         | 45m | —                             |
+| t004 | Fix three flaky gitops tests (Zot GC replay, `closed_labels`, LogDelivery off by one second) — **DONE** | 45m | —                             |
 | t005 | Unstick Dependabot PRs #83 (removed `Github` icon) and #78 (SHA-pinned action inventory)      | 40m | —                             |
-| t006 | Review and re-pin Render's Blueprint schema (`buildSourceGit.baseDir` → `dockerContext`)      | 30m | —                             |
+| t006 | Review and re-pin Render's Blueprint schema (`buildSourceGit.baseDir` → `dockerContext`) — **DONE**      | 30m | —                             |
 | t007 | Simplify                                                                                      | 15m | t002, t003, t004, t005, t006  |
 | t008 | Test coverage                                                                                 | 30m | t002, t003, t004, t005, t006  |
 | t009 | Closeout                                                                                      | 10m | t008                          |
@@ -20,7 +20,7 @@
 
 - `govulncheck (Go workspace)`, `go lint`, `gitops (render)` and `Render schema drift` each pass on 10 consecutive runs on `main` (scheduled checks: their next 2 scheduled runs), with run ids recorded.
 - `go lint`'s dead-code step actually runs to completion on every one of those runs (no `Error 137`).
-- Dependabot PRs #83 and #78 are merged, or closed and replaced by merged equivalents.
+- Dependabot PR #78 is landed and closed. #83 is tracked by `w1/blocked/125` with its findings (rescoped 2026-10-15: #83 is 15 majors plus a minor half that changes guarded dashboard behavior, not a lockfile and an icon).
 - Stale GitHub issue #61 (backend gate red since 2026-08-28; the backend suite is green) is closed.
 
 ## Evidence

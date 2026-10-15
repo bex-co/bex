@@ -78,7 +78,7 @@
           "type": "string",
           "description": "The directory Render treats as the root when building. Useful for monorepos."
         },
-        "baseDir": {
+        "dockerContext": {
           "type": "string",
           "default": ".",
           "description": "The Docker build-context directory, relative to rootDir. Defaults to rootDir, or the repository root if rootDir is unset. Only applicable when runtime is 'docker'."
@@ -102,7 +102,7 @@
         {
           "if": {
             "anyOf": [
-              { "required": ["baseDir"] },
+              { "required": ["dockerContext"] },
               { "required": ["dockerfilePath"] },
               { "required": ["registryCredential"] }
             ]
