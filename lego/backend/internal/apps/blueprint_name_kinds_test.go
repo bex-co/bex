@@ -150,17 +150,12 @@ services:
 		t.Fatalf("parse: %v", err)
 	}
 	// No service billing is declared or exists, so validation reports one.
-	unknown := unknownServiceReferences(st, nil)
-	if len(unknown) != 1 {
-		t.Fatalf("unknown service references = %q, want one for billing", unknown)
+	refused := hostReferenceProblems(st, nil)
+	if len(refused) != 1 {
+		t.Fatalf("host reference refusals = %v, want one for billing", refused)
 	}
-	var app string
-	for _, resource := range ir.Resources {
-		if resource.Kind == BlueprintResourceService && resource.Name == "app" {
-			app = resource.SourcePath
-		}
-	}
-	if got, want := blueprintReferencePointer(ir, unknown[0]), app+"/envVars/1"; got != want {
-		t.Fatalf("pointer for %q = %q, want %q (the fromService entry, not fromDatabase)", unknown[0], got, want)
+	located := blueprintResourceValidationErrors(source, ir, refused)
+	if got, want := ptrValue(located[0].Path), "services[0].envVars[1]"; got != want {
+		t.Fatalf("path for %q = %v, want %q (the fromService entry, not fromDatabase)", located[0].Error, got, want)
 	}
 }

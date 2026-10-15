@@ -634,35 +634,49 @@ func (s *Service) validateWorkspaceReferences(ctx context.Context, source *Bluep
 	if err != nil {
 		return out
 	}
-	for _, msg := range unknownServiceReferences(st, services) {
-		if pointer := blueprintReferencePointer(ir, msg); pointer != "" {
-			out = append(out, blueprintLocatedError(source, msg, pointer))
-		} else {
-			out = append(out, blueprintValidationError(ir, msg))
-		}
-	}
-	return out
+	return append(out, blueprintResourceValidationErrors(source, ir, hostReferenceProblems(st, services))...)
 }
 
-// unknownServiceReferences lists each fromService `property: host` target
-// that is neither declared in the manifest nor an existing service in the
-// workspace (resolved by manifest name, as the apply resolves them, w5/m133).
-// Validate reports them (w8/026); the apply refuses them before any write, so
-// it never creates the referring service first (w4/206).
-func unknownServiceReferences(st parsedStack, existing map[string]*appv1alpha1.App) []string {
+// hostReferenceProblems refuses, in document order, each fromService
+// `property: host` reference to a target the manifest does not declare that
+// is no existing workspace service (resolved by manifest name, as the apply
+// resolves them, w5/m133), or an existing App the supplied type does not name
+// or that has no network address — classifyRef's declared-sibling rules
+// applied to the App's actual kind. Each refusal is at its authored envVars
+// entry. Validate reports them all (w8/026); the apply refuses the first
+// before any write (w4/206).
+func hostReferenceProblems(st parsedStack, existing map[string]*appv1alpha1.App) blueprintResourceErrors {
 	declared := make(map[string]bool, len(st.services))
 	for _, svc := range st.services {
 		declared[svc.req.Name] = true
 	}
-	var unknown []string
+	var refused blueprintResourceErrors
 	for _, svc := range st.services {
 		for _, ref := range svc.hostRefs {
-			if !declared[ref.target] && existing[ref.target] == nil {
-				unknown = append(unknown, fmt.Sprintf("service %q: fromService references unknown service %q (declare it under services: or create it in this workspace first)", svc.req.Name, ref.target))
+			if declared[ref.target] {
+				continue // classifyRef checked the declared sibling
+			}
+			if err := existingHostTargetError(svc.req.Name, ref, existing[ref.target]); err != nil {
+				refused = append(refused, blueprintResourceError{kind: BlueprintResourceService, name: svc.req.Name, err: atEnvEntry(ref.index, err)})
 			}
 		}
 	}
-	return unknown
+	return refused
+}
+
+// existingHostTargetError is the refusal of a host reference to target, an
+// existing workspace App (nil when none exists), or nil when it resolves.
+func existingHostTargetError(service string, ref hostRef, target *appv1alpha1.App) error {
+	if target == nil {
+		return fmt.Errorf("%w: service %q: fromService references unknown service %q (declare it under services: or create it in this workspace first)", core.ErrBadRequest, service, ref.target)
+	}
+	if err := serviceRefTypeError(service, ref.key, ref.refType, ref.target, effectiveType(target.Spec.Type)); err != nil {
+		return err
+	}
+	if !target.Spec.InternallyAddressable() {
+		return serviceRefUnaddressable(service, ref.key, serviceRefPropertyHost, ref.target)
+	}
+	return nil
 }
 
 // blueprintReferenceMessage is a resolver refusal without its transport
