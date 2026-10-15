@@ -1,0 +1,53 @@
+from pathlib import Path
+import copy,datetime,json,os,secrets,subprocess,sys,time,yaml
+os.umask(0o077);P=Path(__file__).resolve().parent;root=Path('/Volumes/nvme4tbfish/projects/bex8');cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json';c=json.loads(cp.read_text());assert c.get('sync298_result')==0 and not c.get('active_sync_stash');mode,case=sys.argv[1:3];assert case in ('mcp','rest-control');ws='tea-daif693dqjvc73e7as3g'
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,indent=2));cp.chmod(0o600)
+def api(method,path,body=None):
+ cfg=yaml.safe_load((P/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token;ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')';auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+ws+'"\n';f=P/'sweep298-request.json';assert not f.exists();args=['curl','--disable','-sS','--max-time','30','--config','-','-X',method,'-H','Accept: application/json, text/event-stream','-H','MCP-Protocol-Version: 2025-03-26']
+ if body is not None:f.write_text(json.dumps(body));args+=['-H','Content-Type: application/json','--data-binary','@'+str(f)]
+ start=time.monotonic()
+ try:r=subprocess.run([*args,'-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=36)
+ finally:f.unlink(missing_ok=True)
+ raw,_,status=r.stdout.rpartition('\n');out={'at':now(),'API_only':True,'request':{'method':method,'path':path,'body':body,'workspace':ws,'user_agent':ua,'authorization':'REDACTED'},'status':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-start,3),'response':raw,'stderr':r.stderr};assert token not in json.dumps(out);return out
+def decode(r):
+ text=r['response']
+ if not text.lstrip().startswith(('{','[')):
+  texts=[s[5:].strip() for s in text.splitlines() if s.startswith('data:')];assert len(texts)==1;text=texts[0]
+ return json.loads(text)
+
+def inventory():
+ r=api('GET','/v1/env-groups?ownerId='+ws);assert r['status']=='200';return r,[v.get('envGroup',v) for v in decode(r)]
+def own(x):
+ assert x['sweep']==298 and x['case']==case and x['workspace']==ws and x['id']==x['create_view']['id'] and x['create_view']['ownerId']==ws and x['id'] not in x['pre_ids'] and x['create_result']['status']=='201' and not x['state'].startswith('deleted:')
+def snapshot(x):
+ meta=api('GET','/v1/env-groups/'+x['id']);value=api('GET','/v1/env-groups/'+x['id']+'/env-vars/QA_LITERAL');m=decode(meta);v=decode(value);return {'at':now(),'metadata':meta,'key':value,'decoded_metadata':m,'decoded_key':v}
+def links(x):
+ r=api('POST','/graphql',{'query':'query QA298Links($id:String!){envGroup(id:$id){id serviceLinks}}','variables':{'id':x['id']}});v=decode(r);assert r['status']=='200' and not v.get('errors');g=v['data']['envGroup'];assert g['id']==x['id'] and g.get('serviceLinks') in (None,[]);x.setdefault('raw_link_proofs',[]).append({'at':now(),'receipt':r,'linked_ids':g.get('serviceLinks') or []});save()
+if mode=='create':
+ assert not any(v.get('sweep')==298 and v.get('case')==case for v in c['resources']);before,rows=inventory();nonce=secrets.token_hex(3);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-group';value='QA298_'+nonce+'\n☃=baseline\r\n';body={'ownerId':ws,'name':name,'envVars':[{'key':'QA_LITERAL','value':value}],'serviceIds':[]};x={'sweep':298,'case':case,'type':'env_group','workspace':ws,'name':name,'nonce':nonce,'baseline_value':value,'time':now(),'source_head':c['head'],'pre_inventory':before,'pre_ids':[v['id'] for v in rows],'create_body':body,'dependency_ids':[],'state':'normal unlinked group create intent persisted'};assert name not in {v['name'] for v in rows};c['resources'].append(x);save();r=api('POST','/v1/env-groups',body);x['create_result']=r;x['state']='create response received; reconcile before retry';save();assert r['status']=='201';v=decode(r);v=v.get('envGroup',v);assert v['id'] not in x['pre_ids'] and v['name']==name and v['ownerId']==ws;x.update(id=v['id'],create_view=v,state='created: normal201/id/name/workspace ownership recorded');save();links(x);x['initial_snapshot']=snapshot(x);save();assert x['initial_snapshot']['decoded_key']['value']==value and not x['initial_snapshot']['decoded_metadata'].get('availability');print(json.dumps({'case':case,'id':v['id'],'unlinked':True}),flush=True);raise SystemExit(0)
+x=next(v for v in c['resources'] if v.get('sweep')==298 and v.get('case')==case);own(x)
+if mode=='exercise':
+ assert 'cases' not in x;links(x);x['cases']=[];save();current=x['baseline_value'];variants=[('same-value-positive',current,False,'single'),('ordinary-positive','QA298_'+x['nonce']+'_A',False,'single'),('unicode-CRLF-positive','QA298_'+x['nonce']+'\n☃=B\r\n',False,'single'),('empty-positive','',False,'single'),('single-NUL-invalid','QA298_INVALID_'+x['nonce']+'\0tail',True,'single'),('sparse-NUL-invalid','QA298_INVALID_'+x['nonce']+'\0tail',True,'sparse'),('sparse-positive',x['baseline_value'],False,'sparse')]
+ if case=='rest-control':variants=variants[:1]
+ for label,value,invalid,kind in variants:
+  before=snapshot(x);assert not before['decoded_metadata'].get('availability');assert before['decoded_key'].get('value')==current
+  args={'workspaceId':ws,'id':x['id']};items=([{'key':'QA_SHOULD_NOT_APPEAR','value':'QA298_STAGED_'+x['nonce']}] if invalid and kind=='sparse' else [])+[{'key':'QA_LITERAL','value':value}]
+  if case=='rest-control':method='PUT';path='/v1/env-groups/'+x['id']+'/env-vars/QA_LITERAL';body={'value':value}
+  else:
+   method='POST';path='/mcp';tool='set_env_group_var' if kind=='single' else 'patch_env_group_environment'
+   if kind=='single':args.update(key='QA_LITERAL',value=value)
+   else:args.update(envVars=items,saveMode='deploy' if invalid else 'save_only')
+   body={'jsonrpc':'2.0','id':298000+len(x['cases']),'method':'tools/call','params':{'name':tool,'arguments':args}}
+  row={'at':now(),'label':label,'invalid':invalid,'kind':kind,'before':before,'method':method,'path':path,'body':body,'state':'exact-owned intent persisted'};x['cases'].append(row);save();r=api(method,path,body);row['receipt']=r;save();envelope=decode(r);row['envelope']=envelope;after=snapshot(x);row['after']=after
+  if case=='rest-control':accepted=r['status']=='200';refused=r['status']=='400' and 'ENVIRONMENT_VARIABLE_VALUE_INVALID' in r['response']
+  else:accepted=r['status']=='200' and not envelope.get('error') and not envelope.get('result',{}).get('isError');refused=r['status']=='200' and bool(envelope.get('result',{}).get('isError')) and 'ENVIRONMENT_VARIABLE_VALUE_INVALID' in r['response']
+  expected=current if invalid else value;actual=after['decoded_key'].get('value');keys={z['key'] for z in after['decoded_metadata'].get('envVars',[])};ready=not after['decoded_metadata'].get('availability');passed=(refused if invalid else accepted) and actual==expected and keys=={'QA_LITERAL'} and ready and (not invalid or 'QA298_INVALID_' not in r['response']);row.update(accepted=bool(accepted),refused=bool(refused),expected_value=expected,acceptance_pass=bool(passed),state='response and state reconciled');save();print(json.dumps({'case':case,'label':label,'HTTP':r['status'],'accepted':bool(accepted),'refused':bool(refused),'availability':after['decoded_metadata'].get('availability'),'pass':bool(passed)}),flush=True)
+  if not passed:raise SystemExit('Isolated normal-call counterexample retained; stop writes and reconcile cleanup; no retry')
+  current=expected;time.sleep(1)
+ x['exercise_complete']=True;save()
+elif mode=='delete':
+ assert 'delete_result' not in x;links(x);before=snapshot(x);m=before['decoded_metadata'];assert m['id']==x['id'] and m.get('serviceLinks')==[];x['delete_intent']={'at':now(),'snapshot':before,'raw_links_empty':True};save();x['delete_result']=api('DELETE','/v1/env-groups/'+x['id']);save();assert x['delete_result']['status']=='204';print(json.dumps({'case':case,'delete_acknowledged':True}),flush=True)
+elif mode=='reconcile':
+ assert 'delete_result' in x;r=api('GET','/v1/env-groups/'+x['id']);inv,rows=inventory();ids={v['id'] for v in rows};assert set(x['pre_ids'])<=ids;done=r['status']=='404' and x['id'] not in ids;x.setdefault('cleanup_receipts',[]).append({'at':now(),'detail':r,'inventory':inv,'baseline_preserved':True});x['state']='deleted: normal204/detail404/listabsent/raw links empty/baseline preserved' if done else 'delete acknowledged: convergence pending';save();print(json.dumps({'case':case,'cleanup_complete':done}),flush=True)
+else:raise ValueError(mode)

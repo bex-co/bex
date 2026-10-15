@@ -1,0 +1,30 @@
+{
+  "command": "GOWORK=off GOTOOLCHAIN=go1.26.8 go test -json ./internal/core ./internal/secrets ./internal/envgroups ./internal/apps -run NUL|EnvAcceptsRepresentableValues|SecretFileKeepsNULBytes|CheckReservedSpecEnv|BlueprintPromptValue -count=1",
+  "exit": 0,
+  "named_passes_including_parents": 34,
+  "top_level_tests": 10,
+  "core_package_has_no_selected_tests": true,
+  "final_quota": {
+    "at": "2026-10-15T09:49:20.076935+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.41,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4ade9c66fb97ad6-SJC"
+    },
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+  },
+  "native_runs": 72,
+  "invalid_refusals": 28,
+  "valid_controls": 44,
+  "production_resource_mutations": 0
+}

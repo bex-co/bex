@@ -1,0 +1,35 @@
+# w8/109 — group bulk-write route and environment controls, sweep297
+
+## Bulk route failure
+
+Two live PUT /v1/env-groups/evg-db8a8n5eelgc73d2i1c0/env-vars requests return400, id bad_request, message invalid path parameter envVarKey: one is a NUL admission test and one is an otherwise valid same-value replacement array. Both keep the own stored value unchanged. The latter proves a route failure before semantic value validation, not successful m62 admission. [Complete native/API/state/cleanup receipts](journey-results.json), [finite guarded driver](journey-driver.py.txt), [initial writer-driver version](initial-writer-driver.py.txt).
+
+The registered Bex-native bulk handler accepts an array and calls the same SetEnvGroupVars that passes its GraphQL/MCP controls. The pinned Render OpenAPI has only /env-groups/{envGroupId}/env-vars/{envVarKey}. The actual legacy kin-openapi router nevertheless matches the shorter bulk path to that longer operation with envVarKey empty. The global gate rejects that empty required path parameter before the real handler runs. isBexNativeLiteralRoute only handles equal-length literal/template shadows and misses this case.
+
+[Actual current gate probe](route-probe.go.txt) and [baseline events](current-route-baseline.jsonl) reproduce valid-array and empty-array bulk failures with the registered next handler never called. Genuine single-key valid body, genuine single-key invalid body and unknown-route controls pass. [Private candidate](private-proposal.patch) recognizes only a registered Bex-native shorter pattern overmatched by missing trailing Render parameters, preserving exact documented intersections and catchalls. [Selected API checks](private-proposal-tests.jsonl) pass41 named parent/subtest events across12 top-level tests, with no skips. [Commands/counts](test-results.json). This is private diagnosis, not an adopted fix or complete real-DB backend suite. No hosted fixed bulk request is claimed.
+
+An [initial negative control](excluded-initial-negative-control.go.txt) assumed the OpenAPI parameter rejected a hyphen in a key. [Its output](excluded-initial-negative-control.jsonl) showed that assumption was wrong; the feature handler owns that key rule. It is excluded and replaced by an actual invalid JSON value-type control. Both original bulk counterexamples are unchanged. No production mutation was repeated to correct this local test.
+
+## Environment-value and binary-file controls
+
+The same sweep qualifies existing m62 writers on a fresh native-created Free Node service and an unlinked group. Eighteen service controls pass across REST/GraphQL/MCP × full/single/sparse × invalid/valid. Thirteen group cases pass before the independent normal-save error below. Total31 writer passes comprise16 NUL refusals with the stable ENVIRONMENT_VARIABLE_VALUE_INVALID code and15 valid controls. Failed full/sparse requests place a harmless valid entry before the bad entry; neither persists that entry or changes the existing value. Invalid-value markers are not echoed.
+
+The service's native --env-var argv ends in CRLF. The pin deliberately trims outer whitespace in pkg/types/envvar.go:17, explicitly covered by its existing trim test and retained by w8/077. The initial fixture incorrectly expected those outer bytes; its first Live expectation is excluded. Metadata and build/runtime instead exactly match the pinned normalized value, with embedded newline/Unicode intact. This correction made no request or config change. The group's API-authored baseline retains actual trailing CRLF, and its successful API controls preserve it. No CLI outer-whitespace defect is filed.
+
+The service's harmless20-byte NUL-containing file retains SHA256229808babfe4cf08875bcb93fcea65ebe94a6402f80573bf70ed526ced936d50 at actual build and runtime; [hex bytes](harmless-binary-file.hex.txt). Native published Bex creates the fixture. A subsequent unchanged Render --wait deployment exits0 after69.108s and repeats the exact environment and file-byte proof. Six documented successful legacy full/single env saves schedule service_updated rollouts (five are superseded/canceled); these are positive-control effects, not NUL failures. The initial one plus six positive save deployments plus one native manual deployment give eight enumerated children. No isolated per-invalid no-new-deploy assertion is inferred from the combined deployment count; focused source tests retain that guard proof.
+
+## Unassigned normal-save failure
+
+A subsequent positive MCP set_env_group_var control returns isError:true with ENV_GROUP_RESTORATION_FAILED. Read-only reconciliation sees metadata availability busy while the direct own-key read still returns the prior value. No positive call or timed-out mutation is retried. The cause is unobserved: no operator/admin/database access is used and this is not assigned to the routing defect or NUL guard. The two remaining MCP sparse group cases are unexercised. Existing w4/m98 owns durable group recovery; w4/m130's service CAS path is a neighbor, not evidence of this group's cause. m62 remains blocked on its complete writer/UI acceptance. The ordinary Delete API succeeds for this exact unlinked group, with raw stored-link enumeration before deletion; detail404/list absence follow.
+
+A redundant raw-links check was accidentally left in the post-delete reconciliation branch and failed on the already deleted group. It issued only a read. The branch was corrected; the actual pre-delete canonical link proof is retained, and independent final detail/list reads confirm cleanup without another Delete.
+
+## Ownership and limits
+
+Own service srv-db8a8gdeelgc73d2i1ag and all eight recorded deployment children are deleted natively after enumeration. The own group evg-db8a8n5eelgc73d2i1c0 is deleted only after its raw GraphQL serviceLinks and rendered links are both empty. All six baseline services and baseline groups are preserved; final services used6/terminating0 and no group remains. The binary input file, copied Render config and private request file are removed. No baseline, paid or foreign resource is changed.
+
+Source HEADc1c041b1f43cc320454c0d2dab82bcacfba360c9; exact deployed artifact unknown. Published Bex0.3.2 and unchanged Render2.27/a764810a7682 supply actual create/deploy controls. Bulk-route and writer calls are explicitly API-only; no env-group native CLI verb or full live native mutation wire is claimed. No hosted candidate fix, dashboard feedback, independent Render production, full real-DB suite or direct production Kubernetes inventory. Product source is unchanged. [Issue109](../../109.md).
+
+## Isolated normal-save follow-up — sweep298
+
+[Seven fresh MCP group controls](../m62/group-MCP-sweep298/README.md) pass, including same-value and empty-value saves plus the remaining sparse invalid/valid controls. The original restoration failure is not reproduced; its cause remains unobserved. This does not change109’s separately reproduced routing defect or claim a product repair. The additional unlinked group is fully cleaned.

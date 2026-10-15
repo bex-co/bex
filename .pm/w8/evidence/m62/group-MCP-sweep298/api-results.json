@@ -1,0 +1,1671 @@
+{
+  "resource": {
+    "sweep": 298,
+    "case": "mcp",
+    "type": "env_group",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "name": "qa-20261015-3f4b7a-group",
+    "nonce": "3f4b7a",
+    "baseline_value": "QA298_3f4b7a\n\u2603=baseline\r\n",
+    "time": "2026-10-15T10:30:17.450795+00:00",
+    "source_head": "f497ddab6a1aab07923513b62efac5da97d2b2f6",
+    "pre_inventory": {
+      "at": "2026-10-15T10:30:17.450502+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups?ownerId=tea-daif693dqjvc73e7as3g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 1.469,
+      "response": "[]\n",
+      "stderr": ""
+    },
+    "pre_ids": [],
+    "create_body": {
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "name": "qa-20261015-3f4b7a-group",
+      "envVars": [
+        {
+          "key": "QA_LITERAL",
+          "value": "QA298_3f4b7a\n\u2603=baseline\r\n"
+        }
+      ],
+      "serviceIds": []
+    },
+    "dependency_ids": [],
+    "state": "deleted: normal204/detail404/listabsent/raw links empty/baseline preserved",
+    "create_result": {
+      "at": "2026-10-15T10:30:21.955636+00:00",
+      "API_only": true,
+      "request": {
+        "method": "POST",
+        "path": "/v1/env-groups",
+        "body": {
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "name": "qa-20261015-3f4b7a-group",
+          "envVars": [
+            {
+              "key": "QA_LITERAL",
+              "value": "QA298_3f4b7a\n\u2603=baseline\r\n"
+            }
+          ],
+          "serviceIds": []
+        },
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "201",
+      "curl_exit": 0,
+      "elapsed": 4.399,
+      "response": "{\"id\":\"evg-db8ameteelgc73d2i29g\",\"name\":\"qa-20261015-3f4b7a-group\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T10:30:21.351937579Z\",\"updatedAt\":\"2026-10-15T10:30:21.351937579Z\",\"revision\":\"egr1_AAAAAAAAAAE\",\"serviceLinks\":[]}\n",
+      "stderr": ""
+    },
+    "id": "evg-db8ameteelgc73d2i29g",
+    "create_view": {
+      "id": "evg-db8ameteelgc73d2i29g",
+      "name": "qa-20261015-3f4b7a-group",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "envVars": [
+        {
+          "key": "QA_LITERAL"
+        }
+      ],
+      "secretFiles": [],
+      "createdAt": "2026-10-15T10:30:21.351937579Z",
+      "updatedAt": "2026-10-15T10:30:21.351937579Z",
+      "revision": "egr1_AAAAAAAAAAE",
+      "serviceLinks": []
+    },
+    "raw_link_proofs": [
+      {
+        "at": "2026-10-15T10:30:22.850176+00:00",
+        "receipt": {
+          "at": "2026-10-15T10:30:22.850007+00:00",
+          "API_only": true,
+          "request": {
+            "method": "POST",
+            "path": "/graphql",
+            "body": {
+              "query": "query QA298Links($id:String!){envGroup(id:$id){id serviceLinks}}",
+              "variables": {
+                "id": "evg-db8ameteelgc73d2i29g"
+              }
+            },
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.709,
+          "response": "{\"data\":{\"envGroup\":{\"id\":\"evg-db8ameteelgc73d2i29g\",\"serviceLinks\":[]}}}\n",
+          "stderr": ""
+        },
+        "linked_ids": []
+      },
+      {
+        "at": "2026-10-15T10:31:01.856873+00:00",
+        "receipt": {
+          "at": "2026-10-15T10:31:01.856519+00:00",
+          "API_only": true,
+          "request": {
+            "method": "POST",
+            "path": "/graphql",
+            "body": {
+              "query": "query QA298Links($id:String!){envGroup(id:$id){id serviceLinks}}",
+              "variables": {
+                "id": "evg-db8ameteelgc73d2i29g"
+              }
+            },
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.326,
+          "response": "{\"data\":{\"envGroup\":{\"id\":\"evg-db8ameteelgc73d2i29g\",\"serviceLinks\":[]}}}\n",
+          "stderr": ""
+        },
+        "linked_ids": []
+      },
+      {
+        "at": "2026-10-15T10:32:57.758524+00:00",
+        "receipt": {
+          "at": "2026-10-15T10:32:57.758183+00:00",
+          "API_only": true,
+          "request": {
+            "method": "POST",
+            "path": "/graphql",
+            "body": {
+              "query": "query QA298Links($id:String!){envGroup(id:$id){id serviceLinks}}",
+              "variables": {
+                "id": "evg-db8ameteelgc73d2i29g"
+              }
+            },
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.351,
+          "response": "{\"data\":{\"envGroup\":{\"id\":\"evg-db8ameteelgc73d2i29g\",\"serviceLinks\":[]}}}\n",
+          "stderr": ""
+        },
+        "linked_ids": []
+      }
+    ],
+    "initial_snapshot": {
+      "at": "2026-10-15T10:30:24.739700+00:00",
+      "metadata": {
+        "at": "2026-10-15T10:30:24.170818+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 1.206,
+        "response": "{\"id\":\"evg-db8ameteelgc73d2i29g\",\"name\":\"qa-20261015-3f4b7a-group\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T10:30:21.351937579Z\",\"updatedAt\":\"2026-10-15T10:30:21.351937579Z\",\"revision\":\"egr1_AAAAAAAAAAE\",\"serviceLinks\":[]}\n",
+        "stderr": ""
+      },
+      "key": {
+        "at": "2026-10-15T10:30:24.739553+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g/env-vars/QA_LITERAL",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.559,
+        "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA298_3f4b7a\\n\u2603=baseline\\r\\n\"}\n",
+        "stderr": ""
+      },
+      "decoded_metadata": {
+        "id": "evg-db8ameteelgc73d2i29g",
+        "name": "qa-20261015-3f4b7a-group",
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "envVars": [
+          {
+            "key": "QA_LITERAL"
+          }
+        ],
+        "secretFiles": [],
+        "createdAt": "2026-10-15T10:30:21.351937579Z",
+        "updatedAt": "2026-10-15T10:30:21.351937579Z",
+        "revision": "egr1_AAAAAAAAAAE",
+        "serviceLinks": []
+      },
+      "decoded_key": {
+        "key": "QA_LITERAL",
+        "value": "QA298_3f4b7a\n\u2603=baseline\r\n"
+      }
+    },
+    "cases": [
+      {
+        "at": "2026-10-15T10:31:03.058622+00:00",
+        "label": "same-value-positive",
+        "invalid": false,
+        "kind": "single",
+        "before": {
+          "at": "2026-10-15T10:31:03.058600+00:00",
+          "metadata": {
+            "at": "2026-10-15T10:31:02.400415+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.355,
+            "response": "{\"id\":\"evg-db8ameteelgc73d2i29g\",\"name\":\"qa-20261015-3f4b7a-group\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T10:30:21.351937579Z\",\"updatedAt\":\"2026-10-15T10:30:21.351937579Z\",\"revision\":\"egr1_AAAAAAAAAAE\",\"serviceLinks\":[]}\n",
+            "stderr": ""
+          },
+          "key": {
+            "at": "2026-10-15T10:31:03.058481+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.645,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA298_3f4b7a\\n\u2603=baseline\\r\\n\"}\n",
+            "stderr": ""
+          },
+          "decoded_metadata": {
+            "id": "evg-db8ameteelgc73d2i29g",
+            "name": "qa-20261015-3f4b7a-group",
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "envVars": [
+              {
+                "key": "QA_LITERAL"
+              }
+            ],
+            "secretFiles": [],
+            "createdAt": "2026-10-15T10:30:21.351937579Z",
+            "updatedAt": "2026-10-15T10:30:21.351937579Z",
+            "revision": "egr1_AAAAAAAAAAE",
+            "serviceLinks": []
+          },
+          "decoded_key": {
+            "key": "QA_LITERAL",
+            "value": "QA298_3f4b7a\n\u2603=baseline\r\n"
+          }
+        },
+        "method": "POST",
+        "path": "/mcp",
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 298000,
+          "method": "tools/call",
+          "params": {
+            "name": "set_env_group_var",
+            "arguments": {
+              "workspaceId": "tea-daif693dqjvc73e7as3g",
+              "id": "evg-db8ameteelgc73d2i29g",
+              "key": "QA_LITERAL",
+              "value": "QA298_3f4b7a\n\u2603=baseline\r\n"
+            }
+          }
+        },
+        "state": "response and state reconciled",
+        "receipt": {
+          "at": "2026-10-15T10:31:04.270404+00:00",
+          "API_only": true,
+          "request": {
+            "method": "POST",
+            "path": "/mcp",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 298000,
+              "method": "tools/call",
+              "params": {
+                "name": "set_env_group_var",
+                "arguments": {
+                  "workspaceId": "tea-daif693dqjvc73e7as3g",
+                  "id": "evg-db8ameteelgc73d2i29g",
+                  "key": "QA_LITERAL",
+                  "value": "QA298_3f4b7a\n\u2603=baseline\r\n"
+                }
+              }
+            },
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 1.117,
+          "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":298000,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"key\\\":\\\"QA_LITERAL\\\"}\"}],\"structuredContent\":{\"key\":\"QA_LITERAL\"}}}\n\n",
+          "stderr": ""
+        },
+        "envelope": {
+          "jsonrpc": "2.0",
+          "id": 298000,
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "{\"key\":\"QA_LITERAL\"}"
+              }
+            ],
+            "structuredContent": {
+              "key": "QA_LITERAL"
+            }
+          }
+        },
+        "after": {
+          "at": "2026-10-15T10:31:05.215456+00:00",
+          "metadata": {
+            "at": "2026-10-15T10:31:04.793882+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.41,
+            "response": "{\"id\":\"evg-db8ameteelgc73d2i29g\",\"name\":\"qa-20261015-3f4b7a-group\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T10:30:21.351937579Z\",\"updatedAt\":\"2026-10-15T10:30:21.351937579Z\",\"revision\":\"egr1_AAAAAAAAAAE\",\"serviceLinks\":[]}\n",
+            "stderr": ""
+          },
+          "key": {
+            "at": "2026-10-15T10:31:05.215255+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.407,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA298_3f4b7a\\n\u2603=baseline\\r\\n\"}\n",
+            "stderr": ""
+          },
+          "decoded_metadata": {
+            "id": "evg-db8ameteelgc73d2i29g",
+            "name": "qa-20261015-3f4b7a-group",
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "envVars": [
+              {
+                "key": "QA_LITERAL"
+              }
+            ],
+            "secretFiles": [],
+            "createdAt": "2026-10-15T10:30:21.351937579Z",
+            "updatedAt": "2026-10-15T10:30:21.351937579Z",
+            "revision": "egr1_AAAAAAAAAAE",
+            "serviceLinks": []
+          },
+          "decoded_key": {
+            "key": "QA_LITERAL",
+            "value": "QA298_3f4b7a\n\u2603=baseline\r\n"
+          }
+        },
+        "accepted": true,
+        "refused": false,
+        "expected_value": "QA298_3f4b7a\n\u2603=baseline\r\n",
+        "acceptance_pass": true
+      },
+      {
+        "at": "2026-10-15T10:31:06.991955+00:00",
+        "label": "ordinary-positive",
+        "invalid": false,
+        "kind": "single",
+        "before": {
+          "at": "2026-10-15T10:31:06.991935+00:00",
+          "metadata": {
+            "at": "2026-10-15T10:31:06.684621+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.341,
+            "response": "{\"id\":\"evg-db8ameteelgc73d2i29g\",\"name\":\"qa-20261015-3f4b7a-group\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T10:30:21.351937579Z\",\"updatedAt\":\"2026-10-15T10:30:21.351937579Z\",\"revision\":\"egr1_AAAAAAAAAAE\",\"serviceLinks\":[]}\n",
+            "stderr": ""
+          },
+          "key": {
+            "at": "2026-10-15T10:31:06.991829+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.292,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA298_3f4b7a\\n\u2603=baseline\\r\\n\"}\n",
+            "stderr": ""
+          },
+          "decoded_metadata": {
+            "id": "evg-db8ameteelgc73d2i29g",
+            "name": "qa-20261015-3f4b7a-group",
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "envVars": [
+              {
+                "key": "QA_LITERAL"
+              }
+            ],
+            "secretFiles": [],
+            "createdAt": "2026-10-15T10:30:21.351937579Z",
+            "updatedAt": "2026-10-15T10:30:21.351937579Z",
+            "revision": "egr1_AAAAAAAAAAE",
+            "serviceLinks": []
+          },
+          "decoded_key": {
+            "key": "QA_LITERAL",
+            "value": "QA298_3f4b7a\n\u2603=baseline\r\n"
+          }
+        },
+        "method": "POST",
+        "path": "/mcp",
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 298001,
+          "method": "tools/call",
+          "params": {
+            "name": "set_env_group_var",
+            "arguments": {
+              "workspaceId": "tea-daif693dqjvc73e7as3g",
+              "id": "evg-db8ameteelgc73d2i29g",
+              "key": "QA_LITERAL",
+              "value": "QA298_3f4b7a_A"
+            }
+          }
+        },
+        "state": "response and state reconciled",
+        "receipt": {
+          "at": "2026-10-15T10:31:08.631648+00:00",
+          "API_only": true,
+          "request": {
+            "method": "POST",
+            "path": "/mcp",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 298001,
+              "method": "tools/call",
+              "params": {
+                "name": "set_env_group_var",
+                "arguments": {
+                  "workspaceId": "tea-daif693dqjvc73e7as3g",
+                  "id": "evg-db8ameteelgc73d2i29g",
+                  "key": "QA_LITERAL",
+                  "value": "QA298_3f4b7a_A"
+                }
+              }
+            },
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 1.546,
+          "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":298001,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"key\\\":\\\"QA_LITERAL\\\"}\"}],\"structuredContent\":{\"key\":\"QA_LITERAL\"}}}\n\n",
+          "stderr": ""
+        },
+        "envelope": {
+          "jsonrpc": "2.0",
+          "id": 298001,
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "{\"key\":\"QA_LITERAL\"}"
+              }
+            ],
+            "structuredContent": {
+              "key": "QA_LITERAL"
+            }
+          }
+        },
+        "after": {
+          "at": "2026-10-15T10:31:09.621150+00:00",
+          "metadata": {
+            "at": "2026-10-15T10:31:09.334884+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.596,
+            "response": "{\"id\":\"evg-db8ameteelgc73d2i29g\",\"name\":\"qa-20261015-3f4b7a-group\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T10:30:21.351937579Z\",\"updatedAt\":\"2026-10-15T10:31:07.900149544Z\",\"revision\":\"egr1_AAAAAAAAAAI\",\"serviceLinks\":[]}\n",
+            "stderr": ""
+          },
+          "key": {
+            "at": "2026-10-15T10:31:09.621006+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.272,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA298_3f4b7a_A\"}\n",
+            "stderr": ""
+          },
+          "decoded_metadata": {
+            "id": "evg-db8ameteelgc73d2i29g",
+            "name": "qa-20261015-3f4b7a-group",
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "envVars": [
+              {
+                "key": "QA_LITERAL"
+              }
+            ],
+            "secretFiles": [],
+            "createdAt": "2026-10-15T10:30:21.351937579Z",
+            "updatedAt": "2026-10-15T10:31:07.900149544Z",
+            "revision": "egr1_AAAAAAAAAAI",
+            "serviceLinks": []
+          },
+          "decoded_key": {
+            "key": "QA_LITERAL",
+            "value": "QA298_3f4b7a_A"
+          }
+        },
+        "accepted": true,
+        "refused": false,
+        "expected_value": "QA298_3f4b7a_A",
+        "acceptance_pass": true
+      },
+      {
+        "at": "2026-10-15T10:31:11.577730+00:00",
+        "label": "unicode-CRLF-positive",
+        "invalid": false,
+        "kind": "single",
+        "before": {
+          "at": "2026-10-15T10:31:11.577711+00:00",
+          "metadata": {
+            "at": "2026-10-15T10:31:11.284574+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.547,
+            "response": "{\"id\":\"evg-db8ameteelgc73d2i29g\",\"name\":\"qa-20261015-3f4b7a-group\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T10:30:21.351937579Z\",\"updatedAt\":\"2026-10-15T10:31:07.900149544Z\",\"revision\":\"egr1_AAAAAAAAAAI\",\"serviceLinks\":[]}\n",
+            "stderr": ""
+          },
+          "key": {
+            "at": "2026-10-15T10:31:11.577616+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.284,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA298_3f4b7a_A\"}\n",
+            "stderr": ""
+          },
+          "decoded_metadata": {
+            "id": "evg-db8ameteelgc73d2i29g",
+            "name": "qa-20261015-3f4b7a-group",
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "envVars": [
+              {
+                "key": "QA_LITERAL"
+              }
+            ],
+            "secretFiles": [],
+            "createdAt": "2026-10-15T10:30:21.351937579Z",
+            "updatedAt": "2026-10-15T10:31:07.900149544Z",
+            "revision": "egr1_AAAAAAAAAAI",
+            "serviceLinks": []
+          },
+          "decoded_key": {
+            "key": "QA_LITERAL",
+            "value": "QA298_3f4b7a_A"
+          }
+        },
+        "method": "POST",
+        "path": "/mcp",
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 298002,
+          "method": "tools/call",
+          "params": {
+            "name": "set_env_group_var",
+            "arguments": {
+              "workspaceId": "tea-daif693dqjvc73e7as3g",
+              "id": "evg-db8ameteelgc73d2i29g",
+              "key": "QA_LITERAL",
+              "value": "QA298_3f4b7a\n\u2603=B\r\n"
+            }
+          }
+        },
+        "state": "response and state reconciled",
+        "receipt": {
+          "at": "2026-10-15T10:31:13.089928+00:00",
+          "API_only": true,
+          "request": {
+            "method": "POST",
+            "path": "/mcp",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 298002,
+              "method": "tools/call",
+              "params": {
+                "name": "set_env_group_var",
+                "arguments": {
+                  "workspaceId": "tea-daif693dqjvc73e7as3g",
+                  "id": "evg-db8ameteelgc73d2i29g",
+                  "key": "QA_LITERAL",
+                  "value": "QA298_3f4b7a\n\u2603=B\r\n"
+                }
+              }
+            },
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 1.416,
+          "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":298002,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"key\\\":\\\"QA_LITERAL\\\"}\"}],\"structuredContent\":{\"key\":\"QA_LITERAL\"}}}\n\n",
+          "stderr": ""
+        },
+        "envelope": {
+          "jsonrpc": "2.0",
+          "id": 298002,
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "{\"key\":\"QA_LITERAL\"}"
+              }
+            ],
+            "structuredContent": {
+              "key": "QA_LITERAL"
+            }
+          }
+        },
+        "after": {
+          "at": "2026-10-15T10:31:13.929837+00:00",
+          "metadata": {
+            "at": "2026-10-15T10:31:13.495094+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.306,
+            "response": "{\"id\":\"evg-db8ameteelgc73d2i29g\",\"name\":\"qa-20261015-3f4b7a-group\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T10:30:21.351937579Z\",\"updatedAt\":\"2026-10-15T10:31:12.641572413Z\",\"revision\":\"egr1_AAAAAAAAAAM\",\"serviceLinks\":[]}\n",
+            "stderr": ""
+          },
+          "key": {
+            "at": "2026-10-15T10:31:13.929729+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.424,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA298_3f4b7a\\n\u2603=B\\r\\n\"}\n",
+            "stderr": ""
+          },
+          "decoded_metadata": {
+            "id": "evg-db8ameteelgc73d2i29g",
+            "name": "qa-20261015-3f4b7a-group",
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "envVars": [
+              {
+                "key": "QA_LITERAL"
+              }
+            ],
+            "secretFiles": [],
+            "createdAt": "2026-10-15T10:30:21.351937579Z",
+            "updatedAt": "2026-10-15T10:31:12.641572413Z",
+            "revision": "egr1_AAAAAAAAAAM",
+            "serviceLinks": []
+          },
+          "decoded_key": {
+            "key": "QA_LITERAL",
+            "value": "QA298_3f4b7a\n\u2603=B\r\n"
+          }
+        },
+        "accepted": true,
+        "refused": false,
+        "expected_value": "QA298_3f4b7a\n\u2603=B\r\n",
+        "acceptance_pass": true
+      },
+      {
+        "at": "2026-10-15T10:31:15.985128+00:00",
+        "label": "empty-positive",
+        "invalid": false,
+        "kind": "single",
+        "before": {
+          "at": "2026-10-15T10:31:15.985095+00:00",
+          "metadata": {
+            "at": "2026-10-15T10:31:15.594068+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.549,
+            "response": "{\"id\":\"evg-db8ameteelgc73d2i29g\",\"name\":\"qa-20261015-3f4b7a-group\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T10:30:21.351937579Z\",\"updatedAt\":\"2026-10-15T10:31:12.641572413Z\",\"revision\":\"egr1_AAAAAAAAAAM\",\"serviceLinks\":[]}\n",
+            "stderr": ""
+          },
+          "key": {
+            "at": "2026-10-15T10:31:15.984896+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.376,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA298_3f4b7a\\n\u2603=B\\r\\n\"}\n",
+            "stderr": ""
+          },
+          "decoded_metadata": {
+            "id": "evg-db8ameteelgc73d2i29g",
+            "name": "qa-20261015-3f4b7a-group",
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "envVars": [
+              {
+                "key": "QA_LITERAL"
+              }
+            ],
+            "secretFiles": [],
+            "createdAt": "2026-10-15T10:30:21.351937579Z",
+            "updatedAt": "2026-10-15T10:31:12.641572413Z",
+            "revision": "egr1_AAAAAAAAAAM",
+            "serviceLinks": []
+          },
+          "decoded_key": {
+            "key": "QA_LITERAL",
+            "value": "QA298_3f4b7a\n\u2603=B\r\n"
+          }
+        },
+        "method": "POST",
+        "path": "/mcp",
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 298003,
+          "method": "tools/call",
+          "params": {
+            "name": "set_env_group_var",
+            "arguments": {
+              "workspaceId": "tea-daif693dqjvc73e7as3g",
+              "id": "evg-db8ameteelgc73d2i29g",
+              "key": "QA_LITERAL",
+              "value": ""
+            }
+          }
+        },
+        "state": "response and state reconciled",
+        "receipt": {
+          "at": "2026-10-15T10:31:17.295048+00:00",
+          "API_only": true,
+          "request": {
+            "method": "POST",
+            "path": "/mcp",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 298003,
+              "method": "tools/call",
+              "params": {
+                "name": "set_env_group_var",
+                "arguments": {
+                  "workspaceId": "tea-daif693dqjvc73e7as3g",
+                  "id": "evg-db8ameteelgc73d2i29g",
+                  "key": "QA_LITERAL",
+                  "value": ""
+                }
+              }
+            },
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 1.201,
+          "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":298003,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"key\\\":\\\"QA_LITERAL\\\"}\"}],\"structuredContent\":{\"key\":\"QA_LITERAL\"}}}\n\n",
+          "stderr": ""
+        },
+        "envelope": {
+          "jsonrpc": "2.0",
+          "id": 298003,
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "{\"key\":\"QA_LITERAL\"}"
+              }
+            ],
+            "structuredContent": {
+              "key": "QA_LITERAL"
+            }
+          }
+        },
+        "after": {
+          "at": "2026-10-15T10:31:18.000895+00:00",
+          "metadata": {
+            "at": "2026-10-15T10:31:17.722260+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.311,
+            "response": "{\"id\":\"evg-db8ameteelgc73d2i29g\",\"name\":\"qa-20261015-3f4b7a-group\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T10:30:21.351937579Z\",\"updatedAt\":\"2026-10-15T10:31:16.851352386Z\",\"revision\":\"egr1_AAAAAAAAAAQ\",\"serviceLinks\":[]}\n",
+            "stderr": ""
+          },
+          "key": {
+            "at": "2026-10-15T10:31:18.000743+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.266,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"\"}\n",
+            "stderr": ""
+          },
+          "decoded_metadata": {
+            "id": "evg-db8ameteelgc73d2i29g",
+            "name": "qa-20261015-3f4b7a-group",
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "envVars": [
+              {
+                "key": "QA_LITERAL"
+              }
+            ],
+            "secretFiles": [],
+            "createdAt": "2026-10-15T10:30:21.351937579Z",
+            "updatedAt": "2026-10-15T10:31:16.851352386Z",
+            "revision": "egr1_AAAAAAAAAAQ",
+            "serviceLinks": []
+          },
+          "decoded_key": {
+            "key": "QA_LITERAL",
+            "value": ""
+          }
+        },
+        "accepted": true,
+        "refused": false,
+        "expected_value": "",
+        "acceptance_pass": true
+      },
+      {
+        "at": "2026-10-15T10:31:19.791004+00:00",
+        "label": "single-NUL-invalid",
+        "invalid": true,
+        "kind": "single",
+        "before": {
+          "at": "2026-10-15T10:31:19.790983+00:00",
+          "metadata": {
+            "at": "2026-10-15T10:31:19.405760+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.273,
+            "response": "{\"id\":\"evg-db8ameteelgc73d2i29g\",\"name\":\"qa-20261015-3f4b7a-group\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T10:30:21.351937579Z\",\"updatedAt\":\"2026-10-15T10:31:16.851352386Z\",\"revision\":\"egr1_AAAAAAAAAAQ\",\"serviceLinks\":[]}\n",
+            "stderr": ""
+          },
+          "key": {
+            "at": "2026-10-15T10:31:19.790848+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.374,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"\"}\n",
+            "stderr": ""
+          },
+          "decoded_metadata": {
+            "id": "evg-db8ameteelgc73d2i29g",
+            "name": "qa-20261015-3f4b7a-group",
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "envVars": [
+              {
+                "key": "QA_LITERAL"
+              }
+            ],
+            "secretFiles": [],
+            "createdAt": "2026-10-15T10:30:21.351937579Z",
+            "updatedAt": "2026-10-15T10:31:16.851352386Z",
+            "revision": "egr1_AAAAAAAAAAQ",
+            "serviceLinks": []
+          },
+          "decoded_key": {
+            "key": "QA_LITERAL",
+            "value": ""
+          }
+        },
+        "method": "POST",
+        "path": "/mcp",
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 298004,
+          "method": "tools/call",
+          "params": {
+            "name": "set_env_group_var",
+            "arguments": {
+              "workspaceId": "tea-daif693dqjvc73e7as3g",
+              "id": "evg-db8ameteelgc73d2i29g",
+              "key": "QA_LITERAL",
+              "value": "QA298_INVALID_3f4b7a\u0000tail"
+            }
+          }
+        },
+        "state": "response and state reconciled",
+        "receipt": {
+          "at": "2026-10-15T10:31:20.236175+00:00",
+          "API_only": true,
+          "request": {
+            "method": "POST",
+            "path": "/mcp",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 298004,
+              "method": "tools/call",
+              "params": {
+                "name": "set_env_group_var",
+                "arguments": {
+                  "workspaceId": "tea-daif693dqjvc73e7as3g",
+                  "id": "evg-db8ameteelgc73d2i29g",
+                  "key": "QA_LITERAL",
+                  "value": "QA298_INVALID_3f4b7a\u0000tail"
+                }
+              }
+            },
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.352,
+          "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":298004,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"ENVIRONMENT_VARIABLE_VALUE_INVALID: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\"}],\"isError\":true}}\n\n",
+          "stderr": ""
+        },
+        "envelope": {
+          "jsonrpc": "2.0",
+          "id": 298004,
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "ENVIRONMENT_VARIABLE_VALUE_INVALID: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content"
+              }
+            ],
+            "isError": true
+          }
+        },
+        "after": {
+          "at": "2026-10-15T10:31:20.941857+00:00",
+          "metadata": {
+            "at": "2026-10-15T10:31:20.645834+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.295,
+            "response": "{\"id\":\"evg-db8ameteelgc73d2i29g\",\"name\":\"qa-20261015-3f4b7a-group\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T10:30:21.351937579Z\",\"updatedAt\":\"2026-10-15T10:31:16.851352386Z\",\"revision\":\"egr1_AAAAAAAAAAQ\",\"serviceLinks\":[]}\n",
+            "stderr": ""
+          },
+          "key": {
+            "at": "2026-10-15T10:31:20.941749+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.287,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"\"}\n",
+            "stderr": ""
+          },
+          "decoded_metadata": {
+            "id": "evg-db8ameteelgc73d2i29g",
+            "name": "qa-20261015-3f4b7a-group",
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "envVars": [
+              {
+                "key": "QA_LITERAL"
+              }
+            ],
+            "secretFiles": [],
+            "createdAt": "2026-10-15T10:30:21.351937579Z",
+            "updatedAt": "2026-10-15T10:31:16.851352386Z",
+            "revision": "egr1_AAAAAAAAAAQ",
+            "serviceLinks": []
+          },
+          "decoded_key": {
+            "key": "QA_LITERAL",
+            "value": ""
+          }
+        },
+        "accepted": false,
+        "refused": true,
+        "expected_value": "",
+        "acceptance_pass": true
+      },
+      {
+        "at": "2026-10-15T10:31:22.596700+00:00",
+        "label": "sparse-NUL-invalid",
+        "invalid": true,
+        "kind": "sparse",
+        "before": {
+          "at": "2026-10-15T10:31:22.596678+00:00",
+          "metadata": {
+            "at": "2026-10-15T10:31:22.310847+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.269,
+            "response": "{\"id\":\"evg-db8ameteelgc73d2i29g\",\"name\":\"qa-20261015-3f4b7a-group\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T10:30:21.351937579Z\",\"updatedAt\":\"2026-10-15T10:31:16.851352386Z\",\"revision\":\"egr1_AAAAAAAAAAQ\",\"serviceLinks\":[]}\n",
+            "stderr": ""
+          },
+          "key": {
+            "at": "2026-10-15T10:31:22.596579+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.275,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"\"}\n",
+            "stderr": ""
+          },
+          "decoded_metadata": {
+            "id": "evg-db8ameteelgc73d2i29g",
+            "name": "qa-20261015-3f4b7a-group",
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "envVars": [
+              {
+                "key": "QA_LITERAL"
+              }
+            ],
+            "secretFiles": [],
+            "createdAt": "2026-10-15T10:30:21.351937579Z",
+            "updatedAt": "2026-10-15T10:31:16.851352386Z",
+            "revision": "egr1_AAAAAAAAAAQ",
+            "serviceLinks": []
+          },
+          "decoded_key": {
+            "key": "QA_LITERAL",
+            "value": ""
+          }
+        },
+        "method": "POST",
+        "path": "/mcp",
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 298005,
+          "method": "tools/call",
+          "params": {
+            "name": "patch_env_group_environment",
+            "arguments": {
+              "workspaceId": "tea-daif693dqjvc73e7as3g",
+              "id": "evg-db8ameteelgc73d2i29g",
+              "envVars": [
+                {
+                  "key": "QA_SHOULD_NOT_APPEAR",
+                  "value": "QA298_STAGED_3f4b7a"
+                },
+                {
+                  "key": "QA_LITERAL",
+                  "value": "QA298_INVALID_3f4b7a\u0000tail"
+                }
+              ],
+              "saveMode": "deploy"
+            }
+          }
+        },
+        "state": "response and state reconciled",
+        "receipt": {
+          "at": "2026-10-15T10:31:23.085621+00:00",
+          "API_only": true,
+          "request": {
+            "method": "POST",
+            "path": "/mcp",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 298005,
+              "method": "tools/call",
+              "params": {
+                "name": "patch_env_group_environment",
+                "arguments": {
+                  "workspaceId": "tea-daif693dqjvc73e7as3g",
+                  "id": "evg-db8ameteelgc73d2i29g",
+                  "envVars": [
+                    {
+                      "key": "QA_SHOULD_NOT_APPEAR",
+                      "value": "QA298_STAGED_3f4b7a"
+                    },
+                    {
+                      "key": "QA_LITERAL",
+                      "value": "QA298_INVALID_3f4b7a\u0000tail"
+                    }
+                  ],
+                  "saveMode": "deploy"
+                }
+              }
+            },
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.392,
+          "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":298005,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"ENVIRONMENT_VARIABLE_VALUE_INVALID: environment variable \\\"QA_LITERAL\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\"}],\"isError\":true}}\n\n",
+          "stderr": ""
+        },
+        "envelope": {
+          "jsonrpc": "2.0",
+          "id": 298005,
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "ENVIRONMENT_VARIABLE_VALUE_INVALID: environment variable \"QA_LITERAL\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content"
+              }
+            ],
+            "isError": true
+          }
+        },
+        "after": {
+          "at": "2026-10-15T10:31:23.932979+00:00",
+          "metadata": {
+            "at": "2026-10-15T10:31:23.585499+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.402,
+            "response": "{\"id\":\"evg-db8ameteelgc73d2i29g\",\"name\":\"qa-20261015-3f4b7a-group\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T10:30:21.351937579Z\",\"updatedAt\":\"2026-10-15T10:31:16.851352386Z\",\"revision\":\"egr1_AAAAAAAAAAQ\",\"serviceLinks\":[]}\n",
+            "stderr": ""
+          },
+          "key": {
+            "at": "2026-10-15T10:31:23.932860+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.338,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"\"}\n",
+            "stderr": ""
+          },
+          "decoded_metadata": {
+            "id": "evg-db8ameteelgc73d2i29g",
+            "name": "qa-20261015-3f4b7a-group",
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "envVars": [
+              {
+                "key": "QA_LITERAL"
+              }
+            ],
+            "secretFiles": [],
+            "createdAt": "2026-10-15T10:30:21.351937579Z",
+            "updatedAt": "2026-10-15T10:31:16.851352386Z",
+            "revision": "egr1_AAAAAAAAAAQ",
+            "serviceLinks": []
+          },
+          "decoded_key": {
+            "key": "QA_LITERAL",
+            "value": ""
+          }
+        },
+        "accepted": false,
+        "refused": true,
+        "expected_value": "",
+        "acceptance_pass": true
+      },
+      {
+        "at": "2026-10-15T10:31:26.030425+00:00",
+        "label": "sparse-positive",
+        "invalid": false,
+        "kind": "sparse",
+        "before": {
+          "at": "2026-10-15T10:31:26.030398+00:00",
+          "metadata": {
+            "at": "2026-10-15T10:31:25.632950+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.592,
+            "response": "{\"id\":\"evg-db8ameteelgc73d2i29g\",\"name\":\"qa-20261015-3f4b7a-group\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T10:30:21.351937579Z\",\"updatedAt\":\"2026-10-15T10:31:16.851352386Z\",\"revision\":\"egr1_AAAAAAAAAAQ\",\"serviceLinks\":[]}\n",
+            "stderr": ""
+          },
+          "key": {
+            "at": "2026-10-15T10:31:26.030250+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.381,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"\"}\n",
+            "stderr": ""
+          },
+          "decoded_metadata": {
+            "id": "evg-db8ameteelgc73d2i29g",
+            "name": "qa-20261015-3f4b7a-group",
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "envVars": [
+              {
+                "key": "QA_LITERAL"
+              }
+            ],
+            "secretFiles": [],
+            "createdAt": "2026-10-15T10:30:21.351937579Z",
+            "updatedAt": "2026-10-15T10:31:16.851352386Z",
+            "revision": "egr1_AAAAAAAAAAQ",
+            "serviceLinks": []
+          },
+          "decoded_key": {
+            "key": "QA_LITERAL",
+            "value": ""
+          }
+        },
+        "method": "POST",
+        "path": "/mcp",
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 298006,
+          "method": "tools/call",
+          "params": {
+            "name": "patch_env_group_environment",
+            "arguments": {
+              "workspaceId": "tea-daif693dqjvc73e7as3g",
+              "id": "evg-db8ameteelgc73d2i29g",
+              "envVars": [
+                {
+                  "key": "QA_LITERAL",
+                  "value": "QA298_3f4b7a\n\u2603=baseline\r\n"
+                }
+              ],
+              "saveMode": "save_only"
+            }
+          }
+        },
+        "state": "response and state reconciled",
+        "receipt": {
+          "at": "2026-10-15T10:31:28.729899+00:00",
+          "API_only": true,
+          "request": {
+            "method": "POST",
+            "path": "/mcp",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 298006,
+              "method": "tools/call",
+              "params": {
+                "name": "patch_env_group_environment",
+                "arguments": {
+                  "workspaceId": "tea-daif693dqjvc73e7as3g",
+                  "id": "evg-db8ameteelgc73d2i29g",
+                  "envVars": [
+                    {
+                      "key": "QA_LITERAL",
+                      "value": "QA298_3f4b7a\n\u2603=baseline\r\n"
+                    }
+                  ],
+                  "saveMode": "save_only"
+                }
+              }
+            },
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 2.596,
+          "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":298006,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"affectedServiceIds\\\":null,\\\"envVarKeys\\\":[\\\"QA_LITERAL\\\"],\\\"failedServiceIds\\\":null,\\\"revision\\\":\\\"egr1_AAAAAAAAAAU\\\",\\\"rolledOut\\\":false,\\\"secretFileNames\\\":null}\"}],\"structuredContent\":{\"affectedServiceIds\":null,\"envVarKeys\":[\"QA_LITERAL\"],\"failedServiceIds\":null,\"revision\":\"egr1_AAAAAAAAAAU\",\"rolledOut\":false,\"secretFileNames\":null}}}\n\n",
+          "stderr": ""
+        },
+        "envelope": {
+          "jsonrpc": "2.0",
+          "id": 298006,
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "{\"affectedServiceIds\":null,\"envVarKeys\":[\"QA_LITERAL\"],\"failedServiceIds\":null,\"revision\":\"egr1_AAAAAAAAAAU\",\"rolledOut\":false,\"secretFileNames\":null}"
+              }
+            ],
+            "structuredContent": {
+              "affectedServiceIds": null,
+              "envVarKeys": [
+                "QA_LITERAL"
+              ],
+              "failedServiceIds": null,
+              "revision": "egr1_AAAAAAAAAAU",
+              "rolledOut": false,
+              "secretFileNames": null
+            }
+          }
+        },
+        "after": {
+          "at": "2026-10-15T10:31:29.835089+00:00",
+          "metadata": {
+            "at": "2026-10-15T10:31:29.435613+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.606,
+            "response": "{\"id\":\"evg-db8ameteelgc73d2i29g\",\"name\":\"qa-20261015-3f4b7a-group\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T10:30:21.351937579Z\",\"updatedAt\":\"2026-10-15T10:31:27.550363892Z\",\"revision\":\"egr1_AAAAAAAAAAU\",\"serviceLinks\":[]}\n",
+            "stderr": ""
+          },
+          "key": {
+            "at": "2026-10-15T10:31:29.834937+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.385,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA298_3f4b7a\\n\u2603=baseline\\r\\n\"}\n",
+            "stderr": ""
+          },
+          "decoded_metadata": {
+            "id": "evg-db8ameteelgc73d2i29g",
+            "name": "qa-20261015-3f4b7a-group",
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "envVars": [
+              {
+                "key": "QA_LITERAL"
+              }
+            ],
+            "secretFiles": [],
+            "createdAt": "2026-10-15T10:30:21.351937579Z",
+            "updatedAt": "2026-10-15T10:31:27.550363892Z",
+            "revision": "egr1_AAAAAAAAAAU",
+            "serviceLinks": []
+          },
+          "decoded_key": {
+            "key": "QA_LITERAL",
+            "value": "QA298_3f4b7a\n\u2603=baseline\r\n"
+          }
+        },
+        "accepted": true,
+        "refused": false,
+        "expected_value": "QA298_3f4b7a\n\u2603=baseline\r\n",
+        "acceptance_pass": true
+      }
+    ],
+    "exercise_complete": true,
+    "delete_intent": {
+      "at": "2026-10-15T10:32:58.488327+00:00",
+      "snapshot": {
+        "at": "2026-10-15T10:32:58.488307+00:00",
+        "metadata": {
+          "at": "2026-10-15T10:32:58.146124+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.277,
+          "response": "{\"id\":\"evg-db8ameteelgc73d2i29g\",\"name\":\"qa-20261015-3f4b7a-group\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T10:30:21.351937579Z\",\"updatedAt\":\"2026-10-15T10:31:27.550363892Z\",\"revision\":\"egr1_AAAAAAAAAAU\",\"serviceLinks\":[]}\n",
+          "stderr": ""
+        },
+        "key": {
+          "at": "2026-10-15T10:32:58.488119+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g/env-vars/QA_LITERAL",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.33,
+          "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA298_3f4b7a\\n\u2603=baseline\\r\\n\"}\n",
+          "stderr": ""
+        },
+        "decoded_metadata": {
+          "id": "evg-db8ameteelgc73d2i29g",
+          "name": "qa-20261015-3f4b7a-group",
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "envVars": [
+            {
+              "key": "QA_LITERAL"
+            }
+          ],
+          "secretFiles": [],
+          "createdAt": "2026-10-15T10:30:21.351937579Z",
+          "updatedAt": "2026-10-15T10:31:27.550363892Z",
+          "revision": "egr1_AAAAAAAAAAU",
+          "serviceLinks": []
+        },
+        "decoded_key": {
+          "key": "QA_LITERAL",
+          "value": "QA298_3f4b7a\n\u2603=baseline\r\n"
+        }
+      },
+      "raw_links_empty": true
+    },
+    "delete_result": {
+      "at": "2026-10-15T10:33:00.166822+00:00",
+      "API_only": true,
+      "request": {
+        "method": "DELETE",
+        "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "204",
+      "curl_exit": 0,
+      "elapsed": 1.577,
+      "response": "",
+      "stderr": ""
+    },
+    "cleanup_receipts": [
+      {
+        "at": "2026-10-15T10:33:01.544884+00:00",
+        "detail": {
+          "at": "2026-10-15T10:33:00.883640+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db8ameteelgc73d2i29g",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "404",
+          "curl_exit": 0,
+          "elapsed": 0.453,
+          "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+          "stderr": ""
+        },
+        "inventory": {
+          "at": "2026-10-15T10:33:01.544744+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups?ownerId=tea-daif693dqjvc73e7as3g",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.648,
+          "response": "[]\n",
+          "stderr": ""
+        },
+        "baseline_preserved": true
+      }
+    ]
+  },
+  "summary": {
+    "MCP_calls": 7,
+    "positive_passes": 5,
+    "NUL_refusals": 2,
+    "invalid_revision_and_updatedAt_unchanged": true,
+    "original_error_not_reproduced": true,
+    "envgroup_source_unchanged_between_checked_heads": true,
+    "deployed_artifact": "unobserved"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "backend_baseline": {
+    "exit": 1,
+    "named_passes": 3,
+    "named_failures": [
+      "TestQA294BlueprintSourceExclusivity/image-to-native-git",
+      "TestQA294BlueprintSourceExclusivity/image-to-docker-git",
+      "TestQA294BlueprintSourceExclusivity/git-to-image",
+      "TestQA294BlueprintSourceExclusivity"
+    ],
+    "package_verdict": [
+      "fail"
+    ],
+    "command": "GOWORK=off GOTOOLCHAIN=go1.26.8 go test -json -overlay <private canonical-path overlay> ./internal/apps -run ^TestQA294BlueprintSourceExclusivity$ -count=1"
+  },
+  "private_proposal": {
+    "exit": 0,
+    "named_passes": 18,
+    "named_failures": [],
+    "package_verdict": [
+      "pass"
+    ],
+    "command": "GOWORK=off GOTOOLCHAIN=go1.26.8 go test -json -overlay <private canonical-path overlay> ./internal/apps -run Test(QA294BlueprintSourceExclusivity|ApplyBlueprintServiceSpec|BlueprintExport|ImageToGitSourceSave) -count=1"
+  },
+  "operator_consumer": {
+    "exit": 0,
+    "named_passes": 4,
+    "named_failures": [],
+    "package_verdict": [
+      "pass"
+    ],
+    "command": "GOWORK=off GOTOOLCHAIN=go1.26.8 go test -json -overlay <private canonical-path overlay> ./internal/controller -run ^TestQA294SourceArtifactConsumer$ -count=1"
+  }
+}

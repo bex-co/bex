@@ -1,0 +1,715 @@
+{
+  "resource": {
+    "sweep": 299,
+    "type": "web_service",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "nonce": "e874f9",
+    "name": "qa-20261015-e874f9-command",
+    "marker_create": "QA299_e874f9_CREATE",
+    "time": "2026-10-15T10:41:56.216262+00:00",
+    "source_head": "f497ddab6a1aab07923513b62efac5da97d2b2f6",
+    "commands": {
+      "create": {
+        "build": "/usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"');fs.writeFileSync('\"'\"'qa299-built.json'\"'\"',JSON.stringify({marker:\"QA299_e874f9_CREATE\",argument:process.argv[1],hex:Buffer.from(process.argv[1]).toString('\"'\"'hex'\"'\"')}));' tail\\ ",
+        "start": "/usr/local/bin/node -e 'const built=JSON.parse(require('\"'\"'node:fs'\"'\"').readFileSync('\"'\"'/opt/render/project/src/qa299-built.json'\"'\"'));const argument=process.argv[1];require('\"'\"'node:http'\"'\"').createServer((q,r)=>{r.setHeader('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"');r.end(JSON.stringify({marker:\"QA299_e874f9_CREATE\",built,runtime:{argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}}));}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');' tail\\ ",
+        "predeploy": "/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\"QA299_e874f9_CREATE\",role:'\"'\"'predeploy'\"'\"',argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}));' tail\\ "
+      }
+    },
+    "capacity": {
+      "at": "2026-10-15T10:41:55.270339+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.721,
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+      "stderr": ""
+    },
+    "pre_inventory": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.894,
+      "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T10:41:04Z\",\n        \"nextRunAt\": \"2026-10-15T10:42:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T10:41:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T10:41:05Z\",\n        \"nextRunAt\": \"2026-10-15T10:42:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T10:41:05Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T10:41:04Z\",\n        \"nextRunAt\": \"2026-10-15T10:42:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T10:41:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T10:17:00Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T10:33:46Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T06:54:00Z\"\n    }\n  }\n]",
+      "stderr": "",
+      "native_exit": 0
+    },
+    "pre_ids": [
+      "srv-dap3v694dm7c7390q930",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-db09vbgehcmc739j12i0",
+      "srv-db09u90ehcmc739j12cg"
+    ],
+    "dependency_ids": [],
+    "recorded_child_ids": [
+      "dep-db8artbh673c73birsg0"
+    ],
+    "create_body": {
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "name": "qa-20261015-e874f9-command",
+      "type": "web_service",
+      "repo": "https://github.com/expressjs/serve-static",
+      "branch": "master",
+      "autoDeploy": "no",
+      "serviceDetails": {
+        "runtime": "node",
+        "plan": "free",
+        "region": "frankfurt",
+        "healthCheckPath": "/",
+        "envSpecificDetails": {
+          "buildCommand": "/usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"');fs.writeFileSync('\"'\"'qa299-built.json'\"'\"',JSON.stringify({marker:\"QA299_e874f9_CREATE\",argument:process.argv[1],hex:Buffer.from(process.argv[1]).toString('\"'\"'hex'\"'\"')}));' tail\\ ",
+          "startCommand": "/usr/local/bin/node -e 'const built=JSON.parse(require('\"'\"'node:fs'\"'\"').readFileSync('\"'\"'/opt/render/project/src/qa299-built.json'\"'\"'));const argument=process.argv[1];require('\"'\"'node:http'\"'\"').createServer((q,r)=>{r.setHeader('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"');r.end(JSON.stringify({marker:\"QA299_e874f9_CREATE\",built,runtime:{argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}}));}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');' tail\\ "
+        },
+        "preDeployCommand": "/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\"QA299_e874f9_CREATE\",role:'\"'\"'predeploy'\"'\"',argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}));' tail\\ "
+      }
+    },
+    "state": "deleted: native0/detail404/listabsent/runtime404/baseline6/quota terminating0",
+    "create_result": {
+      "at": "2026-10-15T10:41:57.261992+00:00",
+      "API_only": true,
+      "request": {
+        "method": "POST",
+        "path": "/v1/services",
+        "body": {
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "name": "qa-20261015-e874f9-command",
+          "type": "web_service",
+          "repo": "https://github.com/expressjs/serve-static",
+          "branch": "master",
+          "autoDeploy": "no",
+          "serviceDetails": {
+            "runtime": "node",
+            "plan": "free",
+            "region": "frankfurt",
+            "healthCheckPath": "/",
+            "envSpecificDetails": {
+              "buildCommand": "/usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"');fs.writeFileSync('\"'\"'qa299-built.json'\"'\"',JSON.stringify({marker:\"QA299_e874f9_CREATE\",argument:process.argv[1],hex:Buffer.from(process.argv[1]).toString('\"'\"'hex'\"'\"')}));' tail\\ ",
+              "startCommand": "/usr/local/bin/node -e 'const built=JSON.parse(require('\"'\"'node:fs'\"'\"').readFileSync('\"'\"'/opt/render/project/src/qa299-built.json'\"'\"'));const argument=process.argv[1];require('\"'\"'node:http'\"'\"').createServer((q,r)=>{r.setHeader('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"');r.end(JSON.stringify({marker:\"QA299_e874f9_CREATE\",built,runtime:{argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}}));}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');' tail\\ "
+            },
+            "preDeployCommand": "/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\"QA299_e874f9_CREATE\",role:'\"'\"'predeploy'\"'\"',argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}));' tail\\ "
+          }
+        },
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "201",
+      "curl_exit": 0,
+      "elapsed": 0.945,
+      "response": "{\"service\":{\"id\":\"srv-db8artbh673c73birsfg\",\"name\":\"qa-20261015-e874f9-command\",\"immutableName\":\"qa-20261015-e874f9-command\",\"slug\":\"qa-20261015-e874f9-command\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db8artbh673c73birsfg\",\"createdAt\":\"2026-10-15T10:41:57Z\",\"updatedAt\":\"2026-10-15T10:41:57.106851488Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"QA_PRIVATE_VALUE_REDACTED\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"');fs.writeFileSync('\\\"'\\\"'qa299-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",argument:process.argv[1],hex:Buffer.from(process.argv[1]).toString('\\\"'\\\"'hex'\\\"'\\\"')}));' tail\\\\ \",\"preDeployCommand\":\"/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",role:'\\\"'\\\"'predeploy'\\\"'\\\"',argument,hex:Buffer.from(argument).toString('\\\"'\\\"'hex'\\\"'\\\"')}));' tail\\\\\",\"startCommand\":\"/usr/local/bin/node -e 'const built=JSON.parse(require('\\\"'\\\"'node:fs'\\\"'\\\"').readFileSync('\\\"'\\\"'/opt/render/project/src/qa299-built.json'\\\"'\\\"'));const argument=process.argv[1];require('\\\"'\\\"'node:http'\\\"'\\\"').createServer((q,r)=\\u003e{r.setHeader('\\\"'\\\"'Content-Type'\\\"'\\\"','\\\"'\\\"'application/json'\\\"'\\\"');r.end(JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",built,runtime:{argument,hex:Buffer.from(argument).toString('\\\"'\\\"'hex'\\\"'\\\"')}}));}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');' tail\\\\ \"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261015-e874f9-command:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"preDeployCommand\":\"/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",role:'\\\"'\\\"'predeploy'\\\"'\\\"',argument,hex:Buffer.from(argument).toString('\\\"'\\\"'hex'\\\"'\\\"')}));' tail\\\\\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261015-e874f9-command.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"replicas\":1,\"idleTTLSeconds\":0,\"repo\":\"https://github.com/expressjs/serve-static\",\"branch\":\"master\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"},\"deployId\":\"dep-db8artbh673c73birsg0\"}\n",
+      "stderr": ""
+    },
+    "id": "srv-db8artbh673c73birsfg",
+    "create_view": {
+      "id": "srv-db8artbh673c73birsfg",
+      "name": "qa-20261015-e874f9-command",
+      "immutableName": "qa-20261015-e874f9-command",
+      "slug": "qa-20261015-e874f9-command",
+      "displayName": "",
+      "type": "web_service",
+      "suspended": "not_suspended",
+      "dashboardUrl": "https://dashboard.bex.co/web/srv-db8artbh673c73birsfg",
+      "createdAt": "2026-10-15T10:41:57Z",
+      "updatedAt": "2026-10-15T10:41:57.106851488Z",
+      "owner": {
+        "id": "tea-daif693dqjvc73e7as3g",
+        "name": "bex-canary",
+        "email": "QA_PRIVATE_VALUE_REDACTED",
+        "type": "team"
+      },
+      "serviceDetails": {
+        "env": "node",
+        "envSpecificDetails": {
+          "buildCommand": "/usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"');fs.writeFileSync('\"'\"'qa299-built.json'\"'\"',JSON.stringify({marker:\"QA299_e874f9_CREATE\",argument:process.argv[1],hex:Buffer.from(process.argv[1]).toString('\"'\"'hex'\"'\"')}));' tail\\ ",
+          "preDeployCommand": "/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\"QA299_e874f9_CREATE\",role:'\"'\"'predeploy'\"'\"',argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}));' tail\\",
+          "startCommand": "/usr/local/bin/node -e 'const built=JSON.parse(require('\"'\"'node:fs'\"'\"').readFileSync('\"'\"'/opt/render/project/src/qa299-built.json'\"'\"'));const argument=process.argv[1];require('\"'\"'node:http'\"'\"').createServer((q,r)=>{r.setHeader('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"');r.end(JSON.stringify({marker:\"QA299_e874f9_CREATE\",built,runtime:{argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}}));}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');' tail\\ "
+        },
+        "healthCheckPath": "/",
+        "internalAddress": "qa-20261015-e874f9-command:3000",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "free",
+        "port": 3000,
+        "preDeployCommand": "/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\"QA299_e874f9_CREATE\",role:'\"'\"'predeploy'\"'\"',argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}));' tail\\",
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "node",
+        "url": "https://qa-20261015-e874f9-command.onbex.co"
+      },
+      "suspenders": [],
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "replicas": 1,
+      "idleTTLSeconds": 0,
+      "repo": "https://github.com/expressjs/serve-static",
+      "branch": "master",
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "notifyOnFail": "default",
+      "notificationsToSend": "default",
+      "healthCheckPath": "/"
+    },
+    "history_receipts": [
+      {
+        "at": "2026-10-15T10:41:58.123717+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db8artbh673c73birsfg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.632,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\",\n      \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ \\u003chaiming@github.com\\u003e\"\n    },\n    \"createdAt\": \"2026-10-15T10:41:57.071489Z\",\n    \"id\": \"dep-db8artbh673c73birsg0\",\n    \"status\": \"created\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T10:41:57.071489Z\"\n  }\n]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-15T10:44:03.732199+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db8artbh673c73birsfg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.384,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\",\n      \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ \\u003chaiming@github.com\\u003e\"\n    },\n    \"createdAt\": \"2026-10-15T10:41:57.071489Z\",\n    \"id\": \"dep-db8artbh673c73birsg0\",\n    \"startedAt\": \"2026-10-15T10:43:05.539368Z\",\n    \"status\": \"update_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T10:43:50.574535Z\"\n  }\n]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-15T10:45:28.512149+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db8artbh673c73birsfg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.81,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\",\n      \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ \\u003chaiming@github.com\\u003e\"\n    },\n    \"createdAt\": \"2026-10-15T10:41:57.071489Z\",\n    \"finishedAt\": \"2026-10-15T10:44:05.480869Z\",\n    \"id\": \"dep-db8artbh673c73birsg0\",\n    \"startedAt\": \"2026-10-15T10:43:05.539368Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T10:44:05.480871Z\"\n  }\n]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-15T10:49:36.409467+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db8artbh673c73birsfg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.373,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\",\n      \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ \\u003chaiming@github.com\\u003e\"\n    },\n    \"createdAt\": \"2026-10-15T10:41:57.071489Z\",\n    \"finishedAt\": \"2026-10-15T10:44:05.480869Z\",\n    \"id\": \"dep-db8artbh673c73birsg0\",\n    \"startedAt\": \"2026-10-15T10:43:05.539368Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T10:44:05.480871Z\"\n  }\n]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      }
+    ],
+    "deploy_children": [
+      {
+        "commit": {
+          "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+          "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+        },
+        "createdAt": "2026-10-15T10:41:57.071489Z",
+        "finishedAt": "2026-10-15T10:44:05.480869Z",
+        "id": "dep-db8artbh673c73birsg0",
+        "startedAt": "2026-10-15T10:43:05.539368Z",
+        "status": "live",
+        "trigger": "other",
+        "updatedAt": "2026-10-15T10:44:05.480871Z"
+      }
+    ],
+    "metadata_receipts": [
+      {
+        "at": "2026-10-15T10:41:58.498948+00:00",
+        "label": "create",
+        "receipt": {
+          "at": "2026-10-15T10:41:58.498778+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db8artbh673c73birsfg",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.263,
+          "response": "{\"id\":\"srv-db8artbh673c73birsfg\",\"name\":\"qa-20261015-e874f9-command\",\"immutableName\":\"qa-20261015-e874f9-command\",\"slug\":\"qa-20261015-e874f9-command\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db8artbh673c73birsfg\",\"createdAt\":\"2026-10-15T10:41:57Z\",\"updatedAt\":\"2026-10-15T10:41:57.106851488Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"QA_PRIVATE_VALUE_REDACTED\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"');fs.writeFileSync('\\\"'\\\"'qa299-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",argument:process.argv[1],hex:Buffer.from(process.argv[1]).toString('\\\"'\\\"'hex'\\\"'\\\"')}));' tail\\\\ \",\"preDeployCommand\":\"/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",role:'\\\"'\\\"'predeploy'\\\"'\\\"',argument,hex:Buffer.from(argument).toString('\\\"'\\\"'hex'\\\"'\\\"')}));' tail\\\\\",\"startCommand\":\"/usr/local/bin/node -e 'const built=JSON.parse(require('\\\"'\\\"'node:fs'\\\"'\\\"').readFileSync('\\\"'\\\"'/opt/render/project/src/qa299-built.json'\\\"'\\\"'));const argument=process.argv[1];require('\\\"'\\\"'node:http'\\\"'\\\"').createServer((q,r)=\\u003e{r.setHeader('\\\"'\\\"'Content-Type'\\\"'\\\"','\\\"'\\\"'application/json'\\\"'\\\"');r.end(JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",built,runtime:{argument,hex:Buffer.from(argument).toString('\\\"'\\\"'hex'\\\"'\\\"')}}));}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');' tail\\\\ \"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261015-e874f9-command:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"preDeployCommand\":\"/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",role:'\\\"'\\\"'predeploy'\\\"'\\\"',argument,hex:Buffer.from(argument).toString('\\\"'\\\"'hex'\\\"'\\\"')}));' tail\\\\\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261015-e874f9-command.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Building\",\"replicas\":1,\"idleTTLSeconds\":0,\"repo\":\"https://github.com/expressjs/serve-static\",\"branch\":\"master\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+          "stderr": ""
+        },
+        "actual": {
+          "build": "/usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"');fs.writeFileSync('\"'\"'qa299-built.json'\"'\"',JSON.stringify({marker:\"QA299_e874f9_CREATE\",argument:process.argv[1],hex:Buffer.from(process.argv[1]).toString('\"'\"'hex'\"'\"')}));' tail\\ ",
+          "start": "/usr/local/bin/node -e 'const built=JSON.parse(require('\"'\"'node:fs'\"'\"').readFileSync('\"'\"'/opt/render/project/src/qa299-built.json'\"'\"'));const argument=process.argv[1];require('\"'\"'node:http'\"'\"').createServer((q,r)=>{r.setHeader('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"');r.end(JSON.stringify({marker:\"QA299_e874f9_CREATE\",built,runtime:{argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}}));}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');' tail\\ ",
+          "predeploy": "/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\"QA299_e874f9_CREATE\",role:'\"'\"'predeploy'\"'\"',argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}));' tail\\"
+        },
+        "expected": {
+          "build": "/usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"');fs.writeFileSync('\"'\"'qa299-built.json'\"'\"',JSON.stringify({marker:\"QA299_e874f9_CREATE\",argument:process.argv[1],hex:Buffer.from(process.argv[1]).toString('\"'\"'hex'\"'\"')}));' tail\\ ",
+          "start": "/usr/local/bin/node -e 'const built=JSON.parse(require('\"'\"'node:fs'\"'\"').readFileSync('\"'\"'/opt/render/project/src/qa299-built.json'\"'\"'));const argument=process.argv[1];require('\"'\"'node:http'\"'\"').createServer((q,r)=>{r.setHeader('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"');r.end(JSON.stringify({marker:\"QA299_e874f9_CREATE\",built,runtime:{argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}}));}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');' tail\\ ",
+          "predeploy": "/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\"QA299_e874f9_CREATE\",role:'\"'\"'predeploy'\"'\"',argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}));' tail\\ "
+        },
+        "exact": {
+          "build": true,
+          "start": true,
+          "predeploy": false
+        }
+      },
+      {
+        "at": "2026-10-15T10:44:04.170066+00:00",
+        "label": "create",
+        "receipt": {
+          "at": "2026-10-15T10:44:04.169924+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db8artbh673c73birsfg",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.337,
+          "response": "{\"id\":\"srv-db8artbh673c73birsfg\",\"name\":\"qa-20261015-e874f9-command\",\"immutableName\":\"qa-20261015-e874f9-command\",\"slug\":\"qa-20261015-e874f9-command\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db8artbh673c73birsfg\",\"createdAt\":\"2026-10-15T10:41:57Z\",\"updatedAt\":\"2026-10-15T10:43:59Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"QA_PRIVATE_VALUE_REDACTED\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"');fs.writeFileSync('\\\"'\\\"'qa299-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",argument:process.argv[1],hex:Buffer.from(process.argv[1]).toString('\\\"'\\\"'hex'\\\"'\\\"')}));' tail\\\\ \",\"preDeployCommand\":\"/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",role:'\\\"'\\\"'predeploy'\\\"'\\\"',argument,hex:Buffer.from(argument).toString('\\\"'\\\"'hex'\\\"'\\\"')}));' tail\\\\\",\"startCommand\":\"/usr/local/bin/node -e 'const built=JSON.parse(require('\\\"'\\\"'node:fs'\\\"'\\\"').readFileSync('\\\"'\\\"'/opt/render/project/src/qa299-built.json'\\\"'\\\"'));const argument=process.argv[1];require('\\\"'\\\"'node:http'\\\"'\\\"').createServer((q,r)=\\u003e{r.setHeader('\\\"'\\\"'Content-Type'\\\"'\\\"','\\\"'\\\"'application/json'\\\"'\\\"');r.end(JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",built,runtime:{argument,hex:Buffer.from(argument).toString('\\\"'\\\"'hex'\\\"'\\\"')}}));}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');' tail\\\\ \"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261015-e874f9-command:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"preDeployCommand\":\"/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",role:'\\\"'\\\"'predeploy'\\\"'\\\"',argument,hex:Buffer.from(argument).toString('\\\"'\\\"'hex'\\\"'\\\"')}));' tail\\\\\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261015-e874f9-command.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261015-e874f9-command.onbex.co\"],\"idleTTLSeconds\":0,\"repo\":\"https://github.com/expressjs/serve-static\",\"branch\":\"master\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+          "stderr": ""
+        },
+        "actual": {
+          "build": "/usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"');fs.writeFileSync('\"'\"'qa299-built.json'\"'\"',JSON.stringify({marker:\"QA299_e874f9_CREATE\",argument:process.argv[1],hex:Buffer.from(process.argv[1]).toString('\"'\"'hex'\"'\"')}));' tail\\ ",
+          "start": "/usr/local/bin/node -e 'const built=JSON.parse(require('\"'\"'node:fs'\"'\"').readFileSync('\"'\"'/opt/render/project/src/qa299-built.json'\"'\"'));const argument=process.argv[1];require('\"'\"'node:http'\"'\"').createServer((q,r)=>{r.setHeader('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"');r.end(JSON.stringify({marker:\"QA299_e874f9_CREATE\",built,runtime:{argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}}));}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');' tail\\ ",
+          "predeploy": "/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\"QA299_e874f9_CREATE\",role:'\"'\"'predeploy'\"'\"',argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}));' tail\\"
+        },
+        "expected": {
+          "build": "/usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"');fs.writeFileSync('\"'\"'qa299-built.json'\"'\"',JSON.stringify({marker:\"QA299_e874f9_CREATE\",argument:process.argv[1],hex:Buffer.from(process.argv[1]).toString('\"'\"'hex'\"'\"')}));' tail\\ ",
+          "start": "/usr/local/bin/node -e 'const built=JSON.parse(require('\"'\"'node:fs'\"'\"').readFileSync('\"'\"'/opt/render/project/src/qa299-built.json'\"'\"'));const argument=process.argv[1];require('\"'\"'node:http'\"'\"').createServer((q,r)=>{r.setHeader('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"');r.end(JSON.stringify({marker:\"QA299_e874f9_CREATE\",built,runtime:{argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}}));}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');' tail\\ ",
+          "predeploy": "/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\"QA299_e874f9_CREATE\",role:'\"'\"'predeploy'\"'\"',argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}));' tail\\ "
+        },
+        "exact": {
+          "build": true,
+          "start": true,
+          "predeploy": false
+        }
+      },
+      {
+        "at": "2026-10-15T10:45:29.330535+00:00",
+        "label": "create",
+        "receipt": {
+          "at": "2026-10-15T10:45:29.330333+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db8artbh673c73birsfg",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.716,
+          "response": "{\"id\":\"srv-db8artbh673c73birsfg\",\"name\":\"qa-20261015-e874f9-command\",\"immutableName\":\"qa-20261015-e874f9-command\",\"slug\":\"qa-20261015-e874f9-command\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db8artbh673c73birsfg\",\"createdAt\":\"2026-10-15T10:41:57Z\",\"updatedAt\":\"2026-10-15T10:43:59Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"QA_PRIVATE_VALUE_REDACTED\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"');fs.writeFileSync('\\\"'\\\"'qa299-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",argument:process.argv[1],hex:Buffer.from(process.argv[1]).toString('\\\"'\\\"'hex'\\\"'\\\"')}));' tail\\\\ \",\"preDeployCommand\":\"/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",role:'\\\"'\\\"'predeploy'\\\"'\\\"',argument,hex:Buffer.from(argument).toString('\\\"'\\\"'hex'\\\"'\\\"')}));' tail\\\\\",\"startCommand\":\"/usr/local/bin/node -e 'const built=JSON.parse(require('\\\"'\\\"'node:fs'\\\"'\\\"').readFileSync('\\\"'\\\"'/opt/render/project/src/qa299-built.json'\\\"'\\\"'));const argument=process.argv[1];require('\\\"'\\\"'node:http'\\\"'\\\"').createServer((q,r)=\\u003e{r.setHeader('\\\"'\\\"'Content-Type'\\\"'\\\"','\\\"'\\\"'application/json'\\\"'\\\"');r.end(JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",built,runtime:{argument,hex:Buffer.from(argument).toString('\\\"'\\\"'hex'\\\"'\\\"')}}));}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');' tail\\\\ \"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261015-e874f9-command:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"preDeployCommand\":\"/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",role:'\\\"'\\\"'predeploy'\\\"'\\\"',argument,hex:Buffer.from(argument).toString('\\\"'\\\"'hex'\\\"'\\\"')}));' tail\\\\\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261015-e874f9-command.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261015-e874f9-command.onbex.co\"],\"idleTTLSeconds\":0,\"repo\":\"https://github.com/expressjs/serve-static\",\"branch\":\"master\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+          "stderr": ""
+        },
+        "actual": {
+          "build": "/usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"');fs.writeFileSync('\"'\"'qa299-built.json'\"'\"',JSON.stringify({marker:\"QA299_e874f9_CREATE\",argument:process.argv[1],hex:Buffer.from(process.argv[1]).toString('\"'\"'hex'\"'\"')}));' tail\\ ",
+          "start": "/usr/local/bin/node -e 'const built=JSON.parse(require('\"'\"'node:fs'\"'\"').readFileSync('\"'\"'/opt/render/project/src/qa299-built.json'\"'\"'));const argument=process.argv[1];require('\"'\"'node:http'\"'\"').createServer((q,r)=>{r.setHeader('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"');r.end(JSON.stringify({marker:\"QA299_e874f9_CREATE\",built,runtime:{argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}}));}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');' tail\\ ",
+          "predeploy": "/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\"QA299_e874f9_CREATE\",role:'\"'\"'predeploy'\"'\"',argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}));' tail\\"
+        },
+        "expected": {
+          "build": "/usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"');fs.writeFileSync('\"'\"'qa299-built.json'\"'\"',JSON.stringify({marker:\"QA299_e874f9_CREATE\",argument:process.argv[1],hex:Buffer.from(process.argv[1]).toString('\"'\"'hex'\"'\"')}));' tail\\ ",
+          "start": "/usr/local/bin/node -e 'const built=JSON.parse(require('\"'\"'node:fs'\"'\"').readFileSync('\"'\"'/opt/render/project/src/qa299-built.json'\"'\"'));const argument=process.argv[1];require('\"'\"'node:http'\"'\"').createServer((q,r)=>{r.setHeader('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"');r.end(JSON.stringify({marker:\"QA299_e874f9_CREATE\",built,runtime:{argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}}));}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');' tail\\ ",
+          "predeploy": "/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\"QA299_e874f9_CREATE\",role:'\"'\"'predeploy'\"'\"',argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}));' tail\\ "
+        },
+        "exact": {
+          "build": true,
+          "start": true,
+          "predeploy": false
+        }
+      }
+    ],
+    "runtime_receipts": [
+      {
+        "at": "2026-10-15T10:44:04.819611+00:00",
+        "label": "create",
+        "metadata": {
+          "at": "2026-10-15T10:44:04.170066+00:00",
+          "label": "create",
+          "receipt": {
+            "at": "2026-10-15T10:44:04.169924+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/services/srv-db8artbh673c73birsfg",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.337,
+            "response": "{\"id\":\"srv-db8artbh673c73birsfg\",\"name\":\"qa-20261015-e874f9-command\",\"immutableName\":\"qa-20261015-e874f9-command\",\"slug\":\"qa-20261015-e874f9-command\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db8artbh673c73birsfg\",\"createdAt\":\"2026-10-15T10:41:57Z\",\"updatedAt\":\"2026-10-15T10:43:59Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"QA_PRIVATE_VALUE_REDACTED\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"');fs.writeFileSync('\\\"'\\\"'qa299-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",argument:process.argv[1],hex:Buffer.from(process.argv[1]).toString('\\\"'\\\"'hex'\\\"'\\\"')}));' tail\\\\ \",\"preDeployCommand\":\"/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",role:'\\\"'\\\"'predeploy'\\\"'\\\"',argument,hex:Buffer.from(argument).toString('\\\"'\\\"'hex'\\\"'\\\"')}));' tail\\\\\",\"startCommand\":\"/usr/local/bin/node -e 'const built=JSON.parse(require('\\\"'\\\"'node:fs'\\\"'\\\"').readFileSync('\\\"'\\\"'/opt/render/project/src/qa299-built.json'\\\"'\\\"'));const argument=process.argv[1];require('\\\"'\\\"'node:http'\\\"'\\\"').createServer((q,r)=\\u003e{r.setHeader('\\\"'\\\"'Content-Type'\\\"'\\\"','\\\"'\\\"'application/json'\\\"'\\\"');r.end(JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",built,runtime:{argument,hex:Buffer.from(argument).toString('\\\"'\\\"'hex'\\\"'\\\"')}}));}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');' tail\\\\ \"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261015-e874f9-command:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"preDeployCommand\":\"/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",role:'\\\"'\\\"'predeploy'\\\"'\\\"',argument,hex:Buffer.from(argument).toString('\\\"'\\\"'hex'\\\"'\\\"')}));' tail\\\\\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261015-e874f9-command.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261015-e874f9-command.onbex.co\"],\"idleTTLSeconds\":0,\"repo\":\"https://github.com/expressjs/serve-static\",\"branch\":\"master\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+            "stderr": ""
+          },
+          "actual": {
+            "build": "/usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"');fs.writeFileSync('\"'\"'qa299-built.json'\"'\"',JSON.stringify({marker:\"QA299_e874f9_CREATE\",argument:process.argv[1],hex:Buffer.from(process.argv[1]).toString('\"'\"'hex'\"'\"')}));' tail\\ ",
+            "start": "/usr/local/bin/node -e 'const built=JSON.parse(require('\"'\"'node:fs'\"'\"').readFileSync('\"'\"'/opt/render/project/src/qa299-built.json'\"'\"'));const argument=process.argv[1];require('\"'\"'node:http'\"'\"').createServer((q,r)=>{r.setHeader('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"');r.end(JSON.stringify({marker:\"QA299_e874f9_CREATE\",built,runtime:{argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}}));}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');' tail\\ ",
+            "predeploy": "/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\"QA299_e874f9_CREATE\",role:'\"'\"'predeploy'\"'\"',argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}));' tail\\"
+          },
+          "expected": {
+            "build": "/usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"');fs.writeFileSync('\"'\"'qa299-built.json'\"'\"',JSON.stringify({marker:\"QA299_e874f9_CREATE\",argument:process.argv[1],hex:Buffer.from(process.argv[1]).toString('\"'\"'hex'\"'\"')}));' tail\\ ",
+            "start": "/usr/local/bin/node -e 'const built=JSON.parse(require('\"'\"'node:fs'\"'\"').readFileSync('\"'\"'/opt/render/project/src/qa299-built.json'\"'\"'));const argument=process.argv[1];require('\"'\"'node:http'\"'\"').createServer((q,r)=>{r.setHeader('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"');r.end(JSON.stringify({marker:\"QA299_e874f9_CREATE\",built,runtime:{argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}}));}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');' tail\\ ",
+            "predeploy": "/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\"QA299_e874f9_CREATE\",role:'\"'\"'predeploy'\"'\"',argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}));' tail\\ "
+          },
+          "exact": {
+            "build": true,
+            "start": true,
+            "predeploy": false
+          }
+        },
+        "latest_deploy": {
+          "commit": {
+            "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+            "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+          },
+          "createdAt": "2026-10-15T10:41:57.071489Z",
+          "id": "dep-db8artbh673c73birsg0",
+          "startedAt": "2026-10-15T10:43:05.539368Z",
+          "status": "update_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-15T10:43:50.574535Z"
+        },
+        "runtime": {
+          "url": "https://qa-20261015-e874f9-command.onbex.co",
+          "HTTP": "200",
+          "curl_exit": 0,
+          "body": "{\"marker\":\"QA299_e874f9_CREATE\",\"built\":{\"marker\":\"QA299_e874f9_CREATE\",\"argument\":\"tail \",\"hex\":\"7461696c20\"},\"runtime\":{\"argument\":\"tail \",\"hex\":\"7461696c20\"}}",
+          "decoded": {
+            "marker": "QA299_e874f9_CREATE",
+            "built": {
+              "marker": "QA299_e874f9_CREATE",
+              "argument": "tail ",
+              "hex": "7461696c20"
+            },
+            "runtime": {
+              "argument": "tail ",
+              "hex": "7461696c20"
+            }
+          },
+          "stderr": ""
+        },
+        "pass": false
+      },
+      {
+        "at": "2026-10-15T10:45:29.964538+00:00",
+        "label": "create",
+        "metadata": {
+          "at": "2026-10-15T10:45:29.330535+00:00",
+          "label": "create",
+          "receipt": {
+            "at": "2026-10-15T10:45:29.330333+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/services/srv-db8artbh673c73birsfg",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.716,
+            "response": "{\"id\":\"srv-db8artbh673c73birsfg\",\"name\":\"qa-20261015-e874f9-command\",\"immutableName\":\"qa-20261015-e874f9-command\",\"slug\":\"qa-20261015-e874f9-command\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db8artbh673c73birsfg\",\"createdAt\":\"2026-10-15T10:41:57Z\",\"updatedAt\":\"2026-10-15T10:43:59Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"QA_PRIVATE_VALUE_REDACTED\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"');fs.writeFileSync('\\\"'\\\"'qa299-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",argument:process.argv[1],hex:Buffer.from(process.argv[1]).toString('\\\"'\\\"'hex'\\\"'\\\"')}));' tail\\\\ \",\"preDeployCommand\":\"/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",role:'\\\"'\\\"'predeploy'\\\"'\\\"',argument,hex:Buffer.from(argument).toString('\\\"'\\\"'hex'\\\"'\\\"')}));' tail\\\\\",\"startCommand\":\"/usr/local/bin/node -e 'const built=JSON.parse(require('\\\"'\\\"'node:fs'\\\"'\\\"').readFileSync('\\\"'\\\"'/opt/render/project/src/qa299-built.json'\\\"'\\\"'));const argument=process.argv[1];require('\\\"'\\\"'node:http'\\\"'\\\"').createServer((q,r)=\\u003e{r.setHeader('\\\"'\\\"'Content-Type'\\\"'\\\"','\\\"'\\\"'application/json'\\\"'\\\"');r.end(JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",built,runtime:{argument,hex:Buffer.from(argument).toString('\\\"'\\\"'hex'\\\"'\\\"')}}));}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');' tail\\\\ \"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261015-e874f9-command:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"preDeployCommand\":\"/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",role:'\\\"'\\\"'predeploy'\\\"'\\\"',argument,hex:Buffer.from(argument).toString('\\\"'\\\"'hex'\\\"'\\\"')}));' tail\\\\\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261015-e874f9-command.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"revision\":\"rev-1\",\"urls\":[\"https://qa-20261015-e874f9-command.onbex.co\"],\"idleTTLSeconds\":0,\"repo\":\"https://github.com/expressjs/serve-static\",\"branch\":\"master\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"pushDeliveryMethod\":\"manual_webhook\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"}\n",
+            "stderr": ""
+          },
+          "actual": {
+            "build": "/usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"');fs.writeFileSync('\"'\"'qa299-built.json'\"'\"',JSON.stringify({marker:\"QA299_e874f9_CREATE\",argument:process.argv[1],hex:Buffer.from(process.argv[1]).toString('\"'\"'hex'\"'\"')}));' tail\\ ",
+            "start": "/usr/local/bin/node -e 'const built=JSON.parse(require('\"'\"'node:fs'\"'\"').readFileSync('\"'\"'/opt/render/project/src/qa299-built.json'\"'\"'));const argument=process.argv[1];require('\"'\"'node:http'\"'\"').createServer((q,r)=>{r.setHeader('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"');r.end(JSON.stringify({marker:\"QA299_e874f9_CREATE\",built,runtime:{argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}}));}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');' tail\\ ",
+            "predeploy": "/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\"QA299_e874f9_CREATE\",role:'\"'\"'predeploy'\"'\"',argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}));' tail\\"
+          },
+          "expected": {
+            "build": "/usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"');fs.writeFileSync('\"'\"'qa299-built.json'\"'\"',JSON.stringify({marker:\"QA299_e874f9_CREATE\",argument:process.argv[1],hex:Buffer.from(process.argv[1]).toString('\"'\"'hex'\"'\"')}));' tail\\ ",
+            "start": "/usr/local/bin/node -e 'const built=JSON.parse(require('\"'\"'node:fs'\"'\"').readFileSync('\"'\"'/opt/render/project/src/qa299-built.json'\"'\"'));const argument=process.argv[1];require('\"'\"'node:http'\"'\"').createServer((q,r)=>{r.setHeader('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"');r.end(JSON.stringify({marker:\"QA299_e874f9_CREATE\",built,runtime:{argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}}));}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');' tail\\ ",
+            "predeploy": "/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\"QA299_e874f9_CREATE\",role:'\"'\"'predeploy'\"'\"',argument,hex:Buffer.from(argument).toString('\"'\"'hex'\"'\"')}));' tail\\ "
+          },
+          "exact": {
+            "build": true,
+            "start": true,
+            "predeploy": false
+          }
+        },
+        "latest_deploy": {
+          "commit": {
+            "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+            "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+          },
+          "createdAt": "2026-10-15T10:41:57.071489Z",
+          "finishedAt": "2026-10-15T10:44:05.480869Z",
+          "id": "dep-db8artbh673c73birsg0",
+          "startedAt": "2026-10-15T10:43:05.539368Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-15T10:44:05.480871Z"
+        },
+        "runtime": {
+          "url": "https://qa-20261015-e874f9-command.onbex.co",
+          "HTTP": "200",
+          "curl_exit": 0,
+          "body": "{\"marker\":\"QA299_e874f9_CREATE\",\"built\":{\"marker\":\"QA299_e874f9_CREATE\",\"argument\":\"tail \",\"hex\":\"7461696c20\"},\"runtime\":{\"argument\":\"tail \",\"hex\":\"7461696c20\"}}",
+          "decoded": {
+            "marker": "QA299_e874f9_CREATE",
+            "built": {
+              "marker": "QA299_e874f9_CREATE",
+              "argument": "tail ",
+              "hex": "7461696c20"
+            },
+            "runtime": {
+              "argument": "tail ",
+              "hex": "7461696c20"
+            }
+          },
+          "stderr": ""
+        },
+        "pass": true
+      }
+    ],
+    "native_log_receipts": [
+      {
+        "at": "2026-10-15T10:45:37.012162+00:00",
+        "label": "create",
+        "client": "bex",
+        "native_result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "srv-db8artbh673c73birsfg",
+            "--type",
+            "build",
+            "--text",
+            "QA299_e874f9_CREATE",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 6.744,
+          "stdout": "{\n  \"id\": \"srv-db8artbh673c73birsfg-9jipnjlbvggu6o907sc7-2026-10-15T10:43:18.093215406Z-ad8bc6c7\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db8artbh673c73birsfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db8artbh673c73birsfg-9jipnjlbvggu6o907sc7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#12 [stage-0 5/5] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\\\"/bin/bash\\\",\\\"-c\\\",\\\". /opt/bex/load-env\\\\n/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"');fs.writeFileSync('\\\"'\\\"'qa299-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",argument:process.argv[1],hex:Buffer.from(process.argv[1]).toString('\\\"'\\\"'hex'\\\"'\\\"')}));' tail\\\\ \\\"]\",\n  \"timestamp\": \"2026-10-15T10:43:18.093215406Z\"\n}{\n  \"id\": \"srv-db8artbh673c73birsfg-mj4o25krkbnva9l5eop2-2026-10-15T10:43:46.215877707Z-d3688ebe\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db8artbh673c73birsfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db8artbh673c73birsfg-mj4o25krkbnva9l5eop2\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"{\\\"marker\\\":\\\"QA299_e874f9_CREATE\\\",\\\"role\\\":\\\"predeploy\\\",\\\"argument\\\":\\\"tail\\\\\\\\\\\",\\\"hex\\\":\\\"7461696c5c\\\"}\",\n  \"timestamp\": \"2026-10-15T10:43:46.215877707Z\"\n}",
+          "stderr": "",
+          "native_exit": 0
+        },
+        "program_outputs": [
+          {
+            "marker": "QA299_e874f9_CREATE",
+            "role": "predeploy",
+            "argument": "tail\\",
+            "hex": "7461696c5c"
+          }
+        ],
+        "argument_exact": false
+      },
+      {
+        "at": "2026-10-15T10:45:40.606185+00:00",
+        "label": "create",
+        "client": "render",
+        "native_result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "logs",
+            "--resources",
+            "srv-db8artbh673c73birsfg",
+            "--type",
+            "build",
+            "--text",
+            "QA299_e874f9_CREATE",
+            "--direction",
+            "forward",
+            "--limit",
+            "100",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 3.381,
+          "stdout": "{\n  \"id\": \"srv-db8artbh673c73birsfg-9jipnjlbvggu6o907sc7-2026-10-15T10:43:18.093215406Z-ad8bc6c7\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db8artbh673c73birsfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db8artbh673c73birsfg-9jipnjlbvggu6o907sc7\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#12 [stage-0 5/5] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\\\"/bin/bash\\\",\\\"-c\\\",\\\". /opt/bex/load-env\\\\n/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"');fs.writeFileSync('\\\"'\\\"'qa299-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",argument:process.argv[1],hex:Buffer.from(process.argv[1]).toString('\\\"'\\\"'hex'\\\"'\\\"')}));' tail\\\\ \\\"]\",\n  \"timestamp\": \"2026-10-15T10:43:18.093215406Z\"\n}{\n  \"id\": \"srv-db8artbh673c73birsfg-mj4o25krkbnva9l5eop2-2026-10-15T10:43:46.215877707Z-d3688ebe\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db8artbh673c73birsfg\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db8artbh673c73birsfg-mj4o25krkbnva9l5eop2\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"predeploy\"\n    }\n  ],\n  \"message\": \"{\\\"marker\\\":\\\"QA299_e874f9_CREATE\\\",\\\"role\\\":\\\"predeploy\\\",\\\"argument\\\":\\\"tail\\\\\\\\\\\",\\\"hex\\\":\\\"7461696c5c\\\"}\",\n  \"timestamp\": \"2026-10-15T10:43:46.215877707Z\"\n}",
+          "stderr": ""
+        },
+        "program_outputs": [
+          {
+            "marker": "QA299_e874f9_CREATE",
+            "role": "predeploy",
+            "argument": "tail\\",
+            "hex": "7461696c5c"
+          }
+        ],
+        "argument_exact": false
+      }
+    ],
+    "delete_intent": {
+      "at": "2026-10-15T10:49:36.507223+00:00",
+      "children": [
+        "dep-db8artbh673c73birsg0"
+      ]
+    },
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db8artbh673c73birsfg",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.482,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"master\",\n    \"createdAt\": \"2026-10-15T10:41:57Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db8artbh673c73birsfg\",\n    \"id\": \"srv-db8artbh673c73birsfg\",\n    \"name\": \"qa-20261015-e874f9-command\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/expressjs/serve-static\",\n    \"rootDir\": \"\",\n    \"serviceDetails\": {\n      \"env\": \"node\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"');fs.writeFileSync('\\\"'\\\"'qa299-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",argument:process.argv[1],hex:Buffer.from(process.argv[1]).toString('\\\"'\\\"'hex'\\\"'\\\"')}));' tail\\\\ \",\n        \"preDeployCommand\": \"/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",role:'\\\"'\\\"'predeploy'\\\"'\\\"',argument,hex:Buffer.from(argument).toString('\\\"'\\\"'hex'\\\"'\\\"')}));' tail\\\\\",\n        \"startCommand\": \"/usr/local/bin/node -e 'const built=JSON.parse(require('\\\"'\\\"'node:fs'\\\"'\\\"').readFileSync('\\\"'\\\"'/opt/render/project/src/qa299-built.json'\\\"'\\\"'));const argument=process.argv[1];require('\\\"'\\\"'node:http'\\\"'\\\"').createServer((q,r)=\\u003e{r.setHeader('\\\"'\\\"'Content-Type'\\\"'\\\"','\\\"'\\\"'application/json'\\\"'\\\"');r.end(JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",built,runtime:{argument,hex:Buffer.from(argument).toString('\\\"'\\\"'hex'\\\"'\\\"')}}));}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');' tail\\\\ \"\n      },\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261015-e874f9-command:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"preDeployCommand\": \"/usr/local/bin/node -e 'const argument=process.argv[1];console.log(JSON.stringify({marker:\\\"QA299_e874f9_CREATE\\\",role:'\\\"'\\\"'predeploy'\\\"'\\\"',argument,hex:Buffer.from(argument).toString('\\\"'\\\"'hex'\\\"'\\\"')}));' tail\\\\\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"node\",\n      \"url\": \"https://qa-20261015-e874f9-command.onbex.co\"\n    },\n    \"slug\": \"qa-20261015-e874f9-command\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-15T10:43:59Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": "",
+      "native_exit": 0
+    },
+    "cleanup_receipts": [
+      {
+        "at": "2026-10-15T10:49:40.782776+00:00",
+        "detail": {
+          "at": "2026-10-15T10:49:38.990738+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db8artbh673c73birsfg",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "404",
+          "curl_exit": 0,
+          "elapsed": 0.617,
+          "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+          "stderr": ""
+        },
+        "inventory": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "services",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.85,
+          "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T10:49:04Z\",\n        \"nextRunAt\": \"2026-10-15T10:50:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T10:49:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T10:49:06Z\",\n        \"nextRunAt\": \"2026-10-15T10:50:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T10:49:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T10:49:04Z\",\n        \"nextRunAt\": \"2026-10-15T10:50:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T10:49:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T10:17:00Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T10:48:25Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T06:54:00Z\"\n    }\n  }\n]",
+          "stderr": "",
+          "native_exit": 0
+        },
+        "runtime": {
+          "HTTP": "404",
+          "curl_exit": 0
+        },
+        "quota": {
+          "at": "2026-10-15T10:49:40.782623+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.347,
+          "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+          "stderr": ""
+        },
+        "baseline_preserved": true
+      }
+    ]
+  },
+  "final_quota": {
+    "at": "2026-10-15T10:49:40.782623+00:00",
+    "API_only": true,
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "body": null,
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "status": "200",
+    "curl_exit": 0,
+    "elapsed": 0.347,
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+    "stderr": ""
+  },
+  "summary": {
+    "API_only_creates": 1,
+    "native_log_read_passes": 2,
+    "distinct_predeploy_executions_observed": 1,
+    "predeploy_argument_wrong": true,
+    "build_start_controls_exact": true,
+    "new_findings": 0,
+    "API_update_and_native_manual_deploy": "not performed after create field failed",
+    "deployed_artifact": "unobserved"
+  }
+}

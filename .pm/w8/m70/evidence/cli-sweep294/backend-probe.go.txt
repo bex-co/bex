@@ -1,0 +1,32 @@
+package apps
+
+import (
+ "context"
+ "encoding/json"
+ "reflect"
+ "testing"
+ "github.com/bex-co/bex/lego/backend/internal/core"
+ appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+)
+
+func TestQA294BlueprintSourceExclusivity(t *testing.T) {
+ const repo = "https://github.com/expressjs/serve-static"
+ const image = "docker.io/mendhak/http-https-echo:35"
+ cases:=[]struct{name,manifest string; initial appv1alpha1.AppSpec; wantRepo,wantImage,wantBranch string}{
+ {"image-to-native-git", "services:\n- {name: own-source, type: web, runtime: node, repo: "+repo+", branch: master, plan: free, buildCommand: 'true', startCommand: 'node server.js'}\n",appv1alpha1.AppSpec{Type:appv1alpha1.TypeWebService,Runtime:"image",Image:image,Branch:"main",Tier:"free",Replicas:1,Port:3000},repo,"","master"},
+ {"image-to-docker-git", "services:\n- {name: own-source, type: web, runtime: docker, repo: "+repo+", branch: master, plan: free}\n",appv1alpha1.AppSpec{Type:appv1alpha1.TypeWebService,Runtime:"image",Image:image,Branch:"main",Tier:"free",Replicas:1,Port:3000},repo,"","master"},
+ {"git-to-image", "services:\n- {name: own-source, type: web, runtime: image, image: {url: '"+image+"'}, plan: free}\n",appv1alpha1.AppSpec{Type:appv1alpha1.TypeWebService,Runtime:"node",Repo:repo,Branch:"master",Tier:"free",Replicas:1,Port:3000},"",image,"master"},
+ {"same-git-control", "services:\n- {name: own-source, type: web, runtime: node, repo: "+repo+", branch: master, plan: free, buildCommand: 'true', startCommand: 'node server.js'}\n",appv1alpha1.AppSpec{Type:appv1alpha1.TypeWebService,Runtime:"node",Repo:repo,Branch:"master",Tier:"free",Replicas:1,Port:3000},repo,"","master"},
+ {"same-image-control", "services:\n- {name: own-source, type: web, runtime: image, image: {url: '"+image+"'}, plan: free}\n",appv1alpha1.AppSpec{Type:appv1alpha1.TypeWebService,Runtime:"image",Image:image,Branch:"main",Tier:"free",Replicas:1,Port:3000},"",image,"main"},
+ }
+ for _,tc:=range cases {t.Run(tc.name,func(t *testing.T){
+  st,_,err:=compileStack(DeployRequest{Manifest:tc.manifest});if err!=nil{t.Fatal(err)};decl:=st.services[0];want,err:=specFromCreate(decl.req);if err!=nil{t.Fatal(err)}
+  existing:=blueprintIntentApp(true);existing.Spec=tc.initial;cl:=fakeClient(existing);rec:=&recordingStore{};svc:=&Service{Base:&core.Base{Client:cl,Namespace:"default"},Store:rec}
+  _,err=svc.updateStackService(context.Background(),decl.req,decl.fields,want,existing);if err!=nil{t.Fatal(err)};got:=getApp(t,cl,existing.Name).Spec
+  writes:=[]map[string]string{};for _,w:=range rec.sourceWrites{writes=append(writes,map[string]string{"id":w.id,"repo":w.repo,"image":w.image,"branch":w.branch})};b,_:=json.Marshal(map[string]any{"case":tc.name,"repo":got.Repo,"image":got.Image,"branch":got.Branch,"runtime":got.Runtime,"row_source_writes":writes,"deploy_rows":len(rec.deployCalls),"qualification":"actual compile/spec/update/persistence path; fake Kubernetes and recording store; no production operation"});t.Log("QA294_SOURCE "+string(b))
+  if got.Runtime!=want.Runtime{t.Errorf("runtime=%q want declared %q",got.Runtime,want.Runtime)}
+  if got.Repo!=tc.wantRepo||got.Image!=tc.wantImage||got.Branch!=tc.wantBranch{t.Errorf("source tuple=(%q,%q,%q), want=(%q,%q,%q)",got.Repo,got.Image,got.Branch,tc.wantRepo,tc.wantImage,tc.wantBranch)}
+  count:=len(rec.deployCalls);current:=getApp(t,cl,existing.Name);if _,err:=svc.updateStackService(context.Background(),decl.req,decl.fields,want,current);err!=nil{t.Fatal(err)};if len(rec.deployCalls)!=count{t.Errorf("identical reapply opened another deploy: %d -> %d",count,len(rec.deployCalls))}
+ })}
+ t.Run("omitted-source-control",func(t *testing.T){got:=cases[0].initial;before:=got;_,err:=ApplyBlueprintServiceSpec(&got,appv1alpha1.AppSpec{HealthCheckPath:"/ready"},map[string]BlueprintField{"healthCheckPath":{}});if err!=nil{t.Fatal(err)};before.HealthCheckPath="/ready";if !reflect.DeepEqual(got,before){t.Fatal("omitted source changed")}})
+}

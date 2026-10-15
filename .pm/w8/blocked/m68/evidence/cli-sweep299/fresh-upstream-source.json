@@ -1,0 +1,41 @@
+{
+  "at": "2026-10-15T10:50:22.385496+00:00",
+  "pre_main": "28b233e29812a911c7c0f30594c419cf10714fca",
+  "post_main": "28b233e29812a911c7c0f30594c419cf10714fca",
+  "worktree_HEAD": "af9bdd180e90ab9d1e971d73185687fed9ef08d8",
+  "pin": "a764810a768202704e7206eb7b87a47211fcd98e",
+  "source_only": true,
+  "files": {
+    "cmd/servicecreate.go": {
+      "pin_exists": true,
+      "main_exists": true,
+      "same_blob": true
+    },
+    "pkg/types/service/servicecreate.go": {
+      "pin_exists": true,
+      "main_exists": true,
+      "same_blob": true
+    },
+    "pkg/types/service/serviceupdate.go": {
+      "pin_exists": true,
+      "main_exists": true,
+      "same_blob": true
+    },
+    "pkg/types/envvar.go": {
+      "pin_exists": true,
+      "main_exists": true,
+      "same_blob": true
+    },
+    "pkg/service/clone.go": {
+      "pin_exists": true,
+      "main_exists": true,
+      "same_blob": true
+    },
+    "pkg/command/inputs.go": {
+      "pin_exists": true,
+      "main_exists": true,
+      "same_blob": true
+    }
+  },
+  "fetch_exit": 0
+}

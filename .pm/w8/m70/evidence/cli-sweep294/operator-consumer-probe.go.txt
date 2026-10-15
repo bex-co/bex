@@ -1,0 +1,12 @@
+package controller
+import (
+ "testing"
+ appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+)
+func TestQA294SourceArtifactConsumer(t *testing.T){
+ for _,tc:=range []struct{name,repo,image,want string; resolved bool}{
+  {"ambiguous-producer-output","https://github.com/expressjs/serve-static","old:image","old:image",true},
+  {"exclusive-git-control","https://github.com/expressjs/serve-static","","",false},
+  {"exclusive-image-control","","old:image","old:image",true},
+ }{t.Run(tc.name,func(t *testing.T){a:=&appv1alpha1.App{Spec:appv1alpha1.AppSpec{Repo:tc.repo,Image:tc.image,Runtime:"node"}};image,ok:=reusableArtifactImage(a,appReleaseDecision{});t.Logf("QA294_CONSUMER repo=%q image=%q selected=%q resolved=%v; actual consumer, no production Kubernetes",tc.repo,tc.image,image,ok);if image!=tc.want||ok!=tc.resolved{t.Fatalf("selection=(%q,%v), want (%q,%v)",image,ok,tc.want,tc.resolved)}})}
+}

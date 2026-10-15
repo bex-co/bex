@@ -1,0 +1,34 @@
+from pathlib import Path
+import datetime,json,os,secrets,shutil,subprocess,time
+os.umask(0o077);P=Path(__file__).resolve().parent;root=Path('/Volumes/nvme4tbfish/projects/bex8');cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json';c=json.loads(cp.read_text());assert c.get('sync295_result')==0 and not c.get('active_sync_stash') and 'sweep295_env_validation' not in c
+sha=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip();r=(P/'run294.py').read_text().replace('sweep294-bex-head','sweep295-bex-head').replace('021faa4a0fb8719b005088c299e946cd173dc9a3',sha);(P/'run295.py').write_text(r)
+x={'sweep':295,'head':sha,'mutation':'validation only; no apply or resource creation','nonce':secrets.token_hex(3),'results':[],'checkout_build':{'HEAD':sha,'binary':'sweep295-bex-head','version':subprocess.check_output([str(P/'sweep295-bex-head'),'--version'],text=True).strip(),'go_version_m':subprocess.check_output(['go','version','-m',str(P/'sweep295-bex-head')],text=True),'build_exit':0,'cli_product_diff_empty':subprocess.run(['git','diff','--quiet','--','lego/cli']).returncode==0}};c['sweep295_env_validation']=x
+OUT=P/'sweep295-env-validation.json';assert not OUT.exists()
+def save():
+ c['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();cp.write_text(json.dumps(c,indent=2));cp.chmod(0o600);OUT.write_text(json.dumps(x,indent=2)+'\n')
+marker='QA295_VALUE_'+x['nonce'];cases=[]
+for kind in ('service-literal','service-seed','group-literal'):
+ for label,v,valid in [('nul',marker+'\0after',False),('newline-control',marker+'\nafter',True)]:cases.append((kind,label,v,valid))
+for label,v in [('start','\0'+marker),('middle',marker+'\0after'),('end',marker+'\0'),('only','\0')]:cases.append(('service-literal','nul-position-'+label,v,False))
+for label,v in [('empty',''),('unicode',marker+'☃'),('newline',marker+'\nnext'),('tab',marker+'\tnext'),('CRLF',marker+'\r\nnext'),('literal-backslash-u0000',marker+'\\u0000'),('numeric-string','42'),('ordinary',marker)]:cases.append(('service-literal',label,v,True))
+subjects=[('installed','run.py',[]),('published','run.py',['--release']),('checkout','run295.py',['--current']),('render-pin','run-render.py',[])]
+try:
+ for client,runner,flags in subjects:
+  for kind,label,value,expected_valid in cases:
+   entry={'key':'QA_LITERAL','value':value}
+   if kind=='service-seed':entry['sync']=False
+   if kind=='group-literal':doc={'envVarGroups':[{'name':'qa295-'+x['nonce']+'-group','envVars':[entry]}]}
+   else:doc={'services':[{'name':'qa295-'+x['nonce']+'-web','type':'web','runtime':'image','image':{'url':'nginx:1'},'plan':'free','envVars':[entry]}]}
+   f=P/('sweep295-'+kind+'-'+label+'.yaml');f.write_text(json.dumps(doc,indent=2)+'\n');args=['blueprints','validate',str(f),'--confirm','-o','json'];z={'client':client,'kind':kind,'variant':label,'expected_valid':expected_valid,'document':doc,'command':[client,*args],'state':'native validation intent persisted'};x['results'].append(z);save();cfg=P/'render-config/cli.yaml'
+   try:
+    if client=='render-pin':assert not cfg.exists();shutil.copyfile(P/'config/cli.yaml',cfg);cfg.chmod(0o600)
+    result=json.loads(subprocess.check_output(['python3',str(P/runner),*flags,*args],text=True,timeout=60));z['result']=result
+   finally:
+    if client=='render-pin':cfg.unlink(missing_ok=True)
+    f.unlink(missing_ok=True)
+   try:decoded=json.loads(result['stdout']) if result['stdout'] else None
+   except ValueError:decoded=None
+   z['decoded']=decoded;z['acceptance_pass']=bool(isinstance(decoded,dict) and decoded.get('valid') is expected_valid and result['exit']==(0 if expected_valid else 1) and (expected_valid or decoded.get('errors')));z['state']='native validation complete; file removed';save();print(json.dumps({'client':client,'kind':kind,'variant':label,'exit':result['exit'],'valid':decoded.get('valid') if isinstance(decoded,dict) else None,'pass':z['acceptance_pass']}),flush=True);time.sleep(.35)
+finally:
+ x['copied_render_config_removed']=not (P/'render-config/cli.yaml').exists();x['authored_documents_removed']=not list(P.glob('sweep295-*.yaml'));save()
+print(json.dumps({'native_runs':len(x['results']),'pass':sum(z['acceptance_pass'] for z in x['results']),'invalid_expected':sum(not z['expected_valid'] for z in x['results']),'production_resource_mutations':0}),flush=True)
