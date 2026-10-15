@@ -103,7 +103,10 @@ loki.echo "test" {}
             for filename in ["config.alloy", *files]:
                 run("docker", "cp", str(tmp / filename), f"{name}:/tmp/{filename}")
             run("docker", "start", name)
-            deadline = time.monotonic() + 30
+            # The loop leaves as soon as the fixture is consumed; the budget only
+            # matters on a loaded runner, where 30s ran out with one line of an
+            # otherwise correct fixture still unread (w1/m174).
+            deadline = time.monotonic() + 90
             actual = {}
             output = ""
             completed = False
@@ -441,8 +444,14 @@ loki.process "fixture_clock" {
 ''' % fanout
             fixture += platform + "\n" + metrics + "\n"
             (tmp / "config.alloy").write_text(fixture)
-            (tmp / "zot.log").write_text("")
-            (tmp / "other.log").write_text("")
+            # The test appends to these inside the container. docker cp keeps the
+            # host owner and mode, and under a rootless daemon that owner is not
+            # mapped, so container root gets only the "other" bits: a 0644 fixture
+            # failed "cannot create /tmp/zot.log: Permission denied" on those
+            # runners (w1/m174). World-writable works under either daemon.
+            for filename in ["zot.log", "other.log"]:
+                (tmp / filename).write_text("")
+                (tmp / filename).chmod(0o666)
             name = "bex-zot-metrics-" + uuid.uuid4().hex[:12]
             run("docker", "create", "--name", name, "--network", "none", image,
                 "run", "--storage.path=/tmp/alloy", "/tmp/config.alloy")

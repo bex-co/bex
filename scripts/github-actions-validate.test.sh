@@ -254,11 +254,16 @@ else
 fi
 
 dependabot="$root/.github/dependabot.yml"
+# Every Go module that ships builds standalone (GOWORK=off), so each needs its
+# own Dependabot directory; one missing means its advisories never get a PR
+# (w1/m174: reachable x/net advisories sat red for six days with none).
+go_dirs="$(yq -N '[.updates[] | select(."package-ecosystem" == "gomod") | .directories[]] | sort | join(",")' "$dependabot" 2>/dev/null || true)"
 if grep -q 'package-ecosystem: *"\?github-actions' "$dependabot" 2>/dev/null \
-  && grep -q 'package-ecosystem: *"\?npm' "$dependabot" 2>/dev/null; then
-  echo "ok: dependabot.yml declares github-actions + npm ecosystems"
+  && grep -q 'package-ecosystem: *"\?npm' "$dependabot" 2>/dev/null \
+  && [ "$go_dirs" = "/lego/backend,/lego/cli,/lego/operator,/lego/types" ]; then
+  echo "ok: dependabot.yml declares github-actions, npm and every lego/ Go module"
 else
-  echo "FAIL: .github/dependabot.yml missing github-actions and/or npm ecosystem" >&2
+  echo "FAIL: .github/dependabot.yml missing github-actions, npm, or a lego/ Go module (gomod directories: '$go_dirs')" >&2
   fails=$((fails + 1))
 fi
 
