@@ -120,6 +120,24 @@
       "files": ["lego/operator/internal/build/native.go"]
     },
     {
+      "id": "native-bun-1-2",
+      "kind": "native-base",
+      "upstream": "docker.io/oven/bun:1.2",
+      "committed": "oven/bun:1.2@sha256:6ebf306367da43ad75c4d5119563e24de9b66372929ad4fa31546be053a16f74",
+      "resolved_at": "2026-10-15T20:30:00Z",
+      "source": "Docker Hub oven/bun:1.2 multi-arch index (linux/amd64 + linux/arm64), Bun 1.2.23; binary copied into the native toolchain image (w8/m71)",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-bun",
+      "kind": "native-base",
+      "upstream": "docker.io/oven/bun:1.3",
+      "committed": "oven/bun:1.3@sha256:e10577f0db68676a7024391c6e5cb4b879ebd17188ab750cf10024a6d700e5c4",
+      "resolved_at": "2026-10-15T20:30:00Z",
+      "source": "Docker Hub oven/bun:1.3 multi-arch index (linux/amd64 + linux/arm64), Bun 1.3.14; binary copied into the native toolchain image (w8/m71)",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
       "id": "native-node",
       "kind": "native-base",
       "upstream": "docker.io/library/node:24-bookworm",

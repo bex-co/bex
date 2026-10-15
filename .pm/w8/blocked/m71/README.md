@@ -1,18 +1,18 @@
 # w8 · m71 — Make explicit Bun opt-in usable in native builds and runtime
 
-**Worker:** worker8 **Goal:** a Node/Bun service that explicitly requests Bun can build and serve through the unchanged pinned CLI with a resolved, reported Bun toolchain. **Status:** todo
+**Worker:** worker8 **Goal:** a Node/Bun service that explicitly requests Bun can build and serve through the unchanged pinned CLI with a resolved, reported Bun toolchain. **Status:** blocked — t001–t006 done (opt-in Bun companion selected and copied into native build/runtime images, execution-tested on node and python bases); t007 needs the deploy plus the hosted two-client explicit-Bun replay with cleanup
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Select optional Bun from version and opt-in signals | 40m | — |
-| t002 | Carry the selected Bun into native build and runtime images | 45m | t001 |
-| t003 | Audit shared consumers and version/cache transitions | 25m | t002 |
-| t004 | Render parity | 20m | t003 |
-| t005 | Simplify | 10m | t004 |
-| t006 | Test coverage | 40m | t004 |
-| t007 | Closeout | 20m | t005, t006 |
+| t001 | Select optional Bun from version and opt-in signals — **DONE** | 40m | — |
+| t002 | Carry the selected Bun into native build and runtime images — **DONE** | 45m | t001 |
+| t003 | Audit shared consumers and version/cache transitions — **DONE** | 25m | t002 |
+| t004 | Render parity — **DONE** | 20m | t003 |
+| t005 | Simplify — **DONE** | 10m | t004 |
+| t006 | Test coverage — **DONE** | 40m | t004 |
+| t007 | Closeout — **BLOCKED (deploy + hosted two-client Bun replay)** | 20m | t005, t006 |
 
 ## Definition of done
 

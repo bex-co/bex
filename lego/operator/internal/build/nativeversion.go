@@ -86,6 +86,44 @@ func ResolveNativeVersion(runtime string, env map[string]string, readFile func(s
 	}
 }
 
+// ResolveNativeBun picks the Bun companion a native build adds, with Render's
+// precedence: BUN_VERSION → .bun-version → a bun.lock or bun.lockb lockfile
+// (the default line). found is false when the service does not opt in, which
+// leaves the build exactly as before (w8/m71). A version maps onto its
+// major.minor line, as the primary toolchains' do.
+func ResolveNativeBun(env map[string]string, readFile func(string) ([]byte, bool)) (choice NativeChoice, found bool, err error) {
+	r := resolver{t: nativeBun, env: env, readFile: readFile}
+	return r.firstFound(r.fromEnv("BUN_VERSION", r.bunRequest), r.fromFile(".bun-version", r.bunRequest), r.fromLockfile("bun.lock", "bun.lockb"))
+}
+
+// bunRequest maps a Bun version request: `latest`, a plain version onto its
+// major.minor line (a bare major onto that major's newest line), otherwise a
+// semver range.
+func (r resolver) bunRequest(request string) (string, bool) {
+	lower := strings.TrimPrefix(strings.TrimPrefix(strings.ToLower(strings.TrimSpace(request)), "bun-"), "v")
+	switch {
+	case lower == "latest":
+		return r.t.lines[len(r.t.lines)-1].line, true
+	case plainVersion.MatchString(lower) && !strings.Contains(lower, "."):
+		return r.highestSatisfying(lower + ".x")
+	case plainVersion.MatchString(lower):
+		return r.minorLine(lower)
+	}
+	return r.highestSatisfying(lower)
+}
+
+// fromLockfile opts in on the first lockfile present, on the default line.
+func (r resolver) fromLockfile(names ...string) signal {
+	return func() (string, string, bool, error) {
+		for _, name := range names {
+			if _, ok := r.readFile(name); ok {
+				return r.t.defaultLine, name, true, nil
+			}
+		}
+		return "", "", false, nil
+	}
+}
+
 type resolver struct {
 	t        nativeToolchain
 	env      map[string]string
@@ -97,16 +135,25 @@ type resolver struct {
 type signal func() (line, source string, found bool, err error)
 
 func (r resolver) first(signals ...signal) (NativeChoice, error) {
+	if choice, found, err := r.firstFound(signals...); found || err != nil {
+		return choice, err
+	}
+	return r.choice(r.t.defaultLine, "")
+}
+
+// firstFound is the first signal that is present; found is false when none is.
+func (r resolver) firstFound(signals ...signal) (NativeChoice, bool, error) {
 	for _, s := range signals {
 		line, source, found, err := s()
 		if err != nil {
-			return NativeChoice{}, err
+			return NativeChoice{}, false, err
 		}
 		if found {
-			return r.choice(line, source)
+			choice, err := r.choice(line, source)
+			return choice, err == nil, err
 		}
 	}
-	return r.choice(r.t.defaultLine, "")
+	return NativeChoice{}, false, nil
 }
 
 func (r resolver) choice(line, source string) (NativeChoice, error) {

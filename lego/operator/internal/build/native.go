@@ -113,6 +113,15 @@ var nativeToolchains = map[string]nativeToolchain{
 	}},
 }
 
+// nativeBun is the reviewed Bun companion a native build adds beside its
+// primary toolchain when the service opts in (BUN_VERSION, .bun-version or a
+// Bun lockfile; Render's Bun version contract, w8/m71). Its binary is copied
+// out of the pinned image, so build, pre-deploy and start all run with it.
+var nativeBun = nativeToolchain{label: "Bun", defaultLine: "1.3", lines: []nativeLine{
+	{line: "1.2", version: "1.2.23", image: "oven/bun:1.2@sha256:6ebf306367da43ad75c4d5119563e24de9b66372929ad4fa31546be053a16f74"},
+	{line: "1.3", version: "1.3.14", image: "oven/bun:1.3@sha256:e10577f0db68676a7024391c6e5cb4b879ebd17188ab750cf10024a6d700e5c4"},
+}}
+
 // nativeToolchain is one runtime's reviewed lines, ascending.
 type nativeToolchain struct {
 	label       string
