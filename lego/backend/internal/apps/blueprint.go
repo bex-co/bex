@@ -639,6 +639,23 @@ func (s *Service) blueprintRequestScope(ctx context.Context, relation, bpID, own
 	return ctx, s.Authorize(ctx, relation)
 }
 
+// unresolvedRepoKey marks a read-only Blueprint validation that does not know
+// the repository containing the manifest (the CLI's validate uploads only
+// ownerId and the file).
+type unresolvedRepoKey struct{}
+
+// blueprintReadSpec is specFromCreate for the read-only validation and plan
+// stages. Render defaults an omitted repo to the repository containing the
+// Blueprint, so where that is unknown a Git-backed service without one has an
+// unresolved source, not a missing one; a runtime: image service still needs
+// its image. Creation and apply call specFromCreate and stay strict.
+func blueprintReadSpec(ctx context.Context, req CreateRequest) (appv1alpha1.AppSpec, error) {
+	if req.Repo == "" && req.Image == "" && !strings.EqualFold(strings.TrimSpace(req.Runtime), buildImage) {
+		req.implicitRepo, _ = ctx.Value(unresolvedRepoKey{}).(bool)
+	}
+	return specFromCreate(req)
+}
+
 // blueprintValidationFor is the read-only dry-run core shared by
 // ValidateBlueprint and PreviewBlueprint. repo/branch feed the same parse a
 // create would run; both empty for a manifest-only validate.
@@ -646,6 +663,9 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 	// One memo for the whole validation: it writes nothing, so every check of
 	// the platform's host claims (domains, maintenance URIs) reads one index.
 	ctx = withRequestMemo(ctx)
+	if repo == "" {
+		ctx = context.WithValue(ctx, unresolvedRepoKey{}, true)
+	}
 	if blueprintID != "" {
 		if s.Blueprints == nil {
 			return BlueprintValidation{}, ErrBlueprintsUnavailable
