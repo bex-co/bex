@@ -47,6 +47,13 @@ import (
 
 var supportedPostgresVersions = []string{"13", "14", "15", "16", "17", "18"}
 
+// minPostgresUpgradeTarget is CNPG 1.30's floor for an in-place major upgrade:
+// its admission webhook rejects a higher major below 16 (collation handling for
+// older targets is unimplemented), so an accepted 13→14/15 intent would leave
+// the Database Failed while the old major keeps running (w4/308). Creation is
+// not an upgrade and still offers 13–18.
+const minPostgresUpgradeTarget = 16
+
 func postgresVersionKnown(version string) bool {
 	for _, supported := range supportedPostgresVersions {
 		if version == supported {
@@ -1566,6 +1573,13 @@ func (s *Service) validateVersionUpgrade(ctx context.Context, d *appv1alpha1.Dat
 			"POSTGRES_VERSION_NOT_NEWER",
 			fmt.Sprintf("PostgreSQL version upgrades are upward-only: target %s must be newer than current version %s", target, current),
 			map[string]any{"currentVersion": current, "targetVersion": target},
+		)
+	}
+	if targetMajor < minPostgresUpgradeTarget {
+		return core.NewBadRequestError(
+			"POSTGRES_UPGRADE_TARGET_UNSUPPORTED",
+			fmt.Sprintf("upgrading PostgreSQL %s to %s is not supported: major-version upgrades must target version %d or newer", current, target, minPostgresUpgradeTarget),
+			map[string]any{"currentVersion": current, "targetVersion": target, "minimumTargetVersion": strconv.Itoa(minPostgresUpgradeTarget)},
 		)
 	}
 	requiresBackup := planRequiresUpgradeBackup(d.Spec.Plan)
