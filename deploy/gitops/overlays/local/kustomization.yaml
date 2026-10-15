@@ -322,3 +322,25 @@ patches:
                   - key: node-role.kubernetes.io/control-plane
                     operator: Exists
                     effect: NoSchedule
+  # w1/m173: a local cluster must never ask Let's Encrypt for a certificate.
+  # Every host it serves is a production name (the operator's onbex.co App
+  # hosts, api/dashboard/ssh/auth/oauth.bex.co) whose DNS points at production,
+  # so ACME here can only fail, and cert-manager's HTTP-01 self-check polls the
+  # production URL every ~10s while the cluster runs; a developer machine kept
+  # a production free service awake that way. Both ClusterIssuers keep their
+  # names, so every consumer still gets a TLS Secret, but they sign it
+  # themselves. scripts/gitops-validate.sh renders and checks the result.
+  - patch: |-
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        name: cert-manager-issuers
+        namespace: argocd
+      spec:
+        source:
+          kustomize:
+            patches:
+              - target: { group: cert-manager.io, kind: ClusterIssuer }
+                patch: |-
+                  - { op: remove, path: /spec/acme }
+                  - { op: add, path: /spec/selfSigned, value: {} }

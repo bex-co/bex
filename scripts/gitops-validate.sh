@@ -538,6 +538,39 @@ if kubectl kustomize deploy/gitops/overlays/local | yq -e \
   fail=1
 fi
 
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+
+# w1/m173: every host a local cluster serves is a production name whose DNS
+# points at production, so a local ACME issuer turns cert-manager's HTTP-01
+# self-check into requests against production every ~10s for as long as the
+# cluster runs. Render the issuer chart with each overlay's Application
+# patches applied, as Argo does: local must sign its own certificates and prod
+# must stay on Let's Encrypt. The patches are collected with `ea` outside the
+# select (see scalar() above for why).
+echo "==> local ClusterIssuers sign their own certificates; prod keeps ACME"
+render_issuers() {
+  local dir="$tmp/issuers-$1"
+  cp -R deploy/gitops/charts/cert-manager-issuers "$dir"
+  kubectl kustomize "deploy/gitops/overlays/$1" \
+    | yq -N ea '[select(.kind == "Application" and .metadata.name == "cert-manager-issuers") | .spec.source.kustomize.patches[]?]' - \
+    >"$dir/patches.yaml"
+  yq -i ".patches += load(\"$dir/patches.yaml\")" "$dir/kustomization.yaml"
+  kubectl kustomize "$dir" \
+    | yq -N '.metadata.name + "|acme=" + ((.spec.acme != null) | tostring) + "|selfSigned=" + ((.spec.selfSigned != null) | tostring)' \
+    | sort | paste -sd, -
+}
+for want in \
+  "local letsencrypt-prod|acme=false|selfSigned=true,letsencrypt-staging|acme=false|selfSigned=true" \
+  "prod letsencrypt-prod|acme=true|selfSigned=false,letsencrypt-staging|acme=true|selfSigned=false"; do
+  overlay="${want%% *}"
+  got="$(render_issuers "$overlay")" || got="the issuer chart did not render with the $overlay patches"
+  if [ "$got" != "${want#* }" ]; then
+    echo "FAIL: $overlay ClusterIssuers: got '$got', want '${want#* }' (local self-signs, prod uses ACME)" >&2
+    fail=1
+  fi
+done
+
 # Every checked-in CNPG Cluster must continuously archive through the supported
 # plugin. The guard resolves each namespaced ObjectStore reference and rejects a
 # duplicate destination/serverName pair; its synthetic fixtures prove both the
@@ -960,9 +993,6 @@ if [ -f "$ZOT" ]; then
       || { echo "FAIL: zot ignoreDifferences is missing $pointer (prevents StatefulSet PVC normalization drift)" >&2; fail=1; }
   done
 fi
-
-tmp="$(mktemp -d)"
-trap 'rm -rf "$tmp"' EXIT
 
 # For each multi-source base Application with vendored values (kratos, hydra,
 # openfga, openbao, traefik, ...): authenticate the locked chart once, then
