@@ -17,8 +17,9 @@ limitations under the License.
 // Command native-resolve is the resolve-native-runtime phase of a native
 // build (w8/m51), as a first-party entrypoint of the bex image: it picks the
 // toolchain line the service asked for (PYTHON_VERSION, .nvmrc, Gemfile …),
-// rewrites the generated Dockerfile's FROM to that line's reviewed pin, and
-// narrates the choice into the build log. An unsupported request exits with
+// rewrites the generated Dockerfile's FROM to that line's reviewed pin, adds
+// an opted-in Bun companion (w8/m71), and narrates each choice into the build
+// log. An unsupported request exits with
 // build.ExitTenantError, so the build fails on it by name instead of building
 // on the default line.
 //
@@ -42,7 +43,7 @@ func main() {
 }
 
 func run(runtime, sourceDir, bundle, dockerfile string, stdout, stderr io.Writer) int {
-	choice, err := build.ResolveNativeBuild(runtime, bundle, dockerfile, sourceDir)
+	choices, err := build.ResolveNativeBuild(runtime, bundle, dockerfile, sourceDir)
 	var unsupported *build.UnsupportedVersionError
 	switch {
 	case errors.As(err, &unsupported):
@@ -52,6 +53,8 @@ func run(runtime, sourceDir, bundle, dockerfile string, stdout, stderr io.Writer
 		_, _ = fmt.Fprintf(stderr, "native-resolve: %v\n", err)
 		return 1
 	}
-	_, _ = fmt.Fprintln(stdout, choice.Narration())
+	for _, choice := range choices {
+		_, _ = fmt.Fprintln(stdout, choice.Narration())
+	}
 	return 0
 }

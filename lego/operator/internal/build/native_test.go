@@ -823,3 +823,41 @@ func TestNativeDockerfileClearsTheToolchainEntrypoint(t *testing.T) {
 		t.Fatalf("static Dockerfile gained a launch contract:\n%s", df)
 	}
 }
+
+// TestNativeImageRunsAnOptedInBun is w8/m71's execution gate: for sweep306's
+// BUN_VERSION=1.3.4, the resolved Dockerfile builds on a node and a python
+// base (no node on PATH), the authored build runs bun and records the
+// requested version from the env bundle, and the started image runs bun again
+// with the version it resolved. Opt-in: needs Docker and pulls the pinned
+// toolchain and Bun images.
+func TestNativeImageRunsAnOptedInBun(t *testing.T) {
+	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
+		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the generated image")
+	}
+	bun13, _ := nativeBun.find("1.3")
+	for _, runtime := range []string{"node", "python"} {
+		t.Run(runtime, func(t *testing.T) {
+			o := nativeOptions()
+			o.Runtime = runtime
+			o.BuildCommand = `bun -e 'require("node:fs").writeFileSync("built.txt", Bun.version + " requested=" + process.env.BUN_VERSION)' && bunx --version`
+			o.StartCommand = `bun -e 'console.log("bun runtime=" + Bun.version + " built=" + require("node:fs").readFileSync("built.txt", "utf8"))'`
+			bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"BUN_VERSION": "1.3.4"}, nil)
+			if _, err := ResolveNativeBuild(runtime, bundle, dockerfile, src); err != nil {
+				t.Fatal(err)
+			}
+			must(t, os.Rename(dockerfile, filepath.Join(src, "Dockerfile")))
+			tag := fmt.Sprintf("bex-native-bun-it-%s:%d", runtime, os.Getpid())
+			t.Cleanup(func() { _ = exec.Command("docker", "image", "rm", "-f", tag).Run() })
+			build := exec.Command("docker", "build", "-q", "-t", tag, "--secret", "id=render-env,src="+bundle, src)
+			build.Env = append(os.Environ(), "DOCKER_BUILDKIT=1")
+			if out, err := build.CombinedOutput(); err != nil {
+				t.Fatalf("build: %v\n%s", err, out)
+			}
+			out, err := exec.Command("docker", "run", "--rm", tag).CombinedOutput()
+			want := "bun runtime=" + bun13.version + " built=" + bun13.version + " requested=1.3.4"
+			if err != nil || !strings.Contains(string(out), want) {
+				t.Fatalf("run = %v\n%s; want %q", err, out, want)
+			}
+		})
+	}
+}

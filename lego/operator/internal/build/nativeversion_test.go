@@ -19,6 +19,7 @@ package build
 import (
 	"encoding/base64"
 	"errors"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -127,7 +128,9 @@ func TestNativeToolchainLinesAreInventoried(t *testing.T) {
 	for _, img := range inv.Images {
 		committed[img.Committed] = true
 	}
-	for runtime, toolchain := range nativeToolchains {
+	toolchains := map[string]nativeToolchain{"bun": nativeBun}
+	maps.Copy(toolchains, nativeToolchains)
+	for runtime, toolchain := range toolchains {
 		for _, line := range toolchain.lines {
 			if !committed[line.image] {
 				t.Errorf("%s line %s image %s is not in toolchain-freshness.json", runtime, line.line, line.image)
@@ -170,9 +173,9 @@ func TestResolveNativeBuildRewritesTheBase(t *testing.T) {
 	o.Runtime = "python"
 	bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"PYTHON_VERSION": "3.11.9", "OTHER": "x\ny"}, nil)
 	before, _ := os.ReadFile(dockerfile)
-	choice, err := ResolveNativeBuild("python", bundle, dockerfile, src)
-	if err != nil || choice.Line != "3.11" {
-		t.Fatalf("resolve = %+v, %v", choice, err)
+	choices, err := ResolveNativeBuild("python", bundle, dockerfile, src)
+	if err != nil || len(choices) != 1 || choices[0].Line != "3.11" {
+		t.Fatalf("resolve = %+v, %v", choices, err)
 	}
 	after, _ := os.ReadFile(dockerfile)
 	py311, _ := nativeToolchains["python"].find("3.11")
@@ -184,8 +187,8 @@ func TestResolveNativeBuildRewritesTheBase(t *testing.T) {
 	// Node reads its files from the service's root directory.
 	o.Runtime = "node"
 	bundle, dockerfile, src = writeResolveFixture(t, o, nil, map[string]string{".nvmrc": "22\n"})
-	if choice, err := ResolveNativeBuild("node", bundle, dockerfile, src); err != nil || choice.Source != ".nvmrc" || choice.Line != "22" {
-		t.Fatalf("node resolve = %+v, %v", choice, err)
+	if choices, err := ResolveNativeBuild("node", bundle, dockerfile, src); err != nil || len(choices) != 1 || choices[0].Source != ".nvmrc" || choices[0].Line != "22" {
+		t.Fatalf("node resolve = %+v, %v", choices, err)
 	}
 }
 
@@ -196,9 +199,9 @@ func TestResolveNativeBuildIgnoresSymlinkedVersionFiles(t *testing.T) {
 	o.Runtime = "python"
 	bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"SECRET": "s3cr3t"}, nil)
 	must(t, os.Symlink(bundle, filepath.Join(src, ".python-version")))
-	choice, err := ResolveNativeBuild("python", bundle, dockerfile, src)
-	if err != nil || choice.Source != "" {
-		t.Fatalf("symlinked .python-version: %+v, %v; want the default, unread", choice, err)
+	choices, err := ResolveNativeBuild("python", bundle, dockerfile, src)
+	if err != nil || len(choices) != 1 || choices[0].Source != "" {
+		t.Fatalf("symlinked .python-version: %+v, %v; want the default, unread", choices, err)
 	}
 }
 
@@ -252,5 +255,94 @@ func TestNativeBuildJobRunsTheResolverAfterThePreparer(t *testing.T) {
 		if c.Name == nativeResolveContainer {
 			t.Fatal("no resolver image must mean no resolve phase")
 		}
+	}
+}
+
+// Bun is an opt-in companion (w8/m71), resolved with Render's precedence; no
+// signal leaves the build without it.
+func TestResolveNativeBun(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		env     map[string]string
+		files   map[string]string
+		line    string // "" = not selected
+		source  string
+		wantErr string
+	}{
+		{"sweep306 BUN_VERSION", map[string]string{"BUN_VERSION": "1.3.4"}, nil, "1.3", "BUN_VERSION=1.3.4", ""},
+		{"BUN_VERSION wins over the file", map[string]string{"BUN_VERSION": "1.2.20"}, map[string]string{".bun-version": "1.3.0\n"}, "1.2", "BUN_VERSION=1.2.20", ""},
+		{".bun-version", nil, map[string]string{".bun-version": "# pinned\nv1.2.21\n"}, "1.2", ".bun-version", ""},
+		{"bare major", map[string]string{"BUN_VERSION": "1"}, nil, "1.3", "BUN_VERSION=1", ""},
+		{"latest", map[string]string{"BUN_VERSION": "latest"}, nil, "1.3", "BUN_VERSION=latest", ""},
+		{"range", map[string]string{"BUN_VERSION": "~1.2.0"}, nil, "1.2", "BUN_VERSION=~1.2.0", ""},
+		{"text lockfile", nil, map[string]string{"bun.lock": "{}"}, "1.3", "bun.lock", ""},
+		{"binary lockfile", nil, map[string]string{"bun.lockb": "\x00"}, "1.3", "bun.lockb", ""},
+		{"file wins over a lockfile", nil, map[string]string{".bun-version": "1.2", "bun.lock": "{}"}, "1.2", ".bun-version", ""},
+		{"no opt-in", map[string]string{"NODE_VERSION": "22"}, map[string]string{"package.json": "{}"}, "", "", ""},
+		{"unsupported", map[string]string{"BUN_VERSION": "0.8.1"}, nil, "", "", "BUN_VERSION=0.8.1 is not a supported Bun version; supported Bun lines are 1.2, 1.3"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			readFile := func(name string) ([]byte, bool) {
+				v, ok := tc.files[name]
+				return []byte(v), ok
+			}
+			choice, found, err := ResolveNativeBun(tc.env, readFile)
+			if tc.wantErr != "" {
+				var unsupported *UnsupportedVersionError
+				if !errors.As(err, &unsupported) || err.Error() != tc.wantErr {
+					t.Fatalf("err = %v, want %q", err, tc.wantErr)
+				}
+				return
+			}
+			if err != nil || found != (tc.line != "") || choice.Line != tc.line || choice.Source != tc.source {
+				t.Fatalf("= %+v, %v, %v; want line %q from %q", choice, found, err, tc.line, tc.source)
+			}
+		})
+	}
+	choice, _, _ := ResolveNativeBun(map[string]string{"BUN_VERSION": "1.3.4"}, func(string) ([]byte, bool) { return nil, false })
+	if got := choice.Narration(); got != "==> Using Bun 1.3 (from BUN_VERSION=1.3.4)" {
+		t.Errorf("narration = %q", got)
+	}
+}
+
+// An opted-in Bun is copied into the toolchain image after its FROM and
+// before the source and the authored build; the primary choice still
+// rewrites the base, and a refused Bun request leaves the Dockerfile alone.
+func TestResolveNativeBuildAddsAnOptedInBun(t *testing.T) {
+	o := nativeOptions()
+	o.Runtime = "node"
+	bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"BUN_VERSION": "1.3.4"}, map[string]string{".nvmrc": "22\n"})
+	choices, err := ResolveNativeBuild("node", bundle, dockerfile, src)
+	if err != nil || len(choices) != 2 || choices[0].Label != "Node" || choices[0].Line != "22" || choices[1].Label != "Bun" || choices[1].Line != "1.3" {
+		t.Fatalf("choices = %+v, %v; want Node 22 then Bun 1.3", choices, err)
+	}
+	df, _ := os.ReadFile(dockerfile)
+	node22, _ := nativeToolchains["node"].find("22")
+	bun13, _ := nativeBun.find("1.3")
+	from := strings.Index(string(df), "\nFROM "+node22.image+"\n")
+	copyBun := strings.Index(string(df), "\nCOPY --link --from="+bun13.image+" /usr/local/bin/bun /usr/local/bin/bun\nRUN ln -sf bun /usr/local/bin/bunx\n")
+	source, build := strings.Index(string(df), "\nCOPY . .\n"), strings.Index(string(df), "\nRUN --mount=type=secret")
+	if from < 0 || copyBun < from || source < copyBun || build < source {
+		t.Fatalf("Bun is not copied between FROM and the source/build:\n%s", df)
+	}
+
+	bundle, dockerfile, src = writeResolveFixture(t, o, map[string]string{"BUN_VERSION": "0.8"}, nil)
+	before, _ := os.ReadFile(dockerfile)
+	var unsupported *UnsupportedVersionError
+	if _, err := ResolveNativeBuild("node", bundle, dockerfile, src); !errors.As(err, &unsupported) {
+		t.Fatalf("unsupported BUN_VERSION = %v, want a tenant UnsupportedVersionError", err)
+	}
+	if after, _ := os.ReadFile(dockerfile); string(after) != string(before) {
+		t.Error("a refused Bun request rewrote the Dockerfile")
+	}
+
+	// No opt-in: exactly one choice and the Dockerfile byte-identical.
+	bundle, dockerfile, src = writeResolveFixture(t, o, nil, nil)
+	before, _ = os.ReadFile(dockerfile)
+	if choices, err := ResolveNativeBuild("node", bundle, dockerfile, src); err != nil || len(choices) != 1 {
+		t.Fatalf("no opt-in choices = %+v, %v", choices, err)
+	}
+	if after, _ := os.ReadFile(dockerfile); string(after) != string(before) {
+		t.Fatalf("no opt-in changed the Dockerfile:\n%s", after)
 	}
 }
