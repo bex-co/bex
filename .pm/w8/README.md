@@ -141,7 +141,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **107** — [A valid output flag cannot override an invalid output default](107.md) — **TODO (sweep279: installed/published/same-pin/2.29 all fail before HTTP;32 controls pass, private upstream prototype passes12 cases;35m)**
 
-- [ ] **106** — [A served deploy stays In Progress after auto-hibernation](106.md) — **TODO (sweep266: both native restart journeys; fresh metadata captures Running/rev-3 then parked/pending until HTTP wake; strict source counterexample,55m)**
+- [ ] **106** — [A served deploy stays In Progress after auto-hibernation](blocked/106.md) — **BLOCKED (2026-10-14: reconciler fix + regressions done — a release parked by auto-hibernation after serving settles Live on strict generation-matched proof; needs the API deployed to production plus a two-client short-idle native restart replay with cleanup)**
 
 - [ ] **103** — [CLI trims a local file path and silently uploads its neighbor](103.md) — **TODO, upstream parser/resolver repair 45m; six wrong native request bodies, two false missing-file errors, four controls; external acceptance/pin/release prerequisites**
 
