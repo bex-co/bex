@@ -1,0 +1,71 @@
+--- a/pkg/types/service/servicecreate.go
++++ b/pkg/types/service/servicecreate.go
+@@ -212,6 +212,13 @@
+ }
+ 
+ func NormalizeServiceCreateCLIInput(input ServiceCreateInput) ServiceCreateInput {
++	commandValue := func(value *string) *string {
++		if value == nil { return nil }
++		if strings.TrimSpace(*value) == "" { return nil }
++		copy := *value
++		return &copy
++	}
++
+ 	input.Name = strings.TrimSpace(input.Name)
+ 	input.Type = types.OptionalAlias(input.Type)
+ 	input.From = types.OptionalNonZeroString(input.From)
+@@ -222,15 +229,15 @@
+ 	input.Plan = types.OptionalNonZeroString(input.Plan)
+ 	input.Runtime = types.OptionalAlias(input.Runtime)
+ 	input.RootDirectory = types.OptionalNonZeroString(input.RootDirectory)
+-	input.BuildCommand = types.OptionalNonZeroString(input.BuildCommand)
+-	input.StartCommand = types.OptionalNonZeroString(input.StartCommand)
++	input.BuildCommand = commandValue(input.BuildCommand)
++	input.StartCommand = commandValue(input.StartCommand)
+ 	input.HealthCheckPath = types.OptionalNonZeroString(input.HealthCheckPath)
+ 	input.PublishDirectory = types.OptionalNonZeroString(input.PublishDirectory)
+-	input.CronCommand = types.OptionalNonZeroString(input.CronCommand)
++	input.CronCommand = commandValue(input.CronCommand)
+ 	input.CronSchedule = types.OptionalNonZeroString(input.CronSchedule)
+ 	input.EnvironmentID = types.OptionalNonZeroString(input.EnvironmentID)
+ 	input.RegistryCredential = types.OptionalNonZeroString(input.RegistryCredential)
+-	input.PreDeployCommand = types.OptionalNonZeroString(input.PreDeployCommand)
++	input.PreDeployCommand = commandValue(input.PreDeployCommand)
+ 	input.Previews = types.OptionalAlias(input.Previews)
+ 	input.MaintenanceModeURI = types.OptionalNonZeroString(input.MaintenanceModeURI)
+ 	return input
+--- a/pkg/types/service/serviceupdate.go
++++ b/pkg/types/service/serviceupdate.go
+@@ -63,6 +63,13 @@
+ }
+ 
+ func NormalizeServiceUpdateCLIInput(input ServiceUpdateInput) ServiceUpdateInput {
++	commandValue := func(value *string) *string {
++		if value == nil { return nil }
++		if strings.TrimSpace(*value) == "" { blank := ""; return &blank }
++		copy := *value
++		return &copy
++	}
++
+ 	input.Name = strings.TrimSpace(input.Name)
+ 	input.Repo = types.TrimOptionalString(input.Repo)
+ 	input.Branch = types.TrimOptionalString(input.Branch)
+@@ -70,14 +77,14 @@
+ 	input.Plan = types.TrimOptionalString(input.Plan)
+ 	input.Runtime = types.OptionalAlias(input.Runtime)
+ 	input.RootDirectory = types.TrimOptionalString(input.RootDirectory)
+-	input.BuildCommand = types.TrimOptionalString(input.BuildCommand)
+-	input.StartCommand = types.TrimOptionalString(input.StartCommand)
++	input.BuildCommand = commandValue(input.BuildCommand)
++	input.StartCommand = commandValue(input.StartCommand)
+ 	input.HealthCheckPath = types.TrimOptionalString(input.HealthCheckPath)
+ 	input.PublishDirectory = types.TrimOptionalString(input.PublishDirectory)
+-	input.CronCommand = types.TrimOptionalString(input.CronCommand)
++	input.CronCommand = commandValue(input.CronCommand)
+ 	input.CronSchedule = types.TrimOptionalString(input.CronSchedule)
+ 	input.RegistryCredential = types.TrimOptionalString(input.RegistryCredential)
+-	input.PreDeployCommand = types.TrimOptionalString(input.PreDeployCommand)
++	input.PreDeployCommand = commandValue(input.PreDeployCommand)
+ 	input.Previews = types.OptionalAlias(input.Previews)
+ 	input.MaintenanceModeURI = types.TrimOptionalString(input.MaintenanceModeURI)
+ 	return input

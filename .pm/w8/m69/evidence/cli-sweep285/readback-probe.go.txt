@@ -1,0 +1,23 @@
+package apps
+
+import (
+ "encoding/json"
+ "os"
+ "path/filepath"
+ "testing"
+ appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+)
+
+func TestQA285NativeCronReadback(t *testing.T) {
+ dir:=os.Getenv("QA285_READBACK_DIR")
+ for _,subject:=range []string{"published-bex","render-pin"} {t.Run(subject,func(t *testing.T){
+  raw,err:=os.ReadFile(filepath.Join(dir,"sweep285-app-"+subject+".json"));if err!=nil {t.Fatal(err)}
+  var app appv1alpha1.App;if err=json.Unmarshal(raw,&app);err!=nil {t.Fatal(err)}
+  if app.Spec.Command!=""||app.Spec.StartCommand=="" {t.Fatal("correct native baked-start role required")}
+  svc,_:=newService(nil,&app);rendered:=toRenderService(svc.view(&app));body,_:=json.Marshal(rendered)
+  var decoded map[string]any;if err=json.Unmarshal(body,&decoded);err!=nil {t.Fatal(err)}
+  details:=decoded["serviceDetails"].(map[string]any);native:=details["envSpecificDetails"].(map[string]any);got:=native["startCommand"]
+  record,_:=json.Marshal(map[string]any{"subject":subject,"expected_startCommand":app.Spec.StartCommand,"actual_startCommand":got,"rendered":decoded});t.Log("QA285_READBACK "+string(record))
+  if got!=app.Spec.StartCommand {t.Errorf("native readback start=%q want %q",got,app.Spec.StartCommand)}
+ })}
+}

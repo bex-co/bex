@@ -2,7 +2,7 @@
 
 2026-10-15 UTC, isolated human QA in bex-canary. Published Bex v0.3.2 and the unchanged Render 2.27.0/a764810a7682 run against Bex production. Source6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459; deployed revision unknown. Three newly created Free Node web services, auto-deploy off, with harmless build/runtime MESSAGE markers and boot UUIDs. All three are cleaned; final service inventory/quota is six baseline services, terminating0.
 
-[Complete native/API/runtime and cleanup receipts](owned-native-api-runtime-cleanup.json), [versions/boundaries](metadata.json), [redactions](redactions.json). This files [w8/106](../../106.md), a minor deploy-history settlement defect, with no product fix or ship.
+[Complete native/API/runtime and cleanup receipts](owned-native-api-runtime-cleanup.json), [versions/boundaries](metadata.json), [redactions](redactions.json). This files [w8/106](../../done/106.md), a minor deploy-history settlement defect, with no product fix or ship.
 
 ## Passing environment semantics
 

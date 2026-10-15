@@ -1,0 +1,48 @@
+[
+  {
+    "module": "backend",
+    "command": [
+      "go",
+      "test",
+      "-overlay",
+      "<owned-temp>/sweep285-initial-proposal-overlay.json",
+      "./internal/apps",
+      "-run",
+      "^TestQA285NativeCronProducer$",
+      "-count=1",
+      "-json"
+    ],
+    "exit": 0,
+    "elapsed": 9.608,
+    "passed": [
+      "TestQA285NativeCronProducer/published-bex",
+      "TestQA285NativeCronProducer/render-pin",
+      "TestQA285NativeCronProducer"
+    ],
+    "failed": [],
+    "scope": "private initial-create-only diagnostic; native updates/readback/legacy controls not qualified"
+  },
+  {
+    "module": "operator",
+    "command": [
+      "go",
+      "test",
+      "-overlay",
+      "<owned-temp>/sweep285-consumer-overlay.json",
+      "./internal/controller",
+      "-run",
+      "^TestQA285NativeCronShellConsumer$",
+      "-count=1",
+      "-json"
+    ],
+    "exit": 0,
+    "elapsed": 6.995,
+    "passed": [
+      "TestQA285NativeCronShellConsumer/published-bex",
+      "TestQA285NativeCronShellConsumer/render-pin",
+      "TestQA285NativeCronShellConsumer"
+    ],
+    "failed": [],
+    "scope": "private initial-create-only diagnostic; native updates/readback/legacy controls not qualified"
+  }
+]

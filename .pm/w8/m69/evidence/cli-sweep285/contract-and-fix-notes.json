@@ -1,0 +1,15 @@
+{
+  "source": [
+    "lego/types/v1alpha1/app_types.go:526 (native StartCommand is baked CMD)",
+    "lego/backend/internal/apps/rest.go:510 (unconditional cron StartCommand-to-Command alias)",
+    "lego/backend/internal/apps/build_strategy.go:209 (cron start updates become explicit Command)",
+    "lego/operator/internal/controller/app_controller.go:4681 (Command precedence through shellCommand)",
+    "lego/operator/internal/controller/deployment_projection.go:218 (/bin/sh -c)",
+    "lego/operator/internal/build/native.go:270,285 (native /bin/bash -c CMD)"
+  ],
+  "prior_owner": ".pm/w4/done/174.md preserves initial native Blueprint CMD but explicitly left direct API creation unchanged",
+  "official_docs": "https://render.com/docs/service-types describes cron bash commands; https://render.com/docs/cronjobs permits valid Linux commands and executable Bash scripts; independent Render-production shell is unverified",
+  "proposed_direction": "Do not promote native CLI startCommand to image-override Command. Qualify native updates/readback/legacy duplicates and explicit opaque Docker overrides before a full fix. Keep launch provenance of carrying release; do not globally change shellBinary.",
+  "live_initial_failure": "bex-owned crr-cenar1sncoj89kqfhcur unsuccessful; native app logs /bin/sh: 1: [[: not found",
+  "private_initial_only_diagnostic": "conditional alias routing makes both original producer/consumer pairs pass; update/readback/image/legacy controls not certified"
+}

@@ -1,0 +1,70 @@
+--- a/lego/backend/internal/apps/build_strategy.go
++++ b/lego/backend/internal/apps/build_strategy.go
+@@ -78,7 +78,7 @@
+ // re-derives it), so clearing the command drops it too and the site publishes
+ // directly, as one created without a command does (w8/m59).
+ func setBuildCommand(spec *appv1alpha1.AppSpec, command string) {
+-	spec.BuildCommand = strings.TrimSpace(command)
++	spec.BuildCommand = qa284CommandText(command)
+ 	if spec.BuildCommand == "" && spec.Type == appv1alpha1.TypeStaticSite &&
+ 		spec.Runtime == "" && spec.Builder == buildNative {
+ 		spec.Builder = ""
+@@ -144,7 +144,7 @@
+ // of running the image's own (w4/m194); a native or buildpack cron keeps its
+ // baked start command.
+ func setCronCommand(spec *appv1alpha1.AppSpec, command string) {
+-	spec.Command = strings.TrimSpace(command)
++	spec.Command = qa284CommandText(command)
+ 	if spec.Command == "" && cronStartCommandOverrides(*spec) {
+ 		spec.StartCommand = ""
+ 	}
+@@ -211,5 +211,5 @@
+ 		setCronCommand(spec, command)
+ 		return
+ 	}
+-	spec.StartCommand = strings.TrimSpace(command)
+-}
++	spec.StartCommand = qa284CommandText(command)
++}
+--- a/lego/backend/internal/apps/service.go
++++ b/lego/backend/internal/apps/service.go
+@@ -2917,7 +2917,7 @@
+ 		AutoDeploy:       autoDeploy,
+ 		NotifyOnFail:     notifyOnFail,
+ 		SubdomainPolicy:  subdomainPolicy,
+-		PreDeployCommand: strings.TrimSpace(req.PreDeployCommand),
++		PreDeployCommand: qa284CommandText(req.PreDeployCommand),
+ 		// The one-time hook keeps its own role; the operator runs it in place of
+ 		// preDeployCommand until it succeeds (w8/m63).
+ 		InitialDeployHook: strings.TrimSpace(req.InitialDeployHook),
+@@ -3144,7 +3144,7 @@
+ 	}
+ 	if svcType == appv1alpha1.TypeCronJob {
+ 		spec.Schedule = strings.TrimSpace(req.Schedule)
+-		spec.Command = strings.TrimSpace(req.Command)
++		spec.Command = qa284CommandText(req.Command)
+ 	}
+ 	if svcType == appv1alpha1.TypeStaticSite {
+ 		spec.PublishPath = strings.TrimSpace(req.PublishPath)
+@@ -4043,7 +4043,7 @@
+ 		return AppView{}, err
+ 	}
+ 	return s.recordedPatch(ctx, core.AuditVerbSetPreDeployCommand, a, func(a *appv1alpha1.App) {
+-		a.Spec.PreDeployCommand = strings.TrimSpace(command)
++		a.Spec.PreDeployCommand = qa284CommandText(command)
+ 	})
+ }
+ 
+--- a/lego/backend/internal/apps/settings.go
++++ b/lego/backend/internal/apps/settings.go
+@@ -350,7 +350,7 @@
+ 			if err := s.checkPreDeployCommand(ctx, probe); err != nil {
+ 				return err
+ 			}
+-			probe.Spec.PreDeployCommand = strings.TrimSpace(*p.PreDeployCommand)
++			probe.Spec.PreDeployCommand = qa284CommandText(*p.PreDeployCommand)
+ 			return nil
+ 		},
+ 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {
+
+// plus private qa284CommandText: preserve nonblank command text; whitespace-only becomes empty

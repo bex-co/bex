@@ -1,0 +1,22 @@
+from pathlib import Path
+import datetime,json,os,subprocess,sys,urllib.parse
+P=Path(__file__).resolve().parent;cp=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());case=sys.argv[1]
+x=next(v for v in c['resources'] if v.get('sweep')==289 and v.get('case')==case)
+ws='tea-daif693dqjvc73e7as3g';baseline={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']}
+assert x['workspace']==ws and x['id'] not in baseline and x['create_result']['exit']==0 and x['create_response']['id']==x['id'] and x['create_response']['ownerId']==ws and not x['state'].startswith('deleted:') and x.get('passed')
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+query={'resource':x['id'],'type':'predeploy','text':x['marker']+'_PRE','startTime':x['time'],'direction':'forward','limit':100,'ownerId':ws}
+path='/v1/logs?'+urllib.parse.urlencode(query)
+result=json.loads(subprocess.check_output(['python3',str(P/'wire.py'),'GET',path],text=True,timeout=45))
+check={'at':now(),'API_only':True,'request':{'method':'GET','path':path,'authorization':'REDACTED'},'result':result,'qualification':'predeploy is a Bex API log type; the pinned CLI does not expose it. No native predeploy-log verb or flag is invented.'}
+x.setdefault('predeploy_log_checks',[]).append(check);cp.write_text(json.dumps(c,indent=2)+'\n');os.chmod(cp,0o600)
+assert result['status']=='200';records=[]
+for row in json.loads(result['response']).get('logs',[]):
+ message=row.get('message','');start=message.find('{')
+ if start<0:continue
+ try:value,_=json.JSONDecoder().raw_decode(message[start:])
+ except ValueError:continue
+ if isinstance(value,dict) and value.get('marker')==x['marker']+'_PRE':records.append({'log':row,'decoded':value})
+passed=len(records)==1 and records[0]['decoded'].get('path')==x['expected_path'] and records[0]['decoded'].get('snapshot')==x['expected_bytes']
+check.update(matching_runtime_records=records,exact_predeploy_PATH_and_bytes=passed);c['last_updated']=now();cp.write_text(json.dumps(c,indent=2)+'\n');os.chmod(cp,0o600)
+print(json.dumps({'case':case,'API_only_status':result['status'],'matching_predeploy_records':len(records),'exact_predeploy_PATH_and_bytes':passed}),flush=True)

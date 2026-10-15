@@ -1,0 +1,581 @@
+{
+  "native_process_exit": "not retained by initial parser; final Go package event is fail",
+  "final_package_event": [
+    {
+      "Time": "2026-10-14T23:22:47.381348-07:00",
+      "Action": "fail",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+      "Elapsed": 1.296
+    }
+  ],
+  "records": [
+    {
+      "authored": "printf '%s' tail\\ ",
+      "field": "build",
+      "operation": "create",
+      "preserved": true,
+      "request_body": {
+        "name": "qa284",
+        "repo": "https://github.com/bex-co/bex",
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "buildCommand": "printf '%s' tail\\ ",
+            "startCommand": "printf control"
+          },
+          "plan": "free",
+          "runtime": "node"
+        },
+        "type": "web_service"
+      },
+      "request_method": "POST",
+      "request_path": "/v1/services",
+      "response_body": "{\"service\":{\"id\":\"srv-db872dpjg4r1rqv1ce30\",\"name\":\"qa284\",\"immutableName\":\"qa284\",\"slug\":\"qa284\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T06:22:47.295343Z\",\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf '%s' tail\\\\ \",\"preDeployCommand\":\"\",\"startCommand\":\"printf control\"},\"internalAddress\":\"qa284:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\"},\"suspenders\":[],\"replicas\":1,\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}}\n",
+      "response_status": 201,
+      "scope": "actual REST handler with in-memory Kubernetes and no production/DB/credentials",
+      "stored": "printf '%s' tail\\ ",
+      "variant": "escaped-space"
+    },
+    {
+      "authored": "printf '%s' tail\\\t",
+      "field": "build",
+      "operation": "create",
+      "preserved": true,
+      "request_body": {
+        "name": "qa284",
+        "repo": "https://github.com/bex-co/bex",
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "buildCommand": "printf '%s' tail\\\t",
+            "startCommand": "printf control"
+          },
+          "plan": "free",
+          "runtime": "node"
+        },
+        "type": "web_service"
+      },
+      "request_method": "POST",
+      "request_path": "/v1/services",
+      "response_body": "{\"service\":{\"id\":\"srv-db872dpjg4r1rqv1ce40\",\"name\":\"qa284\",\"immutableName\":\"qa284\",\"slug\":\"qa284\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T06:22:47.298721Z\",\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf '%s' tail\\\\\\t\",\"preDeployCommand\":\"\",\"startCommand\":\"printf control\"},\"internalAddress\":\"qa284:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\"},\"suspenders\":[],\"replicas\":1,\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}}\n",
+      "response_status": 201,
+      "scope": "actual REST handler with in-memory Kubernetes and no production/DB/credentials",
+      "stored": "printf '%s' tail\\\t",
+      "variant": "escaped-tab"
+    },
+    {
+      "authored": "printf '%s' 'tail '",
+      "field": "build",
+      "operation": "create",
+      "preserved": true,
+      "request_body": {
+        "name": "qa284",
+        "repo": "https://github.com/bex-co/bex",
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "buildCommand": "printf '%s' 'tail '",
+            "startCommand": "printf control"
+          },
+          "plan": "free",
+          "runtime": "node"
+        },
+        "type": "web_service"
+      },
+      "request_method": "POST",
+      "request_path": "/v1/services",
+      "response_body": "{\"service\":{\"id\":\"srv-db872dpjg4r1rqv1ce50\",\"name\":\"qa284\",\"immutableName\":\"qa284\",\"slug\":\"qa284\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T06:22:47.300882Z\",\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf '%s' 'tail '\",\"preDeployCommand\":\"\",\"startCommand\":\"printf control\"},\"internalAddress\":\"qa284:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\"},\"suspenders\":[],\"replicas\":1,\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}}\n",
+      "response_status": 201,
+      "scope": "actual REST handler with in-memory Kubernetes and no production/DB/credentials",
+      "stored": "printf '%s' 'tail '",
+      "variant": "quoted-control"
+    },
+    {
+      "authored": "printf '%s' tail\\ ",
+      "field": "start",
+      "operation": "create",
+      "preserved": true,
+      "request_body": {
+        "name": "qa284",
+        "repo": "https://github.com/bex-co/bex",
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "buildCommand": "printf control",
+            "startCommand": "printf '%s' tail\\ "
+          },
+          "plan": "free",
+          "runtime": "node"
+        },
+        "type": "web_service"
+      },
+      "request_method": "POST",
+      "request_path": "/v1/services",
+      "response_body": "{\"service\":{\"id\":\"srv-db872dpjg4r1rqv1ce60\",\"name\":\"qa284\",\"immutableName\":\"qa284\",\"slug\":\"qa284\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T06:22:47.303037Z\",\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf control\",\"preDeployCommand\":\"\",\"startCommand\":\"printf '%s' tail\\\\ \"},\"internalAddress\":\"qa284:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\"},\"suspenders\":[],\"replicas\":1,\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}}\n",
+      "response_status": 201,
+      "scope": "actual REST handler with in-memory Kubernetes and no production/DB/credentials",
+      "stored": "printf '%s' tail\\ ",
+      "variant": "escaped-space"
+    },
+    {
+      "authored": "printf '%s' tail\\\t",
+      "field": "start",
+      "operation": "create",
+      "preserved": true,
+      "request_body": {
+        "name": "qa284",
+        "repo": "https://github.com/bex-co/bex",
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "buildCommand": "printf control",
+            "startCommand": "printf '%s' tail\\\t"
+          },
+          "plan": "free",
+          "runtime": "node"
+        },
+        "type": "web_service"
+      },
+      "request_method": "POST",
+      "request_path": "/v1/services",
+      "response_body": "{\"service\":{\"id\":\"srv-db872dpjg4r1rqv1ce70\",\"name\":\"qa284\",\"immutableName\":\"qa284\",\"slug\":\"qa284\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T06:22:47.30664Z\",\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf control\",\"preDeployCommand\":\"\",\"startCommand\":\"printf '%s' tail\\\\\\t\"},\"internalAddress\":\"qa284:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\"},\"suspenders\":[],\"replicas\":1,\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}}\n",
+      "response_status": 201,
+      "scope": "actual REST handler with in-memory Kubernetes and no production/DB/credentials",
+      "stored": "printf '%s' tail\\\t",
+      "variant": "escaped-tab"
+    },
+    {
+      "authored": "printf '%s' 'tail '",
+      "field": "start",
+      "operation": "create",
+      "preserved": true,
+      "request_body": {
+        "name": "qa284",
+        "repo": "https://github.com/bex-co/bex",
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "buildCommand": "printf control",
+            "startCommand": "printf '%s' 'tail '"
+          },
+          "plan": "free",
+          "runtime": "node"
+        },
+        "type": "web_service"
+      },
+      "request_method": "POST",
+      "request_path": "/v1/services",
+      "response_body": "{\"service\":{\"id\":\"srv-db872dpjg4r1rqv1ce80\",\"name\":\"qa284\",\"immutableName\":\"qa284\",\"slug\":\"qa284\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T06:22:47.308976Z\",\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf control\",\"preDeployCommand\":\"\",\"startCommand\":\"printf '%s' 'tail '\"},\"internalAddress\":\"qa284:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\"},\"suspenders\":[],\"replicas\":1,\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}}\n",
+      "response_status": 201,
+      "scope": "actual REST handler with in-memory Kubernetes and no production/DB/credentials",
+      "stored": "printf '%s' 'tail '",
+      "variant": "quoted-control"
+    },
+    {
+      "authored": "printf '%s' tail\\ ",
+      "field": "predeploy",
+      "operation": "create",
+      "preserved": false,
+      "request_body": {
+        "name": "qa284",
+        "repo": "https://github.com/bex-co/bex",
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "buildCommand": "printf control",
+            "startCommand": "printf control"
+          },
+          "plan": "free",
+          "preDeployCommand": "printf '%s' tail\\ ",
+          "runtime": "node"
+        },
+        "type": "web_service"
+      },
+      "request_method": "POST",
+      "request_path": "/v1/services",
+      "response_body": "{\"service\":{\"id\":\"srv-db872dpjg4r1rqv1ce90\",\"name\":\"qa284\",\"immutableName\":\"qa284\",\"slug\":\"qa284\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T06:22:47.312144Z\",\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf control\",\"preDeployCommand\":\"printf '%s' tail\\\\\",\"startCommand\":\"printf control\"},\"internalAddress\":\"qa284:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"preDeployCommand\":\"printf '%s' tail\\\\\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\"},\"suspenders\":[],\"replicas\":1,\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}}\n",
+      "response_status": 201,
+      "scope": "actual REST handler with in-memory Kubernetes and no production/DB/credentials",
+      "stored": "printf '%s' tail\\",
+      "variant": "escaped-space"
+    },
+    {
+      "authored": "printf '%s' tail\\\t",
+      "field": "predeploy",
+      "operation": "create",
+      "preserved": false,
+      "request_body": {
+        "name": "qa284",
+        "repo": "https://github.com/bex-co/bex",
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "buildCommand": "printf control",
+            "startCommand": "printf control"
+          },
+          "plan": "free",
+          "preDeployCommand": "printf '%s' tail\\\t",
+          "runtime": "node"
+        },
+        "type": "web_service"
+      },
+      "request_method": "POST",
+      "request_path": "/v1/services",
+      "response_body": "{\"service\":{\"id\":\"srv-db872dpjg4r1rqv1cea0\",\"name\":\"qa284\",\"immutableName\":\"qa284\",\"slug\":\"qa284\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T06:22:47.314311Z\",\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf control\",\"preDeployCommand\":\"printf '%s' tail\\\\\",\"startCommand\":\"printf control\"},\"internalAddress\":\"qa284:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"preDeployCommand\":\"printf '%s' tail\\\\\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\"},\"suspenders\":[],\"replicas\":1,\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}}\n",
+      "response_status": 201,
+      "scope": "actual REST handler with in-memory Kubernetes and no production/DB/credentials",
+      "stored": "printf '%s' tail\\",
+      "variant": "escaped-tab"
+    },
+    {
+      "authored": "printf '%s' 'tail '",
+      "field": "predeploy",
+      "operation": "create",
+      "preserved": true,
+      "request_body": {
+        "name": "qa284",
+        "repo": "https://github.com/bex-co/bex",
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "buildCommand": "printf control",
+            "startCommand": "printf control"
+          },
+          "plan": "free",
+          "preDeployCommand": "printf '%s' 'tail '",
+          "runtime": "node"
+        },
+        "type": "web_service"
+      },
+      "request_method": "POST",
+      "request_path": "/v1/services",
+      "response_body": "{\"service\":{\"id\":\"srv-db872dpjg4r1rqv1ceb0\",\"name\":\"qa284\",\"immutableName\":\"qa284\",\"slug\":\"qa284\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T06:22:47.317672Z\",\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf control\",\"preDeployCommand\":\"printf '%s' 'tail '\",\"startCommand\":\"printf control\"},\"internalAddress\":\"qa284:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"preDeployCommand\":\"printf '%s' 'tail '\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\"},\"suspenders\":[],\"replicas\":1,\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}}\n",
+      "response_status": 201,
+      "scope": "actual REST handler with in-memory Kubernetes and no production/DB/credentials",
+      "stored": "printf '%s' 'tail '",
+      "variant": "quoted-control"
+    },
+    {
+      "authored": "printf '%s' tail\\ ",
+      "field": "cron",
+      "operation": "create",
+      "preserved": false,
+      "request_body": {
+        "name": "qa284",
+        "repo": "https://github.com/bex-co/bex",
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "buildCommand": "printf control",
+            "startCommand": "printf '%s' tail\\ "
+          },
+          "plan": "free",
+          "runtime": "node",
+          "schedule": "0 0 1 1 *"
+        },
+        "type": "cron_job"
+      },
+      "request_method": "POST",
+      "request_path": "/v1/services",
+      "response_body": "{\"service\":{\"id\":\"srv-db872dpjg4r1rqv1cec0\",\"name\":\"qa284\",\"immutableName\":\"qa284\",\"slug\":\"qa284\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T06:22:47.319915Z\",\"serviceDetails\":{\"command\":\"printf '%s' tail\\\\\",\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf control\",\"preDeployCommand\":\"\",\"startCommand\":\"printf '%s' tail\\\\\"},\"nextRunAt\":\"2027-01-01T00:00:00Z\",\"numInstances\":1,\"plan\":\"free\",\"runtime\":\"node\",\"schedule\":\"0 0 1 1 *\"},\"suspenders\":[],\"replicas\":1,\"schedule\":\"0 0 1 1 *\",\"command\":\"printf '%s' tail\\\\\",\"nextRunAt\":\"2027-01-01T00:00:00Z\",\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}}\n",
+      "response_status": 201,
+      "scope": "actual REST handler with in-memory Kubernetes and no production/DB/credentials",
+      "stored": "printf '%s' tail\\",
+      "variant": "escaped-space"
+    },
+    {
+      "authored": "printf '%s' tail\\\t",
+      "field": "cron",
+      "operation": "create",
+      "preserved": false,
+      "request_body": {
+        "name": "qa284",
+        "repo": "https://github.com/bex-co/bex",
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "buildCommand": "printf control",
+            "startCommand": "printf '%s' tail\\\t"
+          },
+          "plan": "free",
+          "runtime": "node",
+          "schedule": "0 0 1 1 *"
+        },
+        "type": "cron_job"
+      },
+      "request_method": "POST",
+      "request_path": "/v1/services",
+      "response_body": "{\"service\":{\"id\":\"srv-db872dpjg4r1rqv1ced0\",\"name\":\"qa284\",\"immutableName\":\"qa284\",\"slug\":\"qa284\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T06:22:47.323207Z\",\"serviceDetails\":{\"command\":\"printf '%s' tail\\\\\",\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf control\",\"preDeployCommand\":\"\",\"startCommand\":\"printf '%s' tail\\\\\"},\"nextRunAt\":\"2027-01-01T00:00:00Z\",\"numInstances\":1,\"plan\":\"free\",\"runtime\":\"node\",\"schedule\":\"0 0 1 1 *\"},\"suspenders\":[],\"replicas\":1,\"schedule\":\"0 0 1 1 *\",\"command\":\"printf '%s' tail\\\\\",\"nextRunAt\":\"2027-01-01T00:00:00Z\",\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}}\n",
+      "response_status": 201,
+      "scope": "actual REST handler with in-memory Kubernetes and no production/DB/credentials",
+      "stored": "printf '%s' tail\\",
+      "variant": "escaped-tab"
+    },
+    {
+      "authored": "printf '%s' 'tail '",
+      "field": "cron",
+      "operation": "create",
+      "preserved": true,
+      "request_body": {
+        "name": "qa284",
+        "repo": "https://github.com/bex-co/bex",
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "buildCommand": "printf control",
+            "startCommand": "printf '%s' 'tail '"
+          },
+          "plan": "free",
+          "runtime": "node",
+          "schedule": "0 0 1 1 *"
+        },
+        "type": "cron_job"
+      },
+      "request_method": "POST",
+      "request_path": "/v1/services",
+      "response_body": "{\"service\":{\"id\":\"srv-db872dpjg4r1rqv1cee0\",\"name\":\"qa284\",\"immutableName\":\"qa284\",\"slug\":\"qa284\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T06:22:47.325565Z\",\"serviceDetails\":{\"command\":\"printf '%s' 'tail '\",\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf control\",\"preDeployCommand\":\"\",\"startCommand\":\"printf '%s' 'tail '\"},\"nextRunAt\":\"2027-01-01T00:00:00Z\",\"numInstances\":1,\"plan\":\"free\",\"runtime\":\"node\",\"schedule\":\"0 0 1 1 *\"},\"suspenders\":[],\"replicas\":1,\"schedule\":\"0 0 1 1 *\",\"command\":\"printf '%s' 'tail '\",\"nextRunAt\":\"2027-01-01T00:00:00Z\",\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}}\n",
+      "response_status": 201,
+      "scope": "actual REST handler with in-memory Kubernetes and no production/DB/credentials",
+      "stored": "printf '%s' 'tail '",
+      "variant": "quoted-control"
+    },
+    {
+      "authored": "printf '%s' tail\\ ",
+      "field": "build",
+      "operation": "update",
+      "preserved": false,
+      "request_body": {
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "buildCommand": "printf '%s' tail\\ "
+          }
+        }
+      },
+      "request_method": "PATCH",
+      "request_path": "/v1/services/qa284",
+      "response_body": "{\"id\":\"srv-db872dpjg4r1rqv1cef0\",\"name\":\"qa284\",\"immutableName\":\"qa284\",\"slug\":\"qa284\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T06:22:47.330099Z\",\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf '%s' tail\\\\\",\"preDeployCommand\":\"\",\"startCommand\":\"printf control\"},\"internalAddress\":\"qa284:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\"},\"suspenders\":[],\"replicas\":1,\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+      "response_status": 200,
+      "scope": "actual REST handler with in-memory Kubernetes and no production/DB/credentials",
+      "stored": "printf '%s' tail\\",
+      "variant": "escaped-space"
+    },
+    {
+      "authored": "printf '%s' tail\\\t",
+      "field": "build",
+      "operation": "update",
+      "preserved": false,
+      "request_body": {
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "buildCommand": "printf '%s' tail\\\t"
+          }
+        }
+      },
+      "request_method": "PATCH",
+      "request_path": "/v1/services/qa284",
+      "response_body": "{\"id\":\"srv-db872dpjg4r1rqv1ceg0\",\"name\":\"qa284\",\"immutableName\":\"qa284\",\"slug\":\"qa284\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T06:22:47.334844Z\",\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf '%s' tail\\\\\",\"preDeployCommand\":\"\",\"startCommand\":\"printf control\"},\"internalAddress\":\"qa284:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\"},\"suspenders\":[],\"replicas\":1,\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+      "response_status": 200,
+      "scope": "actual REST handler with in-memory Kubernetes and no production/DB/credentials",
+      "stored": "printf '%s' tail\\",
+      "variant": "escaped-tab"
+    },
+    {
+      "authored": "printf '%s' 'tail '",
+      "field": "build",
+      "operation": "update",
+      "preserved": true,
+      "request_body": {
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "buildCommand": "printf '%s' 'tail '"
+          }
+        }
+      },
+      "request_method": "PATCH",
+      "request_path": "/v1/services/qa284",
+      "response_body": "{\"id\":\"srv-db872dpjg4r1rqv1ceh0\",\"name\":\"qa284\",\"immutableName\":\"qa284\",\"slug\":\"qa284\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T06:22:47.3393Z\",\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf '%s' 'tail '\",\"preDeployCommand\":\"\",\"startCommand\":\"printf control\"},\"internalAddress\":\"qa284:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\"},\"suspenders\":[],\"replicas\":1,\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+      "response_status": 200,
+      "scope": "actual REST handler with in-memory Kubernetes and no production/DB/credentials",
+      "stored": "printf '%s' 'tail '",
+      "variant": "quoted-control"
+    },
+    {
+      "authored": "printf '%s' tail\\ ",
+      "field": "start",
+      "operation": "update",
+      "preserved": false,
+      "request_body": {
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "startCommand": "printf '%s' tail\\ "
+          }
+        }
+      },
+      "request_method": "PATCH",
+      "request_path": "/v1/services/qa284",
+      "response_body": "{\"id\":\"srv-db872dpjg4r1rqv1cei0\",\"name\":\"qa284\",\"immutableName\":\"qa284\",\"slug\":\"qa284\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T06:22:47.34395Z\",\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf control\",\"preDeployCommand\":\"\",\"startCommand\":\"printf '%s' tail\\\\\"},\"internalAddress\":\"qa284:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\"},\"suspenders\":[],\"replicas\":1,\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+      "response_status": 200,
+      "scope": "actual REST handler with in-memory Kubernetes and no production/DB/credentials",
+      "stored": "printf '%s' tail\\",
+      "variant": "escaped-space"
+    },
+    {
+      "authored": "printf '%s' tail\\\t",
+      "field": "start",
+      "operation": "update",
+      "preserved": false,
+      "request_body": {
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "startCommand": "printf '%s' tail\\\t"
+          }
+        }
+      },
+      "request_method": "PATCH",
+      "request_path": "/v1/services/qa284",
+      "response_body": "{\"id\":\"srv-db872dpjg4r1rqv1cej0\",\"name\":\"qa284\",\"immutableName\":\"qa284\",\"slug\":\"qa284\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T06:22:47.348593Z\",\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf control\",\"preDeployCommand\":\"\",\"startCommand\":\"printf '%s' tail\\\\\"},\"internalAddress\":\"qa284:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\"},\"suspenders\":[],\"replicas\":1,\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+      "response_status": 200,
+      "scope": "actual REST handler with in-memory Kubernetes and no production/DB/credentials",
+      "stored": "printf '%s' tail\\",
+      "variant": "escaped-tab"
+    },
+    {
+      "authored": "printf '%s' 'tail '",
+      "field": "start",
+      "operation": "update",
+      "preserved": true,
+      "request_body": {
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "startCommand": "printf '%s' 'tail '"
+          }
+        }
+      },
+      "request_method": "PATCH",
+      "request_path": "/v1/services/qa284",
+      "response_body": "{\"id\":\"srv-db872dpjg4r1rqv1cek0\",\"name\":\"qa284\",\"immutableName\":\"qa284\",\"slug\":\"qa284\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T06:22:47.35214Z\",\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf control\",\"preDeployCommand\":\"\",\"startCommand\":\"printf '%s' 'tail '\"},\"internalAddress\":\"qa284:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\"},\"suspenders\":[],\"replicas\":1,\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+      "response_status": 200,
+      "scope": "actual REST handler with in-memory Kubernetes and no production/DB/credentials",
+      "stored": "printf '%s' 'tail '",
+      "variant": "quoted-control"
+    },
+    {
+      "authored": "printf '%s' tail\\ ",
+      "field": "predeploy",
+      "operation": "update",
+      "preserved": false,
+      "request_body": {
+        "serviceDetails": {
+          "preDeployCommand": "printf '%s' tail\\ "
+        }
+      },
+      "request_method": "PATCH",
+      "request_path": "/v1/services/qa284",
+      "response_body": "{\"id\":\"srv-db872dpjg4r1rqv1cel0\",\"name\":\"qa284\",\"immutableName\":\"qa284\",\"slug\":\"qa284\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T06:22:47.357033Z\",\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf control\",\"preDeployCommand\":\"printf '%s' tail\\\\\",\"startCommand\":\"printf control\"},\"internalAddress\":\"qa284:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"preDeployCommand\":\"printf '%s' tail\\\\\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\"},\"suspenders\":[],\"replicas\":1,\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+      "response_status": 200,
+      "scope": "actual REST handler with in-memory Kubernetes and no production/DB/credentials",
+      "stored": "printf '%s' tail\\",
+      "variant": "escaped-space"
+    },
+    {
+      "authored": "printf '%s' tail\\\t",
+      "field": "predeploy",
+      "operation": "update",
+      "preserved": false,
+      "request_body": {
+        "serviceDetails": {
+          "preDeployCommand": "printf '%s' tail\\\t"
+        }
+      },
+      "request_method": "PATCH",
+      "request_path": "/v1/services/qa284",
+      "response_body": "{\"id\":\"srv-db872dpjg4r1rqv1cem0\",\"name\":\"qa284\",\"immutableName\":\"qa284\",\"slug\":\"qa284\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T06:22:47.361371Z\",\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf control\",\"preDeployCommand\":\"printf '%s' tail\\\\\",\"startCommand\":\"printf control\"},\"internalAddress\":\"qa284:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"preDeployCommand\":\"printf '%s' tail\\\\\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\"},\"suspenders\":[],\"replicas\":1,\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+      "response_status": 200,
+      "scope": "actual REST handler with in-memory Kubernetes and no production/DB/credentials",
+      "stored": "printf '%s' tail\\",
+      "variant": "escaped-tab"
+    },
+    {
+      "authored": "printf '%s' 'tail '",
+      "field": "predeploy",
+      "operation": "update",
+      "preserved": true,
+      "request_body": {
+        "serviceDetails": {
+          "preDeployCommand": "printf '%s' 'tail '"
+        }
+      },
+      "request_method": "PATCH",
+      "request_path": "/v1/services/qa284",
+      "response_body": "{\"id\":\"srv-db872dpjg4r1rqv1cen0\",\"name\":\"qa284\",\"immutableName\":\"qa284\",\"slug\":\"qa284\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T06:22:47.36533Z\",\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf control\",\"preDeployCommand\":\"printf '%s' 'tail '\",\"startCommand\":\"printf control\"},\"internalAddress\":\"qa284:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"preDeployCommand\":\"printf '%s' 'tail '\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\"},\"suspenders\":[],\"replicas\":1,\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+      "response_status": 200,
+      "scope": "actual REST handler with in-memory Kubernetes and no production/DB/credentials",
+      "stored": "printf '%s' 'tail '",
+      "variant": "quoted-control"
+    },
+    {
+      "authored": "printf '%s' tail\\ ",
+      "field": "cron",
+      "operation": "update",
+      "preserved": false,
+      "request_body": {
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "startCommand": "printf '%s' tail\\ "
+          }
+        }
+      },
+      "request_method": "PATCH",
+      "request_path": "/v1/services/qa284",
+      "response_body": "{\"id\":\"srv-db872dpjg4r1rqv1ceo0\",\"name\":\"qa284\",\"immutableName\":\"qa284\",\"slug\":\"qa284\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T06:22:47.369517Z\",\"serviceDetails\":{\"command\":\"printf '%s' tail\\\\\",\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf control\",\"preDeployCommand\":\"\",\"startCommand\":\"printf '%s' tail\\\\\"},\"nextRunAt\":\"2027-01-01T00:00:00Z\",\"numInstances\":1,\"plan\":\"free\",\"runtime\":\"node\",\"schedule\":\"0 0 1 1 *\"},\"suspenders\":[],\"replicas\":1,\"schedule\":\"0 0 1 1 *\",\"command\":\"printf '%s' tail\\\\\",\"nextRunAt\":\"2027-01-01T00:00:00Z\",\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+      "response_status": 200,
+      "scope": "actual REST handler with in-memory Kubernetes and no production/DB/credentials",
+      "stored": "printf '%s' tail\\",
+      "variant": "escaped-space"
+    },
+    {
+      "authored": "printf '%s' tail\\\t",
+      "field": "cron",
+      "operation": "update",
+      "preserved": false,
+      "request_body": {
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "startCommand": "printf '%s' tail\\\t"
+          }
+        }
+      },
+      "request_method": "PATCH",
+      "request_path": "/v1/services/qa284",
+      "response_body": "{\"id\":\"srv-db872dpjg4r1rqv1cep0\",\"name\":\"qa284\",\"immutableName\":\"qa284\",\"slug\":\"qa284\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T06:22:47.372622Z\",\"serviceDetails\":{\"command\":\"printf '%s' tail\\\\\",\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf control\",\"preDeployCommand\":\"\",\"startCommand\":\"printf '%s' tail\\\\\"},\"nextRunAt\":\"2027-01-01T00:00:00Z\",\"numInstances\":1,\"plan\":\"free\",\"runtime\":\"node\",\"schedule\":\"0 0 1 1 *\"},\"suspenders\":[],\"replicas\":1,\"schedule\":\"0 0 1 1 *\",\"command\":\"printf '%s' tail\\\\\",\"nextRunAt\":\"2027-01-01T00:00:00Z\",\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+      "response_status": 200,
+      "scope": "actual REST handler with in-memory Kubernetes and no production/DB/credentials",
+      "stored": "printf '%s' tail\\",
+      "variant": "escaped-tab"
+    },
+    {
+      "authored": "printf '%s' 'tail '",
+      "field": "cron",
+      "operation": "update",
+      "preserved": true,
+      "request_body": {
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "startCommand": "printf '%s' 'tail '"
+          }
+        }
+      },
+      "request_method": "PATCH",
+      "request_path": "/v1/services/qa284",
+      "response_body": "{\"id\":\"srv-db872dpjg4r1rqv1ceq0\",\"name\":\"qa284\",\"immutableName\":\"qa284\",\"slug\":\"qa284\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T06:22:47.377186Z\",\"serviceDetails\":{\"command\":\"printf '%s' 'tail '\",\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf control\",\"preDeployCommand\":\"\",\"startCommand\":\"printf '%s' 'tail '\"},\"nextRunAt\":\"2027-01-01T00:00:00Z\",\"numInstances\":1,\"plan\":\"free\",\"runtime\":\"node\",\"schedule\":\"0 0 1 1 *\"},\"suspenders\":[],\"replicas\":1,\"schedule\":\"0 0 1 1 *\",\"command\":\"printf '%s' 'tail '\",\"nextRunAt\":\"2027-01-01T00:00:00Z\",\"idleTTLSeconds\":0,\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+      "response_status": 200,
+      "scope": "actual REST handler with in-memory Kubernetes and no production/DB/credentials",
+      "stored": "printf '%s' 'tail '",
+      "variant": "quoted-control"
+    }
+  ],
+  "failed_tests": [
+    "TestQA284CommandBytesThroughREST/create/predeploy/escaped-space",
+    "TestQA284CommandBytesThroughREST/create/predeploy/escaped-tab",
+    "TestQA284CommandBytesThroughREST/create/cron/escaped-space",
+    "TestQA284CommandBytesThroughREST/create/cron/escaped-tab",
+    "TestQA284CommandBytesThroughREST/update/build/escaped-space",
+    "TestQA284CommandBytesThroughREST/update/build/escaped-tab",
+    "TestQA284CommandBytesThroughREST/update/start/escaped-space",
+    "TestQA284CommandBytesThroughREST/update/start/escaped-tab",
+    "TestQA284CommandBytesThroughREST/update/predeploy/escaped-space",
+    "TestQA284CommandBytesThroughREST/update/predeploy/escaped-tab",
+    "TestQA284CommandBytesThroughREST/update/cron/escaped-space",
+    "TestQA284CommandBytesThroughREST/update/cron/escaped-tab",
+    "TestQA284CommandBytesThroughREST"
+  ],
+  "harness_correction": "Go test long Output lines split across JSON events; reassembled per test before decoding; no REST journey repeated"
+}

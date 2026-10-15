@@ -1,0 +1,48 @@
+[
+  {
+    "label": "baseline",
+    "command": [
+      "go",
+      "test",
+      "-overlay",
+      "<owned-temp>/sweep285-readback-baseline-overlay.json",
+      "./internal/apps",
+      "-run",
+      "^TestQA285NativeCronReadback$",
+      "-count=1",
+      "-json"
+    ],
+    "native_exit": 1,
+    "elapsed": 9.502,
+    "passed": [],
+    "failed": [
+      "TestQA285NativeCronReadback/published-bex",
+      "TestQA285NativeCronReadback/render-pin",
+      "TestQA285NativeCronReadback"
+    ],
+    "scope": "actual native REST projection on correct baked-start role; no clone/live/shared-surface claim"
+  },
+  {
+    "label": "private-proposal",
+    "command": [
+      "go",
+      "test",
+      "-overlay",
+      "<owned-temp>/sweep285-readback-private-proposal-overlay.json",
+      "./internal/apps",
+      "-run",
+      "^TestQA285NativeCronReadback$",
+      "-count=1",
+      "-json"
+    ],
+    "native_exit": 0,
+    "elapsed": 6.046,
+    "passed": [
+      "TestQA285NativeCronReadback/published-bex",
+      "TestQA285NativeCronReadback/render-pin",
+      "TestQA285NativeCronReadback"
+    ],
+    "failed": [],
+    "scope": "actual native REST projection on correct baked-start role; no clone/live/shared-surface claim"
+  }
+]

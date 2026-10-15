@@ -1,0 +1,23 @@
+{
+  "metadata": {
+    "name": "qa285",
+    "namespace": "default"
+  },
+  "spec": {
+    "type": "cron_job",
+    "schedule": "0 0 1 1 *",
+    "command": "[[ 1 = 1 ]] \u0026\u0026 printf '%s' QA285_BASH_OK",
+    "repo": "https://example.invalid/qa",
+    "branch": "main",
+    "runtime": "node",
+    "buildCommand": "printf control",
+    "startCommand": "[[ 1 = 1 ]] \u0026\u0026 printf '%s' QA285_BASH_OK",
+    "builder": "native",
+    "replicas": 1,
+    "port": 3000,
+    "autoDeploy": true,
+    "notifyOnFail": "default",
+    "tier": "free",
+    "subdomainPolicy": "enabled"
+  }
+}

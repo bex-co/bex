@@ -1,0 +1,20 @@
+{
+  "sweep": 285,
+  "at": "2026-10-15T07:01:11.286825+00:00",
+  "head": "e1f240d2233057c30602cbd30354cc684262a8bf",
+  "bex_version": "published0.3.2",
+  "upstream": "unchanged2.27.0/a764810a768202704e7206eb7b87a47211fcd98e",
+  "GOWORK": "off",
+  "GOTOOLCHAIN": "go1.26.8",
+  "native_local_capture_runs": 4,
+  "hosted_free_parents": 2,
+  "hosted_deploy_children": 2,
+  "hosted_manual_run_children": 2,
+  "local_owned_containers": 4,
+  "all_owned_fixtures_removed": true,
+  "initial_proposal_scope": "private create-routing only; not a complete fix",
+  "readback_proposal_scope": "private native projection only; no clone/shared/live acceptance",
+  "native_update_runtime": "source-established sibling; not hosted",
+  "qa_product_fix": false,
+  "qa_commit_push_deploy_release": false
+}

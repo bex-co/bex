@@ -1,0 +1,11 @@
+# w8/m69 — command-update and genuine Blueprint-edit proof
+
+Source HEAD `667943d859ff71ab3f6a085985dcd5b4e272e0c5 reproduces the two source-established mutation neighbors from sweep285. [Exact command, complete request/response records and observations](transition-results.json), [events](transition-events.jsonl), and [private probe](transition-probe.go.txt). No production request or fixture is involved.
+
+Both actual unchanged native update bodies are passed through the actual REST PATCH handler against a correct native cron whose Command is empty and baked StartCommand holds the old program. Each PATCH returns200, writes the new Bash text to Command and leaves the old StartCommand. Desired native-role assertions fail for both clients. These are producer/storage proofs; no new hosted update or operator/container replay is claimed beyond the existing sweep285 consumer chain.
+
+The full Blueprint DeployStack path creates a native cron with the correct role. JSON-reloaded unchanged reapply preserves that role. A valid YAML-quoted genuine Bash command edit then opens one deploy and writes the new text to Command while retaining the old StartCommand; its native-role assertion fails. This narrows w4/174's passed unchanged-apply control versus its untested genuine Bash edit. It is evidence for existing m69, not another filing.
+
+The initial attempt retained both valid native-update observations, but inserted the changed `[[...` text as an unquoted YAML scalar, which is parsed as flow-sequence syntax. Its Blueprint parse refusal is excluded as a fixture error ([original result](initial-attempt-results.json), [events](initial-attempt-events.jsonl), [source](initial-attempt-probe.go.txt)). Quoting the scalar as JSON string syntax repairs the fixture; the corrected run reaches the actual update and exhibits the role failure. No production mutation was repeated.
+
+The corrected Go package exits1 for the three behavioral cases, with two initial/unchanged Blueprint controls passing inside the Blueprint case. [Original native update wires](native-update-wire.json) remain unchanged. Full maintained fix, image/clear/source-switch/readback/shared-surface and hosted-update acceptance stay open in [m69](../../README.md).

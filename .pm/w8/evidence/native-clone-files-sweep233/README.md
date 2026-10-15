@@ -18,7 +18,7 @@ Bex deploys create --wait exceeded the harness's240-second bound, exit124; no se
 
 projectNativeBuildEnv in lego/operator/internal/controller/app_controller.go:1574–1623 hashes the current app UID, merged env/literals and file bytes with nativeEnvInputToken, bumping the opaque revision when input changes. nativeDockerfile uses that revision in the loader COPY/RUN cache boundary while mounting file bytes for the authored command. Two focused current operator parents pass: TestNativeSecretFilesTransport and TestNativeDockerfileEnvRevisionBustsCacheKey; [events](file-cache-test-events.jsonl). No full suite, real-DB suite, Docker integration or deployed OCI identity is claimed.
 
-This is partial live acceptance for [w8/m61](../../m61/README.md). Other runtimes/surfaces and its predeploy Job shell lookup still gate completion. [Metadata](metadata.json), [driver](native-clone-file-driver.py.txt). All file/marker values in the receipt are deliberately harmless QA fixtures; actual credential/email values are redacted.
+This is partial live acceptance for [w8/m61](../../done/m61/README.md). Other runtimes/surfaces and its predeploy Job shell lookup still gate completion. [Metadata](metadata.json), [driver](native-clone-file-driver.py.txt). All file/marker values in the receipt are deliberately harmless QA fixtures; actual credential/email values are redacted.
 
 ## Cleanup
 

@@ -1,6 +1,6 @@
 # w8 · m66 — Keep Blueprint service updates in canonical intent
 
-**Worker:** worker8 **Goal:** an accepted Blueprint source/config update survives control-plane convergence and deploys the declared configuration. **Status:** blocked — t001–t005 done; t006 needs the API deployed to production and the sweep230 source-update replay (inline apply plus owned persistent sync, both native clients) with cleanup
+**Worker:** worker8 **Goal:** an accepted Blueprint source/config update survives control-plane convergence and deploys the declared configuration. **Status:** blocked — t001–t005 done; sweep288 accepts inline source persistence and three native waited controls; t006 still needs owned persistent provided-manifest sync acceptance with cleanup
 
 ## Tasks (in order)
 
@@ -34,3 +34,11 @@ No QA product implementation, commit/push or external submission is authorized b
 ## Canonical intent persisted — 2026-10-14 (`/loopx w8`)
 
 t001–t005 are done; see `done/`. Parked in `blocked/`: closeout needs bex-api deployed, then QA replays sweep230. An own Free service changes repo/branch through inline apply and an owned persistent sync. After a resync it must still read Express/master, its deploy must build that source's commit without spontaneous cancellation, a repeated identical apply must be a no-op, and owned teardown must follow.
+
+## Independent original canonical-intent replay — sweep282
+
+[Current-source evidence](../../evidence/current-source-sweep282/README.md) reruns the original actual patch-path probe after `62c74aae6`: source, tier and replicas each produce one canonical write, the desired CR and one deploy row. The direct idleTTL helper case remains excluded because no supported Blueprint applier writes that field, as the completed field audit records. Newly committed disk, row-failure, no-op/unmanaged controls pass in the selected run. This is source acceptance; the hosted inline/persistent-sync gate remains open, with no production mutation or QA ship.
+
+## Live inline acceptance — sweep288
+
+[Complete native/API/runtime evidence](evidence/cli-sweep288/README.md) now passes inline Bex/main to Express/master persistence, exact source commit/content/literals, three native waited deployments (published Bex, current checkout and pinned Render), and identical-apply no-op. Both Free fixtures/seven deploy children are fully cleaned, baseline six/quota terminating0 preserved. Persistent setup did not create a Blueprint: the prior owned Express/master connection was disconnected and the current auto-upsert intentionally cannot revive it; the actual discarded store error remains unobserved. A retained invalid root-directory setup is excluded. No persistent sync was run. Keep t006 and this milestone blocked on that remaining live gate; no QA product change or ship.

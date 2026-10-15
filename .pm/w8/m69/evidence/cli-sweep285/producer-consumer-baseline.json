@@ -1,0 +1,46 @@
+[
+  {
+    "module": "backend",
+    "command": [
+      "go",
+      "test",
+      "-overlay",
+      "<owned-temp>/sweep285-producer-overlay.json",
+      "./internal/apps",
+      "-run",
+      "^TestQA285NativeCronProducer$",
+      "-count=1",
+      "-json"
+    ],
+    "native_exit": 0,
+    "elapsed": 8.922,
+    "passed": [
+      "TestQA285NativeCronProducer/published-bex",
+      "TestQA285NativeCronProducer/render-pin",
+      "TestQA285NativeCronProducer"
+    ],
+    "failed": []
+  },
+  {
+    "module": "operator",
+    "command": [
+      "go",
+      "test",
+      "-overlay",
+      "<owned-temp>/sweep285-consumer-overlay.json",
+      "./internal/controller",
+      "-run",
+      "^TestQA285NativeCronShellConsumer$",
+      "-count=1",
+      "-json"
+    ],
+    "native_exit": 1,
+    "elapsed": 8.088,
+    "passed": [],
+    "failed": [
+      "TestQA285NativeCronShellConsumer/published-bex",
+      "TestQA285NativeCronShellConsumer/render-pin",
+      "TestQA285NativeCronShellConsumer"
+    ]
+  }
+]

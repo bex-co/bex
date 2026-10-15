@@ -1,0 +1,29 @@
+from pathlib import Path
+import datetime,json,os,shutil,subprocess,sys
+P=Path(__file__).resolve().parent;cp=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());case=sys.argv[1]
+x=next(v for v in c['resources'] if v.get('sweep')==289 and v.get('case')==case)
+ws='tea-daif693dqjvc73e7as3g';baseline={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']}
+assert x['workspace']==ws and x['id'] not in baseline and x['create_result']['exit']==0 and x['create_response']['id']==x['id'] and x['create_response']['ownerId']==ws and not x['state'].startswith('deleted:')
+assert x.get('passed')
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+config=P/'render-config/cli.yaml'
+try:
+ if x['client']=='render':assert not config.exists();shutil.copyfile(P/'config/cli.yaml',config);config.chmod(0o600)
+ runner=['python3',str(P/'run-render.py')] if x['client']=='render' else ['python3',str(P/'run.py'),'--release']
+ args=['logs','--resources',x['id'],'--type','app','--text',x['marker']+'_PRE','--start',x['time'],'--direction','forward','--limit','100','--confirm','-o','json']
+ result=json.loads(subprocess.check_output([*runner,*args],text=True,timeout=60))
+finally:
+ if x['client']=='render':config.unlink(missing_ok=True)
+records=[]
+if result['exit']==0:
+ lines=json.loads(result['stdout']) or []
+ for row in lines:
+  row=row.get('log',row);message=row.get('message','');start=message.find('{')
+  if start<0:continue
+  try:value,_=json.JSONDecoder().raw_decode(message[start:])
+  except ValueError:continue
+  if isinstance(value,dict) and value.get('marker')==x['marker']+'_PRE':records.append({'log':row,'decoded':value})
+passed=len(records)==1 and records[0]['decoded'].get('path')==x['expected_path'] and records[0]['decoded'].get('snapshot')==x['expected_bytes']
+x.setdefault('predeploy_log_checks',[]).append({'at':now(),'native_result':result,'matching_runtime_records':records,'exact_predeploy_PATH_and_bytes':passed})
+c['last_updated']=now();cp.write_text(json.dumps(c,indent=2)+'\n');os.chmod(cp,0o600)
+print(json.dumps({'case':case,'native_exit':result['exit'],'matching_predeploy_records':len(records),'exact_predeploy_PATH_and_bytes':passed}),flush=True)

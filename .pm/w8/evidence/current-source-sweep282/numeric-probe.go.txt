@@ -1,0 +1,37 @@
+package apps
+import("bytes";"encoding/json";"fmt";"testing";"github.com/santhosh-tekuri/jsonschema/v6")
+func TestQA243UnsignedNumericEnvironment(t *testing.T){
+ for _,shape:=range []string{"root service","nested service","group"}{for _,value:=range []string{"9223372036854775807","9223372036854775808","18446744073709551615",`"18446744073709551615"`}{
+  t.Run(shape+"/"+value,func(t *testing.T){
+   entry:=map[string]any{"key":"VALUE","value":json.RawMessage(value)};service:=map[string]any{"name":"qa-local-source","type":"web","runtime":"image","plan":"free","image":map[string]any{"url":"nginx:1"},"envVars":[]any{entry}};doc:=map[string]any{"services":[]any{service}}
+   if shape=="nested service"{delete(doc,"services");doc["projects"]=[]any{map[string]any{"name":"qa-local-project","environments":[]any{map[string]any{"name":"one","services":[]any{service}}}}}}
+   if shape=="group"{service["envVars"]=[]any{map[string]any{"fromGroup":"g"}};doc["envVarGroups"]=[]any{map[string]any{"name":"g","envVars":[]any{entry}}}}
+   raw,_:=json.MarshalIndent(doc,"","  ");schema,err:=renderBlueprintSchemaOnce();if err!=nil{t.Fatal(err)};object,err:=jsonschema.UnmarshalJSON(bytes.NewReader(raw));if err!=nil{t.Fatal(err)};if err=schema.Validate(object);err!=nil{t.Fatalf("pinned schema refused raw value: %v",err)}
+   compiled,ir,problems:=CompileBlueprintIR(string(raw));record:=map[string]any{"shape":shape,"value":value,"manifest":string(raw),"pinned_schema_valid":true,"compiler_problems":problems,"compiler_valid":len(problems)==0,"scope":"actual compiler and pinned schema/typed parser; no hosted apply or runtime"}
+   if len(problems)==0{stack,err:=parseCompiledStack(blueprintParseOverrides{},compiled,ir);if err!=nil{t.Fatal(err)};values:=map[string]string{};if shape=="group"{for k,v:=range stack.envGroups[0].literals{values[k]=v}}else{for _,entry:=range stack.services[0].req.Env{values[entry.Name]=entry.Value}};record["typed_values"]=values}
+   output,_:=json.Marshal(record);t.Log("QA243_NUMERIC "+string(output));_ = fmt.Sprint(value)
+  })
+ }}
+}
+
+func TestQA243UnsignedNumberOtherFields(t *testing.T){
+ for _,tc:=range []struct{field,number string;valid bool}{
+  {"numInstances","1",true},{"numInstances","18446744073709551615",false},
+  {"maxShutdownDelaySeconds","300",true},{"maxShutdownDelaySeconds","301",false},{"maxShutdownDelaySeconds","18446744073709551615",false},
+ }{
+  doc:=map[string]any{"services":[]any{map[string]any{"name":"qa-local-source","type":"web","runtime":"image","plan":"free","image":map[string]any{"url":"nginx:1"},tc.field:json.RawMessage(tc.number)}}}
+  raw,_:=json.MarshalIndent(doc,"","  ");compiled,ir,problems:=CompileBlueprintIR(string(raw));if (len(problems)==0)!=tc.valid{t.Fatalf("%s=%s problems=%+v",tc.field,tc.number,problems)}
+  if tc.valid{if _,err:=parseCompiledStack(blueprintParseOverrides{},compiled,ir);err!=nil{t.Fatal(err)}}else{for _,problem:=range problems{if problem.Path!="#/services/0/"+tc.field||problem.Line==0||problem.Column==0{t.Fatalf("lost field location: %+v",problem)}}}
+  output,_:=json.Marshal(map[string]any{"field":tc.field,"number":tc.number,"compiler_valid":len(problems)==0,"problems":problems});t.Log("QA243_OTHER_NUMBER "+string(output))
+ }
+}
+
+func TestQA243UnsignedContainerPaths(t *testing.T){
+ for _,container:=range []string{"ungrouped","nested"}{for _,kind:=range []string{"service","group"}{for _,number:=range []string{"9223372036854775808","18446744073709551615"}{
+  entry:=map[string]any{"key":"VALUE","value":json.RawMessage(number)};service:=map[string]any{"name":"qa-local-source","type":"web","runtime":"image","plan":"free","image":map[string]any{"url":"nginx:1"},"envVars":[]any{entry}};resources:=map[string]any{"services":[]any{service}}
+  if kind=="group"{service["envVars"]=[]any{map[string]any{"fromGroup":"g"}};resources["envVarGroups"]=[]any{map[string]any{"name":"g","envVars":[]any{entry}}}}
+  doc:=map[string]any{"ungrouped":resources};if container=="nested"{resources["name"]="one";doc=map[string]any{"projects":[]any{map[string]any{"name":"qa-local-project","environments":[]any{resources}}}}}
+  raw,_:=json.MarshalIndent(doc,"","  ");compiled,ir,problems:=CompileBlueprintIR(string(raw));if len(problems)!=0{t.Fatalf("%s/%s=%s: %+v",container,kind,number,problems)};stack,err:=parseCompiledStack(blueprintParseOverrides{},compiled,ir);if err!=nil{t.Fatal(err)};actual:="";if kind=="group"{actual=stack.envGroups[0].literals["VALUE"]}else{for _,entry:=range stack.services[0].req.Env{if entry.Name=="VALUE"{actual=entry.Value}}};if actual!=number{t.Fatalf("digits changed: %q",actual)}
+  output,_:=json.Marshal(map[string]any{"container":container,"kind":kind,"number":number,"exact_typed_value":actual});t.Log("QA243_CONTAINER_NUMBER "+string(output))
+ }}}
+}

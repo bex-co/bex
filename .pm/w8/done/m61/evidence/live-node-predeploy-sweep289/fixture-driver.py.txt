@@ -1,0 +1,46 @@
+import pathlib,json,subprocess,datetime,secrets,hashlib,shlex,time,shutil,sys
+p=pathlib.Path(__file__).parent; cp=pathlib.Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json'); c=json.loads(cp.read_text()); mode,case=sys.argv[1:];ws='tea-daif693dqjvc73e7as3g'; assert case in ('empty-pre-bex','empty-pre-render','narrow-pre-bex','narrow-pre-render');client={'empty-pre-bex':'release','empty-pre-render':'render','narrow-pre-bex':'release','narrow-pre-render':'render'}[case];path_value='' if case.startswith('empty-') else '/usr/local/bin';idfile=p/('sweep289-'+case+'-id.txt')
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2));cp.chmod(0o600)
+def cli(args):
+ cfg=p/'render-config/cli.yaml'
+ try:
+  if client=='render':assert not cfg.exists();shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  runner=['python3',str(p/'run-render.py')] if client=='render' else ['python3',str(p/'run216.py')] if client=='current' else ['python3',str(p/'run.py'),'--release']
+  return json.loads(subprocess.check_output([*runner,*args],text=True))
+ finally:
+  if client=='render':cfg.unlink(missing_ok=True)
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True))
+def expected(value,data):return {'env_length':len(value.encode()),'env_sha256':hashlib.sha256(value.encode()).hexdigest(),'file_present':True,'file_length':len(data),'file_sha256':hashlib.sha256(data).hexdigest()}
+probe="""const fs=require('fs'),crypto=require('crypto');function hash(b){return crypto.createHash('sha256').update(b).digest('hex');}function snapshot(){const env=Buffer.from(process.env.QA_COMPLEX===undefined?'<absent>':process.env.QA_COMPLEX,'utf8');const f='/etc/secrets/qa-note.txt';const present=fs.existsSync(f);const data=present?fs.readFileSync(f):Buffer.alloc(0);return {env_length:env.length,env_sha256:hash(env),file_present:present,file_length:data.length,file_sha256:hash(data)};}"""
+if mode=='create':
+ assert c['sync289_result']==0 and not c.get('active_sync_stash') and not idfile.exists()
+ assert not any(x.get('sweep')==289 and x.get('case')==case and not x.get('state','').startswith('refused:') for x in c['resources'])
+ quota=wire('/v1/owners/'+ws+'/limits');assert quota['status']=='200';q=json.loads(quota['response']);assert q['services']['used']+q['services']['terminating']<q['services']['limit']
+ inventory=cli(['services','--confirm','-o','json']);assert inventory['exit']==0;existing=[v.get('service',v) for v in json.loads(inventory['stdout']) or []];baseline={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']};assert baseline<={v['id'] for v in existing}
+ nonce=secrets.token_hex(3);marker='QA289_'+nonce;name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-'+{'omitted':'pomit','normal':'pnorm','empty':'pempty','empty-bex':'pbempty','empty-pre-bex':'prebex','empty-pre-render':'prerender','narrow-pre-bex':'prenbex','narrow-pre-render':'prenrender'}[case];value=marker+'\n☃=second\n内側';data=(marker+'\r\n☃=file\n\n').encode();note=p/('sweep289-'+nonce+'-note.txt');note.write_bytes(data);note.chmod(0o600)
+ build=probe+'fs.writeFileSync("qa-built.json",JSON.stringify({marker:'+json.dumps(marker)+',snapshot:snapshot(),build_path:process.env.PATH,built_at:Date.now()}));'
+ program=probe+"""const http=require('http'),os=require('os');const built=JSON.parse(fs.readFileSync('qa-built.json','utf8'));http.createServer((req,res)=>{const body=JSON.stringify({marker:built.marker,built:built,runtime:snapshot(),runtime_path:process.env.PATH,instance:os.hostname()});res.writeHead(200,{'Content-Type':'application/json','Content-Length':Buffer.byteLength(body)});res.end(body);}).listen(Number(process.env.PORT||3000),'0.0.0.0');"""
+ args=['services','create','--name',name,'--type','web_service','--runtime','node','--repo','https://github.com/bex-co/bex','--branch','main','--root-directory','examples/hello-go','--build-command','/usr/local/bin/node -e '+shlex.quote(build),'--start-command','/usr/local/bin/node -e '+shlex.quote(program),'--health-check-path','/','--plan','free','--region','frankfurt','--auto-deploy=false','--env-var','QA_COMPLEX='+value,'--secret-file','qa-note.txt:'+str(note),'--confirm','-o','json']
+ if path_value is not None:args += ['--env-var','PATH='+path_value]
+ if '-pre-' in case:args += ['--pre-deploy-command','/usr/local/bin/node -e '+shlex.quote(probe+'console.log(JSON.stringify({marker:'+json.dumps(marker+'_PRE')+',path:process.env.PATH,snapshot:snapshot()}))')]
+ assert name not in {v['name'] for v in existing}
+ x={'sweep':289,'pre_create_inventory':inventory,'case':case,'source_head':c['head'],'client':client,'workspace':ws,'type':'web_service','name':name,'nonce':nonce,'marker':marker,'time':now(),'dependency_ids':[],'state':'create intent persisted','role':'Native Node PATH '+case+' control','command':[client,*args],'capacity_proof':quota,'expected_bytes':expected(value,data),'expected_path':path_value,'program':program,'build_program':build,'local_note':str(note)};c['resources'].append(x);save();r=cli(args);x['create_result']=r;x['state']='create result received; reconcile before retry';save()
+ if r['exit']==0:
+  v=json.loads(r['stdout']);v=v.get('data',v);v=v.get('service',v);assert v['id'] not in {z['id'] for z in existing} and v['ownerId']==ws and v['name']==name and v['serviceDetails']['plan']=='free';x.update(id=v['id'],create_response=v,state='created: native PATH '+case+' runtime pending');idfile.write_text(v['id']);save()
+ print(json.dumps({'case':case,'client':client,'id':x.get('id'),'name':name,'exit':r['exit'],'elapsed':r['elapsed'],'stderr':r['stderr']}),flush=True);raise SystemExit(0 if r['exit']==0 else 1)
+sid=idfile.read_text().strip();x=next(v for v in c['resources'] if v.get('id')==sid);baseline={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']};assert x['sweep']==289 and x['workspace']==ws and x['create_result']['exit']==0 and x['create_response']['id']==sid and x['create_response']['serviceDetails']['plan']=='free' and sid not in baseline and not x['state'].startswith('deleted:')
+assert mode in ('observe','metadata')
+for attempt in range(3):
+ r=cli(['deploys','list',sid,'--confirm','-o','json']);assert r['exit']==0;deploys=json.loads(r['stdout']);target=deploys[0];x['deploy_children']=deploys;x['recorded_child_ids']=[v['id'] for v in deploys];save()
+ if mode=='metadata':
+  x.setdefault('observations',[]).append({'at':now(),'native_list':r,'target':target,'qualification':'metadata only; no public request'});save();print(json.dumps({'case':case,'latest':{'id':target['id'],'status':target['status']}}),flush=True);break
+ output=p/('sweep289-'+case+'-runtime.json');runtime=subprocess.run(['curl','--disable','-sS','--max-time','8','-o',str(output),'-w','%{http_code}',x['create_response']['serviceDetails']['url']+'/'],text=True,capture_output=True,timeout=12);raw=output.read_text() if output.exists() else ''
+ try:body=json.loads(raw)
+ except ValueError:body=None
+ observation={'at':now(),'native_list':r,'target':target,'runtime':{'exit':runtime.returncode,'http':runtime.stdout,'body':body,'raw':raw,'stderr':runtime.stderr}};x.setdefault('observations',[]).append(observation);save();built_path=body.get('built',{}).get('build_path') if isinstance(body,dict) else None;runtime_path=body.get('runtime_path') if isinstance(body,dict) else None
+ path_ok=(isinstance(built_path,str) and bool(built_path) and '/usr/local/bin' in built_path.split(':') and built_path==runtime_path) if case=='omitted' else built_path==runtime_path==path_value
+ match=isinstance(body,dict) and body.get('marker')==x['marker'] and body.get('built',{}).get('snapshot')==x['expected_bytes'] and body.get('runtime')==x['expected_bytes'] and path_ok
+ print(json.dumps({'case':case,'attempt':attempt,'status':target['status'],'http':runtime.stdout,'exact_PATH_and_bytes':match,'built_path':built_path,'runtime_path':runtime_path}),flush=True)
+ if target['status'] in ['build_failed','update_failed','pre_deploy_failed','canceled'] or target['status']=='live' and runtime.stdout=='200':x.update(settled=True,passed=target['status']=='live' and runtime.stdout=='200' and match,deploy=target,runtime=observation['runtime']);save();break
+ if attempt<2:time.sleep(6)

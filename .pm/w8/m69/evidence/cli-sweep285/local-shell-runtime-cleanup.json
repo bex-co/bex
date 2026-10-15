@@ -1,0 +1,213 @@
+{
+  "scope": "cached local Debian shell diagnostic; native Node image and hosted cron not tested",
+  "cases": [
+    {
+      "name": "qa-20261015-1a6224c894-285-published-bex",
+      "nonce": "1a6224c894",
+      "context": "desktop-linux",
+      "case": "published-bex",
+      "image": "sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171",
+      "argv": [
+        "/bin/sh",
+        "-c",
+        "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK"
+      ],
+      "absent_before_create": true,
+      "id": "1eef045eeefd60c625e0819487df980644290cd5289c43ee7b07b6059d92a04d",
+      "state": "deleted",
+      "creation_response": {
+        "exit": 0,
+        "stdout": "1eef045eeefd60c625e0819487df980644290cd5289c43ee7b07b6059d92a04d\n",
+        "stderr": ""
+      },
+      "start": {
+        "exit": 127,
+        "stdout": "",
+        "stderr": "/bin/sh: 1: [[: not found\n"
+      },
+      "container_state": {
+        "Status": "exited",
+        "Running": false,
+        "Paused": false,
+        "Restarting": false,
+        "OOMKilled": false,
+        "Dead": false,
+        "Pid": 0,
+        "ExitCode": 127,
+        "Error": "",
+        "StartedAt": "2026-10-15T06:42:53.168285346Z",
+        "FinishedAt": "2026-10-15T06:42:53.236058388Z"
+      },
+      "logs": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "/bin/sh: 1: [[: not found\n"
+      },
+      "expected_exit": 127,
+      "expected_stdout": "",
+      "pass": true,
+      "cleanup": {
+        "exit": 0,
+        "stdout": "1eef045eeefd60c625e0819487df980644290cd5289c43ee7b07b6059d92a04d\n",
+        "stderr": ""
+      },
+      "absent_after_cleanup": true
+    },
+    {
+      "name": "qa-20261015-1a6224c894-285-render-pin",
+      "nonce": "1a6224c894",
+      "context": "desktop-linux",
+      "case": "render-pin",
+      "image": "sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171",
+      "argv": [
+        "/bin/sh",
+        "-c",
+        "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK"
+      ],
+      "absent_before_create": true,
+      "id": "8afa10f8ccb898e1299d9ae3fb0aaac4b2ab130a5510e4cedd82b233570e77ae",
+      "state": "deleted",
+      "creation_response": {
+        "exit": 0,
+        "stdout": "8afa10f8ccb898e1299d9ae3fb0aaac4b2ab130a5510e4cedd82b233570e77ae\n",
+        "stderr": ""
+      },
+      "start": {
+        "exit": 127,
+        "stdout": "",
+        "stderr": "/bin/sh: 1: [[: not found\n"
+      },
+      "container_state": {
+        "Status": "exited",
+        "Running": false,
+        "Paused": false,
+        "Restarting": false,
+        "OOMKilled": false,
+        "Dead": false,
+        "Pid": 0,
+        "ExitCode": 127,
+        "Error": "",
+        "StartedAt": "2026-10-15T06:42:55.07782068Z",
+        "FinishedAt": "2026-10-15T06:42:55.122794555Z"
+      },
+      "logs": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "/bin/sh: 1: [[: not found\n"
+      },
+      "expected_exit": 127,
+      "expected_stdout": "",
+      "pass": true,
+      "cleanup": {
+        "exit": 0,
+        "stdout": "8afa10f8ccb898e1299d9ae3fb0aaac4b2ab130a5510e4cedd82b233570e77ae\n",
+        "stderr": ""
+      },
+      "absent_after_cleanup": true
+    },
+    {
+      "name": "qa-20261015-1a6224c894-285-native-bash-control",
+      "nonce": "1a6224c894",
+      "context": "desktop-linux",
+      "case": "native-bash-control",
+      "image": "sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171",
+      "argv": [
+        "/bin/bash",
+        "-c",
+        "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK"
+      ],
+      "absent_before_create": true,
+      "id": "732b62c168b641fcb4e1a2123f4fb1aaba2f6e1d9e88d11222142be19dec2913",
+      "state": "deleted",
+      "creation_response": {
+        "exit": 0,
+        "stdout": "732b62c168b641fcb4e1a2123f4fb1aaba2f6e1d9e88d11222142be19dec2913\n",
+        "stderr": ""
+      },
+      "start": {
+        "exit": 0,
+        "stdout": "QA285_BASH_OK",
+        "stderr": ""
+      },
+      "container_state": {
+        "Status": "exited",
+        "Running": false,
+        "Paused": false,
+        "Restarting": false,
+        "OOMKilled": false,
+        "Dead": false,
+        "Pid": 0,
+        "ExitCode": 0,
+        "Error": "",
+        "StartedAt": "2026-10-15T06:42:56.43251875Z",
+        "FinishedAt": "2026-10-15T06:42:56.486683833Z"
+      },
+      "logs": {
+        "exit": 0,
+        "stdout": "QA285_BASH_OK",
+        "stderr": ""
+      },
+      "expected_exit": 0,
+      "expected_stdout": "QA285_BASH_OK",
+      "pass": true,
+      "cleanup": {
+        "exit": 0,
+        "stdout": "732b62c168b641fcb4e1a2123f4fb1aaba2f6e1d9e88d11222142be19dec2913\n",
+        "stderr": ""
+      },
+      "absent_after_cleanup": true
+    },
+    {
+      "name": "qa-20261015-1a6224c894-285-posix-sh-control",
+      "nonce": "1a6224c894",
+      "context": "desktop-linux",
+      "case": "posix-sh-control",
+      "image": "sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171",
+      "argv": [
+        "/bin/sh",
+        "-c",
+        "[ 1 = 1 ] && printf '%s' QA285_POSIX_OK"
+      ],
+      "absent_before_create": true,
+      "id": "f21125e3aa35d4c249d4d79794ef254ded1eb0bea1d68bef21ff5a83ce681043",
+      "state": "deleted",
+      "creation_response": {
+        "exit": 0,
+        "stdout": "f21125e3aa35d4c249d4d79794ef254ded1eb0bea1d68bef21ff5a83ce681043\n",
+        "stderr": ""
+      },
+      "start": {
+        "exit": 0,
+        "stdout": "QA285_POSIX_OK",
+        "stderr": ""
+      },
+      "container_state": {
+        "Status": "exited",
+        "Running": false,
+        "Paused": false,
+        "Restarting": false,
+        "OOMKilled": false,
+        "Dead": false,
+        "Pid": 0,
+        "ExitCode": 0,
+        "Error": "",
+        "StartedAt": "2026-10-15T06:42:58.041414251Z",
+        "FinishedAt": "2026-10-15T06:42:58.085475876Z"
+      },
+      "logs": {
+        "exit": 0,
+        "stdout": "QA285_POSIX_OK",
+        "stderr": ""
+      },
+      "expected_exit": 0,
+      "expected_stdout": "QA285_POSIX_OK",
+      "pass": true,
+      "cleanup": {
+        "exit": 0,
+        "stdout": "f21125e3aa35d4c249d4d79794ef254ded1eb0bea1d68bef21ff5a83ce681043\n",
+        "stderr": ""
+      },
+      "absent_after_cleanup": true
+    }
+  ]
+}

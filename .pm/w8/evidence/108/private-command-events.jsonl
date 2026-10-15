@@ -1,0 +1,19 @@
+{"Time":"2026-10-15T01:28:59.758591-07:00","Action":"start","Package":"github.com/render-oss/cli/cmd"}
+{"Time":"2026-10-15T01:29:00.211084-07:00","Action":"run","Package":"github.com/render-oss/cli/cmd","Test":"TestServiceCreateCmdRejectsPositionalArgs"}
+{"Time":"2026-10-15T01:29:00.211177-07:00","Action":"output","Package":"github.com/render-oss/cli/cmd","Test":"TestServiceCreateCmdRejectsPositionalArgs","Output":"=== RUN   TestServiceCreateCmdRejectsPositionalArgs\n","OutputType":"frame"}
+{"Time":"2026-10-15T01:29:00.211238-07:00","Action":"output","Package":"github.com/render-oss/cli/cmd","Test":"TestServiceCreateCmdRejectsPositionalArgs","Output":"--- PASS: TestServiceCreateCmdRejectsPositionalArgs (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-10-15T01:29:00.211248-07:00","Action":"pass","Package":"github.com/render-oss/cli/cmd","Test":"TestServiceCreateCmdRejectsPositionalArgs","Elapsed":0}
+{"Time":"2026-10-15T01:29:00.21126-07:00","Action":"run","Package":"github.com/render-oss/cli/cmd","Test":"TestServiceCreateNoArgsValidationPreventsExecution"}
+{"Time":"2026-10-15T01:29:00.211264-07:00","Action":"output","Package":"github.com/render-oss/cli/cmd","Test":"TestServiceCreateNoArgsValidationPreventsExecution","Output":"=== RUN   TestServiceCreateNoArgsValidationPreventsExecution\n","OutputType":"frame"}
+{"Time":"2026-10-15T01:29:00.211281-07:00","Action":"output","Package":"github.com/render-oss/cli/cmd","Test":"TestServiceCreateNoArgsValidationPreventsExecution","Output":"Error: unknown command \"unexpected\" for \"create\"\n"}
+{"Time":"2026-10-15T01:29:00.211298-07:00","Action":"output","Package":"github.com/render-oss/cli/cmd","Test":"TestServiceCreateNoArgsValidationPreventsExecution","Output":"Usage:\n"}
+{"Time":"2026-10-15T01:29:00.211305-07:00","Action":"output","Package":"github.com/render-oss/cli/cmd","Test":"TestServiceCreateNoArgsValidationPreventsExecution","Output":"  create [flags]\n"}
+{"Time":"2026-10-15T01:29:00.211312-07:00","Action":"output","Package":"github.com/render-oss/cli/cmd","Test":"TestServiceCreateNoArgsValidationPreventsExecution","Output":"\n"}
+{"Time":"2026-10-15T01:29:00.211316-07:00","Action":"output","Package":"github.com/render-oss/cli/cmd","Test":"TestServiceCreateNoArgsValidationPreventsExecution","Output":"Flags:\n"}
+{"Time":"2026-10-15T01:29:00.211318-07:00","Action":"output","Package":"github.com/render-oss/cli/cmd","Test":"TestServiceCreateNoArgsValidationPreventsExecution","Output":"  -h, --help   help for create\n"}
+{"Time":"2026-10-15T01:29:00.211321-07:00","Action":"output","Package":"github.com/render-oss/cli/cmd","Test":"TestServiceCreateNoArgsValidationPreventsExecution","Output":"\n"}
+{"Time":"2026-10-15T01:29:00.21133-07:00","Action":"output","Package":"github.com/render-oss/cli/cmd","Test":"TestServiceCreateNoArgsValidationPreventsExecution","Output":"--- PASS: TestServiceCreateNoArgsValidationPreventsExecution (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-10-15T01:29:00.211338-07:00","Action":"pass","Package":"github.com/render-oss/cli/cmd","Test":"TestServiceCreateNoArgsValidationPreventsExecution","Elapsed":0}
+{"Time":"2026-10-15T01:29:00.211342-07:00","Action":"output","Package":"github.com/render-oss/cli/cmd","Output":"PASS\n","OutputType":"frame"}
+{"Time":"2026-10-15T01:29:00.212338-07:00","Action":"output","Package":"github.com/render-oss/cli/cmd","Output":"ok  \tgithub.com/render-oss/cli/cmd\t0.453s\n"}
+{"Time":"2026-10-15T01:29:00.212358-07:00","Action":"pass","Package":"github.com/render-oss/cli/cmd","Elapsed":0.454}

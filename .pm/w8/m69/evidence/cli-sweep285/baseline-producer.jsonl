@@ -1,0 +1,18 @@
+{"Time":"2026-10-14T23:41:48.133454-07:00","Action":"start","Package":"github.com/bex-co/bex/lego/backend/internal/apps"}
+{"Time":"2026-10-14T23:41:48.842116-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestQA285NativeCronProducer"}
+{"Time":"2026-10-14T23:41:48.842182-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestQA285NativeCronProducer","Output":"=== RUN   TestQA285NativeCronProducer\n"}
+{"Time":"2026-10-14T23:41:48.842576-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestQA285NativeCronProducer/published-bex"}
+{"Time":"2026-10-14T23:41:48.84259-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestQA285NativeCronProducer/published-bex","Output":"=== RUN   TestQA285NativeCronProducer/published-bex\n"}
+{"Time":"2026-10-14T23:41:48.843304-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestQA285NativeCronProducer/published-bex","Output":"    qa285_cron_producer_test.go:28: runtime=node builder=native start=\"[[ 1 = 1 ]] \u0026\u0026 printf '%s' QA285_BASH_OK\" command=\"[[ 1 = 1 ]] \u0026\u0026 printf '%s' QA285_BASH_OK\"\n"}
+{"Time":"2026-10-14T23:41:48.84333-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestQA285NativeCronProducer/published-bex","Output":"--- PASS: TestQA285NativeCronProducer/published-bex (0.00s)\n"}
+{"Time":"2026-10-14T23:41:48.843334-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestQA285NativeCronProducer/published-bex","Elapsed":0}
+{"Time":"2026-10-14T23:41:48.843343-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestQA285NativeCronProducer/render-pin"}
+{"Time":"2026-10-14T23:41:48.843344-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestQA285NativeCronProducer/render-pin","Output":"=== RUN   TestQA285NativeCronProducer/render-pin\n"}
+{"Time":"2026-10-14T23:41:48.843441-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestQA285NativeCronProducer/render-pin","Output":"    qa285_cron_producer_test.go:28: runtime=node builder=native start=\"[[ 1 = 1 ]] \u0026\u0026 printf '%s' QA285_BASH_OK\" command=\"[[ 1 = 1 ]] \u0026\u0026 printf '%s' QA285_BASH_OK\"\n"}
+{"Time":"2026-10-14T23:41:48.843449-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestQA285NativeCronProducer/render-pin","Output":"--- PASS: TestQA285NativeCronProducer/render-pin (0.00s)\n"}
+{"Time":"2026-10-14T23:41:48.843459-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestQA285NativeCronProducer/render-pin","Elapsed":0}
+{"Time":"2026-10-14T23:41:48.843465-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestQA285NativeCronProducer","Output":"--- PASS: TestQA285NativeCronProducer (0.00s)\n"}
+{"Time":"2026-10-14T23:41:48.843468-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestQA285NativeCronProducer","Elapsed":0}
+{"Time":"2026-10-14T23:41:48.84347-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Output":"PASS\n"}
+{"Time":"2026-10-14T23:41:48.845072-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Output":"ok  \tgithub.com/bex-co/bex/lego/backend/internal/apps\t0.710s\n"}
+{"Time":"2026-10-14T23:41:48.84509-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Elapsed":0.712}

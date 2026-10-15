@@ -1,0 +1,220 @@
+{
+  "sweep": 283,
+  "hosted_mutations": 0,
+  "captures": [
+    {
+      "client": "bex",
+      "at": "2026-10-15T06:15:44.040282+00:00",
+      "shape": "root service",
+      "value": "9223372036854775808",
+      "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775808\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-local-source\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep283-manifests/case-1.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.556,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"Blueprint contains an invalid integer\",\n      \"line\": 7,\n      \"path\": \"services[0].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "validation": {
+        "errors": [
+          {
+            "column": 20,
+            "error": "Blueprint contains an invalid integer",
+            "line": 7,
+            "path": "services[0].envVars[0].value"
+          }
+        ],
+        "valid": false
+      },
+      "expected_valid": true,
+      "acceptance_pass": false
+    },
+    {
+      "client": "render",
+      "at": "2026-10-15T06:15:44.914243+00:00",
+      "shape": "root service",
+      "value": "9223372036854775808",
+      "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775808\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-local-source\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep283-manifests/case-1.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.831,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"Blueprint contains an invalid integer\",\n      \"line\": 7,\n      \"path\": \"services[0].envVars[0].value\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "validation": {
+        "errors": [
+          {
+            "column": 20,
+            "error": "Blueprint contains an invalid integer",
+            "line": 7,
+            "path": "services[0].envVars[0].value"
+          }
+        ],
+        "valid": false
+      },
+      "expected_valid": true,
+      "acceptance_pass": false
+    },
+    {
+      "client": "bex",
+      "at": "2026-10-15T06:15:45.722197+00:00",
+      "shape": "root service",
+      "value": "9223372036854775807",
+      "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775807\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-local-source\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep283-manifests/case-0.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.759,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-local-source\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "validation": {
+        "plan": {
+          "services": [
+            "qa-local-source"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "acceptance_pass": true
+    },
+    {
+      "client": "bex",
+      "at": "2026-10-15T06:15:46.880749+00:00",
+      "shape": "root service",
+      "value": "\"18446744073709551615\"",
+      "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"18446744073709551615\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-local-source\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep283-manifests/case-3.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.113,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-local-source\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "validation": {
+        "plan": {
+          "services": [
+            "qa-local-source"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "acceptance_pass": true
+    },
+    {
+      "client": "render",
+      "at": "2026-10-15T06:15:47.283766+00:00",
+      "shape": "root service",
+      "value": "9223372036854775807",
+      "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775807\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-local-source\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep283-manifests/case-0.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.365,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-local-source\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "validation": {
+        "plan": {
+          "services": [
+            "qa-local-source"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "acceptance_pass": true
+    },
+    {
+      "client": "render",
+      "at": "2026-10-15T06:15:47.666783+00:00",
+      "shape": "root service",
+      "value": "\"18446744073709551615\"",
+      "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"18446744073709551615\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-local-source\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep283-manifests/case-3.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.344,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-local-source\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "validation": {
+        "plan": {
+          "services": [
+            "qa-local-source"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "expected_valid": true,
+      "acceptance_pass": true
+    }
+  ]
+}

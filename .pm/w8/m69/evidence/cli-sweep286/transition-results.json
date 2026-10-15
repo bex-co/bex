@@ -1,0 +1,69 @@
+{
+  "command": [
+    "go",
+    "test",
+    "-overlay",
+    "<owned-temp>/sweep286-overlay.json",
+    "./internal/apps",
+    "-run",
+    "^TestQA286NativeCron(CLIUpdate|BlueprintEdit)$",
+    "-count=1",
+    "-json"
+  ],
+  "native_exit": 1,
+  "elapsed": 7.501,
+  "records": [
+    {
+      "actual_override": "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK",
+      "actual_start": "printf '%s' QA286_OLD",
+      "expected_start": "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK",
+      "kind": "native CLI update",
+      "native_role_preserved": false,
+      "request": {
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "startCommand": "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK"
+          }
+        }
+      },
+      "response_body": "{\"id\":\"qa285\",\"name\":\"qa285\",\"immutableName\":\"qa285\",\"slug\":\"qa285\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T07:25:07.97059Z\",\"serviceDetails\":{\"command\":\"[[ 1 = 1 ]] \\u0026\\u0026 printf '%s' QA285_BASH_OK\",\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf control\",\"preDeployCommand\":\"\",\"startCommand\":\"[[ 1 = 1 ]] \\u0026\\u0026 printf '%s' QA285_BASH_OK\"},\"nextRunAt\":\"2027-01-01T00:00:00Z\",\"numInstances\":1,\"plan\":\"free\",\"runtime\":\"node\",\"schedule\":\"0 0 1 1 *\"},\"suspenders\":[],\"replicas\":1,\"schedule\":\"0 0 1 1 *\",\"command\":\"[[ 1 = 1 ]] \\u0026\\u0026 printf '%s' QA285_BASH_OK\",\"nextRunAt\":\"2027-01-01T00:00:00Z\",\"idleTTLSeconds\":0,\"repo\":\"https://example.invalid/qa\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+      "response_status": 200,
+      "subject": "published-bex"
+    },
+    {
+      "actual_override": "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK",
+      "actual_start": "printf '%s' QA286_OLD",
+      "expected_start": "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK",
+      "kind": "native CLI update",
+      "native_role_preserved": false,
+      "request": {
+        "serviceDetails": {
+          "envSpecificDetails": {
+            "startCommand": "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK"
+          }
+        }
+      },
+      "response_body": "{\"id\":\"qa285\",\"name\":\"qa285\",\"immutableName\":\"qa285\",\"slug\":\"qa285\",\"displayName\":\"\",\"type\":\"cron_job\",\"suspended\":\"not_suspended\",\"updatedAt\":\"2026-10-15T07:25:07.974391Z\",\"serviceDetails\":{\"command\":\"[[ 1 = 1 ]] \\u0026\\u0026 printf '%s' QA285_BASH_OK\",\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"printf control\",\"preDeployCommand\":\"\",\"startCommand\":\"[[ 1 = 1 ]] \\u0026\\u0026 printf '%s' QA285_BASH_OK\"},\"nextRunAt\":\"2027-01-01T00:00:00Z\",\"numInstances\":1,\"plan\":\"free\",\"runtime\":\"node\",\"schedule\":\"0 0 1 1 *\"},\"suspenders\":[],\"replicas\":1,\"schedule\":\"0 0 1 1 *\",\"command\":\"[[ 1 = 1 ]] \\u0026\\u0026 printf '%s' QA285_BASH_OK\",\"nextRunAt\":\"2027-01-01T00:00:00Z\",\"idleTTLSeconds\":0,\"repo\":\"https://example.invalid/qa\",\"branch\":\"main\",\"autoDeploy\":\"yes\",\"autoDeployTrigger\":\"commit\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"}\n",
+      "response_status": 200,
+      "subject": "render-pin"
+    },
+    {
+      "actual_override": "[[ 1 = 1 ]] && printf '%s' QA286_NEW",
+      "actual_start": "printf '%s' QA286_OLD",
+      "deploy_rows": 1,
+      "expected_start": "[[ 1 = 1 ]] && printf '%s' QA286_NEW",
+      "initial_control": true,
+      "kind": "actual Blueprint genuine command edit",
+      "native_role_preserved": false,
+      "unchanged_control": true
+    }
+  ],
+  "failed": [
+    "TestQA286NativeCronCLIUpdate/published-bex",
+    "TestQA286NativeCronCLIUpdate/render-pin",
+    "TestQA286NativeCronCLIUpdate",
+    "TestQA286NativeCronBlueprintEdit"
+  ],
+  "scope": "actual REST update and corrected quoted actual Blueprint apply; fake Kubernetes/store only",
+  "excluded_attempt": "initial Blueprint command was inserted unquoted and parsed as YAML flow sequence; initial artifact retained, not a product refusal"
+}

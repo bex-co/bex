@@ -1,0 +1,33 @@
+[
+  {
+    "label": "packages",
+    "command": [
+      "go",
+      "test",
+      "-overlay",
+      "<owned-temp>/sweep290-upstream-overlay.json",
+      "./pkg/types/service",
+      "./pkg/service",
+      "-count=1",
+      "-json"
+    ],
+    "native_exit": 0,
+    "named_parent_subtest_pass_events": 183
+  },
+  {
+    "label": "command",
+    "command": [
+      "go",
+      "test",
+      "-overlay",
+      "<owned-temp>/sweep290-upstream-overlay.json",
+      "./cmd",
+      "-run",
+      "^TestServiceCreate",
+      "-count=1",
+      "-json"
+    ],
+    "native_exit": 0,
+    "named_parent_subtest_pass_events": 2
+  }
+]

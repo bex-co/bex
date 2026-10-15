@@ -1,0 +1,135 @@
+{
+  "cases": [
+    {
+      "client": "published-bex",
+      "operation": "create",
+      "field": "cron-command",
+      "command": [
+        "published-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-command-fixture",
+        "--type",
+        "cron_job",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://example.invalid/qa",
+        "--plan",
+        "free",
+        "--build-command",
+        "printf control",
+        "--cron-schedule",
+        "0 0 1 1 *",
+        "--cron-command",
+        "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.153,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-command-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"preDeployCommand\": \"printf control\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"[[ 1 = 1 ]] \\u0026\\u0026 printf '%s' QA285_BASH_OK\"\n    },\n    \"schedule\": \"0 0 1 1 *\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"cron_job\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "name": "qa-command-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK"
+              },
+              "plan": "free",
+              "runtime": "node",
+              "schedule": "0 0 1 1 *"
+            },
+            "type": "cron_job"
+          }
+        }
+      ],
+      "authored": "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK",
+      "captured_command_fields": [
+        [
+          "/serviceDetails/envSpecificDetails/startCommand",
+          "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK"
+        ]
+      ],
+      "expected_exact_command": true,
+      "command_preserved": true,
+      "copied_config_removed": true,
+      "scope": "synthetic local server and credentials only; no production request or resource"
+    },
+    {
+      "client": "render-pin",
+      "operation": "create",
+      "field": "cron-command",
+      "command": [
+        "render-pin",
+        "services",
+        "create",
+        "--name",
+        "qa-command-fixture",
+        "--type",
+        "cron_job",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://example.invalid/qa",
+        "--plan",
+        "free",
+        "--build-command",
+        "printf control",
+        "--cron-schedule",
+        "0 0 1 1 *",
+        "--cron-command",
+        "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.122,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-command-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"preDeployCommand\": \"printf control\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"[[ 1 = 1 ]] \\u0026\\u0026 printf '%s' QA285_BASH_OK\"\n    },\n    \"schedule\": \"0 0 1 1 *\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"cron_job\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "name": "qa-command-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK"
+              },
+              "plan": "free",
+              "runtime": "node",
+              "schedule": "0 0 1 1 *"
+            },
+            "type": "cron_job"
+          }
+        }
+      ],
+      "authored": "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK",
+      "captured_command_fields": [
+        [
+          "/serviceDetails/envSpecificDetails/startCommand",
+          "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK"
+        ]
+      ],
+      "expected_exact_command": true,
+      "command_preserved": true,
+      "copied_config_removed": true,
+      "scope": "synthetic local server and credentials only; no production request or resource"
+    }
+  ],
+  "server_stopped": true
+}

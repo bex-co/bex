@@ -1,0 +1,22 @@
+package controller
+
+import (
+ "encoding/json"
+ "os"
+ "path/filepath"
+ "testing"
+ appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+)
+
+func TestQA285NativeCronShellConsumer(t *testing.T) {
+ dir:=os.Getenv("QA285_PROBE_DIR");if dir=="" {t.Fatal("private probe directory required")}
+ for _,subject:=range []string{"published-bex","render-pin"} {t.Run(subject,func(t *testing.T){
+  raw,err:=os.ReadFile(filepath.Join(dir,"sweep285-app-"+subject+".json"));if err!=nil {t.Fatal(err)}
+  var app appv1alpha1.App;if err=json.Unmarshal(raw,&app);err!=nil {t.Fatal(err)}
+  pod:=(&AppReconciler{}).cronPodSpec(&app,"qa285-native-built-image",0,nil,launchImage)
+  got:=pod.Spec.Containers[0].Command
+  record:=map[string]any{"subject":subject,"runtime":app.Spec.Runtime,"builder":app.Spec.Builder,"startCommand":app.Spec.StartCommand,"command":app.Spec.Command,"recorded_launch":"image","pod_command":got}
+  data,_:=json.Marshal(record);t.Log("QA285_CRON "+string(data))
+  if len(got)!=0 && got[0]!="/bin/bash" {t.Errorf("native command changed to %v; want baked native Bash CMD or an equivalent Bash invocation",got)}
+ })}
+}
