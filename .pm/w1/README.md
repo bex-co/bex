@@ -40,7 +40,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 - [x] **127** — [`scripts/mock-cluster.sh` fails on re-run once the local Argo owns kubelet-csr-approver](done/127.md) ← w1/m175, 2026-10-15. **Done 2026-10-15:** both Argo-owned components (the CSR approver and metrics-server) defer to Argo; the local overlay owns the approver's CAPD values, guarded against prod drift; two consecutive runs on the shared cluster exit 0.
 - [x] **128** — [Prod never narrows the kubelet CSR approver to the node network: its values file is unwired, and its CIDR is wrong](done/128.md) ← w1/127 review, 2026-10-15. **Done 2026-10-15:** prod kubelet SANs carry the public ExternalIP, so no private prefix fits; the dead values file is deleted and the base comment corrected. Follow-up: w1/129.
 - [x] **129** — [Prod's kubelet-csr-approver races to deny every kubelet-serving CSR; CAPH's approval is what keeps serving certs working](done/129.md) ← w1/128 prod read, 2026-10-15. **Done 2026-10-15:** prod skips the approver's deny step; CAPH approves (and denies) alone, verified on `csr-vz9gg`.
-- [ ] **130** — [The deploy-hook field can show the previous service's secret URL after an in-place service switch](130.md) ← w1/m177 refactor, 2026-10-15.
+- [x] **130** — [The deploy-hook field can show the previous service's secret URL after an in-place service switch](done/130.md) ← w1/m177 refactor, 2026-10-15. **Done 2026-10-15:** the kept URL is tagged with its service.
 
 **Approved additional batch order (2026-09-28):** m167 → m168 → 114 → 115. Priorities are not artificial dependencies; m161/t003 depends on 114. Existing commitments remain.
 

@@ -129,4 +129,83 @@ describe("useDeployHook", () => {
     // The rotated-away URL is never on screen once the read has the new one.
     expect(committed).toEqual([NEW]);
   });
+
+  // w1/130: the URL is a credential for one service. A section that moves to
+  // another service in place never shows the previous service's URL, not even
+  // while the new read is loading or after it fails.
+  it("never shows one service's URL under another", () => {
+    const WEB = "https://api.bex.co/v1/deploy-hooks/web";
+    const API = "https://api.bex.co/v1/deploy-hooks/api";
+    mockUseMutation.mockReturnValue([vi.fn()]);
+    const reads: Record<string, { data?: unknown; error?: Error }> = {
+      web: { data: { deployHook: { url: WEB } } },
+      api: {},
+    };
+    mockUseQuery.mockImplementation(
+      (_doc: unknown, opts: { variables: { serviceId: string } }) => ({
+        loading: false,
+        ...reads[opts.variables.serviceId],
+      }),
+    );
+    const committed: (string | null)[] = [];
+    const { result, rerender } = renderHook(
+      ({ serviceId }) => {
+        const value = useDeployHook(serviceId);
+        useLayoutEffect(() => {
+          committed.push(value.url);
+        });
+        return value;
+      },
+      { initialProps: { serviceId: "web" } },
+    );
+    expect(result.current.url).toBe(WEB);
+
+    committed.length = 0;
+    rerender({ serviceId: "api" });
+    reads.api = { error: new Error("ERR_CONNECTION_CLOSED") };
+    rerender({ serviceId: "api" });
+    expect(committed).toEqual([null, null]);
+
+    reads.api = { data: { deployHook: { url: API } } };
+    rerender({ serviceId: "api" });
+    expect(result.current.url).toBe(API);
+    expect(committed).not.toContain(WEB);
+  });
+
+  it("drops a rotation that completes after the section moved on", async () => {
+    const WEB = "https://api.bex.co/v1/deploy-hooks/web";
+    let finish: (value: unknown) => void = () => undefined;
+    mockUseMutation.mockReturnValue([
+      () => new Promise((resolve) => (finish = resolve)),
+    ]);
+    mockUseQuery.mockImplementation(
+      (_doc: unknown, opts: { variables: { serviceId: string } }) => ({
+        loading: false,
+        data:
+          opts.variables.serviceId === "web"
+            ? { deployHook: { url: WEB } }
+            : undefined,
+      }),
+    );
+    const { result, rerender } = renderHook(
+      ({ serviceId }) => useDeployHook(serviceId),
+      { initialProps: { serviceId: "web" } },
+    );
+    let rotated: Promise<boolean> = Promise.resolve(false);
+    act(() => {
+      rotated = result.current.regenerate();
+    });
+    rerender({ serviceId: "api" });
+    await act(async () => {
+      finish({
+        data: {
+          regenerateDeployHook: {
+            url: "https://api.bex.co/v1/deploy-hooks/web-rotated",
+          },
+        },
+      });
+      await rotated;
+    });
+    expect(result.current.url).toBeNull();
+  });
 });
