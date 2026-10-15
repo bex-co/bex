@@ -1,6 +1,6 @@
 # w1 · m173 — Free web services go to sleep again: the production canary was held awake by a local cluster's ACME self-check
 
-**Worker:** worker1 **Goal:** the production tenant-view canary sleeps after its idle window again, nothing local can generate certificate-validation traffic against production hosts, and the canary's failure text points at this class of cause. **Status:** blocked — shipped `293d30cf1` (t001–t004, t006, t007 done); t005's three canary runs need the self-hosted runner fleet (`bex-production` pool), which picked up no job after 2026-10-15 09:28Z; run `38719374621` is queued
+**Worker:** worker1 **Goal:** the production tenant-view canary sleeps after its idle window again, nothing local can generate certificate-validation traffic against production hosts, and the canary's failure text points at this class of cause. **Status:** done (2026-10-15: three consecutive liveness runs woke the canary and saw their own `service_woken`; #87 closed)
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | t002 | Local clusters sign their own certificates: no ACME, so no self-check traffic against production — **DONE** | 30m | t001       |
 | t003 | Guard: `gitops-validate.sh` fails if the local render carries an ACME ClusterIssuer — **DONE**             | 20m | t002       |
 | t004 | Canary stage 4 names the never-slept cause; FUTURE-MAYBE w3/040 records the finding — **DONE**             | 20m | t003       |
-| t005 | Production: the canary sleeps between requests; three green canary runs; issue #87 closed                 | 30m | t004       |
+| t005 | Production: the canary sleeps between requests; three green canary runs; issue #87 closed — **DONE**                 | 30m | t004       |
 | t009 | Canary stage 4 requires this run's own service_woken after a wake — **DONE** | 30m | t004 |
 | t006 | Simplify — **DONE**                                                                                                 | 15m | t005       |
 | t007 | Test coverage — **DONE**                                                                                            | 30m | t005       |
-| t008 | Closeout                                                                                                 | 10m | t007       |
+| t008 | Closeout — **DONE**                                                                                                 | 10m | t007       |
 
 ## Definition of done
 
