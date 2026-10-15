@@ -1,0 +1,374 @@
+{
+  "pass": "a610",
+  "date": "2026-10-15",
+  "researchHead": "a660d760b87f444844b864a0229ace76f80c92ee",
+  "finding": "Generate Blueprint reports copied and emits pageerror when actual browser clipboard write rejects",
+  "testEnvironment": {
+    "browser": "isolated headless Chromium",
+    "permissionOverride": "Actual browser permission setting; no application stubs, DOM replacements or network interception.",
+    "permissions": [
+      {
+        "method": "Browser.setPermission",
+        "permission": {
+          "name": "clipboard-write",
+          "allowWithoutSanitization": false
+        },
+        "setting": "denied",
+        "origin": "https://dashboard.bex.co"
+      },
+      {
+        "method": "Browser.setPermission",
+        "permission": {
+          "name": "clipboard-write",
+          "allowWithoutSanitization": true
+        },
+        "setting": "denied",
+        "origin": "https://dashboard.bex.co"
+      }
+    ],
+    "context": "current isolated browserContextId retrieved through Target.getTargetInfo",
+    "sentinel": "QA_A610_UNCHANGED",
+    "restoration": "Browser.resetPermissions followed by original QA clipboard grants; clipboard cleared; final browser cleanup clears permissions."
+  },
+  "fixture": {
+    "id": "evg-db8gpu5eelgc73d2i7gg",
+    "name": "qa-20261015-a610-copy",
+    "type": "workspace env group",
+    "serviceLinks": []
+  },
+  "steps": [
+    "Create an empty owned workspace environment group with no service links.",
+    "Generate Blueprint selecting only that owned group; API arrays for all services/databases/keyValues are empty.",
+    "Allow clipboard access; native Copy writes the exact preview. Move off the toast and wait for its natural dismissal.",
+    "Seed a nonsecret sentinel, temporarily deny browser clipboard-write, then click native Copy. Observe denied permission, fresh success toast, NotAllowedError pageerror and unchanged sentinel.",
+    "Restore permission. Fresh reload at 390×844, regenerate only the owned group and repeat denial. Native Download render.yaml still succeeds while copy remains denied.",
+    "Restore clipboard access and retry native Copy; it succeeds without a pageerror.",
+    "Restore browser state; verify group is unlinked, delete it, reconcile all seven inventory ID sets and revoke only this QA session."
+  ],
+  "receipts": {
+    "create": {
+      "at": "2026-10-15T17:27:28.640Z",
+      "request": {
+        "operationName": "CreateEnvGroup",
+        "variables": {
+          "name": "qa-20261015-a610-copy",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "envVars": [],
+          "secretFiles": [],
+          "serviceIds": [],
+          "environmentId": null
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation CreateEnvGroup($name: String!, $ownerId: String, $envVars: [EnvGroupVarInput!], $secretFiles: [EnvGroupSecretFileInput!], $serviceIds: [String!], $environmentId: String) {\n  createEnvGroup(\n    name: $name\n    ownerId: $ownerId\n    envVars: $envVars\n    secretFiles: $secretFiles\n    serviceIds: $serviceIds\n    environmentId: $environmentId\n  ) {\n    id\n    name\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createEnvGroup": {
+            "__typename": "EnvGroup",
+            "id": "evg-db8gpu5eelgc73d2i7gg",
+            "name": "qa-20261015-a610-copy"
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/env-groups"
+    },
+    "generate": {
+      "at": "2026-10-15T17:28:33.647Z",
+      "request": {
+        "operationName": "GenerateBlueprint",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "serviceIds": [],
+          "postgresIds": [],
+          "keyValueIds": [],
+          "envGroupIds": ["evg-db8gpu5eelgc73d2i7gg"]
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "query GenerateBlueprint($ownerId: String, $serviceIds: [String], $postgresIds: [String], $keyValueIds: [String], $envGroupIds: [String]) {\n  generateBlueprint(\n    ownerId: $ownerId\n    serviceIds: $serviceIds\n    postgresIds: $postgresIds\n    keyValueIds: $keyValueIds\n    envGroupIds: $envGroupIds\n  ) {\n    manifest\n    filename\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "generateBlueprint": {
+            "__typename": "GeneratedBlueprint",
+            "filename": "render.yaml",
+            "manifest": "envVarGroups:\n- envVars: []\n  name: qa-20261015-a610-copy\n"
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/blueprints"
+    },
+    "normalCopy": {
+      "at": "2026-10-15T17:28:40.007Z",
+      "copyMatches": true,
+      "characters": 58,
+      "toastsAfterDismissal": []
+    },
+    "desktopDenied": {
+      "at": "2026-10-15T17:28:53.357Z",
+      "permission": {
+        "write": "denied"
+      },
+      "toastsBefore": [],
+      "toastsAfter": ["render.yaml copied"],
+      "pageErrors": [
+        {
+          "name": "NotAllowedError",
+          "message": "Failed to execute 'writeText' on 'Clipboard': Write permission denied."
+        }
+      ],
+      "dialogVisible": true,
+      "clipboardUnchanged": true
+    },
+    "freshMobileSelection": {
+      "at": "2026-10-15T17:29:56.768Z",
+      "width": 390,
+      "checked": ["qa-20261015-a610-copy"]
+    },
+    "freshMobileGenerate": {
+      "at": "2026-10-15T17:29:58.338Z",
+      "request": {
+        "operationName": "GenerateBlueprint",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "serviceIds": [],
+          "postgresIds": [],
+          "keyValueIds": [],
+          "envGroupIds": ["evg-db8gpu5eelgc73d2i7gg"]
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "query GenerateBlueprint($ownerId: String, $serviceIds: [String], $postgresIds: [String], $keyValueIds: [String], $envGroupIds: [String]) {\n  generateBlueprint(\n    ownerId: $ownerId\n    serviceIds: $serviceIds\n    postgresIds: $postgresIds\n    keyValueIds: $keyValueIds\n    envGroupIds: $envGroupIds\n  ) {\n    manifest\n    filename\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "generateBlueprint": {
+            "__typename": "GeneratedBlueprint",
+            "filename": "render.yaml",
+            "manifest": "envVarGroups:\n- envVars: []\n  name: qa-20261015-a610-copy\n"
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/blueprints"
+    },
+    "freshMobileDenied": {
+      "at": "2026-10-15T17:30:58.206Z",
+      "permission": {
+        "write": "denied"
+      },
+      "toastsBefore": [],
+      "toastsAfter": ["render.yaml copied"],
+      "pageErrors": [
+        {
+          "name": "NotAllowedError",
+          "message": "Failed to execute 'writeText' on 'Clipboard': Write permission denied."
+        }
+      ],
+      "dialogVisible": true,
+      "width": 390,
+      "download": {
+        "filename": "render.yaml",
+        "failure": null
+      },
+      "clipboardUnchanged": true
+    },
+    "restoredCopy": {
+      "at": "2026-10-15T17:31:04.159Z",
+      "matches": true,
+      "toasts": ["render.yaml copied"],
+      "pageErrors": [],
+      "writePermission": "granted"
+    },
+    "unlinkedBeforeDelete": {
+      "at": "2026-10-15T17:32:41.289Z",
+      "request": {
+        "operationName": "Qaa610OwnedGroup",
+        "query": "query Qaa610OwnedGroup($id:String!){envGroup(id:$id){id name serviceLinks}}",
+        "variables": {
+          "id": "evg-db8gpu5eelgc73d2i7gg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "envGroup": {
+            "id": "evg-db8gpu5eelgc73d2i7gg",
+            "name": "qa-20261015-a610-copy",
+            "serviceLinks": []
+          }
+        }
+      },
+      "buttons": ["Manage "]
+    },
+    "deleted": {
+      "at": "2026-10-15T17:33:51.387Z",
+      "request": {
+        "operationName": "DeleteEnvGroup",
+        "variables": {
+          "id": "evg-db8gpu5eelgc73d2i7gg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.1.3"
+          }
+        },
+        "query": "mutation DeleteEnvGroup($id: String!) {\n  deleteEnvGroup(id: $id)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteEnvGroup": true
+        }
+      },
+      "url": "https://dashboard.bex.co/env-groups"
+    }
+  },
+  "downloadVerification": {
+    "matchesGeneratedBytes": true,
+    "utf8Bytes": 58
+  },
+  "reproCode": "async(page)=>{const origin='https://dashboard.bex.co';await page.evaluate(()=>navigator.clipboard.writeText('QA_A610_UNCHANGED'));await page.context().clearPermissions();const cdp=await page.context().newCDPSession(page);const info=await cdp.send('Target.getTargetInfo');const browserContextId=info.targetInfo.browserContextId;const errors=[];const onError=e=>errors.push({name:e.name,message:e.message});page.on('pageerror',onError);let result={};try{for(const allowWithoutSanitization of [false,true])await cdp.send('Browser.setPermission',{permission:{name:'clipboard-write',allowWithoutSanitization},setting:'denied',origin,browserContextId});const permission=await page.evaluate(async()=>({write:(await navigator.permissions.query({name:'clipboard-write'})).state}));const before=await page.locator('[data-sonner-toast]').allTextContents();await page.getByRole('dialog',{name:'Generate Blueprint',exact:true}).getByRole('button',{name:'Copy',exact:true}).click();await page.waitForTimeout(500);result={at:new Date().toISOString(),permission,toastsBefore:before,toastsAfter:await page.locator('[data-sonner-toast]').allTextContents(),pageErrors:errors,dialogVisible:await page.getByRole('dialog',{name:'Generate Blueprint',exact:true}).isVisible()};}finally{page.off('pageerror',onError);await cdp.send('Browser.resetPermissions',{browserContextId});await page.context().grantPermissions(['clipboard-read','clipboard-write'],{origin});result.clipboardUnchanged=await page.evaluate(async()=>await navigator.clipboard.readText()==='QA_A610_UNCHANGED');await page.evaluate(()=>navigator.clipboard.writeText(''));await cdp.detach();}return result;}",
+  "research": {
+    "cause": {
+      "file": "dashboard/src/features/blueprints/components/generate-blueprint-dialog.tsx",
+      "lines": "235–242",
+      "detail": "The click handler discards writeText's promise and immediately calls toast.success."
+    },
+    "singleProductionHost": {
+      "file": "dashboard/src/routes/blueprints.tsx",
+      "line": 169
+    },
+    "singleCopiedToastAndManifestWriteSite": {
+      "file": "dashboard/src/features/blueprints/components/generate-blueprint-dialog.tsx",
+      "lines": "238–239"
+    },
+    "existingHelper": {
+      "file": "dashboard/src/common/hooks/use-copy-to-clipboard.ts",
+      "lines": "38–48",
+      "behavior": "Await write, toast success only on resolution, catch rejection and toast error.",
+      "existingProductionCallers": [
+        {
+          "file": "dashboard/src/common/components/copy-button.tsx",
+          "line": 24
+        },
+        {
+          "file": "dashboard/src/common/components/code-block.tsx",
+          "line": 12
+        }
+      ]
+    },
+    "dedupe": {
+      "boardMarkdownFiles": 9175,
+      "actualOpenOrBlockedMilestones": 72,
+      "nextInbox": 314,
+      "matchingPrecedent": "w2/done/m73/done/t008 (dotenv export, different surface)",
+      "related": ["w8/done/m22", "w4/done/239", "w4/done/267"],
+      "history": "Manifest clipboard writer introduced in 487eab31a; inspected current source and last40 product commits, no rejection handler on current main."
+    }
+  },
+  "cleanup": {
+    "inventoryAt": "2026-10-15T17:34:08.443Z",
+    "baselineIds": {
+      "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+      "databases": [
+        "dpg-d9nqg95cavls73fp8m20",
+        "dpg-d9rrkoc4h4mc73edurp0",
+        "dpg-d9rs3ee0ccis738kc7c0",
+        "dpg-db34l9bor55s73cqpq9g"
+      ],
+      "envGroups": ["evg-db0s94c48ccs739jikr0"],
+      "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+      "projects": [
+        "prj-d9dgeo0bd9nc73a0vh1g",
+        "prj-d9e5qct5qe4s73b1mjn0",
+        "prj-d9sgfnbjghus73cg6hg0"
+      ],
+      "services": [
+        "srv-d9bj8s3eg85c7390eb9g",
+        "srv-d9bkcspg9s7c73d0n8ug",
+        "srv-d9e40ei9086p3l1jri30",
+        "srv-d9ndt8hmcglc739fkp50",
+        "srv-d9nqg9dcavls73fp8m2g"
+      ],
+      "webhookEndpoints": []
+    },
+    "afterIds": {
+      "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+      "databases": [
+        "dpg-d9nqg95cavls73fp8m20",
+        "dpg-d9rrkoc4h4mc73edurp0",
+        "dpg-d9rs3ee0ccis738kc7c0",
+        "dpg-db34l9bor55s73cqpq9g"
+      ],
+      "envGroups": ["evg-db0s94c48ccs739jikr0"],
+      "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+      "projects": [
+        "prj-d9dgeo0bd9nc73a0vh1g",
+        "prj-d9e5qct5qe4s73b1mjn0",
+        "prj-d9sgfnbjghus73cg6hg0"
+      ],
+      "services": [
+        "srv-d9bj8s3eg85c7390eb9g",
+        "srv-d9bkcspg9s7c73d0n8ug",
+        "srv-d9e40ei9086p3l1jri30",
+        "srv-d9ndt8hmcglc739fkp50",
+        "srv-d9nqg9dcavls73fp8m2g"
+      ],
+      "webhookEndpoints": []
+    },
+    "allSevenFamiliesMatch": {
+      "blueprints": true,
+      "databases": true,
+      "envGroups": true,
+      "keyValues": true,
+      "projects": true,
+      "services": true,
+      "webhookEndpoints": true
+    },
+    "resourceStatus": 404,
+    "clipboardGrantRestored": "granted",
+    "logout": "canonical helper exit 0: ok logged-out",
+    "browser": {
+      "at": "2026-10-15T17:34:47.725Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "console": "console-message tool returned 0 errors/warnings; separate pageerror listener captured the two NotAllowedError rejections shown above."
+  },
+  "limits": [
+    "Clipboard write failure was intentionally induced using the browser permission setting; default allowed Copy passed.",
+    "Only owned empty environment-group output was used for denial. Other Generate resource types share this callback but were not denied individually.",
+    "Firefox/Safari, OS clipboard failures and absent navigator.clipboard were not exercised.",
+    "Independent Render production UI was not tested."
+  ],
+  "postPullDedupe": {
+    "head": "5291bcfe33a1ba4c5cc026a9807f183cc360cab3",
+    "incomingPathCount": 71,
+    "incomingNonBoardPaths": ["docs/cli-compatibility-checklist.md"],
+    "boardMarkdownFilesExcludingNew314": 9192,
+    "actualOpenMilestones": 73,
+    "newExactDuplicateHits": [],
+    "newMilestone": "# w8 · m70 — Make Blueprint source switches deploy their declared artifact",
+    "fullPatternRelatedHits": [".pm/w2/done/m73/done/t008.md"],
+    "policyPathsChanged": []
+  }
+}
