@@ -1,6 +1,6 @@
 # w1 · m174 — Get main's red checks passing again: x/net CVEs, lint OOM, flaky tests, Dependabot, schema re-pin
 
-**Worker:** worker1 **Goal:** every check on `main` that is red today passes reliably, so a red check means something again and no known reachable Go vulnerability ships. **Status:** in progress (t001–t004, t006 done; t005 partly done: #78 landed, #83 parked as `w1/blocked/125`; DoD waits on CI runs)
+**Worker:** worker1 **Goal:** every check on `main` that is red today passes reliably, so a red check means something again and no known reachable Go vulnerability ships. **Status:** blocked — shipped `e8beef717` (t001–t004, t006–t008 done; t005: #78 landed, #83 parked as `w1/blocked/125`); the DoD's consecutive green runs need the self-hosted runner fleet, which picked up no job after 2026-10-15 09:28Z
 
 ## Tasks (in order)
 
@@ -12,8 +12,8 @@
 | t004 | Fix three flaky gitops tests (Zot GC replay, `closed_labels`, LogDelivery off by one second) — **DONE** | 45m | —                             |
 | t005 | Unstick Dependabot PRs #83 (removed `Github` icon) and #78 (SHA-pinned action inventory)      | 40m | —                             |
 | t006 | Review and re-pin Render's Blueprint schema (`buildSourceGit.baseDir` → `dockerContext`) — **DONE**      | 30m | —                             |
-| t007 | Simplify                                                                                      | 15m | t002, t003, t004, t005, t006  |
-| t008 | Test coverage                                                                                 | 30m | t002, t003, t004, t005, t006  |
+| t007 | Simplify — **DONE**                                                                                      | 15m | t002, t003, t004, t005, t006  |
+| t008 | Test coverage — **DONE**                                                                                 | 30m | t002, t003, t004, t005, t006  |
 | t009 | Closeout                                                                                      | 10m | t008                          |
 
 ## Definition of done
