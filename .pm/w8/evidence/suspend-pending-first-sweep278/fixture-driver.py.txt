@@ -1,0 +1,85 @@
+from pathlib import Path
+import datetime,json,os,secrets,shutil,subprocess,sys,time,yaml
+os.umask(0o077)
+p=Path(__file__).parent;root=Path('/Volumes/nvme4tbfish/projects/bex8');cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json';c=json.loads(cp.read_text());assert c.get('sync278_result')==0 and not c.get('active_sync_stash')
+mode,client=sys.argv[1:3];assert client in ('bex','render');ws='tea-daif693dqjvc73e7as3g';base={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']}
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():
+ c['last_updated']=now();cp.write_text(json.dumps(c,indent=2,ensure_ascii=False)+'\n');cp.chmod(0o600)
+def cli(args,bound=40):
+ cfg=p/'render-config/cli.yaml'
+ try:
+  if client=='render':assert not cfg.exists();shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  runner=['python3',str(p/'run-render.py')] if client=='render' else ['python3',str(p/'run.py'),'--release']
+  return json.loads(subprocess.check_output([*runner,'--bound='+str(bound),*args],text=True,timeout=bound+15))
+ finally:
+  if client=='render':cfg.unlink(missing_ok=True)
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True,timeout=40))
+def api(path,body=None,method='POST'):
+ cfg=yaml.safe_load((p/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token
+ ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')';auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+ws+'"\n';f=p/('sweep278-'+client+'-request.json')
+ args=['curl','--disable','-sS','--max-time','25','--config','-','-X',method,'-H','Content-Type: application/json','-w','\n%{http_code}']
+ if body is not None:f.write_text(json.dumps(body));f.chmod(0o600);args+=['--data-binary','@'+str(f)]
+ started=time.monotonic()
+ try:r=subprocess.run([*args,'https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=30)
+ finally:f.unlink(missing_ok=True)
+ text,_,status=r.stdout.rpartition('\n');v={'at':now(),'API_only':True,'request':{'method':method,'path':path,'body':body,'workspace':ws,'user_agent':ua,'authorization':'REDACTED'},'status':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-started,3),'response':text,'stderr':r.stderr};assert token not in json.dumps(v);return v
+def own(x):
+ assert x['workspace']==ws and x['id'] not in base and x['create_result']['exit']==0 and x['create_response']['id']==x['id'] and x['create_response']['ownerId']==ws and x['create_response']['serviceDetails']['plan']=='free' and not x['state'].startswith('deleted:')
+def history(x):
+ r=cli(['deploys','list',x['id'],'--confirm','-o','json']);assert r['exit']==0;rows=json.loads(r['stdout']);x['deploy_children']=rows
+ for v in rows:
+  if v['id'] not in x['recorded_child_ids']:x['recorded_child_ids'].append(v['id'])
+ x.setdefault('history_receipts',[]).append({'at':now(),'result':r});save();return rows
+def http(x):
+ url=x['create_response']['serviceDetails']['url'];r=subprocess.run(['curl','--disable','-sS','--max-time','10','-H','Accept: application/json','-w','\n%{http_code}',url],text=True,capture_output=True,timeout=15);body,_,status=r.stdout.rpartition('\n')
+ try:value=json.loads(body)
+ except ValueError:value=None
+ return {'at':now(),'url':url,'HTTP':status,'curl_exit':r.returncode,'body':body,'decoded':value,'stderr':r.stderr}
+if mode=='create':
+ assert not any(v.get('sweep')==278 and v.get('client')==client for v in c['resources']);quota=wire('/v1/owners/'+ws+'/limits');assert quota['status']=='200';q=json.loads(quota['response'])['services'];assert q['used']+q['terminating']<q['limit'];inv=cli(['services','--confirm','-o','json']);assert inv['exit']==0;ids={v.get('service',v)['id'] for v in json.loads(inv['stdout']) or []};assert base<=ids
+ nonce=secrets.token_hex(3);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-suspended';marker='QA278_'+nonce
+ program="const fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto');if(process.argv[2]==='--build'){console.log(JSON.stringify({marker:process.env.MESSAGE??null,version:process.version}));}else{const built=JSON.parse(fs.readFileSync('/opt/render/project/src/qa-built.json','utf8')),boot=crypto.randomUUID();http.createServer((req,res)=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify({fixture:'"+marker+"',built,marker:process.env.MESSAGE??null,version:process.version,boot}));}).listen(Number(process.env.PORT||3000),'0.0.0.0');}\n"
+ build="/bin/cat > qa278.js <<'QA278_NODE'\n"+program+"QA278_NODE\n/usr/local/bin/node qa278.js --build > qa-built.json"
+ args=['services','create','--name',name,'--plan','free','--region','frankfurt','--type','web_service','--runtime','node','--repo','https://github.com/bex-co/bex','--branch','main','--root-directory','examples/runtime-version/node','--build-command',build,'--start-command','/usr/local/bin/node /opt/render/project/src/qa278.js','--health-check-path','/','--auto-deploy=false','--confirm','-o','json']
+ x={'sweep':278,'client':client,'workspace':ws,'type':'web_service','name':name,'nonce':nonce,'marker':marker,'time':now(),'source_head':c['head'],'dependency_ids':[],'recorded_child_ids':[],'capacity_proof':quota,'pre_create_inventory':inv,'create_command':[client,*args],'qualification':'no authored environment variables at creation; fixture identity is hardcoded harmless nonce','state':'native create intent persisted'};c['resources'].append(x);save();r=cli(args);x['create_result']=r;x['state']='create returned: reconcile before retry';save();assert r['exit']==0;v=json.loads(r['stdout']);v=v.get('data',v);v=v.get('service',v);assert v['ownerId']==ws and v['name']==name and v['serviceDetails']['plan']=='free' and v['id'] not in ids;x.update(id=v['id'],create_response=v,state='created: initial build pending');save();print(json.dumps({'client':client,'id':v['id'],'native_exit':r['exit']}));raise SystemExit(0)
+x=next(v for v in c['resources'] if v.get('sweep')==278 and v.get('client')==client);own(x);sid=x['id']
+if mode=='runtime':
+ stage=sys.argv[3];assert stage in ('initial','saved','suspended','resumed','restarted','deployed');before=history(x);receipts=[];started=time.monotonic();wanted=x['marker']+'_V2' if stage=='deployed' else None
+ for attempt in range(10):
+  r=http(x);receipts.append(r)
+  exact=r['HTTP']=='200' and isinstance(r['decoded'],dict) and r['decoded'].get('fixture')==x['marker'] and isinstance(r['decoded'].get('built'),dict) and r['decoded'].get('marker')==r['decoded']['built'].get('marker')==wanted
+  if stage=='suspended' or exact or time.monotonic()-started>=50:break
+  time.sleep(5)
+ value=receipts[-1]['decoded'];wanted=x['marker']+'_V2' if stage=='deployed' else None;passed=receipts[-1]['HTTP']=='200' and isinstance(value,dict) and value.get('fixture')==x['marker'] and bool(value.get('boot')) and isinstance(value.get('built'),dict) and 'marker' in value and 'marker' in value['built'] and value['marker']==value['built']['marker']==wanted
+ if stage=='suspended':passed=receipts[-1]['HTTP']=='503' and 'suspend' in receipts[-1]['body'].lower()
+ after=history(x);o={'at':now(),'stage':stage,'receipts':receipts,'before_latest_deploy':before[0],'after_latest_deploy':after[0],'expected_marker':wanted,'expected_runtime':passed};x.setdefault('runtime_observations',[]).append(o)
+ if stage=='initial' and passed and after[0]['status']=='live' and 'initial_runtime' not in x:x['initial_runtime']=value;x['initial_deploy_ids']=[v['id'] for v in after]
+ save();print(json.dumps({'client':client,'stage':stage,'HTTP':receipts[-1]['HTTP'],'expected_runtime':passed,'latest_status':after[0]['status'],'built_marker':value.get('built',{}).get('marker') if isinstance(value,dict) else None,'runtime_marker':value.get('marker') if isinstance(value,dict) else None}))
+elif mode=='save':
+ assert 'initial_runtime' in x and 'save_only_intent' not in x;before=history(x);original=wire('/v1/services/'+sid+'/env-vars');assert original['status']=='200';x['initial_environment']=original;body={'saveMode':'save_only','envVars':[{'key':'MESSAGE','value':x['marker']+'_V2'}]};x['save_only_intent']={'at':now(),'body':body,'before_ids':[v['id'] for v in before]};save();x['save_only_result']=api('/v1/services/'+sid+'/environment',body,'PATCH');save();assert x['save_only_result']['status']=='200' and json.loads(x['save_only_result']['response'])['rolledOut'] is False;after=history(x);assert {v['id'] for v in before}=={v['id'] for v in after};print(json.dumps({'client':client,'saved_only':True,'history_unchanged':True}))
+elif mode=='read-saved':
+ r=wire('/v1/services/'+sid+'/env-vars/MESSAGE');x.setdefault('saved_value_reads',[]).append({'at':now(),'result':r});save();assert r['status']=='200';v=json.loads(r['response']);v=v.get('envVar',v);assert v['value']==x['marker']+'_V2';print(json.dumps({'client':client,'saved_V2_present':True}))
+elif mode in ('suspend','resume'):
+ key=mode+'_intent';assert key not in x and 'save_only_result' in x
+ if mode=='resume':assert 'suspend_result' in x
+ before=history(x);x[key]={'at':now(),'path':'/v1/services/'+sid+'/'+mode,'before_ids':[v['id'] for v in before]};save();x[mode+'_result']=api(x[key]['path']);save();assert x[mode+'_result']['status']=='202';after=history(x);x[mode+'_history_unchanged']={v['id'] for v in before}=={v['id'] for v in after};save();print(json.dumps({'client':client,'API_only':mode,'HTTP':'202','history_unchanged':x[mode+'_history_unchanged']}))
+elif mode=='status':
+ detail=wire('/v1/services/'+sid);assert detail['status']=='200';v=json.loads(detail['response']);instances=cli(['services','instances',sid,'--confirm','-o','json']);assert instances['exit']==0;rows=history(x);o={'at':now(),'detail':detail,'instances':instances,'phase':v.get('phase'),'suspended':v.get('suspended'),'instance_count':len(json.loads(instances['stdout'])),'latest_deploy':rows[0]};x.setdefault('status_observations',[]).append(o);save();print(json.dumps({k:o[k] for k in ['phase','suspended','instance_count'] }|{'client':client,'latest_status':rows[0]['status']}))
+elif mode in ('refuse-restart','refuse-deploy','restart','deploy'):
+ key=mode.replace('-','_');assert key+'_intent' not in x
+ if mode.startswith('refuse-'):assert x['status_observations'][-1]['suspended']=='suspended' and x['status_observations'][-1]['instance_count']==0
+ else:assert 'resume_result' in x and x['status_observations'][-1]['suspended']=='not_suspended'
+ before=history(x);args=['restart',sid,'--confirm','-o','json'] if mode.endswith('restart') else ['deploys','create',sid,'--confirm','-o','json'];x[key+'_intent']={'at':now(),'before_ids':[v['id'] for v in before],'command':[client,*args]};save();r=cli(args);x[key+'_result']=r;save();after=history(x);fresh=[v for v in after if v['id'] not in x[key+'_intent']['before_ids']];x[key+'_new_rows']=fresh
+ if mode.startswith('refuse-'):x[key+'_contract_pass']=r['exit']==1 and not fresh and 'suspend' in r['stderr'].lower()
+ else:x[key+'_contract_pass']=r['exit']==0 and len(fresh)==1
+ save();print(json.dumps({'client':client,'mode':mode,'native_exit':r['exit'],'new_rows':[{k:v.get(k) for k in ['id','status']} for v in fresh],'contract_pass':x[key+'_contract_pass']}))
+elif mode=='delete':
+ assert 'delete_result' not in x;rows=history(x)
+ for row in rows:
+  if row['status'] not in ('live','deactivated','canceled','build_failed','update_failed','pre_deploy_failed'):
+   r=cli(['deploys','cancel',sid,row['id'],'--confirm','-o','json']);x.setdefault('pending_child_cancels',[]).append({'id':row['id'],'result':r});save()
+ x['state']='exact owned delete intent persisted';save();x['delete_result']=cli(['services','delete',sid,'--confirm','-o','json']);save();print(json.dumps({'client':client,'delete_exit':x['delete_result']['exit'],'children':len(x['recorded_child_ids'])}))
+elif mode=='reconcile':
+ assert 'delete_result' in x;detail=wire('/v1/services/'+sid);inv=cli(['services','--confirm','-o','json']);assert inv['exit']==0;ids={v.get('service',v)['id'] for v in json.loads(inv['stdout']) or []};assert base<=ids;r=http(x);quota=wire('/v1/owners/'+ws+'/limits');assert quota['status']=='200';q=json.loads(quota['response']);done=detail['status']=='404' and sid not in ids and r['HTTP']=='404' and r['curl_exit']==0 and q['services']['terminating']==0;x.setdefault('cleanup_reconciliations',[]).append({'at':now(),'detail':detail,'inventory':inv,'list_ids':sorted(ids),'baseline_present':True,'runtime':r,'quota':quota});x['state']='deleted: API404/listabsent/runtime404/baseline present/quota terminating0' if done else 'delete acknowledged: convergence pending';save();print(json.dumps({'client':client,'cleanup_complete':done,'detail':detail['status'],'runtime':r['HTTP'],'quota':q}))
+else:raise ValueError(mode)

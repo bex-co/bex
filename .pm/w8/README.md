@@ -107,6 +107,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## QA evidence for existing work
 
+- [First saved variable through manual lifecycle](evidence/suspend-pending-first-sweep278/README.md) — sweep278: both clients preserve unset build/runtime through API-only suspend/resume and native Restart, four suspended native409 refusals allocate no rows, then standard deploy consumes V2; four distinct processes per fixture, both cleaned. No new finding.
+
 - [Native request-log selector acceptance](evidence/request-log-selectors-sweep269/README.md) — sweep269: both clients pass32 exact row-ID comparisons for comma/encoded paths, methods, status classes, host/text and AND/OR/empty controls; six HTTP requests independently recorded, fixture cleaned. No new finding; interactive upstream defects remain separate.
 
 - [Native Dashboard menu routing acceptance](evidence/089/live-native-menu-sweep267/README.md) — sweep267: all four Bex/Render Services/deploy Dashboard actions exit0 with unchanged OAuth-origin configs; exact captured cron URLs302, aliases307 and issuer200 pass. No hosted mutation;089 remains blocked for full login/browser/prefix acceptance.
@@ -136,6 +138,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [w4/m200 native CLI corroboration](evidence/m200-native-cli/README.md) — sweep111: both clients corrupt the mixed stdout/stderr pair in Live while all five historical messages remain exact; complete native evidence and cleanup retained. Implementation stays with w4/m200.
 
 ## Inbox
+
+- [ ] **107** — [A valid output flag cannot override an invalid output default](107.md) — **TODO (sweep279: installed/published/same-pin/2.29 all fail before HTTP;32 controls pass, private upstream prototype passes12 cases;35m)**
 
 - [ ] **106** — [A served deploy stays In Progress after auto-hibernation](106.md) — **TODO (sweep266: both native restart journeys; fresh metadata captures Running/rev-3 then parked/pending until HTTP wake; strict source counterexample,55m)**
 

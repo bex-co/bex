@@ -1,0 +1,38 @@
+[
+  {
+    "client": "bex",
+    "id": "srv-db8673paomdc7381kb10",
+    "initial_authored_environment_entries": 0,
+    "save_only_no_rollout": true,
+    "suspended_HTTP": "503",
+    "native_refusals_409_no_new_rows": 2,
+    "resume_keeps_initial_deploy_history": true,
+    "unset_build_and_runtime_retained_until_standard_deploy": true,
+    "newest_standard_deploy_live_and_build_runtime_V2": true,
+    "distinct_process_boots": 4,
+    "deploy_children": [
+      "dep-db8673paomdc7381kb1g",
+      "dep-db869s1aomdc7381kb70",
+      "dep-db86ai9aomdc7381kb9g"
+    ],
+    "cleanup_state": "deleted: API404/listabsent/runtime404/baseline present/quota terminating0"
+  },
+  {
+    "client": "render",
+    "id": "srv-db8675oumfhs73fe7jr0",
+    "initial_authored_environment_entries": 0,
+    "save_only_no_rollout": true,
+    "suspended_HTTP": "503",
+    "native_refusals_409_no_new_rows": 2,
+    "resume_keeps_initial_deploy_history": true,
+    "unset_build_and_runtime_retained_until_standard_deploy": true,
+    "newest_standard_deploy_live_and_build_runtime_V2": true,
+    "distinct_process_boots": 4,
+    "deploy_children": [
+      "dep-db8675oumfhs73fe7jrg",
+      "dep-db869thaomdc7381kb8g",
+      "dep-db86akoumfhs73fe7k60"
+    ],
+    "cleanup_state": "deleted: API404/listabsent/runtime404/baseline present/quota terminating0"
+  }
+]
