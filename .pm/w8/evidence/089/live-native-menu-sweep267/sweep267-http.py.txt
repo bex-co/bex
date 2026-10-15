@@ -1,0 +1,29 @@
+from pathlib import Path
+import json,subprocess,datetime,urllib.parse
+from evidence258_sanitizer import safe
+p=Path(__file__).parent
+rows=[]
+for surface in ['service','deploy']:
+    values=[]
+    for client in ['bex','render']:
+        f=p/('sweep267-'+surface+'-'+client+'-original-result.json')
+        r=json.loads(f.read_text())
+        assert r['exit']==0 and not r['timeout'] and not r['panic'] and r['stage']==3
+        assert r['config_dashboard_origin']=='https://oauth.bex.co'
+        values.append(r['browser_capture']['argv'][0])
+    assert values[0]==values[1]
+    url=values[0]
+    path=urllib.parse.urlsplit(url).path
+    rows.extend([(surface+' OAuth native argument',url,302,'https://dashboard.bex.co'+path),(surface+' dashboard alias','https://dashboard.bex.co'+path,307,path.replace('/cron/','/services/',1))])
+rows.append(('issuer neighbor','https://oauth.bex.co/.well-known/openid-configuration',200,None))
+results=[]
+for i,(label,url,expected,location) in enumerate(rows):
+    f=p/f'sweep267-http-{i}-body.txt';h=p/f'sweep267-http-{i}-headers.txt'
+    r=subprocess.run(['curl','--disable','-sS','--max-time','12','-D',str(h),'-o',str(f),'-w','%{http_code}',url],capture_output=True,text=True,timeout=17)
+    headers=h.read_text();headers='\n'.join('Set-Cookie: REDACTED' if line.lower().startswith('set-cookie:') else line for line in headers.splitlines())
+    actual=[line.partition(':')[2].strip() for line in headers.splitlines() if line.lower().startswith('location:')]
+    passed=r.returncode==0 and r.stdout==str(expected) and (location is None or actual==[location])
+    if label=='issuer neighbor':passed=passed and json.loads(f.read_text())['issuer']=='https://oauth.bex.co'
+    results.append({'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'case':label,'request':{'method':'GET','url':url,'authentication':'none','follow_redirects':False},'curl_exit':r.returncode,'status':r.stdout,'headers':headers,'body':f.read_text(),'stderr':r.stderr,'expected_status':expected,'expected_location':location,'pass':passed})
+out=p/'sweep267-http-results.json';assert not out.exists();out.write_text(safe(json.dumps(results,indent=2)+'\n'));out.chmod(0o600)
+print(json.dumps({'HTTP_checks':len(results),'all_pass':all(v['pass'] for v in results),'native_captures':4,'browser_arrival_unverified':True}))

@@ -1,0 +1,226 @@
+[
+  {
+    "at": "2026-10-15T01:32:27.915751+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/cron-jobs/srv-db82j3haomdc7381k8bg/runs?limit=100",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.351,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4ab11f0986867c4-SJC"
+    },
+    "response": "[{\"cronJobRun\":{\"id\":\"crr-1odjlambsqrki7jd4iqc\",\"status\":\"successful\",\"startedAt\":\"2026-10-15T01:22:42Z\",\"finishedAt\":\"2026-10-15T01:22:48Z\"},\"cursor\":\"crr-1odjlambsqrki7jd4iqc\"},{\"cronJobRun\":{\"id\":\"crr-h7u0uldmiem4an0djkm9\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-15T01:30:53Z\",\"finishedAt\":\"2026-10-15T01:30:57Z\"},\"cursor\":\"crr-h7u0uldmiem4an0djkm9\"},{\"cronJobRun\":{\"id\":\"crr-nbs4qpqj36199ms2afbd\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-15T01:29:46Z\",\"finishedAt\":\"2026-10-15T01:29:53Z\"},\"cursor\":\"crr-nbs4qpqj36199ms2afbd\"},{\"cronJobRun\":{\"id\":\"crr-9imjc7vqj35ai2tftliq\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-15T01:29:28Z\",\"finishedAt\":\"2026-10-15T01:29:33Z\"},\"cursor\":\"crr-9imjc7vqj35ai2tftliq\"},{\"cronJobRun\":{\"id\":\"crr-gsg7efk76jnmlpv239vb\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-15T01:29:10Z\",\"finishedAt\":\"2026-10-15T01:29:15Z\"},\"cursor\":\"crr-gsg7efk76jnmlpv239vb\"},{\"cronJobRun\":{\"id\":\"crr-7984qlcglpjb35k3hg18\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-15T01:28:51Z\",\"finishedAt\":\"2026-10-15T01:28:57Z\"},\"cursor\":\"crr-7984qlcglpjb35k3hg18\"},{\"cronJobRun\":{\"id\":\"crr-1nfahho6ldh3l9sgs174\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-15T01:28:28Z\",\"finishedAt\":\"2026-10-15T01:28:34Z\"},\"cursor\":\"crr-1nfahho6ldh3l9sgs174\"},{\"cronJobRun\":{\"id\":\"crr-rirrkoa425m6rijfo38j\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-15T01:28:02Z\",\"finishedAt\":\"2026-10-15T01:28:07Z\"},\"cursor\":\"crr-rirrkoa425m6rijfo38j\"},{\"cronJobRun\":{\"id\":\"crr-3d9365cf4b1s6aob0nd0\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-15T01:27:41Z\",\"finishedAt\":\"2026-10-15T01:27:47Z\"},\"cursor\":\"crr-3d9365cf4b1s6aob0nd0\"},{\"cronJobRun\":{\"id\":\"crr-9itfhsbujioeadegd9i2\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-15T01:26:45Z\",\"finishedAt\":\"2026-10-15T01:26:51Z\"},\"cursor\":\"crr-9itfhsbujioeadegd9i2\"}]\n",
+    "stage": "cap11",
+    "label": "REST complete history",
+    "api_only": true
+  },
+  {
+    "at": "2026-10-15T01:32:28.377423+00:00",
+    "stage": "cap11",
+    "label": "GraphQL history and success timestamp",
+    "api_only": true,
+    "request": {
+      "method": "POST",
+      "path": "/graphql",
+      "body": {
+        "query": "query QA254($id:String!){cronJobRuns(serviceId:$id,limit:100){id status startedAt finishedAt} service(id:$id){id lastSuccessfulRunAt}}",
+        "variables": {
+          "id": "srv-db82j3haomdc7381k8bg"
+        }
+      },
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "status": "200",
+    "curl_exit": 0,
+    "elapsed": 0.441,
+    "response": "{\"data\":{\"cronJobRuns\":[{\"finishedAt\":\"2026-10-15T01:22:48Z\",\"id\":\"crr-1odjlambsqrki7jd4iqc\",\"startedAt\":\"2026-10-15T01:22:42Z\",\"status\":\"successful\"},{\"finishedAt\":\"2026-10-15T01:30:57Z\",\"id\":\"crr-h7u0uldmiem4an0djkm9\",\"startedAt\":\"2026-10-15T01:30:53Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:29:53Z\",\"id\":\"crr-nbs4qpqj36199ms2afbd\",\"startedAt\":\"2026-10-15T01:29:46Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:29:33Z\",\"id\":\"crr-9imjc7vqj35ai2tftliq\",\"startedAt\":\"2026-10-15T01:29:28Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:29:15Z\",\"id\":\"crr-gsg7efk76jnmlpv239vb\",\"startedAt\":\"2026-10-15T01:29:10Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:28:57Z\",\"id\":\"crr-7984qlcglpjb35k3hg18\",\"startedAt\":\"2026-10-15T01:28:51Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:28:34Z\",\"id\":\"crr-1nfahho6ldh3l9sgs174\",\"startedAt\":\"2026-10-15T01:28:28Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:28:07Z\",\"id\":\"crr-rirrkoa425m6rijfo38j\",\"startedAt\":\"2026-10-15T01:28:02Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:27:47Z\",\"id\":\"crr-3d9365cf4b1s6aob0nd0\",\"startedAt\":\"2026-10-15T01:27:41Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:26:51Z\",\"id\":\"crr-9itfhsbujioeadegd9i2\",\"startedAt\":\"2026-10-15T01:26:45Z\",\"status\":\"unsuccessful\"}],\"service\":{\"id\":\"srv-db82j3haomdc7381k8bg\",\"lastSuccessfulRunAt\":\"2026-10-15T01:22:48Z\"}}}\n",
+    "stderr": ""
+  },
+  {
+    "at": "2026-10-15T01:32:28.655680+00:00",
+    "stage": "cap11",
+    "label": "MCP same-workspace complete history",
+    "api_only": true,
+    "request": {
+      "method": "POST",
+      "path": "/mcp",
+      "body": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+          "name": "list_cron_job_runs",
+          "arguments": {
+            "workspaceId": "tea-daif693dqjvc73e7as3g",
+            "serviceId": "srv-db82j3haomdc7381k8bg",
+            "limit": 100
+          }
+        }
+      },
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "status": "200",
+    "curl_exit": 0,
+    "elapsed": 0.266,
+    "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"cronJobRuns\\\":[{\\\"finishedAt\\\":\\\"2026-10-15T01:22:48Z\\\",\\\"id\\\":\\\"crr-1odjlambsqrki7jd4iqc\\\",\\\"startedAt\\\":\\\"2026-10-15T01:22:42Z\\\",\\\"status\\\":\\\"successful\\\"},{\\\"finishedAt\\\":\\\"2026-10-15T01:30:57Z\\\",\\\"id\\\":\\\"crr-h7u0uldmiem4an0djkm9\\\",\\\"startedAt\\\":\\\"2026-10-15T01:30:53Z\\\",\\\"status\\\":\\\"unsuccessful\\\"},{\\\"finishedAt\\\":\\\"2026-10-15T01:29:53Z\\\",\\\"id\\\":\\\"crr-nbs4qpqj36199ms2afbd\\\",\\\"startedAt\\\":\\\"2026-10-15T01:29:46Z\\\",\\\"status\\\":\\\"unsuccessful\\\"},{\\\"finishedAt\\\":\\\"2026-10-15T01:29:33Z\\\",\\\"id\\\":\\\"crr-9imjc7vqj35ai2tftliq\\\",\\\"startedAt\\\":\\\"2026-10-15T01:29:28Z\\\",\\\"status\\\":\\\"unsuccessful\\\"},{\\\"finishedAt\\\":\\\"2026-10-15T01:29:15Z\\\",\\\"id\\\":\\\"crr-gsg7efk76jnmlpv239vb\\\",\\\"startedAt\\\":\\\"2026-10-15T01:29:10Z\\\",\\\"status\\\":\\\"unsuccessful\\\"},{\\\"finishedAt\\\":\\\"2026-10-15T01:28:57Z\\\",\\\"id\\\":\\\"crr-7984qlcglpjb35k3hg18\\\",\\\"startedAt\\\":\\\"2026-10-15T01:28:51Z\\\",\\\"status\\\":\\\"unsuccessful\\\"},{\\\"finishedAt\\\":\\\"2026-10-15T01:28:34Z\\\",\\\"id\\\":\\\"crr-1nfahho6ldh3l9sgs174\\\",\\\"startedAt\\\":\\\"2026-10-15T01:28:28Z\\\",\\\"status\\\":\\\"unsuccessful\\\"},{\\\"finishedAt\\\":\\\"2026-10-15T01:28:07Z\\\",\\\"id\\\":\\\"crr-rirrkoa425m6rijfo38j\\\",\\\"startedAt\\\":\\\"2026-10-15T01:28:02Z\\\",\\\"status\\\":\\\"unsuccessful\\\"},{\\\"finishedAt\\\":\\\"2026-10-15T01:27:47Z\\\",\\\"id\\\":\\\"crr-3d9365cf4b1s6aob0nd0\\\",\\\"startedAt\\\":\\\"2026-10-15T01:27:41Z\\\",\\\"status\\\":\\\"unsuccessful\\\"},{\\\"finishedAt\\\":\\\"2026-10-15T01:26:51Z\\\",\\\"id\\\":\\\"crr-9itfhsbujioeadegd9i2\\\",\\\"startedAt\\\":\\\"2026-10-15T01:26:45Z\\\",\\\"status\\\":\\\"unsuccessful\\\"}],\\\"cursor\\\":\\\"crr-9itfhsbujioeadegd9i2\\\"}\"}],\"structuredContent\":{\"cronJobRuns\":[{\"finishedAt\":\"2026-10-15T01:22:48Z\",\"id\":\"crr-1odjlambsqrki7jd4iqc\",\"startedAt\":\"2026-10-15T01:22:42Z\",\"status\":\"successful\"},{\"finishedAt\":\"2026-10-15T01:30:57Z\",\"id\":\"crr-h7u0uldmiem4an0djkm9\",\"startedAt\":\"2026-10-15T01:30:53Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:29:53Z\",\"id\":\"crr-nbs4qpqj36199ms2afbd\",\"startedAt\":\"2026-10-15T01:29:46Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:29:33Z\",\"id\":\"crr-9imjc7vqj35ai2tftliq\",\"startedAt\":\"2026-10-15T01:29:28Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:29:15Z\",\"id\":\"crr-gsg7efk76jnmlpv239vb\",\"startedAt\":\"2026-10-15T01:29:10Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:28:57Z\",\"id\":\"crr-7984qlcglpjb35k3hg18\",\"startedAt\":\"2026-10-15T01:28:51Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:28:34Z\",\"id\":\"crr-1nfahho6ldh3l9sgs174\",\"startedAt\":\"2026-10-15T01:28:28Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:28:07Z\",\"id\":\"crr-rirrkoa425m6rijfo38j\",\"startedAt\":\"2026-10-15T01:28:02Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:27:47Z\",\"id\":\"crr-3d9365cf4b1s6aob0nd0\",\"startedAt\":\"2026-10-15T01:27:41Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:26:51Z\",\"id\":\"crr-9itfhsbujioeadegd9i2\",\"startedAt\":\"2026-10-15T01:26:45Z\",\"status\":\"unsuccessful\"}],\"cursor\":\"crr-9itfhsbujioeadegd9i2\"}}}\n\n",
+    "stderr": ""
+  },
+  {
+    "summary": {
+      "stage": "cap11",
+      "at": "2026-10-15T01:32:28.656167+00:00",
+      "recorded_run_count": 11,
+      "all_three_adapters_agree": true,
+      "actual_ids": [
+        "crr-1odjlambsqrki7jd4iqc",
+        "crr-h7u0uldmiem4an0djkm9",
+        "crr-nbs4qpqj36199ms2afbd",
+        "crr-9imjc7vqj35ai2tftliq",
+        "crr-gsg7efk76jnmlpv239vb",
+        "crr-7984qlcglpjb35k3hg18",
+        "crr-1nfahho6ldh3l9sgs174",
+        "crr-rirrkoa425m6rijfo38j",
+        "crr-3d9365cf4b1s6aob0nd0",
+        "crr-9itfhsbujioeadegd9i2"
+      ],
+      "expected_newest_ids": [
+        "crr-h7u0uldmiem4an0djkm9",
+        "crr-nbs4qpqj36199ms2afbd",
+        "crr-9imjc7vqj35ai2tftliq",
+        "crr-gsg7efk76jnmlpv239vb",
+        "crr-7984qlcglpjb35k3hg18",
+        "crr-1nfahho6ldh3l9sgs174",
+        "crr-rirrkoa425m6rijfo38j",
+        "crr-3d9365cf4b1s6aob0nd0",
+        "crr-9itfhsbujioeadegd9i2",
+        "crr-gl0bi2g6alfl78kabn99"
+      ],
+      "exact_newest_order": false,
+      "lastSuccessfulRunAt": "2026-10-15T01:22:48Z",
+      "deployed_revision": "unknown"
+    }
+  },
+  {
+    "at": "2026-10-15T01:35:23.561692+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/cron-jobs/srv-db82j3haomdc7381k8bg/runs?limit=100",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.308,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4ab163acd69f591-SJC"
+    },
+    "response": "[{\"cronJobRun\":{\"id\":\"crr-mjl9o3tpmtml6te2l07s\",\"status\":\"successful\",\"startedAt\":\"2026-10-15T01:34:54Z\",\"finishedAt\":\"2026-10-15T01:34:58Z\"},\"cursor\":\"crr-mjl9o3tpmtml6te2l07s\"},{\"cronJobRun\":{\"id\":\"crr-1odjlambsqrki7jd4iqc\",\"status\":\"successful\",\"startedAt\":\"2026-10-15T01:22:42Z\",\"finishedAt\":\"2026-10-15T01:22:48Z\"},\"cursor\":\"crr-1odjlambsqrki7jd4iqc\"},{\"cronJobRun\":{\"id\":\"crr-h7u0uldmiem4an0djkm9\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-15T01:30:53Z\",\"finishedAt\":\"2026-10-15T01:30:57Z\"},\"cursor\":\"crr-h7u0uldmiem4an0djkm9\"},{\"cronJobRun\":{\"id\":\"crr-nbs4qpqj36199ms2afbd\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-15T01:29:46Z\",\"finishedAt\":\"2026-10-15T01:29:53Z\"},\"cursor\":\"crr-nbs4qpqj36199ms2afbd\"},{\"cronJobRun\":{\"id\":\"crr-9imjc7vqj35ai2tftliq\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-15T01:29:28Z\",\"finishedAt\":\"2026-10-15T01:29:33Z\"},\"cursor\":\"crr-9imjc7vqj35ai2tftliq\"},{\"cronJobRun\":{\"id\":\"crr-gsg7efk76jnmlpv239vb\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-15T01:29:10Z\",\"finishedAt\":\"2026-10-15T01:29:15Z\"},\"cursor\":\"crr-gsg7efk76jnmlpv239vb\"},{\"cronJobRun\":{\"id\":\"crr-7984qlcglpjb35k3hg18\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-15T01:28:51Z\",\"finishedAt\":\"2026-10-15T01:28:57Z\"},\"cursor\":\"crr-7984qlcglpjb35k3hg18\"},{\"cronJobRun\":{\"id\":\"crr-1nfahho6ldh3l9sgs174\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-15T01:28:28Z\",\"finishedAt\":\"2026-10-15T01:28:34Z\"},\"cursor\":\"crr-1nfahho6ldh3l9sgs174\"},{\"cronJobRun\":{\"id\":\"crr-rirrkoa425m6rijfo38j\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-15T01:28:02Z\",\"finishedAt\":\"2026-10-15T01:28:07Z\"},\"cursor\":\"crr-rirrkoa425m6rijfo38j\"},{\"cronJobRun\":{\"id\":\"crr-3d9365cf4b1s6aob0nd0\",\"status\":\"unsuccessful\",\"startedAt\":\"2026-10-15T01:27:41Z\",\"finishedAt\":\"2026-10-15T01:27:47Z\"},\"cursor\":\"crr-3d9365cf4b1s6aob0nd0\"}]\n",
+    "stage": "recovery12",
+    "label": "REST complete history",
+    "api_only": true
+  },
+  {
+    "at": "2026-10-15T01:35:24.345535+00:00",
+    "stage": "recovery12",
+    "label": "GraphQL history and success timestamp",
+    "api_only": true,
+    "request": {
+      "method": "POST",
+      "path": "/graphql",
+      "body": {
+        "query": "query QA254($id:String!){cronJobRuns(serviceId:$id,limit:100){id status startedAt finishedAt} service(id:$id){id lastSuccessfulRunAt}}",
+        "variables": {
+          "id": "srv-db82j3haomdc7381k8bg"
+        }
+      },
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "status": "200",
+    "curl_exit": 0,
+    "elapsed": 0.766,
+    "response": "{\"data\":{\"cronJobRuns\":[{\"finishedAt\":\"2026-10-15T01:34:58Z\",\"id\":\"crr-mjl9o3tpmtml6te2l07s\",\"startedAt\":\"2026-10-15T01:34:54Z\",\"status\":\"successful\"},{\"finishedAt\":\"2026-10-15T01:22:48Z\",\"id\":\"crr-1odjlambsqrki7jd4iqc\",\"startedAt\":\"2026-10-15T01:22:42Z\",\"status\":\"successful\"},{\"finishedAt\":\"2026-10-15T01:30:57Z\",\"id\":\"crr-h7u0uldmiem4an0djkm9\",\"startedAt\":\"2026-10-15T01:30:53Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:29:53Z\",\"id\":\"crr-nbs4qpqj36199ms2afbd\",\"startedAt\":\"2026-10-15T01:29:46Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:29:33Z\",\"id\":\"crr-9imjc7vqj35ai2tftliq\",\"startedAt\":\"2026-10-15T01:29:28Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:29:15Z\",\"id\":\"crr-gsg7efk76jnmlpv239vb\",\"startedAt\":\"2026-10-15T01:29:10Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:28:57Z\",\"id\":\"crr-7984qlcglpjb35k3hg18\",\"startedAt\":\"2026-10-15T01:28:51Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:28:34Z\",\"id\":\"crr-1nfahho6ldh3l9sgs174\",\"startedAt\":\"2026-10-15T01:28:28Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:28:07Z\",\"id\":\"crr-rirrkoa425m6rijfo38j\",\"startedAt\":\"2026-10-15T01:28:02Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:27:47Z\",\"id\":\"crr-3d9365cf4b1s6aob0nd0\",\"startedAt\":\"2026-10-15T01:27:41Z\",\"status\":\"unsuccessful\"}],\"service\":{\"id\":\"srv-db82j3haomdc7381k8bg\",\"lastSuccessfulRunAt\":\"2026-10-15T01:34:58Z\"}}}\n",
+    "stderr": ""
+  },
+  {
+    "at": "2026-10-15T01:35:24.793043+00:00",
+    "stage": "recovery12",
+    "label": "MCP same-workspace complete history",
+    "api_only": true,
+    "request": {
+      "method": "POST",
+      "path": "/mcp",
+      "body": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+          "name": "list_cron_job_runs",
+          "arguments": {
+            "workspaceId": "tea-daif693dqjvc73e7as3g",
+            "serviceId": "srv-db82j3haomdc7381k8bg",
+            "limit": 100
+          }
+        }
+      },
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "status": "200",
+    "curl_exit": 0,
+    "elapsed": 0.435,
+    "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"cronJobRuns\\\":[{\\\"finishedAt\\\":\\\"2026-10-15T01:34:58Z\\\",\\\"id\\\":\\\"crr-mjl9o3tpmtml6te2l07s\\\",\\\"startedAt\\\":\\\"2026-10-15T01:34:54Z\\\",\\\"status\\\":\\\"successful\\\"},{\\\"finishedAt\\\":\\\"2026-10-15T01:22:48Z\\\",\\\"id\\\":\\\"crr-1odjlambsqrki7jd4iqc\\\",\\\"startedAt\\\":\\\"2026-10-15T01:22:42Z\\\",\\\"status\\\":\\\"successful\\\"},{\\\"finishedAt\\\":\\\"2026-10-15T01:30:57Z\\\",\\\"id\\\":\\\"crr-h7u0uldmiem4an0djkm9\\\",\\\"startedAt\\\":\\\"2026-10-15T01:30:53Z\\\",\\\"status\\\":\\\"unsuccessful\\\"},{\\\"finishedAt\\\":\\\"2026-10-15T01:29:53Z\\\",\\\"id\\\":\\\"crr-nbs4qpqj36199ms2afbd\\\",\\\"startedAt\\\":\\\"2026-10-15T01:29:46Z\\\",\\\"status\\\":\\\"unsuccessful\\\"},{\\\"finishedAt\\\":\\\"2026-10-15T01:29:33Z\\\",\\\"id\\\":\\\"crr-9imjc7vqj35ai2tftliq\\\",\\\"startedAt\\\":\\\"2026-10-15T01:29:28Z\\\",\\\"status\\\":\\\"unsuccessful\\\"},{\\\"finishedAt\\\":\\\"2026-10-15T01:29:15Z\\\",\\\"id\\\":\\\"crr-gsg7efk76jnmlpv239vb\\\",\\\"startedAt\\\":\\\"2026-10-15T01:29:10Z\\\",\\\"status\\\":\\\"unsuccessful\\\"},{\\\"finishedAt\\\":\\\"2026-10-15T01:28:57Z\\\",\\\"id\\\":\\\"crr-7984qlcglpjb35k3hg18\\\",\\\"startedAt\\\":\\\"2026-10-15T01:28:51Z\\\",\\\"status\\\":\\\"unsuccessful\\\"},{\\\"finishedAt\\\":\\\"2026-10-15T01:28:34Z\\\",\\\"id\\\":\\\"crr-1nfahho6ldh3l9sgs174\\\",\\\"startedAt\\\":\\\"2026-10-15T01:28:28Z\\\",\\\"status\\\":\\\"unsuccessful\\\"},{\\\"finishedAt\\\":\\\"2026-10-15T01:28:07Z\\\",\\\"id\\\":\\\"crr-rirrkoa425m6rijfo38j\\\",\\\"startedAt\\\":\\\"2026-10-15T01:28:02Z\\\",\\\"status\\\":\\\"unsuccessful\\\"},{\\\"finishedAt\\\":\\\"2026-10-15T01:27:47Z\\\",\\\"id\\\":\\\"crr-3d9365cf4b1s6aob0nd0\\\",\\\"startedAt\\\":\\\"2026-10-15T01:27:41Z\\\",\\\"status\\\":\\\"unsuccessful\\\"}],\\\"cursor\\\":\\\"crr-3d9365cf4b1s6aob0nd0\\\"}\"}],\"structuredContent\":{\"cronJobRuns\":[{\"finishedAt\":\"2026-10-15T01:34:58Z\",\"id\":\"crr-mjl9o3tpmtml6te2l07s\",\"startedAt\":\"2026-10-15T01:34:54Z\",\"status\":\"successful\"},{\"finishedAt\":\"2026-10-15T01:22:48Z\",\"id\":\"crr-1odjlambsqrki7jd4iqc\",\"startedAt\":\"2026-10-15T01:22:42Z\",\"status\":\"successful\"},{\"finishedAt\":\"2026-10-15T01:30:57Z\",\"id\":\"crr-h7u0uldmiem4an0djkm9\",\"startedAt\":\"2026-10-15T01:30:53Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:29:53Z\",\"id\":\"crr-nbs4qpqj36199ms2afbd\",\"startedAt\":\"2026-10-15T01:29:46Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:29:33Z\",\"id\":\"crr-9imjc7vqj35ai2tftliq\",\"startedAt\":\"2026-10-15T01:29:28Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:29:15Z\",\"id\":\"crr-gsg7efk76jnmlpv239vb\",\"startedAt\":\"2026-10-15T01:29:10Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:28:57Z\",\"id\":\"crr-7984qlcglpjb35k3hg18\",\"startedAt\":\"2026-10-15T01:28:51Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:28:34Z\",\"id\":\"crr-1nfahho6ldh3l9sgs174\",\"startedAt\":\"2026-10-15T01:28:28Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:28:07Z\",\"id\":\"crr-rirrkoa425m6rijfo38j\",\"startedAt\":\"2026-10-15T01:28:02Z\",\"status\":\"unsuccessful\"},{\"finishedAt\":\"2026-10-15T01:27:47Z\",\"id\":\"crr-3d9365cf4b1s6aob0nd0\",\"startedAt\":\"2026-10-15T01:27:41Z\",\"status\":\"unsuccessful\"}],\"cursor\":\"crr-3d9365cf4b1s6aob0nd0\"}}}\n\n",
+    "stderr": ""
+  },
+  {
+    "summary": {
+      "stage": "recovery12",
+      "at": "2026-10-15T01:35:24.793627+00:00",
+      "recorded_run_count": 12,
+      "all_three_adapters_agree": true,
+      "actual_ids": [
+        "crr-mjl9o3tpmtml6te2l07s",
+        "crr-1odjlambsqrki7jd4iqc",
+        "crr-h7u0uldmiem4an0djkm9",
+        "crr-nbs4qpqj36199ms2afbd",
+        "crr-9imjc7vqj35ai2tftliq",
+        "crr-gsg7efk76jnmlpv239vb",
+        "crr-7984qlcglpjb35k3hg18",
+        "crr-1nfahho6ldh3l9sgs174",
+        "crr-rirrkoa425m6rijfo38j",
+        "crr-3d9365cf4b1s6aob0nd0"
+      ],
+      "expected_newest_ids": [
+        "crr-mjl9o3tpmtml6te2l07s",
+        "crr-h7u0uldmiem4an0djkm9",
+        "crr-nbs4qpqj36199ms2afbd",
+        "crr-9imjc7vqj35ai2tftliq",
+        "crr-gsg7efk76jnmlpv239vb",
+        "crr-7984qlcglpjb35k3hg18",
+        "crr-1nfahho6ldh3l9sgs174",
+        "crr-rirrkoa425m6rijfo38j",
+        "crr-3d9365cf4b1s6aob0nd0",
+        "crr-9itfhsbujioeadegd9i2"
+      ],
+      "exact_newest_order": false,
+      "lastSuccessfulRunAt": "2026-10-15T01:34:58Z",
+      "deployed_revision": "unknown"
+    }
+  }
+]

@@ -1,0 +1,60 @@
+from pathlib import Path
+import datetime,json,os,secrets,shlex,shutil,subprocess,sys,time,yaml
+os.umask(0o077)
+p=Path(__file__).parent;root=Path('/Volumes/nvme4tbfish/projects/bex8');cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json';c=json.loads(cp.read_text())
+assert c.get('sync261_result')==0 and not c.get('active_sync_stash')
+mode,client=sys.argv[1:3];assert client in ('bex','render');ws='tea-daif693dqjvc73e7as3g'
+base={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']}
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():
+ c['last_updated']=now();cp.write_text(json.dumps(c,indent=2,ensure_ascii=False)+'\n');cp.chmod(0o600)
+def cli(args,bound=45):
+ cfg=p/'render-config/cli.yaml'
+ try:
+  if client=='render':assert not cfg.exists();shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  runner=['python3',str(p/'run-render.py')] if client=='render' else ['python3',str(p/'run.py'),'--release']
+  return json.loads(subprocess.check_output([*runner,'--bound='+str(bound),*args],text=True,timeout=bound+15))
+ finally:
+  if client=='render':cfg.unlink(missing_ok=True)
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True,timeout=45))
+def api(path,body=None,method='POST'):
+ cfg=yaml.safe_load((p/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token
+ ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')';auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+ws+'"\n';f=p/'sweep261-request.json'
+ args=['curl','--disable','-sS','--max-time','25','--config','-','-X',method,'-H','Content-Type: application/json','-w','\n%{http_code}']
+ if body is not None:f.write_text(json.dumps(body));f.chmod(0o600);args+=['--data-binary','@'+str(f)]
+ start=time.monotonic()
+ try:r=subprocess.run([*args,'https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=30)
+ finally:f.unlink(missing_ok=True)
+ text,_,status=r.stdout.rpartition('\n');record={'at':now(),'api_only':True,'request':{'method':method,'path':path,'body':body,'workspace':ws,'user_agent':ua,'authorization':'REDACTED'},'status':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-start,3),'response':text,'stderr':r.stderr};assert token not in json.dumps(record);return record
+def inventory():
+ r=api('/graphql',{'query':'query QA261($owner:String!){envGroups(ownerId:$owner){id name ownerId}}','variables':{'owner':ws}});assert r['status']=='200';v=json.loads(r['response']);assert not v.get('errors');return r,v['data']['envGroups']
+def own(x):
+ assert x['sweep']==261 and x['workspace']==ws and x['id']==x['create_response']['id'] and x['create_result']['status']=='201' and x['id'] not in x['pre_create_group_ids'] and x['dependency_ids']==[] and not x['state'].startswith('deleted:')
+def readgroup(x):
+ r=wire('/v1/env-groups/'+x['id']);assert r['status']=='200';v=json.loads(r['response']);assert v['id']==x['id'] and v['name']==x['name'] and v['ownerId']==ws and not v.get('envVars') and not v.get('secretFiles') and not v.get('serviceLinks') and not v.get('environmentId');return r,v
+if mode=='create':
+ assert client=='bex' and not any(v.get('sweep')==261 for v in c['resources'])
+ inv,groups=inventory();ids={v['id'] for v in groups};nonce=secrets.token_hex(3);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-envgroup';assert name not in {v['name'] for v in groups}
+ q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';services=cli(['services','--confirm','-o','json']);assert services['exit']==0;serviceids={v.get('service',v)['id'] for v in json.loads(services['stdout']) or []};assert base<=serviceids;projects=wire('/v1/projects?ownerId='+ws);assert projects['status']=='200'
+ body={'name':name,'ownerId':ws,'envVars':[],'secretFiles':[],'serviceIds':[]};x={'sweep':261,'workspace':ws,'type':'envgroup','name':name,'nonce':nonce,'time':now(),'source_head':c['head'],'dependency_ids':[],'capacity_proof':q,'pre_create_group_inventory':inv,'pre_create_group_ids':sorted(ids),'pre_create_services':services,'pre_create_projects':projects,'create_intent':body,'state':'API-only empty env-group create intent persisted'};c['resources'].append(x);save();r=api('/v1/env-groups',body);x['create_result']=r;x['state']='create returned; reconcile before retry';save();assert r['status']=='201' and r['curl_exit']==0;v=json.loads(r['response']);assert v['id'] not in ids and v['name']==name and v['ownerId']==ws;x.update(id=v['id'],create_response=v,state='created: owned empty/unlinked environment group');save();r,v=readgroup(x);x['initial_detail']=r;save();print(json.dumps({'id':x['id'],'HTTP':'201','empty_unlinked':True}),flush=True);raise SystemExit(0)
+x=next(v for v in c['resources'] if v.get('sweep')==261);own(x)
+if mode=='cases':
+ assert 'sweep261_094' not in c;cases=[];name=x['name'];absent='qa-'+x['nonce']+'-absent';interior='qa '+x['nonce']+'  interior'
+ variants=[('exact',name,True,'update',name),('leading','  '+name,True,'update',name),('trailing',name+'  ',True,'update',name),('Unicode','\u00a0'+name+'\u2003',True,'update',name),('absent','  '+absent+'  ',True,'create',absent),('interior',interior,True,'create',interior),('blank','   ',False,None,None),('duplicate','  '+name,False,None,None)]
+ for layout in ('root','ungrouped','environment'):
+  for label,declared,valid,operation,canonical in variants:
+   groups=[{'name':declared,'envVars':[]}]
+   if label=='duplicate':groups.append({'name':name,'envVars':[]})
+   if layout=='root':document={'envVarGroups':groups};source='#/envVarGroups/0'
+   elif layout=='ungrouped':document={'ungrouped':{'envVarGroups':groups}};source='#/ungrouped/envVarGroups/0'
+   else:document={'projects':[{'name':'qa-'+x['nonce']+'-plan-project','environments':[{'name':'qa-'+x['nonce']+'-plan-env','envVarGroups':groups}]}]};source='#/projects/0/environments/0/envVarGroups/0'
+   file=p/('sweep261-'+layout+'-'+label+'.yaml');assert not file.exists();file.write_text(json.dumps(document,indent=2,ensure_ascii=False)+'\n');file.chmod(0o600);cases.append({'case':label,'layout':layout,'document':document,'fixture':str(file),'expected_valid':valid,'expected_operation':operation,'expected_name':canonical,'expected_id':x['id'] if operation=='update' else None,'expected_source_path':source})
+ c['sweep261_094']={'group_id':x['id'],'cases':cases,'native_captures':[]};save();print('Prepared24 cases: existing/padded, absent/interior, blank/duplicate across three layouts.')
+elif mode=='read':
+ r,v=readgroup(x);same=v==json.loads(x['initial_detail']['response']);x.setdefault('readbacks',[]).append({'at':now(),'result':r,'exact_initial_detail_unchanged':same});save();print(json.dumps({'owned_empty_group_unchanged':same}),flush=True)
+elif mode=='delete':
+ assert 'delete_result' not in x;r,v=readgroup(x);assert v==json.loads(x['initial_detail']['response']);x['pre_delete_detail']=r;x['state']='exact-owned empty/unlinked group delete intent persisted';save();x['delete_result']=api('/v1/env-groups/'+x['id'],None,'DELETE');save();print(json.dumps({'delete_HTTP':x['delete_result']['status']}),flush=True)
+elif mode=='reconcile':
+ assert x['delete_result']['status']=='204';detail=wire('/v1/env-groups/'+x['id']);inv,groups=inventory();ids={v['id'] for v in groups};assert set(x['pre_create_group_ids'])<=ids;projects=wire('/v1/projects?ownerId='+ws);assert projects['status']=='200';unchanged_projects=json.loads(projects['response'])==json.loads(x['pre_create_projects']['response']);assert unchanged_projects
+ services=cli(['services','--confirm','-o','json']);assert services['exit']==0;serviceids={v.get('service',v)['id'] for v in json.loads(services['stdout']) or []};assert base<=serviceids;q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';done=detail['status']=='404' and x['id'] not in ids and json.loads(q['response'])==json.loads(x['capacity_proof']['response']);x['cleanup_reconciliation']={'at':now(),'detail':detail,'group_metadata_inventory':inv,'projects':projects,'projects_unchanged':unchanged_projects,'service_ids':sorted(serviceids),'quota':q};x['state']='deleted: API204/detail404/groupabsent/baseline groups+services preserved/projects+quota unchanged' if done else 'delete acknowledged: bounded reconciliation pending';save();print(json.dumps({'cleanup_complete':done,'detail':detail['status'],'group_ids':sorted(ids),'projects_unchanged':unchanged_projects}),flush=True)
+else:raise ValueError(mode)

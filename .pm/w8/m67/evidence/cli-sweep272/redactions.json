@@ -1,0 +1,7 @@
+{
+  "fault_cases": "synthetic resource/workspace IDs and token only; all requests target owned loopback servers",
+  "Authorization": "replaced with <SYNTHETIC_FIXTURE_TOKEN> in captured headers",
+  "known_QA_values": "masked if present in inventory/context",
+  "temporary_directory": "<owned-temp>",
+  "processes": "all native children, HTTP servers, handler threads and copied configs reaped/removed; local upstream source/binaries retained without credentials"
+}

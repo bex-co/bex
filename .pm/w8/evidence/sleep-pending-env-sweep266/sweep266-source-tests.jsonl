@@ -1,0 +1,12 @@
+{"Time":"2026-10-14T20:43:20.398699-07:00","Action":"start","Package":"github.com/bex-co/bex/lego/operator/internal/controller"}
+{"Time":"2026-10-14T20:43:21.142034-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestSettleConfigSnapshotRevertsToServedRelease"}
+{"Time":"2026-10-14T20:43:21.142133-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestSettleConfigSnapshotRevertsToServedRelease","Output":"=== RUN   TestSettleConfigSnapshotRevertsToServedRelease\n"}
+{"Time":"2026-10-14T20:43:21.18318-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestSettleConfigSnapshotRevertsToServedRelease","Output":"--- PASS: TestSettleConfigSnapshotRevertsToServedRelease (0.04s)\n"}
+{"Time":"2026-10-14T20:43:21.183215-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestSettleConfigSnapshotRevertsToServedRelease","Elapsed":0.04}
+{"Time":"2026-10-14T20:43:21.183553-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestDeployWhileAsleepGoesLiveWithoutARequest"}
+{"Time":"2026-10-14T20:43:21.183557-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestDeployWhileAsleepGoesLiveWithoutARequest","Output":"=== RUN   TestDeployWhileAsleepGoesLiveWithoutARequest\n"}
+{"Time":"2026-10-14T20:43:21.237931-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestDeployWhileAsleepGoesLiveWithoutARequest","Output":"--- PASS: TestDeployWhileAsleepGoesLiveWithoutARequest (0.05s)\n"}
+{"Time":"2026-10-14T20:43:21.237947-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestDeployWhileAsleepGoesLiveWithoutARequest","Elapsed":0.05}
+{"Time":"2026-10-14T20:43:21.237951-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Output":"PASS\n"}
+{"Time":"2026-10-14T20:43:21.240031-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Output":"ok  \tgithub.com/bex-co/bex/lego/operator/internal/controller\t0.840s\n"}
+{"Time":"2026-10-14T20:43:21.240061-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Elapsed":0.841}

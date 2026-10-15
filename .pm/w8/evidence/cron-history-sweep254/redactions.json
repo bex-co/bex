@@ -1,0 +1,7 @@
+{
+  "QA_email_password_owned_config_credentials": "masked if present; no raw credentials published",
+  "owned_temp_path": "<owned-temp>",
+  "native_service_list": "other resource objects omitted from retained stdout; baseline IDs retained, full original output private",
+  "harmless_values": "own MESSAGE nonce and configured command strings retained",
+  "wire": "credential header represented by REDACTED; request method/path/body, status and non-secret response types retained"
+}

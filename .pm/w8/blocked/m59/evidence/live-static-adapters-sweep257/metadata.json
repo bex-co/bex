@@ -1,0 +1,37 @@
+{
+  "sweep": 257,
+  "date_UTC": "2026-10-15T02:34:07.432515+00:00",
+  "source_head": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+  "deployed_revision": "unknown",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "Bex_release": "v0.3.2",
+  "Bex_sha256": "585a5456678ce3bc73d5a71117b901d08add1fab230464d3b5b228101a55c34c",
+  "Render_release": "2.27.0",
+  "Render_commit": "a764810a768202704e7206eb7b87a47211fcd98e",
+  "new_findings": 0,
+  "existing_work": "w8/m59 partial t003 acceptance; dashboard and t005 remain",
+  "API_only_clears": 2,
+  "native_waited_subsequent_deploys": 2,
+  "owned_services_deleted": 2,
+  "enumerated_deploy_children": 6,
+  "quota": {
+    "services": {
+      "used": 6,
+      "terminating": 0,
+      "limit": 25
+    },
+    "postgres": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    },
+    "keyValues": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    }
+  },
+  "native_wire_interception": false,
+  "product_code_changes": false,
+  "commit_push": false
+}

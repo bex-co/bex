@@ -1,0 +1,124 @@
+{"Time":"2026-10-14T21:56:44.539942-07:00","Action":"start","Package":"github.com/render-oss/cli/pkg/logs"}
+{"Time":"2026-10-14T21:56:44.903853-07:00","Action":"run","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsResume"}
+{"Time":"2026-10-14T21:56:44.904251-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsResume","Output":"=== RUN   TestTailLogsResume\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:45.916693-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsResume","Output":"--- PASS: TestTailLogsResume (1.01s)\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:45.916753-07:00","Action":"pass","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsResume","Elapsed":1.01}
+{"Time":"2026-10-14T21:56:45.917658-07:00","Action":"run","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsReconnectBeforeFirstLogArrives"}
+{"Time":"2026-10-14T21:56:45.917669-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsReconnectBeforeFirstLogArrives","Output":"=== RUN   TestTailLogsReconnectBeforeFirstLogArrives\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:45.917679-07:00","Action":"run","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsReconnectBeforeFirstLogArrives/default_start"}
+{"Time":"2026-10-14T21:56:45.917687-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsReconnectBeforeFirstLogArrives/default_start","Output":"=== RUN   TestTailLogsReconnectBeforeFirstLogArrives/default_start\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:45.917699-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsReconnectBeforeFirstLogArrives/default_start","Output":"=== PAUSE TestTailLogsReconnectBeforeFirstLogArrives/default_start\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:45.917703-07:00","Action":"pause","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsReconnectBeforeFirstLogArrives/default_start"}
+{"Time":"2026-10-14T21:56:45.917707-07:00","Action":"run","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsReconnectBeforeFirstLogArrives/explicit_start"}
+{"Time":"2026-10-14T21:56:45.917711-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsReconnectBeforeFirstLogArrives/explicit_start","Output":"=== RUN   TestTailLogsReconnectBeforeFirstLogArrives/explicit_start\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:45.917714-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsReconnectBeforeFirstLogArrives/explicit_start","Output":"=== PAUSE TestTailLogsReconnectBeforeFirstLogArrives/explicit_start\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:45.917718-07:00","Action":"pause","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsReconnectBeforeFirstLogArrives/explicit_start"}
+{"Time":"2026-10-14T21:56:45.917721-07:00","Action":"cont","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsReconnectBeforeFirstLogArrives/default_start"}
+{"Time":"2026-10-14T21:56:45.917724-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsReconnectBeforeFirstLogArrives/default_start","Output":"=== CONT  TestTailLogsReconnectBeforeFirstLogArrives/default_start\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:45.917727-07:00","Action":"cont","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsReconnectBeforeFirstLogArrives/explicit_start"}
+{"Time":"2026-10-14T21:56:45.917731-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsReconnectBeforeFirstLogArrives/explicit_start","Output":"=== CONT  TestTailLogsReconnectBeforeFirstLogArrives/explicit_start\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.921858-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsReconnectBeforeFirstLogArrives/explicit_start","Output":"--- PASS: TestTailLogsReconnectBeforeFirstLogArrives/explicit_start (3.00s)\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.921956-07:00","Action":"pass","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsReconnectBeforeFirstLogArrives/explicit_start","Elapsed":3}
+{"Time":"2026-10-14T21:56:48.92198-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsReconnectBeforeFirstLogArrives/default_start","Output":"--- PASS: TestTailLogsReconnectBeforeFirstLogArrives/default_start (3.01s)\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.921994-07:00","Action":"pass","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsReconnectBeforeFirstLogArrives/default_start","Elapsed":3.01}
+{"Time":"2026-10-14T21:56:48.922003-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsReconnectBeforeFirstLogArrives","Output":"--- PASS: TestTailLogsReconnectBeforeFirstLogArrives (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922031-07:00","Action":"pass","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsReconnectBeforeFirstLogArrives","Elapsed":0}
+{"Time":"2026-10-14T21:56:48.922042-07:00","Action":"run","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures"}
+{"Time":"2026-10-14T21:56:48.922054-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures","Output":"=== RUN   TestTailLogsFailures\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922064-07:00","Action":"run","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/normal_closure"}
+{"Time":"2026-10-14T21:56:48.922075-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/normal_closure","Output":"=== RUN   TestTailLogsFailures/normal_closure\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922088-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/normal_closure","Output":"=== PAUSE TestTailLogsFailures/normal_closure\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922096-07:00","Action":"pause","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/normal_closure"}
+{"Time":"2026-10-14T21:56:48.922104-07:00","Action":"run","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/going_away"}
+{"Time":"2026-10-14T21:56:48.922111-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/going_away","Output":"=== RUN   TestTailLogsFailures/going_away\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922131-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/going_away","Output":"=== PAUSE TestTailLogsFailures/going_away\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922138-07:00","Action":"pause","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/going_away"}
+{"Time":"2026-10-14T21:56:48.922157-07:00","Action":"run","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/server_restart"}
+{"Time":"2026-10-14T21:56:48.922165-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/server_restart","Output":"=== RUN   TestTailLogsFailures/server_restart\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922175-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/server_restart","Output":"=== PAUSE TestTailLogsFailures/server_restart\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922182-07:00","Action":"pause","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/server_restart"}
+{"Time":"2026-10-14T21:56:48.922189-07:00","Action":"run","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/rate_limit"}
+{"Time":"2026-10-14T21:56:48.922196-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/rate_limit","Output":"=== RUN   TestTailLogsFailures/rate_limit\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922212-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/rate_limit","Output":"=== PAUSE TestTailLogsFailures/rate_limit\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.92222-07:00","Action":"pause","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/rate_limit"}
+{"Time":"2026-10-14T21:56:48.922227-07:00","Action":"run","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/unavailable"}
+{"Time":"2026-10-14T21:56:48.922238-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/unavailable","Output":"=== RUN   TestTailLogsFailures/unavailable\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922247-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/unavailable","Output":"=== PAUSE TestTailLogsFailures/unavailable\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922255-07:00","Action":"pause","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/unavailable"}
+{"Time":"2026-10-14T21:56:48.922262-07:00","Action":"run","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/unauthorized"}
+{"Time":"2026-10-14T21:56:48.922268-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/unauthorized","Output":"=== RUN   TestTailLogsFailures/unauthorized\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922276-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/unauthorized","Output":"=== PAUSE TestTailLogsFailures/unauthorized\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922283-07:00","Action":"pause","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/unauthorized"}
+{"Time":"2026-10-14T21:56:48.922291-07:00","Action":"run","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/forbidden"}
+{"Time":"2026-10-14T21:56:48.922303-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/forbidden","Output":"=== RUN   TestTailLogsFailures/forbidden\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.92232-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/forbidden","Output":"=== PAUSE TestTailLogsFailures/forbidden\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922333-07:00","Action":"pause","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/forbidden"}
+{"Time":"2026-10-14T21:56:48.922341-07:00","Action":"run","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/invalid_handshake"}
+{"Time":"2026-10-14T21:56:48.922348-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/invalid_handshake","Output":"=== RUN   TestTailLogsFailures/invalid_handshake\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922357-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/invalid_handshake","Output":"=== PAUSE TestTailLogsFailures/invalid_handshake\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922364-07:00","Action":"pause","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/invalid_handshake"}
+{"Time":"2026-10-14T21:56:48.922371-07:00","Action":"run","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/policy_violation"}
+{"Time":"2026-10-14T21:56:48.922377-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/policy_violation","Output":"=== RUN   TestTailLogsFailures/policy_violation\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922393-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/policy_violation","Output":"=== PAUSE TestTailLogsFailures/policy_violation\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922409-07:00","Action":"pause","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/policy_violation"}
+{"Time":"2026-10-14T21:56:48.922416-07:00","Action":"run","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/malformed_JSON"}
+{"Time":"2026-10-14T21:56:48.922423-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/malformed_JSON","Output":"=== RUN   TestTailLogsFailures/malformed_JSON\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922431-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/malformed_JSON","Output":"=== PAUSE TestTailLogsFailures/malformed_JSON\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922438-07:00","Action":"pause","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/malformed_JSON"}
+{"Time":"2026-10-14T21:56:48.922446-07:00","Action":"run","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/missing_log_fields_are_accepted"}
+{"Time":"2026-10-14T21:56:48.922467-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/missing_log_fields_are_accepted","Output":"=== RUN   TestTailLogsFailures/missing_log_fields_are_accepted\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922483-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/missing_log_fields_are_accepted","Output":"=== PAUSE TestTailLogsFailures/missing_log_fields_are_accepted\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922495-07:00","Action":"pause","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/missing_log_fields_are_accepted"}
+{"Time":"2026-10-14T21:56:48.922506-07:00","Action":"cont","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/normal_closure"}
+{"Time":"2026-10-14T21:56:48.922517-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/normal_closure","Output":"=== CONT  TestTailLogsFailures/normal_closure\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922529-07:00","Action":"cont","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/forbidden"}
+{"Time":"2026-10-14T21:56:48.92254-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/forbidden","Output":"=== CONT  TestTailLogsFailures/forbidden\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922552-07:00","Action":"cont","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/rate_limit"}
+{"Time":"2026-10-14T21:56:48.922564-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/rate_limit","Output":"=== CONT  TestTailLogsFailures/rate_limit\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922576-07:00","Action":"cont","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/malformed_JSON"}
+{"Time":"2026-10-14T21:56:48.922587-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/malformed_JSON","Output":"=== CONT  TestTailLogsFailures/malformed_JSON\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922599-07:00","Action":"cont","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/policy_violation"}
+{"Time":"2026-10-14T21:56:48.922606-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/policy_violation","Output":"=== CONT  TestTailLogsFailures/policy_violation\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922618-07:00","Action":"cont","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/missing_log_fields_are_accepted"}
+{"Time":"2026-10-14T21:56:48.922626-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/missing_log_fields_are_accepted","Output":"=== CONT  TestTailLogsFailures/missing_log_fields_are_accepted\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922646-07:00","Action":"cont","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/invalid_handshake"}
+{"Time":"2026-10-14T21:56:48.922654-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/invalid_handshake","Output":"=== CONT  TestTailLogsFailures/invalid_handshake\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922665-07:00","Action":"cont","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/unauthorized"}
+{"Time":"2026-10-14T21:56:48.922674-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/unauthorized","Output":"=== CONT  TestTailLogsFailures/unauthorized\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.922951-07:00","Action":"cont","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/server_restart"}
+{"Time":"2026-10-14T21:56:48.922994-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/server_restart","Output":"=== CONT  TestTailLogsFailures/server_restart\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.923009-07:00","Action":"cont","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/unavailable"}
+{"Time":"2026-10-14T21:56:48.923018-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/unavailable","Output":"=== CONT  TestTailLogsFailures/unavailable\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.923222-07:00","Action":"cont","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/going_away"}
+{"Time":"2026-10-14T21:56:48.92324-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/going_away","Output":"=== CONT  TestTailLogsFailures/going_away\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.924942-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/policy_violation","Output":"--- PASS: TestTailLogsFailures/policy_violation (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.925079-07:00","Action":"pass","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/policy_violation","Elapsed":0}
+{"Time":"2026-10-14T21:56:48.925131-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/forbidden","Output":"--- PASS: TestTailLogsFailures/forbidden (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.92516-07:00","Action":"pass","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/forbidden","Elapsed":0}
+{"Time":"2026-10-14T21:56:48.92517-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/unauthorized","Output":"--- PASS: TestTailLogsFailures/unauthorized (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.925183-07:00","Action":"pass","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/unauthorized","Elapsed":0}
+{"Time":"2026-10-14T21:56:48.925192-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/invalid_handshake","Output":"--- PASS: TestTailLogsFailures/invalid_handshake (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:48.925201-07:00","Action":"pass","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/invalid_handshake","Elapsed":0}
+{"Time":"2026-10-14T21:56:48.925208-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/malformed_JSON","Output":"--- PASS: TestTailLogsFailures/malformed_JSON (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:49.927757-07:00","Action":"pass","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/malformed_JSON","Elapsed":0}
+{"Time":"2026-10-14T21:56:49.927826-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/going_away","Output":"--- PASS: TestTailLogsFailures/going_away (1.00s)\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:49.927875-07:00","Action":"pass","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/going_away","Elapsed":1}
+{"Time":"2026-10-14T21:56:49.927892-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/unavailable","Output":"--- PASS: TestTailLogsFailures/unavailable (1.00s)\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:49.927908-07:00","Action":"pass","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/unavailable","Elapsed":1}
+{"Time":"2026-10-14T21:56:49.927947-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/missing_log_fields_are_accepted","Output":"--- PASS: TestTailLogsFailures/missing_log_fields_are_accepted (1.01s)\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:49.928167-07:00","Action":"pass","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/missing_log_fields_are_accepted","Elapsed":1.01}
+{"Time":"2026-10-14T21:56:49.928261-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/rate_limit","Output":"--- PASS: TestTailLogsFailures/rate_limit (1.01s)\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:49.928296-07:00","Action":"pass","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/rate_limit","Elapsed":1.01}
+{"Time":"2026-10-14T21:56:49.928312-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/server_restart","Output":"--- PASS: TestTailLogsFailures/server_restart (1.01s)\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:49.928831-07:00","Action":"pass","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/server_restart","Elapsed":1.01}
+{"Time":"2026-10-14T21:56:49.92887-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/normal_closure","Output":"--- PASS: TestTailLogsFailures/normal_closure (1.01s)\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:49.928907-07:00","Action":"pass","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures/normal_closure","Elapsed":1.01}
+{"Time":"2026-10-14T21:56:49.928922-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures","Output":"--- PASS: TestTailLogsFailures (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:49.928935-07:00","Action":"pass","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsFailures","Elapsed":0}
+{"Time":"2026-10-14T21:56:49.928952-07:00","Action":"run","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsCancellation"}
+{"Time":"2026-10-14T21:56:49.928965-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsCancellation","Output":"=== RUN   TestTailLogsCancellation\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:49.92973-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsCancellation","Output":"--- PASS: TestTailLogsCancellation (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:49.929773-07:00","Action":"pass","Package":"github.com/render-oss/cli/pkg/logs","Test":"TestTailLogsCancellation","Elapsed":0}
+{"Time":"2026-10-14T21:56:49.929799-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Output":"PASS\n","OutputType":"frame"}
+{"Time":"2026-10-14T21:56:49.932572-07:00","Action":"output","Package":"github.com/render-oss/cli/pkg/logs","Output":"ok  \tgithub.com/render-oss/cli/pkg/logs\t5.392s\n"}
+{"Time":"2026-10-14T21:56:49.932618-07:00","Action":"pass","Package":"github.com/render-oss/cli/pkg/logs","Elapsed":5.393}

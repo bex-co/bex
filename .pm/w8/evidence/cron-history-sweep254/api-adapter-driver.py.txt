@@ -1,0 +1,25 @@
+from pathlib import Path
+import json,subprocess,sys,datetime,time,yaml,os
+os.umask(0o077)
+p=Path(__file__).parent;c=json.loads(Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json').read_text());x=next(v for v in c['resources'] if v.get('sweep')==254);assert x['create_result']['exit']==0 and x['id']==x['create_response']['id'] and not x['state'].startswith('deleted:')
+stage=sys.argv[1];assert stage in ('cap11','recovery12');sid=x['id'];ws=x['workspace'];records=[]
+file=p/'sweep254-api-adapters.json';prior=json.loads(file.read_text()) if file.exists() else []
+def save():file.write_text(json.dumps([*prior,*records],indent=2,ensure_ascii=False)+'\n');file.chmod(0o600)
+def post(label,path,body):
+ cfg=yaml.safe_load((p/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token
+ ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')';auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+ws+'"\n'
+ f=p/'sweep254-adapter-request.json';f.write_text(json.dumps(body));f.chmod(0o600);started=time.monotonic()
+ try:r=subprocess.run(['curl','--disable','-sS','--max-time','30','--config','-','-H','Content-Type: application/json','-H','Accept: application/json, text/event-stream','-H','MCP-Protocol-Version: 2025-03-26','--data-binary','@'+str(f),'-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=36)
+ finally:f.unlink(missing_ok=True)
+ text,_,status=r.stdout.rpartition('\n');record={'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'stage':stage,'label':label,'api_only':True,'request':{'method':'POST','path':path,'body':body,'workspace':ws,'user_agent':ua,'authorization':'REDACTED'},'status':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-started,3),'response':text,'stderr':r.stderr};assert token not in json.dumps(record);records.append(record);save();assert status=='200' and r.returncode==0
+ if not text.lstrip().startswith('{'):
+  data=[v[5:].strip() for v in text.splitlines() if v.startswith('data:')];assert len(data)==1;return json.loads(data[0])
+ return json.loads(text)
+r=json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET','/v1/cron-jobs/'+sid+'/runs?limit=100'],text=True,timeout=45));r.update(stage=stage,label='REST complete history',api_only=True);records.append(r);save();assert r['status']=='200';rest=[v['cronJobRun'] for v in json.loads(r['response'])]
+g=post('GraphQL history and success timestamp','/graphql',{'query':'query QA254($id:String!){cronJobRuns(serviceId:$id,limit:100){id status startedAt finishedAt} service(id:$id){id lastSuccessfulRunAt}}','variables':{'id':sid}});assert not g.get('errors');grows=g['data']['cronJobRuns']
+m=post('MCP same-workspace complete history','/mcp',{'jsonrpc':'2.0','id':1,'method':'tools/call','params':{'name':'list_cron_job_runs','arguments':{'workspaceId':ws,'serviceId':sid,'limit':100}}});assert not m.get('error');result=m['result'];assert not result.get('isError');value=result.get('structuredContent') or json.loads(result['content'][0]['text']);mrows=value['cronJobRuns']
+def canonical(rows):return [{k:(v.get(k) or '') for k in ('id','status','startedAt','finishedAt')} for v in rows]
+assert canonical(rest)==canonical(grows)==canonical(mrows)
+actual=[v['id'] for v in rest];expected=list(reversed(x['recorded_run_ids']))[:10]
+summary={'stage':stage,'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'recorded_run_count':len(x['recorded_run_ids']),'all_three_adapters_agree':True,'actual_ids':actual,'expected_newest_ids':expected,'exact_newest_order':actual==expected,'lastSuccessfulRunAt':g['data']['service']['lastSuccessfulRunAt'],'deployed_revision':'unknown'}
+records.append({'summary':summary});save();print(json.dumps(summary),flush=True)

@@ -1,0 +1,73 @@
+from pathlib import Path
+import datetime,json,os,secrets,shutil,subprocess,sys,time,urllib.parse
+os.umask(0o077)
+p=Path(__file__).parent;root=Path('/Volumes/nvme4tbfish/projects/bex8');cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json';c=json.loads(cp.read_text())
+assert c.get('sync269_result')==0 and not c.get('active_sync_stash')
+mode=sys.argv[1];client=sys.argv[2] if len(sys.argv)>2 else 'bex';assert client in ('bex','render');ws='tea-daif693dqjvc73e7as3g'
+base={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']}
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():
+ c['last_updated']=now();cp.write_text(json.dumps(c,indent=2,ensure_ascii=False)+'\n');cp.chmod(0o600)
+def cli(args,bound=35):
+ cfg=p/'render-config/cli.yaml'
+ try:
+  if client=='render':assert not cfg.exists();shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  runner=['python3',str(p/'run-render.py')] if client=='render' else ['python3',str(p/'run.py'),'--release']
+  return json.loads(subprocess.check_output([*runner,'--bound='+str(bound),*args],text=True,timeout=bound+15))
+ finally:
+  if client=='render':cfg.unlink(missing_ok=True)
+def records(text):
+ decoder=json.JSONDecoder();rows=[]
+ while text.strip():
+  value,n=decoder.raw_decode(text.lstrip());rows.extend(value if isinstance(value,list) else [value]);text=text.lstrip()[n:]
+ return rows
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True,timeout=40))
+def inventory():
+ r=cli(['services','--confirm','-o','json']);assert r['exit']==0;ids={v.get('service',v)['id'] for v in json.loads(r['stdout']) or []};assert base<=ids;return r,ids
+def own(x):
+ assert x['workspace']==ws and x['id'] not in base and x['create_response']['id']==x['id'] and x['create_result']['exit']==0 and x['create_response']['ownerId']==ws
+ assert x['create_response']['serviceDetails']['plan']=='free' and not x['state'].startswith('deleted:')
+def history(x):
+ r=cli(['deploys','list',x['id'],'--confirm','-o','json']);assert r['exit']==0;rows=json.loads(r['stdout']);x['deploy_children']=rows
+ for v in rows:
+  if v['id'] not in x['recorded_child_ids']:x['recorded_child_ids'].append(v['id'])
+ x.setdefault('history_receipts',[]).append({'at':now(),'result':r});save();return rows
+def http(x,path='/',method='GET'):
+ url=x['create_response']['serviceDetails']['url'].rstrip('/')+path
+ args=['curl','--disable','-sS','--max-time','10',*(['--head'] if method=='HEAD' else ['--request',method]),'-w','\n%{http_code}',url]
+ r=subprocess.run(args,capture_output=True,text=True,timeout=15);body,_,status=r.stdout.rpartition('\n')
+ return {'at':now(),'request':{'method':method,'url':url},'curl_exit':r.returncode,'HTTP':status,'body':body,'stderr':r.stderr}
+if mode=='create':
+ assert client=='bex' and not any(v.get('sweep')==269 for v in c['resources'])
+ q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';limits=json.loads(q['response'])['services'];assert limits['used']+limits['terminating']<limits['limit'];inv,ids=inventory();assert ids==base
+ nonce=secrets.token_hex(3);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-requests';marker='QA269_'+nonce
+ program="const http=require('node:http'),os=require('node:os');http.createServer((req,res)=>{res.statusCode=req.url.includes('/missing')?404:req.url.includes('/created')?201:200;res.setHeader('Content-Type','application/json');res.end(JSON.stringify({marker:process.env.MESSAGE,method:req.method,url:req.url,host:os.hostname()}));}).listen(Number(process.env.PORT||3000),'0.0.0.0');\n"
+ build="/bin/cat > qa269.js <<'QA269_NODE'\n"+program+"QA269_NODE"
+ args=['services','create','--name',name,'--plan','free','--region','frankfurt','--type','web_service','--runtime','node','--repo','https://github.com/bex-co/bex','--branch','main','--root-directory','examples/runtime-version/node','--build-command',build,'--start-command','/usr/local/bin/node /opt/render/project/src/qa269.js','--env-var','MESSAGE='+marker,'--health-check-path','/','--auto-deploy=false','--confirm','-o','json']
+ x={'sweep':269,'client':client,'workspace':ws,'type':'web_service','name':name,'nonce':nonce,'marker':marker,'time':now(),'source_head':c['head'],'dependency_ids':[],'recorded_child_ids':[],'capacity_proof':q,'pre_create_inventory':inv,'create_command':['bex',*args],'state':'native create intent persisted'};c['resources'].append(x);save();r=cli(args);x['create_result']=r;x['state']='create returned: reconcile before retry';save();assert r['exit']==0;v=json.loads(r['stdout']);v=v.get('data',v);v=v.get('service',v);assert v['ownerId']==ws and v['name']==name and v['serviceDetails']['plan']=='free' and v['id'] not in ids;x.update(id=v['id'],create_response=v,state='created: initial build pending');save();print(json.dumps({'id':v['id'],'exit':r['exit']}));raise SystemExit(0)
+x=next(v for v in c['resources'] if v.get('sweep')==269);own(x);sid=x['id']
+if mode=='observe':
+ rows=history(x);r=http(x);ok=r['HTTP']=='200' and json.loads(r['body']).get('marker')==x['marker'] if r['HTTP']=='200' else False;x.setdefault('observations',[]).append({'at':now(),'latest_deploy':rows[0],'runtime':r,'marker_exact':ok});save();print(json.dumps({'latest_status':rows[0]['status'],'HTTP':r['HTTP'],'marker_exact':ok}))
+elif mode=='emit':
+ assert 'emission_intent' not in x and x['observations'][-1]['marker_exact'] and x['observations'][-1]['latest_deploy']['status']=='live'
+ prefix='/qa269-'+x['nonce'];cases=[('GET',prefix+'/literal,a.txt',200),('GET',prefix+'/plain.txt',200),('POST',prefix+'/created.txt',201),('GET',prefix+'/missing.txt',404),('HEAD',prefix+'/head.txt',200),('GET',prefix+'/caf%C3%A9.txt',200)]
+ x['emission_intent']={'at':now(),'cases':cases,'prefix':prefix};save();x['emissions']=[]
+ for method,path,status in cases:
+  r=http(x,path,method);r['expected_status']=status;x['emissions'].append(r);save();assert r['HTTP']==str(status) and r['curl_exit']==0
+  if method!='HEAD':assert json.loads(r['body'])['marker']==x['marker']
+ print(json.dumps({'requests':len(cases),'all_statuses_exact':True,'prefix':prefix}))
+elif mode=='logs':
+ assert 'emissions' in x
+ flags=sys.argv[3:] or ['--path',x['emission_intent']['prefix']+'/*']
+ args=['logs','--resources',sid,'--type','request','--start',x['emission_intent']['at'],'--limit','100','--confirm','-o','json',*flags]
+ r=cli(args);x.setdefault('native_log_queries',[]).append({'at':now(),'client':client,'command':[client,*args],'result':r});save();print(json.dumps({'client':client,'exit':r['exit'],'records':len(records(r['stdout'])) if r['exit']==0 else None,'flags':flags}))
+elif mode=='delete':
+ assert 'delete_result' not in x;rows=history(x)
+ for row in rows:
+  if row['status'] not in ('live','deactivated','canceled','build_failed','update_failed','pre_deploy_failed'):
+   r=cli(['deploys','cancel',sid,row['id'],'--confirm','-o','json']);x.setdefault('pending_child_cancels',[]).append({'id':row['id'],'result':r});save()
+ x['state']='exact owned delete intent persisted';save();x['delete_result']=cli(['services','delete',sid,'--confirm','-o','json']);save();print(json.dumps({'delete_exit':x['delete_result']['exit'],'children':len(x['recorded_child_ids'])}))
+elif mode=='reconcile':
+ assert 'delete_result' in x;detail=wire('/v1/services/'+sid);inv,ids=inventory();r=http(x);q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';quota=json.loads(q['response']);done=detail['status']=='404' and sid not in ids and r['HTTP']=='404' and r['curl_exit']==0 and quota['services']['terminating']==0
+ x.setdefault('cleanup_reconciliations',[]).append({'at':now(),'detail':detail,'inventory':inv,'list_ids':sorted(ids),'baseline_present':base<=ids,'runtime':r,'quota':q});x['state']='deleted: API404/listabsent/runtime404/baseline present/quota terminating0' if done else 'delete acknowledged: convergence pending';save();print(json.dumps({'cleanup_complete':done,'detail':detail['status'],'runtime':r['HTTP'],'quota':quota}))
+else:raise ValueError(mode)

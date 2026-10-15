@@ -1,0 +1,88 @@
+from pathlib import Path
+import datetime,json,os,secrets,shlex,shutil,subprocess,sys,time,yaml
+os.umask(0o077)
+p=Path(__file__).parent;root=Path('/Volumes/nvme4tbfish/projects/bex8');cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json';c=json.loads(cp.read_text())
+assert c.get('sync259_result')==0 and not c.get('active_sync_stash')
+mode,family=sys.argv[1:3];assert family in ('app','postgres','keyvalue');client='bex';ws='tea-daif693dqjvc73e7as3g'
+base={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']}
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():
+ c['last_updated']=now();cp.write_text(json.dumps(c,indent=2,ensure_ascii=False)+'\n');cp.chmod(0o600)
+def cli(args,bound=45):
+ cfg=p/'render-config/cli.yaml'
+ try:
+  if client=='render':assert not cfg.exists();shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  runner=['python3',str(p/'run-render.py')] if client=='render' else ['python3',str(p/'run.py'),'--release']
+  return json.loads(subprocess.check_output([*runner,'--bound='+str(bound),*args],text=True,timeout=bound+15))
+ finally:
+  if client=='render':cfg.unlink(missing_ok=True)
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True,timeout=45))
+def history(x):
+ r=cli(['deploys','list',x['id'],'--confirm','-o','json']);assert r['exit']==0;rows=json.loads(r['stdout']);x['deploy_children']=rows
+ for v in rows:
+  if v['id'] not in x['recorded_child_ids']:x['recorded_child_ids'].append(v['id'])
+ x.setdefault('history_receipts',[]).append({'at':now(),'result':r});save();return rows
+def post(path,body):
+ cfg=yaml.safe_load((p/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token
+ ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')'
+ auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+ws+'"\n'
+ f=p/'sweep259-api-request.json';f.write_text(json.dumps(body));started=time.monotonic()
+ try:r=subprocess.run(['curl','--disable','-sS','--max-time','30','--config','-','-H','Content-Type: application/json','-H','Accept: application/json, text/event-stream','-H','MCP-Protocol-Version: 2025-03-26','--data-binary','@'+str(f),'-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=36)
+ finally:f.unlink(missing_ok=True)
+ text,_,status=r.stdout.rpartition('\n');record={'at':now(),'api_only':True,'request':{'method':'POST','path':path,'body':body,'workspace':ws,'user_agent':ua,'authorization':'REDACTED'},'status':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-started,3),'response':text,'stderr':r.stderr};assert token not in json.dumps(record);return record
+def decode(r):
+ assert r['status']=='200' and r['curl_exit']==0;text=r['response']
+ if not text.lstrip().startswith('{'):
+  data=[v[5:].strip() for v in text.splitlines() if v.startswith('data:')];assert len(data)==1;text=data[0]
+ return json.loads(text)
+def own(x):
+ assert x['workspace']==ws and x['create_result']['exit']==0 and x['create_response']['id']==x['id'] and x['dependency_ids']==[] and not x['state'].startswith('deleted:')
+ v=x['create_response'];assert (v.get('ownerId') or v.get('owner',{}).get('id'))==ws
+ assert (v['serviceDetails']['plan'] if family=='app' else v['plan'])=='free'
+def inventory(family):
+ args=['services'] if family=='app' else [('postgres' if family=='postgres' else 'keyvalues'),'list'];r=cli([*args,'--confirm','-o','json']);assert r['exit']==0;v=json.loads(r['stdout']);v=v.get('data',v) if isinstance(v,dict) else v;rows=v or [];ids={v.get('service',v.get('postgres',v.get('keyValue',v)))['id'] for v in rows};return r,ids
+def value(r):
+ v=json.loads(r['stdout']);v=v.get('data',v);return v.get('service',v.get('postgres',v.get('keyValue',v)))
+def detailpath(x):return '/v1/'+('services' if family=='app' else 'postgres' if family=='postgres' else 'key-value')+'/'+x['id']
+def quotaKey():return 'services' if family=='app' else 'postgres' if family=='postgres' else 'keyValues'
+if mode=='create':
+ assert not any(v.get('sweep')==259 and v.get('family')==family for v in c['resources'])
+ q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';limits=json.loads(q['response'])[quotaKey()];assert limits['used']+limits['terminating']<limits['limit']
+ inv,ids=inventory(family)
+ if family!='app':assert not ids,'No preexisting data fixture may be mutated'
+ else:assert base<=ids
+ nonce=secrets.token_hex(3);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-'+('tailapp' if family=='app' else 'pgtail' if family=='postgres' else 'kvtail');marker='QA259_'+nonce
+ if family=='app':
+  program="const http=require('node:http');http.createServer((req,res)=>{if(req.url.startsWith('/emit/'))console.log(req.url.slice(6));res.end(process.env.MESSAGE+'\\n');}).listen(Number(process.env.PORT||3000),'0.0.0.0');\n"
+  build="/bin/cat > qa_tail.js <<'QA259_NODE'\n"+program+"QA259_NODE\n/usr/local/bin/node --check qa_tail.js"
+  args=['services','create','--name',name,'--plan','free','--region','frankfurt','--type','web_service','--runtime','node','--repo','https://github.com/bex-co/bex','--branch','main','--root-directory','examples/runtime-version/node','--build-command',build,'--start-command','/usr/local/bin/node /opt/render/project/src/qa_tail.js','--env-var','MESSAGE='+marker,'--health-check-path','/','--auto-deploy=false','--confirm','-o','json']
+ elif family=='postgres':args=['postgres','create','--name',name,'--plan','free','--region','frankfurt','--version','18','--connection-pool','none','--confirm','-o','json']
+ else:args=['keyvalues','create','--name',name,'--plan','free','--region','frankfurt','--memory-policy','queue','--persistence-mode','journal_snapshot','--confirm','-o','json']
+ x={'sweep':259,'family':family,'client':client,'workspace':ws,'type':'web_service' if family=='app' else family,'name':name,'nonce':nonce,'marker':marker,'time':now(),'source_head':c['head'],'dependency_ids':[],'recorded_child_ids':[],'capacity_proof':q,'pre_create_inventory':inv,'pre_create_ids':sorted(ids),'create_command':[client,*args],'state':'finite native create intent persisted'};c['resources'].append(x);save();r=cli(args);x['create_result']=r;x['state']='create returned; reconcile before retry';save();assert r['exit']==0;v=value(r)
+ assert v['id'] not in ids and v['name']==name and (v.get('ownerId') or v.get('owner',{}).get('id'))==ws
+ assert (v['serviceDetails']['plan'] if family=='app' else v['plan'])=='free'
+ x.update(id=v['id'],create_response=v,state='created: provisioning pending');save();print(json.dumps({'family':family,'id':v['id'],'exit':r['exit']}),flush=True);raise SystemExit(0)
+x=next(v for v in c['resources'] if v.get('sweep')==259 and v['family']==family);sid=x['id'];own(x)
+if mode=='observe':
+ if family=='app':
+  rows=history(x);r=subprocess.run(['curl','--disable','-sS','--max-time','10','-w','\n%{http_code}',x['create_response']['serviceDetails']['url']],text=True,capture_output=True,timeout=15);body,_,status=r.stdout.rpartition('\n');ready=rows[0]['status']=='live' and r.returncode==0 and status=='200' and body==x['marker']+'\n';o={'at':now(),'deploy':rows[0],'HTTP':status,'curl_exit':r.returncode,'body':body,'ready':ready}
+ else:
+  r=cli([('postgres' if family=='postgres' else 'keyvalues'),'get',sid,'--confirm','-o','json']);assert r['exit']==0;v=value(r);ready=v['status']=='available';o={'at':now(),'result':r,'status':v['status'],'ready':ready};x['last_readback']=v
+ x.setdefault('observations',[]).append(o);x['ready']=ready;save();print(json.dumps({'family':family,'ready':ready,'status':o.get('status',o.get('deploy',{}).get('status')),'HTTP':o.get('HTTP')}),flush=True)
+elif mode=='history':
+ assert x['ready'];client=sys.argv[3];assert client in ('bex','render');r=cli(['logs','--resources',sid,'--limit','5','--confirm','-o','json']);x.setdefault('historical_controls',[]).append({'client':client,'at':now(),'result':r});save();print(json.dumps({'family':family,'client':client,'exit':r['exit'],'stdout_characters':len(r['stdout']),'stderr':r['stderr']}),flush=True)
+elif mode=='delete':
+ assert 'delete_result' not in x
+ if family=='app':history(x)
+ else:
+  r=wire(detailpath(x));assert r['status']=='200';v=json.loads(r['response']);assert (v.get('ownerId') or v.get('owner',{}).get('id'))==ws
+  if family=='postgres':assert v['readReplicas']==[] and v['connectionPool']=='none'
+  x['dependent_inventory_before_delete']=r;save()
+ args=['services' if family=='app' else 'postgres' if family=='postgres' else 'keyvalues','delete',sid,'--confirm','-o','json'];x['state']='exact-owned delete intent persisted';save();x['delete_result']=cli(args);save();print(json.dumps({'family':family,'delete_exit':x['delete_result']['exit'],'enumerated_children':len(x['recorded_child_ids'])}),flush=True)
+elif mode=='reconcile':
+ assert 'delete_result' in x;detail=wire(detailpath(x));inv,ids=inventory(family);services,serviceids=inventory('app');assert base<=serviceids;q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';v=json.loads(q['response'])[quotaKey()];done=detail['status']=='404' and sid not in ids and v['used']==len(x['pre_create_ids']) and v['terminating']==0
+ runtime=None
+ if family=='app':
+  r=subprocess.run(['curl','--disable','-sS','--max-time','10','-o','/dev/null','-w','%{http_code}',x['create_response']['serviceDetails']['url']],text=True,capture_output=True,timeout=15);runtime={'HTTP':r.stdout,'curl_exit':r.returncode};done=done and r.returncode==0 and r.stdout=='404'
+ x.setdefault('cleanup_reconciliations',[]).append({'at':now(),'detail':detail,'inventory':inv,'baseline_service_ids':sorted(serviceids),'quota':q,'runtime':runtime,'direct_database_connection_teardown':'not tested: no data endpoint was accessed or credential fetched'});x['state']='deleted: detail404/listabsent/baseline present/quota restored termination0'+('/runtime404' if family=='app' else '') if done else 'delete acknowledged: detail/quota/runtime convergence pending';save();print(json.dumps({'family':family,'complete':done,'detail':detail['status'],'used':v['used'],'terminating':v['terminating'],'runtime':runtime}),flush=True)
+else:raise ValueError(mode)

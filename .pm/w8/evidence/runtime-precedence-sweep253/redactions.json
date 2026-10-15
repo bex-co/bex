@@ -1,0 +1,6 @@
+{
+  "QA_email_password_and_config_credentials": "masked if present; none published",
+  "owned_temporary_directory": "<owned-temp>",
+  "test_values": "MESSAGE nonce markers and NODE_VERSION selectors are harmless and retained",
+  "types": "non-secret JSON types, original version strings, source file bytes, IDs, statuses and complete bounded native outputs preserved"
+}

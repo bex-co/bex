@@ -1,0 +1,8 @@
+{"Time":"2026-10-14T19:49:37.548141-07:00","Action":"start","Package":"github.com/bex-co/bex/lego/backend/internal/logs"}
+{"Time":"2026-10-14T19:49:38.280918-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Test":"TestSubscribeRefusesManagedLiveTailsBeforeStreaming"}
+{"Time":"2026-10-14T19:49:38.281043-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Test":"TestSubscribeRefusesManagedLiveTailsBeforeStreaming","Output":"=== RUN   TestSubscribeRefusesManagedLiveTailsBeforeStreaming\n"}
+{"Time":"2026-10-14T19:49:38.337798-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Test":"TestSubscribeRefusesManagedLiveTailsBeforeStreaming","Output":"--- PASS: TestSubscribeRefusesManagedLiveTailsBeforeStreaming (0.06s)\n"}
+{"Time":"2026-10-14T19:49:38.337819-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Test":"TestSubscribeRefusesManagedLiveTailsBeforeStreaming","Elapsed":0.06}
+{"Time":"2026-10-14T19:49:38.337846-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Output":"PASS\n"}
+{"Time":"2026-10-14T19:49:38.339457-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Output":"ok  \tgithub.com/bex-co/bex/lego/backend/internal/logs\t0.791s\n"}
+{"Time":"2026-10-14T19:49:38.339478-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/logs","Elapsed":0.791}

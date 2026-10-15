@@ -1,0 +1,148 @@
+{
+  "sweep": 254,
+  "source_head": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+  "source_fix": "f42f5d0868d0edf61c2597f1e2222733cac1f29e",
+  "deployed_backend_operator_revision": "unknown",
+  "existing_issue": "w4/m210",
+  "new_issue_created": false,
+  "fixture": {
+    "id": "srv-db82j3haomdc7381k8bg",
+    "name": "qa-20261015-1c2c85-cron",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "runtime": "go",
+    "plan": "free",
+    "schedule": "0 0 1 1 *"
+  },
+  "Bex_release": "v0.3.2",
+  "Bex_sha256": "585a5456678ce3bc73d5a71117b901d08add1fab230464d3b5b228101a55c34c",
+  "Render_release": "2.27.0",
+  "Render_commit": "a764810a768202704e7206eb7b87a47211fcd98e",
+  "auth": "existing isolated human QA OAuth",
+  "accepted_manual_API_triggers": 12,
+  "excluded_JSON_body_refusal": 1,
+  "terminal_outcomes": [
+    "successful",
+    "unsuccessful",
+    "unsuccessful",
+    "unsuccessful",
+    "unsuccessful",
+    "unsuccessful",
+    "unsuccessful",
+    "unsuccessful",
+    "unsuccessful",
+    "unsuccessful",
+    "unsuccessful",
+    "successful"
+  ],
+  "boundary_summaries": {
+    "cap11": {
+      "stage": "cap11",
+      "at": "2026-10-15T01:32:28.656167+00:00",
+      "recorded_run_count": 11,
+      "all_three_adapters_agree": true,
+      "actual_ids": [
+        "crr-1odjlambsqrki7jd4iqc",
+        "crr-h7u0uldmiem4an0djkm9",
+        "crr-nbs4qpqj36199ms2afbd",
+        "crr-9imjc7vqj35ai2tftliq",
+        "crr-gsg7efk76jnmlpv239vb",
+        "crr-7984qlcglpjb35k3hg18",
+        "crr-1nfahho6ldh3l9sgs174",
+        "crr-rirrkoa425m6rijfo38j",
+        "crr-3d9365cf4b1s6aob0nd0",
+        "crr-9itfhsbujioeadegd9i2"
+      ],
+      "expected_newest_ids": [
+        "crr-h7u0uldmiem4an0djkm9",
+        "crr-nbs4qpqj36199ms2afbd",
+        "crr-9imjc7vqj35ai2tftliq",
+        "crr-gsg7efk76jnmlpv239vb",
+        "crr-7984qlcglpjb35k3hg18",
+        "crr-1nfahho6ldh3l9sgs174",
+        "crr-rirrkoa425m6rijfo38j",
+        "crr-3d9365cf4b1s6aob0nd0",
+        "crr-9itfhsbujioeadegd9i2",
+        "crr-gl0bi2g6alfl78kabn99"
+      ],
+      "exact_newest_order": false,
+      "lastSuccessfulRunAt": "2026-10-15T01:22:48Z",
+      "deployed_revision": "unknown"
+    },
+    "recovery12": {
+      "stage": "recovery12",
+      "at": "2026-10-15T01:35:24.793627+00:00",
+      "recorded_run_count": 12,
+      "all_three_adapters_agree": true,
+      "actual_ids": [
+        "crr-mjl9o3tpmtml6te2l07s",
+        "crr-1odjlambsqrki7jd4iqc",
+        "crr-h7u0uldmiem4an0djkm9",
+        "crr-nbs4qpqj36199ms2afbd",
+        "crr-9imjc7vqj35ai2tftliq",
+        "crr-gsg7efk76jnmlpv239vb",
+        "crr-7984qlcglpjb35k3hg18",
+        "crr-1nfahho6ldh3l9sgs174",
+        "crr-rirrkoa425m6rijfo38j",
+        "crr-3d9365cf4b1s6aob0nd0"
+      ],
+      "expected_newest_ids": [
+        "crr-mjl9o3tpmtml6te2l07s",
+        "crr-h7u0uldmiem4an0djkm9",
+        "crr-nbs4qpqj36199ms2afbd",
+        "crr-9imjc7vqj35ai2tftliq",
+        "crr-gsg7efk76jnmlpv239vb",
+        "crr-7984qlcglpjb35k3hg18",
+        "crr-1nfahho6ldh3l9sgs174",
+        "crr-rirrkoa425m6rijfo38j",
+        "crr-3d9365cf4b1s6aob0nd0",
+        "crr-9itfhsbujioeadegd9i2"
+      ],
+      "exact_newest_order": false,
+      "lastSuccessfulRunAt": "2026-10-15T01:34:58Z",
+      "deployed_revision": "unknown"
+    }
+  },
+  "native_final_log_checks": {
+    "bex": {
+      "matching_records": 12,
+      "unique_log_ids": 12,
+      "success_messages": 2,
+      "failure_messages": 10
+    },
+    "render": {
+      "matching_records": 12,
+      "unique_log_ids": 12,
+      "success_messages": 2,
+      "failure_messages": 10
+    }
+  },
+  "focused_existing_source_tests_passed": 4,
+  "cleanup_quota": {
+    "services": {
+      "used": 6,
+      "terminating": 0,
+      "limit": 25
+    },
+    "postgres": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    },
+    "keyValues": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    }
+  },
+  "recorded_deploy_children": 3,
+  "recorded_run_children": 12,
+  "product_source_changes": false,
+  "commit_push_performed": false,
+  "limits": [
+    "API-only manual triggers; CLI used for create, command changes, service/deploy/log reads and delete.",
+    "No authenticated Render-production request, live UI/scheduled/tie/legacy/preemption/restart test or direct live Pod/OCI inspection.",
+    "Configured failure exit7 is known; actual numeric container exit was not queried.",
+    "Native service-list receipts retain only the owned row and all listed IDs; full unfiltered original stdout remains private.",
+    "Source fix is present and its focused tests pass; this does not establish whether it is deployed or whether another case remains."
+  ]
+}

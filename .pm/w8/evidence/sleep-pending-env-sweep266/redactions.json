@@ -1,0 +1,6 @@
+{
+  "QA_email_password_and_isolated_credentials": "known private values replaced if present",
+  "temporary_directory": "<owned-temp>",
+  "fixture_values": "only harmless generated MESSAGE markers and process boot UUIDs; preserved",
+  "wire": "Authorization omitted by wire helper; no native mutation wire capture claimed"
+}

@@ -1,0 +1,8 @@
+{"Time":"2026-10-14T20:02:37.244954-07:00","Action":"start","Package":"github.com/bex-co/bex/lego/backend/internal/apps"}
+{"Time":"2026-10-14T20:02:37.926489-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestBlueprintPaddedEnvGroupNamePlansTheExistingGroup"}
+{"Time":"2026-10-14T20:02:37.926563-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestBlueprintPaddedEnvGroupNamePlansTheExistingGroup","Output":"=== RUN   TestBlueprintPaddedEnvGroupNamePlansTheExistingGroup\n"}
+{"Time":"2026-10-14T20:02:37.971207-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestBlueprintPaddedEnvGroupNamePlansTheExistingGroup","Output":"--- PASS: TestBlueprintPaddedEnvGroupNamePlansTheExistingGroup (0.04s)\n"}
+{"Time":"2026-10-14T20:02:37.971224-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestBlueprintPaddedEnvGroupNamePlansTheExistingGroup","Elapsed":0.04}
+{"Time":"2026-10-14T20:02:37.971261-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Output":"PASS\n"}
+{"Time":"2026-10-14T20:02:37.973114-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Output":"ok  \tgithub.com/bex-co/bex/lego/backend/internal/apps\t0.728s\n"}
+{"Time":"2026-10-14T20:02:37.973161-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Elapsed":0.728}

@@ -1,0 +1,542 @@
+[
+  {
+    "case": "exact",
+    "layout": "root",
+    "document": {
+      "envVarGroups": [
+        {
+          "name": "qa-20261015-12da34-envgroup",
+          "envVars": []
+        }
+      ]
+    },
+    "fixture": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-root-exact.yaml",
+    "expected_valid": true,
+    "expected_operation": "update",
+    "expected_name": "qa-20261015-12da34-envgroup",
+    "expected_id": "evg-db8442haomdc7381kab0",
+    "expected_source_path": "#/envVarGroups/0"
+  },
+  {
+    "case": "leading",
+    "layout": "root",
+    "document": {
+      "envVarGroups": [
+        {
+          "name": "  qa-20261015-12da34-envgroup",
+          "envVars": []
+        }
+      ]
+    },
+    "fixture": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-root-leading.yaml",
+    "expected_valid": true,
+    "expected_operation": "update",
+    "expected_name": "qa-20261015-12da34-envgroup",
+    "expected_id": "evg-db8442haomdc7381kab0",
+    "expected_source_path": "#/envVarGroups/0"
+  },
+  {
+    "case": "trailing",
+    "layout": "root",
+    "document": {
+      "envVarGroups": [
+        {
+          "name": "qa-20261015-12da34-envgroup  ",
+          "envVars": []
+        }
+      ]
+    },
+    "fixture": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-root-trailing.yaml",
+    "expected_valid": true,
+    "expected_operation": "update",
+    "expected_name": "qa-20261015-12da34-envgroup",
+    "expected_id": "evg-db8442haomdc7381kab0",
+    "expected_source_path": "#/envVarGroups/0"
+  },
+  {
+    "case": "Unicode",
+    "layout": "root",
+    "document": {
+      "envVarGroups": [
+        {
+          "name": " qa-20261015-12da34-envgroup ",
+          "envVars": []
+        }
+      ]
+    },
+    "fixture": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-root-Unicode.yaml",
+    "expected_valid": true,
+    "expected_operation": "update",
+    "expected_name": "qa-20261015-12da34-envgroup",
+    "expected_id": "evg-db8442haomdc7381kab0",
+    "expected_source_path": "#/envVarGroups/0"
+  },
+  {
+    "case": "absent",
+    "layout": "root",
+    "document": {
+      "envVarGroups": [
+        {
+          "name": "  qa-12da34-absent  ",
+          "envVars": []
+        }
+      ]
+    },
+    "fixture": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-root-absent.yaml",
+    "expected_valid": true,
+    "expected_operation": "create",
+    "expected_name": "qa-12da34-absent",
+    "expected_id": null,
+    "expected_source_path": "#/envVarGroups/0"
+  },
+  {
+    "case": "interior",
+    "layout": "root",
+    "document": {
+      "envVarGroups": [
+        {
+          "name": "qa 12da34  interior",
+          "envVars": []
+        }
+      ]
+    },
+    "fixture": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-root-interior.yaml",
+    "expected_valid": true,
+    "expected_operation": "create",
+    "expected_name": "qa 12da34  interior",
+    "expected_id": null,
+    "expected_source_path": "#/envVarGroups/0"
+  },
+  {
+    "case": "blank",
+    "layout": "root",
+    "document": {
+      "envVarGroups": [
+        {
+          "name": "   ",
+          "envVars": []
+        }
+      ]
+    },
+    "fixture": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-root-blank.yaml",
+    "expected_valid": false,
+    "expected_operation": null,
+    "expected_name": null,
+    "expected_id": null,
+    "expected_source_path": "#/envVarGroups/0"
+  },
+  {
+    "case": "duplicate",
+    "layout": "root",
+    "document": {
+      "envVarGroups": [
+        {
+          "name": "  qa-20261015-12da34-envgroup",
+          "envVars": []
+        },
+        {
+          "name": "qa-20261015-12da34-envgroup",
+          "envVars": []
+        }
+      ]
+    },
+    "fixture": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-root-duplicate.yaml",
+    "expected_valid": false,
+    "expected_operation": null,
+    "expected_name": null,
+    "expected_id": null,
+    "expected_source_path": "#/envVarGroups/0"
+  },
+  {
+    "case": "exact",
+    "layout": "ungrouped",
+    "document": {
+      "ungrouped": {
+        "envVarGroups": [
+          {
+            "name": "qa-20261015-12da34-envgroup",
+            "envVars": []
+          }
+        ]
+      }
+    },
+    "fixture": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-ungrouped-exact.yaml",
+    "expected_valid": true,
+    "expected_operation": "update",
+    "expected_name": "qa-20261015-12da34-envgroup",
+    "expected_id": "evg-db8442haomdc7381kab0",
+    "expected_source_path": "#/ungrouped/envVarGroups/0"
+  },
+  {
+    "case": "leading",
+    "layout": "ungrouped",
+    "document": {
+      "ungrouped": {
+        "envVarGroups": [
+          {
+            "name": "  qa-20261015-12da34-envgroup",
+            "envVars": []
+          }
+        ]
+      }
+    },
+    "fixture": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-ungrouped-leading.yaml",
+    "expected_valid": true,
+    "expected_operation": "update",
+    "expected_name": "qa-20261015-12da34-envgroup",
+    "expected_id": "evg-db8442haomdc7381kab0",
+    "expected_source_path": "#/ungrouped/envVarGroups/0"
+  },
+  {
+    "case": "trailing",
+    "layout": "ungrouped",
+    "document": {
+      "ungrouped": {
+        "envVarGroups": [
+          {
+            "name": "qa-20261015-12da34-envgroup  ",
+            "envVars": []
+          }
+        ]
+      }
+    },
+    "fixture": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-ungrouped-trailing.yaml",
+    "expected_valid": true,
+    "expected_operation": "update",
+    "expected_name": "qa-20261015-12da34-envgroup",
+    "expected_id": "evg-db8442haomdc7381kab0",
+    "expected_source_path": "#/ungrouped/envVarGroups/0"
+  },
+  {
+    "case": "Unicode",
+    "layout": "ungrouped",
+    "document": {
+      "ungrouped": {
+        "envVarGroups": [
+          {
+            "name": " qa-20261015-12da34-envgroup ",
+            "envVars": []
+          }
+        ]
+      }
+    },
+    "fixture": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-ungrouped-Unicode.yaml",
+    "expected_valid": true,
+    "expected_operation": "update",
+    "expected_name": "qa-20261015-12da34-envgroup",
+    "expected_id": "evg-db8442haomdc7381kab0",
+    "expected_source_path": "#/ungrouped/envVarGroups/0"
+  },
+  {
+    "case": "absent",
+    "layout": "ungrouped",
+    "document": {
+      "ungrouped": {
+        "envVarGroups": [
+          {
+            "name": "  qa-12da34-absent  ",
+            "envVars": []
+          }
+        ]
+      }
+    },
+    "fixture": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-ungrouped-absent.yaml",
+    "expected_valid": true,
+    "expected_operation": "create",
+    "expected_name": "qa-12da34-absent",
+    "expected_id": null,
+    "expected_source_path": "#/ungrouped/envVarGroups/0"
+  },
+  {
+    "case": "interior",
+    "layout": "ungrouped",
+    "document": {
+      "ungrouped": {
+        "envVarGroups": [
+          {
+            "name": "qa 12da34  interior",
+            "envVars": []
+          }
+        ]
+      }
+    },
+    "fixture": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-ungrouped-interior.yaml",
+    "expected_valid": true,
+    "expected_operation": "create",
+    "expected_name": "qa 12da34  interior",
+    "expected_id": null,
+    "expected_source_path": "#/ungrouped/envVarGroups/0"
+  },
+  {
+    "case": "blank",
+    "layout": "ungrouped",
+    "document": {
+      "ungrouped": {
+        "envVarGroups": [
+          {
+            "name": "   ",
+            "envVars": []
+          }
+        ]
+      }
+    },
+    "fixture": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-ungrouped-blank.yaml",
+    "expected_valid": false,
+    "expected_operation": null,
+    "expected_name": null,
+    "expected_id": null,
+    "expected_source_path": "#/ungrouped/envVarGroups/0"
+  },
+  {
+    "case": "duplicate",
+    "layout": "ungrouped",
+    "document": {
+      "ungrouped": {
+        "envVarGroups": [
+          {
+            "name": "  qa-20261015-12da34-envgroup",
+            "envVars": []
+          },
+          {
+            "name": "qa-20261015-12da34-envgroup",
+            "envVars": []
+          }
+        ]
+      }
+    },
+    "fixture": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-ungrouped-duplicate.yaml",
+    "expected_valid": false,
+    "expected_operation": null,
+    "expected_name": null,
+    "expected_id": null,
+    "expected_source_path": "#/ungrouped/envVarGroups/0"
+  },
+  {
+    "case": "exact",
+    "layout": "environment",
+    "document": {
+      "projects": [
+        {
+          "name": "qa-12da34-plan-project",
+          "environments": [
+            {
+              "name": "qa-12da34-plan-env",
+              "envVarGroups": [
+                {
+                  "name": "qa-20261015-12da34-envgroup",
+                  "envVars": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "fixture": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-environment-exact.yaml",
+    "expected_valid": true,
+    "expected_operation": "update",
+    "expected_name": "qa-20261015-12da34-envgroup",
+    "expected_id": "evg-db8442haomdc7381kab0",
+    "expected_source_path": "#/projects/0/environments/0/envVarGroups/0"
+  },
+  {
+    "case": "leading",
+    "layout": "environment",
+    "document": {
+      "projects": [
+        {
+          "name": "qa-12da34-plan-project",
+          "environments": [
+            {
+              "name": "qa-12da34-plan-env",
+              "envVarGroups": [
+                {
+                  "name": "  qa-20261015-12da34-envgroup",
+                  "envVars": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "fixture": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-environment-leading.yaml",
+    "expected_valid": true,
+    "expected_operation": "update",
+    "expected_name": "qa-20261015-12da34-envgroup",
+    "expected_id": "evg-db8442haomdc7381kab0",
+    "expected_source_path": "#/projects/0/environments/0/envVarGroups/0"
+  },
+  {
+    "case": "trailing",
+    "layout": "environment",
+    "document": {
+      "projects": [
+        {
+          "name": "qa-12da34-plan-project",
+          "environments": [
+            {
+              "name": "qa-12da34-plan-env",
+              "envVarGroups": [
+                {
+                  "name": "qa-20261015-12da34-envgroup  ",
+                  "envVars": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "fixture": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-environment-trailing.yaml",
+    "expected_valid": true,
+    "expected_operation": "update",
+    "expected_name": "qa-20261015-12da34-envgroup",
+    "expected_id": "evg-db8442haomdc7381kab0",
+    "expected_source_path": "#/projects/0/environments/0/envVarGroups/0"
+  },
+  {
+    "case": "Unicode",
+    "layout": "environment",
+    "document": {
+      "projects": [
+        {
+          "name": "qa-12da34-plan-project",
+          "environments": [
+            {
+              "name": "qa-12da34-plan-env",
+              "envVarGroups": [
+                {
+                  "name": " qa-20261015-12da34-envgroup ",
+                  "envVars": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "fixture": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-environment-Unicode.yaml",
+    "expected_valid": true,
+    "expected_operation": "update",
+    "expected_name": "qa-20261015-12da34-envgroup",
+    "expected_id": "evg-db8442haomdc7381kab0",
+    "expected_source_path": "#/projects/0/environments/0/envVarGroups/0"
+  },
+  {
+    "case": "absent",
+    "layout": "environment",
+    "document": {
+      "projects": [
+        {
+          "name": "qa-12da34-plan-project",
+          "environments": [
+            {
+              "name": "qa-12da34-plan-env",
+              "envVarGroups": [
+                {
+                  "name": "  qa-12da34-absent  ",
+                  "envVars": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "fixture": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-environment-absent.yaml",
+    "expected_valid": true,
+    "expected_operation": "create",
+    "expected_name": "qa-12da34-absent",
+    "expected_id": null,
+    "expected_source_path": "#/projects/0/environments/0/envVarGroups/0"
+  },
+  {
+    "case": "interior",
+    "layout": "environment",
+    "document": {
+      "projects": [
+        {
+          "name": "qa-12da34-plan-project",
+          "environments": [
+            {
+              "name": "qa-12da34-plan-env",
+              "envVarGroups": [
+                {
+                  "name": "qa 12da34  interior",
+                  "envVars": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "fixture": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-environment-interior.yaml",
+    "expected_valid": true,
+    "expected_operation": "create",
+    "expected_name": "qa 12da34  interior",
+    "expected_id": null,
+    "expected_source_path": "#/projects/0/environments/0/envVarGroups/0"
+  },
+  {
+    "case": "blank",
+    "layout": "environment",
+    "document": {
+      "projects": [
+        {
+          "name": "qa-12da34-plan-project",
+          "environments": [
+            {
+              "name": "qa-12da34-plan-env",
+              "envVarGroups": [
+                {
+                  "name": "   ",
+                  "envVars": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "fixture": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-environment-blank.yaml",
+    "expected_valid": false,
+    "expected_operation": null,
+    "expected_name": null,
+    "expected_id": null,
+    "expected_source_path": "#/projects/0/environments/0/envVarGroups/0"
+  },
+  {
+    "case": "duplicate",
+    "layout": "environment",
+    "document": {
+      "projects": [
+        {
+          "name": "qa-12da34-plan-project",
+          "environments": [
+            {
+              "name": "qa-12da34-plan-env",
+              "envVarGroups": [
+                {
+                  "name": "  qa-20261015-12da34-envgroup",
+                  "envVars": []
+                },
+                {
+                  "name": "qa-20261015-12da34-envgroup",
+                  "envVars": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "fixture": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-environment-duplicate.yaml",
+    "expected_valid": false,
+    "expected_operation": null,
+    "expected_name": null,
+    "expected_id": null,
+    "expected_source_path": "#/projects/0/environments/0/envVarGroups/0"
+  }
+]

@@ -1,0 +1,4 @@
+{
+  "auth": "no Authorization/cookie supplied; no Set-Cookie persisted in published response headers",
+  "safe_fields": "public issuer document and exact Location values, harmless query and owned/deleted IDs retained"
+}

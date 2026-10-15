@@ -1,0 +1,90 @@
+{
+  "sweep": 253,
+  "source_head": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+  "deployed_backend_operator_revision": "unknown",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "Bex_release": "v0.3.2",
+  "Bex_binary_sha256": "585a5456678ce3bc73d5a71117b901d08add1fab230464d3b5b228101a55c34c",
+  "Render_release": "2.27.0",
+  "Render_commit": "a764810a768202704e7206eb7b87a47211fcd98e",
+  "auth": "existing isolated human QA OAuth",
+  "cases": [
+    {
+      "client": "bex",
+      "role": "source",
+      "service_id": "srv-db82aahaomdc7381k7q0",
+      "selector": null,
+      "repository_nvmrc": "22",
+      "expected_major": 22,
+      "observed_build_runtime_version": "v22.23.3",
+      "expected_failure": false,
+      "cleanup": "deleted: API404/listabsent/runtime404/baseline present/quota terminating0"
+    },
+    {
+      "client": "bex",
+      "role": "override",
+      "service_id": "srv-db82c01aomdc7381k810",
+      "selector": "24",
+      "repository_nvmrc": "22",
+      "expected_major": 24,
+      "observed_build_runtime_version": "v24.21.0",
+      "expected_failure": false,
+      "cleanup": "deleted: API404/listabsent/runtime404/baseline present/quota terminating0"
+    },
+    {
+      "client": "bex",
+      "role": "unsupported",
+      "service_id": "srv-db82c10umfhs73fe7h2g",
+      "selector": "18",
+      "repository_nvmrc": "22",
+      "expected_major": null,
+      "observed_build_runtime_version": null,
+      "expected_failure": true,
+      "cleanup": "deleted: API404/listabsent/runtime404/baseline present/quota terminating0"
+    },
+    {
+      "client": "render",
+      "role": "source",
+      "service_id": "srv-db82da0umfhs73fe7h50",
+      "selector": null,
+      "repository_nvmrc": "22",
+      "expected_major": 22,
+      "observed_build_runtime_version": "v22.23.3",
+      "expected_failure": false,
+      "cleanup": "deleted: API404/listabsent/runtime404/baseline present/quota terminating0"
+    },
+    {
+      "client": "render",
+      "role": "override",
+      "service_id": "srv-db82ep1aomdc7381k83g",
+      "selector": ">=24 <26",
+      "repository_nvmrc": "22",
+      "expected_major": 24,
+      "observed_build_runtime_version": "v24.21.0",
+      "expected_failure": false,
+      "cleanup": "deleted: API404/listabsent/runtime404/baseline present/quota terminating0"
+    }
+  ],
+  "source_check_pass_count": 28,
+  "quota_after_cleanup": {
+    "services": {
+      "used": 6,
+      "terminating": 0,
+      "limit": 25
+    },
+    "postgres": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    },
+    "keyValues": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    }
+  },
+  "native_wire_interception": false,
+  "product_implementation_changes": false,
+  "new_findings": 0,
+  "ship_performed": false
+}

@@ -1,0 +1,604 @@
+[
+  {
+    "client": "bex",
+    "scenario": "abrupt_empty",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-00000000000000000000",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "endpoint": "http://127.0.0.1:54440/v1/",
+    "credentials": "synthetic local fixture only; no QA credential/config copied",
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:54440",
+          "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "Mm1jrUki/sBdMToRHGhLDA==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      }
+    ],
+    "server_events": [
+      {
+        "HTTP": 101
+      },
+      {
+        "transport": "TCP shutdown without WebSocket close frame"
+      }
+    ],
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.619,
+    "stdout": "",
+    "stderr": "",
+    "cleanup": {
+      "server_stopped": true,
+      "config_removed": true,
+      "native_reaped": true
+    }
+  },
+  {
+    "client": "bex",
+    "scenario": "abrupt_after_line",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-00000000000000000000",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "endpoint": "http://127.0.0.1:54446/v1/",
+    "credentials": "synthetic local fixture only; no QA credential/config copied",
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:54446",
+          "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "CXlUjV5rOcC2Ix3uzsTIWw==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      }
+    ],
+    "server_events": [
+      {
+        "HTTP": 101
+      },
+      {
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "qa272-line-1",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 exact line before disconnect",
+          "timestamp": "2026-10-15T04:52:41.950676Z"
+        }
+      },
+      {
+        "transport": "TCP shutdown without WebSocket close frame"
+      }
+    ],
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.549,
+    "stdout": "{\n  \"id\": \"qa272-line-1\",\n  \"labels\": [\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-00000000000000000000\"\n    },\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA272 exact line before disconnect\",\n  \"timestamp\": \"2026-10-15T04:52:41.950676Z\"\n}",
+    "stderr": "",
+    "cleanup": {
+      "server_stopped": true,
+      "config_removed": true,
+      "native_reaped": true
+    }
+  },
+  {
+    "client": "bex",
+    "scenario": "error1011_after_line",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-00000000000000000000",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "endpoint": "http://127.0.0.1:54454/v1/",
+    "credentials": "synthetic local fixture only; no QA credential/config copied",
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:54454",
+          "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "Z0XBSxO2XM3hb3Ay2xrXMA==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      }
+    ],
+    "server_events": [
+      {
+        "HTTP": 101
+      },
+      {
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "qa272-line-1",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 exact line before disconnect",
+          "timestamp": "2026-10-15T04:52:41.950676Z"
+        }
+      },
+      {
+        "websocket_opcode": 8,
+        "close_code": 1011,
+        "reason": "QA272 planned server error"
+      }
+    ],
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.552,
+    "stdout": "{\n  \"id\": \"qa272-line-1\",\n  \"labels\": [\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-00000000000000000000\"\n    },\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA272 exact line before disconnect\",\n  \"timestamp\": \"2026-10-15T04:52:41.950676Z\"\n}",
+    "stderr": "",
+    "cleanup": {
+      "server_stopped": true,
+      "config_removed": true,
+      "native_reaped": true
+    }
+  },
+  {
+    "client": "bex",
+    "scenario": "normal1000_after_line",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-00000000000000000000",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "endpoint": "http://127.0.0.1:54459/v1/",
+    "credentials": "synthetic local fixture only; no QA credential/config copied",
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:54459",
+          "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "lIe76B7Uv2R7vc0Y61XDdw==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      }
+    ],
+    "server_events": [
+      {
+        "HTTP": 101
+      },
+      {
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "qa272-line-1",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 exact line before disconnect",
+          "timestamp": "2026-10-15T04:52:41.950676Z"
+        }
+      },
+      {
+        "websocket_opcode": 8,
+        "close_code": 1000,
+        "reason": "QA272 normal completion"
+      }
+    ],
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.551,
+    "stdout": "{\n  \"id\": \"qa272-line-1\",\n  \"labels\": [\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-00000000000000000000\"\n    },\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA272 exact line before disconnect\",\n  \"timestamp\": \"2026-10-15T04:52:41.950676Z\"\n}",
+    "stderr": "",
+    "cleanup": {
+      "server_stopped": true,
+      "config_removed": true,
+      "native_reaped": true
+    }
+  },
+  {
+    "client": "bex",
+    "scenario": "handshake503",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-00000000000000000000",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "endpoint": "http://127.0.0.1:54465/v1/",
+    "credentials": "synthetic local fixture only; no QA credential/config copied",
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:54465",
+          "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "UuJJuLIS0fRTqGPWeC8Rcw==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      }
+    ],
+    "server_events": [
+      {
+        "HTTP": 503,
+        "body": "{\"id\":\"QA272_UNAVAILABLE\",\"message\":\"planned local fixture unavailable\"}"
+      }
+    ],
+    "native_exit": 1,
+    "harness_timeout": false,
+    "elapsed": 0.551,
+    "stdout": "",
+    "stderr": "Error: error tailing logs: failed to tail logs: {\"id\":\"QA272_UNAVAILABLE\",\"message\":\"planned local fixture unavailable\"}\n",
+    "cleanup": {
+      "server_stopped": true,
+      "config_removed": true,
+      "native_reaped": true
+    }
+  },
+  {
+    "client": "render",
+    "scenario": "abrupt_empty",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-00000000000000000000",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "endpoint": "http://127.0.0.1:54470/v1/",
+    "credentials": "synthetic local fixture only; no QA credential/config copied",
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:54470",
+          "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "+d3qltDOjNmfc3mnkEnqCg==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      }
+    ],
+    "server_events": [
+      {
+        "HTTP": 101
+      },
+      {
+        "transport": "TCP shutdown without WebSocket close frame"
+      }
+    ],
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.589,
+    "stdout": "",
+    "stderr": "",
+    "cleanup": {
+      "server_stopped": true,
+      "config_removed": true,
+      "native_reaped": true
+    }
+  },
+  {
+    "client": "render",
+    "scenario": "abrupt_after_line",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-00000000000000000000",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "endpoint": "http://127.0.0.1:54475/v1/",
+    "credentials": "synthetic local fixture only; no QA credential/config copied",
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:54475",
+          "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "axIuDEdM8wX3ARheM8VcXQ==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      }
+    ],
+    "server_events": [
+      {
+        "HTTP": 101
+      },
+      {
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "qa272-line-1",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 exact line before disconnect",
+          "timestamp": "2026-10-15T04:52:41.950676Z"
+        }
+      },
+      {
+        "transport": "TCP shutdown without WebSocket close frame"
+      }
+    ],
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.553,
+    "stdout": "{\n  \"id\": \"qa272-line-1\",\n  \"labels\": [\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-00000000000000000000\"\n    },\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA272 exact line before disconnect\",\n  \"timestamp\": \"2026-10-15T04:52:41.950676Z\"\n}",
+    "stderr": "",
+    "cleanup": {
+      "server_stopped": true,
+      "config_removed": true,
+      "native_reaped": true
+    }
+  },
+  {
+    "client": "render",
+    "scenario": "error1011_after_line",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-00000000000000000000",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "endpoint": "http://127.0.0.1:54477/v1/",
+    "credentials": "synthetic local fixture only; no QA credential/config copied",
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:54477",
+          "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "MYnvIs3McZQZrsGW6Qabgw==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      }
+    ],
+    "server_events": [
+      {
+        "HTTP": 101
+      },
+      {
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "qa272-line-1",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 exact line before disconnect",
+          "timestamp": "2026-10-15T04:52:41.950676Z"
+        }
+      },
+      {
+        "websocket_opcode": 8,
+        "close_code": 1011,
+        "reason": "QA272 planned server error"
+      }
+    ],
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.552,
+    "stdout": "{\n  \"id\": \"qa272-line-1\",\n  \"labels\": [\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-00000000000000000000\"\n    },\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA272 exact line before disconnect\",\n  \"timestamp\": \"2026-10-15T04:52:41.950676Z\"\n}",
+    "stderr": "",
+    "cleanup": {
+      "server_stopped": true,
+      "config_removed": true,
+      "native_reaped": true
+    }
+  },
+  {
+    "client": "render",
+    "scenario": "normal1000_after_line",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-00000000000000000000",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "endpoint": "http://127.0.0.1:54481/v1/",
+    "credentials": "synthetic local fixture only; no QA credential/config copied",
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:54481",
+          "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "OasCcnKoZHdjqC609AXnhw==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      }
+    ],
+    "server_events": [
+      {
+        "HTTP": 101
+      },
+      {
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "qa272-line-1",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 exact line before disconnect",
+          "timestamp": "2026-10-15T04:52:41.950676Z"
+        }
+      },
+      {
+        "websocket_opcode": 8,
+        "close_code": 1000,
+        "reason": "QA272 normal completion"
+      }
+    ],
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.544,
+    "stdout": "{\n  \"id\": \"qa272-line-1\",\n  \"labels\": [\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-00000000000000000000\"\n    },\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA272 exact line before disconnect\",\n  \"timestamp\": \"2026-10-15T04:52:41.950676Z\"\n}",
+    "stderr": "",
+    "cleanup": {
+      "server_stopped": true,
+      "config_removed": true,
+      "native_reaped": true
+    }
+  },
+  {
+    "client": "render",
+    "scenario": "handshake503",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-00000000000000000000",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "endpoint": "http://127.0.0.1:54487/v1/",
+    "credentials": "synthetic local fixture only; no QA credential/config copied",
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:54487",
+          "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "rUAywJ9JJwORhlQrmAmI5g==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      }
+    ],
+    "server_events": [
+      {
+        "HTTP": 503,
+        "body": "{\"id\":\"QA272_UNAVAILABLE\",\"message\":\"planned local fixture unavailable\"}"
+      }
+    ],
+    "native_exit": 1,
+    "harness_timeout": false,
+    "elapsed": 0.548,
+    "stdout": "",
+    "stderr": "Error: error tailing logs: failed to tail logs: {\"id\":\"QA272_UNAVAILABLE\",\"message\":\"planned local fixture unavailable\"}\n",
+    "cleanup": {
+      "server_stopped": true,
+      "config_removed": true,
+      "native_reaped": true
+    }
+  }
+]

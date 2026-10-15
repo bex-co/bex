@@ -1,0 +1,22 @@
+{
+  "command": [
+    "go",
+    "test",
+    "-json",
+    "-count=1",
+    "-run",
+    "^TestImageToGitSourceSaveReadsDockerRuntime$",
+    "./internal/apps"
+  ],
+  "cwd": "lego/backend",
+  "source_head": "ae68d7e03b01330114ae25b188e858fce7796a82",
+  "exit": 0,
+  "elapsed": 6.331,
+  "passed_cases": [
+    "TestImageToGitSourceSaveReadsDockerRuntime/web_service",
+    "TestImageToGitSourceSaveReadsDockerRuntime/private_service",
+    "TestImageToGitSourceSaveReadsDockerRuntime/background_worker",
+    "TestImageToGitSourceSaveReadsDockerRuntime/cron_job",
+    "TestImageToGitSourceSaveReadsDockerRuntime"
+  ]
+}

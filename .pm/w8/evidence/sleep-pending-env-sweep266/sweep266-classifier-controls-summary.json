@@ -1,0 +1,16 @@
+{
+  "command": [
+    "go",
+    "test",
+    "./internal/store",
+    "-run",
+    "^(TestObservedDeployStatus.*|TestUserSuspendCancelsTheInterruptedRollout|TestParkedRolloutClosesWithItsLastStallDiagnosis)$",
+    "-count=1",
+    "-json"
+  ],
+  "cwd": "lego/backend",
+  "GOWORK": "off",
+  "GOTOOLCHAIN": "go1.26.8",
+  "exit": 0,
+  "elapsed": 6.409
+}

@@ -1,0 +1,52 @@
+{
+  "sweep": 266,
+  "date_UTC": "2026-10-15T04:30:46.988112+00:00",
+  "source_head": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+  "deployed_revision": "unknown",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "workspace_name": "bex-canary",
+  "auth": "isolated previously approved human QA OAuth",
+  "API_origin": "https://api.bex.co/v1/",
+  "output": "non-TTY --confirm -o json",
+  "Bex_release": "v0.3.2",
+  "Bex_build_commit": "a6350da0d6e451e063143432e06c548ba7b5851b",
+  "Bex_binary_sha256": "585a5456678ce3bc73d5a71117b901d08add1fab230464d3b5b228101a55c34c",
+  "upstream_pin": "2.27.0/a764810a768202704e7206eb7b87a47211fcd98e",
+  "native_mutation_wire_captured": false,
+  "API_only_setup": [
+    "setIdleTimeout on owned fixture to 30 seconds",
+    "PATCH /v1/services/{ownedId}/environment with saveMode save_only"
+  ],
+  "new_finding": ".pm/w8/106.md",
+  "severity": "minor",
+  "estimate": "55m",
+  "owned_services_deleted": 3,
+  "enumerated_deploy_children": 6,
+  "final_quota": {
+    "services": {
+      "used": 6,
+      "terminating": 0,
+      "limit": 25
+    },
+    "postgres": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    },
+    "keyValues": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    }
+  },
+  "product_code_changed": false,
+  "commit_push": false,
+  "unverified": [
+    "default 15-minute idle timing",
+    "deployed API/operator revision",
+    "hosted health-gate terminal outcome",
+    "browser rendering and GraphQL/MCP deploy-history parity",
+    "independent Render production",
+    "native deploy wait completion during the excluded build-capacity queue"
+  ]
+}

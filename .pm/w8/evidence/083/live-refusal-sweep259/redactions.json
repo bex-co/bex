@@ -1,0 +1,6 @@
+{
+  "credentials": "known QA email/password and isolated config credentials masked if present; Authorization omitted",
+  "private_paths": "<owned-temp>",
+  "safe_values": "own nonce markers, complete native errors, API response types, status/headers, log IDs/labels and own source configuration preserved",
+  "data_endpoint_credentials": "never fetched for this sweep"
+}

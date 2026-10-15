@@ -1,0 +1,5 @@
+{
+  "credentials": "known QA email/password and isolated config credentials masked if present; Authorization not captured",
+  "private_paths": "<owned-temp>",
+  "safe_values": "harmless group names including authored whitespace/Unicode, exact manifest multipart bytes, resource IDs and full native/server results preserved"
+}

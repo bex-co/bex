@@ -1,0 +1,30 @@
+{
+  "sweep": 252,
+  "source_head": "ae68d7e03b01330114ae25b188e858fce7796a82",
+  "deployed_backend_operator_revision": "unknown",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "auth": "existing isolated human QA OAuth; no additional credentials minted",
+  "Bex_release": "v0.3.2",
+  "Bex_release_recorded_build_commit": "a6350da0d6e451e063143432e06c548ba7b5851b",
+  "Bex_release_sha256": "585a5456678ce3bc73d5a71117b901d08add1fab230464d3b5b228101a55c34c",
+  "Render_version": "2.27.0",
+  "Render_commit": "a764810a768202704e7206eb7b87a47211fcd98e",
+  "hosted_scope": "web only; default Dockerfile Git builder; no explicit runtime override",
+  "fixture_ids": [
+    "srv-db7ugd9llfps73emuh8g",
+    "srv-db7uhg9llfps73emuhdg",
+    "srv-db825h0umfhs73fe7gkg",
+    "srv-db82680umfhs73fe7gng"
+  ],
+  "deploy_children": 6,
+  "cleanup": "all four detail404/listabsent/runtime404; baseline six retained; final services used6/terminating0",
+  "API_comparisons": "correctly scoped REST/GraphQL/MCP projections and byte-identical exports; API diagnostics, not CLI export coverage",
+  "initial_MCP_comparison": "workspaceId omitted; not an equivalent selected-workspace comparison; excluded and retained separately",
+  "native_export_validation": "both clients valid:true on unchanged generated render.yaml",
+  "qualifications": [
+    "Transient first clone 404/build and first post-Live503 are retained; settled exact HTTP200 required.",
+    "One diagnostic GET TLS failure was retried read-only; no product finding.",
+    "No live private/worker/cron migration, dashboard interaction, registry-only save or OCI argv/image inspection. Four image-born types plus legacy/image/native/branch-only controls are covered by existing focused source test.",
+    "No product fix, external submission, commit or push performed in this continued sweep."
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "credentials": "known QA email/password and isolated config credential strings masked if present",
+  "temporary_directory": "<owned-temp>",
+  "harmless_values": "nonce, ETag, paths, source/body bytes and native/API output preserved"
+}

@@ -1,0 +1,90 @@
+from pathlib import Path
+import json,datetime,secrets,subprocess,sys,shutil,yaml,time,os
+os.umask(0o077)
+p=Path(__file__).parent;root=Path('/Volumes/nvme4tbfish/projects/bex8');cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json';c=json.loads(cp.read_text());assert c.get('sync254_result')==0 and not c.get('active_sync_stash')
+mode=sys.argv[1];ws='tea-daif693dqjvc73e7as3g';baseline={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']}
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,indent=2,ensure_ascii=False)+'\n');cp.chmod(0o600)
+def cli(args,client='bex'):
+ cfg=p/'render-config/cli.yaml'
+ try:
+  if client=='render':assert not cfg.exists();shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  runner=['python3',str(p/'run-render.py')] if client=='render' else ['python3',str(p/'run.py'),'--release']
+  return json.loads(subprocess.check_output([*runner,*args],text=True,timeout=55))
+ finally:
+  if client=='render':cfg.unlink(missing_ok=True)
+def wire(method,path,body=None):
+ assert method in ('GET','POST')
+ if method=='POST':
+  assert path=='/v1/cron-jobs/'+x['id']+'/runs';own()
+ cfg=yaml.safe_load((p/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token
+ ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')'
+ auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+ws+'"\n'
+ args=['curl','--disable','-sS','--max-time','30','--config','-','-X',method,'-H','Accept: application/json'];f=p/'sweep254-request.json'
+ if body is not None:f.write_text(json.dumps(body));f.chmod(0o600);args+=['-H','Content-Type: application/json','--data-binary','@'+str(f)]
+ started=time.monotonic()
+ try:r=subprocess.run([*args,'-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=36)
+ finally:f.unlink(missing_ok=True)
+ text,_,status=r.stdout.rpartition('\n');record={'at':now(),'request':{'method':method,'path':path,'body':body,'workspace':ws,'user_agent':ua,'authorization':'REDACTED'},'status':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-started,3),'response':text,'stderr':r.stderr};assert token not in json.dumps(record)
+ with (p/'sweep254-wire.jsonl').open('a') as out:out.write(json.dumps(record)+'\n')
+ return record
+if mode=='create':
+ assert not any(v.get('sweep')==254 for v in c['resources']);q=wire('GET','/v1/owners/'+ws+'/limits');assert q['status']=='200';limit=json.loads(q['response'])['services'];assert limit['used']+limit['terminating']<limit['limit']
+ inv=cli(['services','--confirm','-o','json']);assert inv['exit']==0;existing=json.loads(inv['stdout']) or [];before={v.get('service',v)['id'] for v in existing};assert baseline<=before
+ nonce=secrets.token_hex(3);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-cron';marker='QA254_'+nonce
+ args=['services','create','--name',name,'--type','cron_job','--runtime','go','--repo','https://github.com/bex-co/bex','--branch','main','--root-directory','examples/cron-demo','--build-command','go build -o app .','--cron-command','./app','--cron-schedule','0 0 1 1 *','--env-var','MESSAGE='+marker,'--plan','free','--region','frankfurt','--auto-deploy=false','--confirm','-o','json']
+ assert all(v.get('service',v)['name']!=name for v in existing)
+ x={'sweep':254,'source_head':c['head'],'workspace':ws,'type':'cron_job','name':name,'nonce':nonce,'marker':marker,'time':now(),'dependency_ids':[],'recorded_child_ids':[],'recorded_run_ids':[],'run_intents':[],'capacity_proof':q,'precreate_inventory_ids':sorted(before),'state':'native Free cron create intent persisted','create_command':['bex',*args]};c['resources'].append(x);c['phase']='sweep254 CLI-created annual-future cron history acceptance active';save();r=cli(args);x.update(create_result=r,state='native create result received; reconcile before retry');save();assert r['exit']==0
+ v=json.loads(r['stdout']);v=v.get('data',v);v=v.get('service',v);assert v['id'] not in before and v['ownerId']==ws and v['name']==name and v['type']=='cron_job' and v['serviceDetails']['plan']=='free';x.update(id=v['id'],create_response=v,state='created: native Go cron build pending',command_mode='success');save();print(json.dumps({'id':v['id'],'exit':r['exit'],'type':v['type'],'plan':v['serviceDetails']['plan']}),flush=True);raise SystemExit(0)
+x=next(v for v in c['resources'] if v.get('sweep')==254)
+def own():
+ assert x['workspace']==ws and x['id'] not in baseline and x['create_result']['exit']==0 and x['create_response']['id']==x['id'] and x['create_response']['ownerId']==ws and not x['state'].startswith('deleted:')
+def history():
+ r=cli(['deploys','list',x['id'],'--confirm','-o','json']);assert r['exit']==0;rows=json.loads(r['stdout']);x['deploy_children']=rows
+ for row in rows:
+  if row['id'] not in x['recorded_child_ids']:x['recorded_child_ids'].append(row['id'])
+ x.setdefault('history_receipts',[]).append({'at':now(),'result':r});save();return rows
+own();sid=x['id']
+if mode=='observe':
+ rows=history();detail=wire('GET','/v1/services/'+sid);runs=wire('GET','/v1/cron-jobs/'+sid+'/runs?limit=100');x.setdefault('service_observations',[]).append({'at':now(),'detail':detail,'runs':runs,'latest_deploy':rows[0] if rows else None});save();assert detail['status']=='200' and runs['status']=='200'
+ assert json.loads(detail['response'])['serviceDetails']['schedule']=='0 0 1 1 *', 'Preserve the authored annual schedule'
+ if rows and rows[0]['status']=='live':x['ready']=True;save()
+ print(json.dumps({'latest_deploy':rows[0]['status'] if rows else None,'run_count':len(json.loads(runs['response'])),'command_mode':x['command_mode']}),flush=True)
+elif mode in ('set-failure','set-success'):
+ expected='failure' if mode=='set-failure' else 'success';assert x.get('ready') and x['command_mode']!=expected and not any(v['mode']==mode for v in x.get('command_updates',[]))
+ if x['run_intents']:assert x['run_intents'][-1].get('terminal_status') in ('successful','unsuccessful','canceled')
+ command='/bin/sh -c \'printf "%s fail\\n" "$MESSAGE"; exit 7\'' if expected=='failure' else './app'
+ args=['services','update',sid,'--cron-command',command,'--confirm','-o','json'];action={'at':now(),'mode':mode,'command':['bex',*args],'state':'native command update intent persisted'};x.setdefault('command_updates',[]).append(action);save();r=cli(args);action.update(result=r,state='native update returned; reconcile release before trigger');save();assert r['exit']==0;x['command_mode']=expected;x['ready']=False;save();history();print(json.dumps({'mode':mode,'exit':r['exit']}),flush=True)
+elif mode=='trigger':
+ assert json.loads(x['service_observations'][-1]['detail']['response'])['serviceDetails']['schedule']=='0 0 1 1 *'
+ assert x.get('ready');ordinal=len(x['run_intents'])+1;assert 1<=ordinal<=12
+ assert x['command_mode']==('success' if ordinal in (1,12) else 'failure')
+ if x['run_intents']:assert x['run_intents'][-1].get('terminal_status') in ('successful','unsuccessful','canceled')
+ before=wire('GET','/v1/cron-jobs/'+sid+'/runs?limit=100');assert before['status']=='200';intent={'ordinal':ordinal,'at':now(),'mode':x['command_mode'],'before_history':before,'state':'manual trigger intent persisted'};x['run_intents'].append(intent);save()
+ result=wire('POST','/v1/cron-jobs/'+sid+'/runs');intent['result']=result;intent['state']='manual POST returned; reconcile before any next trigger';save();assert result['status']=='200'
+ row=json.loads(result['response']);assert row['id'] not in x['recorded_run_ids'];intent['run_id']=row['id'];x['recorded_run_ids'].append(row['id']);save();print(json.dumps({'ordinal':ordinal,'run_id':row['id'],'status':row['status'],'expected_terminal':'successful' if x['command_mode']=='success' else 'unsuccessful','API_only_trigger':True}),flush=True)
+elif mode=='observe-run':
+ intent=x['run_intents'][-1];assert intent.get('run_id');detail=wire('GET','/v1/cron-jobs/'+sid+'/runs/'+intent['run_id']);runs=wire('GET','/v1/cron-jobs/'+sid+'/runs?limit=100');record={'at':now(),'run_detail':detail,'history':runs};intent.setdefault('observations',[]).append(record);save()
+ assert runs['status']=='200'
+ if detail['status']=='200':
+  row=json.loads(detail['response'])
+  if row['status'] in ('successful','unsuccessful','canceled'):intent['terminal_status']=row['status'];save()
+ else:row={'status':'awaiting run detail','HTTP':detail['status']}
+ actual=[v['cronJobRun']['id'] for v in json.loads(runs['response'])];expected=list(reversed(x['recorded_run_ids']))[:10];record['expected_newest_ids']=expected;record['exact_order']=actual==expected;save()
+ print(json.dumps({'ordinal':intent['ordinal'],'status':row['status'],'retained':len(actual),'exact_newest_order':actual==expected,'newest':actual[0] if actual else None}),flush=True)
+elif mode=='native-read':
+ client=sys.argv[2];assert client in ('bex','render');r=cli(['services','--confirm','-o','json'],client);assert r['exit']==0;values=json.loads(r['stdout']) or [];ids={v.get('service',v)['id'] for v in values};assert baseline<=ids
+ selected=[v for v in values if v.get('service',v)['id']==sid];assert len(selected)==1;r['stdout']=json.dumps(selected,indent=2);r['stdout_scope']='only selected owned service retained here; full original native stdout in private command journal';r['all_listed_ids']=sorted(ids);x.setdefault('native_service_reads',[]).append({'at':now(),'client':client,'result':r});save();d=selected[0].get('service',selected[0]).get('serviceDetails',{});print(json.dumps({'client':client,'exit':r['exit'],'lastSuccessfulRunAt':d.get('lastSuccessfulRunAt')}),flush=True)
+elif mode=='logs':
+ client=sys.argv[2] if len(sys.argv)>2 else 'bex';args=['logs','--resources',sid,'--type','app','--text',x['marker'],'--start',x['time'],'--direction','forward','--limit','100','--confirm','-o','json'];r=cli(args,client);x.setdefault('native_log_reads',[]).append({'at':now(),'client':client,'result':r});save();assert r['exit']==0;dec=json.JSONDecoder();s=r['stdout'];at=0;values=[]
+ while at<len(s):
+  while at<len(s) and s[at].isspace():at+=1
+  if at>=len(s):break
+  v,at=dec.raw_decode(s,at);values.extend(v if isinstance(v,list) else [v])
+ print(json.dumps({'client':client,'exit':r['exit'],'matching_rows':len(values),'messages':[v.get('message') for v in values]}),flush=True)
+elif mode=='delete':
+ assert 'delete_result' not in x and all(v.get('terminal_status') in ('successful','unsuccessful','canceled') for v in x['run_intents'])
+ runs=wire('GET','/v1/cron-jobs/'+sid+'/runs?limit=100');assert runs['status']=='200';assert {v['cronJobRun']['id'] for v in json.loads(runs['response'])}<=set(x['recorded_run_ids']);x['predelete_runs']=runs;history();x['state']='exact-owned native delete intent persisted';save();x['delete_result']=cli(['services','delete',sid,'--confirm','-o','json']);save();print(json.dumps({'delete_exit':x['delete_result']['exit'],'recorded_runs':len(x['recorded_run_ids']),'deploy_children':len(x['recorded_child_ids'])}),flush=True)
+elif mode=='reconcile':
+ assert 'delete_result' in x;detail=wire('GET','/v1/services/'+sid);runs=wire('GET','/v1/cron-jobs/'+sid+'/runs');inv=cli(['services','--confirm','-o','json']);assert inv['exit']==0;ids={v.get('service',v)['id'] for v in json.loads(inv['stdout']) or []};assert baseline<=ids;q=wire('GET','/v1/owners/'+ws+'/limits');assert q['status']=='200';term=json.loads(q['response'])['services']['terminating'];done=detail['status']==runs['status']=='404' and sid not in ids and term==0;x.setdefault('cleanup_reconciliations',[]).append({'at':now(),'detail':detail,'runs':runs,'list_ids':sorted(ids),'baseline_present':True,'quota':q});x['state']='deleted: service404/runs404/listabsent/baseline present/quota terminating0' if done else 'delete acknowledged: service/run/quota convergence pending';save();print(json.dumps({'complete':done,'detail':detail['status'],'runs':runs['status'],'terminating':term}),flush=True)
+else:raise ValueError(mode)

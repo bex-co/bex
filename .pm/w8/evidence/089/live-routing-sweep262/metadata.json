@@ -1,0 +1,33 @@
+{
+  "sweep": 262,
+  "date_UTC": "2026-10-15T03:11:46.790404+00:00",
+  "source_head": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+  "deployed_revision": "unknown",
+  "existing_issue": "w8/089, remains blocked",
+  "resource": "previously owned and fully deleted sweep259 App/deploy IDs; no existing resource was changed or woken",
+  "requests": 5,
+  "credentials_or_cookies_sent": false,
+  "redirects_followed": false,
+  "native_menu_repeated": false,
+  "fresh_device_login": false,
+  "authenticated_canonical_arrival": false,
+  "new_resources": 0,
+  "new_findings": 0,
+  "commit_push": false,
+  "probe_template": [
+    "curl",
+    "--disable",
+    "-sS",
+    "--max-time",
+    "15",
+    "-H",
+    "User-Agent: <recorded Render2.27 UA>",
+    "-D",
+    "<private headers>",
+    "-o",
+    "<private body>",
+    "-w",
+    "%{http_code}",
+    "<recorded URL>"
+  ]
+}

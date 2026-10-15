@@ -1,0 +1,24 @@
+{
+  "sweep": 267,
+  "at_UTC": "2026-10-15T04:34:52.398156+00:00",
+  "source_head": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+  "deployed_revision": "unknown",
+  "Bex_release": "v0.3.2",
+  "Bex_binary_sha256": "585a5456678ce3bc73d5a71117b901d08add1fab230464d3b5b228101a55c34c",
+  "upstream_pin": "2.27.0/a764810a768202704e7206eb7b87a47211fcd98e",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "auth": "continuing isolated human QA OAuth, freshly copied private configs retaining OAuth dashboard origin",
+  "native_TTY_commands": 4,
+  "public_HTTP_checks": 5,
+  "new_findings": 0,
+  "existing_note": ".pm/w8/blocked/089.md",
+  "cleanup": "four copied config dirs removed, four PTYs reaped, baseline inventory exactly six; no hosted resource created or changed",
+  "unverified": [
+    "fresh device login/grant response",
+    "authenticated final-page arrival",
+    "other native resource kinds/prefixes",
+    "actual deployed artifact identity",
+    "local-stack rollout"
+  ],
+  "commit_push": false
+}

@@ -1,0 +1,13 @@
+services:
+- autoDeployTrigger: "off"
+  branch: master
+  envVars:
+  - key: HTTP_PORT
+    sync: false
+  - key: WHOAMI_PORT_NUMBER
+    sync: false
+  healthCheckPath: /
+  name: qa-20261014-c54efc-src
+  repo: https://github.com/traefik/whoami
+  runtime: docker
+  type: web

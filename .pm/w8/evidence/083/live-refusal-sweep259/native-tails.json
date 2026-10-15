@@ -1,0 +1,358 @@
+[
+  {
+    "resource_id": "srv-db83tioumfhs73fe7j0g",
+    "at": "2026-10-15T02:51:22.407432+00:00",
+    "client": "bex",
+    "family": "app",
+    "native_request_capture": "unchanged GET/logs/WS forwarding to fixed api.bex.co for exact owned resource only; authorization never captured",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "srv-db83tioumfhs73fe7j0g",
+      "--text",
+      "QA259_347e64_bex",
+      "--limit",
+      "100",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "actual_websocket_101_before_emit": true,
+    "single_emit_request": {
+      "at": "2026-10-15T02:51:24.139227+00:00",
+      "url": "https://qa-20261015-347e64-tailapp.onbex.co/emit/QA259_347e64_bex",
+      "HTTP": "200",
+      "body": "QA259_347e64\n",
+      "curl_exit": 0
+    },
+    "explicit_bounded_stop": "SIGINT after own marker or bounded wait",
+    "result": {
+      "exit": -2,
+      "elapsed": 1.843,
+      "stdout": "{\n  \"id\": \"srv-db83tioumfhs73fe7j0g-8v4l7u3o3f34hfu5cfb5-2026-10-15T02:51:24.058792019Z-93cc0e33\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db83tioumfhs73fe7j0g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db83tioumfhs73fe7j0g-8v4l7u3o3f34hfu5cfb5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA259_347e64_bex\",\n  \"timestamp\": \"2026-10-15T02:51:24.058792019Z\"\n}",
+      "stderr": ""
+    },
+    "decoded_rows": [
+      {
+        "id": "srv-db83tioumfhs73fe7j0g-8v4l7u3o3f34hfu5cfb5-2026-10-15T02:51:24.058792019Z-93cc0e33",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db83tioumfhs73fe7j0g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db83tioumfhs73fe7j0g-8v4l7u3o3f34hfu5cfb5"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          }
+        ],
+        "message": "QA259_347e64_bex",
+        "timestamp": "2026-10-15T02:51:24.058792019Z"
+      }
+    ],
+    "passed": true,
+    "wire": [
+      {
+        "at": "2026-10-15T02:51:23.306543Z",
+        "request": {
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          },
+          "method": "GET",
+          "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db83tioumfhs73fe7j0g&text=QA259_347e64_bex&limit=100"
+        },
+        "response_headers": {
+          "CF-Ray": "a4ab858b6ec06c4d-SJC",
+          "Connection": "upgrade",
+          "Sec-WebSocket-Accept": "iOXZkY1V0fALG7QtlV+tiSrQpXI=",
+          "Upgrade": "websocket"
+        },
+        "server_read_end": "read tcp [2600:1700:45f0:963f:fd3e:ea2b:34d1:59d3]:57168->[2606:4700:3033::ac43:9497]:443: use of closed network connection",
+        "server_ws_bytes": "gX4Bd3siaWQiOiJzcnYtZGI4M3Rpb3VtZmhzNzNmZTdqMGctOHY0bDd1M28zZjM0aGZ1NWNmYjUtMjAyNi0xMC0xNVQwMjo1MToyNC4wNTg3OTIwMTlaLTkzY2MwZTMzIiwibWVzc2FnZSI6IlFBMjU5XzM0N2U2NF9iZXgiLCJ0aW1lc3RhbXAiOiIyMDI2LTEwLTE1VDAyOjUxOjI0LjA1ODc5MjAxOVoiLCJsYWJlbHMiOlt7Im5hbWUiOiJ0eXBlIiwidmFsdWUiOiJhcHAifSx7Im5hbWUiOiJyZXNvdXJjZSIsInZhbHVlIjoic3J2LWRiODN0aW91bWZoczczZmU3ajBnIn0seyJuYW1lIjoiaW5zdGFuY2UiLCJ2YWx1ZSI6InNydi1kYjgzdGlvdW1maHM3M2ZlN2owZy04djRsN3UzbzNmMzRoZnU1Y2ZiNSJ9LHsibmFtZSI6ImNvbnRhaW5lciIsInZhbHVlIjoiYXBwIn1dfQ==",
+        "status": 101
+      }
+    ],
+    "cleanup": "native/relay processes reaped and exact copied config removed"
+  },
+  {
+    "resource_id": "srv-db83tioumfhs73fe7j0g",
+    "at": "2026-10-15T02:51:24.656884+00:00",
+    "client": "render",
+    "family": "app",
+    "native_request_capture": "unchanged GET/logs/WS forwarding to fixed api.bex.co for exact owned resource only; authorization never captured",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "srv-db83tioumfhs73fe7j0g",
+      "--text",
+      "QA259_347e64_render",
+      "--limit",
+      "100",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "actual_websocket_101_before_emit": true,
+    "single_emit_request": {
+      "at": "2026-10-15T02:51:26.354346+00:00",
+      "url": "https://qa-20261015-347e64-tailapp.onbex.co/emit/QA259_347e64_render",
+      "HTTP": "200",
+      "body": "QA259_347e64\n",
+      "curl_exit": 0
+    },
+    "explicit_bounded_stop": "SIGINT after own marker or bounded wait",
+    "result": {
+      "exit": -2,
+      "elapsed": 1.837,
+      "stdout": "{\n  \"id\": \"srv-db83tioumfhs73fe7j0g-8v4l7u3o3f34hfu5cfb5-2026-10-15T02:51:26.274131117Z-6ff229b0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db83tioumfhs73fe7j0g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db83tioumfhs73fe7j0g-8v4l7u3o3f34hfu5cfb5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA259_347e64_render\",\n  \"timestamp\": \"2026-10-15T02:51:26.274131117Z\"\n}",
+      "stderr": ""
+    },
+    "decoded_rows": [
+      {
+        "id": "srv-db83tioumfhs73fe7j0g-8v4l7u3o3f34hfu5cfb5-2026-10-15T02:51:26.274131117Z-6ff229b0",
+        "labels": [
+          {
+            "name": "type",
+            "value": "app"
+          },
+          {
+            "name": "resource",
+            "value": "srv-db83tioumfhs73fe7j0g"
+          },
+          {
+            "name": "instance",
+            "value": "srv-db83tioumfhs73fe7j0g-8v4l7u3o3f34hfu5cfb5"
+          },
+          {
+            "name": "container",
+            "value": "app"
+          }
+        ],
+        "message": "QA259_347e64_render",
+        "timestamp": "2026-10-15T02:51:26.274131117Z"
+      }
+    ],
+    "passed": true,
+    "wire": [
+      {
+        "at": "2026-10-15T02:51:25.536854Z",
+        "request": {
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          },
+          "method": "GET",
+          "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db83tioumfhs73fe7j0g&text=QA259_347e64_render&limit=100"
+        },
+        "response_headers": {
+          "CF-Ray": "a4ab85994fbefca9-SJC",
+          "Connection": "upgrade",
+          "Sec-WebSocket-Accept": "V2ZAnHqbr5L/4KfrOfhfzGtR+Do=",
+          "Upgrade": "websocket"
+        },
+        "server_read_end": "read tcp [2600:1700:45f0:963f:fd3e:ea2b:34d1:59d3]:57186->[2606:4700:3033::ac43:9497]:443: use of closed network connection",
+        "server_ws_bytes": "gX4BensiaWQiOiJzcnYtZGI4M3Rpb3VtZmhzNzNmZTdqMGctOHY0bDd1M28zZjM0aGZ1NWNmYjUtMjAyNi0xMC0xNVQwMjo1MToyNi4yNzQxMzExMTdaLTZmZjIyOWIwIiwibWVzc2FnZSI6IlFBMjU5XzM0N2U2NF9yZW5kZXIiLCJ0aW1lc3RhbXAiOiIyMDI2LTEwLTE1VDAyOjUxOjI2LjI3NDEzMTExN1oiLCJsYWJlbHMiOlt7Im5hbWUiOiJ0eXBlIiwidmFsdWUiOiJhcHAifSx7Im5hbWUiOiJyZXNvdXJjZSIsInZhbHVlIjoic3J2LWRiODN0aW91bWZoczczZmU3ajBnIn0seyJuYW1lIjoiaW5zdGFuY2UiLCJ2YWx1ZSI6InNydi1kYjgzdGlvdW1maHM3M2ZlN2owZy04djRsN3UzbzNmMzRoZnU1Y2ZiNSJ9LHsibmFtZSI6ImNvbnRhaW5lciIsInZhbHVlIjoiYXBwIn1dfQ==",
+        "status": 101
+      }
+    ],
+    "cleanup": "native/relay processes reaped and exact copied config removed"
+  },
+  {
+    "resource_id": "red-db83tjgumfhs73fe7j1g",
+    "at": "2026-10-15T02:50:03.405851+00:00",
+    "client": "bex",
+    "family": "keyvalue",
+    "native_request_capture": "unchanged GET/logs/WS forwarding to fixed api.bex.co for exact owned resource only; authorization never captured",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "red-db83tjgumfhs73fe7j1g",
+      "--text",
+      "QA259_927598_bex",
+      "--limit",
+      "100",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "result": {
+      "exit": 1,
+      "elapsed": 1.082,
+      "stdout": "",
+      "stderr": "Error: error tailing logs: failed to tail logs: {\"error\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\"}\n\n"
+    },
+    "passed": true,
+    "wire": [
+      {
+        "at": "2026-10-15T02:50:04.622191Z",
+        "request": {
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          },
+          "method": "GET",
+          "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=red-db83tjgumfhs73fe7j1g&text=QA259_927598_bex&limit=100"
+        },
+        "response": "{\"error\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\"}\n",
+        "response_headers": {
+          "CF-Ray": "a4ab839e88471949-SJC",
+          "Content-Type": "application/json"
+        },
+        "status": 400
+      }
+    ],
+    "cleanup": "native/relay processes reaped and exact copied config removed"
+  },
+  {
+    "resource_id": "red-db83tjgumfhs73fe7j1g",
+    "at": "2026-10-15T02:50:04.889091+00:00",
+    "client": "render",
+    "family": "keyvalue",
+    "native_request_capture": "unchanged GET/logs/WS forwarding to fixed api.bex.co for exact owned resource only; authorization never captured",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "red-db83tjgumfhs73fe7j1g",
+      "--text",
+      "QA259_927598_render",
+      "--limit",
+      "100",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "result": {
+      "exit": 1,
+      "elapsed": 0.938,
+      "stdout": "",
+      "stderr": "Error: error tailing logs: failed to tail logs: {\"error\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\"}\n\n"
+    },
+    "passed": true,
+    "wire": [
+      {
+        "at": "2026-10-15T02:50:05.955325Z",
+        "request": {
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          },
+          "method": "GET",
+          "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=red-db83tjgumfhs73fe7j1g&text=QA259_927598_render&limit=100"
+        },
+        "response": "{\"error\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\"}\n",
+        "response_headers": {
+          "CF-Ray": "a4ab83a7482d36e8-SJC",
+          "Content-Type": "application/json"
+        },
+        "status": 400
+      }
+    ],
+    "cleanup": "native/relay processes reaped and exact copied config removed"
+  },
+  {
+    "resource_id": "dpg-db83tk0umfhs73fe7j2g",
+    "at": "2026-10-15T02:51:10.319712+00:00",
+    "client": "bex",
+    "family": "postgres",
+    "native_request_capture": "unchanged GET/logs/WS forwarding to fixed api.bex.co for exact owned resource only; authorization never captured",
+    "command": [
+      "bex",
+      "logs",
+      "--resources",
+      "dpg-db83tk0umfhs73fe7j2g",
+      "--text",
+      "QA259_ee8a8a_bex",
+      "--limit",
+      "100",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "result": {
+      "exit": 1,
+      "elapsed": 1.15,
+      "stdout": "",
+      "stderr": "Error: error tailing logs: failed to tail logs: {\"error\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\"}\n\n"
+    },
+    "passed": true,
+    "wire": [
+      {
+        "at": "2026-10-15T02:51:11.616072Z",
+        "request": {
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          },
+          "method": "GET",
+          "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=dpg-db83tk0umfhs73fe7j2g&text=QA259_ee8a8a_bex&limit=100"
+        },
+        "response": "{\"error\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\"}\n",
+        "response_headers": {
+          "CF-Ray": "a4ab853fea847a33-SJC",
+          "Content-Type": "application/json"
+        },
+        "status": 400
+      }
+    ],
+    "cleanup": "native/relay processes reaped and exact copied config removed"
+  },
+  {
+    "resource_id": "dpg-db83tk0umfhs73fe7j2g",
+    "at": "2026-10-15T02:51:11.888741+00:00",
+    "client": "render",
+    "family": "postgres",
+    "native_request_capture": "unchanged GET/logs/WS forwarding to fixed api.bex.co for exact owned resource only; authorization never captured",
+    "command": [
+      "render",
+      "logs",
+      "--resources",
+      "dpg-db83tk0umfhs73fe7j2g",
+      "--text",
+      "QA259_ee8a8a_render",
+      "--limit",
+      "100",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "result": {
+      "exit": 1,
+      "elapsed": 0.867,
+      "stdout": "",
+      "stderr": "Error: error tailing logs: failed to tail logs: {\"error\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\"}\n\n"
+    },
+    "passed": true,
+    "wire": [
+      {
+        "at": "2026-10-15T02:51:12.880872Z",
+        "request": {
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          },
+          "method": "GET",
+          "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=dpg-db83tk0umfhs73fe7j2g&text=QA259_ee8a8a_render&limit=100"
+        },
+        "response": "{\"error\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\"}\n",
+        "response_headers": {
+          "CF-Ray": "a4ab8549790acf2a-SJC",
+          "Content-Type": "application/json"
+        },
+        "status": 400
+      }
+    ],
+    "cleanup": "native/relay processes reaped and exact copied config removed"
+  }
+]

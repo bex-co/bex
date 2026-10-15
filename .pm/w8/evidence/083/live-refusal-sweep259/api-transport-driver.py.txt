@@ -1,0 +1,26 @@
+from pathlib import Path
+import datetime,json,os,subprocess,time,urllib.parse,yaml
+os.umask(0o077)
+p=Path(__file__).parent;cp=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());owned={v['family']:v for v in c['resources'] if v.get('sweep')==259};assert set(owned)=={'app','keyvalue','postgres'}
+for v in owned.values():assert v['ready'] and v['create_result']['exit']==0 and v['create_response']['id']==v['id'] and not v['state'].startswith('deleted:')
+assert not any(v.get('transport_refusals') for v in owned.values());ws=owned['app']['workspace'];cfg=yaml.safe_load((p/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token
+ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')';auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+ws+'"\n'
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,indent=2,ensure_ascii=False)+'\n');cp.chmod(0o600)
+for family in ('keyvalue','postgres'):
+ x=owned[family];message='managed '+('Postgres' if family=='postgres' else 'Key Value')+' live log subscription is not supported; use the historical logs query'
+ for mixed in (False,True):
+  ids=[owned['app']['id'],x['id']] if mixed else [x['id']]
+  for transport in ('SSE','NDJSON','WebSocket'):
+   query=[('ownerId',ws),('direction','backward'),('limit','5')]+[('resource',v) for v in ids];path='/v1/logs/subscribe?'+urllib.parse.urlencode(query);request_headers={'Accept':'text/event-stream' if transport=='SSE' else 'application/x-ndjson' if transport=='NDJSON' else 'application/json'}
+   if transport=='WebSocket':request_headers.update({'Connection':'Upgrade','Upgrade':'websocket','Sec-WebSocket-Version':'13','Sec-WebSocket-Key':'cWEyNTktcHJvdG9jb2xubw=='})
+   f=p/'sweep259-transport-body';h=p/'sweep259-transport-headers';args=['curl','--disable','-sS','--max-time','8','--config','-','-D',str(h),'-o',str(f),'-w','%{http_code}']
+   for k,v in request_headers.items():args+=['-H',k+': '+v]
+   args.append('https://api.bex.co'+path);start=time.monotonic();r=subprocess.run(args,input=auth,text=True,capture_output=True,timeout=13);body=f.read_text() if f.exists() else '';headers={}
+   if h.exists():
+    for line in h.read_text().splitlines():
+     k,sep,v=line.partition(':')
+     if sep:headers[k.lower()]=v.strip()
+   f.unlink(missing_ok=True);h.unlink(missing_ok=True)
+   passed=r.returncode==0 and r.stdout=='400' and message in body and 'json' in headers.get('content-type','') and not headers.get('upgrade')
+   record={'at':now(),'api_only':True,'family':family,'mixed_with_owned_app':mixed,'transport':transport,'request':{'method':'GET','path':path,'headers':{'User-Agent':ua,'X-Bex-Workspace':ws,**request_headers},'authorization':'REDACTED'},'HTTP':r.stdout,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-start,3),'headers':headers,'body':body,'stderr':r.stderr,'passed':passed};assert token not in json.dumps(record);x.setdefault('transport_refusals',[]).append(record);save();print(json.dumps({'family':family,'mixed':mixed,'transport':transport,'HTTP':r.stdout,'passed':passed}),flush=True)

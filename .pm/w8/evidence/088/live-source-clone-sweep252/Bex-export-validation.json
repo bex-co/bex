@@ -1,0 +1,16 @@
+{
+  "binary": "released v0.3.2",
+  "command": [
+    "bex",
+    "blueprints",
+    "validate",
+    "<owned-temp>/sweep252-export-render.yaml",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "exit": 0,
+  "elapsed": 0.35,
+  "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa-20261014-c54efc-src\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+  "stderr": ""
+}

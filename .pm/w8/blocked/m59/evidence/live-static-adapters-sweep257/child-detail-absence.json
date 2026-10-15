@@ -1,0 +1,116 @@
+[
+  {
+    "at": "2026-10-15T02:33:46.307529+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/services/srv-db83k79aomdc7381ka30/deploys/dep-db83k79aomdc7381ka3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "404",
+    "elapsed": 0.39,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4ab6bbefd9d133c-SJC"
+    },
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+  },
+  {
+    "at": "2026-10-15T02:33:46.664286+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/services/srv-db83k79aomdc7381ka30/deploys/dep-db83le9aomdc7381ka40",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "404",
+    "elapsed": 0.295,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4ab6bc11aa10065-SJC"
+    },
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+  },
+  {
+    "at": "2026-10-15T02:33:47.111497+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/services/srv-db83k79aomdc7381ka30/deploys/dep-db83lshaomdc7381ka6g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "404",
+    "elapsed": 0.372,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4ab6bc38b23ebe9-SJC"
+    },
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+  },
+  {
+    "at": "2026-10-15T02:33:47.675430+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/services/srv-db83kaoumfhs73fe7irg/deploys/dep-db83kaoumfhs73fe7is0",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "404",
+    "elapsed": 0.499,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4ab6bc63d99cdb3-SJC"
+    },
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+  },
+  {
+    "at": "2026-10-15T02:33:48.163617+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/services/srv-db83kaoumfhs73fe7irg/deploys/dep-db83lg9aomdc7381ka5g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "404",
+    "elapsed": 0.42,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4ab6bc9b865173e-SJC"
+    },
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+  },
+  {
+    "at": "2026-10-15T02:33:48.503768+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/services/srv-db83kaoumfhs73fe7irg/deploys/dep-db83mfoumfhs73fe7it0",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "404",
+    "elapsed": 0.28,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4ab6bccbd129657-SJC"
+    },
+    "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+  }
+]

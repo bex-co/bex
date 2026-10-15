@@ -1,0 +1,6 @@
+{
+  "known_QA_email_password_and_isolated_credentials": "masked if present",
+  "private_temp_directory": "<owned-temp>",
+  "fixtures": "only harmless MESSAGE/nonce paths; native log messages and labels otherwise retained",
+  "native_wire": "not captured; complete native stdout/stderr/exit and independent emitted HTTP responses retained"
+}

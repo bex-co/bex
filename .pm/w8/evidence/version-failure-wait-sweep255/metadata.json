@@ -1,0 +1,86 @@
+{
+  "sweep": 255,
+  "source_head": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+  "deployed_backend_operator_revision": "unknown",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "Bex_release": "v0.3.2",
+  "Bex_sha256": "585a5456678ce3bc73d5a71117b901d08add1fab230464d3b5b228101a55c34c",
+  "Render_release": "2.27.0",
+  "Render_commit": "a764810a768202704e7206eb7b87a47211fcd98e",
+  "auth": "existing isolated human QA OAuth",
+  "oracle": "pinned cmd/deploycreate.go:109 promises nonzero failure; :138-160 waits for returned deploy ID and maps unsuccessful terminal status to exit1",
+  "cases": [
+    {
+      "client": "bex",
+      "service_id": "srv-db832j1aomdc7381k99g",
+      "bad": {
+        "native_exit": 1,
+        "elapsed": 26.934,
+        "target_id": "dep-db835vgumfhs73fe7if0",
+        "status": "build_failed",
+        "named_version_refusal": true,
+        "old_decoded_snapshot_unchanged": true,
+        "old_instance_ids_unchanged": true
+      },
+      "good": {
+        "native_exit": 0,
+        "elapsed": 89.822,
+        "target_id": "dep-db838dpaomdc7381k9q0",
+        "status": "live",
+        "build_runtime_Node24_match": true,
+        "instance_ids_changed": true
+      },
+      "save_only_patches": 2,
+      "recorded_deploy_children": 3,
+      "cleanup": "deleted: API404/listabsent/runtime404/baseline present/quota terminating0"
+    },
+    {
+      "client": "render",
+      "service_id": "srv-db833p1aomdc7381k9dg",
+      "bad": {
+        "native_exit": 1,
+        "elapsed": 42.82,
+        "target_id": "dep-db837g8umfhs73fe7iig",
+        "status": "build_failed",
+        "named_version_refusal": true,
+        "old_decoded_snapshot_unchanged": true,
+        "old_instance_ids_unchanged": true
+      },
+      "good": {
+        "native_exit": 0,
+        "elapsed": 84.772,
+        "target_id": "dep-db83aaoumfhs73fe7ikg",
+        "status": "live",
+        "build_runtime_Node24_match": true,
+        "instance_ids_changed": true
+      },
+      "save_only_patches": 2,
+      "recorded_deploy_children": 3,
+      "cleanup": "deleted: API404/listabsent/runtime404/baseline present/quota terminating0"
+    }
+  ],
+  "native_waits": 4,
+  "API_only_sparse_save_only_environment_patches": 4,
+  "new_findings": 0,
+  "owned_services_deleted": 2,
+  "cleanup_quota": {
+    "services": {
+      "used": 6,
+      "terminating": 0,
+      "limit": 25
+    },
+    "postgres": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    },
+    "keyValues": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    }
+  },
+  "native_wire_interception": false,
+  "product_source_changes": false,
+  "commit_push_performed": false
+}

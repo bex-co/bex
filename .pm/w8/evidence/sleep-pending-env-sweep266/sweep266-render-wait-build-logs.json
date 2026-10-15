@@ -1,0 +1,24 @@
+{
+  "binary": "released v0.3.2",
+  "command": [
+    "bex",
+    "logs",
+    "--resources",
+    "srv-db84nd0umfhs73fe7j90",
+    "--type",
+    "build",
+    "--start",
+    "2026-10-15T03:50:16.395142+00:00",
+    "--direction",
+    "forward",
+    "--limit",
+    "100",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "exit": 0,
+  "elapsed": 0.845,
+  "stdout": "{\n  \"id\": \"srv-db84nd0umfhs73fe7j90-t6pg1aujus3kid207lp2-2026-10-15T03:50:17.225778Z-5cd164f4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db84nd0umfhs73fe7j90\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db84nd0umfhs73fe7j90-t6pg1aujus3kid207lp2\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Build queued\",\n  \"timestamp\": \"2026-10-15T03:50:17.225778Z\"\n}{\n  \"id\": \"srv-db84nd0umfhs73fe7j90-t6pg1aujus3kid207lp2-2026-10-15T03:50:17.225778Z-8768705a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db84nd0umfhs73fe7j90\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db84nd0umfhs73fe7j90-t6pg1aujus3kid207lp2\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Waiting for platform build capacity\",\n  \"timestamp\": \"2026-10-15T03:50:17.225778Z\"\n}",
+  "stderr": ""
+}

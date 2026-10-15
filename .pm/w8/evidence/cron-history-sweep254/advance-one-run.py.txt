@@ -1,0 +1,19 @@
+from pathlib import Path
+import subprocess,json,time
+p=Path(__file__).parent;cp=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json')
+def state():return next(v for v in json.loads(cp.read_text())['resources'] if v.get('sweep')==254)
+def run(mode):subprocess.run(['python3',str(p/'sweep254-cron-history.py'),mode],check=True,timeout=180)
+x=state();assert not x['state'].startswith('deleted:')
+if x['run_intents'] and not x['run_intents'][-1].get('terminal_status'):
+ assert x['run_intents'][-1].get('run_id'),'Reconcile the recorded trigger result before proceeding'
+ run('observe-run');x=state()
+ if not x['run_intents'][-1].get('terminal_status'):raise SystemExit('Prior run still active; no new trigger issued')
+ordinal=len(x['run_intents'])+1;assert 1<=ordinal<=12
+expected='successful' if ordinal in (1,12) else 'unsuccessful'
+run('trigger')
+for attempt in range(2):
+ time.sleep(10);run('observe-run');x=state();last=x['run_intents'][-1]
+ if last.get('terminal_status'):
+  assert last['terminal_status']==expected,'Unexpected run outcome; investigate before another trigger'
+  print('One bounded execution complete:',ordinal,last['terminal_status'],flush=True);break
+else:print('Execution remains active; reconcile this run before issuing another trigger.',flush=True)

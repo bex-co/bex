@@ -1,0 +1,66 @@
+{
+  "sweep": 259,
+  "date_UTC": "2026-10-15T02:53:49.421804+00:00",
+  "source_head": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+  "source_fix": "a76d6c187",
+  "deployed_revision": "unknown",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "Bex_release": "v0.3.2",
+  "Bex_sha256": "585a5456678ce3bc73d5a71117b901d08add1fab230464d3b5b228101a55c34c",
+  "Render_release": "2.27.0",
+  "Render_commit": "a764810a768202704e7206eb7b87a47211fcd98e",
+  "Render_sha256": "225c5bfb5ea72ef223341ba4a71f8e5e680989d6712cb4f5beeb414ad58cd9d5",
+  "native_managed_refusals": 4,
+  "native_supported_App_tails": 2,
+  "API_only_transport_refusals": 12,
+  "historical_controls": [
+    {
+      "family": "keyvalue",
+      "client": "bex",
+      "rows": 5,
+      "exit": 0
+    },
+    {
+      "family": "keyvalue",
+      "client": "render",
+      "rows": 5,
+      "exit": 0
+    },
+    {
+      "family": "postgres",
+      "client": "bex",
+      "rows": 5,
+      "exit": 0
+    },
+    {
+      "family": "postgres",
+      "client": "render",
+      "rows": 5,
+      "exit": 0
+    }
+  ],
+  "owned_deleted": 3,
+  "cleanup_quota": {
+    "services": {
+      "used": 6,
+      "terminating": 0,
+      "limit": 25
+    },
+    "postgres": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    },
+    "keyValues": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    }
+  },
+  "source_test": "TestSubscribeRefusesManagedLiveTailsBeforeStreaming PASS",
+  "full_suite_rerun": false,
+  "direct_datastore_connections": false,
+  "product_changes": false,
+  "new_findings": 0,
+  "commit_push": false
+}

@@ -1,0 +1,54 @@
+{
+  "source_head": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+  "environment": {
+    "GOWORK": "off",
+    "GOTOOLCHAIN": "go1.26.8",
+    "QA266_PROBE_DIR": "<owned-temp>"
+  },
+  "operator_overlay": {
+    "Replace": {
+      "lego/operator/internal/controller/qa266_restart_wake_probe_test.go": "<owned-temp>/qa266_restart_wake_probe_test.go"
+    }
+  },
+  "backend_overlay": {
+    "Replace": {
+      "lego/backend/internal/store/qa266_parked_status_probe_test.go": "<owned-temp>/qa266_parked_status_probe_test.go"
+    }
+  },
+  "commands": [
+    {
+      "cwd": "lego/operator",
+      "argv": [
+        "go",
+        "test",
+        "-overlay=<owned-temp>/operator-overlay.json",
+        "./internal/controller",
+        "-run",
+        "^TestQA266RestartWakeProbe$",
+        "-count=1",
+        "-json"
+      ],
+      "exit": 0
+    },
+    {
+      "cwd": "lego/backend",
+      "argv": [
+        "go",
+        "test",
+        "-overlay=<owned-temp>/backend-overlay.json",
+        "./internal/store",
+        "-run",
+        "^TestQA266ParkedSuccessfulDeployStatus$",
+        "-count=1",
+        "-json"
+      ],
+      "exit": 1,
+      "expected_diagnostic_failures": [
+        "parked_completed",
+        "parked_completed_after_deadline"
+      ]
+    }
+  ],
+  "replay": "Use absolute overlay destination/source paths for this checkout and private directory. The virtual repository destinations must not already exist. Run operator first to emit App JSON, then backend to consume it. No cross-module imports or repository Go files were added.",
+  "boundaries": "Producer outputs are local fake-client reconciliation evidence, not live Kubernetes reads. The backend before/after-deadline outcomes are source evidence, not proof of a hosted deadline failure."
+}

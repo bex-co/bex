@@ -1,0 +1,7 @@
+# OAuth-origin dashboard routing — sweep262 partial acceptance
+
+2026-10-15 UTC, source `6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459`, deployed revision unknown. Five unauthenticated, non-following GET requests now pass the tested routing leg of existing [w8/089](../../../blocked/089.md). [Complete requests/allowed response headers/bodies](http-reads.json), [context and exact curl template](metadata.json), [redactions](redactions.json).
+
+Use the fully deleted App/deploy IDs created by this run in sweep259. The two oauth.bex.co/web/ID resource and deploy URLs return302 to the exact corresponding dashboard.bex.co URLs, preserving all path segments and the harmless qa/view query string. The dashboard-origin controls return307 to /services/ID and /services/ID/deploys/DEP, again preserving the query. Public OAuth issuer metadata returns200 with the expected issuer. No cookie or bearer credential is sent, and no redirect is followed.
+
+This is an observed improvement over the original wrong-host404, not proof of a deployed image/revision or fresh login behavior. No native Dashboard menu, authenticated final-page arrival, fresh device approval, other resource prefix or local-stack rollout is repeated here. Existing089 stays blocked for that remaining full acceptance. No workload/metadata object, browser session or config is created or modified; all private response temp files are removed. No duplicate issue, product change, commit or push.

@@ -1,0 +1,5 @@
+{
+  "credentials": "QA email/password and isolated config credential strings masked if present; values never published",
+  "temporary_directory": "<owned-temp>",
+  "nonsecret_values": "fixture IDs, harmless nonce markers, command arguments, complete native output and API response types preserved"
+}

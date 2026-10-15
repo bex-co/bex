@@ -1,0 +1,92 @@
+from pathlib import Path
+import datetime,json,os,secrets,shlex,shutil,subprocess,sys,time,yaml
+os.umask(0o077)
+p=Path(__file__).parent;root=Path('/Volumes/nvme4tbfish/projects/bex8');cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json';c=json.loads(cp.read_text())
+assert c.get('sync258_result')==0 and not c.get('active_sync_stash')
+mode,client=sys.argv[1:3];assert client in ('bex','render');ws='tea-daif693dqjvc73e7as3g'
+base={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']}
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():
+ c['last_updated']=now();cp.write_text(json.dumps(c,indent=2,ensure_ascii=False)+'\n');cp.chmod(0o600)
+def cli(args,bound=45):
+ cfg=p/'render-config/cli.yaml'
+ try:
+  if client=='render':assert not cfg.exists();shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  runner=['python3',str(p/'run-render.py')] if client=='render' else ['python3',str(p/'run.py'),'--release']
+  return json.loads(subprocess.check_output([*runner,'--bound='+str(bound),*args],text=True,timeout=bound+15))
+ finally:
+  if client=='render':cfg.unlink(missing_ok=True)
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True,timeout=45))
+def own(x):
+ assert x['workspace']==ws and x['id'] not in base and x['create_response']['id']==x['id'] and x['create_result']['exit']==0 and x['create_response']['ownerId']==ws
+ assert x['create_response']['serviceDetails']['plan']=='free' and not x['state'].startswith('deleted:')
+def history(x):
+ r=cli(['deploys','list',x['id'],'--confirm','-o','json']);assert r['exit']==0;rows=json.loads(r['stdout']);x['deploy_children']=rows
+ for v in rows:
+  if v['id'] not in x['recorded_child_ids']:x['recorded_child_ids'].append(v['id'])
+ x.setdefault('history_receipts',[]).append({'at':now(),'result':r});save();return rows
+def post(path,body):
+ cfg=yaml.safe_load((p/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token
+ ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')'
+ auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+ws+'"\n'
+ f=p/'sweep258-api-request.json';f.write_text(json.dumps(body));started=time.monotonic()
+ try:r=subprocess.run(['curl','--disable','-sS','--max-time','30','--config','-','-H','Content-Type: application/json','-H','Accept: application/json, text/event-stream','-H','MCP-Protocol-Version: 2025-03-26','--data-binary','@'+str(f),'-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=36)
+ finally:f.unlink(missing_ok=True)
+ text,_,status=r.stdout.rpartition('\n');record={'at':now(),'api_only':True,'request':{'method':'POST','path':path,'body':body,'workspace':ws,'user_agent':ua,'authorization':'REDACTED'},'status':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-started,3),'response':text,'stderr':r.stderr};assert token not in json.dumps(record);return record
+def decode(r):
+ assert r['status']=='200' and r['curl_exit']==0;text=r['response']
+ if not text.lstrip().startswith('{'):
+  data=[v[5:].strip() for v in text.splitlines() if v.startswith('data:')];assert len(data)==1;text=data[0]
+ return json.loads(text)
+def http(x,path,method='GET',headers=None):
+ f=p/'sweep258-http-body';h=p/'sweep258-http-headers';url=x['create_response']['serviceDetails']['url']+path+'?qa='+x['nonce']
+ args=['curl','--disable','-sS','--max-time','12',*(['--head'] if method=='HEAD' else ['--request','GET']),'-H','Accept-Encoding: identity','-D',str(h),'-o',str(f),'-w','%{http_code}']
+ for k,v in (headers or {}).items():args+=['-H',k+': '+v]
+ args.append(url);r=subprocess.run(args,text=True,capture_output=True,timeout=16);body=f.read_bytes() if f.exists() and method!='HEAD' else b'';response_headers={}
+ if h.exists():
+  for line in h.read_text().splitlines():
+   k,sep,v=line.partition(':')
+   if sep:response_headers[k.lower()]=v.strip()
+ f.unlink(missing_ok=True);h.unlink(missing_ok=True)
+ return {'at':now(),'request':{'method':method,'url':url,'headers':{'Accept-Encoding':'identity',**(headers or {})}},'HTTP':r.stdout,'curl_exit':r.returncode,'headers':response_headers,'body_utf8':body.decode('utf8',errors='replace'),'body_bytes':len(body),'stderr':r.stderr,'HEAD_body_qualification':'curl --head requests headers only; raw empty wire body not independently read' if method=='HEAD' else None}
+if mode=='create':
+ assert client=='bex' and not any(v.get('sweep')==258 for v in c['resources'])
+ q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';limits=json.loads(q['response'])['services'];assert limits['used']+limits['terminating']<limits['limit']
+ inv=cli(['services','--confirm','-o','json']);assert inv['exit']==0;existing=json.loads(inv['stdout']) or [];ids={v.get('service',v)['id'] for v in existing};assert base<=ids
+ nonce=secrets.token_hex(3);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-http';marker='QA258_'+nonce;version=marker+'-0123456789-abcdefghijklmnopqrstuvwxyz\n';index='<html><body>'+marker+'-SPA-index-abcdefghijklmnopqrstuvwxyz</body></html>\n';etag='"'+marker+'"'
+ build="printf '%s' "+shlex.quote(version)+" > version.txt; printf '%s' "+shlex.quote(index)+' > index.html'
+ args=['services','create','--name',name,'--type','static_site','--repo','https://github.com/bex-co/bex','--branch','main','--root-directory','examples/static-site','--build-command',build,'--publish-directory','.','--auto-deploy=false','--confirm','-o','json']
+ assert not any(v.get('service',v)['name']==name for v in existing)
+ x={'sweep':258,'client':client,'workspace':ws,'name':name,'nonce':nonce,'marker':marker,'type':'static_site','time':now(),'source_head':c['head'],'dependency_ids':[],'recorded_child_ids':[],'capacity_proof':q,'pre_create_inventory':inv,'create_command':[client,*args],'expected_version':version,'expected_index':index,'etag':etag,'state':'finite native create intent persisted'};c['resources'].append(x);save();r=cli(args);x['create_result']=r;x['state']='create returned; reconcile before retry';save();assert r['exit']==0;v=json.loads(r['stdout']);v=v.get('data',v);v=v.get('service',v)
+ assert v['ownerId']==ws and v['name']==name and v['type']=='static_site' and v['serviceDetails']['plan']=='free' and v['id'] not in ids
+ x.update(id=v['id'],create_response=v,state='created: initial static publication pending');save();print(json.dumps({'client':client,'id':v['id'],'exit':r['exit']}));raise SystemExit(0)
+x=next(v for v in c['resources'] if v.get('sweep')==258 and v['client']==client);sid=x['id'];own(x)
+if mode=='observe':
+ rows=history(x);r=http(x,'/version.txt');o={'at':now(),'deploy':rows[0] if rows else None,'runtime':r,'exact_marker':r['HTTP']=='200' and r['body_utf8']==x['expected_version']};x.setdefault('observations',[]).append(o);save();print(json.dumps({'latest':{k:rows[0].get(k) for k in ('id','status')} if rows else None,'HTTP':r['HTTP'],'exact_marker':o['exact_marker']}),flush=True)
+elif mode=='configure':
+ assert x['observations'][-1]['exact_marker'] and x['observations'][-1]['deploy']['status']=='live' and 'configuration_intent' not in x
+ body={'query':'mutation QA258($id:String!,$headers:[StaticHeaderInput],$routes:[StaticRouteInput]){setStaticHeaders(id:$id,headers:$headers){id} setStaticRoutes(id:$id,routes:$routes){id}}','variables':{'id':sid,'headers':[{'path':'/*','name':'ETag','value':x['etag']}],'routes':[{'type':'rewrite','source':'/qa-rewrite.txt','destination':'/version.txt'}]}}
+ x['configuration_intent']={'at':now(),'body':body};save();r=post('/graphql',body);x['configuration_result']=r;save();v=decode(r);assert not v.get('errors');print(json.dumps({'HTTP':r['status'],'data':v}),flush=True)
+elif mode=='read-config':
+ r=post('/graphql',{'query':'query QA258($id:String!){service(id:$id){id headers{path name value} routes{type source destination}}}','variables':{'id':sid}});x.setdefault('configuration_reads',[]).append(r);save();v=decode(r);assert not v.get('errors');print(json.dumps(v),flush=True)
+elif mode=='ready':
+ reads=[http(x,path) for path in ('/version.txt','/qa-rewrite.txt','/qa-spa')];expected=[x['expected_version'],x['expected_version'],x['expected_index']];ready=all(r['curl_exit']==0 and r['HTTP']=='200' and r['body_utf8']==value and r['headers'].get('etag')==x['etag'] for r,value in zip(reads,expected));x.setdefault('readiness_receipts',[]).append({'at':now(),'reads':reads,'ready':ready});save();print(json.dumps({'configured_paths_ready':ready}),flush=True)
+elif mode=='probe':
+ assert 'configuration_result' in x;tag=x['etag'];results=[]
+ for path,expected in [('/version.txt',x['expected_version']),('/qa-rewrite.txt',x['expected_version']),('/qa-spa',x['expected_index'])]:
+  cases=[('ordinary GET','GET',{},'200',expected),('ordinary HEAD','HEAD',{},'200',''),('matching GET','GET',{'If-None-Match':tag},'304',''),('matching HEAD','HEAD',{'If-None-Match':tag},'304',''),('weak tag','GET',{'If-None-Match':'W/'+tag},'304',''),('tag list','GET',{'If-None-Match':'"absent", '+tag},'304',''),('wildcard existing','GET',{'If-None-Match':'*'},'304',''),('different tag','GET',{'If-None-Match':'"absent"'},'200',expected),('failed match','GET',{'If-Match':'"absent"'},'412',''),('failed match HEAD','HEAD',{'If-Match':'"absent"'},'412',''),('matching strong','GET',{'If-Match':tag},'200',expected),('prefix range','GET',{'Range':'bytes=0-6'},'206',expected[:7]),('suffix range','GET',{'Range':'bytes=-7'},'206',expected[-7:]),('matching If-Range','GET',{'Range':'bytes=0-6','If-Range':tag},'206',expected[:7]),('different If-Range','GET',{'Range':'bytes=0-6','If-Range':'"absent"'},'200',expected)]
+  for label,method,headers,status,body in cases:
+   r=http(x,path,method,headers);passed=r['curl_exit']==0 and r['HTTP']==status and r['body_utf8']==body and r['headers'].get('etag')==tag
+   if label=='ordinary HEAD':passed=passed and r['headers'].get('content-length')==str(len(expected.encode()))
+   if label in ('prefix range','matching If-Range'):passed=passed and r['headers'].get('content-range')=='bytes 0-6/'+str(len(expected.encode()))
+   if label=='suffix range':passed=passed and r['headers'].get('content-range')=='bytes '+str(len(expected.encode())-7)+'-'+str(len(expected.encode())-1)+'/'+str(len(expected.encode()))
+   results.append({'label':label,'path':path,'expected_status':status,'expected_body_utf8':body,'pass':passed,'receipt':r});x['current_probe_results']=results;save()
+ missing=http(x,'/qa-missing-'+x['nonce']+'.txt',headers={'If-None-Match':'*'});results.append({'label':'missing asset stays404','pass':missing['curl_exit']==0 and missing['HTTP']=='404','receipt':missing});x.setdefault('probe_rounds',[]).append({'at':now(),'results':results,'all_pass':all(v['pass'] for v in results)});x.pop('current_probe_results',None);save();print(json.dumps({'requests':len(results),'passed':sum(v['pass'] for v in results),'failures':[{'label':v['label'],'path':v.get('path'),'HTTP':v['receipt']['HTTP'],'body':v['receipt']['body_utf8'],'headers':v['receipt']['headers']} for v in results if not v['pass']]}),flush=True)
+elif mode=='delete':
+ assert 'delete_result' not in x and not any(v.get('id') and sid in v.get('dependency_ids',[]) and not v['state'].startswith('deleted:') for v in c['resources'])
+ history(x);x['state']='exact-owned delete intent persisted';save();x['delete_result']=cli(['services','delete',sid,'--confirm','-o','json']);save();print(json.dumps({'client':client,'exit':x['delete_result']['exit'],'children':len(x['recorded_child_ids'])}),flush=True)
+elif mode=='reconcile':
+ assert 'delete_result' in x;detail=wire('/v1/services/'+sid);inv=cli(['services','--confirm','-o','json']);assert inv['exit']==0;ids={v.get('service',v)['id'] for v in json.loads(inv['stdout']) or []};assert base<=ids
+ r=subprocess.run(['curl','--disable','-sS','--max-time','10','-o','/dev/null','-w','%{http_code}',x['create_response']['serviceDetails']['url']+'/version.txt'],text=True,capture_output=True,timeout=15);q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';terminating=json.loads(q['response'])['services']['terminating'];done=detail['status']=='404' and sid not in ids and r.returncode==0 and r.stdout=='404' and terminating==0
+ x.setdefault('cleanup_reconciliations',[]).append({'at':now(),'detail':detail,'list_ids':sorted(ids),'baseline_present':True,'runtime':{'exit':r.returncode,'HTTP':r.stdout,'stderr':r.stderr},'quota':q});x['state']='deleted: API404/listabsent/runtime404/baseline present/quota terminating0' if done else 'delete acknowledged: detail/runtime/quota convergence pending';save();print(json.dumps({'client':client,'complete':done,'detail':detail['status'],'runtime':r.stdout,'terminating':terminating}),flush=True)
+else:raise ValueError(mode)

@@ -1,0 +1,14 @@
+{
+  "command": [
+    "go",
+    "test",
+    "./internal/controller",
+    "-run",
+    "^(TestDeployWhileAsleepGoesLiveWithoutARequest|TestSettleConfigSnapshotRevertsToServedRelease)$",
+    "-count=1",
+    "-json"
+  ],
+  "cwd": "lego/operator",
+  "exit": 0,
+  "elapsed": 7.89
+}
