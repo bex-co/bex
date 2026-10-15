@@ -1,6 +1,9 @@
 # Dependabot config (w7/m65). Keeps two dependency surfaces fresh with automated
-# PRs: the SHA-pinned GitHub Actions (t001) and the dashboard's npm tree (which
-# had no update mechanism at all — Go is covered by the m62 govulncheck gate).
+# PRs: the SHA-pinned GitHub Actions (t001), the dashboard's npm tree, and the
+# four Go modules under lego/. Go used to rely on the m62 govulncheck gate alone,
+# which reports but does not block deploys: reachable golang.org/x/net advisories
+# sat red on main for six days with no PR (w1/m174), so Go now gets the same
+# security lane as the other ecosystems.
 #
 # Triage boundary: reviewing and merging the PRs Dependabot opens is w1/006's
 # lane (sub-hour alert triage), per the w7 README "Not in w7 (deliberate)" note —
@@ -69,6 +72,29 @@ updates:
         patterns:
           - "*"
       dashboard-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+
+  - package-ecosystem: "gomod"
+    # Each platform module builds standalone (GOWORK=off), so each needs its own
+    # go.mod and go.sum bumped; one group keeps them in a single PR.
+    directories:
+      - "/lego/types"
+      - "/lego/operator"
+      - "/lego/backend"
+      - "/lego/cli"
+    schedule:
+      interval: "quarterly"
+    open-pull-requests-limit: 1
+    cooldown:
+      default-days: 30
+      semver-major-days: 90
+    groups:
+      go:
+        patterns:
+          - "*"
+      go-security:
         applies-to: security-updates
         patterns:
           - "*"

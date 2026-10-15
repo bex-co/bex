@@ -6,7 +6,7 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 pinned="$repo_root/lego/backend/internal/apps/schema/render.yaml.json"
-expected_sha256="a0d4e8a3eb119a1b63657741757e3c25c091b3ce463c4be8c90e8026678d8163"
+expected_sha256="8a3fb8da6b4f55fe686fbefa790e011d3dd7895f013f355953c572a21ab6494a"
 schema_url="${RENDER_BLUEPRINT_SCHEMA_URL:-https://render.com/schema/render.yaml.json}"
 openapi_url="${RENDER_OPENAPI_URL:-https://api-docs.render.com/openapi/render-public-api-1.json}"
 webhook_fixture="$repo_root/docs/render-artifacts/fixtures/render-webhook-vocabulary-2026-08-17.json"

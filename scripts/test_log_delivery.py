@@ -218,8 +218,11 @@ loki.source.api "%s" {
                 self.assertEqual(value(final, "loki_write_sent_entries_total"), 3)
                 self.assertEqual(value(final, "loki_write_dropped_entries_total"), 2,
                                  "recovery must not claim that discarded batches were recovered")
-                self.assertEqual(value(final, "alloy_resources_process_start_time_seconds"),
-                                 value(quiet, "alloy_resources_process_start_time_seconds"))
+                # Not restarted. The start time is boot time plus start ticks and can
+                # read one second apart across scrapes of the same process (w1/m174);
+                # a restart here lands many seconds later.
+                self.assertAlmostEqual(value(final, "alloy_resources_process_start_time_seconds"),
+                                       value(quiet, "alloy_resources_process_start_time_seconds"), delta=1)
                 for name, labels, _ in final:
                     if name.startswith("loki_write_"):
                         self.assertLessEqual(set(labels), {"component_id", "component_path", "host", "tenant", "reason", "status_code", "le"})
