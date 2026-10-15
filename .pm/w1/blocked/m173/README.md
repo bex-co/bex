@@ -11,6 +11,7 @@
 | t003 | Guard: `gitops-validate.sh` fails if the local render carries an ACME ClusterIssuer — **DONE**             | 20m | t002       |
 | t004 | Canary stage 4 names the never-slept cause; FUTURE-MAYBE w3/040 records the finding — **DONE**             | 20m | t003       |
 | t005 | Production: the canary sleeps between requests; three green canary runs; issue #87 closed                 | 30m | t004       |
+| t009 | Canary stage 4 requires this run's own service_woken after a wake — **DONE** | 30m | t004 |
 | t006 | Simplify — **DONE**                                                                                                 | 15m | t005       |
 | t007 | Test coverage — **DONE**                                                                                            | 30m | t005       |
 | t008 | Closeout                                                                                                 | 10m | t007       |
