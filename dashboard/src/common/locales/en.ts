@@ -52,6 +52,11 @@ const enCommon: Record<string, TranslationEntry> = {
     message: "Drag to resize · double-click to toggle",
     description: "Hover tooltip on the sidebar's resize separator.",
   },
+  "common.commandSuggestions": {
+    message: "Suggestions",
+    description:
+      "Accessible name of a search or picker results list (the command menu's listbox).",
+  },
   "common.cancel": {
     message: "Cancel",
     description:

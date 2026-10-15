@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import i18n from "@/i18n/init";
 import { Combobox } from "../combobox";
+import { Command, CommandItem, CommandList } from "../command";
 
 const options = [
   { value: "alpha", label: "Alpha" },
@@ -81,5 +83,33 @@ describe("Combobox keyboard selection", () => {
     fireEvent.focus(input);
     fireEvent.keyDown(input, { key: "Enter" });
     expect(onValueChange).toHaveBeenCalledWith("");
+  });
+});
+
+describe("results list name (w4/312)", () => {
+  afterEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  it("names a Chinese picker's listbox in Chinese", async () => {
+    await i18n.changeLanguage("zh");
+    render(<Combobox options={options} value="" onValueChange={vi.fn()} />);
+    fireEvent.keyDown(screen.getByRole("combobox"), { key: "ArrowDown" });
+    expect(screen.getByRole("listbox", { name: "建议" })).toBeInTheDocument();
+    expect(screen.queryByRole("listbox", { name: "Suggestions" })).toBeNull();
+  });
+
+  it("keeps a caller's explicit list label", async () => {
+    await i18n.changeLanguage("zh");
+    render(
+      <Command>
+        <CommandList label="Branches">
+          <CommandItem>main</CommandItem>
+        </CommandList>
+      </Command>,
+    );
+    expect(
+      screen.getByRole("listbox", { name: "Branches" }),
+    ).toBeInTheDocument();
   });
 });
