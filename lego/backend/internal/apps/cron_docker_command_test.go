@@ -215,8 +215,9 @@ func TestNativeCronCommandUnchanged(t *testing.T) {
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("POST native cron = %d: %s", rec.Code, rec.Body.String())
 	}
-	if got := getApp(t, cl, "ncron").Spec.Command; got != "echo native" {
-		t.Errorf("native cron command = %q, want %q", got, "echo native")
+	// The command is the native start command, not a /bin/sh override (w8/m69).
+	if spec := getApp(t, cl, "ncron").Spec; spec.StartCommand != "echo native" || spec.Command != "" {
+		t.Errorf("native cron start command %q / override %q, want %q / empty", spec.StartCommand, spec.Command, "echo native")
 	}
 	if got := nativeStartCommandFromRead(t, rec.Body.Bytes()); got != "echo native" {
 		t.Errorf("native cron read startCommand = %q, want %q", got, "echo native")

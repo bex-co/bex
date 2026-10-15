@@ -174,8 +174,9 @@ var restCreateRules = map[string]wireRule{
 // restCronBridge is fields plus Command on a cron: REST stores a cron's start
 // command as its run command when no command is sent, because the pinned CLI
 // sends a cron's command as envSpecificDetails.startCommand on every runtime.
+// A native cron keeps it as the start command its image bakes (w8/m69).
 func restCronBridge(s createShape, fields ...string) []string {
-	if s.cron {
+	if s.cron && s.build != "native" {
 		return append(fields, "Command")
 	}
 	return fields

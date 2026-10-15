@@ -24,6 +24,8 @@ vi.mock("sonner", () => ({
 interface FakeServer {
   schedule: string;
   command: string;
+  runtime: string;
+  startCommand: string;
   holdServer: boolean;
   /** Held reads released as transport failures instead of stale data. */
   failHeld: number;
@@ -32,6 +34,7 @@ interface FakeServer {
   mutated: boolean;
   held: Array<{ send: () => void; fail: () => void }>;
   mutations: Array<{ schedule: string; command: string | null }>;
+  startCommandWrites: string[];
   serverReads: number;
 }
 
@@ -41,12 +44,15 @@ function newServer(): FakeServer {
   return {
     schedule: "0 0 15 * *",
     command: "sh -c 'printf \"old\\n\"'",
+    runtime: "image",
+    startCommand: "",
     holdServer: false,
     failHeld: 0,
     failReadsAfterMutation: 0,
     mutated: false,
     held: [],
     mutations: [],
+    startCommandWrites: [],
     serverReads: 0,
   };
 }
@@ -96,6 +102,25 @@ const link = new ApolloLink(
         });
         return;
       }
+      // A native cron's start-command write also drops the override (w8/m69).
+      if (op.operationName === "SetStartCommand") {
+        server.startCommandWrites.push(v.command!);
+        server.startCommand = v.command!;
+        server.command = "";
+        server.mutated = true;
+        send({
+          data: {
+            setStartCommand: {
+              __typename: "Service",
+              id: v.id,
+              startCommand: server.startCommand,
+              command: server.command,
+              phase: "Running",
+            },
+          },
+        });
+        return;
+      }
       if (op.operationName === "Server") {
         server.serverReads += 1;
         if (server.mutated && server.failReadsAfterMutation > 0) {
@@ -135,10 +160,10 @@ const link = new ApolloLink(
               branch: "",
               imagePath: "docker.io/library/busybox:1.37.0",
               rootDir: "",
-              runtime: "image",
+              runtime: server.runtime,
               builder: "auto",
               buildCommand: "",
-              startCommand: "",
+              startCommand: server.startCommand,
               dockerfilePath: "",
               registryCredentialId: "",
               buildFilter: null,
@@ -207,6 +232,8 @@ function Page({ watchers = 0 }: { watchers?: number }) {
         serviceId="srv-1"
         schedule={s ? (s.schedule ?? "") : null}
         command={s ? (s.command ?? null) : null}
+        runtime={s?.runtime ?? null}
+        startCommand={s?.startCommand ?? null}
       />
     </>
   );
@@ -351,6 +378,41 @@ describe("cron saves survive a late pre-save Server read (w4/276)", () => {
       screen.getByRole("button", { name: "Edit schedule" }),
     ).toBeInTheDocument();
     expect(server.mutations).toHaveLength(1); // retry never replays the write
+  });
+
+  it("native cron (w8/m69): a held stale read cannot restore the dropped override", async () => {
+    server.runtime = "node";
+    server.startCommand = "npm start";
+    server.command = "[[ 1 = 1 ]] && printf old";
+    const page = renderPage();
+    await screen.findByDisplayValue("[[ 1 = 1 ]] && printf old");
+
+    server.holdServer = true;
+    page.setWatchers(1);
+    await waitFor(() => expect(server.held).toHaveLength(1));
+
+    // Pasted: user.type reads "[[" as an escaped "[".
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Edit command" }));
+    await user.clear(screen.getByRole("textbox", { name: "Command" }));
+    await user.paste("[[ 1 = 1 ]] && printf new");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(server.startCommandWrites).toHaveLength(1));
+    await act(async () => releaseHeld());
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledTimes(1));
+    await settle();
+    expect(screen.getByRole("textbox", { name: "Command" })).toHaveValue(
+      "[[ 1 = 1 ]] && printf new",
+    );
+
+    // The reschedule replays no override: the stale one never came back.
+    await saveRow("Edit schedule", "Schedule", "0 0 16 * *");
+    await waitFor(() => expect(server.mutations).toHaveLength(1));
+    expect(server.mutations[0]).toEqual({
+      schedule: "0 0 16 * *",
+      command: null,
+    });
   });
 
   it("control: settled saves without an overlapping read preserve both fields", async () => {

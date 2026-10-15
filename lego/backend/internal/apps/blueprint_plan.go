@@ -127,11 +127,23 @@ func canonicalSlice[T any](values []T) []T {
 
 // applyBlueprintCommand retains an unchanged cron StartCommand fallback.
 // Promoting it to Command would replace a native image's baked-in command
-// with a runtime shell override, even when the command text is identical.
+// with a runtime shell override, even when the command text is identical. A
+// native cron's genuine edit is its start command too (w8/m69); an override
+// already running the declared command is left in place.
 func applyBlueprintCommand(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 	declared := blueprintDeclaredCommand(want)
 	if dst.Type == appv1alpha1.TypeCronJob {
 		if dst.Command == "" && dst.StartCommand == declared {
+			return
+		}
+		// dst still has its old runtime here: the declared one decides.
+		if nativeBuild(buildStrategy(want)) {
+			if dst.Command != declared {
+				dst.Command = ""
+				if declared != "" {
+					dst.StartCommand = declared
+				}
+			}
 			return
 		}
 		dst.Command = declared
