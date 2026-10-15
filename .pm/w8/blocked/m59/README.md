@@ -1,6 +1,6 @@
 # w8 · m59 — Return static sites to direct publication after clearing their build command
 
-**Worker:** worker8 **Goal:** clearing an implicit static build step publishes the current repository files regardless of creation history. **Status:** blocked — t001/t002/t004 done; native build-created clears live-accepted (sweep184); t003 has code-level REST/GraphQL/MCP parity (2026-10-13) but needs live surface receipts; t005 legacy/neighbor live acceptance and t006 remain.
+**Worker:** worker8 **Goal:** clearing an implicit static build step publishes the current repository files regardless of creation history. **Status:** blocked — t001/t002/t004 done; native build-created clears live-accepted (sweep184); t003 has live GraphQL/MCP clear acceptance (sweep257) but needs dashboard write receipts; t005 legacy/neighbor live acceptance and t006 remain.
 
 ## Tasks (in order)
 
@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | t001 | Normalize implicit static strategy with command intent — **DONE 2026-10-12** | 35m | — |
 | t002 | Verify existing sites, shared callers and explicit strategy neighbors — **DONE 2026-10-12** | 30m | t001 |
-| t003 | Render parity across REST, GraphQL, MCP and dashboard — native core clear passes sweep184; code-level REST/GraphQL/MCP parity added 2026-10-13; **BLOCKED: live GraphQL/MCP/dashboard receipts** | 20m | t002 |
+| t003 | Render parity across REST, GraphQL, MCP and dashboard — native core clear passes sweep184; code-level REST/GraphQL/MCP parity added 2026-10-13; **BLOCKED: live dashboard receipts** | 20m | t002 |
 | t004 | Simplify the changed strategy projection — **DONE 2026-10-12** | 10m | t003 |
 | t005 | Test creation-history equivalence and command neighbors — code regressions done; sweep184 build-created cases pass; full neighbor/legacy acceptance remains | 30m | t003 |
 | t006 | Closeout after complete native and cross-surface acceptance | 10m | t004, t005 |
@@ -29,7 +29,7 @@
 - **2026-10-13 UTC, sweep180:** [fresh four-fixture live acceptance](evidence/live-static-sweep180/README.md) captures four native empty-command saves/20 HTTP requests across released Bex and pinned Render. Both sites created with build steps fail after clear and preserve old content; both direct-created→built→cleared controls return Live/source index/asset404. Eight API-only strategy reads corroborate native versus auto builders. Three targeted current-source tests pass; deployed revision unknown. All four exact IDs and ten enumerated child records are reconciled, baseline6/quota termination0. No duplicate issue, product implementation or ship by this hunt.
 
 - **2026-10-12:** `setBuildCommand` (`lego/backend/internal/apps/build_strategy.go`) is the one command write behind `SetCommands` and the patch preflight; clearing a static site's command drops its runtime-less native builder. Operator `directStaticPublish` and backend `buildStrategy` treat an already-cleared native static record as direct publication, so existing sites recover. Regression tests in `buildsettings_test.go` and `app_controller_static_direct_test.go`; backend `go test ./...`, operator `make test`, `make lint` pass.
-- **Current remaining work:** native build-created clears now pass. Complete t003 cross-surface writes and t005 legacy/strategy/creation-history acceptance, then close t006 only when the full observable DoD holds. A desired image pin does not establish the live SHA.
+- **Current remaining work:** native build-created clears now pass. Complete t003 dashboard writes and t005 legacy/strategy/creation-history acceptance, then close t006 only when the full observable DoD holds. A desired image pin does not establish the live SHA.
 
 ## Source + Goal linkage
 
@@ -39,3 +39,7 @@
 - **Why now:** create and update project the same current settings differently, leaving existing sites persistently unable to publish their requested no-build configuration. The related static rollback work does not fix command clearing.
 - **Size:** six tasks, 2h15. Shared existing-resource behavior, transport acceptance and meaningful regression coverage make this larger than an inbox note. Render parity is included because user-facing command semantics and shared setters are affected.
 - **Boundary:** the original hunt and sweep180 only filed evidence and cleaned QA fixtures. Source implementation and shipping are recorded above as separate work; this QA run did not implement or ship. Render production was not contacted; the official static-site page does not establish the exact empty-command transition.
+
+## Sweep257 adapter acceptance — 2026-10-15 UTC
+
+[Live GraphQL/MCP clears, exact hosted source bytes, subsequent native waited deploys and cleanup](evidence/live-static-adapters-sweep257/README.md) now pass on two fresh CLI-created Free static sites. Both empty-command writes preserve publishPath ., read builder auto, roll to Live/source content and survive a later native deploy through the corresponding Bex/Render client. Two fixtures/six children enumerated and reconciled; baseline6/quota terminating0. These are API-only writes with CLI lifecycle verification. Dashboard writes and t005 legacy/strategy-neighbor/full creation-history acceptance remain; deployed revision unknown. Keep the milestone blocked. No new bug, implementation or ship.

@@ -15,6 +15,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m67** — [Keep native live logs running after a transient disconnect](m67/README.md) (7 tasks;2h50m) ← CLI QA sweep272: current Bex/Render pin silently exits0 after connection loss; released upstream2.29 tag reconnects/resumes exactly once. Qualify/adopt the fix and verify Bex delivery.
+
 - [ ] **m66** — [Keep Blueprint service updates in canonical intent](m66/README.md) (6 tasks,3h5m) ← functional CLI sweep230; source/branch loss live-proven, four missing canonical-write source states
 
 - [ ] **m65** — [Retain PostgreSQL process logs during bursts](blocked/m65/README.md) — **BLOCKED (2026-10-13: t001 done — the fix is upstream CNPG #11131 in operator 1.30.1 / chart 0.29.1, we run 1.30.0; needs the user to approve a CNPG upgrade rollout that restarts every managed Postgres pod (control plane + tenant Free single-instance DBs), or decide to enable in-place instance-manager updates first; then the credentialed chart mirror, live 300/1005-record burst acceptance and cleanup)**
@@ -30,7 +32,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [ ] **m60** — [Preserve accepted arguments when copying CLI commands](blocked/m60/README.md) — **BLOCKED (2026-10-12: t001/t002 prepared and tested with `blocked/m60/evidence/upstream-copy-command-formatter.patch` + caller audit; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release, and native Bex/Render receipts; no fork/backend workaround per scope/DO_NOT_DO)**
 
 - [x] **m58** — [Preserve Unicode matches in log history](done/m58/README.md) — **DONE 2026-10-13** (fixes t001 + t007 `8fb0afa1a`; live App/saturated/KV/PG receipts, REST/GraphQL/MCP agreement; live GraphQL/dashboard and saturated managed-data recorded as boundaries)
-- [ ] **m59** — [Return static sites to direct publication after clearing their build command](blocked/m59/README.md) — **BLOCKED (2026-10-13: t001/t002/t004 done; native build-created clears live-accepted in sweep184 and REST/GraphQL/MCP code parity tested; needs a QA live sweep for GraphQL/MCP/dashboard writes (t003) and legacy/strategy-neighbor acceptance (t005) on owned fixtures, then t006)**
+- [ ] **m59** — [Return static sites to direct publication after clearing their build command](blocked/m59/README.md) — **BLOCKED (2026-10-13: t001/t002/t004 done; native build-created clears live-accepted in sweep184 and REST/GraphQL/MCP code parity tested; GraphQL/MCP writes live-accepted in sweep257; needs dashboard writes (t003) and legacy/strategy-neighbor acceptance (t005) on owned fixtures, then t006)**
 
 - [ ] **m57** — [Preserve literal string lists in interactive CLI forms](blocked/m57/README.md) — **BLOCKED (2026-10-12: t001/t002 prepared and tested with `blocked/m57/evidence/upstream-lossless-string-list.patch` + caller audit; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release, and native Bex/Render receipts; no fork/backend workaround per scope/DO_NOT_DO)**
 
@@ -105,11 +107,37 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## QA evidence for existing work
 
+- [Native request-log selector acceptance](evidence/request-log-selectors-sweep269/README.md) — sweep269: both clients pass32 exact row-ID comparisons for comma/encoded paths, methods, status classes, host/text and AND/OR/empty controls; six HTTP requests independently recorded, fixture cleaned. No new finding; interactive upstream defects remain separate.
+
+- [Native Dashboard menu routing acceptance](evidence/089/live-native-menu-sweep267/README.md) — sweep267: all four Bex/Render Services/deploy Dashboard actions exit0 with unchanged OAuth-origin configs; exact captured cron URLs302, aliases307 and issuer200 pass. No hosted mutation;089 remains blocked for full login/browser/prefix acceptance.
+
+- [Saved environment through sleep/wake and deploy-history settlement](evidence/sleep-pending-env-sweep266/README.md) — sweep266: saved/deployed markers survive sleep and restart; later standard deploy consumes V2. New106 owns served-then-parked history settlement; queued native wait excluded, all three fixtures cleaned.
+
+- [Blueprint empty-variable reapply acceptance](evidence/095/live-empty-reapply-sweep263/README.md) — sweep263: actual group-only first/reapply retains new empty keys and preserves no-op/generated/omitted controls;36 decisive native validations, fixture cleaned. Existing095 moved to done; one relay timeout retained as inconclusive.
+
+- [OAuth dashboard routing partial acceptance](evidence/089/live-routing-sweep262/README.md) — sweep262: owned/deleted web resource and deploy URLs now redirect302 with exact path/query, dashboard aliases307 and issuer metadata200. Read-only;089 remains blocked for complete native/browser/login acceptance.
+
+- [Existing environment-group name acceptance](evidence/094/live-existing-group-sweep261/README.md) — sweep261: all48 native/captured plan cases pass across three locations, including padded/exact existing names and create/refusal controls; the empty owned group is unchanged then cleaned. Existing094 moved to done.
+
+- [Managed-data live-tail refusal acceptance](evidence/083/live-refusal-sweep259/README.md) — sweep259: both clients now exit1/named400 before upgrade for Postgres/Key Value; twelve transport cases, historical and supported App tails pass; all three fixtures cleaned. Existing083 moved to done.
+
+- [Static rewrite/SPA conditional requests](evidence/static-conditional-sweep258/README.md) — sweep258: all46 HTTP checks pass on one CLI-created site, including ETag conditions, HEAD metadata, exact prefix/suffix ranges and If-Range controls; API-only header/route setup, fixture cleaned. Extends done w4/272 without a new issue.
+
+- [Static command-clear GraphQL/MCP acceptance](blocked/m59/evidence/live-static-adapters-sweep257/README.md) — sweep257: API-only clears on two CLI-created static sites publish exact recorded-commit source bytes and survive later native waited deploys; both fixtures cleaned. m59 remains blocked for dashboard and full t005 acceptance.
+
+- [Failed-version native deploy waits and recovery](evidence/version-failure-wait-sweep255/README.md) — sweep255: both clients return1 for exact failed18 targets while old22 snapshots/instance IDs stay unchanged, then return0 for new Live24 targets; four save-only patches open no deploys, both fixtures cleaned. No new finding.
+
+- [Cron capped-history CLI replay](evidence/cron-history-sweep254/README.md) — sweep254: native Go cron still reproduces existing w4/m210 at run11 and recovery; REST/GraphQL/MCP agree, both CLIs preserve all12 execution messages; source fix present/deployed revision unknown, fixture cleaned. Existing milestone remains blocked.
+
+- [Native Node version precedence](evidence/runtime-precedence-sweep253/README.md) — sweep253: both clients honor .nvmrc22, explicit24/bounded-range overrides run24, unsupported18 fails by name; build/runtime markers and file bytes match; all five fixtures cleaned. Extends m51; no new finding.
+
 - [w4/m199 native CLI timestamp replay](evidence/m199-native-cli/README.md) — sweeps128/132: both clients preserve quiet web and scheduled-cron records, timestamps and IDs in history/Live; cron tails remain open through idle metadata and changing instances. Both fixtures cleaned; existing milestones retain full verification scope.
 
 - [w4/m200 native CLI corroboration](evidence/m200-native-cli/README.md) — sweep111: both clients corrupt the mixed stdout/stderr pair in Live while all five historical messages remain exact; complete native evidence and cleanup retained. Implementation stays with w4/m200.
 
 ## Inbox
+
+- [ ] **106** — [A served deploy stays In Progress after auto-hibernation](106.md) — **TODO (sweep266: both native restart journeys; fresh metadata captures Running/rev-3 then parked/pending until HTTP wake; strict source counterexample,55m)**
 
 - [ ] **103** — [CLI trims a local file path and silently uploads its neighbor](103.md) — **TODO, upstream parser/resolver repair 45m; six wrong native request bodies, two false missing-file errors, four controls; external acceptance/pin/release prerequisites**
 
@@ -125,8 +153,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **096** — [Blueprint validation ignores a supplied service-reference type](done/096.md) — **DONE 2026-10-13** (fix `e8129f739`; sweep207 32-case native matrix passes; refusal now located at `fromService.type`; hosted apply, non-REST surfaces and out-of-file hosts recorded as boundaries)
 
-- [ ] **095** — [Blueprint reapply skips a new empty variable in an existing environment group](blocked/095.md) — **BLOCKED (2026-10-12: fix shipped — reapplying a Blueprint onto an existing env group writes a newly declared empty variable; needs the fix deployed to production plus a hosted apply/reapply receipt and cleanup)**
-- [ ] **094** — [Blueprint plans call an existing environment group a create when its name is padded](blocked/094.md) — **BLOCKED (2026-10-12: fix shipped — a padded env-group name plans the update of the existing group under its canonical name; needs the fix deployed to production plus fresh full-server validation receipts and cleanup)**
+- [x] **095** — [Blueprint reapply skips a new empty variable in an existing environment group](done/095.md) — **DONE 2026-10-15 UTC:** sweep263 accepts actual group-only first/reapply, presence/no-op/invalid controls,36 decisive native validations and exact cleanup; deployed revision unknown.
+- [x] **094** — [Blueprint plans call an existing environment group a create when its name is padded](done/094.md) — **DONE 2026-10-15 UTC:** sweep261 accepts48 native current-state validation cases with full plan captures, controls and exact owned-group cleanup; deployed revision unknown.
 
 - [ ] **093** — [CLI scope selectors cannot resolve accepted ID-shaped project and environment names](blocked/093.md) — **BLOCKED (2026-10-12: upstream patch prepared and tested — [`093-upstream.patch`](blocked/093-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
 
@@ -136,9 +164,9 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **090** — [CLI Dashboard opens a relative path from a fresh config](blocked/090.md) — **BLOCKED (source fix is on main; current-build service/deploy Dashboard actions pass in sweeps209/211, including equivalent API bases; published 0.3.2 still opens relative paths; CLI release, real browser arrival and complete shared-link acceptance remain)**
 
-- [ ] **089** — [CLI dashboard actions open the OAuth host and return 404](blocked/089.md) — **BLOCKED (2026-10-12: routing shipped — a Traefik redirect on the hydra Ingress sends `oauth.bex.co/<dashboard-alias>/…` to `dashboard.bex.co`; needs the production Argo sync plus live 302, native Dashboard-action and device-login receipts)**
+- [ ] **089** — [CLI dashboard actions open the OAuth host and return 404](blocked/089.md) — **BLOCKED (routing and native Services/deploy menu legs pass in sweeps262/267; fresh device login, authenticated page arrival and remaining prefix/full acceptance still required)**
 
-- [ ] **088** — [Git source changes retain image runtime metadata and break CLI cloning](blocked/088.md) — **BLOCKED (2026-10-12: fix shipped — an image-born service switched to Git reads the default Docker runtime and clones without `--runtime`; needs the fix deployed to production plus fresh native Bex/Render clone receipts and cleanup)**
+- [x] **088** — [Git source changes retain image runtime metadata and break CLI cloning](done/088.md) — **DONE 2026-10-15** (fix `17a128ed8`; sweep252 both native clients save/clone/deploy successfully, HTTP200, shared projections/exports agree, four-kind source controls pass; all fixtures cleaned)
 
 - [ ] **087** — [Clearing a datastore project filter leaves its active scope in place](blocked/087.md) — **BLOCKED (2026-10-12: upstream patch prepared and tested — [`087-upstream.patch`](blocked/087-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
 
@@ -147,7 +175,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [ ] **085** — [Interactive datastore errors omit their underlying detail](blocked/085.md) — **BLOCKED (2026-10-12: upstream patch prepared and tested — [`085-upstream.patch`](blocked/085-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
 
 - [ ] **084** — [Postgres restart reports success when the API refuses it](blocked/084.md) — **BLOCKED (2026-10-12: upstream patch prepared and tested — [`084-upstream.patch`](blocked/084-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
-- [ ] **083** — [Refuse unsupported managed-data live tails before WebSocket upgrade](blocked/083.md) — **BLOCKED (2026-10-12: fix shipped — managed Postgres/Key Value live tails get the named 400 before any WebSocket 101 or streaming header; needs the fix deployed to production plus fresh native Bex/Render Key Value/Postgres receipts and cleanup)**
+- [x] **083** — [Refuse unsupported managed-data live tails before WebSocket upgrade](done/083.md) — **DONE 2026-10-15 UTC:** sweep259 accepts both native clients/families, twelve diagnostic transport refusals, historical/App-tail controls and exact cleanup; deployed revision unknown.
 - [ ] **082** — [Applying the CLI log filter silently removes fractional timestamp bounds](blocked/082.md) — **BLOCKED (2026-10-12: upstream patch prepared and tested — [`082-upstream.patch`](blocked/082-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
 
 - [x] **081** — [Blueprint validation accepts port links to services with no network address](done/081.md) (55m) ← functional CLI QA, 2026-10-09; both clients, multipart API controls and actual parser values; shared server addressability guard. — **DONE 2026-10-10** (fix `5b91fcdab`; live two-client validation passed)
