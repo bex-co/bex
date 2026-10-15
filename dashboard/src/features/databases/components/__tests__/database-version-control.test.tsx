@@ -3,6 +3,10 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DatabaseVersionControl } from "@/features/databases/components/database-version-control";
 import type { DatabaseDetailView } from "@/features/databases/types";
+import {
+  POSTGRES_VERSIONS,
+  postgresUpgradeTargets,
+} from "@/features/databases/lib/versions";
 
 const updateVersion = vi.fn();
 const clearError = vi.fn();
@@ -83,5 +87,47 @@ describe("DatabaseVersionControl", () => {
     expect(screen.getByText(mockError)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("offers a PostgreSQL 13 database only the targets CNPG can upgrade to (w4/308)", async () => {
+    const user = userEvent.setup();
+    render(
+      <DatabaseVersionControl
+        database={{ ...DATABASE, version: "13" }}
+        onChanged={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Upgrade" }));
+    await user.click(screen.getByRole("combobox"));
+    const options = screen
+      .getAllByRole("option")
+      .map((option) => option.textContent);
+    expect(options).toEqual([
+      "PostgreSQL 18",
+      "PostgreSQL 17",
+      "PostgreSQL 16",
+    ]);
+    await user.click(screen.getByRole("option", { name: "PostgreSQL 16" }));
+    await user.click(
+      screen.getByRole("button", { name: "Upgrade to PostgreSQL 16" }),
+    );
+    expect(updateVersion).toHaveBeenCalledWith("orders-db", "16");
+  });
+});
+
+describe("postgresUpgradeTargets", () => {
+  it("keeps upgrade targets at 16 or newer while creation keeps 13-18", () => {
+    expect(postgresUpgradeTargets("13")).toEqual(["18", "17", "16"]);
+    expect(postgresUpgradeTargets("15")).toEqual(["18", "17", "16"]);
+    expect(postgresUpgradeTargets("16")).toEqual(["18", "17"]);
+    expect(postgresUpgradeTargets("18")).toEqual([]);
+    expect([...POSTGRES_VERSIONS]).toEqual([
+      "18",
+      "17",
+      "16",
+      "15",
+      "14",
+      "13",
+    ]);
   });
 });
