@@ -361,6 +361,29 @@ if ! grep -q 'kind: Application' <(kubectl kustomize deploy/gitops/base) \
   fail=1
 fi
 
+# w1/127: the local overlay replaces the approver's values to carry its CAPD
+# deviations (no DNS forward lookup, control-plane placement). Everything else
+# must match prod, including any key base gains later, and prod must keep the
+# strict default. Collected with ea outside select (see scalar()).
+approver_values() {
+  kubectl kustomize "deploy/gitops/overlays/$1" \
+    | yq -N ea '[select(.kind == "Application" and .metadata.name == "kubelet-csr-approver") | .spec.source.helm.values] | .[0]' - \
+    | yq -N -o=json -I=0 "$2"
+}
+echo "==> local kubelet-csr-approver differs from prod only by its CAPD deviations"
+deviations='del(.nodeSelector, .tolerations, .bypassDnsResolution) | sort_keys(.)'
+local_rest="$(approver_values local "$deviations")"
+prod_rest="$(approver_values prod "$deviations")"
+local_bypass="$(approver_values local .bypassDnsResolution)"
+prod_bypass="$(approver_values prod .bypassDnsResolution)"
+for captured in local_rest prod_rest local_bypass prod_bypass; do
+  scalar "$captured" "${!captured}" || fail=1
+done
+if [ "$local_rest" != "$prod_rest" ] || [ "$local_rest" = null ] || [ "$local_bypass" != true ] || [ "$prod_bypass" != false ]; then
+  echo "FAIL: kubelet-csr-approver: local $local_rest (bypassDnsResolution $local_bypass) vs prod $prod_rest ($prod_bypass); want equal checks, bypass true locally and false in prod" >&2
+  fail=1
+fi
+
 # kpack is vendored rather than fetched during reconciliation. Pin both the
 # official asset bytes and the rendered compatibility contract: the v1.34 fleet
 # must never regain the old KUBERNETES_MIN_VERSION=1.31 workaround, while the

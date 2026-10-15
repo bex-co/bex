@@ -194,6 +194,69 @@ verify_substrate() {
   fi
 }
 
+# argo_manages APP: the local Argo app-of-apps (deploy/gitops/overlays/local)
+# runs on this cluster and owns APP. A bootstrap Helm install over an
+# Argo-owned release fails on field ownership and aborts the bring-up (w1/127),
+# so each component the overlay also ships defers to Argo when it is there.
+argo_manages() {
+  KUBECONFIG="$WL_KUBECONFIG" kubectl -n argocd get application "$1" >/dev/null 2>&1 || return 1
+  echo "$1 is Argo-managed (overlays/local); skipping its bootstrap Helm install"
+}
+
+# install_kubelet_csr_approver installs the bare-mock kubelet-serving CSR
+# approver unless Argo owns it (overlays/local carries the same CAPD values,
+# guarded by scripts/gitops-validate.sh). Same chart and tight matching rules
+# as the GitOps Application, with one deviation: bypassDnsResolution=true,
+# because a CAPD node's hostname resolves only through the host Docker
+# daemon's DNS, not from inside a pod, so the default forward-lookup check
+# would deny every legitimate CSR. providerRegex and the always-on "SAN IP must
+# be one of the Node's own addresses" check still apply. Control-plane
+# placement for the same OrbStack+Calico apiserver-reachability reason as
+# coredns.
+install_kubelet_csr_approver() {
+  if argo_manages kubelet-csr-approver; then
+    return 0
+  fi
+  KUBECONFIG="$WL_KUBECONFIG" helm upgrade --install kubelet-csr-approver \
+    oci://ghcr.io/postfinance/charts/kubelet-csr-approver --version 1.2.7 \
+    -n kube-system \
+    --set providerRegex='^bex(-[a-z0-9]+)+$' \
+    --set allowedDnsNames=1 \
+    --set bypassDnsResolution=true \
+    --set-string 'nodeSelector.node-role\.kubernetes\.io/control-plane=' \
+    --set 'tolerations[0].key=node-role.kubernetes.io/control-plane' \
+    --set 'tolerations[0].effect=NoSchedule' >/dev/null
+}
+
+# install_metrics_server installs the bare-mock metrics-server unless Argo
+# owns it (its overlays/local Application keeps base placement on a worker,
+# which serves `kubectl top` on this mock as verified 2026-10-15). Same
+# --kubelet-certificate-authority path as deploy/gitops/base/metrics-server.yaml
+# (no --kubelet-insecure-tls), pinned to the control-plane node like coredns.
+# The address-types commas are BACKSLASH-ESCAPED: helm treats a comma in --set
+# as a list separator, so the bare form parsed as three keys and helm refused
+# with `key "Hostname" has no value`, aborting every bring-up.
+install_metrics_server() {
+  if argo_manages metrics-server; then
+    return 0
+  fi
+  KUBECONFIG="$WL_KUBECONFIG" helm upgrade --install metrics-server \
+    metrics-server --repo https://kubernetes-sigs.github.io/metrics-server/ \
+    --version 3.12.2 \
+    -n kube-system \
+    --set 'args[0]=--kubelet-preferred-address-types=InternalIP\,Hostname\,ExternalIP' \
+    --set 'args[1]=--kubelet-certificate-authority=/etc/kubernetes/pki/kubelet-ca/ca.crt' \
+    --set 'extraVolumes[0].name=kubelet-ca' \
+    --set 'extraVolumes[0].configMap.name=kube-root-ca.crt' \
+    --set 'extraVolumeMounts[0].name=kubelet-ca' \
+    --set 'extraVolumeMounts[0].mountPath=/etc/kubernetes/pki/kubelet-ca' \
+    --set 'extraVolumeMounts[0].readOnly=true' \
+    --set 'metrics.enabled=false' \
+    --set-string 'nodeSelector.node-role\.kubernetes\.io/control-plane=' \
+    --set 'tolerations[0].key=node-role.kubernetes.io/control-plane' \
+    --set 'tolerations[0].effect=NoSchedule' >/dev/null
+}
+
 # Definitions end here. scripts/mock-cluster.test.sh sources this file to
 # exercise the lock and publication contracts without provisioning anything.
 if [ -n "${BEX_MOCK_CLUSTER_LIB:-}" ]; then return 0 2>/dev/null || exit 0; fi
@@ -341,31 +404,12 @@ KUBECONFIG="$WL_KUBECONFIG" kubectl annotate storageclass local-path \
 
 # kubelet serving certificates. The control-plane template sets
 # `rotate-server-certificates: "true"` (w2/m81 t002), so every kubelet asks the
-# apiserver for a `kubernetes.io/kubelet-serving` cert — and kube-controller-manager
-# NEVER auto-approves those. In production deploy/gitops/base/kubelet-csr-approver.yaml
-# approves them, but Argo CD is not installed on this mock, so without the
-# equivalent here every CSR sits Pending and the kubelets keep serving certs the
-# apiserver won't trust. That breaks `kubectl port-forward`, `kubectl exec`, and
-# `kubectl logs` CLUSTER-WIDE with
-#   "error dialing backend: remote error: tls: internal error"
-# which reads like a dev-N bug but is a broken cluster (it wedged
-# scripts/dev-env.sh at its Hydra bootstrap step). Same chart and same tight
-# matching rules the GitOps Application pins, with ONE local deviation:
-# bypassDnsResolution=true, because a CAPD node's hostname resolves only through
-# the host Docker daemon's DNS, not from inside a pod, so the approver's default
-# forward-lookup check would deny every legitimate CSR here. The providerRegex
-# and the always-on "SAN IP must be one of the Node's own addresses" check still
-# apply. Production keeps the strict default
-# (deploy/gitops/overlays/prod/values/kubelet-csr-approver.values.yaml).
-KUBECONFIG="$WL_KUBECONFIG" helm upgrade --install kubelet-csr-approver \
-  oci://ghcr.io/postfinance/charts/kubelet-csr-approver --version 1.2.7 \
-  -n kube-system \
-  --set providerRegex='^bex(-[a-z0-9]+)+$' \
-  --set allowedDnsNames=1 \
-  --set bypassDnsResolution=true \
-  --set-string 'nodeSelector.node-role\.kubernetes\.io/control-plane=' \
-  --set 'tolerations[0].key=node-role.kubernetes.io/control-plane' \
-  --set 'tolerations[0].effect=NoSchedule' >/dev/null
+# apiserver for a `kubernetes.io/kubelet-serving` cert, and kube-controller-manager
+# NEVER auto-approves those; without an approver every CSR sits Pending and
+# `kubectl port-forward`/`exec`/`logs` fail cluster-wide with "error dialing
+# backend: remote error: tls: internal error" (it wedged scripts/dev-env.sh at
+# its Hydra bootstrap step).
+install_kubelet_csr_approver
 # Certificates requested before the approver was running stay Pending forever —
 # approve that startup backlog once so the cluster is usable immediately.
 # Genuinely best-effort, unlike the waits above: there may be no backlog at all,
@@ -390,33 +434,10 @@ require "cert-manager availability" \
   --for=condition=Available --timeout=300s
 
 # metrics-server — resource metrics (metrics.k8s.io) for bex-api's CPU/memory
-# fallback and `kubectl top` (w5/057). Without it, Metrics-page walks on every
-# `dev-N` stack see empty CPU/memory regardless of replica count. Installed
-# after kubelet-csr-approver so kubelets present approved serving certs; same
-# --kubelet-certificate-authority path as deploy/gitops/base/metrics-server.yaml
-# (no --kubelet-insecure-tls). Pin to the control-plane node for the same
-# OrbStack+Calico apiserver-reachability reason as coredns/cert-manager above;
-# the platform-pool nodeSelector from the GitOps Application is a prod concern.
-# The address-types commas are BACKSLASH-ESCAPED: helm treats a comma in
-# --set as a list separator, so the bare form parsed as three keys and helm
-# refused with `key "Hostname" has no value`, aborting every bring-up here.
-# t003 is what surfaced it — before, the run carried on to its success
-# banner regardless of what failed.
-KUBECONFIG="$WL_KUBECONFIG" helm upgrade --install metrics-server \
-  metrics-server --repo https://kubernetes-sigs.github.io/metrics-server/ \
-  --version 3.12.2 \
-  -n kube-system \
-  --set 'args[0]=--kubelet-preferred-address-types=InternalIP\,Hostname\,ExternalIP' \
-  --set 'args[1]=--kubelet-certificate-authority=/etc/kubernetes/pki/kubelet-ca/ca.crt' \
-  --set 'extraVolumes[0].name=kubelet-ca' \
-  --set 'extraVolumes[0].configMap.name=kube-root-ca.crt' \
-  --set 'extraVolumeMounts[0].name=kubelet-ca' \
-  --set 'extraVolumeMounts[0].mountPath=/etc/kubernetes/pki/kubelet-ca' \
-  --set 'extraVolumeMounts[0].readOnly=true' \
-  --set 'metrics.enabled=false' \
-  --set-string 'nodeSelector.node-role\.kubernetes\.io/control-plane=' \
-  --set 'tolerations[0].key=node-role.kubernetes.io/control-plane' \
-  --set 'tolerations[0].effect=NoSchedule' >/dev/null
+# fallback and `kubectl top` (w5/057); without it every `dev-N` Metrics page is
+# empty. Installed after the CSR approver so kubelets present approved serving
+# certs.
+install_metrics_server
 require "metrics-server availability" \
   env KUBECONFIG="$WL_KUBECONFIG" kubectl -n kube-system wait deploy/metrics-server \
   --for=condition=Available --timeout=180s

@@ -111,6 +111,30 @@ out="$(publish_kubeconfig 2>&1 || true)"
 check "publication never prints credential material" \
   "$(printf '%s' "$out" | grep -c 'SUPERSECRETKEYMATERIAL' || true)" "0"
 
+echo "components the local Argo also ships (w1/127):"
+# 6. Argo owns the approver once the local app-of-apps runs: a bootstrap Helm
+#    install over it fails on field ownership, so it must not run.
+helm_calls="$tmp/helm-calls"
+: >"$helm_calls"
+helm() { echo "helm $*" >>"$helm_calls"; }
+kubectl() { [ "$*" = "-n argocd get application kubelet-csr-approver" ]; }
+install_kubelet_csr_approver >/dev/null
+check "an Argo-managed approver gets no Helm install" "$(wc -l <"$helm_calls" | tr -d ' ')" "0"
+# 7. A bare mock has no Argo: the approver is installed, with the DNS bypass.
+kubectl() { return 1; }
+install_kubelet_csr_approver >/dev/null
+check "a bare mock installs the approver once" "$(wc -l <"$helm_calls" | tr -d ' ')" "1"
+check "the bare-mock install carries the CAPD DNS bypass" "$(grep -c 'bypassDnsResolution=true' "$helm_calls")" "1"
+# 8. metrics-server follows the same rule.
+: >"$helm_calls"
+kubectl() { [ "$*" = "-n argocd get application metrics-server" ]; }
+install_metrics_server >/dev/null
+check "an Argo-managed metrics-server gets no Helm install" "$(wc -l <"$helm_calls" | tr -d ' ')" "0"
+kubectl() { return 1; }
+install_metrics_server >/dev/null
+check "a bare mock installs metrics-server once" "$(grep -c 'install metrics-server' "$helm_calls")" "1"
+unset -f helm kubectl
+
 echo
 if [ "$fails" -ne 0 ]; then
   echo "FAILED: $fails check(s)" >&2
