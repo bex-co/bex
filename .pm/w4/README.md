@@ -270,6 +270,9 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **313** — [Chinese repository selectors retain English guidance and clear labels](313.md) (minor, 35m) ← functional QA a606, 2026-10-15; native Chinese desktop/mobile Blueprint branch controls keep English fallback copy, 3 render sites/4 contexts traced; read-only pass, locale/session restored.
+- [ ] **312** — [Chinese search lists retain an English Suggestions name](312.md) (minor, 25m) ← functional QA a606, 2026-10-15; translated Search and branch controls retain cmdk's English listbox name; actual label prop and 2 shared render sites traced, read-only cleanup verified.
+
 - [ ] **311** — [Chinese sidebar keeps English navigation and resize labels](311.md) (minor, 35m) ← functional QA 2026-10-15 a595; mobile drawer/toggle and desktop separator text bypass locale selection; native actions pass, language/width/resources/session restored.
 - [ ] **310** — [Chinese dialogs keep an English accessible Close label](310.md) (minor, 25m) ← functional QA 2026-10-15 a595; Chinese project and Postgres dialogs expose the shared English Close name; 32 render sites researched, owned project/session cleaned and English restored.
 
