@@ -1,6 +1,6 @@
 # w8 · m69 — Preserve native cron startup semantics
 
-**Worker:** worker8 **Goal:** a native cron runs its accepted startup command through the native launch path and reads it back correctly. **Status:** blocked — t001, t002, t004, t005 done (native cron start commands stay in the native Bash role across REST/GraphQL/MCP/Blueprint/readback/dashboard); t003/t006 need the backend and dashboard deployed plus the hosted two-client Free native cron create/manual-run/update/clone replay with cleanup
+**Worker:** worker8 **Goal:** a native cron runs its accepted startup command through the native launch path and reads it back correctly. **Status:** blocked — t001, t002, t004, t005 done (native cron start commands stay in the native Bash role across REST/GraphQL/MCP/Blueprint/readback/dashboard); t003/t006 need the backend and dashboard deployed, an explicitly approved paid cron fixture, and the hosted two-client create/manual-run/update/clone replay with cleanup
 
 ## Tasks (in order)
 
@@ -15,7 +15,7 @@
 
 ## Definition of done
 
-- Fresh native Bex and unchanged Render create a Free Node cron with an inline finite Bash command; deployment is Live, a finite API-only manual run is successful, and native logs contain the exact marker without a Bash wrapper workaround. Repeat native command updates and read back the correct command.
+- Fresh native Bex and unchanged Render create a Node cron on an explicitly approved paid plan with an inline finite Bash command; deployment is Live, a finite API-only manual run is successful, and native logs contain the exact marker without a Bash wrapper workaround. Repeat native command updates and read back the correct command.
 - Initial/create/update/Blueprint/clone/generate and shared REST/GraphQL/MCP/dashboard roles stay coherent. Native baked startup remains distinct from explicit image overrides. Opaque Docker/image aliases, clearing, legacy fallback and no-op behavior remain correct, as do carrying-release/source switches.
 - Producer/consumer/readback regressions and affected required checks pass. Six native runtimes and buildpack/opaque siblings have honest source/runtime coverage. The exact deployed fix and all remaining limits are identified; no claim of Render-production parity from a local fixture alone.
 - Every owned parent/deploy/run/container/session created for acceptance is cleaned and baseline/quota reconciled. Complete all tasks before moving the milestone and tasks to done with synchronized statuses and no stubs.
@@ -38,3 +38,7 @@ Severity major. The two private proposal fragments prove only initial routing an
 ## Fresh live initial-role acceptance — sweep302
 
 [Two-client current-source/live evidence](evidence/cli-sweep302/README.md) records24 focused named source passes across10 existing tests. Fresh published Bex and unchanged Render each create Live Free Node cron fixtures, but their one finite API-only manual run each finishes unsuccessful; both native logs return `/bin/sh: 1: [[: not found` and no success marker. Exact deployed revision is unobserved, so this extends the original acceptance failure without filing a duplicate or claiming a source regression. Native update/readback/clone and dashboard acceptance remain unexecuted after the initial failure. Two parents/two deploys/two runs are fully cleaned, baseline6/quota6/terminating0; no product changes or deployment by QA. Keep t003/t006 and the milestone blocked.
+
+## Paid-only cron policy after sweep302
+
+Main bed5e2c32 implements [w8/048](../048.md): new cron jobs require a paid plan. Sweep302 and the original Free fixtures are historical results from before this policy change; they do not authorize another Free create, reuse of a baseline cron, or a paid resource. The hosted startup/readback/clone acceptance now needs an explicitly approved paid fixture in addition to the deployed fix. This continuing free-only hunt skips new cron mutations. Keep t003/t006 blocked; do not close them on source tests or treat a new Free-plan refusal as this startup bug. Existing Free crons are left alone.
