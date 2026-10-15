@@ -15,7 +15,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m67** — [Keep native live logs running after a transient disconnect](m67/README.md) (7 tasks;2h50m) ← CLI QA sweep272: current Bex/Render pin silently exits0 after connection loss; released upstream2.29 tag reconnects/resumes exactly once. Qualify/adopt the fix and verify Bex delivery.
+- [ ] **m67** — [Keep native live logs running after a transient disconnect](blocked/m67/README.md) — **BLOCKED (2026-10-14: t001 done — Bex built on v2.29.0 reconnects and resumes A/B exactly once, but v2.29 also retries normal 1000 closes, which Bex uses to end a no-running-build tail (w8/020), so `logs --type build --tail` would loop forever. Needs the user to choose a non-retryable refusal close code (non-zero exit), accepting the retry, or waiting for upstream; then t002–t006 and an explicitly requested CLI release)**
 
 - [ ] **m66** — [Keep Blueprint service updates in canonical intent](m66/README.md) (6 tasks,3h5m) ← functional CLI sweep230; source/branch loss live-proven, four missing canonical-write source states
 

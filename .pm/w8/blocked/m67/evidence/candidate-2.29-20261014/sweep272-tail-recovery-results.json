@@ -1,0 +1,383 @@
+[
+  {
+    "client": "bex-candidate-2.29",
+    "scenario": "abrupt_empty",
+    "source_tag": "Bex v0.3.2 / Render2.27.0/a764810a7682",
+    "command": [
+      "bex-candidate-2.29",
+      "logs",
+      "--resources",
+      "srv-00000000000000000000",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "endpoint": "http://127.0.0.1:62088/v1/",
+    "credentials": "synthetic local fixture only",
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62088",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "K5RcBGewxRG/TleFRUU43Q==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62088",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "4eKilYkgC4bMc51pu1gHfw==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      }
+    ],
+    "server_events": [
+      {
+        "connection": 1,
+        "HTTP": 101
+      },
+      {
+        "connection": 1,
+        "transport": "TCP shutdown without WebSocket close frame"
+      },
+      {
+        "connection": 2,
+        "HTTP": 101
+      },
+      {
+        "connection": 2,
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "QA272_A",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 recovery A",
+          "timestamp": "2026-10-15T01:00:00Z"
+        }
+      },
+      {
+        "connection": 2,
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "QA272_B",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 recovery B",
+          "timestamp": "2026-10-15T01:00:01Z"
+        }
+      }
+    ],
+    "received_ids": [
+      "QA272_A",
+      "QA272_B"
+    ],
+    "recovered_A_B_once_while_alive": true,
+    "alive_before_harness_stop": true,
+    "harness_signal": "SIGINT: explicit bounded harness stop after observation or 6s",
+    "native_exit": -2,
+    "forced_kill": false,
+    "elapsed": 2.231,
+    "stdout": "{\n  \"id\": \"QA272_A\",\n  \"labels\": [\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-00000000000000000000\"\n    },\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA272 recovery A\",\n  \"timestamp\": \"2026-10-15T01:00:00Z\"\n}{\n  \"id\": \"QA272_B\",\n  \"labels\": [\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-00000000000000000000\"\n    },\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA272 recovery B\",\n  \"timestamp\": \"2026-10-15T01:00:01Z\"\n}",
+    "stderr": "Unable to connect to logs. Retrying in 1s.\nLog connection restored.\n",
+    "cleanup": {
+      "native_reaped": true,
+      "config_removed": true,
+      "server_stopped": true
+    }
+  },
+  {
+    "client": "bex-candidate-2.29",
+    "scenario": "abrupt_after_A",
+    "source_tag": "Bex v0.3.2 / Render2.27.0/a764810a7682",
+    "command": [
+      "bex-candidate-2.29",
+      "logs",
+      "--resources",
+      "srv-00000000000000000000",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "endpoint": "http://127.0.0.1:62171/v1/",
+    "credentials": "synthetic local fixture only",
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62171",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "fiBe/72rh1co86x9v1KBVw==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&startTime=2026-10-15T01%3A00%3A00Z&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62171",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "VqOxL/VQoZLKhtb6p7ClPg==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      }
+    ],
+    "server_events": [
+      {
+        "connection": 1,
+        "HTTP": 101
+      },
+      {
+        "connection": 1,
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "QA272_A",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 recovery A",
+          "timestamp": "2026-10-15T01:00:00Z"
+        }
+      },
+      {
+        "connection": 1,
+        "transport": "TCP shutdown without WebSocket close frame"
+      },
+      {
+        "connection": 2,
+        "HTTP": 101
+      },
+      {
+        "connection": 2,
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "QA272_A",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 recovery A",
+          "timestamp": "2026-10-15T01:00:00Z"
+        }
+      },
+      {
+        "connection": 2,
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "QA272_B",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 recovery B",
+          "timestamp": "2026-10-15T01:00:01Z"
+        }
+      }
+    ],
+    "received_ids": [
+      "QA272_A",
+      "QA272_B"
+    ],
+    "recovered_A_B_once_while_alive": true,
+    "alive_before_harness_stop": true,
+    "harness_signal": "SIGINT: explicit bounded harness stop after observation or 6s",
+    "native_exit": -2,
+    "forced_kill": false,
+    "elapsed": 1.654,
+    "stdout": "{\n  \"id\": \"QA272_A\",\n  \"labels\": [\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-00000000000000000000\"\n    },\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA272 recovery A\",\n  \"timestamp\": \"2026-10-15T01:00:00Z\"\n}{\n  \"id\": \"QA272_B\",\n  \"labels\": [\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-00000000000000000000\"\n    },\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA272 recovery B\",\n  \"timestamp\": \"2026-10-15T01:00:01Z\"\n}",
+    "stderr": "Unable to connect to logs. Retrying in 1s.\nLog connection restored.\n",
+    "cleanup": {
+      "native_reaped": true,
+      "config_removed": true,
+      "server_stopped": true
+    }
+  },
+  {
+    "client": "bex-candidate-2.29",
+    "scenario": "error1011_after_A",
+    "source_tag": "Bex v0.3.2 / Render2.27.0/a764810a7682",
+    "command": [
+      "bex-candidate-2.29",
+      "logs",
+      "--resources",
+      "srv-00000000000000000000",
+      "--tail",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "endpoint": "http://127.0.0.1:62215/v1/",
+    "credentials": "synthetic local fixture only",
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62215",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "tmstmw18QZ5uFjLyTidMKw==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/v1/logs/subscribe?ownerId=tea-00000000000000000000&startTime=2026-10-15T01%3A00%3A00Z&direction=backward&resource=srv-00000000000000000000&limit=100",
+        "headers": {
+          "Host": "127.0.0.1:62215",
+          "User-Agent": "render-cli/dev (macOS - 26.5.1)",
+          "Authorization": "<SYNTHETIC_FIXTURE_TOKEN>",
+          "Connection": "Upgrade",
+          "Sec-WebSocket-Key": "BBh0Fdsic10IniiQA1cDtw==",
+          "Sec-WebSocket-Version": "13",
+          "Upgrade": "websocket"
+        }
+      }
+    ],
+    "server_events": [
+      {
+        "connection": 1,
+        "HTTP": 101
+      },
+      {
+        "connection": 1,
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "QA272_A",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 recovery A",
+          "timestamp": "2026-10-15T01:00:00Z"
+        }
+      },
+      {
+        "connection": 1,
+        "close_code": 1011,
+        "reason": "QA272 planned server error"
+      },
+      {
+        "connection": 2,
+        "HTTP": 101
+      },
+      {
+        "connection": 2,
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "QA272_A",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 recovery A",
+          "timestamp": "2026-10-15T01:00:00Z"
+        }
+      },
+      {
+        "connection": 2,
+        "websocket_opcode": 1,
+        "payload": {
+          "id": "QA272_B",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-00000000000000000000"
+            },
+            {
+              "name": "type",
+              "value": "app"
+            }
+          ],
+          "message": "QA272 recovery B",
+          "timestamp": "2026-10-15T01:00:01Z"
+        }
+      }
+    ],
+    "received_ids": [
+      "QA272_A",
+      "QA272_B"
+    ],
+    "recovered_A_B_once_while_alive": true,
+    "alive_before_harness_stop": true,
+    "harness_signal": "SIGINT: explicit bounded harness stop after observation or 6s",
+    "native_exit": -2,
+    "forced_kill": false,
+    "elapsed": 1.65,
+    "stdout": "{\n  \"id\": \"QA272_A\",\n  \"labels\": [\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-00000000000000000000\"\n    },\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA272 recovery A\",\n  \"timestamp\": \"2026-10-15T01:00:00Z\"\n}{\n  \"id\": \"QA272_B\",\n  \"labels\": [\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-00000000000000000000\"\n    },\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA272 recovery B\",\n  \"timestamp\": \"2026-10-15T01:00:01Z\"\n}",
+    "stderr": "Unable to connect to logs. Retrying in 1s.\nLog connection restored.\n",
+    "cleanup": {
+      "native_reaped": true,
+      "config_removed": true,
+      "server_stopped": true
+    }
+  }
+]
