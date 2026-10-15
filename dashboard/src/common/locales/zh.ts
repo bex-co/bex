@@ -25,6 +25,11 @@ const zhCommon: Record<string, TranslationEntry> = {
     description:
       "Label above the typed-confirmation input in a phrase-gated confirm dialog.",
   },
+  "common.close": {
+    message: "关闭",
+    description:
+      "Accessible name of the shared dialog's built-in close (X) button.",
+  },
   "common.cancel": {
     message: "取消",
     description:
