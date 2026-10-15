@@ -1,17 +1,17 @@
 # w8 · m69 — Preserve native cron startup semantics
 
-**Worker:** worker8 **Goal:** a native cron runs its accepted startup command through the native launch path and reads it back correctly. **Status:** todo
+**Worker:** worker8 **Goal:** a native cron runs its accepted startup command through the native launch path and reads it back correctly. **Status:** blocked — t001, t002, t004, t005 done (native cron start commands stay in the native Bash role across REST/GraphQL/MCP/Blueprint/readback/dashboard); t003/t006 need the backend and dashboard deployed plus the hosted two-client Free native cron create/manual-run/update/clone replay with cleanup
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Keep native cron start commands in the native launch role | 45m | — |
-| t002 | Keep readback and shared command roles coherent | 45m | t001 |
-| t003 | Render parity | 25m | t002 |
-| t004 | Simplify | 10m | t003 |
-| t005 | Test coverage | 30m | t003 |
-| t006 | Closeout | 15m | t004, t005 |
+| t001 | Keep native cron start commands in the native launch role — **DONE** | 45m | — |
+| t002 | Keep readback and shared command roles coherent — **DONE** | 45m | t001 |
+| t003 | Render parity — **BLOCKED (deploy + hosted two-client replay)** | 25m | t002 |
+| t004 | Simplify — **DONE** | 10m | t003 |
+| t005 | Test coverage — **DONE** | 30m | t003 |
+| t006 | Closeout — **BLOCKED (t003)** | 15m | t004, t005 |
 
 ## Definition of done
 

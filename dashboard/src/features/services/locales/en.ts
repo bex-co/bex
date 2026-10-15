@@ -1962,6 +1962,17 @@ const enServices: Record<string, TranslationEntry> = {
       "Overrides the image's default entry point. Leave blank to run the image's own command.",
     description: "Cron job Deploy section: command field help text",
   },
+  "services.deployCommandNativeHint": {
+    message:
+      "The command the job runs on each schedule, as its runtime's start command.",
+    description:
+      "Cron job Deploy section: command field help text for a native-runtime cron, whose command is its start command (w8/m69)",
+  },
+  "services.deployCommandRequired": {
+    message: "Command is required.",
+    description:
+      "Cron job Deploy section: command required validation error for a native-runtime cron (w8/m69)",
+  },
   "services.buildTitle": {
     message: "Build",
     description:

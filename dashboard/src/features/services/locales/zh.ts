@@ -1917,6 +1917,16 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "覆盖镜像的默认入口命令。留空则使用镜像自身的命令。",
     description: "Cron job Deploy section: command field help text",
   },
+  "services.deployCommandNativeHint": {
+    message: "作业每次按计划运行的命令，作为运行时的启动命令执行。",
+    description:
+      "Cron job Deploy section: command field help text for a native-runtime cron, whose command is its start command (w8/m69)",
+  },
+  "services.deployCommandRequired": {
+    message: "命令为必填项。",
+    description:
+      "Cron job Deploy section: command required validation error for a native-runtime cron (w8/m69)",
+  },
   "services.buildTitle": {
     message: "构建",
     description:

@@ -35,6 +35,10 @@ vi.mock("@/common/providers/protected-retry-context", () => ({
 }));
 
 import { useCronJob } from "@/features/services/hooks/use-cron-job";
+import {
+  SetStartCommandDocument,
+  UpdateCronJobDocument,
+} from "@/graphql/definitions";
 import { codedGraphQLError } from "@/test/mocks/apollo";
 
 beforeEach(() => {
@@ -247,5 +251,83 @@ describe("useCronJob protected retry preserves an explicit clear", () => {
     expect(ok).toBe(false);
     expect(toastSuccess).not.toHaveBeenCalled();
     expect(toastError).not.toHaveBeenCalled();
+  });
+});
+
+describe("useCronJob setStartCommand (w8/m69)", () => {
+  function mutations() {
+    const cron = vi.fn().mockResolvedValue({});
+    const start = vi.fn().mockResolvedValue({});
+    mockUseMutation.mockImplementation((document: unknown) => {
+      if (document === UpdateCronJobDocument) return [cron];
+      if (document === SetStartCommandDocument) return [start];
+      throw new Error("unexpected document");
+    });
+    return { cron, start };
+  }
+
+  it("sets the start command, then publishes like every cron save", async () => {
+    const { cron, start } = mutations();
+    const { result } = renderHook(() => useCronJob());
+    let ok: boolean | undefined;
+    await act(async () => {
+      ok = await result.current.setStartCommand("nightly", "[[ 1 = 1 ]] ");
+    });
+
+    expect(ok).toBe(true);
+    expect(start).toHaveBeenCalledWith({
+      variables: { id: "nightly", command: "[[ 1 = 1 ]] " },
+    });
+    expect(cron).not.toHaveBeenCalled();
+    expect(mockClientQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ variables: { id: "nightly" } }),
+    );
+    expect(toastSuccess).toHaveBeenCalledWith("Cron job settings saved.", {
+      description: undefined,
+    });
+  });
+
+  it("refuses while the last save's refresh has not published", async () => {
+    const { cron, start } = mutations();
+    mockClientQuery.mockRejectedValueOnce(new Error("503"));
+    const { result } = renderHook(() => useCronJob());
+    await act(async () => {
+      await result.current.updateCronJob("nightly", "0 6 * * *", null);
+    });
+    expect(cron).toHaveBeenCalledTimes(1);
+    expect(result.current.staleId).toBe("nightly");
+
+    let ok: boolean | undefined;
+    await act(async () => {
+      ok = await result.current.setStartCommand("nightly", "npm start");
+    });
+    expect(ok).toBe(false);
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      "setStartCommand",
+      (r: ReturnType<typeof useCronJob>) =>
+        r.setStartCommand("nightly", "npm start"),
+    ],
+    [
+      "updateCronJob",
+      (r: ReturnType<typeof useCronJob>) =>
+        r.updateCronJob("nightly", "0 6 * * *", "npm start"),
+    ],
+  ])("%s clears busy after a failed save", async (_name, run) => {
+    const { cron, start } = mutations();
+    cron.mockRejectedValue(new Error("forbidden"));
+    start.mockRejectedValue(new Error("forbidden"));
+    const { result } = renderHook(() => useCronJob());
+    await act(async () => {
+      await run(result.current);
+    });
+
+    expect(toastError).toHaveBeenCalledWith(
+      "Couldn't save cron job settings. Please try again.",
+    );
+    expect(result.current.busy).toBe(false);
   });
 });

@@ -15,7 +15,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m69** — [Preserve native cron startup semantics](m69/README.md) (6 tasks, 2h50m) — sweep285: both native clients create Live Free cron services whose Bash runs fail in /bin/sh; actual producer/consumer and readback proofs, all fixtures cleaned.
+- [ ] **m69** — [Preserve native cron startup semantics](blocked/m69/README.md) (6 tasks, 2h50m) — **BLOCKED (2026-10-15: t001, t002, t004, t005 done — a native cron's CLI `startCommand` now stays its baked Bash start command on create, update (REST/GraphQL/MCP), Blueprint edits incl. a docker→native switch, readback/clone and the dashboard Command row; explicit Bex `command` stays a /bin/sh override; legacy duplicates repair on their next command write. Needs the backend + dashboard deployed, then the hosted two-client Free native cron create + finite manual run with the exact marker, update/readback/clone checks and owned cleanup (t003/t006))**
 
 - [ ] **m68** — [Preserve executable command text](blocked/m68/README.md) (7 tasks, 3h15m) — **BLOCKED (2026-10-15: t001–t003, t005, t006 done — backend and dashboard keep nonblank build/start/pre-deploy/cron/hook command text byte for byte (whitespace-only still clears) with failing-first REST/GraphQL/MCP/Blueprint/dashboard regressions; upstream CLI patch + request-construction regressions prepared in `blocked/m68/evidence/t001-upstream/upstream-command-text.patch`. Needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release and the deployed fix for the hosted two-client `7461696c20` replay with cleanup (t004/t007))**
 

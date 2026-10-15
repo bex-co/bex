@@ -507,8 +507,13 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 		}
 		schedule = preferTopLevel(schedule, r.ServiceDetails.Schedule)
 		command = preferTopLevel(command, r.ServiceDetails.Command)
-		if command == "" && r.Type == appv1alpha1.TypeCronJob {
-			command = startCommand // official CLI encodes cron command in envSpecificDetails.startCommand
+		// The official CLI encodes a cron's command as
+		// envSpecificDetails.startCommand. A native runtime bakes it into its
+		// image's Bash CMD; any other build runs it as the cron's command
+		// (w8/m69).
+		if command == "" && r.Type == appv1alpha1.TypeCronJob &&
+			!nativeBuild((dockerDetails{runtime: runtime, builder: r.Builder, image: imagePath}).build()) {
+			command = startCommand
 		}
 		publishPath = preferTopLevel(publishPath, r.ServiceDetails.PublishPath)
 		preDeploy = preferTopLevel(preDeploy, r.ServiceDetails.PreDeployCommand)

@@ -90,7 +90,7 @@ type updateServiceArgs struct {
 	IdleTTLSeconds          *int32                   `json:"idleTTLSeconds,omitempty" jsonschema:"seconds a free-tier service may go without traffic (HTTP requests it served, or WebSocket frames it sent) before it auto-sleeps; 0 (or unset) selects the platform default window of 15 minutes, a positive value overrides it"`
 	PublishPath             *string                  `json:"publishPath,omitempty" jsonschema:"static sites only: the built output directory served as the site root, e.g. dist, build, or public"`
 	Schedule                *string                  `json:"schedule,omitempty" jsonschema:"cron jobs only: the 5-field crontab expression, e.g. '0 0 * * *'"`
-	Command                 *string                  `json:"command,omitempty" jsonschema:"cron jobs only: the command each run executes, overriding the image entrypoint; empty clears the override"`
+	Command                 *string                  `json:"command,omitempty" jsonschema:"cron jobs only: a /bin/sh override of the command each run executes; empty clears the override. A native-runtime cron's own command is its startCommand, which runs in Bash"`
 	Repo                    *string                  `json:"repo,omitempty" jsonschema:"Git repository URL to build from. Setting it switches an image-backed service to Git and clears the image"`
 	Image                   *string                  `json:"image,omitempty" jsonschema:"prebuilt OCI image to deploy. Setting it switches a Git-backed service to an image and clears the repository"`
 	Branch                  *string                  `json:"branch,omitempty" jsonschema:"the Git branch to build and deploy; empty restores the default main"`
@@ -295,7 +295,7 @@ type createCronJobArgs struct {
 	EnvironmentID        string  `json:"environmentId,omitempty" jsonschema:"an environment id (evm-...) in the target workspace; assignment also joins its project"`
 	Name                 string  `json:"name" jsonschema:"the cron job name (a DNS label, 1-30 chars)"`
 	Schedule             string  `json:"schedule" jsonschema:"the cron schedule (standard 5-field crontab, e.g. '0 * * * *')"`
-	Command              string  `json:"command,omitempty" jsonschema:"overrides the image's default entrypoint for each run, e.g. 'npm run report'; omit to run the image's own command"`
+	Command              string  `json:"command,omitempty" jsonschema:"overrides the image's default entrypoint for each run under /bin/sh, e.g. 'npm run report'; omit to run the image's own command. A native runtime runs startCommand in Bash instead"`
 	Repo                 string  `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
 	Image                string  `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
 	RegistryCredentialID *string `json:"registryCredentialId,omitempty" jsonschema:"stored registry credential id for a private prebuilt image or Dockerfile FROM; omit for automatic image-host matching, empty to explicitly use none"`
