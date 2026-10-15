@@ -1,6 +1,6 @@
 # Explicit output flag versus an invalid default — sweep279
 
-2026-10-15 UTC. [Current installed/published/same-pin native matrix](native-current-pin.json), [unmodified2.29 tag matrix](native-v2.29-tag.json), [verified private fix matrix](diagnostic-native.json), [source regression controls](diagnostic-source-tests.jsonl), [proposed upstream patch](output-priority.patch), [versions/boundaries](metadata.json), [redactions](redactions.json). [w8/107](../../107.md).
+2026-10-15 UTC. [Current installed/published/same-pin native matrix](native-current-pin.json), [unmodified2.29 tag matrix](native-v2.29-tag.json), [verified private fix matrix](diagnostic-native.json), [source regression controls](diagnostic-source-tests.jsonl), [proposed upstream patch](output-priority.patch), [versions/boundaries](metadata.json), [redactions](redactions.json). [w8/107](../../blocked/107.md).
 
 Every case uses owned loopback HTTP with a synthetic API token/config and one synthetic owner. No request targets a real workspace, tenant, service or auth endpoint. Valid controls make the actual native GET /v1/owners?limit=100 and receive the complete retained JSON fixture; requests/headers and response body are captured. Failure cases issue zero HTTP requests.
 
