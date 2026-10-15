@@ -449,6 +449,39 @@ func TestGenerateBlueprintDockerfileServiceWithoutExplicitRuntime(t *testing.T) 
 	}
 }
 
+// TestGenerateBlueprintKeepsEverySelectedBranch (w8/m76): an omitted branch
+// means the repository's default to Render and to a direct create, so the
+// export must name the branch each service actually builds — a resolved
+// non-main default and an explicit main alike. Dropping main (the pre-m76
+// export) turned "main on a master-default repo" into "master" on re-create.
+func TestGenerateBlueprintKeepsEverySelectedBranch(t *testing.T) {
+	for _, branch := range []string{"main", "master", "trunk"} {
+		t.Run(branch, func(t *testing.T) {
+			const appID = "srv-branch-export"
+			app := &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default", Labels: map[string]string{
+					core.LabelServiceName: "web", core.LabelAppID: appID,
+				}},
+				Spec: appv1alpha1.AppSpec{
+					Type: appv1alpha1.TypeWebService, Repo: "https://github.com/expressjs/serve-static",
+					Branch: branch, Runtime: "docker",
+				},
+			}
+			svc := &Service{Base: &core.Base{Client: fakeClient(app), Namespace: "default"}}
+			out, err := svc.GenerateBlueprint(context.Background(), GenerateBlueprintRequest{ServiceIDs: []string{appID}})
+			if err != nil {
+				t.Fatalf("GenerateBlueprint: %v", err)
+			}
+			if !strings.Contains(out.Manifest, "branch: "+branch+"\n") {
+				t.Fatalf("export lost the selected branch %q:\n%s", branch, out.Manifest)
+			}
+			if v, err := svc.ValidateBlueprint(context.Background(), "", out.Manifest, ""); err != nil || !v.Valid {
+				t.Fatalf("generated manifest must self-validate: %+v err=%v", v, err)
+			}
+		})
+	}
+}
+
 // A shape the generator cannot express fails with a coded error naming the
 // service, never an anonymous "internal error". Buildpack builds and stored
 // build commands were such shapes until w5/m117; no App a create or the CRD

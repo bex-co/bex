@@ -1,16 +1,16 @@
 # w8 · m76 — Honor a GitHub repository's default branch on create
 
-**Worker:** worker8 **Goal:** omitting branch in a GitHub service create uses the repo default and makes the first deployment work through the unchanged CLI. **Status:** todo
+**Worker:** worker8 **Goal:** omitting branch in a GitHub service create uses the repo default and makes the first deployment work through the unchanged CLI. **Status:** blocked
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Resolve omitted GitHub create branches from repository metadata | 55m | — |
-| t002 | Audit branch selection consumers and exports | 35m | t001 |
-| t003 | Render parity | 20m | t002 |
-| t004 | Simplify | 10m | t003 |
-| t005 | Meaningful default-branch regression coverage | 45m | t003 |
+| [t001](done/t001.md) | Resolve omitted GitHub create branches from repository metadata | 55m | — — **DONE 2026-10-15** |
+| [t002](done/t002.md) | Audit branch selection consumers and exports | 35m | t001 — **DONE 2026-10-15** |
+| [t003](done/t003.md) | Render parity | 20m | t002 — **DONE 2026-10-15** |
+| [t004](done/t004.md) | Simplify | 10m | t003 — **DONE 2026-10-15** |
+| [t005](done/t005.md) | Meaningful default-branch regression coverage | 45m | t003 — **DONE 2026-10-15** |
 | t006 | Live closeout | 20m | t004, t005 |
 
 ## Definition of done

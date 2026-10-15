@@ -77,7 +77,7 @@ type APIClient interface {
 	ListBranches(ctx context.Context, installationID int64, owner, repo string) ([]string, error)
 	ListRepoTree(ctx context.Context, token, owner, repo, path, ref string) ([]RepoTreeEntry, error)
 	MintInstallationToken(ctx context.Context, installationID int64) (InstallationToken, error)
-	RepoAccessible(ctx context.Context, token, owner, repo string) (bool, error)
+	LookupRepo(ctx context.Context, token, owner, repo string) (Repo, bool, error)
 	GetCommit(ctx context.Context, token, owner, repo, ref string) (Commit, error)
 	GetFileContents(ctx context.Context, token, owner, repo, path, ref string) (FileContents, error)
 	GetRepoCommitSHA(ctx context.Context, token, owner, repo, branch string) (string, error)
@@ -1121,29 +1121,32 @@ func (t tokenSource) RepoGranted(ctx context.Context, workspaceID, repoURL strin
 	return granted, err
 }
 
-// ValidateRepo checks a source edit before any App or clone Secret is changed.
-// An unconnected GitHub repo is usable only when GitHub serves it anonymously;
-// other Git hosts retain the create flow's public-Git behavior.
-func (t tokenSource) ValidateRepo(ctx context.Context, workspaceID, repoURL string) error {
+// ValidateRepo checks a source before any App or clone Secret is changed, and
+// returns the default branch GitHub reported in that same read (w8/m76), as
+// reported — the caller decides whether it needs a usable one. An unconnected
+// GitHub repo is usable only when GitHub serves it anonymously. "" with a nil
+// error means no opinion (GitHub unconfigured, or not a github.com
+// repository): other Git hosts retain the create flow's public-Git behavior.
+func (t tokenSource) ValidateRepo(ctx context.Context, workspaceID, repoURL string) (string, error) {
 	owner, repo, ok := githubOwnerRepo(repoURL)
 	if !ok || !t.s.configured() {
-		return nil
+		return "", nil
 	}
-	granted, err := t.RepoGranted(ctx, workspaceID, repoURL)
+	_, meta, granted, err := t.s.grantedRepo(ctx, workspaceID, repoURL)
 	if err != nil {
-		return fmt.Errorf("checking repository access: %w", err)
+		return "", fmt.Errorf("checking repository access: %w", err)
 	}
-	if granted {
-		return nil
+	if !granted {
+		var public bool
+		meta, public, err = t.s.GitHub.LookupRepo(ctx, "", owner, repo)
+		if err != nil {
+			return "", fmt.Errorf("checking public repository access: %w", err)
+		}
+		if !public {
+			return "", fmt.Errorf("%w: repository is not accessible through this workspace's GitHub connections or as public Git; connect its owner and grant repository access, or use a public repository", core.ErrBadRequest)
+		}
 	}
-	public, err := t.s.GitHub.RepoAccessible(ctx, "", owner, repo)
-	if err != nil {
-		return fmt.Errorf("checking public repository access: %w", err)
-	}
-	if !public {
-		return fmt.Errorf("%w: repository is not accessible through this workspace's GitHub connections or as public Git; connect its owner and grant repository access, or use a public repository", core.ErrBadRequest)
-	}
-	return nil
+	return meta.DefaultBranch, nil
 }
 
 // DeployTokenSource returns the deploy path's clone-token seam (wired onto
@@ -1165,8 +1168,16 @@ func (s *Service) DeployTokenSource() tokenSource { return tokenSource{s} }
 // actually does, which is the gap that let the product claim GitHub-app
 // delivery for a repo the installation never granted.
 func (s *Service) cloneToken(ctx context.Context, workspaceID, repoURL string) (string, bool, error) {
+	token, _, granted, err := s.grantedRepo(ctx, workspaceID, repoURL)
+	return token, granted, err
+}
+
+// grantedRepo is cloneToken plus the repository metadata the grant check
+// already fetched, so ValidateRepo learns the default branch without a second
+// GitHub read (w8/m76).
+func (s *Service) grantedRepo(ctx context.Context, workspaceID, repoURL string) (string, Repo, bool, error) {
 	if !s.configured() {
-		return "", false, nil
+		return "", Repo{}, false, nil
 	}
 	// SECURITY (w1/m65 F1, hardened): bind the token to a structurally verified
 	// github.com origin, not just an owner/repo path suffix. The minted
@@ -1181,34 +1192,34 @@ func (s *Service) cloneToken(ctx context.Context, workspaceID, repoURL string) (
 	// as defense in depth.
 	owner, repo, ok := githubOwnerRepo(repoURL)
 	if !ok {
-		return "", false, nil // not a github.com owner/repo URL — nothing to match against
+		return "", Repo{}, false, nil // not a github.com owner/repo URL — nothing to match against
 	}
 	// Resolve the workspace's connection for THIS repo's account (ADR078 §4): a
 	// workspace may hold several installations, and the token must come from the
 	// one that owns the repo — never account A's token for account B's repo.
 	row, err := s.Store.GetGitConnectionByOwner(ctx, workspaceID, owner)
 	if errors.Is(err, store.ErrNotFound) {
-		return "", false, nil
+		return "", Repo{}, false, nil
 	}
 	if err != nil {
-		return "", false, err
+		return "", Repo{}, false, err
 	}
 	// Mint once, then ask whether the installation can see this one repo — a
 	// single GET, versus paginating the whole installation repo list. An
 	// installation token can only reach granted repos, so a 404 means "not in
-	// the grant" (RepoAccessible reports ok=false, no error).
+	// the grant" (LookupRepo reports ok=false, no error).
 	tok, err := s.GitHub.MintInstallationToken(ctx, row.InstallationID)
 	if err != nil {
-		return "", false, err
+		return "", Repo{}, false, err
 	}
-	inGrant, err := s.GitHub.RepoAccessible(ctx, tok.Token, owner, repo)
+	meta, inGrant, err := s.GitHub.LookupRepo(ctx, tok.Token, owner, repo)
 	if err != nil {
-		return "", false, err
+		return "", Repo{}, false, err
 	}
 	if !inGrant {
-		return "", false, nil
+		return "", Repo{}, false, nil
 	}
-	return tok.Token, true, nil
+	return tok.Token, meta, true, nil
 }
 
 // commitSource adapts the Service to the deploys/apps CommitResolver seam

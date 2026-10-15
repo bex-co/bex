@@ -531,31 +531,36 @@ func (c *Client) getAsUser(ctx context.Context, userToken, path string, out any)
 	return nil
 }
 
-// RepoAccessible reports whether the given installation token can reach
-// owner/repo (GET /repos/{owner}/{repo}). An installation token only reaches
-// repos in the installation's grant, so 404 => not granted (ok=false, no error);
-// 2xx => granted; any other status is an *APIError.
-func (c *Client) RepoAccessible(ctx context.Context, token, owner, repo string) (bool, error) {
+// LookupRepo reads owner/repo (GET /repos/{owner}/{repo}) with the given
+// installation token, or anonymously when token is "". An installation token
+// only reaches repos in the installation's grant, so 404 => not reachable
+// (ok=false, no error); 2xx => reachable, with the repository's metadata
+// (default branch included); any other status is an *APIError.
+func (c *Client) LookupRepo(ctx context.Context, token, owner, repo string) (Repo, bool, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s", c.baseURL, owner, repo)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return false, err
+		return Repo{}, false, err
 	}
 	setTokenAuth(req, token)
 	req.Header.Set("Accept", acceptHeader)
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return false, fmt.Errorf("github: check repo access: %w", err)
+		return Repo{}, false, fmt.Errorf("github: check repo access: %w", err)
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	switch {
 	case resp.StatusCode == http.StatusNotFound:
-		return false, nil
+		return Repo{}, false, nil
 	case resp.StatusCode >= 200 && resp.StatusCode < 300:
-		return true, nil
+		var r ghRepo
+		if err := json.Unmarshal(body, &r); err != nil {
+			return Repo{}, false, fmt.Errorf("github: decode repo response: %w", err)
+		}
+		return r.toRepo(), true, nil
 	default:
-		return false, &APIError{Status: resp.StatusCode, Body: string(body)}
+		return Repo{}, false, &APIError{Status: resp.StatusCode, Body: string(body)}
 	}
 }
 
@@ -614,6 +619,17 @@ type ghRepo struct {
 	CloneURL      string `json:"clone_url"`
 }
 
+func (r ghRepo) toRepo() Repo {
+	return Repo{
+		ID:            r.ID,
+		FullName:      r.FullName,
+		Private:       r.Private,
+		DefaultBranch: r.DefaultBranch,
+		HTMLURL:       r.HTMLURL,
+		CloneURL:      r.CloneURL,
+	}
+}
+
 // ListRepos returns the bounded repository inventory the installation can
 // access, following pagination (per_page=100, GitHub `Link` header rel="next").
 // Page, item, byte, origin, cycle, and wall-clock limits prevent a connected
@@ -637,14 +653,7 @@ func (c *Client) ListRepos(ctx context.Context, installationID int64) ([]Repo, e
 			return errInventoryBound
 		}
 		for _, r := range page.Repositories {
-			repos = append(repos, Repo{
-				ID:            r.ID,
-				FullName:      r.FullName,
-				Private:       r.Private,
-				DefaultBranch: r.DefaultBranch,
-				HTMLURL:       r.HTMLURL,
-				CloneURL:      r.CloneURL,
-			})
+			repos = append(repos, r.toRepo())
 		}
 		return nil
 	})

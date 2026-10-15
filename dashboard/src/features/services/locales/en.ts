@@ -3132,8 +3132,9 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Create-wizard branch input label (git sources)",
   },
   "services.createFieldBranchPlaceholder": {
-    message: "main",
-    description: "Create-wizard branch input placeholder",
+    message: "Repository default branch",
+    description:
+      "Create-wizard branch input placeholder when the repo's default is not known client-side: a blank branch builds the repository's default branch (w8/m76)",
   },
   "services.createFieldRootDir": {
     message: "Root Directory",

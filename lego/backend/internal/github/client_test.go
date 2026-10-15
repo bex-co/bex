@@ -426,34 +426,53 @@ func TestGitHubErrorPassthrough(t *testing.T) {
 	}
 }
 
-func TestRepoAccessible(t *testing.T) {
+func TestLookupRepo(t *testing.T) {
 	keyPEM, _ := testKeyPEM(t)
 	cases := []struct {
-		status  int
-		wantOK  bool
-		wantErr bool
+		name       string
+		token      string
+		status     int
+		body       string
+		wantOK     bool
+		wantErr    bool
+		wantBranch string
 	}{
-		{http.StatusOK, true, false},
-		{http.StatusNotFound, false, false}, // not in the grant
-		{http.StatusInternalServerError, false, true},
+		// The repository body is decoded, not discarded: its default branch is
+		// what an omitted-branch create builds (w8/m76).
+		{name: "granted master", token: "ghs_x", status: http.StatusOK, body: `{"full_name":"octo/app","default_branch":"master"}`, wantOK: true, wantBranch: "master"},
+		{name: "anonymous trunk", status: http.StatusOK, body: `{"full_name":"octo/app","default_branch":"trunk"}`, wantOK: true, wantBranch: "trunk"},
+		{name: "granted main", token: "ghs_x", status: http.StatusOK, body: `{"default_branch":"main"}`, wantOK: true, wantBranch: "main"},
+		{name: "not in the grant", token: "ghs_x", status: http.StatusNotFound},
+		{name: "server error", token: "ghs_x", status: http.StatusInternalServerError, wantErr: true},
+		{name: "undecodable body", token: "ghs_x", status: http.StatusOK, body: `not json`, wantErr: true},
 	}
 	for _, tc := range cases {
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path != "/repos/octo/app" {
-				t.Errorf("unexpected path %s", r.URL.Path)
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/repos/octo/app" {
+					t.Errorf("unexpected path %s", r.URL.Path)
+				}
+				wantAuth := ""
+				if tc.token != "" {
+					wantAuth = "token " + tc.token
+				}
+				if r.Header.Get("Authorization") != wantAuth {
+					t.Errorf("Authorization = %q, want %q", r.Header.Get("Authorization"), wantAuth)
+				}
+				w.WriteHeader(tc.status)
+				_, _ = w.Write([]byte(tc.body))
+			}))
+			defer srv.Close()
+			c, _ := NewClient(Config{AppID: "1", PrivateKey: keyPEM, Slug: "bex"})
+			c.baseURL = srv.URL
+			meta, ok, err := c.LookupRepo(context.Background(), tc.token, "octo", "app")
+			if ok != tc.wantOK || (err != nil) != tc.wantErr {
+				t.Fatalf("ok=%v err=%v, want ok=%v err=%v", ok, err, tc.wantOK, tc.wantErr)
 			}
-			if r.Header.Get("Authorization") != "token ghs_x" {
-				t.Errorf("not authed with install token: %q", r.Header.Get("Authorization"))
+			if meta.DefaultBranch != tc.wantBranch {
+				t.Errorf("default branch = %q, want %q", meta.DefaultBranch, tc.wantBranch)
 			}
-			w.WriteHeader(tc.status)
-		}))
-		c, _ := NewClient(Config{AppID: "1", PrivateKey: keyPEM, Slug: "bex"})
-		c.baseURL = srv.URL
-		ok, err := c.RepoAccessible(context.Background(), "ghs_x", "octo", "app")
-		if ok != tc.wantOK || (err != nil) != tc.wantErr {
-			t.Errorf("status %d => ok=%v err=%v, want ok=%v err=%v", tc.status, ok, err, tc.wantOK, tc.wantErr)
-		}
-		srv.Close()
+		})
 	}
 }
 

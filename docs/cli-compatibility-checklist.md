@@ -181,7 +181,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [x] `--type` — `web_service`, `cron_job`, `static_site` all accepted
     - [x] `--runtime` — round-trips (build not exercised in dev-9)
     - [x] `--repo` — round-trips (build not exercised)
-    - [x] `--branch`
+    - [x] `--branch` — an explicit branch is stored as sent. **Omitted** (the pinned client never serializes an empty `branch`), a github.com repository resolves to its GitHub-reported default branch before the row, the first deploy's commit and the build ref are chosen, as Render's Create service documents (w8/m76; before it, a master-default repo stored `main` and failed its first clone). The lookup is the same access check create already runs; a failed lookup or a reported default that is not a safe Git ref refuses the create, never a guessed `main`. With GitHub unconfigured or a non-github.com host there is no metadata source, so the legacy `main` default remains. Source tests only: the live omitted-branch replay is outstanding.
     - [x] `--image` — exact generated `image.ownerId:""` passes the composed server and the deployed production API (w5/m49)
     - [x] `--plan`
     - [~] `--region` — accepted; bex overwrites to `local-capd` (CLI enum rejects `local-capd` itself)

@@ -2039,9 +2039,23 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	// refuse a repo it has no opinion about — and the deliberate tradeoff it
 	// already carries on the edit path applies here too: a GitHub outage fails
 	// the create loudly instead of failing the build later.
+	//
+	// An omitted branch resolves to the default that lookup reported (w8/m76)
+	// here, once, before the row, the first deploy's commit and the build ref
+	// all read desired.Branch. With no opinion (GitHub off, a non-github.com
+	// host) the legacy DefaultBranch from specFromCreate stays.
 	if desired.Repo != "" && s.GitHub != nil {
-		if err := s.GitHub.ValidateRepo(ctx, tenantID, desired.Repo); err != nil {
+		defaultBranch, err := s.GitHub.ValidateRepo(ctx, tenantID, desired.Repo)
+		if err != nil {
 			return AppView{}, err
+		}
+		if req.Branch == "" && defaultBranch != "" {
+			// The build passes the ref to git, so only a safe ref is built;
+			// an unusable default is the caller's to override, never a guess.
+			if !store.ValidGitRef(defaultBranch) {
+				return AppView{}, fmt.Errorf("%w: the repository's default branch %q cannot be built; specify a branch", core.ErrBadRequest, defaultBranch)
+			}
+			desired.Branch = defaultBranch
 		}
 	}
 
@@ -3053,6 +3067,9 @@ func validateTypeSpecificCreate(svcType string, req CreateRequest) error {
 // normalizeCreateDefaults bounds-checks the create's port/replica values and
 // resolves the fields with request-shape defaults: port (DefaultPort),
 // replicas (1), branch ("main" for a repo-backed service), and autoDeploy.
+// The branch default is the request-shape fallback only: a direct create
+// replaces it with the repository's real default branch when GitHub reports
+// one (create, w8/m76).
 func normalizeCreateDefaults(req CreateRequest) (port, replicas int32, branch string, autoDeploy bool, err error) {
 	// 0 is "unset" here (the default applies below); anything else must be a
 	// port the container can actually bind — the same rule SetPort enforces, so

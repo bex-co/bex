@@ -198,8 +198,8 @@ func (callbackGitHubClient) MintInstallationToken(context.Context, int64) (githu
 	return github.InstallationToken{}, nil
 }
 
-func (callbackGitHubClient) RepoAccessible(context.Context, string, string, string) (bool, error) {
-	return false, nil
+func (callbackGitHubClient) LookupRepo(context.Context, string, string, string) (github.Repo, bool, error) {
+	return github.Repo{}, false, nil
 }
 
 func (callbackGitHubClient) GetCommit(context.Context, string, string, string, string) (github.Commit, error) {

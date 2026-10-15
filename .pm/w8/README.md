@@ -15,7 +15,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m76** — [Honor a GitHub repository default branch on create](m76/README.md) (6 tasks;185m) ← CLI sweep319; two omitted-branch build failures and two explicit-master Live controls, all owned fixtures cleaned.
+- [ ] **m76** — [Honor a GitHub repository default branch on create](blocked/m76/README.md) (6 tasks;185m) — **BLOCKED (2026-10-15: t001–t005 done — an omitted branch on a GitHub service create now takes the repository's default_branch from the same access lookup (explicit wins; failed lookup or unsafe default refuses with nothing written); REST/GraphQL/MCP/dashboard agree. Needs the backend + dashboard deploy, then the hosted replay: expressjs/serve-static (default master) created with no branch through published Bex and the unchanged Render 2.27 pin — raw POST without branch, readback branch master, first deploy Live/HTTP 200 — plus an explicit-branch control and exact-owned cleanup (t006))**
 
 - [ ] **m75** — [Validate Blueprints with an implicit repository](blocked/m75/README.md) (6 tasks;180m) — **BLOCKED (2026-10-15: t001–t005 done — manifest-only validation treats an omitted repo on a Git-backed service as the (unknown) enclosing repository instead of refusing it, while create/apply stay strict and invalid repo/branch/missing-image are still refused; REST/GraphQL/MCP agree. Needs the backend deploy, then the hosted replay of the eligible cli-sweep318 files through published Bex and the Render 2.27 pin (implicit cases valid, explicit/prebuilt valid, invalid-repo and missing-image refused, 1GB Mattermost refused on the disk floor), the 36 name controls rechecked and no allocations (t006))**
 

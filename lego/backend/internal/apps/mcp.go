@@ -173,7 +173,7 @@ type createWebServiceArgs struct {
 	Repo                 string          `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
 	Image                string          `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
 	RegistryCredentialID *string         `json:"registryCredentialId,omitempty" jsonschema:"stored registry credential id for a private prebuilt image or Dockerfile FROM; omit for automatic image-host matching, empty to explicitly use none"`
-	Branch               string          `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
+	Branch               string          `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default: the repository's default branch)"`
 	RootDir              string          `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
 	BuildFilter          *buildFilterArg `json:"buildFilter,omitempty" jsonschema:"Render's Build Filters: glob patterns (paths/ignoredPaths) gating git-push auto-deploys; omit for no filter"`
 	Runtime              string          `json:"runtime" jsonschema:"Render runtime: node, python, go, rust, ruby, elixir, docker, or image (a prebuilt OCI image — a bex extension, pass it with image and no repo)"`
@@ -299,7 +299,7 @@ type createCronJobArgs struct {
 	Repo                 string  `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
 	Image                string  `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
 	RegistryCredentialID *string `json:"registryCredentialId,omitempty" jsonschema:"stored registry credential id for a private prebuilt image or Dockerfile FROM; omit for automatic image-host matching, empty to explicitly use none"`
-	Branch               string  `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
+	Branch               string  `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default: the repository's default branch)"`
 	RootDir              string  `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
 	Runtime              string  `json:"runtime" jsonschema:"Render runtime: node, python, go, rust, ruby, elixir, docker, or image (a prebuilt OCI image — a bex extension, pass it with image and no repo)"`
 	// Optional for the same reason as create_web_service's pair (w4/114): this
@@ -527,7 +527,7 @@ type createStaticSiteArgs struct {
 	Name               string                  `json:"name" jsonschema:"the static site name (a DNS label, 1-30 chars)"`
 	Repo               string                  `json:"repo,omitempty" jsonschema:"git repository URL to build from; omit if using image"`
 	Image              string                  `json:"image,omitempty" jsonschema:"a prebuilt OCI image whose publishPath holds the built site; omit if using repo"`
-	Branch             string                  `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
+	Branch             string                  `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default: the repository's default branch)"`
 	RootDir            string                  `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
 	BuildCommand       string                  `json:"buildCommand,omitempty" jsonschema:"command used to build the static site (e.g. npm run build)"`
 	PublishPath        string                  `json:"publishPath" jsonschema:"the built output directory to serve as the site root, e.g. dist, build, or public"`

@@ -296,8 +296,8 @@ func (f *fakeGitHubAPIClient) ListRepoTree(context.Context, string, string, stri
 func (f *fakeGitHubAPIClient) MintInstallationToken(context.Context, int64) (github.InstallationToken, error) {
 	return github.InstallationToken{}, nil
 }
-func (f *fakeGitHubAPIClient) RepoAccessible(context.Context, string, string, string) (bool, error) {
-	return false, nil
+func (f *fakeGitHubAPIClient) LookupRepo(context.Context, string, string, string) (github.Repo, bool, error) {
+	return github.Repo{}, false, nil
 }
 func (f *fakeGitHubAPIClient) GetCommit(context.Context, string, string, string, string) (github.Commit, error) {
 	return github.Commit{}, nil
