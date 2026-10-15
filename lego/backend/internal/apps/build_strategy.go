@@ -52,7 +52,7 @@ func buildStrategy(spec appv1alpha1.AppSpec) string {
 		runtime = ""
 	}
 	switch {
-	case runtime == "image" || (spec.Image != "" && spec.Repo == ""):
+	case runtime == "image" || prebuiltImageSource(spec):
 		return buildImage
 	case runtime == "docker":
 		return buildDockerfile
@@ -94,6 +94,12 @@ func setBuildCommand(spec *appv1alpha1.AppSpec, command string) {
 		spec.Runtime == "" && spec.Builder == buildNative {
 		spec.Builder = ""
 	}
+}
+
+// prebuiltImageSource reports whether spec runs a prebuilt image as its
+// source, rather than building a repo (whose image is a rollback override).
+func prebuiltImageSource(spec appv1alpha1.AppSpec) bool {
+	return spec.Image != "" && spec.Repo == ""
 }
 
 // staleImageRuntime reports a runtime "image" left from a prebuilt-image

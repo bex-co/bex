@@ -1,17 +1,17 @@
 # w8 · m70 — Make Blueprint source switches deploy their declared artifact
 
-**Worker:** worker8 **Goal:** an accepted image-to-Git Blueprint change builds the declared Git source before reporting Live. **Status:** todo
+**Worker:** worker8 **Goal:** an accepted image-to-Git Blueprint change builds the declared Git source before reporting Live. **Status:** blocked — t001–t005 done (Blueprint source switches couple repo/image/strategy; regressions fail-first); t006 needs the deploy plus the hosted two-client inline/persistent switch replay with cleanup
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Apply coupled source intent before persistence | 45m | — |
-| t002 | Audit strategy, planning and source-switch neighbors | 35m | t001 |
-| t003 | Render parity | 20m | t002 |
-| t004 | Simplify | 15m | t003 |
-| t005 | Test coverage | 40m | t003 |
-| t006 | Closeout | 20m | t004, t005 |
+| t001 | Apply coupled source intent before persistence — **DONE** | 45m | — |
+| t002 | Audit strategy, planning and source-switch neighbors — **DONE** | 35m | t001 |
+| t003 | Render parity — **DONE** | 20m | t002 |
+| t004 | Simplify — **DONE** | 15m | t003 |
+| t005 | Test coverage — **DONE** | 40m | t003 |
+| t006 | Closeout — **BLOCKED (deploy + hosted two-client replay)** | 20m | t004, t005 |
 
 ## Definition of done
 

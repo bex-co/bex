@@ -101,11 +101,11 @@ func blueprintServiceOmission(name string) BlueprintOmission {
 }
 
 // blueprintServiceFieldAppliers maps declared Blueprint fields to the
-// presence-gated spec copy each performs. Grouped names apply once when any
-// member is declared (domains|domain, autoDeploy|autoDeployTrigger). Fields
-// whose omission or interplay carries meaning (runtime and builder,
-// buildFilter, scaling and numInstances) stay inline in
-// ApplyBlueprintServiceSpec.
+// presence-gated spec copy each performs, in table order. Grouped names apply
+// once when any member is declared (domains|domain, autoDeploy|autoDeployTrigger).
+// Fields whose omission or interplay carries meaning (runtime and builder,
+// buildFilter, scaling and numInstances, an inherited repo) stay inline in
+// ApplyBlueprintServiceSpec; repo and image couple inside their appliers.
 // canonicalSlice keeps a projected list's ZERO VALUE canonical: nil, never an
 // empty non-nil slice.
 //
@@ -164,14 +164,43 @@ func blueprintDeclaredCommand(want appv1alpha1.AppSpec) string {
 	return want.StartCommand
 }
 
+// applyBlueprintRepo applies a declared (or Blueprint-inherited) repo. A new
+// repo is a source switch, as the source setter treats one
+// (applySourceChange): its build replaces a former prebuilt image or rollback
+// override, the old origin's clone token and an image-only credential go with
+// it, and an untracked branch gets the declared default (w8/m70). It runs
+// before the branch and registryCredential appliers, so their declared values
+// still win. The same repo, however spelled, keeps a rollback's image override.
+func applyBlueprintRepo(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
+	if want.Repo != "" && core.CanonicalRepo(want.Repo) != core.CanonicalRepo(dst.Repo) {
+		if prebuiltImageSource(*dst) {
+			dst.RegistryCredentialID = nil
+		}
+		dst.Image = ""
+		dst.CloneSecret = ""
+		if dst.Branch == "" {
+			dst.Branch = want.Branch
+		}
+	}
+	dst.Repo = want.Repo
+}
+
 var blueprintServiceFieldAppliers = []struct {
 	names []string
 	apply func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec)
 }{
 	{names: []string{"type"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Type = want.Type }},
 	{names: []string{"schedule"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Schedule = want.Schedule }},
-	{names: []string{"repo"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Repo = want.Repo }},
+	{names: []string{"repo"}, apply: applyBlueprintRepo},
 	{names: []string{"image"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
+		// A declared image is the whole source, as the source setter treats
+		// one (resolveSourcePatch): a former repo would otherwise build again
+		// on the next push (w8/m70). Branch, rootDir and commands stay for a
+		// switch back. (A real entry cannot declare both; the guard keeps the
+		// all-fields parity probe meaningful.)
+		if want.Image != "" && want.Repo == "" {
+			dst.Repo = ""
+		}
 		dst.Image = want.Image
 		// image.creds rides the image field's presence: a resolved credential
 		// rebinding applies with it, while a creds-less image change leaves an
@@ -312,6 +341,18 @@ func ApplyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 			field.apply(dst, want)
 		}
 	}
+	// A Git entry may take its repo from the Blueprint rather than declare
+	// one; on an image-backed service that is a source switch too (w8/m70).
+	if !present("repo") && !present("image") && want.Repo != "" && prebuiltImageSource(*dst) {
+		applyBlueprintRepo(dst, want)
+	}
+	// A native or buildpack start command was baked into the image it built;
+	// left on a prebuilt image it would run as that image's /bin/sh command
+	// override, so a switch that declares no command drops it (w8/m70).
+	if prebuiltImageSource(*dst) && !prebuiltImageSource(before) && !present("startCommand") && !present("dockerCommand") &&
+		!readsDockerCommand(buildStrategy(before)) {
+		dst.StartCommand = ""
+	}
 
 	// runtime and x-bex.builder are one build strategy with several
 	// spellings, and an export writes a service's effective one (w4/193): a
@@ -328,7 +369,11 @@ func ApplyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 		if present("builder") {
 			next.Builder = want.Builder
 		}
-		if buildStrategy(next) != buildStrategy(*dst) {
+		// A source-kind switch takes the declared strategy even where the
+		// left-behind spelling resolves to the same build (a stale runtime
+		// image on a new repo reads as a Dockerfile build, w8/m70). The
+		// declared kind decides, so a runtime-only plan probe agrees.
+		if prebuiltImageSource(want) != prebuiltImageSource(before) || buildStrategy(next) != buildStrategy(*dst) {
 			dst.Runtime, dst.Builder = next.Runtime, next.Builder
 			// The Dockerfile-build settings an omission would keep do nothing
 			// on another build, which create and update refuse (w5/090). One

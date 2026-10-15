@@ -775,10 +775,11 @@ func TestDeployStackPreservesNonOwnedFieldsOnReapply(t *testing.T) {
 }
 
 func TestDeployStackUsesSourcePresenceForExistingServiceSync(t *testing.T) {
-	// A Blueprint update owns only fields declared in its source. In particular,
-	// it must not reset an interactive repo/branch/rootDir edit merely because
-	// this deploy changes the image; buildFilter is Render's documented
-	// exception and clears when omitted.
+	// A Blueprint update owns only fields declared in its source. A declared
+	// image is the whole source, so it drops a former repo, which would
+	// otherwise build again on the next push (w8/m70); the Git settings an
+	// interactive edit left (branch, rootDir) stay dormant for a switch back.
+	// buildFilter is Render's documented exception and clears when omitted.
 	existing := sampleApp("web")
 	existing.Spec.Image = "old:1"
 	existing.Spec.Repo = "https://github.com/example/interactive.git"
@@ -794,8 +795,8 @@ func TestDeployStackUsesSourcePresenceForExistingServiceSync(t *testing.T) {
 	if got.Image != "new:1" {
 		t.Errorf("image = %q, want new:1", got.Image)
 	}
-	if got.Repo != existing.Spec.Repo || got.Branch != existing.Spec.Branch || got.RootDir != existing.Spec.RootDir {
-		t.Errorf("omitted fields changed: repo=%q branch=%q rootDir=%q", got.Repo, got.Branch, got.RootDir)
+	if got.Repo != "" || got.Branch != existing.Spec.Branch || got.RootDir != existing.Spec.RootDir {
+		t.Errorf("source fields = repo %q branch %q rootDir %q, want no repo and the dormant Git settings kept", got.Repo, got.Branch, got.RootDir)
 	}
 	if got.BuildFilter != nil {
 		t.Errorf("omitted buildFilter = %#v, want nil", got.BuildFilter)
