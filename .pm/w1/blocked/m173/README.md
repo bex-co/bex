@@ -1,6 +1,6 @@
 # w1 · m173 — Free web services go to sleep again: the production canary was held awake by a local cluster's ACME self-check
 
-**Worker:** worker1 **Goal:** the production tenant-view canary sleeps after its idle window again, nothing local can generate certificate-validation traffic against production hosts, and the canary's failure text points at this class of cause. **Status:** in progress (t001–t004, t006, t007 done; t005 production verification pending)
+**Worker:** worker1 **Goal:** the production tenant-view canary sleeps after its idle window again, nothing local can generate certificate-validation traffic against production hosts, and the canary's failure text points at this class of cause. **Status:** blocked — shipped `293d30cf1` (t001–t004, t006, t007 done); t005's three canary runs need the self-hosted runner fleet (`bex-production` pool), which picked up no job after 2026-10-15 09:28Z; run `38719374621` is queued
 
 ## Tasks (in order)
 
@@ -28,6 +28,7 @@
 - **What kept it awake.** Its request logs show `162.224.81.143` (an AT&T residential line, `sbcglobal.net`, the Mac that runs the local kind/CAPD cluster) requesting `hello-go.onbex.co/.well-known/acme-challenge/ehTFV1KUF-0XGTgseqCHNtRPVpsY7popUYNyDHW_QoI` every ~10s from 2026-10-07T05:59:49Z to 2026-10-15T02:44:43Z. The first request reached the activator (503) and woke the service; hello-go answers every path 200, so each check failed and repeated. The service slept 16 minutes after the last one.
 - **Where it came from.** The local kind cluster `bex` held Challenge `tea-daul85i9086o6jitc8qg-hello-go-tls-1-2369103061-382143810` (created 2026-10-01T01:15:21Z, token `ehTFV1KUF-…`, "Waiting for HTTP-01 challenge propagation: did not get expected response") for a local App named `hello-go`: the local operator runs `lego/operator/config/default`, whose `BEX_BASE_DOMAIN=onbex.co` and `BEX_CLUSTER_ISSUER=letsencrypt-prod` gave it the production hostname and a real Let's Encrypt issuer. The self-check only runs while the Mac's cluster is up; it resumed at 09:58:12Z today when the cluster was restarted for this milestone, and stopped at 10:01:14Z when the local Certificate was deleted.
 - **Same leak, other hosts.** The same local cluster held 13 more pending challenges for production names (`api.bex.co`, `ssh.bex.co`, `dashboard.bex.co`, and `auth.bex.co` + `oauth.bex.co` in each `dev-N-auth`), each polling production since 2026-09-30/10-02 whenever the cluster ran.
+- **Local cluster switched over (2026-10-15 10:18Z):** the live `cert-manager-issuers` Application carries t002's patch (the local app-of-apps is manual-sync, last synced 2026-09-30); both ClusterIssuers are self-signed and every local Certificate is Ready; the 13 leftover ACME Challenges only re-queue locally ("ACME client for issuer not initialised") and send nothing.
 - **Local cleanup done (2026-10-15 10:01Z):** removed `cert-manager.io/cluster-issuer` from the local `tea-daul85i9086o6jitc8qg-hello-go` Ingress and deleted its Certificate (Order, Challenge and solver Ingress went with it). The other challenges stop once the local Argo applies t002's issuer change.
 
 ## Source + Goal linkage
