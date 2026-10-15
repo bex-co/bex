@@ -26,6 +26,11 @@ const enCommon: Record<string, TranslationEntry> = {
     description:
       "Label above the typed-confirmation input in a phrase-gated confirm dialog.",
   },
+  "common.close": {
+    message: "Close",
+    description:
+      "Accessible name of the shared dialog's built-in close (X) button.",
+  },
   "common.cancel": {
     message: "Cancel",
     description:
