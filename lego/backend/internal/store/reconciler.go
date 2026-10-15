@@ -1404,6 +1404,15 @@ func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) stri
 		if releaseIsActive(open, app) {
 			return DeployLive
 		}
+	case appv1alpha1.PhaseHibernated:
+		// Auto-hibernation can park a release that already served before this
+		// loop saw Running; the operator keeps the served revision, so the row
+		// is Live (w8/106). Only the modern generation-matched proof counts —
+		// the legacy observedGeneration fallback would also match a park that
+		// never served — and a user suspend is settled above, not here.
+		if !app.Spec.Suspended && app.Status.ReleaseGeneration > 0 && releaseIsActive(open, app) {
+			return DeployLive
+		}
 	case appv1alpha1.PhaseFailed:
 		if conditionCurrent {
 			switch {
