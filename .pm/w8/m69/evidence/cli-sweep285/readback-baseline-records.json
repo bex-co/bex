@@ -1,0 +1,78 @@
+[
+  {
+    "actual_startCommand": "",
+    "expected_startCommand": "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK",
+    "rendered": {
+      "autoDeploy": "yes",
+      "autoDeployTrigger": "commit",
+      "branch": "main",
+      "displayName": "",
+      "id": "qa285",
+      "idleTTLSeconds": 0,
+      "immutableName": "qa285",
+      "name": "qa285",
+      "nextRunAt": "2027-01-01T00:00:00Z",
+      "notificationsToSend": "default",
+      "notifyOnFail": "default",
+      "replicas": 1,
+      "repo": "https://example.invalid/qa",
+      "schedule": "0 0 1 1 *",
+      "serviceDetails": {
+        "env": "node",
+        "envSpecificDetails": {
+          "buildCommand": "printf control",
+          "preDeployCommand": "",
+          "startCommand": ""
+        },
+        "nextRunAt": "2027-01-01T00:00:00Z",
+        "numInstances": 1,
+        "plan": "free",
+        "runtime": "node",
+        "schedule": "0 0 1 1 *"
+      },
+      "slug": "qa285",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "cron_job"
+    },
+    "subject": "published-bex"
+  },
+  {
+    "actual_startCommand": "",
+    "expected_startCommand": "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK",
+    "rendered": {
+      "autoDeploy": "yes",
+      "autoDeployTrigger": "commit",
+      "branch": "main",
+      "displayName": "",
+      "id": "qa285",
+      "idleTTLSeconds": 0,
+      "immutableName": "qa285",
+      "name": "qa285",
+      "nextRunAt": "2027-01-01T00:00:00Z",
+      "notificationsToSend": "default",
+      "notifyOnFail": "default",
+      "replicas": 1,
+      "repo": "https://example.invalid/qa",
+      "schedule": "0 0 1 1 *",
+      "serviceDetails": {
+        "env": "node",
+        "envSpecificDetails": {
+          "buildCommand": "printf control",
+          "preDeployCommand": "",
+          "startCommand": ""
+        },
+        "nextRunAt": "2027-01-01T00:00:00Z",
+        "numInstances": 1,
+        "plan": "free",
+        "runtime": "node",
+        "schedule": "0 0 1 1 *"
+      },
+      "slug": "qa285",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "cron_job"
+    },
+    "subject": "render-pin"
+  }
+]

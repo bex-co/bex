@@ -1,0 +1,20 @@
+--- a/predeploy_test.go
++++ b/predeploy_test.go
+@@ -137,12 +137,12 @@
+ 	if err != nil {
+ 		t.Fatalf("SetPreDeployCommand: %v", err)
+ 	}
+-	// Trimmed before it reaches the spec.
+-	if v.PreDeployCommand != "npm run migrate" {
+-		t.Errorf("view PreDeployCommand = %q, want npm run migrate", v.PreDeployCommand)
++	// Nonblank command bytes are preserved; empty still clears.
++	if v.PreDeployCommand != "  npm run migrate  " {
++		t.Errorf("view PreDeployCommand = %q, want exact padded command", v.PreDeployCommand)
+ 	}
+-	if got := getApp(t, cl, "web").Spec.PreDeployCommand; got != "npm run migrate" {
+-		t.Errorf("spec.preDeployCommand = %q, want npm run migrate", got)
++	if got := getApp(t, cl, "web").Spec.PreDeployCommand; got != "  npm run migrate  " {
++		t.Errorf("spec.preDeployCommand = %q, want exact padded command", got)
+ 	}
+ 
+ 	// Empty clears the step.

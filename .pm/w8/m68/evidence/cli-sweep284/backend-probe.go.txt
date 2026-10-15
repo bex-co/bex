@@ -1,0 +1,48 @@
+package apps
+
+import (
+ "encoding/json"
+ "net/http"
+ "net/http/httptest"
+ "strings"
+ "testing"
+)
+
+func TestQA284CommandBytesThroughREST(t *testing.T) {
+ for _,operation:=range []string{"create","update"} {
+  for _,field:=range []string{"build","start","predeploy","cron"} {
+   for _,variant:=range []string{"escaped-space","escaped-tab","quoted-control"} {
+    t.Run(operation+"/"+field+"/"+variant,func(t *testing.T) {
+     command:="printf '%s' tail\\ "
+     if variant=="escaped-tab" {command="printf '%s' tail\\\t"}
+     if variant=="quoted-control" {command="printf '%s' 'tail '"}
+     svc,cl:=newService(nil);mux:=http.NewServeMux();svc.RegisterREST(mux)
+     kind:="web_service";if field=="cron" {kind="cron_job"}
+     details:=map[string]any{"runtime":"node","plan":"free","envSpecificDetails":map[string]any{"buildCommand":"printf control","startCommand":"printf control"}}
+     if field=="cron" {details["schedule"]="0 0 1 1 *"}
+     assign:=func(d map[string]any) {
+      if field=="predeploy" {d["preDeployCommand"]=command;return}
+      env,ok:=d["envSpecificDetails"].(map[string]any);if !ok {env=map[string]any{};d["envSpecificDetails"]=env}
+      key:="startCommand";if field=="build" {key="buildCommand"};env[key]=command
+     }
+     if operation=="create" {assign(details)}
+     body:=map[string]any{"name":"qa284","type":kind,"repo":"https://github.com/bex-co/bex","serviceDetails":details}
+     raw,_:=json.Marshal(body);rec:=httptest.NewRecorder();mux.ServeHTTP(rec,httptest.NewRequest("POST","/v1/services",strings.NewReader(string(raw))))
+     if rec.Code!=http.StatusCreated {t.Fatalf("create fixture: %d %s",rec.Code,rec.Body)}
+     requestMethod,requestPath:="POST","/v1/services"
+     if operation=="update" {
+      patchDetails:=map[string]any{};assign(patchDetails);body=map[string]any{"serviceDetails":patchDetails};raw,_=json.Marshal(body)
+      requestMethod,requestPath="PATCH","/v1/services/qa284"
+      rec=httptest.NewRecorder();mux.ServeHTTP(rec,httptest.NewRequest(requestMethod,requestPath,strings.NewReader(string(raw))))
+      if rec.Code!=http.StatusOK {t.Fatalf("patch: %d %s",rec.Code,rec.Body)}
+     }
+     app:=getApp(t,cl,"qa284");stored:=""
+     switch field {case "build":stored=app.Spec.BuildCommand;case "start":stored=app.Spec.StartCommand;case "predeploy":stored=app.Spec.PreDeployCommand;case "cron":stored=app.Spec.Command}
+     result:=map[string]any{"operation":operation,"field":field,"variant":variant,"authored":command,"stored":stored,"preserved":stored==command,"request_method":requestMethod,"request_path":requestPath,"request_body":body,"response_status":rec.Code,"response_body":rec.Body.String(),"scope":"actual REST handler with in-memory Kubernetes and no production/DB/credentials"}
+     b,_:=json.Marshal(result);t.Log("QA284_COMMAND "+string(b))
+     if stored!=command {t.Errorf("command changed: got %q want %q",stored,command)}
+    })
+   }
+  }
+ }
+}

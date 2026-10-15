@@ -1,0 +1,22 @@
+--- a/cmd/servicecreate.go
++++ b/cmd/servicecreate.go
+@@ -134,9 +134,19 @@
+ 		return nil, err
+ 	}
+ 
++	rawInput := cliInput
+ 	cliInput = servicetypes.NormalizeServiceCreateCLIInput(cliInput)
+ 
+ 	if cliInput.From != nil {
++		if rawInput.RootDirectory != nil && types.OptionalNonZeroString(rawInput.RootDirectory) == nil {
++			cliInput.RootDirectory = rawInput.RootDirectory
++		}
++		if rawInput.HealthCheckPath != nil && types.OptionalNonZeroString(rawInput.HealthCheckPath) == nil {
++			cliInput.HealthCheckPath = rawInput.HealthCheckPath
++		}
++		if rawInput.PreDeployCommand != nil && types.OptionalNonZeroString(rawInput.PreDeployCommand) == nil {
++			cliInput.PreDeployCommand = rawInput.PreDeployCommand
++		}
+ 		if err := getConfigFromService(ctx, serviceRepo, &cliInput); err != nil {
+ 			return nil, fmt.Errorf("failed to clone configuration from source service %q: %w", *cliInput.From, err)
+ 		}

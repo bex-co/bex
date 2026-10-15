@@ -1,0 +1,639 @@
+{
+  "cases": [
+    {
+      "client": "render-pin-private-diagnostic",
+      "operation": "create",
+      "field": "build-command",
+      "command": [
+        "render-pin-private-diagnostic",
+        "services",
+        "create",
+        "--name",
+        "qa-command-fixture",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://example.invalid/qa",
+        "--plan",
+        "free",
+        "--start-command",
+        "printf control",
+        "--build-command",
+        "printf '%s' tail\\ ",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.55,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-command-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"preDeployCommand\": \"printf control\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf '%s' tail\\\\ \",\n      \"startCommand\": \"printf control\"\n    },\n    \"schedule\": \"0 0 1 1 *\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "name": "qa-command-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf '%s' tail\\ ",
+                "startCommand": "printf control"
+              },
+              "plan": "free",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "authored": "printf '%s' tail\\ ",
+      "captured_command_fields": [
+        [
+          "/serviceDetails/envSpecificDetails/buildCommand",
+          "printf '%s' tail\\ "
+        ]
+      ],
+      "expected_exact_command": true,
+      "command_preserved": true,
+      "copied_config_removed": true,
+      "scope": "synthetic local server and credentials only; no production request or resource"
+    },
+    {
+      "client": "render-pin-private-diagnostic",
+      "operation": "create",
+      "field": "start-command",
+      "command": [
+        "render-pin-private-diagnostic",
+        "services",
+        "create",
+        "--name",
+        "qa-command-fixture",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://example.invalid/qa",
+        "--plan",
+        "free",
+        "--build-command",
+        "printf control",
+        "--start-command",
+        "printf '%s' tail\\ ",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.041,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-command-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"preDeployCommand\": \"printf control\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf '%s' tail\\\\ \"\n    },\n    \"schedule\": \"0 0 1 1 *\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "name": "qa-command-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf '%s' tail\\ "
+              },
+              "plan": "free",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "authored": "printf '%s' tail\\ ",
+      "captured_command_fields": [
+        [
+          "/serviceDetails/envSpecificDetails/startCommand",
+          "printf '%s' tail\\ "
+        ]
+      ],
+      "expected_exact_command": true,
+      "command_preserved": true,
+      "copied_config_removed": true,
+      "scope": "synthetic local server and credentials only; no production request or resource"
+    },
+    {
+      "client": "render-pin-private-diagnostic",
+      "operation": "create",
+      "field": "pre-deploy-command",
+      "command": [
+        "render-pin-private-diagnostic",
+        "services",
+        "create",
+        "--name",
+        "qa-command-fixture",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://example.invalid/qa",
+        "--plan",
+        "free",
+        "--build-command",
+        "printf control",
+        "--start-command",
+        "printf control",
+        "--pre-deploy-command",
+        "printf '%s' tail\\ ",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.042,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-command-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"preDeployCommand\": \"printf '%s' tail\\\\ \",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\"\n    },\n    \"schedule\": \"0 0 1 1 *\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "name": "qa-command-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "plan": "free",
+              "preDeployCommand": "printf '%s' tail\\ ",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "authored": "printf '%s' tail\\ ",
+      "captured_command_fields": [
+        [
+          "/serviceDetails/preDeployCommand",
+          "printf '%s' tail\\ "
+        ]
+      ],
+      "expected_exact_command": true,
+      "command_preserved": true,
+      "copied_config_removed": true,
+      "scope": "synthetic local server and credentials only; no production request or resource"
+    },
+    {
+      "client": "render-pin-private-diagnostic",
+      "operation": "create",
+      "field": "cron-command",
+      "command": [
+        "render-pin-private-diagnostic",
+        "services",
+        "create",
+        "--name",
+        "qa-command-fixture",
+        "--type",
+        "cron_job",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://example.invalid/qa",
+        "--plan",
+        "free",
+        "--build-command",
+        "printf control",
+        "--cron-schedule",
+        "0 0 1 1 *",
+        "--cron-command",
+        "printf '%s' tail\\ ",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.043,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-command-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"preDeployCommand\": \"printf control\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf '%s' tail\\\\ \"\n    },\n    \"schedule\": \"0 0 1 1 *\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"cron_job\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "name": "qa-command-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf '%s' tail\\ "
+              },
+              "plan": "free",
+              "runtime": "node",
+              "schedule": "0 0 1 1 *"
+            },
+            "type": "cron_job"
+          }
+        }
+      ],
+      "authored": "printf '%s' tail\\ ",
+      "captured_command_fields": [
+        [
+          "/serviceDetails/envSpecificDetails/startCommand",
+          "printf '%s' tail\\ "
+        ]
+      ],
+      "expected_exact_command": true,
+      "command_preserved": true,
+      "copied_config_removed": true,
+      "scope": "synthetic local server and credentials only; no production request or resource"
+    },
+    {
+      "client": "render-pin-private-diagnostic",
+      "operation": "create",
+      "field": "quoted-start-control",
+      "command": [
+        "render-pin-private-diagnostic",
+        "services",
+        "create",
+        "--name",
+        "qa-command-fixture",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://example.invalid/qa",
+        "--plan",
+        "free",
+        "--build-command",
+        "printf control",
+        "--start-command",
+        "printf '%s' 'tail '",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.042,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-command-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"preDeployCommand\": \"printf control\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf '%s' 'tail '\"\n    },\n    \"schedule\": \"0 0 1 1 *\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "name": "qa-command-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf '%s' 'tail '"
+              },
+              "plan": "free",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "authored": "printf '%s' 'tail '",
+      "captured_command_fields": [
+        [
+          "/serviceDetails/envSpecificDetails/startCommand",
+          "printf '%s' 'tail '"
+        ]
+      ],
+      "expected_exact_command": true,
+      "command_preserved": true,
+      "copied_config_removed": true,
+      "scope": "synthetic local server and credentials only; no production request or resource"
+    },
+    {
+      "client": "render-pin-private-diagnostic",
+      "operation": "update",
+      "field": "build-command",
+      "command": [
+        "render-pin-private-diagnostic",
+        "services",
+        "update",
+        "srv-00000000000000000001",
+        "--build-command",
+        "printf '%s' tail\\ ",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.044,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-15T00:00:00Z\",\n    \"dashboardUrl\": \"\",\n    \"id\": \"srv-00000000000000000001\",\n    \"name\": \"qa-command-fixture\",\n    \"notifyOnFail\": \"\",\n    \"ownerId\": \"tea-00000000000000000000\",\n    \"repo\": \"https://example.invalid/qa\",\n    \"rootDir\": \"\",\n    \"serviceDetails\": {\n      \"runtime\": \"node\",\n      \"plan\": \"free\",\n      \"preDeployCommand\": \"printf control\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"printf '%s' tail\\\\ \",\n        \"startCommand\": \"printf control\"\n      },\n      \"schedule\": \"0 0 1 1 *\"\n    },\n    \"slug\": \"\",\n    \"suspended\": \"\",\n    \"suspenders\": null,\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-15T00:00:00Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  }\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "PATCH",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": {
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf '%s' tail\\ "
+              }
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/projects?ownerId=tea-00000000000000000000&limit=100",
+          "body": null
+        }
+      ],
+      "authored": "printf '%s' tail\\ ",
+      "captured_command_fields": [
+        [
+          "/serviceDetails/envSpecificDetails/buildCommand",
+          "printf '%s' tail\\ "
+        ]
+      ],
+      "expected_exact_command": true,
+      "command_preserved": true,
+      "copied_config_removed": true,
+      "scope": "synthetic local server and credentials only; no production request or resource"
+    },
+    {
+      "client": "render-pin-private-diagnostic",
+      "operation": "update",
+      "field": "start-command",
+      "command": [
+        "render-pin-private-diagnostic",
+        "services",
+        "update",
+        "srv-00000000000000000001",
+        "--start-command",
+        "printf '%s' tail\\ ",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.045,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-15T00:00:00Z\",\n    \"dashboardUrl\": \"\",\n    \"id\": \"srv-00000000000000000001\",\n    \"name\": \"qa-command-fixture\",\n    \"notifyOnFail\": \"\",\n    \"ownerId\": \"tea-00000000000000000000\",\n    \"repo\": \"https://example.invalid/qa\",\n    \"rootDir\": \"\",\n    \"serviceDetails\": {\n      \"runtime\": \"node\",\n      \"plan\": \"free\",\n      \"preDeployCommand\": \"printf control\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"printf control\",\n        \"startCommand\": \"printf '%s' tail\\\\ \"\n      },\n      \"schedule\": \"0 0 1 1 *\"\n    },\n    \"slug\": \"\",\n    \"suspended\": \"\",\n    \"suspenders\": null,\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-15T00:00:00Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  }\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "PATCH",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": {
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "startCommand": "printf '%s' tail\\ "
+              }
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/projects?ownerId=tea-00000000000000000000&limit=100",
+          "body": null
+        }
+      ],
+      "authored": "printf '%s' tail\\ ",
+      "captured_command_fields": [
+        [
+          "/serviceDetails/envSpecificDetails/startCommand",
+          "printf '%s' tail\\ "
+        ]
+      ],
+      "expected_exact_command": true,
+      "command_preserved": true,
+      "copied_config_removed": true,
+      "scope": "synthetic local server and credentials only; no production request or resource"
+    },
+    {
+      "client": "render-pin-private-diagnostic",
+      "operation": "update",
+      "field": "pre-deploy-command",
+      "command": [
+        "render-pin-private-diagnostic",
+        "services",
+        "update",
+        "srv-00000000000000000001",
+        "--pre-deploy-command",
+        "printf '%s' tail\\ ",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.046,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-15T00:00:00Z\",\n    \"dashboardUrl\": \"\",\n    \"id\": \"srv-00000000000000000001\",\n    \"name\": \"qa-command-fixture\",\n    \"notifyOnFail\": \"\",\n    \"ownerId\": \"tea-00000000000000000000\",\n    \"repo\": \"https://example.invalid/qa\",\n    \"rootDir\": \"\",\n    \"serviceDetails\": {\n      \"runtime\": \"node\",\n      \"plan\": \"free\",\n      \"preDeployCommand\": \"printf '%s' tail\\\\ \",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"printf control\",\n        \"startCommand\": \"printf control\"\n      },\n      \"schedule\": \"0 0 1 1 *\"\n    },\n    \"slug\": \"\",\n    \"suspended\": \"\",\n    \"suspenders\": null,\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-15T00:00:00Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  }\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "PATCH",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": {
+            "serviceDetails": {
+              "preDeployCommand": "printf '%s' tail\\ "
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/projects?ownerId=tea-00000000000000000000&limit=100",
+          "body": null
+        }
+      ],
+      "authored": "printf '%s' tail\\ ",
+      "captured_command_fields": [
+        [
+          "/serviceDetails/preDeployCommand",
+          "printf '%s' tail\\ "
+        ]
+      ],
+      "expected_exact_command": true,
+      "command_preserved": true,
+      "copied_config_removed": true,
+      "scope": "synthetic local server and credentials only; no production request or resource"
+    },
+    {
+      "client": "render-pin-private-diagnostic",
+      "operation": "update",
+      "field": "cron-command",
+      "command": [
+        "render-pin-private-diagnostic",
+        "services",
+        "update",
+        "srv-00000000000000000001",
+        "--cron-command",
+        "printf '%s' tail\\ ",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.044,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-15T00:00:00Z\",\n    \"dashboardUrl\": \"\",\n    \"id\": \"srv-00000000000000000001\",\n    \"name\": \"qa-command-fixture\",\n    \"notifyOnFail\": \"\",\n    \"ownerId\": \"tea-00000000000000000000\",\n    \"repo\": \"https://example.invalid/qa\",\n    \"rootDir\": \"\",\n    \"serviceDetails\": {\n      \"runtime\": \"node\",\n      \"plan\": \"free\",\n      \"preDeployCommand\": \"printf control\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"printf control\",\n        \"startCommand\": \"printf '%s' tail\\\\ \"\n      },\n      \"schedule\": \"0 0 1 1 *\"\n    },\n    \"slug\": \"\",\n    \"suspended\": \"\",\n    \"suspenders\": null,\n    \"type\": \"cron_job\",\n    \"updatedAt\": \"2026-10-15T00:00:00Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  }\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "PATCH",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": {
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "startCommand": "printf '%s' tail\\ "
+              }
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/projects?ownerId=tea-00000000000000000000&limit=100",
+          "body": null
+        }
+      ],
+      "authored": "printf '%s' tail\\ ",
+      "captured_command_fields": [
+        [
+          "/serviceDetails/envSpecificDetails/startCommand",
+          "printf '%s' tail\\ "
+        ]
+      ],
+      "expected_exact_command": true,
+      "command_preserved": true,
+      "copied_config_removed": true,
+      "scope": "synthetic local server and credentials only; no production request or resource"
+    },
+    {
+      "client": "render-pin-private-diagnostic",
+      "operation": "update",
+      "field": "quoted-start-control",
+      "command": [
+        "render-pin-private-diagnostic",
+        "services",
+        "update",
+        "srv-00000000000000000001",
+        "--start-command",
+        "printf '%s' 'tail '",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.043,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-15T00:00:00Z\",\n    \"dashboardUrl\": \"\",\n    \"id\": \"srv-00000000000000000001\",\n    \"name\": \"qa-command-fixture\",\n    \"notifyOnFail\": \"\",\n    \"ownerId\": \"tea-00000000000000000000\",\n    \"repo\": \"https://example.invalid/qa\",\n    \"rootDir\": \"\",\n    \"serviceDetails\": {\n      \"runtime\": \"node\",\n      \"plan\": \"free\",\n      \"preDeployCommand\": \"printf control\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"printf control\",\n        \"startCommand\": \"printf '%s' 'tail '\"\n      },\n      \"schedule\": \"0 0 1 1 *\"\n    },\n    \"slug\": \"\",\n    \"suspended\": \"\",\n    \"suspenders\": null,\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-15T00:00:00Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  }\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "PATCH",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": {
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "startCommand": "printf '%s' 'tail '"
+              }
+            }
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/projects?ownerId=tea-00000000000000000000&limit=100",
+          "body": null
+        }
+      ],
+      "authored": "printf '%s' 'tail '",
+      "captured_command_fields": [
+        [
+          "/serviceDetails/envSpecificDetails/startCommand",
+          "printf '%s' 'tail '"
+        ]
+      ],
+      "expected_exact_command": true,
+      "command_preserved": true,
+      "copied_config_removed": true,
+      "scope": "synthetic local server and credentials only; no production request or resource"
+    }
+  ],
+  "server_stopped": true
+}

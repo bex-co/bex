@@ -1,0 +1,3286 @@
+{
+  "cases": [
+    {
+      "client": "installed-bex",
+      "field": "root-directory",
+      "variant": "clone-omitted",
+      "command": [
+        "installed-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.127,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "rootDir",
+      "expected": "services/api",
+      "actual": "services/api",
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "installed-bex",
+      "field": "root-directory",
+      "variant": "clone-empty",
+      "command": [
+        "installed-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--root-directory",
+        "",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.049,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "rootDir",
+      "expected": "",
+      "actual": "services/api",
+      "acceptance_pass": false,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "installed-bex",
+      "field": "root-directory",
+      "variant": "clone-override",
+      "command": [
+        "installed-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--root-directory",
+        "other/subdir",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.05,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"other/subdir\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "other/subdir",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "rootDir",
+      "expected": "other/subdir",
+      "actual": "other/subdir",
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "installed-bex",
+      "field": "root-directory",
+      "variant": "direct-empty",
+      "command": [
+        "installed-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://example.invalid/qa",
+        "--build-command",
+        "printf control",
+        "--start-command",
+        "printf control",
+        "--root-directory",
+        "",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.047,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "plan": "free",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "rootDir",
+      "expected": "",
+      "actual": null,
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "installed-bex",
+      "field": "pre-deploy-command",
+      "variant": "clone-omitted",
+      "command": [
+        "installed-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.047,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.preDeployCommand",
+      "expected": "printf QA290_inherited",
+      "actual": "printf QA290_inherited",
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true,
+      "initial_wrong_target_path": "serviceDetails.envSpecificDetails.preDeployCommand"
+    },
+    {
+      "client": "installed-bex",
+      "field": "pre-deploy-command",
+      "variant": "clone-empty",
+      "command": [
+        "installed-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--pre-deploy-command",
+        "",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.049,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.preDeployCommand",
+      "expected": "",
+      "actual": "printf QA290_inherited",
+      "acceptance_pass": false,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true,
+      "initial_wrong_target_path": "serviceDetails.envSpecificDetails.preDeployCommand"
+    },
+    {
+      "client": "installed-bex",
+      "field": "pre-deploy-command",
+      "variant": "clone-override",
+      "command": [
+        "installed-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--pre-deploy-command",
+        "printf QA290_override",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.05,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_override\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_override",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.preDeployCommand",
+      "expected": "printf QA290_override",
+      "actual": "printf QA290_override",
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true,
+      "initial_wrong_target_path": "serviceDetails.envSpecificDetails.preDeployCommand"
+    },
+    {
+      "client": "installed-bex",
+      "field": "pre-deploy-command",
+      "variant": "direct-empty",
+      "command": [
+        "installed-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://example.invalid/qa",
+        "--build-command",
+        "printf control",
+        "--start-command",
+        "printf control",
+        "--pre-deploy-command",
+        "",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.051,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "plan": "free",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.preDeployCommand",
+      "expected": "",
+      "actual": null,
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true,
+      "initial_wrong_target_path": "serviceDetails.envSpecificDetails.preDeployCommand"
+    },
+    {
+      "client": "installed-bex",
+      "field": "health-check-path",
+      "variant": "clone-omitted",
+      "command": [
+        "installed-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.052,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.healthCheckPath",
+      "expected": "/inherited-health",
+      "actual": "/inherited-health",
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "installed-bex",
+      "field": "health-check-path",
+      "variant": "clone-empty",
+      "command": [
+        "installed-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--health-check-path",
+        "",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.051,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.healthCheckPath",
+      "expected": "",
+      "actual": "/inherited-health",
+      "acceptance_pass": false,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "installed-bex",
+      "field": "health-check-path",
+      "variant": "clone-override",
+      "command": [
+        "installed-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--health-check-path",
+        "/override-health",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.047,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/override-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/override-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.healthCheckPath",
+      "expected": "/override-health",
+      "actual": "/override-health",
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "installed-bex",
+      "field": "health-check-path",
+      "variant": "direct-empty",
+      "command": [
+        "installed-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://example.invalid/qa",
+        "--build-command",
+        "printf control",
+        "--start-command",
+        "printf control",
+        "--health-check-path",
+        "",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.047,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "plan": "free",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.healthCheckPath",
+      "expected": "",
+      "actual": null,
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "published-bex",
+      "field": "root-directory",
+      "variant": "clone-omitted",
+      "command": [
+        "published-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.116,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "rootDir",
+      "expected": "services/api",
+      "actual": "services/api",
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "published-bex",
+      "field": "root-directory",
+      "variant": "clone-empty",
+      "command": [
+        "published-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--root-directory",
+        "",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.048,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "rootDir",
+      "expected": "",
+      "actual": "services/api",
+      "acceptance_pass": false,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "published-bex",
+      "field": "root-directory",
+      "variant": "clone-override",
+      "command": [
+        "published-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--root-directory",
+        "other/subdir",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.048,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"other/subdir\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "other/subdir",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "rootDir",
+      "expected": "other/subdir",
+      "actual": "other/subdir",
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "published-bex",
+      "field": "root-directory",
+      "variant": "direct-empty",
+      "command": [
+        "published-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://example.invalid/qa",
+        "--build-command",
+        "printf control",
+        "--start-command",
+        "printf control",
+        "--root-directory",
+        "",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.048,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "plan": "free",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "rootDir",
+      "expected": "",
+      "actual": null,
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "published-bex",
+      "field": "pre-deploy-command",
+      "variant": "clone-omitted",
+      "command": [
+        "published-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.047,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.preDeployCommand",
+      "expected": "printf QA290_inherited",
+      "actual": "printf QA290_inherited",
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true,
+      "initial_wrong_target_path": "serviceDetails.envSpecificDetails.preDeployCommand"
+    },
+    {
+      "client": "published-bex",
+      "field": "pre-deploy-command",
+      "variant": "clone-empty",
+      "command": [
+        "published-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--pre-deploy-command",
+        "",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.05,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.preDeployCommand",
+      "expected": "",
+      "actual": "printf QA290_inherited",
+      "acceptance_pass": false,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true,
+      "initial_wrong_target_path": "serviceDetails.envSpecificDetails.preDeployCommand"
+    },
+    {
+      "client": "published-bex",
+      "field": "pre-deploy-command",
+      "variant": "clone-override",
+      "command": [
+        "published-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--pre-deploy-command",
+        "printf QA290_override",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.05,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_override\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_override",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.preDeployCommand",
+      "expected": "printf QA290_override",
+      "actual": "printf QA290_override",
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true,
+      "initial_wrong_target_path": "serviceDetails.envSpecificDetails.preDeployCommand"
+    },
+    {
+      "client": "published-bex",
+      "field": "pre-deploy-command",
+      "variant": "direct-empty",
+      "command": [
+        "published-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://example.invalid/qa",
+        "--build-command",
+        "printf control",
+        "--start-command",
+        "printf control",
+        "--pre-deploy-command",
+        "",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.051,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "plan": "free",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.preDeployCommand",
+      "expected": "",
+      "actual": null,
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true,
+      "initial_wrong_target_path": "serviceDetails.envSpecificDetails.preDeployCommand"
+    },
+    {
+      "client": "published-bex",
+      "field": "health-check-path",
+      "variant": "clone-omitted",
+      "command": [
+        "published-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.053,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.healthCheckPath",
+      "expected": "/inherited-health",
+      "actual": "/inherited-health",
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "published-bex",
+      "field": "health-check-path",
+      "variant": "clone-empty",
+      "command": [
+        "published-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--health-check-path",
+        "",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.048,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.healthCheckPath",
+      "expected": "",
+      "actual": "/inherited-health",
+      "acceptance_pass": false,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "published-bex",
+      "field": "health-check-path",
+      "variant": "clone-override",
+      "command": [
+        "published-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--health-check-path",
+        "/override-health",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.048,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/override-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/override-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.healthCheckPath",
+      "expected": "/override-health",
+      "actual": "/override-health",
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "published-bex",
+      "field": "health-check-path",
+      "variant": "direct-empty",
+      "command": [
+        "published-bex",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://example.invalid/qa",
+        "--build-command",
+        "printf control",
+        "--start-command",
+        "printf control",
+        "--health-check-path",
+        "",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.048,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "plan": "free",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.healthCheckPath",
+      "expected": "",
+      "actual": null,
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "render-pin",
+      "field": "root-directory",
+      "variant": "clone-omitted",
+      "command": [
+        "render-pin",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.114,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "rootDir",
+      "expected": "services/api",
+      "actual": "services/api",
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "render-pin",
+      "field": "root-directory",
+      "variant": "clone-empty",
+      "command": [
+        "render-pin",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--root-directory",
+        "",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.049,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "rootDir",
+      "expected": "",
+      "actual": "services/api",
+      "acceptance_pass": false,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "render-pin",
+      "field": "root-directory",
+      "variant": "clone-override",
+      "command": [
+        "render-pin",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--root-directory",
+        "other/subdir",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.047,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"other/subdir\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "other/subdir",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "rootDir",
+      "expected": "other/subdir",
+      "actual": "other/subdir",
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "render-pin",
+      "field": "root-directory",
+      "variant": "direct-empty",
+      "command": [
+        "render-pin",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://example.invalid/qa",
+        "--build-command",
+        "printf control",
+        "--start-command",
+        "printf control",
+        "--root-directory",
+        "",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.044,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "plan": "free",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "rootDir",
+      "expected": "",
+      "actual": null,
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "render-pin",
+      "field": "pre-deploy-command",
+      "variant": "clone-omitted",
+      "command": [
+        "render-pin",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.043,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.preDeployCommand",
+      "expected": "printf QA290_inherited",
+      "actual": "printf QA290_inherited",
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true,
+      "initial_wrong_target_path": "serviceDetails.envSpecificDetails.preDeployCommand"
+    },
+    {
+      "client": "render-pin",
+      "field": "pre-deploy-command",
+      "variant": "clone-empty",
+      "command": [
+        "render-pin",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--pre-deploy-command",
+        "",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.045,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.preDeployCommand",
+      "expected": "",
+      "actual": "printf QA290_inherited",
+      "acceptance_pass": false,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true,
+      "initial_wrong_target_path": "serviceDetails.envSpecificDetails.preDeployCommand"
+    },
+    {
+      "client": "render-pin",
+      "field": "pre-deploy-command",
+      "variant": "clone-override",
+      "command": [
+        "render-pin",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--pre-deploy-command",
+        "printf QA290_override",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.047,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_override\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_override",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.preDeployCommand",
+      "expected": "printf QA290_override",
+      "actual": "printf QA290_override",
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true,
+      "initial_wrong_target_path": "serviceDetails.envSpecificDetails.preDeployCommand"
+    },
+    {
+      "client": "render-pin",
+      "field": "pre-deploy-command",
+      "variant": "direct-empty",
+      "command": [
+        "render-pin",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://example.invalid/qa",
+        "--build-command",
+        "printf control",
+        "--start-command",
+        "printf control",
+        "--pre-deploy-command",
+        "",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.045,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "plan": "free",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.preDeployCommand",
+      "expected": "",
+      "actual": null,
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true,
+      "initial_wrong_target_path": "serviceDetails.envSpecificDetails.preDeployCommand"
+    },
+    {
+      "client": "render-pin",
+      "field": "health-check-path",
+      "variant": "clone-omitted",
+      "command": [
+        "render-pin",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.046,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.healthCheckPath",
+      "expected": "/inherited-health",
+      "actual": "/inherited-health",
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "render-pin",
+      "field": "health-check-path",
+      "variant": "clone-empty",
+      "command": [
+        "render-pin",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--health-check-path",
+        "",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.045,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.healthCheckPath",
+      "expected": "",
+      "actual": "/inherited-health",
+      "acceptance_pass": false,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "render-pin",
+      "field": "health-check-path",
+      "variant": "clone-override",
+      "command": [
+        "render-pin",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--health-check-path",
+        "/override-health",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.047,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/override-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/override-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.healthCheckPath",
+      "expected": "/override-health",
+      "actual": "/override-health",
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "render-pin",
+      "field": "health-check-path",
+      "variant": "direct-empty",
+      "command": [
+        "render-pin",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://example.invalid/qa",
+        "--build-command",
+        "printf control",
+        "--start-command",
+        "printf control",
+        "--health-check-path",
+        "",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.044,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "plan": "free",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.healthCheckPath",
+      "expected": "",
+      "actual": null,
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "render-2.29-tag",
+      "field": "root-directory",
+      "variant": "clone-omitted",
+      "command": [
+        "render-2.29-tag",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.11,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "rootDir",
+      "expected": "services/api",
+      "actual": "services/api",
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "render-2.29-tag",
+      "field": "root-directory",
+      "variant": "clone-empty",
+      "command": [
+        "render-2.29-tag",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--root-directory",
+        "",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.047,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "rootDir",
+      "expected": "",
+      "actual": "services/api",
+      "acceptance_pass": false,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "render-2.29-tag",
+      "field": "root-directory",
+      "variant": "clone-override",
+      "command": [
+        "render-2.29-tag",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--root-directory",
+        "other/subdir",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.047,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"other/subdir\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "other/subdir",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "rootDir",
+      "expected": "other/subdir",
+      "actual": "other/subdir",
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "render-2.29-tag",
+      "field": "root-directory",
+      "variant": "direct-empty",
+      "command": [
+        "render-2.29-tag",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://example.invalid/qa",
+        "--build-command",
+        "printf control",
+        "--start-command",
+        "printf control",
+        "--root-directory",
+        "",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.049,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "plan": "free",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "rootDir",
+      "expected": "",
+      "actual": null,
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "render-2.29-tag",
+      "field": "pre-deploy-command",
+      "variant": "clone-omitted",
+      "command": [
+        "render-2.29-tag",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.046,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.preDeployCommand",
+      "expected": "printf QA290_inherited",
+      "actual": "printf QA290_inherited",
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true,
+      "initial_wrong_target_path": "serviceDetails.envSpecificDetails.preDeployCommand"
+    },
+    {
+      "client": "render-2.29-tag",
+      "field": "pre-deploy-command",
+      "variant": "clone-empty",
+      "command": [
+        "render-2.29-tag",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--pre-deploy-command",
+        "",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.05,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.preDeployCommand",
+      "expected": "",
+      "actual": "printf QA290_inherited",
+      "acceptance_pass": false,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true,
+      "initial_wrong_target_path": "serviceDetails.envSpecificDetails.preDeployCommand"
+    },
+    {
+      "client": "render-2.29-tag",
+      "field": "pre-deploy-command",
+      "variant": "clone-override",
+      "command": [
+        "render-2.29-tag",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--pre-deploy-command",
+        "printf QA290_override",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.046,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_override\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_override",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.preDeployCommand",
+      "expected": "printf QA290_override",
+      "actual": "printf QA290_override",
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true,
+      "initial_wrong_target_path": "serviceDetails.envSpecificDetails.preDeployCommand"
+    },
+    {
+      "client": "render-2.29-tag",
+      "field": "pre-deploy-command",
+      "variant": "direct-empty",
+      "command": [
+        "render-2.29-tag",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://example.invalid/qa",
+        "--build-command",
+        "printf control",
+        "--start-command",
+        "printf control",
+        "--pre-deploy-command",
+        "",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.044,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "plan": "free",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.preDeployCommand",
+      "expected": "",
+      "actual": null,
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true,
+      "initial_wrong_target_path": "serviceDetails.envSpecificDetails.preDeployCommand"
+    },
+    {
+      "client": "render-2.29-tag",
+      "field": "health-check-path",
+      "variant": "clone-omitted",
+      "command": [
+        "render-2.29-tag",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.048,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.healthCheckPath",
+      "expected": "/inherited-health",
+      "actual": "/inherited-health",
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "render-2.29-tag",
+      "field": "health-check-path",
+      "variant": "clone-empty",
+      "command": [
+        "render-2.29-tag",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--health-check-path",
+        "",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.048,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/inherited-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.healthCheckPath",
+      "expected": "",
+      "actual": "/inherited-health",
+      "acceptance_pass": false,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "render-2.29-tag",
+      "field": "health-check-path",
+      "variant": "clone-override",
+      "command": [
+        "render-2.29-tag",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--from",
+        "srv-00000000000000000001",
+        "--health-check-path",
+        "/override-health",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.046,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/override-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\",\n    \"preDeployCommand\": \"printf QA290_inherited\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/services/srv-00000000000000000001",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "main",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "rootDir": "services/api",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "healthCheckPath": "/override-health",
+              "plan": "free",
+              "preDeployCommand": "printf QA290_inherited",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.healthCheckPath",
+      "expected": "/override-health",
+      "actual": "/override-health",
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    },
+    {
+      "client": "render-2.29-tag",
+      "field": "health-check-path",
+      "variant": "direct-empty",
+      "command": [
+        "render-2.29-tag",
+        "services",
+        "create",
+        "--name",
+        "qa-clone-clear-fixture",
+        "--region",
+        "frankfurt",
+        "--plan",
+        "free",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://example.invalid/qa",
+        "--build-command",
+        "printf control",
+        "--start-command",
+        "printf control",
+        "--health-check-path",
+        "",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "native_exit": 0,
+      "elapsed": 0.044,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T00:00:00Z\",\n  \"dashboardUrl\": \"\",\n  \"id\": \"srv-00000000000000000001\",\n  \"name\": \"qa-clone-clear-fixture\",\n  \"notifyOnFail\": \"\",\n  \"ownerId\": \"tea-00000000000000000000\",\n  \"repo\": \"https://example.invalid/qa\",\n  \"rootDir\": \"services/api\",\n  \"serviceDetails\": {\n    \"runtime\": \"node\",\n    \"plan\": \"free\",\n    \"region\": \"frankfurt\",\n    \"healthCheckPath\": \"/inherited-health\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"printf control\",\n      \"startCommand\": \"printf control\",\n      \"preDeployCommand\": \"printf QA290_inherited\"\n    },\n    \"schedule\": \"0 0 1 1 *\"\n  },\n  \"slug\": \"\",\n  \"suspended\": \"\",\n  \"suspenders\": null,\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T00:00:00Z\"\n}",
+      "stderr": "",
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "name": "qa-clone-clear-fixture",
+            "ownerId": "tea-00000000000000000000",
+            "repo": "https://example.invalid/qa",
+            "serviceDetails": {
+              "envSpecificDetails": {
+                "buildCommand": "printf control",
+                "startCommand": "printf control"
+              },
+              "plan": "free",
+              "region": "frankfurt",
+              "runtime": "node"
+            },
+            "type": "web_service"
+          }
+        }
+      ],
+      "target_path": "serviceDetails.healthCheckPath",
+      "expected": "",
+      "actual": null,
+      "acceptance_pass": true,
+      "scope": "synthetic local server/credentials only; no production request or resource",
+      "copied_config_removed": true
+    }
+  ],
+  "server_stopped": true,
+  "analysis_correction": "Initial pre-deploy assertions looked under envSpecificDetails, which is the read shape. Create places preDeployCommand directly under serviceDetails. Reanalyzed the same full captured POST bodies; no native call repeated."
+}

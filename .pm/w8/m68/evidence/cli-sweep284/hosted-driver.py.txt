@@ -1,0 +1,62 @@
+import datetime,json,os,secrets,shlex,shutil,subprocess,sys,time
+from pathlib import Path
+os.umask(0o077)
+P=Path(__file__).resolve().parent;root=Path('/Volumes/nvme4tbfish/projects/bex8');CP=root/'.playwright-mcp/cli-qa-w8-checkpoint.json'
+c=json.loads(CP.read_text());mode,client=sys.argv[1:3];assert client in ['bex','render'] and c['sync284_result']==0 and not c.get('active_sync_stash')
+ws='tea-daif693dqjvc73e7as3g';baseline={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']}
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();CP.write_text(json.dumps(c,indent=2)+'\n');os.chmod(CP,0o600)
+def cli(args,bound=40):
+ cfg=P/'render-config/cli.yaml'
+ try:
+  if client=='render':assert not cfg.exists();shutil.copyfile(P/'config/cli.yaml',cfg);os.chmod(cfg,0o600)
+  runner=['python3',str(P/'run-render.py')] if client=='render' else ['python3',str(P/'run.py'),'--release']
+  return json.loads(subprocess.check_output([*runner,'--bound='+str(bound),*args],text=True,timeout=bound+15))
+ finally:
+  if client=='render':cfg.unlink(missing_ok=True)
+def wire(path):return json.loads(subprocess.check_output(['python3',str(P/'wire.py'),'GET',path],text=True,timeout=40))
+def history(x):
+ r=cli(['deploys','list',x['id'],'--confirm','-o','json']);assert r['exit']==0
+ rows=json.loads(r['stdout']);x['deploy_children']=rows
+ for v in rows:
+  if v['id'] not in x['recorded_child_ids']:x['recorded_child_ids'].append(v['id'])
+ x.setdefault('history_receipts',[]).append({'at':now(),'native':r});save();return rows
+def http(x):
+ url=x['create_response']['serviceDetails']['url'];r=subprocess.run(['curl','--disable','-sS','--max-time','8','-H','Accept: application/json','-w','\n%{http_code}',url],capture_output=True,text=True,timeout=12)
+ body,_,status=r.stdout.rpartition('\n')
+ try:v=json.loads(body)
+ except ValueError:v=None
+ return {'at':now(),'url':url,'HTTP':status,'body':body,'decoded':v,'curl_exit':r.returncode,'stderr':r.stderr}
+if mode=='create':
+ assert not any(x.get('sweep')==284 and x.get('client')==client for x in c['resources'])
+ quota=wire('/v1/owners/'+ws+'/limits');assert quota['status']=='200';q=json.loads(quota['response'])['services'];assert q['used']+q['terminating']<q['limit']
+ inv=cli(['services','--confirm','-o','json']);assert inv['exit']==0;ids={v.get('service',v)['id'] for v in json.loads(inv['stdout']) or []};assert baseline<=ids
+ nonce=secrets.token_hex(3);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-command';marker='QA284_'+nonce
+ server="const fs=require('node:fs'),http=require('node:http');const built=JSON.parse(fs.readFileSync('/opt/render/project/src/qa284-built.json','utf8'));http.createServer((req,res)=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify({fixture:"+json.dumps(marker)+",built,argumentHex:Buffer.from(built.argument).toString('hex')}));}).listen(Number(process.env.PORT||3000),'0.0.0.0');"
+ buildjs="const fs=require('node:fs');fs.writeFileSync('qa284-built.json',JSON.stringify({argument:process.argv[1]}));fs.writeFileSync('qa284-http.js',"+json.dumps(server)+");"
+ build='/usr/local/bin/node -e '+shlex.quote(buildjs)+' tail\\ '
+ args=['services','create','--name',name,'--plan','free','--region','frankfurt','--type','web_service','--runtime','node','--repo','https://github.com/bex-co/bex','--branch','main','--root-directory','examples/runtime-version/node','--build-command',build,'--start-command','/usr/local/bin/node /opt/render/project/src/qa284-http.js','--health-check-path','/','--auto-deploy=false','--confirm','-o','json']
+ x={'sweep':284,'client':client,'workspace':ws,'type':'web_service','name':name,'nonce':nonce,'marker':marker,'time':now(),'source_head':c['head'],'dependency_ids':[],'recorded_child_ids':[],'capacity_proof':quota,'pre_create_inventory':inv,'create_command':[client,*args],'authored_build_command':build,'expected_argument':'tail ','state':'native create intent persisted'};c['resources'].append(x);save()
+ r=cli(args);x.update(create_result=r,state='create returned: reconcile before retry');save();assert r['exit']==0
+ v=json.loads(r['stdout']);v=v.get('data',v);v=v.get('service',v);assert v['ownerId']==ws and v['name']==name and v['serviceDetails']['plan']=='free' and v['id'] not in ids
+ x.update(id=v['id'],create_response=v,state='created: initial build pending');save();print(json.dumps({'client':client,'id':v['id'],'native_exit':r['exit']}));raise SystemExit(0)
+x=next(x for x in c['resources'] if x.get('sweep')==284 and x.get('client')==client)
+assert x['workspace']==ws and x['id'] not in baseline and x['create_result']['exit']==0 and x['create_response']['id']==x['id'] and x['create_response']['ownerId']==ws
+if mode=='observe':
+ assert not x['state'].startswith('deleted')
+ rows=history(x);receipts=[];start=time.monotonic()
+ while True:
+  receipt=http(x);receipts.append(receipt);v=receipt['decoded']
+  if receipt['HTTP']=='200' and isinstance(v,dict) and v.get('fixture')==x['marker']:break
+  if time.monotonic()-start>=35:break
+  time.sleep(5)
+ rows=history(x);r=wire('/v1/services/'+x['id']);x.setdefault('observations',[]).append({'at':now(),'http':receipts,'history':rows,'detail':r});save()
+ v=receipts[-1]['decoded'];print(json.dumps({'client':client,'id':x['id'],'latest_deploy':rows[0]['status'],'HTTP':receipts[-1]['HTTP'],'decoded':v,'expected_argument':x['expected_argument']}))
+elif mode=='cleanup':
+ assert not x['state'].startswith('deleted')
+ history(x);r=cli(['services','delete',x['id'],'--confirm','-o','json']);x['delete_result']=r;x['state']='delete returned: verify absence';save()
+ detail=wire('/v1/services/'+x['id']);inv=cli(['services','--confirm','-o','json']);ids={v.get('service',v)['id'] for v in json.loads(inv['stdout']) or []};assert baseline<=ids
+ public=http(x);quota=wire('/v1/owners/'+ws+'/limits');x.setdefault('cleanup_receipts',[]).append({'at':now(),'detail':detail,'inventory':inv,'public':public,'quota':quota})
+ absent=detail['status']=='404' and x['id'] not in ids and public['HTTP']=='404'
+ x['state']='deleted: API/list/runtime absent' if absent else 'cleanup pending';save();print(json.dumps({'client':client,'native_delete_exit':r['exit'],'absent':absent,'detail':detail['status'],'public':public['HTTP'],'quota':json.loads(quota['response']).get('services')}))
+else:raise ValueError(mode)

@@ -1,0 +1,76 @@
+import copy,http.server,json,os,shutil,subprocess,threading,time,urllib.parse
+from pathlib import Path
+P=Path(__file__).resolve().parent;OUT=P/'sweep285-cron-command-wire.json';assert not OUT.exists()
+os.umask(0o077)
+owner={'id':'tea-00000000000000000000','name':'QA-command-fixture','type':'team'}
+sid='srv-00000000000000000001';requests=[];state={}
+def base(kind):
+ return {'id':sid,'name':'qa-command-fixture','ownerId':owner['id'],'type':kind,'repo':'https://example.invalid/qa','branch':'main','autoDeploy':'no','createdAt':'2026-10-15T00:00:00Z','updatedAt':'2026-10-15T00:00:00Z','serviceDetails':{'runtime':'node','plan':'free','preDeployCommand':'printf control','envSpecificDetails':{'buildCommand':'printf control','startCommand':'printf control'},'schedule':'0 0 1 1 *'}}
+def merge(a,b):
+ for k,v in b.items():
+  if isinstance(v,dict) and isinstance(a.get(k),dict):merge(a[k],v)
+  else:a[k]=copy.deepcopy(v)
+class Handler(http.server.BaseHTTPRequestHandler):
+ def log_message(self,*args):pass
+ def respond(self,method):
+  path=urllib.parse.urlsplit(self.path).path
+  raw=self.rfile.read(int(self.headers.get('Content-Length','0')))
+  body=json.loads(raw) if raw else None
+  requests.append({'method':method,'path':self.path,'body':body})
+  status=200
+  if method=='GET' and path=='/v1/owners':value=[{'owner':owner,'cursor':'qa284'}]
+  elif method=='GET' and path=='/v1/owners/'+owner['id']:value=owner
+  elif method=='GET' and path=='/v1/services/'+sid:value=state['service']
+  elif method=='GET' and path=='/v1/services':value=[{'service':state['service'],'cursor':'qa284'}]
+  elif method=='GET' and path in ['/v1/projects','/v1/environments']:value=[]
+  elif method=='POST' and path=='/v1/services':
+   merge(state['service'],body);value={'service':state['service'],'deployId':'dep-00000000000000000001'};status=201
+  elif method=='PATCH' and path=='/v1/services/'+sid:
+   merge(state['service'],body);value=state['service']
+  else:status=404;value={'message':'Unexpected local fixture path'}
+  data=json.dumps(value).encode();self.send_response(status);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
+ do_GET=lambda self:self.respond('GET')
+ do_POST=lambda self:self.respond('POST')
+ do_PATCH=lambda self:self.respond('PATCH')
+server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler);server.daemon_threads=True
+thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+host=f'http://127.0.0.1:{server.server_port}/v1/';results=[]
+subjects=[('published-bex',str(P/'release/bex'),'BEX'),('render-pin',str(P/'render-pin'),'RENDER')]
+def leaves(v,path=''):
+ if isinstance(v,dict):
+  for k,x in v.items():yield from leaves(x,path+'/'+k)
+ elif isinstance(v,list):
+  for i,x in enumerate(v):yield from leaves(x,path+'/'+str(i))
+ elif isinstance(v,str):yield path,v
+try:
+ for client,binary,prefix in subjects:
+  for operation in ['create']:
+   for field in ['cron-command']:
+    control=field=='quoted-start-control';flag='start-command' if control else field
+    kind='cron_job' if flag=='cron-command' else 'web_service';state['service']=base(kind)
+    command="[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK"
+    args=['services',operation]
+    if operation=='create':
+     args+=['--name','qa-command-fixture','--type',kind,'--runtime','node','--repo','https://example.invalid/qa','--plan','free']
+     if flag!='build-command':args+=['--build-command','printf control']
+     if kind=='cron_job':args+=['--cron-schedule','0 0 1 1 *']
+     elif flag!='start-command':args+=['--start-command','printf control']
+    else:args+=[sid]
+    args+=['--'+flag,command,'--confirm','-o','json']
+    cfgdir=P/f'sweep284-{client}-{operation}-{field}-config';assert not cfgdir.exists();cfgdir.mkdir(mode=0o700);cfg=cfgdir/'cli.yaml';cfg.write_text('version: 1\napi:\n  key: qa284-synthetic-local-only\n')
+    env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_')) and k.lower() not in ('http_proxy','https_proxy','all_proxy')}
+    env.update({prefix+'_HOST':host,prefix+'_CLI_CONFIG_PATH':str(cfg),prefix+'_CLI_CONFIG_DIR':str(cfgdir),prefix+'_WORKSPACE':owner['id'],'DO_NOT_TRACK':'1','BEX_CLI_DISABLE_ANALYTICS':'1','BEX_NO_UPDATE_NOTIFIER':'1','RENDER_NO_UPDATE_NOTIFIER':'1'})
+    offset=len(requests);start=time.monotonic()
+    try:r=subprocess.run([binary,*args],env=env,capture_output=True,text=True,timeout=12)
+    finally:shutil.rmtree(cfgdir)
+    captured=copy.deepcopy(requests[offset:]);writes=[x for x in captured if x['method'] in ['POST','PATCH']]
+    target=[(k,v) for x in writes for k,v in leaves(x['body']) if v==command]
+    result={'client':client,'operation':operation,'field':field,'command':[client,*args],'native_exit':r.returncode,'elapsed':round(time.monotonic()-start,3),'stdout':r.stdout,'stderr':r.stderr,'requests':captured,'authored':command,'captured_command_fields':target,'expected_exact_command':True,'command_preserved':len(target)==1 and target[0][1]==command,'copied_config_removed':not cfgdir.exists(),'scope':'synthetic local server and credentials only; no production request or resource'}
+    results.append(result);OUT.write_text(json.dumps({'cases':results},indent=2)+'\n')
+    print(json.dumps({k:result[k] for k in ['client','operation','field','native_exit','command_preserved','captured_command_fields']}),flush=True)
+    assert r.returncode==0 and len(target)==1, 'inspect fixture/command failure before continuing'
+finally:
+ server.shutdown();server.server_close();thread.join(timeout=2)
+ if OUT.exists():
+  data=json.loads(OUT.read_text());data['server_stopped']=not thread.is_alive();OUT.write_text(json.dumps(data,indent=2)+'\n')
+print(json.dumps({'cases':len(results),'command_changed':sum(not x['command_preserved'] for x in results),'server_stopped':not thread.is_alive()}))

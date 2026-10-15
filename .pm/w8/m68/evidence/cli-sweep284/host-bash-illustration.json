@@ -1,0 +1,54 @@
+{
+  "bash_version": "GNU bash, version 3.2.57(1)-release (arm64-apple-darwin25)",
+  "records": [
+    {
+      "label": "authored",
+      "command": "printf '%s' tail\\ ",
+      "exit": 0,
+      "stdout": "tail ",
+      "stdout_hex": "7461696c20",
+      "stderr": ""
+    },
+    {
+      "label": "TrimSpace-equivalent",
+      "command": "printf '%s' tail\\",
+      "exit": 0,
+      "stdout": "tail",
+      "stdout_hex": "7461696c",
+      "stderr": ""
+    },
+    {
+      "label": "authored",
+      "command": "printf '%s' tail\\\t",
+      "exit": 0,
+      "stdout": "tail\t",
+      "stdout_hex": "7461696c09",
+      "stderr": ""
+    },
+    {
+      "label": "TrimSpace-equivalent",
+      "command": "printf '%s' tail\\",
+      "exit": 0,
+      "stdout": "tail",
+      "stdout_hex": "7461696c",
+      "stderr": ""
+    },
+    {
+      "label": "authored",
+      "command": "printf '%s' 'tail '",
+      "exit": 0,
+      "stdout": "tail ",
+      "stdout_hex": "7461696c20",
+      "stderr": ""
+    },
+    {
+      "label": "TrimSpace-equivalent",
+      "command": "printf '%s' 'tail '",
+      "exit": 0,
+      "stdout": "tail ",
+      "stdout_hex": "7461696c20",
+      "stderr": ""
+    }
+  ],
+  "qualification": "host-only shell illustration; deployed trimmed-command output differs and is captured independently in runtime receipts"
+}

@@ -1,0 +1,11 @@
+--- a/lego/backend/internal/apps/render.go
++++ b/lego/backend/internal/apps/render.go
+@@ -585,7 +585,7 @@
+ 		return docker, true
+ 	}
+ 	startCommand := a.StartCommand
+-	if svcType == appv1alpha1.TypeCronJob {
++	if svcType == appv1alpha1.TypeCronJob && a.Command != "" {
+ 		startCommand = a.Command
+ 	}
+ 	return map[string]any{

@@ -15,9 +15,13 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m69** — [Preserve native cron startup semantics](m69/README.md) (6 tasks, 2h50m) — sweep285: both native clients create Live Free cron services whose Bash runs fail in /bin/sh; actual producer/consumer and readback proofs, all fixtures cleaned.
+
+- [ ] **m68** — [Preserve executable command text](m68/README.md) (7 tasks, 3h15m) — sweep284:32 altered native captures and two Live Free services run the wrong escaped argument; client, shared writers and dashboard producer scope, no product fix by QA.
+
 - [ ] **m67** — [Keep native live logs running after a transient disconnect](blocked/m67/README.md) — **BLOCKED (2026-10-14: t001 done — Bex built on v2.29.0 reconnects and resumes A/B exactly once, but v2.29 also retries normal 1000 closes, which Bex uses to end a no-running-build tail (w8/020), so `logs --type build --tail` would loop forever. Needs the user to choose a non-retryable refusal close code (non-zero exit), accepting the retry, or waiting for upstream; then t002–t006 and an explicitly requested CLI release)**
 
-- [ ] **m66** — [Keep Blueprint service updates in canonical intent](blocked/m66/README.md) — **BLOCKED (2026-10-14: t001–t005 done — Blueprint updates now write source/plan/instances/disk to the canonical App row before the CR patch; needs the API deployed to production plus the sweep230 two-client inline/persistent-sync source replay and cleanup before t006)**
+- [ ] **m66** — [Keep Blueprint service updates in canonical intent](blocked/m66/README.md) (6 tasks,185m) — **BLOCKED:** source regressions and sweep288 inline/three-client live acceptance pass; remaining owned persistent-sync gate and closeout.
 
 - [ ] **m65** — [Retain PostgreSQL process logs during bursts](blocked/m65/README.md) — **BLOCKED (2026-10-13: t001 done — the fix is upstream CNPG #11131 in operator 1.30.1 / chart 0.29.1, we run 1.30.0; needs the user to approve a CNPG upgrade rollout that restarts every managed Postgres pod (control plane + tenant Free single-instance DBs), or decide to enable in-place instance-manager updates first; then the credentialed chart mirror, live 300/1005-record burst acceptance and cleanup)**
 
@@ -27,7 +31,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m62** — [Reject unlaunchable environment values](blocked/m62/README.md) — **BLOCKED (2026-10-12: t001/t002/t004/t005 done — every environment writer and Blueprint validation refuse newly supplied NUL values before any effect; needs the fix deployed to production plus fresh native Bex/Render validation receipts and surface checks before t003/t006 can close)**
 
-- [ ] **m61** — [Honor application PATH during native builds, startup and pre-deploy](blocked/m61/README.md) — **BLOCKED (2026-10-14: t001–t005, t007, t008 done — pre-deploy now starts `/bin/sh` independently of application PATH; needs the operator deployed to production plus a fresh two-client native pre-deploy replay with empty/narrow PATH and cleanup before t006)**
+- [x] **m61** — [Honor application PATH during native builds](done/m61/README.md) (8 tasks,230m) — **DONE 2026-10-15:** prior native helper/image fixes plus sweep289 four-case pre-deploy live acceptance and complete cleanup; direct output and surface limits recorded.
 
 - [ ] **m60** — [Preserve accepted arguments when copying CLI commands](blocked/m60/README.md) — **BLOCKED (2026-10-12: t001/t002 prepared and tested with `blocked/m60/evidence/upstream-copy-command-formatter.patch` + caller audit; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release, and native Bex/Render receipts; no fork/backend workaround per scope/DO_NOT_DO)**
 
@@ -139,9 +143,10 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **108** — [Same-type clones silently ignore explicit empty overrides](108.md) — minor upstream CLI,55m; both native clients retain cleared fields and run the source step; four fixtures cleaned, private proposal qualified.
 - [ ] **107** — [A valid output flag cannot override an invalid output default](107.md) — **TODO (sweep279: installed/published/same-pin/2.29 all fail before HTTP;32 controls pass, private upstream prototype passes12 cases;35m)**
 
-- [ ] **106** — [A served deploy stays In Progress after auto-hibernation](blocked/106.md) — **BLOCKED (2026-10-14: reconciler fix + regressions done — a release parked by auto-hibernation after serving settles Live on strict generation-matched proof; needs the API deployed to production plus a two-client short-idle native restart replay with cleanup)**
+- [x] **106** — [Served deploys settle Live after auto-hibernation](done/106.md) — **DONE2026-10-15:** sweep287 passes the parked two-client live gate with exact-owned cleanup; source fix and regressions already landed.
 
 - [ ] **103** — [CLI trims a local file path and silently uploads its neighbor](blocked/103.md) — **BLOCKED (2026-10-14: upstream parser patch + regressions prepared in `evidence/103/upstream-secret-file-path.patch`; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release and the twelve native receipts; no fork/backend workaround per DO_NOT_DO)**
 
@@ -149,7 +154,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **101** — [Blueprint static rule errors point to the service instead of the invalid rule](done/101.md) — **DONE 2026-10-13** (fix `2fb562c4a`; sweep212 native matrix passes with exact field locations; GraphQL/MCP details agree in code)
 
-- [ ] **100** — [Blueprint environment errors point to unrelated or nonexistent fields](blocked/100.md) — **BLOCKED (2026-10-14: deferred-reference and current-state refusals now carry the authored envVars ordinal, with regressions; needs the API deployed to production plus both native clients replaying the sweep227/sweep242 second-pass cases)**
+- [x] **100** — [Blueprint reference refusals locate their own authored entry](done/100.md) — **DONE2026-10-15:** sweep287 passes the parked two-client live gate with exact-owned cleanup; source fix and regressions already landed.
 
 - [x] **098** — [Blueprint validation accepts Key Value envVarKey refs that resolve to an empty key](done/098.md) — **DONE 2026-10-13** (fixes `fcd0d1124`/`0daac2275`; sweeps 207/212 native matrices pass; REST/GraphQL/MCP agreement in code; hosted apply recorded as a boundary)
 
@@ -191,7 +196,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [ ] **077** — [Repeated environment flags silently convert interior CRLF to LF](blocked/077.md) — **BLOCKED (2026-10-09: upstream patch prepared and tested — [`077-upstream.patch`](blocked/077-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
 
 - [ ] **076** — [Unicode descriptions hit a byte limit advertised as 255 characters](blocked/076.md) — **BLOCKED (2026-10-09: upstream patch prepared and tested — [`076-upstream.patch`](blocked/076-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
-- [ ] **075** — [Clones inherit fields forbidden by the requested service type](blocked/075.md) — **BLOCKED (2026-10-09: upstream patch prepared and tested — [`075-upstream.patch`](blocked/075-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
+- [ ] **075** — [Clones inherit fields forbidden by requested type/runtime](075.md) — **REOPENED 2026-10-15:** same-type native→image clones also retain forbidden commands; remaining55m runtime/defaults repair and regressions. Prior type-only patch retained; external/adoption/release gates remain. Both live controls cleaned.
 - [x] **074** — [Service secret-file upserts return 200 instead of the pinned 201](done/074.md) (35m) ← functional CLI QA + API-only diagnostics, 2026-10-09; actual pinned typed success result is absent. — **DONE 2026-10-10** (fix `1d95b6b8f`; live production check passed)
 - [x] **073** — [Empty secret-file responses omit required content](done/073.md) (55m) ← functional CLI QA + API-only diagnostics, 2026-10-09; mounted bytes and GraphQL pass, item/bulk response fields do not. — **DONE 2026-10-10** (fix `8cf443bcc`; live production check passed)
 - [ ] **072** — [Image cron command updates fail in the pinned upstream CLI](blocked/072.md) — **BLOCKED (2026-10-09: upstream patch prepared and tested — [`072-upstream.patch`](blocked/072-upstream.patch); needs the user to authorize external submission to render-oss/cli after a dedupe, then upstream acceptance and a Bex pin refresh + CLI release; no fork per DO_NOT_DO)**
@@ -279,6 +284,6 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 > `010.md`/`011.md`/`012.md` implemented 2026-09-08 (outbound-IPs UI; narrow plan aliases; datastore DeletionStalled) — moved to `done/`. `001.md` retired 2026-08-16 after its production gate found only 1–2 represented workspaces, zero build minutes, a 1.46 TiB sole complete egress sample, and remaining hourly gaps — no evidence-safe cap can be selected. `007.md` retired after its one useful artifact was captured: the production unmodified-CLI validation re-grade is now in `docs/cli-compatibility-checklist.md`; the note mixed that finished evidence chore with disposable deployment experiments and an unrelated dev-host suggestion, so it is not retained as roadmap work. `008.md` implemented and moved to `done/` (env groups in `resources[]` + action plans). `009.md` implemented and moved to `done/` (ADR018 deliberate divergences). `002.md` promoted to **m9** 2026-07-13; note moved to `done/`. `004.md` (KeyValue `maxmemoryPolicy` underscore-vs-hyphen, filed by `w9/m2`'s Render CLI compatibility walk) fixed 2026-07-15 (`dfff3034`), re-verified live end to end (create/list/get/update/suspend/resume/delete) — note moved to `done/`. `005.md` (Postgres owner/options wire-shape, filed by `w9/m2`) retired 2026-07-15 — a parallel session independently found the same gap across Postgres/Service/KeyValue and filed it as `w6/016`; `005.md` moved to `done/` pointing there rather than duplicating it.
 
-- [ ] **104** — [Blueprint numeric env values reject unsigned 64-bit integers](blocked/104.md) — **BLOCKED (2026-10-14: compiler fix + regressions done — env values past int64 within uint64 keep exact digits; needs the API deployed to production plus native Bex/pinned Render `blueprints validate` replay of the three shapes)**
+- [x] **104** — [Blueprint numeric env values reject unsigned 64-bit integers](done/104.md) — **DONE 2026-10-15:** compiler809472bdc; sweep286 passes all16 two-client production validation targets/controls, completing the parked gate.
 
 - [x] **105** — [CLI compatibility checklist advertises cross-repository image overrides](done/105.md) — **DONE 2026-10-14** (checklist `--image` row corrected to the same-repository rule)

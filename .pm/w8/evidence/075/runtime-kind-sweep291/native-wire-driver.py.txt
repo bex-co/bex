@@ -1,0 +1,68 @@
+import copy,http.server,json,os,shutil,subprocess,threading,time,urllib.parse
+from pathlib import Path
+P=Path(__file__).resolve().parent;OUT=P/'sweep291-image-clone-wire.json';assert not OUT.exists()
+os.umask(0o077)
+owner={'id':'tea-00000000000000000000','name':'QA-command-fixture','type':'team'}
+sid='srv-00000000000000000001';requests=[];state={}
+def base(kind):
+ return {'id':sid,'name':'qa-command-fixture','ownerId':owner['id'],'type':kind,'repo':'https://example.invalid/qa','branch':'main','rootDir':'services/api','autoDeploy':'no','createdAt':'2026-10-15T00:00:00Z','updatedAt':'2026-10-15T00:00:00Z','serviceDetails':{'runtime':'node','plan':'free','region':'frankfurt','healthCheckPath':'/inherited-health','envSpecificDetails':{'buildCommand':'printf control','startCommand':'printf control','preDeployCommand':'printf QA291_inherited'},'schedule':'0 0 1 1 *'}}
+def merge(a,b):
+ for k,v in b.items():
+  if isinstance(v,dict) and isinstance(a.get(k),dict):merge(a[k],v)
+  else:a[k]=copy.deepcopy(v)
+class Handler(http.server.BaseHTTPRequestHandler):
+ def log_message(self,*args):pass
+ def respond(self,method):
+  path=urllib.parse.urlsplit(self.path).path
+  raw=self.rfile.read(int(self.headers.get('Content-Length','0')))
+  body=json.loads(raw) if raw else None
+  requests.append({'method':method,'path':self.path,'body':body})
+  status=200
+  if method=='GET' and path=='/v1/owners':value=[{'owner':owner,'cursor':'qa291'}]
+  elif method=='GET' and path=='/v1/owners/'+owner['id']:value=owner
+  elif method=='GET' and path=='/v1/services/'+sid:value=state['service']
+  elif method=='GET' and path=='/v1/services':value=[{'service':state['service'],'cursor':'qa291'}]
+  elif method=='GET' and path in ['/v1/projects','/v1/environments']:value=[]
+  elif method=='POST' and path=='/v1/services':
+   merge(state['service'],body);value={'service':state['service'],'deployId':'dep-00000000000000000001'};status=201
+  elif method=='PATCH' and path=='/v1/services/'+sid:
+   merge(state['service'],body);value=state['service']
+  else:status=404;value={'message':'Unexpected local fixture path'}
+  data=json.dumps(value).encode();self.send_response(status);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
+ do_GET=lambda self:self.respond('GET')
+ do_POST=lambda self:self.respond('POST')
+ do_PATCH=lambda self:self.respond('PATCH')
+server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler);server.daemon_threads=True
+thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+host=f'http://127.0.0.1:{server.server_port}/v1/';results=[]
+subjects=[('installed-bex','/opt/homebrew/bin/bex','BEX'),('published-bex',str(P/'release/bex'),'BEX'),('render-pin',str(P/'render-pin'),'RENDER'),('render-2.29-tag',str(P/'sweep272-render-2.29'),'RENDER')]
+def leaves(v,path=''):
+ if isinstance(v,dict):
+  for k,x in v.items():yield from leaves(x,path+'/'+k)
+ elif isinstance(v,list):
+  for i,x in enumerate(v):yield from leaves(x,path+'/'+str(i))
+ elif isinstance(v,str):yield path,v
+image='docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592'
+try:
+ for client,binary,prefix in subjects:
+  for variant in ['native-to-image','native-to-image-empty-commands','direct-image','image-to-image','explicit-native-command-invalid','native-to-native']:
+   state['service']=base('web_service');state['service']['serviceDetails']['envSpecificDetails'].pop('preDeployCommand',None)
+   if variant=='image-to-image':
+    state['service'].update(imagePath=image,repo=None,branch=None,rootDir='');state['service']['serviceDetails'].update(runtime='image',envSpecificDetails={})
+   args=['services','create','--name','qa-source-kind-clone','--plan','free','--region','frankfurt','--auto-deploy=false']
+   if variant.startswith('native-to-') or variant=='image-to-image':args+=['--from',sid]
+   else:args+=['--type','web_service']
+   if variant!='native-to-native':args+=['--image',image]
+   if variant=='native-to-image-empty-commands':args+=['--build-command','','--start-command','']
+   if variant=='explicit-native-command-invalid':args+=['--build-command','printf explicit-invalid']
+   args+=['--confirm','-o','json'];cfgdir=P/f'sweep291-{client}-{variant}-config';assert not cfgdir.exists();cfgdir.mkdir(mode=0o700);cfg=cfgdir/'cli.yaml';cfg.write_text('version: 1\napi:\n  key: qa291-synthetic-local-only\n');env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_')) and k.lower() not in ('http_proxy','https_proxy','all_proxy')};env.update({prefix+'_HOST':host,prefix+'_CLI_CONFIG_PATH':str(cfg),prefix+'_CLI_CONFIG_DIR':str(cfgdir),prefix+'_WORKSPACE':owner['id'],'DO_NOT_TRACK':'1','BEX_CLI_DISABLE_ANALYTICS':'1','BEX_NO_UPDATE_NOTIFIER':'1','RENDER_NO_UPDATE_NOTIFIER':'1'})
+   offset=len(requests);start=time.monotonic()
+   try:r=subprocess.run([binary,*args],env=env,capture_output=True,text=True,timeout=12)
+   finally:shutil.rmtree(cfgdir)
+   captured=copy.deepcopy(requests[offset:]);writes=[v for v in captured if v['method']=='POST'];invalid=variant=='explicit-native-command-invalid';expected_exit=1 if invalid else 0;passed=r.returncode==expected_exit and len(writes)==(0 if invalid else 1);row={'client':client,'variant':variant,'command':[client,*args],'native_exit':r.returncode,'expected_exit':expected_exit,'elapsed':round(time.monotonic()-start,3),'stdout':r.stdout,'stderr':r.stderr,'requests':captured,'POST_count':len(writes),'acceptance_pass':passed,'scope':'synthetic localhost only; no production request or resource','copied_config_removed':not cfgdir.exists()};results.append(row);OUT.write_text(json.dumps({'cases':results},indent=2)+'\n');print(json.dumps({'client':client,'variant':variant,'native_exit':r.returncode,'POSTs':len(writes),'acceptance_pass':passed}),flush=True)
+finally:
+ server.shutdown();server.server_close();thread.join(timeout=2)
+ if OUT.exists():
+  data=json.loads(OUT.read_text());data['server_stopped']=not thread.is_alive();OUT.write_text(json.dumps(data,indent=2)+'\n')
+assert len(results)==24
+print(json.dumps({'native_runs':len(results),'counterexamples':sum(not v['acceptance_pass'] for v in results),'server_stopped':not thread.is_alive()}))

@@ -1,0 +1,34 @@
+envVarGroups:
+- envVars:
+  - key: MESSAGE
+    value: group
+  name: qa-20261015-425f91-8-r0
+services:
+- envVars:
+  - fromService:
+      envVarKey: MESSAGE
+      name: qa-20261015-425f91-8-r1
+      type: web
+    key: COPY
+  - key: COPY
+    value: unrelated literal
+  name: qa-20261015-425f91-8-r2
+  runtime: node
+  type: web
+  plan: free
+  repo: https://github.com/bex-co/bex
+  branch: main
+  rootDir: examples/runtime-version/node
+  buildCommand: /bin/true
+  startCommand: node index.js
+- envVars:
+  - fromGroup: g
+  name: qa-20261015-425f91-8-r1
+  runtime: node
+  type: web
+  plan: free
+  repo: https://github.com/bex-co/bex
+  branch: main
+  rootDir: examples/runtime-version/node
+  buildCommand: /bin/true
+  startCommand: node index.js

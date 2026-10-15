@@ -1,0 +1,25 @@
+{
+  "checked_at": "2026-10-15T08:31:55.147981+00:00",
+  "main_commit": "28b233e29812a911c7c0f30594c419cf10714fca",
+  "source_only_not_executed": true,
+  "files": [
+    {
+      "path": "cmd/servicecreate.go",
+      "main_sha256": "c61a6aa35062baa62700f92b2eba380f1d21b4f65e0c67580a87d360a1829fab",
+      "pin_sha256": "c61a6aa35062baa62700f92b2eba380f1d21b4f65e0c67580a87d360a1829fab",
+      "byte_identical_to_pin": true
+    },
+    {
+      "path": "pkg/types/service/servicecreate.go",
+      "main_sha256": "0c72a12478b4a830cc3c9d2bf55686419eb559bd16b24f45492fea0f2bad67de",
+      "pin_sha256": "0c72a12478b4a830cc3c9d2bf55686419eb559bd16b24f45492fea0f2bad67de",
+      "byte_identical_to_pin": true
+    },
+    {
+      "path": "pkg/service/clone.go",
+      "main_sha256": "325046317a83c0cc0d245cdc196618604177139c5a275e7efef051dd0f257253",
+      "pin_sha256": "325046317a83c0cc0d245cdc196618604177139c5a275e7efef051dd0f257253",
+      "byte_identical_to_pin": true
+    }
+  ]
+}

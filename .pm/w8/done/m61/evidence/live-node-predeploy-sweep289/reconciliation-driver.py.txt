@@ -1,0 +1,33 @@
+from pathlib import Path
+import json,subprocess,time,datetime
+p=Path(__file__).parent
+cp=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json')
+c=json.loads(cp.read_text())
+assert not c.get('active_sync_stash')
+rows=[x for x in c['resources'] if x.get('sweep')==289]
+assert len(rows)==4
+baseline={x if isinstance(x,str) else x.get('service',x)['id'] for x in c['baseline']['services']}
+def save():
+ c['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();cp.write_text(json.dumps(c,indent=2));cp.chmod(0o600)
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True))
+result=json.loads(subprocess.check_output(['python3',str(p/'run.py'),'--release','services','--confirm','-o','json'],text=True));assert result['exit']==0
+ids={x.get('service',x)['id'] for x in json.loads(result['stdout']) or []};assert baseline<=ids
+for row in rows:
+ sid=row['id'];assert row['workspace']=='tea-daif693dqjvc73e7as3g' and sid not in baseline and sid not in ids
+ assert row['create_result']['exit']==0 and row['create_response']['id']==sid and row['delete_result']['exit']==0
+ detail=wire('/v1/services/'+sid);assert detail['status']=='404'
+ assert any(x['exit']==0 and x['stdout'].endswith('404') for x in row['runtime_after_delete_checks'])
+ row['final_detail_reconciliation']=detail;row['final_workspace_inventory']=result;save()
+q=None
+for attempt in range(4):
+ q=wire('/v1/owners/tea-daif693dqjvc73e7as3g/limits');assert q['status']=='200'
+ limits=json.loads(q['response']);print(json.dumps({'attempt':attempt,'services':limits['services'],'PG':limits['postgres']['used'],'KV':limits['keyValues']['used']}),flush=True)
+ if limits['services']['terminating']==0 and limits['services']['used']==len(ids):break
+ if attempt<3:time.sleep(5)
+assert json.loads(q['response'])['services']['terminating']==0
+for row in rows:
+ row['final_quota_reconciliation']=q
+ row['state']='deleted: CLIack/API404/listabsent/runtime404/baseline present/quota termination0'
+ note=Path(row['local_note']);assert note.parent==p and note.name.startswith('sweep289-') and note.name.endswith('-note.txt');note.unlink(missing_ok=True)
+save()
+print('Four exact-owned fixtures and four recorded deploy children absent; baseline preserved; no second delete and no copied configs remain.',flush=True)

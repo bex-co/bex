@@ -1,0 +1,26 @@
+{
+  "sweep": 284,
+  "at": "2026-10-15T06:35:13.195484+00:00",
+  "head": "e1f240d2233057c30602cbd30354cc684262a8bf",
+  "bex_versions": [
+    "installed0.2.1",
+    "published0.3.2"
+  ],
+  "upstream_pin": "2.27.0 / a764810a768202704e7206eb7b87a47211fcd98e",
+  "comparison_tag": "2.29.0 / af9bdd180e90ab9d1e971d73185687fed9ef08d8",
+  "private_upstream_diagnostic_only": true,
+  "backend_toolchain": "go1.26.8 / GOWORK=off",
+  "upstream_toolchain": "go1.27.0 / GOWORK=off",
+  "native_unmodified_runs": 40,
+  "native_private_fixed_runs": 10,
+  "backend_baseline_cases": 24,
+  "backend_changed_cases": 12,
+  "backend_private_fixed_cases": 24,
+  "backend_selected_named_pass_events": 58,
+  "upstream_named_pass_events": 183,
+  "hosted_parents": 2,
+  "hosted_children": 2,
+  "all_owned_fixtures_removed": true,
+  "qa_product_fix": false,
+  "qa_commit_or_push": false
+}

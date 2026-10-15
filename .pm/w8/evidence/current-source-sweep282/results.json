@@ -1,0 +1,362 @@
+{
+  "head": "f5b0e1170606053f3d6428e82764e011e20ccfd6",
+  "command": [
+    "go",
+    "test",
+    "-overlay",
+    "<owned-temp>/sweep282-overlay.json",
+    "./internal/apps",
+    "-run",
+    "^(TestQA243Unsigned.*|TestQA230BlueprintOwnedIntentPersistence|TestBlueprintUpdate.*|TestBlueprintEnvValueAcceptsUnsigned64|TestBlueprintUnsignedOutsideEnvValueStillRefused|TestBlueprintDeferredReferenceRefusalLocatesItsOwnEntry)$",
+    "-count=1",
+    "-json"
+  ],
+  "GOWORK": "off",
+  "GOTOOLCHAIN": "go1.26.8",
+  "exit": 0,
+  "elapsed": 9.532,
+  "passed": [
+    "TestBlueprintUpdatePersistsProjectorOwnedIntent/source",
+    "TestBlueprintUpdatePersistsProjectorOwnedIntent/plan",
+    "TestBlueprintUpdatePersistsProjectorOwnedIntent/instances",
+    "TestBlueprintUpdatePersistsProjectorOwnedIntent/disk",
+    "TestBlueprintUpdatePersistsProjectorOwnedIntent",
+    "TestBlueprintUpdateGrowsTheDiskRow",
+    "TestBlueprintUpdateRowFailureOpensNoDeploy",
+    "TestBlueprintUpdateOfUnmanagedAppWritesNoRow",
+    "TestBlueprintEnvValueAcceptsUnsigned64",
+    "TestBlueprintUnsignedOutsideEnvValueStillRefused/numInstances",
+    "TestBlueprintUnsignedOutsideEnvValueStillRefused",
+    "TestBlueprintDeferredReferenceRefusalLocatesItsOwnEntry/pooler_required",
+    "TestBlueprintDeferredReferenceRefusalLocatesItsOwnEntry/nested_pooler_required",
+    "TestBlueprintDeferredReferenceRefusalLocatesItsOwnEntry/missing_sibling_key",
+    "TestBlueprintDeferredReferenceRefusalLocatesItsOwnEntry/type_mismatch",
+    "TestBlueprintDeferredReferenceRefusalLocatesItsOwnEntry/worker_host",
+    "TestBlueprintDeferredReferenceRefusalLocatesItsOwnEntry/nested_worker_host",
+    "TestBlueprintDeferredReferenceRefusalLocatesItsOwnEntry",
+    "TestQA230BlueprintOwnedIntentPersistence/source",
+    "TestQA230BlueprintOwnedIntentPersistence/tier",
+    "TestQA230BlueprintOwnedIntentPersistence/replicas",
+    "TestQA230BlueprintOwnedIntentPersistence/idleTTL",
+    "TestQA230BlueprintOwnedIntentPersistence",
+    "TestQA243UnsignedNumericEnvironment/root_service/9223372036854775807",
+    "TestQA243UnsignedNumericEnvironment/root_service/9223372036854775808",
+    "TestQA243UnsignedNumericEnvironment/root_service/18446744073709551615",
+    "TestQA243UnsignedNumericEnvironment/root_service/\"18446744073709551615\"",
+    "TestQA243UnsignedNumericEnvironment/nested_service/9223372036854775807",
+    "TestQA243UnsignedNumericEnvironment/nested_service/9223372036854775808",
+    "TestQA243UnsignedNumericEnvironment/nested_service/18446744073709551615",
+    "TestQA243UnsignedNumericEnvironment/nested_service/\"18446744073709551615\"",
+    "TestQA243UnsignedNumericEnvironment/group/9223372036854775807",
+    "TestQA243UnsignedNumericEnvironment/group/9223372036854775808",
+    "TestQA243UnsignedNumericEnvironment/group/18446744073709551615",
+    "TestQA243UnsignedNumericEnvironment/group/\"18446744073709551615\"",
+    "TestQA243UnsignedNumericEnvironment",
+    "TestQA243UnsignedNumberOtherFields",
+    "TestQA243UnsignedContainerPaths"
+  ],
+  "failed": [],
+  "records": [
+    {
+      "kind": "QA230_STORE",
+      "CR_patch_reaches_desired": true,
+      "canonical_intent_writes": 1,
+      "deploy_rows_opened": 1,
+      "field": "source",
+      "managed_id": "srv-db86u61jg4r1elkv48g0",
+      "qualification": "actual patchChangedStackService with fake Kubernetes and recording IntentStore; no paid resources, live sibling changes or fixed regression claim"
+    },
+    {
+      "kind": "QA230_STORE",
+      "CR_patch_reaches_desired": true,
+      "canonical_intent_writes": 1,
+      "deploy_rows_opened": 1,
+      "field": "tier",
+      "managed_id": "srv-db86u61jg4r1elkv48gg",
+      "qualification": "actual patchChangedStackService with fake Kubernetes and recording IntentStore; no paid resources, live sibling changes or fixed regression claim"
+    },
+    {
+      "kind": "QA230_STORE",
+      "CR_patch_reaches_desired": true,
+      "canonical_intent_writes": 1,
+      "deploy_rows_opened": 1,
+      "field": "replicas",
+      "managed_id": "srv-db86u61jg4r1elkv48h0",
+      "qualification": "actual patchChangedStackService with fake Kubernetes and recording IntentStore; no paid resources, live sibling changes or fixed regression claim"
+    },
+    {
+      "kind": "QA230_STORE",
+      "CR_patch_reaches_desired": true,
+      "canonical_intent_writes": 0,
+      "deploy_rows_opened": 1,
+      "field": "idleTTL",
+      "managed_id": "srv-db86u61jg4r1elkv48hg",
+      "qualification": "actual patchChangedStackService with fake Kubernetes and recording IntentStore; no paid resources, live sibling changes or fixed regression claim"
+    },
+    {
+      "kind": "QA243_NUMERIC",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775807\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-local-source\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+      "pinned_schema_valid": true,
+      "scope": "actual compiler and pinned schema/typed parser; no hosted apply or runtime",
+      "shape": "root service",
+      "typed_values": {
+        "VALUE": "9223372036854775807"
+      },
+      "value": "9223372036854775807"
+    },
+    {
+      "kind": "QA243_NUMERIC",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775808\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-local-source\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+      "pinned_schema_valid": true,
+      "scope": "actual compiler and pinned schema/typed parser; no hosted apply or runtime",
+      "shape": "root service",
+      "typed_values": {
+        "VALUE": "9223372036854775808"
+      },
+      "value": "9223372036854775808"
+    },
+    {
+      "kind": "QA243_NUMERIC",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 18446744073709551615\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-local-source\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+      "pinned_schema_valid": true,
+      "scope": "actual compiler and pinned schema/typed parser; no hosted apply or runtime",
+      "shape": "root service",
+      "typed_values": {
+        "VALUE": "18446744073709551615"
+      },
+      "value": "18446744073709551615"
+    },
+    {
+      "kind": "QA243_NUMERIC",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "manifest": "{\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"18446744073709551615\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-local-source\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+      "pinned_schema_valid": true,
+      "scope": "actual compiler and pinned schema/typed parser; no hosted apply or runtime",
+      "shape": "root service",
+      "typed_values": {
+        "VALUE": "18446744073709551615"
+      },
+      "value": "\"18446744073709551615\""
+    },
+    {
+      "kind": "QA243_NUMERIC",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": 9223372036854775807\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-local-source\",\n              \"plan\": \"free\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+      "pinned_schema_valid": true,
+      "scope": "actual compiler and pinned schema/typed parser; no hosted apply or runtime",
+      "shape": "nested service",
+      "typed_values": {
+        "VALUE": "9223372036854775807"
+      },
+      "value": "9223372036854775807"
+    },
+    {
+      "kind": "QA243_NUMERIC",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": 9223372036854775808\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-local-source\",\n              \"plan\": \"free\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+      "pinned_schema_valid": true,
+      "scope": "actual compiler and pinned schema/typed parser; no hosted apply or runtime",
+      "shape": "nested service",
+      "typed_values": {
+        "VALUE": "9223372036854775808"
+      },
+      "value": "9223372036854775808"
+    },
+    {
+      "kind": "QA243_NUMERIC",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": 18446744073709551615\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-local-source\",\n              \"plan\": \"free\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+      "pinned_schema_valid": true,
+      "scope": "actual compiler and pinned schema/typed parser; no hosted apply or runtime",
+      "shape": "nested service",
+      "typed_values": {
+        "VALUE": "18446744073709551615"
+      },
+      "value": "18446744073709551615"
+    },
+    {
+      "kind": "QA243_NUMERIC",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "manifest": "{\n  \"projects\": [\n    {\n      \"environments\": [\n        {\n          \"name\": \"one\",\n          \"services\": [\n            {\n              \"envVars\": [\n                {\n                  \"key\": \"VALUE\",\n                  \"value\": \"18446744073709551615\"\n                }\n              ],\n              \"image\": {\n                \"url\": \"nginx:1\"\n              },\n              \"name\": \"qa-local-source\",\n              \"plan\": \"free\",\n              \"runtime\": \"image\",\n              \"type\": \"web\"\n            }\n          ]\n        }\n      ],\n      \"name\": \"qa-local-project\"\n    }\n  ]\n}",
+      "pinned_schema_valid": true,
+      "scope": "actual compiler and pinned schema/typed parser; no hosted apply or runtime",
+      "shape": "nested service",
+      "typed_values": {
+        "VALUE": "18446744073709551615"
+      },
+      "value": "\"18446744073709551615\""
+    },
+    {
+      "kind": "QA243_NUMERIC",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "manifest": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775807\n        }\n      ],\n      \"name\": \"g\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"g\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-local-source\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+      "pinned_schema_valid": true,
+      "scope": "actual compiler and pinned schema/typed parser; no hosted apply or runtime",
+      "shape": "group",
+      "typed_values": {
+        "VALUE": "9223372036854775807"
+      },
+      "value": "9223372036854775807"
+    },
+    {
+      "kind": "QA243_NUMERIC",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "manifest": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 9223372036854775808\n        }\n      ],\n      \"name\": \"g\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"g\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-local-source\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+      "pinned_schema_valid": true,
+      "scope": "actual compiler and pinned schema/typed parser; no hosted apply or runtime",
+      "shape": "group",
+      "typed_values": {
+        "VALUE": "9223372036854775808"
+      },
+      "value": "9223372036854775808"
+    },
+    {
+      "kind": "QA243_NUMERIC",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "manifest": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": 18446744073709551615\n        }\n      ],\n      \"name\": \"g\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"g\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-local-source\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+      "pinned_schema_valid": true,
+      "scope": "actual compiler and pinned schema/typed parser; no hosted apply or runtime",
+      "shape": "group",
+      "typed_values": {
+        "VALUE": "18446744073709551615"
+      },
+      "value": "18446744073709551615"
+    },
+    {
+      "kind": "QA243_NUMERIC",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "manifest": "{\n  \"envVarGroups\": [\n    {\n      \"envVars\": [\n        {\n          \"key\": \"VALUE\",\n          \"value\": \"18446744073709551615\"\n        }\n      ],\n      \"name\": \"g\"\n    }\n  ],\n  \"services\": [\n    {\n      \"envVars\": [\n        {\n          \"fromGroup\": \"g\"\n        }\n      ],\n      \"image\": {\n        \"url\": \"nginx:1\"\n      },\n      \"name\": \"qa-local-source\",\n      \"plan\": \"free\",\n      \"runtime\": \"image\",\n      \"type\": \"web\"\n    }\n  ]\n}",
+      "pinned_schema_valid": true,
+      "scope": "actual compiler and pinned schema/typed parser; no hosted apply or runtime",
+      "shape": "group",
+      "typed_values": {
+        "VALUE": "18446744073709551615"
+      },
+      "value": "\"18446744073709551615\""
+    },
+    {
+      "kind": "QA243_OTHER_NUMBER",
+      "compiler_valid": true,
+      "field": "numInstances",
+      "number": "1",
+      "problems": null
+    },
+    {
+      "kind": "QA243_OTHER_NUMBER",
+      "compiler_valid": false,
+      "field": "numInstances",
+      "number": "18446744073709551615",
+      "problems": [
+        {
+          "Code": "BLUEPRINT_YAML_SCALAR",
+          "Path": "#/services/0/numInstances",
+          "Message": "Blueprint contains an invalid integer",
+          "Line": 8,
+          "Column": 23
+        }
+      ]
+    },
+    {
+      "kind": "QA243_OTHER_NUMBER",
+      "compiler_valid": true,
+      "field": "maxShutdownDelaySeconds",
+      "number": "300",
+      "problems": null
+    },
+    {
+      "kind": "QA243_OTHER_NUMBER",
+      "compiler_valid": false,
+      "field": "maxShutdownDelaySeconds",
+      "number": "301",
+      "problems": [
+        {
+          "Code": "BLUEPRINT_SCHEMA_INVALID",
+          "Path": "#/services/0/maxShutdownDelaySeconds",
+          "Message": "at '/services/0/maxShutdownDelaySeconds': maximum: got 301, want 300",
+          "Line": 7,
+          "Column": 34
+        }
+      ]
+    },
+    {
+      "kind": "QA243_OTHER_NUMBER",
+      "compiler_valid": false,
+      "field": "maxShutdownDelaySeconds",
+      "number": "18446744073709551615",
+      "problems": [
+        {
+          "Code": "BLUEPRINT_YAML_SCALAR",
+          "Path": "#/services/0/maxShutdownDelaySeconds",
+          "Message": "Blueprint contains an invalid integer",
+          "Line": 7,
+          "Column": 34
+        }
+      ]
+    },
+    {
+      "kind": "service",
+      "container": "ungrouped",
+      "exact_typed_value": "9223372036854775808",
+      "number": "9223372036854775808"
+    },
+    {
+      "kind": "service",
+      "container": "ungrouped",
+      "exact_typed_value": "18446744073709551615",
+      "number": "18446744073709551615"
+    },
+    {
+      "kind": "group",
+      "container": "ungrouped",
+      "exact_typed_value": "9223372036854775808",
+      "number": "9223372036854775808"
+    },
+    {
+      "kind": "group",
+      "container": "ungrouped",
+      "exact_typed_value": "18446744073709551615",
+      "number": "18446744073709551615"
+    },
+    {
+      "kind": "service",
+      "container": "nested",
+      "exact_typed_value": "9223372036854775808",
+      "number": "9223372036854775808"
+    },
+    {
+      "kind": "service",
+      "container": "nested",
+      "exact_typed_value": "18446744073709551615",
+      "number": "18446744073709551615"
+    },
+    {
+      "kind": "group",
+      "container": "nested",
+      "exact_typed_value": "9223372036854775808",
+      "number": "9223372036854775808"
+    },
+    {
+      "kind": "group",
+      "container": "nested",
+      "exact_typed_value": "18446744073709551615",
+      "number": "18446744073709551615"
+    }
+  ],
+  "idleTTL_qualification": "direct helper-only input has no supported Blueprint writer; not an unfixed authored-field claim",
+  "hosted_mutations": 0
+}

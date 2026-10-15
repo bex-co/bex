@@ -1,0 +1,28 @@
+[
+  {
+    "builder": "native",
+    "command": "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK",
+    "pod_command": [
+      "/bin/sh",
+      "-c",
+      "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK"
+    ],
+    "recorded_launch": "image",
+    "runtime": "node",
+    "startCommand": "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK",
+    "subject": "published-bex"
+  },
+  {
+    "builder": "native",
+    "command": "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK",
+    "pod_command": [
+      "/bin/sh",
+      "-c",
+      "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK"
+    ],
+    "recorded_launch": "image",
+    "runtime": "node",
+    "startCommand": "[[ 1 = 1 ]] && printf '%s' QA285_BASH_OK",
+    "subject": "render-pin"
+  }
+]

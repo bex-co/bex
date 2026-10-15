@@ -1,0 +1,30 @@
+{
+  "build_command": [
+    "go",
+    "build",
+    "-o",
+    "<owned-temp>/sweep288-bex-head",
+    "."
+  ],
+  "GOWORK": "off",
+  "GOTOOLCHAIN": "go1.27.0",
+  "source_head": "667943d859ff71ab3f6a085985dcd5b4e272e0c5",
+  "cli_source_clean": true,
+  "build_info": [
+    "dep\tgithub.com/render-oss/cli\tv1.1.3-0.20260909214233-a764810a7682\th1:DAlz9Xu4EKRTV/I0LyHxBt8muqsNfo361snKirVVPqE=",
+    "build\tvcs.revision=667943d859ff71ab3f6a085985dcd5b4e272e0c5",
+    "build\tvcs.modified=true"
+  ],
+  "version_result": {
+    "binary": "checkout build 667943d859ff71ab3f6a085985dcd5b4e272e0c5",
+    "command": [
+      "bex",
+      "-v"
+    ],
+    "exit": 0,
+    "elapsed": 0.772,
+    "stdout": "bex vdev\ncompatible with Render CLI vdev\n",
+    "stderr": ""
+  },
+  "qualification": "Initial plain go build reports upstream vdev; excluded from hosting journeys. Rebuilt with the existing scripts/bex-cli-build.sh pinned-version ldflag before hosting execution."
+}

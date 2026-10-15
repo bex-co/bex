@@ -1,0 +1,3 @@
+package apps
+import "strings"
+func qa284CommandText(command string) string { if strings.TrimSpace(command)=="" {return ""};return command }

@@ -1,0 +1,14 @@
+{
+  "pin_commit": "667943d859ff71ab3f6a085985dcd5b4e272e0c5",
+  "pinned_source": "5c7ee1e5aae6",
+  "files_changed": [
+    "deploy/gitops/base/bex.yaml",
+    "deploy/gitops/base/dashboard.yaml",
+    "deploy/gitops/base/values/opensandbox-controller.values.yaml",
+    "deploy/opensandbox/kustomization.yaml",
+    "lego/operator/config/api/deployment.yaml"
+  ],
+  "operator_pin_included": true,
+  "predeploy_fix_is_ancestor": true,
+  "actual_deployed_artifact": "unobserved"
+}
