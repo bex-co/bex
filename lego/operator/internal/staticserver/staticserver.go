@@ -125,6 +125,11 @@ type Site struct {
 	Prefix   string                     // full object-key prefix including trailing slash when known
 	Routes   []appv1alpha1.StaticRoute  // ordered redirect/rewrite rules
 	Headers  []appv1alpha1.StaticHeader // custom response headers by path
+	// Unavailable marks a published site that is suspended in the last
+	// snapshot. Its host stays known so a request reaching the static-server
+	// across the suspend/resume Ingress handoff reads "try again", never the
+	// unknown-host 404 that says the site is gone (w4/307). It serves no bytes.
+	Unavailable bool
 }
 
 // keyFor is the object-store key for a site-relative request path.
@@ -220,6 +225,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// contract, w4/m94), while the (possibly rewritten) served path drives
 	// origin keys and content type.
 	requestPath := normalizePath(r.URL.Path)
+	if site.Unavailable {
+		serveSiteUnavailable(w, site, requestPath)
+		return
+	}
 
 	// w2/m93: evidence line when this host still dual-reads the legacy
 	// "<app>/<rev>/" prefix. Path/prefix stay line fields (never Loki labels).
@@ -632,6 +641,18 @@ func serveSiteBusy(w http.ResponseWriter, site Site, requestPath string) {
 	applyErrorHeaders(w.Header(), site.Headers, requestPath)
 	w.Header().Set("Retry-After", "1")
 	http.Error(w, "server busy", http.StatusServiceUnavailable)
+}
+
+// serveSiteUnavailable answers a known site the last snapshot saw suspended:
+// the Ingress has switched back to the static-server on resume before the next
+// Refresh observes it (or still points here on suspend before the activator
+// takes over). Platform no-store + Retry-After are set after custom headers so
+// a customer rule cannot make the transition cacheable or disable backoff.
+func serveSiteUnavailable(w http.ResponseWriter, site Site, requestPath string) {
+	applyErrorHeaders(w.Header(), site.Headers, requestPath)
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Retry-After", "5")
+	http.Error(w, "static site temporarily unavailable", http.StatusServiceUnavailable)
 }
 
 // normalizePath cleans a request path to a rooted, slash-separated form,

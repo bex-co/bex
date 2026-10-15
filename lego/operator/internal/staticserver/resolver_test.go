@@ -19,6 +19,7 @@ package staticserver
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -28,7 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-// A newer release does not own the serving prefix. Suspension must remove even
+// A newer release does not own the serving prefix. Suspension must withhold even
 // cached published content, and resumption must restore that same publication
 // without waiting for the newer build to finish or succeed.
 func TestPublishedSiteSuspendResumeWhileNewerBuildHeld(t *testing.T) {
@@ -95,8 +96,8 @@ func TestPublishedSiteSuspendResumeWhileNewerBuildHeld(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, path := range []string{"/", "/app.js"} {
-				if rec := do(h, http.MethodGet, path); rec.Code != http.StatusNotFound {
-					t.Fatalf("suspended: GET %s => %d %q, want no serving route", path, rec.Code, rec.Body)
+				if rec := do(h, http.MethodGet, path); rec.Code != http.StatusServiceUnavailable || strings.Contains(rec.Body.String(), "published") {
+					t.Fatalf("suspended: GET %s => %d %q, want a temporary 503 without content", path, rec.Code, rec.Body)
 				}
 			}
 			if got := origin.gets[publishedPrefix+"app.js"]; got != 0 {
