@@ -85,7 +85,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
   - [x] `deploys create <serviceID>` — returns a deploy id; accepts the CLI's `clearCache` string enum
     - [x] `--clear-cache`
     - [x] `--commit <id>` — repository-backed non-cron services only; image-backed services receive a named 400 without creating a deploy (w8/m49)
-    - [x] `--image <url>` — image-backed services only; valid tags/digests accepted, with distinct grammar/private-address/untrusted-registry errors. Overrides preserve the saved image. Bex permits another trusted repository; Render documents a same-repository restriction (w8/m49).
+    - [x] `--image <url>` — image-backed services only; valid tags/digests accepted, with distinct grammar/private-address/untrusted-registry errors. Overrides preserve the saved image. As on Render, only the tag or digest can change per deploy: the host, repository and image name must match the service's configured image, and any other image gets a named 400 before a deploy is created. Switching repositories is a saved-settings change (`services update --image`, or `PATCH image.imagePath`) (w8/m49, `sameImageRepository` w8/042, re-verified w8/105).
     - [x] `--wait`
   - [x] `deploys cancel <serviceID> <deployID>` — resolves and cancels an open deploy
 - [~] **`jobs`** — create and manage one-off jobs. Creation is a deliberate non-goal (`.pm/DO_NOT_DO.md`; gated by w4/m116/t003, 2026-10-02); the history verbs still serve jobs created before the gate. The earlier `[x]` create grade rested on a dev-9 response shape only — on production every create was refused by Kubernetes RBAC and came back already `failed` (live 2026-09-17/21/26).
