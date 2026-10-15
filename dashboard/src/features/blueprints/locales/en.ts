@@ -468,6 +468,12 @@ const enBlueprints: Record<string, TranslationEntry> = {
     message: "render.yaml copied",
     description: "Toast after copying the generated manifest",
   },
+  "blueprints.generateCopyFailed": {
+    message:
+      "Couldn't copy render.yaml. Allow clipboard access and try again, or download it.",
+    description:
+      "Toast when the browser refuses to copy the generated manifest to the clipboard",
+  },
   "blueprints.generateDownload": {
     message: "Download render.yaml",
     description: "Generate dialog — download the manifest file",
