@@ -358,8 +358,9 @@ func TestClearedStaticBuildCommandPublishesDirectly(t *testing.T) {
 	}
 
 	empty, root := "", "."
-	for _, name := range []string{"built", "direct"} {
-		if _, err := svc.ApplyServicePatch(ctx, name, ServicePatch{BuildCommand: &empty, PublishPath: &root}); err != nil {
+	// A whitespace-only command clears the same way as "" (w8/m68).
+	for name, clear := range map[string]string{"built": "", "direct": " \t "} {
+		if _, err := svc.ApplyServicePatch(ctx, name, ServicePatch{BuildCommand: &clear, PublishPath: &root}); err != nil {
 			t.Fatalf("clear %s: %v", name, err)
 		}
 		spec := getApp(t, cl, name).Spec

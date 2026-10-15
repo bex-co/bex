@@ -309,7 +309,7 @@ describe("CronDeploySection command clearing (w4/137)", () => {
     expect(updateCronJob).toHaveBeenCalledWith("nightly", "0 6 * * *", "");
   });
 
-  it("treats a whitespace-only command as a clear, since the row trims", async () => {
+  it("treats a whitespace-only command as a clear, like an empty one", async () => {
     const user = userEvent.setup();
     render(
       <CronDeploySection
@@ -366,10 +366,11 @@ describe("CronDeploySection command clearing (w4/137)", () => {
     await user.type(schedInput, "0 8 * * 1");
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
+    // Byte for byte: a reschedule never rewrites the stored command (w8/m68).
     expect(updateCronJob).toHaveBeenCalledWith(
       "nightly",
       "0 8 * * 1",
-      "node daily.js",
+      "  node daily.js  ",
     );
   });
 

@@ -1,4 +1,5 @@
 import { isValidGitUrl } from "@/common/lib/utils/git-url";
+import { commandText } from "@/features/services/lib/command-text";
 import { isValidCron } from "@/features/services/lib/cron";
 import {
   VALID_ENV_KEY,
@@ -112,6 +113,11 @@ function set(value: string): string | undefined {
   return value.trim() || undefined;
 }
 
+/** {@link set} for a shell command: blank is omitted, else sent verbatim. */
+function optionalCommand(value: string): string | undefined {
+  return commandText(value) || undefined;
+}
+
 /** The rows the editors' blank "add" placeholder must not put on the wire. */
 export function submittableEnvVars(rows: EnvVarEntry[]): EnvVarEntry[] {
   return rows.filter((row) => row.key !== "");
@@ -196,16 +202,16 @@ export function buildCreateServiceInput(
         ? form.runtime
         : undefined,
     buildCommand: shape.isStaticBuild
-      ? set(form.staticBuildCommand)
+      ? optionalCommand(form.staticBuildCommand)
       : shape.isNativeBuild
-        ? form.buildCommand.trim()
+        ? commandText(form.buildCommand)
         : undefined,
     startCommand: shape.isBuildableGit
       ? shape.isCronType
-        ? form.command.trim()
-        : set(form.startCommand)
+        ? commandText(form.command)
+        : optionalCommand(form.startCommand)
       : shape.showImageCommand
-        ? set(form.imageCommand)
+        ? optionalCommand(form.imageCommand)
         : undefined,
     dockerfilePath: shape.isDockerBuild ? set(form.dockerfilePath) : undefined,
     buildFilter:
@@ -215,7 +221,7 @@ export function buildCreateServiceInput(
     plan: shape.showPlan ? form.plan || undefined : undefined,
     autoDeploy: shape.isGitSource ? form.autoDeploy : undefined,
     schedule: shape.isCronType ? set(form.schedule) : undefined,
-    command: shape.isCronType ? set(form.command) : undefined,
+    command: shape.isCronType ? optionalCommand(form.command) : undefined,
     publishPath: shape.isStaticType ? set(form.publishPath) : undefined,
     // The wizard used to send no port at all, so an image binding anything but
     // 3000 (nginx:alpine binds :80) came up unroutable and answered 503

@@ -1,18 +1,18 @@
 # w8 · m68 — Preserve executable command text
 
-**Worker:** worker8 **Goal:** accepted build/start/pre-deploy/cron commands execute with the argument bytes the user authored. **Status:** todo
+**Worker:** worker8 **Goal:** accepted build/start/pre-deploy/cron commands execute with the argument bytes the user authored. **Status:** blocked — t001–t003, t005, t006 done (upstream patch prepared; backend `commandText` + dashboard `commandText` shipped with regressions); t004/t007 need user-authorized render-oss/cli submission, upstream release, a Bex CLI pin/release and the deployed fix for hosted two-client proof
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Preserve nonblank command flags in an upstream-ready change | 35m | — |
-| t002 | Preserve command text in shared backend writers | 45m | — |
-| t003 | Preserve command drafts in dashboard producers | 35m | — |
-| t004 | Render parity | 25m | t001, t002, t003 |
-| t005 | Simplify | 10m | t004 |
-| t006 | Test coverage | 30m | t004 |
-| t007 | Closeout | 15m | t005, t006 |
+| t001 | Preserve nonblank command flags in an upstream-ready change — **DONE** | 35m | — |
+| t002 | Preserve command text in shared backend writers — **DONE** | 45m | — |
+| t003 | Preserve command drafts in dashboard producers — **DONE** | 35m | — |
+| t004 | Render parity — **BLOCKED (upstream submission + Bex release + deploy)** | 25m | t001, t002, t003 |
+| t005 | Simplify — **DONE** | 10m | t004 |
+| t006 | Test coverage — **DONE** | 30m | t004 |
+| t007 | Closeout — **BLOCKED (t004 gates + hosted two-client replay)** | 15m | t005, t006 |
 
 ## Definition of done
 

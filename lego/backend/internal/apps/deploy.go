@@ -2540,7 +2540,7 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 		Hosts:                   hosts,
 		AutoDeploy:              autoDeploy,
 		PreDeployCommand:        a.PreDeployCommand,
-		InitialDeployHook:       strings.TrimSpace(a.InitialDeployHook),
+		InitialDeployHook:       commandText(a.InitialDeployHook),
 		MaintenanceMode:         maintenanceMode,
 		PublishPath:             publish,
 		MaxShutdownDelaySeconds: a.MaxShutdownDelaySeconds,

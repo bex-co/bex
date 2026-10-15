@@ -19,7 +19,6 @@ package apps
 import (
 	"context"
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -28,10 +27,11 @@ import (
 
 func TestBlueprintCronCommandSerializedReapply(t *testing.T) {
 	for _, tc := range []struct {
-		name, runtime, field, build, command string
+		name, runtime, field, build, command, wantStart string
 	}{
-		{"native Bash startCommand", "go", "startCommand", "    buildCommand: go build -o app .\n", "[[ -f marker ]] && ./app"},
-		{"docker whitespace dockerCommand", "docker", "dockerCommand", "", "   "},
+		{"native Bash startCommand", "go", "startCommand", "    buildCommand: go build -o app .\n", "[[ -f marker ]] && ./app", "[[ -f marker ]] && ./app"},
+		// A whitespace-only command is stored as no command (w8/m68).
+		{"docker whitespace dockerCommand", "docker", "dockerCommand", "", "   ", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			manifest := fmt.Sprintf("services:\n  - name: nightly\n    type: cron\n    runtime: %s\n    repo: https://github.com/bex-co/bex\n    schedule: '0 2 * * *'\n%s    %s: %q\n", tc.runtime, tc.build, tc.field, tc.command)
@@ -52,7 +52,7 @@ func TestBlueprintCronCommandSerializedReapply(t *testing.T) {
 			}
 			firstID := apply(manifest)
 			before := getTenantApp(t, svc.Client, connOwner, "nightly")
-			if before.Spec.Type != appv1alpha1.TypeCronJob || before.Spec.Runtime != tc.runtime || before.Spec.Command != "" || before.Spec.StartCommand != tc.command {
+			if before.Spec.Type != appv1alpha1.TypeCronJob || before.Spec.Runtime != tc.runtime || before.Spec.Command != "" || before.Spec.StartCommand != tc.wantStart {
 				t.Errorf("initial cron command fields = %+v", before.Spec)
 			}
 			if tc.runtime == "go" && (before.Spec.Builder != "native" || before.Spec.BuildCommand != "go build -o app .") {
@@ -83,7 +83,10 @@ func TestBlueprintCronCommandSerializedReapply(t *testing.T) {
 }
 
 func TestDirectCronCreatePreservesCommandFields(t *testing.T) {
-	for _, command := range []string{"", "  echo override  "} {
+	// A nonblank command is stored verbatim; whitespace-only is no command (w8/m68).
+	for command, want := range map[string]string{
+		"": "", "   ": "", "  echo override  ": "  echo override  ", `printf '%s' tail\ `: `printf '%s' tail\ `,
+	} {
 		t.Run(command, func(t *testing.T) {
 			svc, cl := newService(nil)
 			_, err := svc.Create(context.Background(), CreateRequest{
@@ -96,7 +99,7 @@ func TestDirectCronCreatePreservesCommandFields(t *testing.T) {
 				t.Fatal(err)
 			}
 			app := getApp(t, cl, "nightly")
-			if app.Spec.StartCommand != "echo fallback" || app.Spec.Command != strings.TrimSpace(command) {
+			if app.Spec.StartCommand != "echo fallback" || app.Spec.Command != want {
 				t.Fatalf("direct create changed command semantics: %+v", app.Spec)
 			}
 		})
