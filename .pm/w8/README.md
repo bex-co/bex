@@ -149,7 +149,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **101** — [Blueprint static rule errors point to the service instead of the invalid rule](done/101.md) — **DONE 2026-10-13** (fix `2fb562c4a`; sweep212 native matrix passes with exact field locations; GraphQL/MCP details agree in code)
 
-- [ ] **100** — [Blueprint environment errors point to unrelated or nonexistent fields](100.md) — **TODO (sweep227 deferred-reference gap plus sweep242 late current-state refusals: eight new live repeated-key mislocations, first/fresh controls pass; carry the authored ordinal through refs and stateCopy; 55m remaining)**
+- [ ] **100** — [Blueprint environment errors point to unrelated or nonexistent fields](blocked/100.md) — **BLOCKED (2026-10-14: deferred-reference and current-state refusals now carry the authored envVars ordinal, with regressions; needs the API deployed to production plus both native clients replaying the sweep227/sweep242 second-pass cases)**
 
 - [x] **098** — [Blueprint validation accepts Key Value envVarKey refs that resolve to an empty key](done/098.md) — **DONE 2026-10-13** (fixes `fcd0d1124`/`0daac2275`; sweeps 207/212 native matrices pass; REST/GraphQL/MCP agreement in code; hosted apply recorded as a boundary)
 
