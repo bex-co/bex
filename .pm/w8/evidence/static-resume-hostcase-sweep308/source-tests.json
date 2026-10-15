@@ -1,0 +1,173 @@
+{
+  "head": "fc4ff2b662ab534889ad26626e22945521d59969",
+  "deployed_revision": "unobserved",
+  "focused_tests_only": true,
+  "results": {
+    "sweep308-focused-source": {
+      "test_passes": 3,
+      "events": [
+        {
+          "Time": "2026-10-15T11:51:39.576561-07:00",
+          "Action": "start",
+          "Package": "github.com/bex-co/bex/lego/operator/internal/staticserver"
+        },
+        {
+          "Time": "2026-10-15T11:51:40.15576-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/operator/internal/staticserver",
+          "Test": "TestResumeBeforeRefreshAnswersRetryable503"
+        },
+        {
+          "Time": "2026-10-15T11:51:40.155973-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/operator/internal/staticserver",
+          "Test": "TestResumeBeforeRefreshAnswersRetryable503",
+          "Output": "=== RUN   TestResumeBeforeRefreshAnswersRetryable503\n"
+        },
+        {
+          "Time": "2026-10-15T11:51:40.210699-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/operator/internal/staticserver",
+          "Test": "TestResumeBeforeRefreshAnswersRetryable503",
+          "Output": "--- PASS: TestResumeBeforeRefreshAnswersRetryable503 (0.05s)\n"
+        },
+        {
+          "Time": "2026-10-15T11:51:40.210778-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/operator/internal/staticserver",
+          "Test": "TestResumeBeforeRefreshAnswersRetryable503",
+          "Elapsed": 0.05
+        },
+        {
+          "Time": "2026-10-15T11:51:40.210844-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/operator/internal/staticserver",
+          "Test": "TestUnavailableHEADOverHTTP"
+        },
+        {
+          "Time": "2026-10-15T11:51:40.210863-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/operator/internal/staticserver",
+          "Test": "TestUnavailableHEADOverHTTP",
+          "Output": "=== RUN   TestUnavailableHEADOverHTTP\n"
+        },
+        {
+          "Time": "2026-10-15T11:51:40.213829-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/operator/internal/staticserver",
+          "Test": "TestUnavailableHEADOverHTTP",
+          "Output": "--- PASS: TestUnavailableHEADOverHTTP (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T11:51:40.213875-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/operator/internal/staticserver",
+          "Test": "TestUnavailableHEADOverHTTP",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T11:51:40.217966-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/operator/internal/staticserver",
+          "Test": "TestAbsentHostsStayNotFound"
+        },
+        {
+          "Time": "2026-10-15T11:51:40.217998-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/operator/internal/staticserver",
+          "Test": "TestAbsentHostsStayNotFound",
+          "Output": "=== RUN   TestAbsentHostsStayNotFound\n"
+        },
+        {
+          "Time": "2026-10-15T11:51:40.220942-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/operator/internal/staticserver",
+          "Test": "TestAbsentHostsStayNotFound",
+          "Output": "--- PASS: TestAbsentHostsStayNotFound (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T11:51:40.220977-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/operator/internal/staticserver",
+          "Test": "TestAbsentHostsStayNotFound",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T11:51:40.220984-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/operator/internal/staticserver",
+          "Output": "PASS\n"
+        },
+        {
+          "Time": "2026-10-15T11:51:40.224845-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/operator/internal/staticserver",
+          "Output": "ok  \tgithub.com/bex-co/bex/lego/operator/internal/staticserver\t0.641s\n"
+        },
+        {
+          "Time": "2026-10-15T11:51:40.224901-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/operator/internal/staticserver",
+          "Elapsed": 0.648
+        }
+      ],
+      "stderr": ""
+    },
+    "sweep308-host-source": {
+      "test_passes": 1,
+      "events": [
+        {
+          "Time": "2026-10-15T11:57:14.331852-07:00",
+          "Action": "start",
+          "Package": "github.com/bex-co/bex/lego/operator/internal/staticserver"
+        },
+        {
+          "Time": "2026-10-15T11:57:14.965324-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/operator/internal/staticserver",
+          "Test": "TestHostLookupIgnoresLetterCase"
+        },
+        {
+          "Time": "2026-10-15T11:57:14.965418-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/operator/internal/staticserver",
+          "Test": "TestHostLookupIgnoresLetterCase",
+          "Output": "=== RUN   TestHostLookupIgnoresLetterCase\n"
+        },
+        {
+          "Time": "2026-10-15T11:57:15.003033-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/operator/internal/staticserver",
+          "Test": "TestHostLookupIgnoresLetterCase",
+          "Output": "--- PASS: TestHostLookupIgnoresLetterCase (0.04s)\n"
+        },
+        {
+          "Time": "2026-10-15T11:57:15.003069-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/operator/internal/staticserver",
+          "Test": "TestHostLookupIgnoresLetterCase",
+          "Elapsed": 0.04
+        },
+        {
+          "Time": "2026-10-15T11:57:15.003116-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/operator/internal/staticserver",
+          "Output": "PASS\n"
+        },
+        {
+          "Time": "2026-10-15T11:57:15.004726-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/operator/internal/staticserver",
+          "Output": "ok  \tgithub.com/bex-co/bex/lego/operator/internal/staticserver\t0.672s\n"
+        },
+        {
+          "Time": "2026-10-15T11:57:15.004772-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/operator/internal/staticserver",
+          "Elapsed": 0.673
+        }
+      ],
+      "stderr": ""
+    }
+  }
+}

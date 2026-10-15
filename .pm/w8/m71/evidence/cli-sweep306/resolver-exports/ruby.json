@@ -1,0 +1,12 @@
+{
+  "runtime": "ruby",
+  "requested_bun": "1.3.4",
+  "primary_choice": {
+    "Label": "Ruby",
+    "Line": "3.4",
+    "Image": "ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172",
+    "Source": ""
+  },
+  "dockerfile_unchanged": true,
+  "has_bun_setup_text": false
+}

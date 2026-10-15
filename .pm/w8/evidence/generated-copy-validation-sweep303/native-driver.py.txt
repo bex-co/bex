@@ -1,0 +1,73 @@
+from pathlib import Path
+import copy, datetime, json, os, secrets, shutil, subprocess, sys, time
+os.umask(0o077)
+P=Path(__file__).resolve().parent
+root=Path('/Volumes/nvme4tbfish/projects/bex8')
+cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json'
+mode=sys.argv[1]
+if mode=='prepare':
+    out=P/'sweep303-cases.json'
+    assert not out.exists()
+    nonce=secrets.token_hex(3)
+    consumer='qa303-'+nonce+'-consumer';source='qa303-'+nonce+'-source'
+    base={'services':[{'name':consumer,'type':'web','runtime':'image','image':{'url':'nginx:1'},'plan':'free','envVars':[{'key':'QA_COPY','fromService':{'type':'web','name':source,'envVarKey':'QA_VALUE'}}]},{'name':source,'type':'web','runtime':'image','image':{'url':'nginx:1'},'plan':'free','envVars':[{'key':'QA_VALUE','generateValue':True}]}]}
+    cases=[]
+    def add(label,doc,valid):cases.append({'label':label,'document':doc,'expected_valid':valid})
+    add('generated consumer first',copy.deepcopy(base),True)
+    doc=copy.deepcopy(base);doc['services'].reverse();add('generated source first',doc,True)
+    doc=copy.deepcopy(base);doc['services'][1]['envVars']=[{'key':'QA_VALUE','value':'QA_LITERAL_'+nonce}];add('literal copy control',doc,True)
+    doc=copy.deepcopy(base);doc['services'][1]['envVars'].append({'key':'QA_VALUE','value':'QA_LITERAL_'+nonce});add('literal masks generated key',doc,True)
+    doc=copy.deepcopy(base);doc['services'][1]['envVars']=[{'key':'QA_VALUE','sync':False}];add('unanswered prompt refusal',doc,False)
+    doc=copy.deepcopy(base);doc['services'].append({'name':'qa303-'+nonce+'-third','type':'web','runtime':'image','image':{'url':'nginx:1'},'plan':'free','envVars':[{'key':'QA_AGAIN','fromService':{'type':'web','name':consumer,'envVarKey':'QA_COPY'}}]});add('copy of copy refusal',doc,False)
+    doc=copy.deepcopy(base);doc['services'][0]['envVars'].append({'key':'QA_COPY','value':'QA_SHADOW_'+nonce});add('consumer duplicate refusal',doc,False)
+    doc=copy.deepcopy(base);doc['services'][0]['envVars'][0]['fromService']['envVarKey']='QA_MISSING';add('unknown source key refusal',doc,False)
+    out.write_text(json.dumps(cases,indent=2)+'\n')
+    payload=json.dumps(cases)
+    go='''package apps
+import("encoding/json";"testing")
+func TestQA303GeneratedCopyContract(t *testing.T){
+ var cases []struct{Label string `json:"label"`; Document map[string]any `json:"document"`; Expected bool `json:"expected_valid"`}
+ if err:=json.Unmarshal([]byte(`PAYLOAD`),&cases);err!=nil{t.Fatal(err)}
+ for _,tc:=range cases{t.Run(tc.Label,func(t *testing.T){b,err:=json.Marshal(tc.Document);if err!=nil{t.Fatal(err)};src,ir,problems:=CompileBlueprintIR(string(b));valid:=len(problems)==0;var parseErr error;if valid{_,parseErr=parseCompiledStack(blueprintParseOverrides{},src,ir);valid=parseErr==nil};t.Logf("label=%s valid=%v compile=%+v parse=%v",tc.Label,valid,problems,parseErr);if valid!=tc.Expected{t.Errorf("valid=%v want=%v",valid,tc.Expected)}})}
+}
+'''.replace('PAYLOAD',payload)
+    f=P/'qa303-copy-contract_test.go';f.write_text(go)
+    overlay={'Replace':{str(root/'lego/backend/internal/apps/qa303_copy_contract_test.go'):str(f.resolve())}}
+    (P/'sweep303-overlay.json').write_text(json.dumps(overlay))
+    print('Prepared8 ordinary Blueprint cases; no live validation calls yet.')
+elif mode=='live':
+    c=json.loads(cp.read_text())
+    assert c.get('sync303_result')==0 and not c.get('active_sync_stash') and 'sweep303_copy_validation' not in c
+    testrows=[json.loads(line) for line in (P/'sweep303-source-tests.jsonl').read_text().splitlines()]
+    assert testrows[-1]['Action']=='pass' and not any(r['Action'] in ('fail','skip') for r in testrows)
+    x={'sweep':303,'head':c['head'],'phase':'native validation only; no resource writes or apply','results':[]}
+    c['sweep303_copy_validation']=x
+    def save():
+        c['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();cp.write_text(json.dumps(c,indent=2));cp.chmod(0o600);(P/'sweep303-live-results.json').write_text(json.dumps(x,indent=2)+'\n')
+    save()
+    cases=json.loads((P/'sweep303-cases.json').read_text())
+    try:
+        for client,runner,flags in [('published Bex0.3.2','run.py',['--release']),('unmodified Render2.27','run-render.py',[])]:
+            for case in cases:
+                f=P/'sweep303-input.yaml';cfg=P/'render-config/cli.yaml';assert not f.exists()
+                f.write_text(json.dumps(case['document'],indent=2)+'\n')
+                args=['blueprints','validate',str(f),'--confirm','-o','json']
+                record={'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'client':client,**case,'command':[client,*args],'state':'validation intent persisted'}
+                x['results'].append(record);save()
+                try:
+                    if runner=='run-render.py':assert not cfg.exists();shutil.copyfile(P/'config/cli.yaml',cfg);cfg.chmod(0o600)
+                    result=json.loads(subprocess.check_output(['python3',str(P/runner),*flags,*args],text=True,timeout=60));record['result']=result
+                finally:
+                    if runner=='run-render.py':cfg.unlink(missing_ok=True)
+                    f.unlink(missing_ok=True)
+                try:decoded=json.loads(result['stdout'])
+                except ValueError:decoded=None
+                expected=case['expected_valid']
+                passed=isinstance(decoded,dict) and decoded.get('valid') is expected and result['exit']==(0 if expected else 1) and (expected or bool(decoded.get('errors')))
+                record.update(decoded=decoded,acceptance_pass=bool(passed),state='native validation complete; input removed');save()
+                print(json.dumps({'client':client,'label':case['label'],'expected_valid':expected,'valid':decoded.get('valid') if isinstance(decoded,dict) else None,'native_exit':result['exit'],'pass':bool(passed)}),flush=True)
+                time.sleep(.5)
+    finally:
+        x['copied_render_config_removed']=not (P/'render-config/cli.yaml').exists();x['input_removed']=not (P/'sweep303-input.yaml').exists();save()
+    print(json.dumps({'native_calls':len(x['results']),'passes':sum(r['acceptance_pass'] for r in x['results']),'resource_mutations':0}),flush=True)
+else:raise ValueError(mode)

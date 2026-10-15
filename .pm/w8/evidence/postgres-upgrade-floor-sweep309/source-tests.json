@@ -1,0 +1,680 @@
+{
+  "head": "fc4ff2b662ab534889ad26626e22945521d59969",
+  "focused_only": true,
+  "named_passes": 24,
+  "top_level_passes": 3,
+  "events": [
+    {
+      "Time": "2026-10-15T12:09:35.958339-07:00",
+      "Action": "start",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.583534-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionRunsTheUpdateChecks"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.583668-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionRunsTheUpdateChecks",
+      "Output": "=== RUN   TestSetVersionRunsTheUpdateChecks\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.620992-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionRunsTheUpdateChecks",
+      "Output": "--- PASS: TestSetVersionRunsTheUpdateChecks (0.04s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.621027-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionRunsTheUpdateChecks",
+      "Elapsed": 0.04
+    },
+    {
+      "Time": "2026-10-15T12:09:36.621921-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.621927-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard",
+      "Output": "=== RUN   TestSetVersionValidationAndBackupGuard\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.621933-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/free_upward"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.621937-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/free_upward",
+      "Output": "=== RUN   TestSetVersionValidationAndBackupGuard/free_upward\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.624532-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/free_upward",
+      "Output": "--- PASS: TestSetVersionValidationAndBackupGuard/free_upward (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.624571-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/free_upward",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:09:36.624592-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/version_not_observed"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.624606-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/version_not_observed",
+      "Output": "=== RUN   TestSetVersionValidationAndBackupGuard/version_not_observed\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.62564-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/version_not_observed",
+      "Output": "--- PASS: TestSetVersionValidationAndBackupGuard/version_not_observed (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.625654-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/version_not_observed",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:09:36.625658-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/unknown"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.625662-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/unknown",
+      "Output": "=== RUN   TestSetVersionValidationAndBackupGuard/unknown\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.626808-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/unknown",
+      "Output": "--- PASS: TestSetVersionValidationAndBackupGuard/unknown (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.626841-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/unknown",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:09:36.626858-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/same"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.626869-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/same",
+      "Output": "=== RUN   TestSetVersionValidationAndBackupGuard/same\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.627942-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/same",
+      "Output": "--- PASS: TestSetVersionValidationAndBackupGuard/same (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.627975-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/same",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:09:36.627984-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/downgrade"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.627988-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/downgrade",
+      "Output": "=== RUN   TestSetVersionValidationAndBackupGuard/downgrade\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.628963-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/downgrade",
+      "Output": "--- PASS: TestSetVersionValidationAndBackupGuard/downgrade (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.62898-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/downgrade",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:09:36.628986-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/13_to_14_below_upgrade_floor"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.628989-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/13_to_14_below_upgrade_floor",
+      "Output": "=== RUN   TestSetVersionValidationAndBackupGuard/13_to_14_below_upgrade_floor\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.629957-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/13_to_14_below_upgrade_floor",
+      "Output": "--- PASS: TestSetVersionValidationAndBackupGuard/13_to_14_below_upgrade_floor (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.629965-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/13_to_14_below_upgrade_floor",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:09:36.629975-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/13_to_15_below_upgrade_floor"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.629979-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/13_to_15_below_upgrade_floor",
+      "Output": "=== RUN   TestSetVersionValidationAndBackupGuard/13_to_15_below_upgrade_floor\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.631752-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/13_to_15_below_upgrade_floor",
+      "Output": "--- PASS: TestSetVersionValidationAndBackupGuard/13_to_15_below_upgrade_floor (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.631764-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/13_to_15_below_upgrade_floor",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:09:36.631768-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/14_to_15_below_upgrade_floor"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.631771-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/14_to_15_below_upgrade_floor",
+      "Output": "=== RUN   TestSetVersionValidationAndBackupGuard/14_to_15_below_upgrade_floor\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.632805-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/14_to_15_below_upgrade_floor",
+      "Output": "--- PASS: TestSetVersionValidationAndBackupGuard/14_to_15_below_upgrade_floor (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.632813-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/14_to_15_below_upgrade_floor",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:09:36.632817-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/13_to_floor"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.632819-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/13_to_floor",
+      "Output": "=== RUN   TestSetVersionValidationAndBackupGuard/13_to_floor\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.634749-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/13_to_floor",
+      "Output": "--- PASS: TestSetVersionValidationAndBackupGuard/13_to_floor (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.634755-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/13_to_floor",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:09:36.634759-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/15_to_18"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.634761-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/15_to_18",
+      "Output": "=== RUN   TestSetVersionValidationAndBackupGuard/15_to_18\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.637685-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/15_to_18",
+      "Output": "--- PASS: TestSetVersionValidationAndBackupGuard/15_to_18 (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.637709-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/15_to_18",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:09:36.637727-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/durable_backup_disabled"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.637731-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/durable_backup_disabled",
+      "Output": "=== RUN   TestSetVersionValidationAndBackupGuard/durable_backup_disabled\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.638818-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/durable_backup_disabled",
+      "Output": "--- PASS: TestSetVersionValidationAndBackupGuard/durable_backup_disabled (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.63883-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/durable_backup_disabled",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:09:36.638834-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/durable_backup_pending"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.638837-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/durable_backup_pending",
+      "Output": "=== RUN   TestSetVersionValidationAndBackupGuard/durable_backup_pending\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.639998-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/durable_backup_pending",
+      "Output": "--- PASS: TestSetVersionValidationAndBackupGuard/durable_backup_pending (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.640018-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/durable_backup_pending",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:09:36.640022-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/durable_completed_backup"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.640025-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/durable_completed_backup",
+      "Output": "=== RUN   TestSetVersionValidationAndBackupGuard/durable_completed_backup\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.642972-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/durable_completed_backup",
+      "Output": "--- PASS: TestSetVersionValidationAndBackupGuard/durable_completed_backup (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.643012-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/durable_completed_backup",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:09:36.643019-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/durable_stale_generation"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.643024-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/durable_stale_generation",
+      "Output": "=== RUN   TestSetVersionValidationAndBackupGuard/durable_stale_generation\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.644054-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/durable_stale_generation",
+      "Output": "--- PASS: TestSetVersionValidationAndBackupGuard/durable_stale_generation (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.644091-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/durable_stale_generation",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:09:36.644097-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/durable_current_generation"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.644101-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/durable_current_generation",
+      "Output": "=== RUN   TestSetVersionValidationAndBackupGuard/durable_current_generation\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.647204-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/durable_current_generation",
+      "Output": "--- PASS: TestSetVersionValidationAndBackupGuard/durable_current_generation (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.647244-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard/durable_current_generation",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:09:36.647251-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard",
+      "Output": "--- PASS: TestSetVersionValidationAndBackupGuard (0.03s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.647255-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestSetVersionValidationAndBackupGuard",
+      "Elapsed": 0.03
+    },
+    {
+      "Time": "2026-10-15T12:09:36.64726-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.647263-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere",
+      "Output": "=== RUN   TestUpgradeTargetBelowFloorRefusedEverywhere\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.647282-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere/rest_{\"version\":\"14\"}"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.647286-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere/rest_{\"version\":\"14\"}",
+      "Output": "=== RUN   TestUpgradeTargetBelowFloorRefusedEverywhere/rest_{\"version\":\"14\"}\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.648578-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere/rest_{\"version\":\"14\"}",
+      "Output": "--- PASS: TestUpgradeTargetBelowFloorRefusedEverywhere/rest_{\"version\":\"14\"} (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.648594-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere/rest_{\"version\":\"14\"}",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:09:36.648599-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere/rest_{\"version\":\"15\",\"dryRun\":true}"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.648602-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere/rest_{\"version\":\"15\",\"dryRun\":true}",
+      "Output": "=== RUN   TestUpgradeTargetBelowFloorRefusedEverywhere/rest_{\"version\":\"15\",\"dryRun\":true}\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.650434-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere/rest_{\"version\":\"15\",\"dryRun\":true}",
+      "Output": "--- PASS: TestUpgradeTargetBelowFloorRefusedEverywhere/rest_{\"version\":\"15\",\"dryRun\":true} (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.650524-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere/rest_{\"version\":\"15\",\"dryRun\":true}",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:09:36.650539-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere/graphql"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.650543-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere/graphql",
+      "Output": "=== RUN   TestUpgradeTargetBelowFloorRefusedEverywhere/graphql\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.65247-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere/graphql",
+      "Output": "--- PASS: TestUpgradeTargetBelowFloorRefusedEverywhere/graphql (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.652482-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere/graphql",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:09:36.652488-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere/mcp_dryRun=false"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.652491-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere/mcp_dryRun=false",
+      "Output": "=== RUN   TestUpgradeTargetBelowFloorRefusedEverywhere/mcp_dryRun=false\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.660064-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere/mcp_dryRun=false",
+      "Output": "--- PASS: TestUpgradeTargetBelowFloorRefusedEverywhere/mcp_dryRun=false (0.01s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.660116-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere/mcp_dryRun=false",
+      "Elapsed": 0.01
+    },
+    {
+      "Time": "2026-10-15T12:09:36.660134-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere/mcp_dryRun=true"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.660138-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere/mcp_dryRun=true",
+      "Output": "=== RUN   TestUpgradeTargetBelowFloorRefusedEverywhere/mcp_dryRun=true\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.666594-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere/mcp_dryRun=true",
+      "Output": "--- PASS: TestUpgradeTargetBelowFloorRefusedEverywhere/mcp_dryRun=true (0.01s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.666626-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere/mcp_dryRun=true",
+      "Elapsed": 0.01
+    },
+    {
+      "Time": "2026-10-15T12:09:36.666654-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere/omitted_version"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.666658-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere/omitted_version",
+      "Output": "=== RUN   TestUpgradeTargetBelowFloorRefusedEverywhere/omitted_version\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.669342-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere/omitted_version",
+      "Output": "--- PASS: TestUpgradeTargetBelowFloorRefusedEverywhere/omitted_version (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.669365-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere/omitted_version",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:09:36.66937-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere",
+      "Output": "--- PASS: TestUpgradeTargetBelowFloorRefusedEverywhere (0.02s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.669374-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Test": "TestUpgradeTargetBelowFloorRefusedEverywhere",
+      "Elapsed": 0.02
+    },
+    {
+      "Time": "2026-10-15T12:09:36.669378-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Output": "PASS\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.671445-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Output": "ok  \tgithub.com/bex-co/bex/lego/backend/internal/postgres\t0.712s\n"
+    },
+    {
+      "Time": "2026-10-15T12:09:36.671462-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/postgres",
+      "Elapsed": 0.713
+    }
+  ],
+  "stderr": ""
+}

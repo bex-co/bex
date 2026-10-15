@@ -1,0 +1,365 @@
+[
+  {
+    "label": "generated consumer first",
+    "document": {
+      "services": [
+        {
+          "name": "qa303-663e1d-consumer",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_COPY",
+              "fromService": {
+                "type": "web",
+                "name": "qa303-663e1d-source",
+                "envVarKey": "QA_VALUE"
+              }
+            }
+          ]
+        },
+        {
+          "name": "qa303-663e1d-source",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_VALUE",
+              "generateValue": true
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid": true
+  },
+  {
+    "label": "generated source first",
+    "document": {
+      "services": [
+        {
+          "name": "qa303-663e1d-source",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_VALUE",
+              "generateValue": true
+            }
+          ]
+        },
+        {
+          "name": "qa303-663e1d-consumer",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_COPY",
+              "fromService": {
+                "type": "web",
+                "name": "qa303-663e1d-source",
+                "envVarKey": "QA_VALUE"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid": true
+  },
+  {
+    "label": "literal copy control",
+    "document": {
+      "services": [
+        {
+          "name": "qa303-663e1d-consumer",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_COPY",
+              "fromService": {
+                "type": "web",
+                "name": "qa303-663e1d-source",
+                "envVarKey": "QA_VALUE"
+              }
+            }
+          ]
+        },
+        {
+          "name": "qa303-663e1d-source",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_VALUE",
+              "value": "QA_LITERAL_663e1d"
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid": true
+  },
+  {
+    "label": "literal masks generated key",
+    "document": {
+      "services": [
+        {
+          "name": "qa303-663e1d-consumer",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_COPY",
+              "fromService": {
+                "type": "web",
+                "name": "qa303-663e1d-source",
+                "envVarKey": "QA_VALUE"
+              }
+            }
+          ]
+        },
+        {
+          "name": "qa303-663e1d-source",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_VALUE",
+              "generateValue": true
+            },
+            {
+              "key": "QA_VALUE",
+              "value": "QA_LITERAL_663e1d"
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid": true
+  },
+  {
+    "label": "unanswered prompt refusal",
+    "document": {
+      "services": [
+        {
+          "name": "qa303-663e1d-consumer",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_COPY",
+              "fromService": {
+                "type": "web",
+                "name": "qa303-663e1d-source",
+                "envVarKey": "QA_VALUE"
+              }
+            }
+          ]
+        },
+        {
+          "name": "qa303-663e1d-source",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_VALUE",
+              "sync": false
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid": false
+  },
+  {
+    "label": "copy of copy refusal",
+    "document": {
+      "services": [
+        {
+          "name": "qa303-663e1d-consumer",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_COPY",
+              "fromService": {
+                "type": "web",
+                "name": "qa303-663e1d-source",
+                "envVarKey": "QA_VALUE"
+              }
+            }
+          ]
+        },
+        {
+          "name": "qa303-663e1d-source",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_VALUE",
+              "generateValue": true
+            }
+          ]
+        },
+        {
+          "name": "qa303-663e1d-third",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_AGAIN",
+              "fromService": {
+                "type": "web",
+                "name": "qa303-663e1d-consumer",
+                "envVarKey": "QA_COPY"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid": false
+  },
+  {
+    "label": "consumer duplicate refusal",
+    "document": {
+      "services": [
+        {
+          "name": "qa303-663e1d-consumer",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_COPY",
+              "fromService": {
+                "type": "web",
+                "name": "qa303-663e1d-source",
+                "envVarKey": "QA_VALUE"
+              }
+            },
+            {
+              "key": "QA_COPY",
+              "value": "QA_SHADOW_663e1d"
+            }
+          ]
+        },
+        {
+          "name": "qa303-663e1d-source",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_VALUE",
+              "generateValue": true
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid": false
+  },
+  {
+    "label": "unknown source key refusal",
+    "document": {
+      "services": [
+        {
+          "name": "qa303-663e1d-consumer",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_COPY",
+              "fromService": {
+                "type": "web",
+                "name": "qa303-663e1d-source",
+                "envVarKey": "QA_MISSING"
+              }
+            }
+          ]
+        },
+        {
+          "name": "qa303-663e1d-source",
+          "type": "web",
+          "runtime": "image",
+          "image": {
+            "url": "nginx:1"
+          },
+          "plan": "free",
+          "envVars": [
+            {
+              "key": "QA_VALUE",
+              "generateValue": true
+            }
+          ]
+        }
+      ]
+    },
+    "expected_valid": false
+  }
+]

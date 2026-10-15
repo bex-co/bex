@@ -1,0 +1,12 @@
+{
+  "runtime": "go",
+  "requested_bun": "1.3.4",
+  "primary_choice": {
+    "Label": "Go",
+    "Line": "1.24",
+    "Image": "golang:1.24-bookworm@sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac",
+    "Source": ""
+  },
+  "dockerfile_unchanged": true,
+  "has_bun_setup_text": false
+}

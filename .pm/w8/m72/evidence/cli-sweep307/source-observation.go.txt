@@ -1,0 +1,38 @@
+package build
+
+import (
+ "encoding/base64"
+ "encoding/json"
+ "os"
+ "path/filepath"
+ "strings"
+ "testing"
+)
+
+func TestQA307PythonToolResolutionObservation(t *testing.T) {
+ out:=os.Getenv("QA307_OUTPUT");if out==""{t.Fatal("private output required")}
+ files:=map[string]string{}
+ for _,withPoetry:=range []bool{false,true}{
+  name:="primary_only";if withPoetry{name="with_poetry"}
+  t.Run(name,func(t *testing.T){
+   dir:=t.TempDir();src:=filepath.Join(dir,"source");if err:=os.Mkdir(src,0700);err!=nil{t.Fatal(err)}
+   bundle:=filepath.Join(dir,"env");records:="PYTHON_VERSION="+base64.StdEncoding.EncodeToString([]byte("3.12"))+"\n"
+   if withPoetry{records+="POETRY_VERSION="+base64.StdEncoding.EncodeToString([]byte("2.1.3"))+"\n"}
+   if err:=os.WriteFile(bundle,[]byte(records),0600);err!=nil{t.Fatal(err)}
+   file:=filepath.Join(dir,"Dockerfile");before:=nativeDockerfile(Options{Runtime:"python",BuildCommand:"printf '%s\\n' QA307_SOURCE",StartCommand:"printf '%s\\n' QA307_START"})
+   if err:=os.WriteFile(file,[]byte(before),0600);err!=nil{t.Fatal(err)}
+   choice,err:=ResolveNativeBuild("python",bundle,file,src);if err!=nil{t.Fatal(err)}
+   after,err:=os.ReadFile(file);if err!=nil{t.Fatal(err)}
+   env,err:=readEnvBundle(bundle);if err!=nil{t.Fatal(err)}
+   record:=struct{Case string `json:"case"`;Python string `json:"python_requested"`;Poetry string `json:"poetry_requested"`;Choice NativeChoice `json:"primary_choice"`;HasPoetry bool `json:"poetry_setup_text"`}{name,env["PYTHON_VERSION"],env["POETRY_VERSION"],choice,strings.Contains(strings.ToLower(string(after)),"poetry")}
+   data,err:=json.MarshalIndent(record,"","  ");if err!=nil{t.Fatal(err)}
+   for n,v:=range map[string][]byte{name+".json":data,name+".Dockerfile":after}{if err:=os.WriteFile(filepath.Join(out,n),v,0600);err!=nil{t.Fatal(err)}}
+   files[name]=string(after)
+   t.Logf("case=%s decoded_PYTHON_VERSION=%s decoded_POETRY_VERSION=%s selected=%s source=%s poetry_setup=%v",name,record.Python,record.Poetry,choice.Line,choice.Source,record.HasPoetry)
+   if choice.Line!="3.12" || choice.Source!="PYTHON_VERSION=3.12"{t.Fatal("primary control failed")}
+   if withPoetry && record.Poetry!="2.1.3"{t.Fatal("tool request did not reach actual resolver")}
+  })
+ }
+ t.Logf("same generated Dockerfile with and without POETRY_VERSION: %v",files["primary_only"]==files["with_poetry"])
+ // Fixed fixture cache revisions: this observation makes no cache-defect claim.
+}

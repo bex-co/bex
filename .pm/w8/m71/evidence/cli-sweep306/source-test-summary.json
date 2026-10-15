@@ -1,0 +1,10 @@
+{
+  "command": "GOWORK=off GOTOOLCHAIN=go1.26.8 QA306_OUTPUT=<owned-temp>/sweep306-resolver-exports go test -json -count=1 -overlay=<owned-temp>/sweep306-overlay.json ./internal/build -run ^(TestNativeDockerfilePreservesRenderCommands|TestNativeDockerfileKeepsToolchainPATH|TestNativeRuntimeImagesAreDigestPinned|TestQA306BunResolverObservation)$",
+  "exit": 0,
+  "named_parent_subtest_passes": 10,
+  "top_level_tests": 4,
+  "runtime_observations": 6,
+  "source_HEAD": "562cbfd25a6a75c559d705efc3736432425e9c7d",
+  "diagnostic_not_fix_regression": true,
+  "full_operator_suite": false
+}

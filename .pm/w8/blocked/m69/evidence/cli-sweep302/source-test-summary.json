@@ -1,0 +1,11 @@
+{
+  "command": "GOWORK=off GOTOOLCHAIN=go1.26.8 go test -json -count=1 ./internal/apps -run ^(TestSetCommandsMapsCronStartCommand|TestNativeCronStartCommandIsNotACommandOverride|TestRESTCreateKeepsDockerCronCommandFromNativeSpelling|TestNativeCronCommandUnchanged|TestNativeCronCreateKeepsTheStartCommand|TestNativeCronStartCommandUpdateKeepsTheNativeRole|TestNativeCronExplicitOverrideStaysAnOverride|TestNativeCronReadsBackItsStartCommand|TestBlueprintNativeCronEditKeepsTheNativeRole|TestBlueprintLeavesAMatchingNativeCronOverride)$",
+  "exit": 0,
+  "named_parent_subtest_passes": 24,
+  "top_level_tests": 10,
+  "test_source_HEAD": "3990e38795f47aee3171defc2bb2f5f2454e7b84",
+  "tested_role_files_unchanged_at_current_HEAD": true,
+  "current_HEAD": "5291bcfe33a1ba4c5cc026a9807f183cc360cab3",
+  "full_backend_suite": false,
+  "product_source_changes_by_QA": false
+}
