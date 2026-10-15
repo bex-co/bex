@@ -170,6 +170,8 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
             serviceId={serviceId}
             schedule={service.schedule ?? null}
             command={service.command ?? null}
+            runtime={service.runtime ?? null}
+            startCommand={service.startCommand ?? null}
           />
         ) : (
           // An Existing Image service has no build, so the Deploy card a

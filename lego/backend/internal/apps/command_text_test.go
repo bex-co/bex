@@ -17,6 +17,7 @@ limitations under the License.
 package apps
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -49,7 +50,7 @@ var commandFields = []commandField{
 	{"buildCommand", "buildCommand", false, func(s appv1alpha1.AppSpec) string { return s.BuildCommand }},
 	{"startCommand", "startCommand", false, func(s appv1alpha1.AppSpec) string { return s.StartCommand }},
 	{"preDeployCommand", "preDeployCommand", false, func(s appv1alpha1.AppSpec) string { return s.PreDeployCommand }},
-	{"cron command", "startCommand", true, func(s appv1alpha1.AppSpec) string { return s.Command }},
+	{"cron command", "startCommand", true, func(s appv1alpha1.AppSpec) string { return cmp.Or(s.Command, s.StartCommand) }},
 }
 
 // details places command where the pinned CLI sends this field.
@@ -123,13 +124,17 @@ func TestRESTCommandWritesKeepAuthoredText(t *testing.T) {
 				assertStoredCommand(t, svc, name, f, command)
 			})
 		}
-		t.Run("whitespace-only update clears/"+f.name, func(t *testing.T) {
+		t.Run("whitespace-only update/"+f.name, func(t *testing.T) {
 			before := "echo before"
 			svc, mux, name := f.restFixture(t, &before)
 			if rec := serveJSON(t, mux, http.MethodPatch, "/v1/services/"+name, map[string]any{"serviceDetails": f.details(" \t ")}); rec.Code != http.StatusOK {
 				t.Fatalf("PATCH: %d %s", rec.Code, rec.Body)
 			}
-			assertStoredCommand(t, svc, name, f, "")
+			want := ""
+			if f.cron { // a native cron keeps the start command its build needs (w8/m69)
+				want = before
+			}
+			assertStoredCommand(t, svc, name, f, want)
 		})
 	}
 }

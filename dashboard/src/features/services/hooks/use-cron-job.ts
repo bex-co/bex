@@ -2,7 +2,11 @@ import { useCallback, useState } from "react";
 import type { ApolloClient } from "@apollo/client";
 import { useApolloClient, useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
-import { ServerDocument, UpdateCronJobDocument } from "@/graphql/definitions";
+import {
+  ServerDocument,
+  SetStartCommandDocument,
+  UpdateCronJobDocument,
+} from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { useAskForProtectedConfirmation } from "@/common/providers/protected-retry-context";
@@ -31,6 +35,8 @@ export interface UseCronJobResult {
     schedule: string,
     command: string | null,
   ) => Promise<boolean>;
+  /** A native cron's Command save (w8/m69), refreshed like updateCronJob. */
+  setStartCommand: (id: string, command: string) => Promise<boolean>;
   busy: boolean;
   /**
    * The service whose save committed but whose authoritative re-read has not
@@ -69,7 +75,8 @@ async function refreshCronServer(client: ApolloClient, id: string) {
 
 /**
  * Wires the cron Deploy section's Schedule + Command controls to bex-api's
- * `updateCronJob` mutation (w5/m18). The mutation patches spec.schedule and
+ * `updateCronJob` mutation (w5/m18), and a native cron's Command to
+ * `setStartCommand` (w8/m69). updateCronJob patches spec.schedule and
  * spec.command; the operator applies the new schedule to the k8s CronJob on
  * its next reconcile pass. The toast confirms the write rather than implying
  * instant convergence.
@@ -77,7 +84,8 @@ async function refreshCronServer(client: ApolloClient, id: string) {
 export function useCronJob(): UseCronJobResult {
   const { t } = useTranslations();
   const client = useApolloClient();
-  const [mutate] = useMutation(UpdateCronJobDocument);
+  const [mutateCron] = useMutation(UpdateCronJobDocument);
+  const [mutateStartCommand] = useMutation(SetStartCommandDocument);
   const [busy, setBusy] = useState(false);
   const [staleId, setStaleId] = useState<string | null>(null);
   const askForConfirmation = useAskForProtectedConfirmation();
@@ -86,7 +94,7 @@ export function useCronJob(): UseCronJobResult {
   // and its retry re-reads without saving again. Until it succeeds the
   // service stays staleId-blocked so no save can replay pre-save values.
   const publish = useCallback(
-    (id: string): Promise<void> => {
+    (id: string, converging?: string): Promise<void> => {
       const attempt = async () => {
         try {
           await refreshCronServer(client, id);
@@ -102,7 +110,7 @@ export function useCronJob(): UseCronJobResult {
         }
         setStaleId((prev) => (prev === id ? null : prev));
         toast.success(t("services.deploySuccess"), {
-          description: t("services.deployConverging"),
+          description: converging,
         });
       };
       return attempt();
@@ -110,34 +118,55 @@ export function useCronJob(): UseCronJobResult {
     [client, t],
   );
 
-  const updateCronJob = useCallback(
-    async (id: string, schedule: string, command: string | null) => {
+  // One cron write: refused while this service's last save is unpublished,
+  // retried through a protected environment's confirmation, then published.
+  const save = useCallback(
+    async (
+      id: string,
+      write: (confirm?: string) => Promise<unknown>,
+      converging?: string,
+    ) => {
       // A previous save for this service committed but never published:
       // the caller's sibling value may be the restored pre-save snapshot.
       if (staleId === id) return false;
       setBusy(true);
       try {
-        // Changing the command changes what the job runs, which a protected
-        // environment guards; rescheduling alone does not (w4/m126).
-        await withProtectedRetry(askForConfirmation, (confirm) =>
-          mutate({
-            variables: { id, schedule, command, confirm },
-          }),
-        );
-      } catch (err) {
-        if (err instanceof ProtectedConfirmationDismissed) return false;
-        toast.error(mutationErrorMessage(err, t("services.deployError")));
-        return false;
-      }
-      try {
-        await publish(id);
+        try {
+          await withProtectedRetry(askForConfirmation, write);
+        } catch (err) {
+          if (err instanceof ProtectedConfirmationDismissed) return false;
+          toast.error(mutationErrorMessage(err, t("services.deployError")));
+          return false;
+        }
+        await publish(id, converging);
         return true;
       } finally {
         setBusy(false);
       }
     },
-    [mutate, publish, staleId, t, askForConfirmation],
+    [publish, staleId, t, askForConfirmation],
   );
 
-  return { updateCronJob, busy, staleId };
+  // Changing the command changes what the job runs, which a protected
+  // environment guards; rescheduling alone does not (w4/m126).
+  const updateCronJob = useCallback(
+    (id: string, schedule: string, command: string | null) =>
+      save(
+        id,
+        (confirm) =>
+          mutateCron({ variables: { id, schedule, command, confirm } }),
+        t("services.deployConverging"),
+      ),
+    [mutateCron, save, t],
+  );
+
+  const setStartCommand = useCallback(
+    (id: string, command: string) =>
+      save(id, (confirm) =>
+        mutateStartCommand({ variables: { id, command, confirm } }),
+      ),
+    [mutateStartCommand, save],
+  );
+
+  return { updateCronJob, setStartCommand, busy, staleId };
 }

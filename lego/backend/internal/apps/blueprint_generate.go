@@ -393,7 +393,7 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 	// Only a native build runs a build command, and render.yaml refuses one
 	// beside any other runtime: a Dockerfile or buildpack build's would fail
 	// the export's own check.
-	if a.Spec.BuildCommand != "" && strings.HasPrefix(buildStrategy(a.Spec), buildNative) {
+	if a.Spec.BuildCommand != "" && nativeBuild(buildStrategy(a.Spec)) {
 		entry["buildCommand"] = a.Spec.BuildCommand
 	}
 	if a.Spec.StartCommand != "" && !static {

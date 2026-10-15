@@ -584,8 +584,10 @@ func envSpecificDetails(a AppView, svcType string) (map[string]any, bool) {
 		}
 		return docker, true
 	}
+	// A cron's command override runs in place of its native start command,
+	// so it is what the cron runs when set (w8/m69).
 	startCommand := a.StartCommand
-	if svcType == appv1alpha1.TypeCronJob {
+	if svcType == appv1alpha1.TypeCronJob && a.Command != "" {
 		startCommand = a.Command
 	}
 	return map[string]any{

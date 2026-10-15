@@ -10,6 +10,7 @@ import { EditableFieldRow } from "@/features/services/components/editable-field-
 import { useCronJob } from "@/features/services/hooks/use-cron-job";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { commandText } from "@/features/services/lib/command-text";
+import { isNativeRuntime } from "@/features/services/lib/runtime";
 import {
   cronScheduleProblem,
   describeCron,
@@ -21,6 +22,10 @@ export interface CronDeploySectionProps {
   schedule: string | null;
   /** The entrypoint override (spec.command), or null when unset/loading. */
   command: string | null;
+  /** The build runtime; a native one makes the command its start command. */
+  runtime: string | null;
+  /** spec.startCommand: what a native cron runs when it has no override. */
+  startCommand: string | null;
 }
 
 /**
@@ -29,14 +34,24 @@ export interface CronDeploySectionProps {
  * Custom Domains + Idle timeout for a `cron_job`, neither of which applies to a
  * service with no HTTP traffic to serve or idle on. `updateCronJob` patches both
  * fields, so saving one row carries the other's persisted value unchanged.
+ *
+ * A native-runtime cron runs its start command, which the generated image's
+ * Bash CMD carries; `command` is an override that replaces that CMD and runs
+ * under /bin/sh, where Bash syntax fails (w8/m69). Its Command row therefore
+ * shows what runs (the override when set, else the start command) and saves
+ * through setStartCommand, which also drops the override. A container cron
+ * (Dockerfile or prebuilt image) runs `command` and saves it via updateCronJob.
  */
 export function CronDeploySection({
   serviceId,
   schedule,
   command,
+  runtime,
+  startCommand,
 }: CronDeploySectionProps) {
   const { t } = useTranslations();
-  const { updateCronJob, busy, staleId } = useCronJob();
+  const { updateCronJob, setStartCommand, busy, staleId } = useCronJob();
+  const native = isNativeRuntime(runtime);
   const capabilities = useCapabilities();
   const { canCreate, canOperate } = capabilities;
   const loading = schedule === null;
@@ -66,6 +81,9 @@ export function CronDeploySection({
     : undefined;
   const commandReasonKey = capabilities.reasonKey("can_create");
   const commandReason = commandReasonKey ? t(commandReasonKey) : undefined;
+  // What the job runs; the Schedule row keys on the override alone.
+  const runCommand =
+    native && !hasCommand ? (startCommand ?? "") : (command ?? "");
 
   return (
     <Card>
@@ -112,20 +130,36 @@ export function CronDeploySection({
         />
         <EditableFieldRow
           label={t("services.deployCommandLabel")}
-          hint={t("services.deployCommandHint")}
-          value={command ?? ""}
+          hint={t(
+            native
+              ? "services.deployCommandNativeHint"
+              : "services.deployCommandHint",
+          )}
+          value={runCommand}
           placeholder={t("services.deployCommandPlaceholder")}
           editLabel={t("services.deployCommandEdit")}
-          optional
+          optional={!native}
           mono
           busy={busy}
           disabled={loading || refreshStale || !canCreate}
           disabledReason={refreshStaleReason ?? commandReason}
-          // The Command row forwards exactly what the user left behind,
-          // including "" — the blank the field's hint invites.
+          // Forwards exactly what the user left behind, "" included: it clears
+          // a container cron's override, and a native cron refuses it.
           normalize={commandText}
+          validate={
+            native
+              ? (draft) =>
+                  draft.trim() === ""
+                    ? t("services.deployCommandRequired")
+                    : null
+              : undefined
+          }
+          // Saving a native override unchanged moves it into the start command.
+          dirty={native && hasCommand ? () => true : undefined}
           onSave={(value) =>
-            updateCronJob(serviceId, (schedule ?? "").trim(), value)
+            native
+              ? setStartCommand(serviceId, value)
+              : updateCronJob(serviceId, (schedule ?? "").trim(), value)
           }
         />
       </CardContent>

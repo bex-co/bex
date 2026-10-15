@@ -10,6 +10,13 @@ export type NativeRuntime =
 /** A repo-backed service's build strategy: a native runtime, or a Dockerfile. */
 export type GitRuntime = NativeRuntime | "docker";
 
+/** True for a native runtime; "docker", "image" and none are not. */
+export function isNativeRuntime(
+  runtime: string | null | undefined,
+): runtime is NativeRuntime {
+  return runtime != null && Object.hasOwn(RUNTIME_COMMANDS, runtime);
+}
+
 /** The default build/start commands each native runtime is seeded with. */
 export const RUNTIME_COMMANDS: Record<
   NativeRuntime,

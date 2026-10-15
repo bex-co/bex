@@ -54,7 +54,11 @@ func TestBlueprintCronCommandClearingAndUpdateReapply(t *testing.T) {
 				t.Fatal(err)
 			}
 			after := getApp(t, svc.Client, baseline.Name)
-			if after.Spec.Command != "echo updated" || after.Spec.StartCommand != baseline.Spec.StartCommand || after.Spec.RestartedAt == initial.Spec.RestartedAt || len(rec.deployCalls) != beforeDeploys+1 {
+			wantCommand, wantStart := "echo updated", baseline.Spec.StartCommand
+			if tc.runtime == "go" { // a native cron's edit is its start command (w8/m69)
+				wantCommand, wantStart = "", "echo updated"
+			}
+			if after.Spec.Command != wantCommand || after.Spec.StartCommand != wantStart || after.Spec.RestartedAt == initial.Spec.RestartedAt || len(rec.deployCalls) != beforeDeploys+1 {
 				t.Fatalf("command update failed: spec=%+v deploys=%d", after.Spec, len(rec.deployCalls))
 			}
 			svc.Client = fakeClient(serializedBlueprintApp(t, after))

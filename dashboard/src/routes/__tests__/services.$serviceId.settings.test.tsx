@@ -939,6 +939,26 @@ describe("ServiceSettingsPage", () => {
     expect(screen.queryByText("Max shutdown delay")).not.toBeInTheDocument();
   });
 
+  // w8/m69: a native cron's command is its start command, with no override.
+  it("shows a native-runtime cron's start command as its Command", async () => {
+    serverState.service = svc({
+      type: "cron_job",
+      url: null,
+      schedule: "*/15 * * * *",
+      command: "",
+      repo: "https://github.com/acme/reports",
+      branch: "main",
+      runtime: "node",
+      builder: "native",
+      startCommand: "[[ 1 = 1 ]] && printf ok",
+    });
+    renderSettings();
+
+    expect(await screen.findByRole("textbox", { name: "Command" })).toHaveValue(
+      "[[ 1 = 1 ]] && printf ok",
+    );
+  });
+
   it("shows Build & Deploy (Auto-Deploy toggle) alongside the Deploy section for a git-sourced cron job", async () => {
     serverState.service = svc({
       type: "cron_job",

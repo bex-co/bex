@@ -63,7 +63,12 @@ func TestBlueprintCronFirstReapplyPreservesCommand(t *testing.T) {
 				t.Fatal(err)
 			}
 			after := getApp(t, svc.Client, baseline.Name)
-			if after.Spec.Command != "echo changed" || after.Spec.RestartedAt == baseline.Spec.RestartedAt || len(rec.deployCalls) != 1 {
+			if tc.runtime == "node" { // a native cron's edit is its start command (w8/m69)
+				assertNativeCronStart(t, after.Spec, "echo changed")
+			} else if after.Spec.Command != "echo changed" {
+				t.Errorf("container cron command = %q, want echo changed", after.Spec.Command)
+			}
+			if after.Spec.RestartedAt == baseline.Spec.RestartedAt || len(rec.deployCalls) != 1 {
 				t.Fatalf("genuine command change not deployed: %+v deploys=%d", after.Spec, len(rec.deployCalls))
 			}
 		})

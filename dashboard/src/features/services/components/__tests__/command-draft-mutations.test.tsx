@@ -135,6 +135,26 @@ function renderDeployCard(
   );
 }
 
+function renderCron({
+  command = null,
+  runtime = null,
+  startCommand = null,
+}: {
+  command?: string | null;
+  runtime?: string | null;
+  startCommand?: string | null;
+}) {
+  render(
+    <CronDeploySection
+      serviceId="nightly"
+      schedule="0 6 * * *"
+      command={command}
+      runtime={runtime}
+      startCommand={startCommand}
+    />,
+  );
+}
+
 const setter = (command: string) => ({ id: "app", command });
 
 const ROWS = [
@@ -191,20 +211,24 @@ const ROWS = [
     edit: "Edit command",
     field: "Command",
     document: UpdateCronJobDocument,
-    renderRow: (command: string | null) =>
-      render(
-        <CronDeploySection
-          serviceId="nightly"
-          schedule="0 6 * * *"
-          command={command}
-        />,
-      ),
+    renderRow: (command: string | null) => renderCron({ command }),
     // The Command row carries the persisted schedule.
     sent: (command: string) => ({
       id: "nightly",
       schedule: "0 6 * * *",
       command,
     }),
+    cron: true,
+  },
+  {
+    name: "native cron Command (w8/m69)",
+    edit: "Edit command",
+    field: "Command",
+    document: SetStartCommandDocument,
+    renderRow: (startCommand: string | null) =>
+      renderCron({ runtime: "node", startCommand }),
+    sent: (command: string) => ({ id: "nightly", command }),
+    cron: true,
   },
 ];
 
@@ -235,8 +259,9 @@ describe.each(ROWS)("$name", ({ edit, field, document, renderRow, sent }) => {
   });
 });
 
-// cron-deploy-section.test.tsx owns the cron row's whitespace-only clear.
-it.each(ROWS.filter((row) => row.document !== UpdateCronJobDocument))(
+// cron-deploy-section.test.tsx owns the cron rows' whitespace-only drafts: a
+// container cron's clears its override, a native cron's is refused.
+it.each(ROWS.filter((row) => !row.cron))(
   "$name clears on a whitespace-only draft, like an empty one",
   async ({ edit, field, document, renderRow, sent, clearTitle }) => {
     const user = userEvent.setup();
@@ -246,3 +271,43 @@ it.each(ROWS.filter((row) => row.document !== UpdateCronJobDocument))(
     expect(await sentVariables(document)).toEqual(sent(""));
   },
 );
+
+describe("native cron at the mutation boundary (w8/m69)", () => {
+  const BASH = "[[ 1 = 1 ]] && printf ok";
+
+  it("saves a Bash command through setStartCommand, never updateCronJob", async () => {
+    const user = userEvent.setup();
+    renderCron({
+      command: "node override.js",
+      runtime: "node",
+      startCommand: "npm start",
+    });
+    await editTo(user, "Edit command", "Command", BASH);
+    await save(user);
+    expect(await sentVariables(SetStartCommandDocument)).toEqual({
+      id: "nightly",
+      command: BASH,
+    });
+    expect(
+      mutate.mock.calls.some(([doc]) => doc === UpdateCronJobDocument),
+    ).toBe(false);
+    // Published like every cron save: the by-id re-read (w4/276).
+    await waitFor(() =>
+      expect(apolloClient.query).toHaveBeenCalledWith(
+        expect.objectContaining({ variables: { id: "nightly" } }),
+      ),
+    );
+  });
+
+  it("reschedules without an override as command null", async () => {
+    const user = userEvent.setup();
+    renderCron({ runtime: "node", startCommand: BASH });
+    await editTo(user, "Edit schedule", "Schedule", "0 8 * * 1");
+    await save(user);
+    expect(await sentVariables(UpdateCronJobDocument)).toEqual({
+      id: "nightly",
+      schedule: "0 8 * * 1",
+      command: null,
+    });
+  });
+});

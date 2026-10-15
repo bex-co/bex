@@ -4,7 +4,7 @@
 # verbs as REST/MCP. dockerfilePath is relative to rootDir and only applies to
 # a repo-backed Dockerfile build; an empty value restores the default Dockerfile.
 # startCommand maps to Render's Start Command for native runtimes and Docker
-# Command for Docker services.
+# Command for Docker services. On a cron it also writes command (w8/m69).
 mutation SetBuildCommand($id: String!, $command: String!, $confirm: String) {
   setBuildCommand(id: $id, command: $command, confirm: $confirm) {
     id
@@ -17,6 +17,7 @@ mutation SetStartCommand($id: String!, $command: String!, $confirm: String) {
   setStartCommand(id: $id, command: $command, confirm: $confirm) {
     id
     startCommand
+    command
     phase
   }
 }

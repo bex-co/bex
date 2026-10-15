@@ -215,12 +215,29 @@ func (d dockerDetails) conflict() error {
 	return nil
 }
 
-// setStartCommand is Render's runtime-specific start command write: a cron
-// calls it its command, every other runtime-backed type spec.startCommand.
+// nativeBuild reports whether build is a native toolchain's, which bakes the
+// start command into the generated image's Bash CMD rather than running it as
+// a /bin/sh override of the image (app_types.go StartCommand).
+func nativeBuild(build string) bool {
+	return strings.HasPrefix(build, buildNative)
+}
+
+// setStartCommand is Render's runtime-specific start command write: a
+// container cron calls it its command, every other runtime-backed type,
+// a native cron included, spec.startCommand. A native cron's write also drops
+// any command override, which would otherwise keep running in its place; a
+// blank one drops only the override, as the native build needs its start
+// command (w8/m69).
 func setStartCommand(spec *appv1alpha1.AppSpec, command string) {
 	if spec.Type == appv1alpha1.TypeCronJob {
-		setCronCommand(spec, command)
-		return
+		if !nativeBuild(buildStrategy(*spec)) {
+			setCronCommand(spec, command)
+			return
+		}
+		spec.Command = ""
+		if commandText(command) == "" {
+			return
+		}
 	}
 	spec.StartCommand = commandText(command)
 }
