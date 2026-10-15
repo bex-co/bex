@@ -861,3 +861,54 @@ func TestNativeImageRunsAnOptedInBun(t *testing.T) {
 		})
 	}
 }
+
+// TestNativeImageRunsPoetry is w8/m72's execution gate: for sweep307's
+// PYTHON_VERSION=3.12 + POETRY_VERSION=2.1.3, the authored build runs poetry
+// and the started image runs it again, both reporting the resolved release on
+// the selected Python, while the application's own interpreter cannot import
+// Poetry (the tool lives in its own virtualenv). With no POETRY_VERSION the
+// default release is supplied. Opt-in: needs Docker and network for PyPI.
+func TestNativeImageRunsPoetry(t *testing.T) {
+	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
+		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the generated image")
+	}
+	for _, tc := range []struct{ name, request, want string }{
+		{"override", "2.1.3", "2.1.3"},
+		{"default", "", defaultPoetryVersion},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			o := nativeOptions()
+			o.Runtime = "python"
+			probe := `python -c 'import importlib.util,platform; print("app-python=" + platform.python_version() + " app-imports-poetry=" + str(importlib.util.find_spec("poetry") is not None))'`
+			o.BuildCommand = `poetry --version > built.txt && ` + probe + ` >> built.txt`
+			o.StartCommand = `echo "runtime $(poetry --version)"; ` + probe + `; echo "built $(cat built.txt | tr '\n' ' ')"`
+			env := map[string]string{"PYTHON_VERSION": "3.12"}
+			if tc.request != "" {
+				env["POETRY_VERSION"] = tc.request
+			}
+			bundle, dockerfile, src := writeResolveFixture(t, o, env, nil)
+			if _, err := ResolveNativeBuild("python", bundle, dockerfile, src); err != nil {
+				t.Fatal(err)
+			}
+			must(t, os.Rename(dockerfile, filepath.Join(src, "Dockerfile")))
+			tag := fmt.Sprintf("bex-native-poetry-it-%s:%d", tc.name, os.Getpid())
+			t.Cleanup(func() { _ = exec.Command("docker", "image", "rm", "-f", tag).Run() })
+			build := exec.Command("docker", "build", "-q", "-t", tag, "--secret", "id=render-env,src="+bundle, src)
+			build.Env = append(os.Environ(), "DOCKER_BUILDKIT=1")
+			if out, err := build.CombinedOutput(); err != nil {
+				t.Fatalf("build: %v\n%s", err, out)
+			}
+			out, err := exec.Command("docker", "run", "--rm", tag).CombinedOutput()
+			py312, _ := nativeToolchains["python"].find("3.12")
+			for _, want := range []string{
+				"runtime Poetry (version " + tc.want + ")",
+				"app-python=" + py312.version + " app-imports-poetry=False",
+				"built Poetry (version " + tc.want + ") app-python=" + py312.version + " app-imports-poetry=False",
+			} {
+				if err != nil || !strings.Contains(string(out), want) {
+					t.Fatalf("run = %v\n%s; want %q", err, out, want)
+				}
+			}
+		})
+	}
+}

@@ -174,12 +174,13 @@ func TestResolveNativeBuildRewritesTheBase(t *testing.T) {
 	bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"PYTHON_VERSION": "3.11.9", "OTHER": "x\ny"}, nil)
 	before, _ := os.ReadFile(dockerfile)
 	choices, err := ResolveNativeBuild("python", bundle, dockerfile, src)
-	if err != nil || len(choices) != 1 || choices[0].Line != "3.11" {
+	if err != nil || len(choices) != 2 || choices[0].Line != "3.11" || choices[1].Label != "Poetry" {
 		t.Fatalf("resolve = %+v, %v", choices, err)
 	}
 	after, _ := os.ReadFile(dockerfile)
 	py311, _ := nativeToolchains["python"].find("3.11")
-	want := strings.Replace(string(before), "FROM "+nativeToolchains["python"].defaultImage(), "FROM "+py311.image, 1)
+	want := strings.Replace(string(before), "FROM "+nativeToolchains["python"].defaultImage()+"\n", "FROM "+py311.image+"\n"+
+		"RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry\n", 1)
 	if string(after) != want {
 		t.Fatalf("Dockerfile =\n%s\nwant\n%s", after, want)
 	}
@@ -200,7 +201,7 @@ func TestResolveNativeBuildIgnoresSymlinkedVersionFiles(t *testing.T) {
 	bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"SECRET": "s3cr3t"}, nil)
 	must(t, os.Symlink(bundle, filepath.Join(src, ".python-version")))
 	choices, err := ResolveNativeBuild("python", bundle, dockerfile, src)
-	if err != nil || len(choices) != 1 || choices[0].Source != "" {
+	if err != nil || len(choices) != 2 || choices[0].Source != "" {
 		t.Fatalf("symlinked .python-version: %+v, %v; want the default, unread", choices, err)
 	}
 }
@@ -344,5 +345,81 @@ func TestResolveNativeBuildAddsAnOptedInBun(t *testing.T) {
 	}
 	if after, _ := os.ReadFile(dockerfile); string(after) != string(before) {
 		t.Fatalf("no opt-in changed the Dockerfile:\n%s", after)
+	}
+}
+
+// Every native Python build carries Poetry (w8/m72, Render's Poetry version
+// contract): the default release, or POETRY_VERSION's exact one; anything
+// else is refused by name before the build runs.
+func TestResolveNativePoetry(t *testing.T) {
+	for _, tc := range []struct {
+		name, request, version, source, wantErr string
+	}{
+		{"default", "", "2.1.3", "", ""},
+		{"sweep307 override", "2.1.3", "2.1.3", "POETRY_VERSION=2.1.3", ""},
+		{"older 1.x", "1.7.1", "1.7.1", "POETRY_VERSION=1.7.1", ""},
+		{"v prefix", " v2.0.1 ", "2.0.1", "POETRY_VERSION=v2.0.1", ""},
+		{"range", ">=2.0", "", "", "POETRY_VERSION=>=2.0 is not a supported Poetry version; set an exact Poetry 1.x or 2.x release such as 2.1.3"},
+		{"major only", "2", "", "", "POETRY_VERSION=2 is not a supported Poetry version; set an exact Poetry 1.x or 2.x release such as 2.1.3"},
+		{"shell text", "2.1.3; curl x", "", "", "POETRY_VERSION=2.1.3; curl x is not a supported Poetry version; set an exact Poetry 1.x or 2.x release such as 2.1.3"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			choice, err := ResolveNativePoetry(map[string]string{"POETRY_VERSION": tc.request, "PYTHON_VERSION": "3.12"})
+			if tc.wantErr != "" {
+				var unsupported *UnsupportedVersionError
+				if !errors.As(err, &unsupported) || err.Error() != tc.wantErr {
+					t.Fatalf("err = %v, want %q", err, tc.wantErr)
+				}
+				return
+			}
+			if err != nil || choice.Label != "Poetry" || choice.Line != tc.version || choice.Source != tc.source {
+				t.Fatalf("= %+v, %v; want %s from %q", choice, err, tc.version, tc.source)
+			}
+		})
+	}
+	choice, _ := ResolveNativePoetry(map[string]string{"POETRY_VERSION": "2.1.3"})
+	if got := choice.Narration(); got != "==> Using Poetry 2.1.3 (from POETRY_VERSION=2.1.3)" {
+		t.Errorf("narration = %q", got)
+	}
+}
+
+// The Poetry install lands between the selected Python's FROM and the
+// source/build, on every Python line; a refused request leaves the
+// Dockerfile alone; other runtimes never gain it.
+func TestResolveNativeBuildAddsPoetryToPython(t *testing.T) {
+	o := nativeOptions()
+	o.Runtime = "python"
+	for _, line := range nativeToolchains["python"].lines {
+		bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"PYTHON_VERSION": line.line, "POETRY_VERSION": "2.1.3"}, nil)
+		choices, err := ResolveNativeBuild("python", bundle, dockerfile, src)
+		if err != nil || len(choices) != 2 || choices[0].Line != line.line || choices[1].Line != "2.1.3" {
+			t.Fatalf("python %s choices = %+v, %v", line.line, choices, err)
+		}
+		df, _ := os.ReadFile(dockerfile)
+		from := strings.Index(string(df), "\nFROM "+line.image+"\n")
+		poetry := strings.Index(string(df), "\nRUN /usr/local/bin/python -m venv /opt/bex/poetry && ")
+		source, build := strings.Index(string(df), "\nCOPY . .\n"), strings.Index(string(df), "\nRUN --mount=type=secret")
+		if from < 0 || poetry < from || source < poetry || build < source || !strings.Contains(string(df), "poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry\n") {
+			t.Fatalf("python %s: Poetry is not installed between FROM and the source/build:\n%s", line.line, df)
+		}
+	}
+
+	bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"POETRY_VERSION": "latest"}, nil)
+	before, _ := os.ReadFile(dockerfile)
+	var unsupported *UnsupportedVersionError
+	if _, err := ResolveNativeBuild("python", bundle, dockerfile, src); !errors.As(err, &unsupported) {
+		t.Fatalf("unsupported POETRY_VERSION = %v, want a tenant UnsupportedVersionError", err)
+	}
+	if after, _ := os.ReadFile(dockerfile); string(after) != string(before) {
+		t.Error("a refused Poetry request rewrote the Dockerfile")
+	}
+
+	o.Runtime = "node"
+	bundle, dockerfile, src = writeResolveFixture(t, o, map[string]string{"POETRY_VERSION": "2.1.3"}, nil)
+	if choices, err := ResolveNativeBuild("node", bundle, dockerfile, src); err != nil || len(choices) != 1 {
+		t.Fatalf("node choices = %+v, %v; Poetry is Python's", choices, err)
+	}
+	if df, _ := os.ReadFile(dockerfile); strings.Contains(string(df), "poetry") {
+		t.Fatalf("node build gained Poetry:\n%s", df)
 	}
 }

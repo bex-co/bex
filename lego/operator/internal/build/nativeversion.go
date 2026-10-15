@@ -96,6 +96,38 @@ func ResolveNativeBun(env map[string]string, readFile func(string) ([]byte, bool
 	return r.firstFound(r.fromEnv("BUN_VERSION", r.bunRequest), r.fromFile(".bun-version", r.bunRequest), r.fromLockfile("bun.lock", "bun.lockb"))
 }
 
+// defaultPoetryVersion is the Poetry a native Python build carries when the
+// service names none — Render's current default for new services (its
+// Poetry version contract, w8/m72).
+const defaultPoetryVersion = "2.1.3"
+
+// poetryRelease is an exact Poetry 1.x/2.x release, the form Render's
+// POETRY_VERSION takes ("any version number"); ranges are not resolved.
+var poetryRelease = regexp.MustCompile(`^[12]\.\d+\.\d+$`)
+
+// ResolveNativePoetry picks the Poetry every native Python build carries:
+// POETRY_VERSION when set, else the default. Unlike the primary toolchains it
+// is an exact release installed from PyPI rather than a pinned image line —
+// Poetry publishes no reviewed image — so Line is the version itself.
+// Compatibility with the chosen Python is Poetry's own: an incompatible pair
+// fails the install step by name in the build log.
+func ResolveNativePoetry(env map[string]string) (NativeChoice, error) {
+	request := strings.TrimSpace(env["POETRY_VERSION"])
+	if request == "" {
+		return NativeChoice{Label: "Poetry", Line: defaultPoetryVersion}, nil
+	}
+	version := strings.TrimPrefix(strings.ToLower(request), "v")
+	if !poetryRelease.MatchString(version) {
+		what := "POETRY_VERSION=" + request
+		if len(what) > 120 {
+			what = strings.ToValidUTF8(what[:120], "") + "…"
+		}
+		return NativeChoice{}, &UnsupportedVersionError{msg: fmt.Sprintf(
+			"%s is not a supported Poetry version; set an exact Poetry 1.x or 2.x release such as %s", what, defaultPoetryVersion)}
+	}
+	return NativeChoice{Label: "Poetry", Line: version, Source: "POETRY_VERSION=" + request}, nil
+}
+
 // bunRequest maps a Bun version request: `latest`, a plain version onto its
 // major.minor line (a bare major onto that major's newest line), otherwise a
 // semver range.
