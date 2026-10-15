@@ -909,8 +909,9 @@ func (s *Service) applyStackEnvGroups(ctx context.Context, envGroups []parsedEnv
 // dependent first would leave it Pending on a missing Secret anyway, but
 // applying the DB first starts its provisioning immediately.
 func (s *Service) applyStackDatastores(ctx context.Context, st parsedStack, assignments map[string]core.EnvironmentAssignment, snap *workspaceSnapshot, databaseIDs, kvCRNames map[string]string, res *StackResult) error {
-	// Stack entry names are unique (registerUniqueName), so no lookup below
-	// targets a CR this loop has just created.
+	// The compiler refuses a name repeated within a kind (as Render does), and
+	// each loop looks up only its own kind, so no lookup below targets a CR
+	// this loop has just created.
 	for _, db := range st.databases {
 		if err := requireDeployAuthority(ctx, s); err != nil {
 			return err
@@ -1935,15 +1936,6 @@ func envRefError(service, key string, err error) error {
 	return fmt.Errorf("%w: service %q: envVars[%q]: %v", core.ErrBadRequest, service, key, err)
 }
 
-// registerUniqueName checks for duplicate names across services and databases.
-func registerUniqueName(name string, seen map[string]bool) error {
-	if seen[name] {
-		return fmt.Errorf("%w: duplicate name %q — every service and database name in a render.yaml must be unique", core.ErrBadRequest, name)
-	}
-	seen[name] = true
-	return nil
-}
-
 // decl wraps one manifest declaration with where it was declared: a
 // project/environment grouping key, or the legacy top-level "ungrouped" list.
 type decl[T any] struct {
@@ -2026,31 +2018,27 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 	}
 
 	var problems blueprintResourceErrors
-	// Env groups first (validated + name-deduped); a service's fromGroup links one.
-	groupNames := make(map[string]bool, len(envGroups))
+	// Env groups first; a service's fromGroup links one. Names arrive unique
+	// within each kind: the compiler refuses a repeat
+	// (BLUEPRINT_DUPLICATE_RESOURCE) and, as on Render, lets a database, a
+	// Key Value and a service share one (w1/126).
 	for _, egDecl := range envGroups {
 		pg, err := parseEnvGroup(egDecl.value)
 		if err != nil {
 			problems = append(problems, blueprintResourceError{kind: BlueprintResourceEnvVarGroup, name: egDecl.value.Name, err: err})
 			continue
 		}
-		if err := registerUniqueName(pg.name, groupNames); err != nil {
-			return parsedStack{}, fmt.Errorf("%w: duplicate env group name %q", core.ErrBadRequest, pg.name)
-		}
 		pg.grouping = egDecl.grouping
 		st.envGroups = append(st.envGroups, pg)
 	}
 
-	// Databases next into the stack (and into the name index services reference).
+	// Databases next into the stack and the index fromDatabase resolves against.
 	idx := newStackIndex(len(services), len(databases))
 	for _, d := range databases {
 		ds, err := parseDatabase(d.value)
 		if err != nil {
 			problems = append(problems, blueprintResourceError{kind: BlueprintResourcePostgres, name: d.value.Name, err: err})
 			continue
-		}
-		if err := registerUniqueName(ds.name, idx.names); err != nil {
-			return parsedStack{}, err
 		}
 		idx.databaseNames[ds.name] = true
 		idx.databasePoolers[ds.name] = ds.spec.Pooler
@@ -2071,9 +2059,6 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 	for _, a := range services {
 		if isKeyValueType(a.value.Type) {
 			kv, err := parseKeyValue(a.value)
-			if err == nil {
-				err = registerUniqueName(kv.name, idx.names)
-			}
 			if err != nil {
 				problems = append(problems, blueprintResourceError{kind: BlueprintResourceKeyValue, name: a.value.Name, err: err})
 				continue
@@ -2085,9 +2070,6 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 			continue
 		}
 		req, se, err := parseService(overrides, a.value)
-		if err == nil {
-			err = registerUniqueName(req.Name, idx.names)
-		}
 		var credName string
 		if err == nil {
 			credName, err = blueprintRegistryCredentialName(a.value)
@@ -2189,9 +2171,6 @@ func flattenProjectDecls(projects []bexProject, services []decl[bexService], dat
 // stackIndex is the cross-declaration lookup state parseCompiledStack's pass 1
 // builds and pass 2's reference classification (classifyRefs) consumes.
 type stackIndex struct {
-	// names is the unique-name index services reference; the services decl
-	// slice includes both regular services and keyvalue resources.
-	names map[string]bool
 	// databaseNames marks the databases declared in this stack;
 	// databasePoolers records whether each declares connectionPool: pgbouncer.
 	databaseNames   map[string]bool
@@ -2228,7 +2207,6 @@ var serviceRefTypes = map[string][]string{
 
 func newStackIndex(serviceCount, databaseCount int) *stackIndex {
 	return &stackIndex{
-		names:            make(map[string]bool, serviceCount+databaseCount),
 		databaseNames:    make(map[string]bool, databaseCount),
 		databasePoolers:  make(map[string]bool, databaseCount),
 		servicePorts:     make(map[string]int32, serviceCount),
@@ -2268,7 +2246,10 @@ func (idx *stackIndex) classifyRef(svc *parsedService, r envRef) error {
 	// One target-existence check for every remaining fromService form
 	// (host/hostport/port/envVarKey), so the message lives in one place.
 	allowExistingServiceHost := r.FromService != nil && r.FromService.EnvVarKey == "" && r.FromService.Property == serviceRefPropertyHost
-	if r.FromService != nil && !idx.names[r.FromService.Name] && !allowExistingServiceHost {
+	// serviceTypes holds every declared service and nothing else, so a
+	// same-named database or Key Value never satisfies a service reference.
+	declaredService := r.FromService != nil && idx.serviceTypes[r.FromService.Name] != ""
+	if r.FromService != nil && !declaredService && !allowExistingServiceHost {
 		return envRefError(svc.req.Name, r.Key, fmt.Errorf("fromService references unknown service %q (declare it under services: in the same file)", r.FromService.Name))
 	}
 	// A supplied type must describe the declared target, or a reference
@@ -2283,7 +2264,7 @@ func (idx *stackIndex) classifyRef(svc *parsedService, r envRef) error {
 	// which only web/private services have; a worker, cron job or static
 	// site has no port to resolve (it would become "0"/"<slug>:0", w8/081).
 	// An undeclared host target is resolved out-of-file at apply instead.
-	if r.FromService != nil && r.FromService.EnvVarKey == "" && idx.names[r.FromService.Name] && serviceRefProperty[r.FromService.Property] {
+	if r.FromService != nil && r.FromService.EnvVarKey == "" && declaredService && serviceRefProperty[r.FromService.Property] {
 		if _, addressable := idx.servicePorts[r.FromService.Name]; !addressable {
 			return fmt.Errorf("%w: service %q: envVars[%q] fromService %s references %q which has no network address (only web/private services are addressable)", core.ErrBadRequest, svc.req.Name, r.Key, r.FromService.Property, r.FromService.Name)
 		}
