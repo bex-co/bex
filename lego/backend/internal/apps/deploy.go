@@ -1508,7 +1508,7 @@ func copyRefusal(consumer *parsedService, c stateCopy, why string) blueprintReso
 }
 
 func (s *Service) validateBlueprintService(ctx context.Context, svc parsedService, appsByName map[string]*appv1alpha1.App) error {
-	desired, err := specFromCreate(svc.req)
+	desired, err := blueprintReadSpec(ctx, svc.req)
 	if err != nil {
 		return fmt.Errorf("service %q: %w", svc.req.Name, err)
 	}

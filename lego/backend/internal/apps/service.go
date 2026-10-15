@@ -1764,6 +1764,10 @@ type CreateRequest struct {
 	// storeEnvKeys are Blueprint-declared keys whose value lives in the env
 	// store (copies of a sibling's generated value), never on spec.Env.
 	storeEnvKeys []string
+	// implicitRepo marks a Git-backed Blueprint service whose repository is
+	// the enclosing one a read-only validation does not know
+	// (blueprintReadSpec); only that projection sets it.
+	implicitRepo bool
 	// Disk attaches a persistent volume at create time — the Blueprint path's
 	// only way in, since render.yaml declares a disk inline with its service.
 	// nil means no disk is being declared, which on a sync PRESERVES whatever
@@ -2944,13 +2948,17 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	return spec, nil
 }
 
+// repoBacked reports a Git source: an authored repo, or a Blueprint's implicit
+// enclosing one, which is never a prebuilt image.
+func (req CreateRequest) repoBacked() bool { return req.Repo != "" || req.implicitRepo }
+
 // validateCreateSource checks the create's source inputs: one of repo/image,
 // no build-from-git field alongside a prebuilt image, and — because the
 // operator never forwards an unchecked repo/branch/rootDirectory into the
 // BuildKit context string (w6/m6 t003) — the git inputs' shape. A bare image
 // deploy skips those (no build).
 func validateCreateSource(req CreateRequest) error {
-	if req.Repo == "" && req.Image == "" {
+	if !req.repoBacked() && req.Image == "" {
 		return fmt.Errorf("%w: one of repo or image is required", core.ErrBadRequest)
 	}
 	if req.Image != "" {
@@ -3065,14 +3073,15 @@ func normalizeCreateDefaults(req CreateRequest) (port, replicas int32, branch st
 	if replicas == 0 {
 		replicas = 1
 	}
+	repoBacked := req.repoBacked()
 	branch = req.Branch
-	if branch == "" && req.Repo != "" {
+	if branch == "" && repoBacked {
 		branch = appv1alpha1.DefaultBranch
 	}
 	// AutoDeploy: default on for a repo-backed service (a push should redeploy,
 	// Render's default), off for an image-backed one (no repo to rebuild from).
 	// An explicit request value wins.
-	autoDeploy = req.Repo != ""
+	autoDeploy = repoBacked
 	if req.AutoDeploy != nil {
 		autoDeploy = *req.AutoDeploy
 	}
@@ -3110,7 +3119,7 @@ func resolveBuildStrategy(svcType string, req CreateRequest) (string, string, er
 		if !blueprintNativeRuntime(runtime) {
 			return "", "", fmt.Errorf("%w: unsupported runtime %q", core.ErrBadRequest, runtime)
 		}
-		if req.Repo == "" {
+		if !req.repoBacked() {
 			return "", "", fmt.Errorf("%w: native runtime %s requires repo", core.ErrBadRequest, runtime)
 		}
 		required, missing := "buildCommand and startCommand", strings.TrimSpace(req.BuildCommand) == "" || strings.TrimSpace(req.StartCommand) == ""

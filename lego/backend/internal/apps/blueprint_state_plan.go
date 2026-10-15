@@ -147,7 +147,7 @@ func (r *blueprintActionResolver) ResolveBlueprintResource(_ context.Context, ki
 	}
 }
 
-func (r *blueprintActionResolver) PlanBlueprintResource(_ context.Context, resource BlueprintResourceIR, current BlueprintCurrentResource, exists bool) (BlueprintPlanAction, error) {
+func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, resource BlueprintResourceIR, current BlueprintCurrentResource, exists bool) (BlueprintPlanAction, error) {
 	action := BlueprintPlanAction{Kind: resource.Kind, Name: resource.Name, SourcePath: resource.SourcePath, ResourceID: current.ID}
 	if !exists {
 		if resource.Kind == BlueprintResourcePostgres {
@@ -171,7 +171,7 @@ func (r *blueprintActionResolver) PlanBlueprintResource(_ context.Context, resou
 		if !ok {
 			return BlueprintPlanAction{}, fmt.Errorf("compiled service is missing")
 		}
-		want, err := specFromCreate(svc.req)
+		want, err := blueprintReadSpec(ctx, svc.req)
 		if err != nil {
 			return BlueprintPlanAction{}, err
 		}
