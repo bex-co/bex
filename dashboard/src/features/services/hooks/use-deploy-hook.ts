@@ -18,6 +18,13 @@ export interface UseDeployHookResult {
   regenerating: boolean;
 }
 
+/** The last good URL, and the read that delivered it, for one service. */
+interface KeptURL {
+  serviceId: string;
+  read: string | null;
+  url: string | null;
+}
+
 /**
  * Reads and rotates a service's deploy-hook credential through bex-api's one
  * GraphQL service layer. The mutation result replaces local state immediately,
@@ -43,17 +50,24 @@ export function useDeployHook(serviceId: string): UseDeployHookResult {
       });
     },
   });
-  const [url, setURL] = useState<string | null>(null);
+  const [kept, setKept] = useState<KeptURL>({
+    serviceId,
+    read: null,
+    url: null,
+  });
   const [regenerating, setRegenerating] = useState(false);
 
-  // Adopt each URL the read delivers; a read that delivers none (a failed
-  // refresh) leaves the last good one in place.
+  // The URL is a credential for one service: another service starts empty
+  // rather than showing this one's (w1/130). Within a service, adopt each URL
+  // the read delivers; a read that delivers none (a failed refresh) leaves the
+  // last good one in place.
   const queried = data?.deployHook?.url || null;
-  const [adopted, setAdopted] = useState<string | null>(null);
-  if (queried && queried !== adopted) {
-    setAdopted(queried);
-    setURL(queried);
+  let current =
+    kept.serviceId === serviceId ? kept : { serviceId, read: null, url: null };
+  if (queried && queried !== current.read) {
+    current = { serviceId, read: queried, url: queried };
   }
+  if (current !== kept) setKept(current);
 
   const regenerate = useCallback(async () => {
     setRegenerating(true);
@@ -61,7 +75,7 @@ export function useDeployHook(serviceId: string): UseDeployHookResult {
       const result = await mutate({ variables: { serviceId } });
       const next = result.data?.regenerateDeployHook?.url;
       if (!next) throw new Error("deploy hook mutation returned no URL");
-      setURL(next);
+      setKept((k) => (k.serviceId === serviceId ? { ...k, url: next } : k));
       toast.success(t("services.deployHookRegenerated"));
       return true;
     } catch (err) {
@@ -74,5 +88,5 @@ export function useDeployHook(serviceId: string): UseDeployHookResult {
     }
   }, [mutate, serviceId, t]);
 
-  return { url, loading, error, regenerate, regenerating };
+  return { url: current.url, loading, error, regenerate, regenerating };
 }
