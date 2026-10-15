@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { isValidDnsLabel } from "@/common/lib/utils/dns-label";
 import { repoNameSlug, gitUrlSlug, imageSlug } from "@/common/lib/utils/slug";
 import { useServiceNameAvailability } from "@/features/services/hooks/use-service-name-availability";
@@ -24,34 +24,45 @@ export function useServiceNameDraft({
   selectedRepo: RepoView | null;
   gitUrl: string;
   image: string;
-  /** Called with the selected repo's default branch, for the form's branch field. */
+  /**
+   * Called with the selected repo's default branch, for the form's branch
+   * field. It runs during render, so it may only set the caller's own state.
+   */
   onRepoDefaultBranch: (branch: string) => void;
 }) {
   const [name, setName] = useState("");
   const [nameEdited, setNameEdited] = useState(false);
 
   // Auto-fill name + branch from source when the user hasn't manually typed a
-  // name. `nameEdited` resets to false when the name is cleared (editName uses
+  // name, on the first render and whenever the source or `nameEdited` changes.
+  // `nameEdited` resets to false when the name is cleared (editName uses
   // `value !== ""`), so selecting a new source after clearing re-enables fill.
-  useEffect(() => {
-    if (nameEdited) return;
-    if (tab === "github" && selectedRepo) {
-      // Intentional sync of the name field to the selected source while the
-      // user hasn't hand-edited it (guarded by nameEdited); the effect reacts
-      // to selection changes, so a synchronous set here is the desired behavior.
-      setName(repoNameSlug(selectedRepo.fullName));
-      onRepoDefaultBranch(selectedRepo.defaultBranch);
-    } else if (tab === "git" && gitUrl) {
-      const slug = gitUrlSlug(gitUrl);
-      if (slug) setName(slug);
-    } else if (tab === "image" && image) {
-      const slug = imageSlug(image);
-      if (slug) setName(slug);
+  // Adjusted during render, like the swap below, so no commit shows a source
+  // with the previous source's name.
+  const fillInputs = { tab, selectedRepo, gitUrl, image, nameEdited };
+  const [filledFor, setFilledFor] = useState<typeof fillInputs | null>(null);
+  const fillInputsChanged =
+    filledFor === null ||
+    filledFor.tab !== tab ||
+    filledFor.selectedRepo !== selectedRepo ||
+    filledFor.gitUrl !== gitUrl ||
+    filledFor.image !== image ||
+    filledFor.nameEdited !== nameEdited;
+  if (fillInputsChanged) {
+    setFilledFor(fillInputs);
+    if (!nameEdited) {
+      if (tab === "github" && selectedRepo) {
+        setName(repoNameSlug(selectedRepo.fullName));
+        onRepoDefaultBranch(selectedRepo.defaultBranch);
+      } else if (tab === "git" && gitUrl) {
+        const slug = gitUrlSlug(gitUrl);
+        if (slug) setName(slug);
+      } else if (tab === "image" && image) {
+        const slug = imageSlug(image);
+        if (slug) setName(slug);
+      }
     }
-    // onRepoDefaultBranch is a stable setter-shaped callback; including it
-    // would re-run the fill on every parent render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, selectedRepo, gitUrl, image, nameEdited]);
+  }
 
   const nameValid = isValidDnsLabel(name);
   const {
@@ -62,9 +73,11 @@ export function useServiceNameDraft({
 
   // Same repo connected twice (or any other auto-filled slug that's already
   // taken): prefill the suggested free name instead of leaving the user to
-  // notice and fix it by hand — the auto-fill effect above just set `name` to
-  // a taken slug, this swaps it for the free alternative once the check
-  // settles. Never fires once the user has actually typed (nameEdited).
+  // notice and fix it by hand — the auto-fill above just set `name` to a taken
+  // slug, this swaps it for the free alternative once the check settles. Never
+  // fires once the user has actually typed (nameEdited), nor in a pass that
+  // just re-filled: that pass's `name` is the one being replaced, and React
+  // re-renders at once with the new one.
   // Adjusted during render — React's own "store information from previous
   // renders" pattern (state, not a ref: refs can't be read/written during
   // render either) — rather than a useEffect, so it swaps at most once per
@@ -73,6 +86,7 @@ export function useServiceNameDraft({
     null,
   );
   if (
+    !fillInputsChanged &&
     !nameEdited &&
     nameTaken &&
     nameSuggestion &&

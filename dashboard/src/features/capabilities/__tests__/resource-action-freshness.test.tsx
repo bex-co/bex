@@ -293,6 +293,25 @@ describe("resource action projection freshness", () => {
     },
   );
 
+  it("withdraws a ready answer while a manual refresh of the same lease is pending", async () => {
+    const { result } = renderHook(() => useServerActions("srv-first"), {
+      wrapper: Wrapper,
+    });
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+
+    mode = "hold";
+    let completion!: Promise<void>;
+    act(() => {
+      completion = result.current.refresh();
+    });
+    expect(result.current.status).toBe("checking");
+    await act(async () => {
+      pending[0].answer(response("serverActions"));
+      await completion;
+    });
+    expect(result.current.status).toBe("ready");
+  });
+
   it("does not grant from a partial GraphQL response that also reports an error", async () => {
     const { result } = renderHook(() => useServerActions("srv-first"), {
       wrapper: Wrapper,
@@ -566,6 +585,21 @@ describe("confirmation recheck leases", () => {
       expect(dispatch).not.toHaveBeenCalled();
     },
   );
+
+  it("closes the dialog once the access generation moves, even before the shared generation rerenders", () => {
+    capabilityOverrides = { generation: 0 };
+    const { result, rerender } = renderHook(
+      () => useBoundActionConfirm({ resourceId: "srv-first" }),
+      { wrapper: Wrapper },
+    );
+    act(() => result.current.openConfirm("suspend"));
+    expect(result.current.pending).not.toBeNull();
+    act(() => {
+      bumpAccessGeneration();
+      rerender();
+    });
+    expect(result.current.pending).toBeNull();
+  });
 
   it("refuses a recheck with both allowed rows and a GraphQL error", async () => {
     mode = "partial-error";

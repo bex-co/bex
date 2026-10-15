@@ -86,6 +86,60 @@ describe("Combobox keyboard selection", () => {
   });
 });
 
+describe("Combobox state that follows its inputs", () => {
+  it("shows a value the caller changes from outside", () => {
+    const { rerender } = render(
+      <Combobox options={options} value="alpha" onValueChange={vi.fn()} />,
+    );
+    const input = screen.getByRole("combobox");
+    expect(input).toHaveValue("alpha");
+    rerender(
+      <Combobox options={options} value="beta" onValueChange={vi.fn()} />,
+    );
+    expect(input).toHaveValue("beta");
+  });
+
+  it("drops the keyboard highlight when typing changes the list", () => {
+    const onValueChange = vi.fn();
+    render(
+      <Combobox options={options} value="" onValueChange={onValueChange} />,
+    );
+    const input = screen.getByRole("combobox");
+    fireEvent.focus(input);
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    expect(screen.getByRole("option", { name: "Alpha" })).toHaveClass(
+      "bg-accent",
+    );
+
+    fireEvent.change(input, { target: { value: "a" } });
+    expect(screen.getByRole("option", { name: "Alpha" })).not.toHaveClass(
+      "bg-accent",
+    );
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onValueChange).toHaveBeenLastCalledWith("a");
+    expect(onValueChange).not.toHaveBeenCalledWith("alpha");
+  });
+
+  it("reopens without the highlight it closed with", () => {
+    render(
+      <Combobox options={options} value="alpha" onValueChange={vi.fn()} />,
+    );
+    const input = screen.getByRole("combobox");
+    fireEvent.focus(input);
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    // Re-selecting the option already typed closes the list without
+    // changing what it shows.
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(input).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.focus(input);
+    expect(input).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("option", { name: "Alpha" })).not.toHaveClass(
+      "bg-accent",
+    );
+  });
+});
+
 describe("results list name (w4/312)", () => {
   afterEach(async () => {
     await i18n.changeLanguage("en");

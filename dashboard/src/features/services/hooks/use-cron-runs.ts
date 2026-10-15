@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useApolloClient, useMutation, useQuery } from "@apollo/client/react";
 import { toast } from "sonner";
 import {
@@ -117,9 +117,12 @@ export function useCronRuns(serviceId: string): UseCronRunsResult {
   const fetched = useMemo(() => toRuns(data?.cronJobRuns), [data]);
   const hasFetched = !!data?.cronJobRuns;
 
-  useEffect(() => {
-    if (hasFetched) setRetained({ serviceId, rows: fetched });
-  }, [hasFetched, fetched, serviceId]);
+  if (
+    hasFetched &&
+    (retained.serviceId !== serviceId || retained.rows !== fetched)
+  ) {
+    setRetained({ serviceId, rows: fetched });
+  }
 
   const firstPage = useMemo(
     () =>

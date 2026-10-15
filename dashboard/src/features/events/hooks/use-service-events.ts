@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useQuery } from "@apollo/client/react";
 import {
   RESOURCE_POLL_INTERVAL_MS,
@@ -113,7 +120,6 @@ export function useServiceEvents(
   const refreshingRef = useRef(false);
   const eventsRef = useRef(data?.serviceEvents);
   const [readError, setReadError] = useState<Error>();
-  eventsRef.current = data?.serviceEvents;
 
   useEffect(() => {
     mountedRef.current = true;
@@ -124,27 +130,37 @@ export function useServiceEvents(
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
 
-  historyStartRef.current = historyStartTime;
+  // A new request starts with no error, no older-page affordance and nothing
+  // loading; reset while rendering so the old request's state never paints.
+  const [stateKey, setStateKey] = useState(requestKey);
+  if (stateKey !== requestKey) {
+    setStateKey(requestKey);
+    setLoadingMore(false);
+    setHasMore(false);
+    setReadError(undefined);
+  }
 
-  if (requestKeyRef.current !== requestKey) {
+  // Layout effects so every passive effect, timer tick and handler after this
+  // commit reads the committed request — and pages or heads still in flight
+  // for a previous one are orphaned before anything can act on them.
+  useLayoutEffect(() => {
+    eventsRef.current = data?.serviceEvents;
+    historyStartRef.current = historyStartTime;
+  }, [data, historyStartTime]);
+  useLayoutEffect(() => {
+    if (requestKeyRef.current === requestKey) return;
     requestKeyRef.current = requestKey;
     generationRef.current++;
     pageRef.current = null;
     loadingMoreRef.current = false;
     refreshingRef.current = false;
-  }
+  }, [requestKey]);
 
   const canEnterEarlierWindow = useCallback((page: PageState): boolean => {
     const floor = validTime(historyStartRef.current);
     const currentStart = validTime(page.startTime);
     return floor !== null && currentStart !== null && currentStart > floor;
   }, []);
-
-  useEffect(() => {
-    setLoadingMore(false);
-    setHasMore(false);
-    setReadError(undefined);
-  }, [requestKey]);
 
   useEffect(() => {
     if (!data || pageRef.current) return;

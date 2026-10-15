@@ -7,6 +7,7 @@ import {
   partSignature,
 } from "@/features/agent-sessions/lib/collapse-doubled-parts";
 import type { ConversationChatHandle } from "@/features/agent-sessions/components/session-conversation-impl";
+import type { ConversationState } from "@/features/agent-sessions/lib/conversation-state";
 import { createAgentSessionTransport } from "@/features/agent-sessions/lib/transport";
 import {
   makeFixtureFetch,
@@ -571,6 +572,66 @@ describe("SessionConversationImpl", () => {
     await waitFor(() =>
       expect(screen.getByText("No conversation yet.")).toBeInTheDocument(),
     );
+  });
+
+  it("reports a session switched in place as connecting until its own replay settles", async () => {
+    // A new session id gives `useChat` a fresh, error-free chat. Until that
+    // chat's replay settles it must read as connecting — never as a healthy
+    // "live" stream the steering composer could post into.
+    const states: ConversationState[] = [];
+    const onConversationStateChange = (state: ConversationState) => {
+      states.push(state);
+    };
+    const failingFetch = (async () =>
+      new Response("nope", { status: 503 })) as typeof globalThis.fetch;
+    const { rerender } = render(
+      <SessionConversationImpl
+        sessionId="as-before"
+        isTerminal={false}
+        transport={createAgentSessionTransport({
+          sessionId: "as-before",
+          mintTicket,
+          fetch: failingFetch,
+        })}
+        onConversationStateChange={onConversationStateChange}
+      />,
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByText("The conversation stream is unavailable right now."),
+      ).toBeInTheDocument(),
+    );
+    expect(states.at(-1)).toBe("broken");
+
+    let resolveFetch!: (response: Response) => void;
+    const pending = new Promise<Response>((resolve) => {
+      resolveFetch = resolve;
+    });
+    states.length = 0;
+    rerender(
+      <SessionConversationImpl
+        sessionId="as-after"
+        isTerminal={false}
+        transport={createAgentSessionTransport({
+          sessionId: "as-after",
+          mintTicket,
+          fetch: (() => pending) as typeof globalThis.fetch,
+        })}
+        onConversationStateChange={onConversationStateChange}
+      />,
+    );
+    expect(states).toEqual(["connecting"]);
+    expect(
+      screen.getByLabelText("Connecting to the session stream…"),
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      resolveFetch(new Response(null, { status: 204 }));
+    });
+    await waitFor(() =>
+      expect(screen.getByText("No conversation yet.")).toBeInTheDocument(),
+    );
+    expect(states).toEqual(["connecting", "live"]);
   });
 
   it("shows the degraded state when the stream errors", async () => {

@@ -172,6 +172,27 @@ describe("WebShellTerminal", () => {
     createShellSession.mockClear();
     await userEvent.click(reconnect);
     await waitFor(() => expect(createShellSession).toHaveBeenCalled());
+    // The new attempt starts over: the old failure no longer shows.
+    expect(
+      screen.getByText("Connecting to a running instance…"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/session limit reached/i)).toBeNull();
+    expect(screen.queryByRole("button", { name: /reconnect/i })).toBeNull();
+  });
+
+  it("starts over at Connecting when pointed at another service", async () => {
+    const { rerender } = render(<WebShellTerminal serviceId="srv-x" />);
+    await openSocket();
+    expect(await screen.findByText("Connected")).toBeInTheDocument();
+
+    rerender(<WebShellTerminal serviceId="srv-y" />);
+    expect(
+      screen.getByText("Connecting to a running instance…"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Connected")).toBeNull();
+    await waitFor(() =>
+      expect(createShellSession).toHaveBeenLastCalledWith("srv-y", undefined),
+    );
   });
 
   it("explains when the browser transport is unconfigured (503)", async () => {

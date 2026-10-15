@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useQuery } from "@apollo/client/react";
 import { AgentSessionsDocument } from "@/graphql/definitions";
 import { skipPollWhenHidden } from "@/common/lib/polling";
@@ -103,7 +110,9 @@ export function useAgentSessions({
   );
 
   // Keyset pagination (ADR065 D3): cursor = the last item's id; a page shorter
-  // than the page size is the end. Filter changes reset the exhaustion flag.
+  // than the page size is the end. Exhaustion belongs to the request it was
+  // found for, so a filter change (or a page landing after one) never marks
+  // another list exhausted.
   const pageSize = limit ?? AGENT_SESSION_PAGE_SIZE;
   const requestKey = JSON.stringify([
     currentWorkspaceId,
@@ -113,16 +122,18 @@ export function useAgentSessions({
     limit ?? 0,
   ]);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [exhausted, setExhausted] = useState(false);
-  useEffect(() => {
-    setExhausted(false);
-  }, [requestKey]);
+  const [exhaustedFor, setExhaustedFor] = useState<string | null>(null);
+  const exhausted = exhaustedFor === requestKey;
 
+  // Synced at commit so loadMore stays stable yet pages from the rendered list.
   const sessionsRef = useRef(sessions);
-  sessionsRef.current = sessions;
+  useLayoutEffect(() => {
+    sessionsRef.current = sessions;
+  }, [sessions]);
   const loadMore = useCallback(async () => {
     const last = sessionsRef.current.at(-1);
     if (!last) return;
+    const key = requestKey;
     setLoadingMore(true);
     try {
       const result = await fetchMore({
@@ -139,12 +150,12 @@ export function useAgentSessions({
         },
       });
       if ((result.data?.agentSessions.length ?? 0) < pageSize) {
-        setExhausted(true);
+        setExhaustedFor(key);
       }
     } finally {
       setLoadingMore(false);
     }
-  }, [fetchMore, pageSize]);
+  }, [fetchMore, pageSize, requestKey]);
 
   // Switch cadence on whether anything is still converging: any non-terminal
   // row polls fast; an all-terminal (or not-yet-loaded → treated as active)

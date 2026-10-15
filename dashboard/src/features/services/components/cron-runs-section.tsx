@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useEffectEvent, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
@@ -119,12 +119,11 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
     .map((run) => run.id)
     .join(" ");
   const [checkedRunKey, setCheckedRunKey] = useState(activeRunKey);
-  const refreshActions = useRef(serverActions.refresh);
-  refreshActions.current = serverActions.refresh;
+  const refreshActions = useEffectEvent(() => serverActions.refresh());
   useEffect(() => {
     if (activeRunKey === checkedRunKey) return;
     let live = true;
-    void refreshActions.current().finally(() => {
+    void refreshActions().finally(() => {
       if (live) setCheckedRunKey(activeRunKey);
     });
     return () => {

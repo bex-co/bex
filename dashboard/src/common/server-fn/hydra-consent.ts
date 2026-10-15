@@ -164,7 +164,7 @@ function profileClaimsClients(): Set<string> {
 function consentRedirectOrigin(
   consent: OAuth2ConsentRequest,
 ): string | undefined {
-  let redirect = "";
+  let redirect: string;
   try {
     redirect = consent.request_url
       ? new URL(consent.request_url).searchParams.get("redirect_uri") || ""
@@ -243,7 +243,7 @@ const REQUIRED_PKCE_METHOD = "S256";
  * Returns true when the request satisfies the policy.
  */
 function pkceSatisfied(consent: OAuth2ConsentRequest): boolean {
-  let requestUrl: URL | null = null;
+  let requestUrl: URL | null;
   try {
     requestUrl = consent.request_url ? new URL(consent.request_url) : null;
   } catch {

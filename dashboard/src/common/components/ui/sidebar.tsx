@@ -3,6 +3,7 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { PanelLeftIcon } from "lucide-react";
 
+import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import { useIsMobile } from "@/common/hooks/use-mobile";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { cn } from "@/common/lib/utils/utils.ts";
@@ -232,11 +233,7 @@ function Sidebar({
   const { t } = useTranslations();
 
   // Track hydration for this component to prevent conditional rendering mismatch
-  const [isHydrated, setIsHydrated] = React.useState(false);
-
-  React.useEffect(() => {
-    setIsHydrated(true);
-  }, []);
+  const isHydrated = useIsHydrated();
 
   if (collapsible === "none") {
     return (
