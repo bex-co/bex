@@ -232,7 +232,7 @@ export function EditableFieldRow({
         {comboboxOptions ? (
           <div className="flex-1">
             <Combobox
-              options={[...comboboxOptions]}
+              options={comboboxOptions}
               value={shown}
               onValueChange={setDraft}
               disabled={disabled || !editing || busy}

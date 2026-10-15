@@ -187,9 +187,9 @@ describe("GlobalSearch returns focus when dismissed (w4/291)", () => {
     );
     const { rerender } = render(page(true));
     screen.getByRole("button", { name: "elsewhere" }).focus();
-    let input = await openWithKeyboard();
+    await openWithKeyboard();
     rerender(page(false));
-    input = screen.getByRole("combobox");
+    let input = screen.getByRole("combobox");
     fireEvent.keyDown(input, { key: "Escape" });
     await waitClosed();
     await waitFor(() => expect(searchButton()).toHaveFocus());

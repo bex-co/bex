@@ -37,6 +37,29 @@ export function WebShellTerminal({
 
   const reconnect = useCallback(() => setAttempt((n) => n + 1), []);
 
+  // Any change to the connection effect's inputs below opens a new session, so
+  // the previous one's status and detail no longer apply. They are reset during
+  // render ("storing information from previous renders"), not from the effect
+  // body; keep this list in step with that effect's dependencies.
+  const [session, setSession] = useState({
+    serviceId,
+    instanceId,
+    attempt,
+    createShellSession,
+    t,
+  });
+  if (
+    session.serviceId !== serviceId ||
+    session.instanceId !== instanceId ||
+    session.attempt !== attempt ||
+    session.createShellSession !== createShellSession ||
+    session.t !== t
+  ) {
+    setSession({ serviceId, instanceId, attempt, createShellSession, t });
+    setStatus("connecting");
+    setDetail("");
+  }
+
   useEffect(() => {
     let cancelled = false;
     let term: XTerminal | undefined;
@@ -46,9 +69,6 @@ export function WebShellTerminal({
     // already shown, so the socket's own close event doesn't overwrite it with a
     // generic "session closed".
     let finalized = false;
-
-    setStatus("connecting");
-    setDetail("");
 
     void (async () => {
       const [{ Terminal }, { FitAddon }] = await Promise.all([

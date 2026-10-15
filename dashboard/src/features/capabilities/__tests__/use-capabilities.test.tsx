@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { useLayoutEffect, type ReactNode } from "react";
 
 vi.unmock("@/features/capabilities/hooks/use-capabilities");
 
@@ -15,7 +15,10 @@ vi.mock("@/features/workspaces/context/hooks", () => ({
 }));
 
 import { CapabilitiesProvider } from "@/features/capabilities/context/capabilities-provider";
-import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import {
+  useCapabilities,
+  type Capabilities,
+} from "@/features/capabilities/hooks/use-capabilities";
 import {
   bumpAccessGeneration,
   resetAccessGenerationForTests,
@@ -37,9 +40,25 @@ function wrapper({ children }: { children: ReactNode }) {
   return <CapabilitiesProvider>{children}</CapabilitiesProvider>;
 }
 
+// What consumers committed to the screen, render by render.
+let commits: Pick<Capabilities, "role" | "loading" | "unavailable">[] = [];
+
+function useCommittedCapabilities() {
+  const value = useCapabilities();
+  useLayoutEffect(() => {
+    commits.push({
+      role: value.role,
+      loading: value.loading,
+      unavailable: value.unavailable,
+    });
+  });
+  return value;
+}
+
 describe("useCapabilities (fail-closed + freshness)", () => {
   beforeEach(() => {
     mockQuery.mockReset();
+    commits = [];
     workspaceId = "tea-1";
     resetAccessGenerationForTests();
     Object.defineProperty(document, "hidden", {
@@ -213,6 +232,52 @@ describe("useCapabilities (fail-closed + freshness)", () => {
     expect(result.current.canViewSensitive).toBe(false);
     expect(result.current.loaded).toBe(false);
     expect(result.current.allows("can_create")).toBe(false);
+  });
+
+  it("never commits the previous generation's answer after a bump", async () => {
+    mockQuery
+      .mockResolvedValueOnce({
+        data: { viewerCapabilities: { role: "ADMIN", grants: allowedGrants } },
+      })
+      .mockReturnValue(new Promise(() => undefined));
+    const { result } = renderHook(() => useCommittedCapabilities(), {
+      wrapper,
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(result.current.role).toBe("ADMIN");
+
+    commits = [];
+    act(() => {
+      bumpAccessGeneration();
+    });
+    expect(commits.length).toBeGreaterThan(0);
+    expect(commits).toEqual(
+      commits.map(() => ({ role: null, loading: true, unavailable: false })),
+    );
+  });
+
+  it("never carries an unavailable answer into the next workspace", async () => {
+    mockQuery
+      .mockRejectedValueOnce(new Error("network"))
+      .mockReturnValue(new Promise(() => undefined));
+    const { result, rerender } = renderHook(() => useCommittedCapabilities(), {
+      wrapper,
+    });
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(result.current.unavailable).toBe(true);
+
+    commits = [];
+    workspaceId = "tea-2";
+    rerender();
+    expect(commits.length).toBeGreaterThan(0);
+    expect(commits).toEqual(
+      commits.map(() => ({ role: null, loading: true, unavailable: false })),
+    );
   });
 
   it("scopes fresh queries to the active workspace", async () => {

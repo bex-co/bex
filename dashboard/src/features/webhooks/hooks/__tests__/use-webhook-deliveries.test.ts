@@ -1,3 +1,4 @@
+import { useLayoutEffect } from "react";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RESOURCE_POLL_INTERVAL_MS } from "@/common/lib/polling";
@@ -136,6 +137,31 @@ describe("useWebhookDeliveries", () => {
     expect(result.current.deliveries.map((row) => row.id)).not.toContain(
       displaced,
     );
+  });
+
+  it("clears the loaded window as soon as the newest page comes back empty", async () => {
+    mockClientQuery.mockResolvedValue({
+      data: { webhookDeliveries: page("older", 20, -20) },
+    });
+    const committed: number[] = [];
+    const { result, rerender } = renderHook(() => {
+      const value = useWebhookDeliveries("whk-1");
+      useLayoutEffect(() => {
+        committed.push(value.deliveries.length);
+      });
+      return value;
+    });
+    await act(async () => result.current.loadMore());
+    await waitFor(() => expect(result.current.deliveries).toHaveLength(40));
+
+    queryData = { webhookDeliveries: [] };
+    committed.length = 0;
+    rerender();
+
+    expect(result.current.deliveries).toEqual([]);
+    expect(result.current.hasMore).toBe(false);
+    // The retained pages are never on screen under an empty newest read.
+    expect(committed).toEqual([0]);
   });
 
   it("drops retained pages when endpoint, owner, or filters change", async () => {

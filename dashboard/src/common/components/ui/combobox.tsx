@@ -22,7 +22,8 @@ export interface ComboboxOption {
 }
 
 interface ComboboxProps {
-  options: ComboboxOption[];
+  /** Pass a stable reference: a new array resets the keyboard highlight. */
+  options: readonly ComboboxOption[];
   value: string;
   onValueChange: (value: string) => void;
   placeholder?: string;
@@ -61,6 +62,15 @@ export function Combobox({
   // Unique ID per instance to scope querySelector and avoid cross-instance conflicts
   const instanceId = React.useId().replace(/:/g, "");
 
+  // Sync input value with prop value when it changes externally. Adjusted
+  // during render (React's "storing information from previous renders") so the
+  // stale text never commits.
+  const [syncedValue, setSyncedValue] = React.useState(value);
+  if (value !== syncedValue) {
+    setSyncedValue(value);
+    setInputValue(value);
+  }
+
   // Filter options based on input value
   const filteredOptions = React.useMemo(() => {
     if (!inputValue) return options;
@@ -72,6 +82,22 @@ export function Combobox({
         option.value.toLowerCase().includes(search),
     );
   }, [options, inputValue]);
+
+  // The highlight is a position in `filteredOptions`, so it is dropped when
+  // that list changes or the dropdown closes (reopening starts unhighlighted).
+  const [highlightScope, setHighlightScope] = React.useState({
+    filteredOptions,
+    open,
+  });
+  if (
+    highlightScope.filteredOptions !== filteredOptions ||
+    highlightScope.open !== open
+  ) {
+    setHighlightScope({ filteredOptions, open });
+    if (highlightScope.filteredOptions !== filteredOptions || !open) {
+      setHighlightedIndex(-1);
+    }
+  }
 
   const handleSelect = (selectedValue: string) => {
     setInputValue(selectedValue);
@@ -149,23 +175,6 @@ export function Combobox({
       return prev > 0 ? prev - 1 : 0;
     });
   };
-
-  // Sync input value with prop value when it changes externally
-  React.useEffect(() => {
-    setInputValue(value);
-  }, [value]);
-
-  // Reset highlighted index when filtered options change
-  React.useEffect(() => {
-    setHighlightedIndex(-1);
-  }, [filteredOptions]);
-
-  // Reset highlighted index when dropdown closes
-  React.useEffect(() => {
-    if (!open) {
-      setHighlightedIndex(-1);
-    }
-  }, [open]);
 
   // Scroll highlighted item into view
   React.useEffect(() => {

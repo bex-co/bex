@@ -7,7 +7,7 @@ import {
 import { ApolloProvider } from "@apollo/client/react";
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ReactNode } from "react";
+import { useLayoutEffect, type ReactNode } from "react";
 import { apolloDefaultOptions } from "@/common/apollo/default-options";
 import type { ServiceEventsQueryVariables } from "@/graphql/definitions";
 import {
@@ -97,13 +97,30 @@ function fixture(
   const wrapper = ({ children }: { children: ReactNode }) => (
     <ApolloProvider client={client}>{children}</ApolloProvider>
   );
+  // What each commit showed — the states a user could actually see.
+  const committed: { id: string; hasMore: boolean; error?: string }[] = [];
   const hook = renderHook(
-    ({ id }) =>
-      useServiceEvents(id, { ...bounds, limit: 2, live: true, ...options }),
+    ({ id }) => {
+      const result = useServiceEvents(id, {
+        ...bounds,
+        limit: 2,
+        live: true,
+        ...options,
+      });
+      useLayoutEffect(() => {
+        committed.push({
+          id,
+          hasMore: result.hasMore,
+          error: result.error?.message,
+        });
+      });
+      return result;
+    },
     { wrapper, initialProps: { id: "a" } },
   );
   return {
     ...hook,
+    committed,
     rows,
     requests,
     pending,
@@ -286,6 +303,25 @@ describe("live service events", () => {
       "a3",
       "a4",
     ]);
+    f.client.stop();
+  });
+  it("never shows the previous service's error or Load more under the next one", async () => {
+    const f = fixture();
+    await tick();
+    expect(f.result.current.hasMore).toBe(true);
+    f.setFailure(true);
+    await tick(30_000);
+    await tick();
+    expect(f.result.current.error?.message).toContain("events unavailable");
+    f.setFailure(false);
+    f.committed.length = 0;
+    f.rerender({ id: "b" });
+    await tick();
+    expect(f.result.current.events.map((e) => e.id)).toEqual(["b1"]);
+    expect(f.committed.length).toBeGreaterThan(0);
+    expect(
+      f.committed.filter((c) => c.id === "b" && (c.hasMore || c.error)),
+    ).toEqual([]);
     f.client.stop();
   });
   it("orders overlapping arrivals by instant across mixed RFC3339 precision", async () => {

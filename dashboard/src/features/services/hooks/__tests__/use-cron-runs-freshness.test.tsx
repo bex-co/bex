@@ -267,6 +267,37 @@ describe("useCronRuns freshness (w4/138)", () => {
     );
   });
 
+  it("never shows one service's retained rows under another whose read fails", async () => {
+    const shown: { id: string; runs: string[] }[] = [];
+    const { result, rerender } = renderHook(
+      ({ id }: { id: string }) => {
+        const value = useCronRuns(id);
+        shown.push({ id, runs: value.runs.map((r) => r.id) });
+        return value;
+      },
+      {
+        initialProps: { id: "srv-1" },
+        wrapper: wrapperFor([
+          firstPage("srv-1", [cronRun(2), cronRun(1)]),
+          {
+            request: {
+              query: CronJobRunsDocument,
+              variables: { serviceId: "srv-2", limit: 5 },
+            },
+            error: new Error("ERR_CONNECTION_CLOSED"),
+          },
+        ]),
+      },
+    );
+    await waitFor(() => expect(result.current.runs).toHaveLength(2));
+
+    rerender({ id: "srv-2" });
+    await waitFor(() => expect(result.current.error).toBe(true));
+
+    expect(result.current.runs).toEqual([]);
+    expect(shown.filter((s) => s.id === "srv-2" && s.runs.length)).toEqual([]);
+  });
+
   const ids = (runs: { id: string }[]) => runs.map((r) => r.id);
   const range = (from: number, to: number) =>
     Array.from({ length: from - to + 1 }, (_, i) => cronRun(from - i));

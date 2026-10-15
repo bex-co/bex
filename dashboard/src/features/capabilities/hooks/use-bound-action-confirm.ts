@@ -7,7 +7,13 @@
 // checking/stale/unavailable gap disables confirm and aborts any in-flight
 // recheck, but never closes the dialog; recovery needs a new click.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { useApolloClient } from "@apollo/client/react";
 import { toast } from "sonner";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -50,6 +56,24 @@ const SERVER_ACTIONS = new Set<ResourceActionId>([
   "cron_cancel_run",
 ]);
 
+type IntentContext = {
+  workspaceId: string | null;
+  resourceId: string;
+  deployId?: string;
+  generation: number;
+  requiredCapability?: CapabilityAction;
+};
+
+function sameIntent(binding: ActionConfirmBinding, context: IntentContext) {
+  return (
+    context.workspaceId === binding.workspaceId &&
+    context.resourceId === binding.resourceId &&
+    context.deployId === binding.deployId &&
+    context.generation === binding.generation &&
+    context.requiredCapability === binding.requiredCapability
+  );
+}
+
 export function useBoundActionConfirm(opts: {
   resourceId: string;
   deployId?: string;
@@ -68,7 +92,10 @@ export function useBoundActionConfirm(opts: {
   const eligible =
     capabilities.loaded && !capabilities.stale && !capabilities.unavailable;
   const client = useApolloClient();
-  const [pending, setPending] = useState<ActionConfirmBinding | null>(null);
+  const [pending, setPending] = useState<{
+    binding: ActionConfirmBinding;
+    accessGeneration: number;
+  } | null>(null);
   const pendingRef = useRef<ActionConfirmBinding | null>(null);
   const pendingAccessGeneration = useRef(getAccessGeneration());
   const mounted = useRef(true);
@@ -81,7 +108,9 @@ export function useBoundActionConfirm(opts: {
     accessGeneration: getAccessGeneration(),
   };
   const latest = useRef(currentContext);
-  latest.current = currentContext;
+  useLayoutEffect(() => {
+    latest.current = currentContext;
+  });
 
   /** Same-context intent: the dialog may stay open (presentation only). */
   const isIntentCurrent = useCallback(
@@ -92,11 +121,7 @@ export function useBoundActionConfirm(opts: {
         mounted.current &&
         pendingRef.current === binding &&
         pendingAccessGeneration.current === getAccessGeneration() &&
-        current.workspaceId === binding.workspaceId &&
-        current.resourceId === binding.resourceId &&
-        current.deployId === binding.deployId &&
-        current.generation === binding.generation &&
-        current.requiredCapability === binding.requiredCapability &&
+        sameIntent(binding, current) &&
         current.accessGeneration === getAccessGeneration()
       );
     },
@@ -116,9 +141,17 @@ export function useBoundActionConfirm(opts: {
     setPending(null);
   }, []);
 
-  const binding = isIntentCurrent(pending) ? pending : null;
+  // isIntentCurrent for render. Its ref checks are implied: `pending` is set
+  // and cleared together with pendingRef, unmount included.
+  const binding =
+    pending !== null &&
+    pending.accessGeneration === currentContext.accessGeneration &&
+    sameIntent(pending.binding, currentContext)
+      ? pending.binding
+      : null;
   useEffect(() => {
-    if (pending && !binding && pendingRef.current === pending) clearConfirm();
+    if (pending && !binding && pendingRef.current === pending.binding)
+      clearConfirm();
   }, [pending, binding, clearConfirm]);
   // A lapse invalidates an in-flight authorization attempt, so a check that
   // straddles it cannot resume after recovery; the dialog itself stays.
@@ -129,10 +162,9 @@ export function useBoundActionConfirm(opts: {
     mounted.current = true;
     return () => {
       mounted.current = false;
-      pendingRef.current = null;
-      inFlight.current?.abort();
+      clearConfirm();
     };
-  }, []);
+  }, [clearConfirm]);
 
   const openConfirm = useCallback(
     (action: ResourceActionId): ActionConfirmBinding | null => {
@@ -155,7 +187,10 @@ export function useBoundActionConfirm(opts: {
       };
       pendingRef.current = next;
       pendingAccessGeneration.current = getAccessGeneration();
-      setPending(next);
+      setPending({
+        binding: next,
+        accessGeneration: pendingAccessGeneration.current,
+      });
       return next;
     },
     [],

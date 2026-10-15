@@ -1,4 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { useLayoutEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUseQuery = vi.fn();
@@ -97,5 +98,35 @@ describe("useDeployHook", () => {
     expect(toastError).toHaveBeenCalledWith(
       "Couldn't regenerate the Deploy Hook. Please try again.",
     );
+  });
+
+  it("follows the read's URL without lagging it, and keeps it through a failed refresh", () => {
+    const OLD = "https://api.bex.co/v1/deploy-hooks/old";
+    const NEW = "https://api.bex.co/v1/deploy-hooks/new";
+    mockUseMutation.mockReturnValue([vi.fn()]);
+    let read: { data?: unknown; error?: Error } = {
+      data: { deployHook: { url: OLD } },
+    };
+    mockUseQuery.mockImplementation(() => ({ loading: false, ...read }));
+    const committed: (string | null)[] = [];
+    const { result, rerender } = renderHook(() => {
+      const value = useDeployHook("web");
+      useLayoutEffect(() => {
+        committed.push(value.url);
+      });
+      return value;
+    });
+    expect(result.current.url).toBe(OLD);
+
+    read = { data: undefined, error: new Error("ERR_CONNECTION_CLOSED") };
+    rerender();
+    expect(result.current.url).toBe(OLD);
+
+    read = { data: { deployHook: { url: NEW } } };
+    committed.length = 0;
+    rerender();
+    expect(result.current.url).toBe(NEW);
+    // The rotated-away URL is never on screen once the read has the new one.
+    expect(committed).toEqual([NEW]);
   });
 });
