@@ -1,6 +1,6 @@
 # w1 · m174 — Get main's red checks passing again: x/net CVEs, lint OOM, flaky tests, Dependabot, schema re-pin
 
-**Worker:** worker1 **Goal:** every check on `main` that is red today passes reliably, so a red check means something again and no known reachable Go vulnerability ships. **Status:** blocked — shipped `e8beef717` (t001–t004, t006–t008 done; t005: #78 landed, #83 parked as `w1/blocked/125`); the DoD's consecutive green runs need the self-hosted runner fleet, which picked up no job after 2026-10-15 09:28Z
+**Worker:** worker1 **Goal:** every check on `main` that is red today passes reliably, so a red check means something again and no known reachable Go vulnerability ships. **Status:** blocked — shipped `e8beef717` (t001–t008 done; t005 finished by `w1/m176` and `w1/m177`). The self-hosted runners are back: the DoD now waits only on CI history. As of 2026-10-15 20:55Z, go lint has 11 consecutive green runs and govulncheck 9. gitops (render) has 3 since the Zot fix and runs only on gitops-path pushes. Render schema drift's next two scheduled runs are Mondays 2026-10-19 and 10-26 at 06:17Z. A dispatched drift run already passes against the re-pin (`38805794187`, 2026-10-15: schema `8a3fb8da…`, 67-value webhook enum).
 
 ## Tasks (in order)
 
@@ -10,7 +10,7 @@
 | t002 | Add `gomod` ecosystems to `.github/dependabot.yml` — **DONE**                                            | 15m | t001                          |
 | t003 | Stop the whole-program dead-code pass being killed for memory (`make lint` Error 137) — **DONE**         | 45m | —                             |
 | t004 | Fix three flaky gitops tests (Zot GC replay, `closed_labels`, LogDelivery off by one second) — **DONE** | 45m | —                             |
-| t005 | Unstick Dependabot PRs #83 (removed `Github` icon) and #78 (SHA-pinned action inventory)      | 40m | —                             |
+| t005 | Unstick Dependabot PRs #83 (removed `Github` icon) and #78 (SHA-pinned action inventory) — **DONE**      | 40m | —                             |
 | t006 | Review and re-pin Render's Blueprint schema (`buildSourceGit.baseDir` → `dockerContext`) — **DONE**      | 30m | —                             |
 | t007 | Simplify — **DONE**                                                                                      | 15m | t002, t003, t004, t005, t006  |
 | t008 | Test coverage — **DONE**                                                                                 | 30m | t002, t003, t004, t005, t006  |
