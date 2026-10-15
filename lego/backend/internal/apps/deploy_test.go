@@ -57,7 +57,7 @@ func TestCreateWritesAppCR(t *testing.T) {
 	if !a.Spec.Expose {
 		t.Error("a web service must be exposed at the platform hostname")
 	}
-	if a.Spec.Replicas != 1 || a.Spec.Tier != "free" {
+	if a.Spec.Replicas != 1 || a.Spec.Tier != "starter" {
 		t.Errorf("defaults not applied: replicas=%d tier=%q", a.Spec.Replicas, a.Spec.Tier)
 	}
 	if a.Labels[core.LabelAppID] != v.ID {

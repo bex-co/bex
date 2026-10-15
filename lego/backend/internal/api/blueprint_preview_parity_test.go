@@ -90,6 +90,7 @@ func TestBlueprintPreviewAnswersExactlyTheApply(t *testing.T) {
   - type: web
     name: capped
     runtime: image
+    plan: free
     image:
       url: nginx:1
 `},
@@ -97,6 +98,7 @@ func TestBlueprintPreviewAnswersExactlyTheApply(t *testing.T) {
   - type: web
     name: invalid
     runtime: image
+    plan: free
     image:
       url: nginx:1
     startCommand: crd-invalid
@@ -105,6 +107,7 @@ func TestBlueprintPreviewAnswersExactlyTheApply(t *testing.T) {
   - type: web
     name: shop
     runtime: image
+    plan: free
     image:
       url: nginx:1
 `},
@@ -112,6 +115,7 @@ func TestBlueprintPreviewAnswersExactlyTheApply(t *testing.T) {
   - type: web
     name: storefront
     runtime: image
+    plan: free
     image:
       url: nginx:1
     domains:
@@ -141,6 +145,7 @@ func TestBlueprintPreviewAnswersExactlyTheApply(t *testing.T) {
   - type: web
     name: private
     runtime: image
+    plan: free
     image:
       url: docker.io/acme/private:1
       creds:
@@ -214,16 +219,19 @@ func TestBlueprintPreviewAnswersTheStackWideCountCap(t *testing.T) {
   - type: web
     name: first
     runtime: image
+    plan: free
     image:
       url: nginx:1
   - type: web
     name: second
     runtime: image
+    plan: free
     image:
       url: nginx:1
   - type: web
     name: third
     runtime: image
+    plan: free
     image:
       url: nginx:1
 `

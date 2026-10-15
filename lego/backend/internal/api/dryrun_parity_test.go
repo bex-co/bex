@@ -325,7 +325,7 @@ func TestDryRunThatPassesWritesNothing(t *testing.T) {
 	f := newParityFixture(&fakeChecker{allow: true}, false)
 	for name, dryRun := range map[string]func() error{
 		"service create": func() error {
-			_, err := f.apps.Create(ctx, apps.CreateRequest{Name: "fresh", Image: "nginx:1", DryRun: true})
+			_, err := f.apps.Create(ctx, apps.CreateRequest{Name: "fresh", Image: "nginx:1", Plan: "free", DryRun: true})
 			return err
 		},
 		"service plan change": func() error { _, err := f.apps.SetPlanDryRun(ctx, "web", "free"); return err },
