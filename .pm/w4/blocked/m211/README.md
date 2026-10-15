@@ -1,17 +1,17 @@
 # w4 · m211 — Keep batched hosting changes inside one response budget
 
-**Worker:** worker4 **Goal:** a hosting move sent as a GraphQL batch returns readable per-operation outcomes before the HTTP response deadline; a batch that has exhausted its budget starts no later operation. **Status:** todo
+**Worker:** worker4 **Goal:** a hosting move sent as a GraphQL batch returns readable per-operation outcomes before the HTTP response deadline; a batch that has exhausted its budget starts no later operation. **Status:** blocked — t001–t006 done 2026-10-15; t007 needs the release pipeline and the live replay
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Share the execution budget across the GraphQL batch | 40m | — |
-| t002 | Keep completed, uncertain and unstarted operations distinct | 40m | t001 |
-| t003 | Audit batch clients and preserve passing controls | 30m | t002 |
-| t004 | Render parity | 15m | t003 |
-| t005 | Simplify | 15m | t004 |
-| t006 | Test coverage | 40m | t004, t005 |
+| t001 | Share the execution budget across the GraphQL batch — **DONE** | 40m | — |
+| t002 | Keep completed, uncertain and unstarted operations distinct — **DONE** | 40m | t001 |
+| t003 | Audit batch clients and preserve passing controls — **DONE** | 30m | t002 |
+| t004 | Render parity — **DONE** | 15m | t003 |
+| t005 | Simplify — **DONE** | 15m | t004 |
+| t006 | Test coverage — **DONE** | 40m | t004, t005 |
 | t007 | Closeout | 25m | t006 |
 
 ## Definition of done

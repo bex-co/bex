@@ -362,6 +362,8 @@ mutation {
 }
 ```
 
+**Execution budget and batches (w4/m140, w4/m211).** Each GraphQL document runs inside a 25 s execution budget that sits 5 s inside the 30 s HTTP write deadline, so a timeout is always answered rather than cut off at the edge: a read gets `QUERY_TIMEOUT`, a mutation `WRITE_OUTCOME_UNKNOWN` (not rolled back; read before writing again). A JSON-array body (Apollo's `BatchHttpLink`, up to 32 members, one auth admission) runs its members in order under **one shared** 25 s deadline, because the write deadline covers the whole response, not each member. Every member gets a result slot in input order: members that finished keep their results; the member running when the budget ends gets the timeout code above; a member that was never dispatched answers `OPERATION_NOT_STARTED` ("this operation did not start…"), which did nothing but says earlier members may have committed. The dispatch check runs immediately before execution, because graphql-go starts resolving before it observes an expired context. No member is retried or replayed. Render's dashboard API publishes no batch timing or atomicity contract, so this is bex's own.
+
 ## Managed Postgres (Render `/v1/postgres` compatible)
 
 CRUD + connection-info for the `Database` CR, shaped to Render's Postgres API (see [ADR009-postgresql-management.md](ADR009-postgresql-management.md)):
