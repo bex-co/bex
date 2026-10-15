@@ -90,7 +90,7 @@ func TestJobShape(t *testing.T) {
 		t.Errorf("container image = %q, want the new revision's image", c.Image)
 	}
 	// The command is shell-wrapped so an arbitrary string works.
-	if got, want := c.Command, []string{"sh", "-c", "npm run migrate"}; strings.Join(got, "\x00") != strings.Join(want, "\x00") {
+	if got, want := c.Command, []string{"/bin/sh", "-c", "npm run migrate"}; strings.Join(got, "\x00") != strings.Join(want, "\x00") {
 		t.Errorf("command = %v, want %v", got, want)
 	}
 	// The app pod's env/secrets/pull secrets are threaded through unchanged.

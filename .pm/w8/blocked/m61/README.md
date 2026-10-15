@@ -1,50 +1,46 @@
----
-id: w8/m61/t003
-title: Render parity
-worker: worker8
-status: todo
-estimate: 20m
-depends_on: [w8/m61/t002, w8/m61/t008]
----
+# w8 · m61 — Honor application PATH during native builds
 
-## Objective
+**Worker:** worker8 **Goal:** exact application PATH reaches native build and runtime commands independently of platform helpers and inherited image entrypoints. **Status:** blocked — t001–t005, t007, t008 done; t006 needs the operator deployed to production and a fresh two-client native pre-deploy replay with empty/narrow PATH plus cleanup
 
-Keep accepted environment configuration consistent across REST, GraphQL, MCP, the dashboard and both native CLI clients.
+## Tasks (in order)
 
-## Context
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | Preserve application PATH across both native preparation stages — **DONE 2026-10-12** | 45m | — |
+| t007 | Remove inherited relative-entrypoint dependency — **DONE sweep228: both native clients live-accepted and cleanup complete** | 30m | t001 |
+| t008 | Start the pre-deploy shell independently of application PATH — **DONE** | 35m | t007 |
+| t002 | Audit native consumers and verify hosted recovery — **DONE 2026-10-13** | 30m | t007 |
+| t003 | Render parity — **DONE** | 20m | t002, t008 |
+| t004 | Simplify — **DONE** | 15m | t003 |
+| t005 | Test coverage — **DONE** | 35m | t003 |
+| t006 | Closeout — **BLOCKED (operator deploy + live replay)** | 20m | t004, t005 |
 
-- The fix belongs to the shared operator and changes no API field or naming policy.
-- The official CLI deployment guide promises build/runtime env availability. This specific custom-PATH case was not tested against Render production.
+## Definition of done
 
-## Steps
+- Repeat the [finding](finding.md) with fresh owned Free Python fixtures through published/current Bex and the unmodified Render v2.27.0 pin. `PATH=/usr/local/bin` plus a second variable must reach Live and HTTP 200 with the absolute Python build/start commands unchanged.
+- Repeat the [Node control](finding.md#node-hosted-control--sweep166): PATH alone and PATH plus the later marker both become Live with the original narrow PATH. The build/start commands and source commit remain unchanged.
+- Build and runtime both report the exact custom PATH and retain the other environment value and file bytes. Adding another variable must not stop the platform loader. Verify normal PATH, PATH alone, omitted PATH and explicit empty PATH controls.
+- Literal App/Blueprint PATH must also reach the build: preparation can start its shell and use its own codec tools while preserving the literal-over-Secret precedence and the user's bytes. Hosted Blueprint apply is currently unverified; obtain an owned acceptance route or retain a clearly stated limitation.
+- Complete the native caller/runtime census, byte codec, release/cache and cross-surface checks. No global PATH rewrite, new reserved-name policy, CLI request workaround or builder-version change is introduced.
+- Delete each owned fixture by its recorded ID and verify detail/list/public absence, baseline preservation and quota reconciliation. Record any unverified Kubernetes descendant teardown explicitly.
+- An absolute harmless native pre-deploy command starts with application PATH empty or narrow, preserving the exact environment and normal/omitted controls; initial/regular roles and opaque image contracts retain their semantics.
+- All tasks and observable checks are complete before moving the milestone to `done/`.
 
-1. Check create/edit and Blueprint literal paths on the supported surfaces, ensuring each retains exact PATH and other values and reaches the same builder.
-2. Verify relevant observable behavior on an owned fixture; label source-only and unavailable hosted checks precisely.
-3. Compare the documented Render semantics and the pinned client contract. Record any remaining drift separately; never infer Render-production success from Render CLI against Bex.
+## Progress / block
 
-## Files
+- **2026-10-13 UTC, sweep183:** [fresh Python live acceptance](evidence/live-python-sweep183/README.md) reproduces both initial narrow-PATH build failures through released Bex and pinned Render. Changing only PATH through owned save-only setup, then native deployment of the exact initial commit, produces Live/HTTP200 and matching build/runtime PATH plus variable/file bytes in both controls. Seven targeted local tests pass; current source has 137820b94, exact deployed SHA unknown. Both fixtures/four child records reconciled, baseline6/quota termination0, own notes/config copies removed. Existing m61 stays blocked; no duplicate issue or QA implementation/ship.
 
-- `lego/backend/internal/apps/service.go`
-- `lego/backend/internal/secrets/` env write/read adapters
-- `dashboard/` environment editor consumers
-- `docs/ADR004-app-deployment.md`, `docs/ADR018-render-parity.md` if behavior documentation needs correction
+- **2026-10-12:** the native RUN loader resolves its decoder once under the image PATH, and the preparer carries literals under private `BEX_NATIVE_LITERAL_<i>` names, so a custom PATH (Secret-backed or literal) reaches the build command exactly while platform helpers keep working (`lego/operator/internal/build/native.go`). `TestNativeEnvironmentKeepsApplicationPATH` fails on the original source and passes fixed; operator `make test`/`make lint` pass.
+- **Current remaining work:** t008 repairs pre-deploy shell lookup after empty-PATH startup acceptance; t003–t006 retain parity, quality and complete literal/runtime/surface checks. Earlier native repairs and observations remain historical; deployed SHA is unknown.
 
-## Acceptance criteria
+## Source + Goal linkage
 
-- [ ] All exposed surfaces preserve the same accepted PATH setting and configuration semantics.
-- [ ] Parity evidence and remaining unverified cases are documented without a new refusal or request workaround.
-
-## Historical upstream completion — 2026-10-13
-
-The fix is operator-side and changes no API field: REST/GraphQL/MCP/dashboard env writes reach the same App env and the same build path, and both native clients pass (sweeps 210/211). Recorded boundaries, not exercised live: explicit empty PATH and a literal App/Blueprint PATH on a hosted build (covered by the literal-source executions in `TestNativeEnvironmentKeepsApplicationPATH`), GraphQL/MCP/dashboard env writes, other runtime images (Elixir/Go/Ruby/Rust), Kubernetes descendant teardown. Render production was not tested.
-
-## Out of scope
-
-- A new reserved key, environment editor redesign, or unauthenticated assumptions about Render production.
-
-## Live sweep183 — 2026-10-13 UTC
-
-[Fresh two-client Python evidence and cleanup](evidence/live-python-sweep183/README.md): custom PATH plus a later variable still fails, while PATH-only broadened controls deploy the same commit and preserve build/runtime bytes. Current source repair/tests pass; deployed SHA is unknown. The complete observable DoD remains required before closeout. No new implementation or ship by QA.
+- **Source:** user-requested continuous `$qa-find-bugs-cli` in w8, sweep163, 2026-10-12 UTC. [Finding](finding.md) and [sanitized evidence](../evidence/m61/README.md).
+- **Goal linkage:** ADR008 core hosting, ADR004 source builds and ADR018 Render compatibility. Accepted application configuration must not stop the platform before the user command runs.
+- **Expected outcome:** a custom application PATH works for an absolute build command, independently of the names or order of other configured variables.
+- **Why now:** two fresh native clients produce `build_failed`; changing only PATH and redeploying the same commit recovers both. Actual generated-loader and generated-preparer executions identify two affected stages.
+- **Render parity included:** environment configuration is exposed through REST, GraphQL, MCP and the dashboard, although the correction belongs to the operator. The current official documentation supports build/runtime availability; this specific experiment was not run against Render production.
+- **Sizing:** originally 165 minutes across six tasks; now 230 minutes across eight tasks with t007/t008, including both preparation stages, shared consumers and closing checks. This is filing only; no product fix or ship was performed by the hunt.
 
 ## Native Python acceptance — sweep210, 2026-10-13 UTC
 
@@ -54,6 +50,8 @@ The fix is operator-side and changes no API field: REST/GraphQL/MCP/dashboard en
 
 [Node PATH-alone and additive-marker passes](evidence/live-node-sweep211/README.md): published Bex reaches Live/HTTP 200 in both phases with unchanged absolute Node commands, exact /usr/local/bin and matching file/marker hashes. Exact-owned save-only API setup adds only the marker; native deployment of the same initial source commit refreshes the build snapshot. One fixture/two child deploys are enumerated and deleted; baseline 6/quota 6/term 0, own local input/configs removed. This completes the original Bex Node control, while normal/omitted/empty PATH, hosted literal Blueprint, current-build create and remaining runtime/surface/descendant checks stay open. Deployed SHA unknown; no QA implementation or ship.
 
+The empty-PATH runtime gate requires Live/HTTP200 with PATH still empty through both native clients, after a native image startup correction. A successful RUN helper, normal-PATH recovery or source-only image-config inference does not close that gate.
+
 ## Empty-PATH Node runtime failure — sweep216, 2026-10-13 UTC
 
 [Complete native evidence and cleanup](evidence/live-node-sweep216/README.md) proves the remaining runtime failure through published Bex 0.3.2 and unmodified Render 2.27/a764810a7682. Both accept PATH= and finish building, but the inherited docker-entrypoint.sh cannot start. Render reaches update_failed/HTTP503; Bex is captured stalled with the same startup event, then superseded by the recovery control. Changing only PATH and natively deploying each same original commit reaches Live/HTTP200 and exact marker/file bytes. Fresh checkout omitted-PATH and published normal-PATH controls pass. All four fixtures/six child records are deleted, baseline/quota six restored; deployed SHA remains unknown.
@@ -62,9 +60,13 @@ The exact source-pinned Node OCI index declares relative ENTRYPOINT docker-entry
 
 Add t007 (30m): make the native image's authored start command independent of a toolchain image's inherited relative entrypoint. Evaluate clearing that ENTRYPOINT for native-generated images, preserve the exact configured PATH and absolute CMD, and audit all six native toolchains/App types. Opaque Docker and buildpack image launch behavior stays separately governed. Reopen t004/t005 for quality and actual image-startup regression coverage; prior helper completion remains historical. No product fix or ship by QA. Hosted literal Blueprint, all hosted runtimes, full surfaces and descendant teardown remain unverified.
 
-## Reopened after live empty-PATH runtime evidence
+## Reopened after independent upstream closure — sweep218
 
-Sweep216 proves the native image cannot start with PATH empty even though the generated build helpers pass. Complete t007 and the expanded runtime acceptance before closeout. The earlier upstream closure and source/narrow-PATH receipts are preserved in evidence/upstream-closeout-9f507a2a7.
+Commit 9f507a2a7 closed the prior build-helper scope using Python/Node narrow-PATH and generated-shell controls, with hosted empty PATH explicitly unexercised. Sweep216 now supplies two native empty-PATH image-startup failures and same-commit PATH-only recovery. Native source still inherits the relative Node entrypoint. The original empty-PATH runtime DoD is unmet, so t007 and t002–t006 remain active; the upstream receipts are preserved as historical text in evidence/upstream-closeout-9f507a2a7. No duplicate milestone or QA source fix is created.
+
+## Independent source replay — sweep226
+
+[Current-source verification](../evidence/current-source-sweep226/README.md) reruns the original relevant diagnostics after the fix. Its source-only scope and remaining production/native/runtime gates are explicit; this receipt does not close the milestone. No QA product implementation or ship.
 
 ## Empty-PATH startup accepted; pre-deploy neighbor remains — sweep228
 
@@ -73,16 +75,6 @@ Sweep216 proves the native image cannot start with PATH empty even though the ge
 Two separate fresh native fixtures adding an absolute harmless Node pre-deploy command instead end pre_deploy_failed/HTTP404 after successful builds. Broadening only PATH via exact-owned save-only setup, then natively deploying each original commit, recovers both to Live/HTTP200 with exact bytes and one pre-deploy marker each. Current predeploy.Job uses relative sh (predeploy.go:145) and unchanged app env/envFrom, while its sole caller supplies application configuration (app_controller.go:5658–5672). The controller already documents absolute /bin/sh as its platform shell policy at231–235. Exact deployed OCI startup error remains unobserved; the relative lookup is a source-traced cause supported by the causal controls.
 
 Add t00835m for the pre-deploy boundary. Preserve the now-passing generated-image startup and all native helper fixes. Reopen parity/simplification/coverage for the new correction, while retaining historical completed receipts. Five fixture services and seven deploy records are reconciled; all details/lists/former runtimes absent, baseline6/quota6/term0, note/config copies removed. Hosted literal Blueprint, live non-REST writes, other toolchains, checkout empty PATH and direct Kubernetes descendant teardown remain explicit limits. No QA product fix or ship.
-
-## Literal and later-native checks — sweep229
-
-[Three literal build/runtime controls and two native same-commit manual deploys](../evidence/hook-literal-sweep229/README.md) pass. Both clients validate all three declarations; inline API setup reaches Live/HTTP200 with exact literal PATH and Unicode/newline values. Published Bex and pinned Render each complete --wait on the distinct-command fixture and produce the regular marker in that deployment's log readback. First-hook events report success, but absent post-rollout initial output does not establish its total execution count. Empty/equal later-deploy, reapply and current-build manual controls remain unexercised; a separate runtime counter is planned. No full milestone closeout or new bug from missing logs alone. All three services/five deploy records are deleted; baseline6/quota6/term0. No QA source fix or ship.
-
-## Measured runtime hooks and discovered persistence blocker — sweep230
-
-[Runtime counters and exact-owned cleanup](../evidence/hook-runtime-sweep230/README.md) verify the primary hook lifecycle: stable interval distinct initial1/regular4, empty initial1/regular0, equal combined4; ten native --wait passes across published Bex, pinned Render and labeled unchanged checkout build; three unchanged inline reapplies preserve counts. Seven existing focused parent tests pass, including failed-next-release and legacy/pending source models. The counter restart is explicitly separated into a new measurement interval; no total-count claim spans that gap.
-
-Actual owned persistent provided-manifest syncs reveal [m66](../m66/README.md): source declarations return200, then canonical projection restores old repo/branch and their deploys cancel. Native retries succeed against the restored old source. Complete persistent declared-source acceptance remains blocked on m66; no complete m63 closeout from the primary passes alone. Four own services/twenty deploy records and one own Blueprint are fully cleaned, baseline6/quota6/term0 and the existing Blueprint preserved. No QA source fix or ship.
 
 ## Live native static-build acceptance — sweep232
 
@@ -107,3 +99,7 @@ Actual owned persistent provided-manifest syncs reveal [m66](../m66/README.md): 
 ## Live native Elixir acceptance — sweep240
 
 [Two Free native-Elixir fixtures](../evidence/native-elixir-sweep240/README.md) preserve exact omitted/narrow shell-delivered PATH and Unicode/multiline file bytes at both build and runtime. The standard-library probe preserves a narrow PATH containing the launcher prerequisites, alongside an omitted-PATH control. The Bex fixture token-spacing correction is an explicit setup limitation. Both final asynchronous native commit-pinned deploys converge to identical snapshots. All services/deploy children are cleaned. Native mutation-wire, deployed toolchain identity, other language/predeploy and shared-surface limits remain explicit; this is partial m61 acceptance, not closeout or a new defect.
+
+## Pre-deploy shell fixed — 2026-10-14 (`/loopx w8`)
+
+t008 code and regression are done (see `done/t008.md`, `done/t005.md`). Parked in `blocked/`: closeout needs the operator deployed to production, then QA replays the sweep228 pre-deploy journeys through published Bex and the pinned Render client with empty and narrow PATH (marker printed, Live/HTTP200, exact bytes, owned cleanup). The other DoD gaps already recorded stay open: hosted literal Blueprint, non-REST live writes and Kubernetes descendant teardown.

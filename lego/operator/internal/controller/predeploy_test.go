@@ -120,7 +120,7 @@ var _ = Describe("Pre-deploy gate (kubernetes runtime)", func() {
 			job := &batchv1.Job{}
 			Expect(k8sClient.Get(ctx, jobNN, job)).To(Succeed())
 			Expect(job.Spec.Template.Spec.Containers[0].Image).To(Equal("traefik/whoami"))
-			Expect(job.Spec.Template.Spec.Containers[0].Command).To(Equal([]string{"sh", "-c", "echo migrating"}))
+			Expect(job.Spec.Template.Spec.Containers[0].Command).To(Equal([]string{"/bin/sh", "-c", "echo migrating"}))
 			_, err := getDep(nn)
 			Expect(errors.IsNotFound(err)).To(BeTrue(), "Deployment must not roll until pre-deploy succeeds")
 			Expect(getApp(nn).Status.PreDeploy.Status).To(Equal(appv1alpha1.PreDeployRunning))

@@ -27,7 +27,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m62** — [Reject unlaunchable environment values](blocked/m62/README.md) — **BLOCKED (2026-10-12: t001/t002/t004/t005 done — every environment writer and Blueprint validation refuse newly supplied NUL values before any effect; needs the fix deployed to production plus fresh native Bex/Render validation receipts and surface checks before t003/t006 can close)**
 
-- [ ] **m61** — [Honor application PATH during native builds, startup and pre-deploy](m61/README.md) (8 tasks,3h50m) — **TODO (sweep228: t007 empty-PATH startup passes through both clients; t008 repairs two newly confirmed pre-deploy failures with same-commit PATH-only recovery; parity/quality and remaining literal/surface acceptance stay open)**
+- [ ] **m61** — [Honor application PATH during native builds, startup and pre-deploy](blocked/m61/README.md) — **BLOCKED (2026-10-14: t001–t005, t007, t008 done — pre-deploy now starts `/bin/sh` independently of application PATH; needs the operator deployed to production plus a fresh two-client native pre-deploy replay with empty/narrow PATH and cleanup before t006)**
 
 - [ ] **m60** — [Preserve accepted arguments when copying CLI commands](blocked/m60/README.md) — **BLOCKED (2026-10-12: t001/t002 prepared and tested with `blocked/m60/evidence/upstream-copy-command-formatter.patch` + caller audit; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release, and native Bex/Render receipts; no fork/backend workaround per scope/DO_NOT_DO)**
 
