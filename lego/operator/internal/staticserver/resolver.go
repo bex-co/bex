@@ -32,8 +32,10 @@ import (
 // Apps and atomically swapping an immutable snapshot. Polling (rather than an
 // informer) keeps the standalone binary simple; static-site config changes are
 // infrequent and a few seconds of edit propagation is acceptable (Render is not
-// instant either). Only Apps that are static_site, not suspended, and already
-// published (Status.ActiveRevision set) are served.
+// instant either). Only Apps that are static_site and already published
+// (Status.ActiveRevision set) are kept; a suspended one is kept Unavailable, so
+// its host answers a retryable 503 rather than 404 until a Refresh sees it
+// resumed (w4/307).
 type CachedResolver struct {
 	reader     client.Reader
 	namespace  string // "" => all namespaces
@@ -75,18 +77,19 @@ func (c *CachedResolver) Refresh(ctx context.Context) error {
 	next := map[string]Site{}
 	for i := range list.Items {
 		app := &list.Items[i]
-		if app.Spec.Type != appv1alpha1.TypeStaticSite || app.Spec.Suspended {
+		if app.Spec.Type != appv1alpha1.TypeStaticSite {
 			continue
 		}
 		if app.Status.ActiveRevision == "" {
 			continue // not yet published — nothing to serve
 		}
 		site := Site{
-			AppID:    app.Name,
-			Revision: app.Status.ActiveRevision,
-			Prefix:   staticServePrefix(app),
-			Routes:   app.Spec.Routes,
-			Headers:  app.Spec.Headers,
+			AppID:       app.Name,
+			Revision:    app.Status.ActiveRevision,
+			Prefix:      staticServePrefix(app),
+			Routes:      app.Spec.Routes,
+			Headers:     app.Spec.Headers,
+			Unavailable: app.Spec.Suspended,
 		}
 		for _, h := range effectiveHosts(app, c.baseDomain) {
 			next[h] = site
