@@ -1,17 +1,17 @@
 # w8 · m72 — Provide Poetry in native Python builds and runtime
 
-**Worker:** worker8 **Goal:** a native Python service can execute its documented Poetry toolchain with the selected compatible version during build and in the running image. **Status:** todo
+**Worker:** worker8 **Goal:** a native Python service can execute its documented Poetry toolchain with the selected compatible version during build and in the running image. **Status:** blocked
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Define Poetry versions and Python compatibility | 30m | — |
-| t002 | Provide Poetry before build and retain it at runtime | 45m | t001 |
-| t003 | Verify shared consumers, tool isolation and cache inputs | 25m | t002 |
-| t004 | Render parity | 20m | t003 |
-| t005 | Simplify | 10m | t004 |
-| t006 | Test coverage | 40m | t004 |
+| [t001](done/t001.md) | Define Poetry versions and Python compatibility | 30m | — — **DONE 2026-10-15** |
+| [t002](done/t002.md) | Provide Poetry before build and retain it at runtime | 45m | t001 — **DONE 2026-10-15** |
+| [t003](done/t003.md) | Verify shared consumers, tool isolation and cache inputs | 25m | t002 — **DONE 2026-10-15** |
+| [t004](done/t004.md) | Render parity | 20m | t003 — **DONE 2026-10-15** |
+| [t005](done/t005.md) | Simplify | 10m | t004 — **DONE 2026-10-15** |
+| [t006](done/t006.md) | Test coverage | 40m | t004 — **DONE 2026-10-15** |
 | t007 | Closeout | 20m | t005, t006 |
 
 ## Definition of done
