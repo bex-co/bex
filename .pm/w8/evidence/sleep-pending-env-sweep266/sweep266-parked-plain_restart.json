@@ -1,0 +1,73 @@
+{
+  "metadata": {
+    "name": "web",
+    "namespace": "qa266",
+    "resourceVersion": "1021",
+    "generation": 3,
+    "labels": {
+      "app.bex.co/workspace": "qa266"
+    },
+    "annotations": {
+      "app.bex.co/last-active": "2026-10-15T03:23:56Z",
+      "app.bex.co/release-generation": "3",
+      "app.bex.co/release-wake-generation": "3",
+      "app.bex.co/tls-secret-history": "[\"web-tls\"]"
+    },
+    "finalizers": [
+      "app.bex.co/finalizer"
+    ]
+  },
+  "spec": {
+    "type": "web_service",
+    "image": "nginx:1",
+    "replicas": 1,
+    "port": 3000,
+    "envFromSecret": "web-env",
+    "idleTTLSeconds": 30,
+    "restartedAt": "2026-10-15T04:23:56.18253Z",
+    "tier": "free",
+    "expose": true
+  },
+  "status": {
+    "phase": "Hibernated",
+    "url": "https://web.onbex.co",
+    "urls": [
+      "https://web.onbex.co"
+    ],
+    "activeRevision": "rev-3",
+    "image": "nginx:1",
+    "artifactFingerprint": "artifact-v1:b88835b8471143e721eb6aca22bd9510b900b349b0b3c52faf984709629a74dc",
+    "artifactImage": "nginx:1",
+    "releaseFingerprint": "release-v2:784817cc3d95400f902f7ea2a5fd4bfd19b33fc06adc5011ec86605053463837",
+    "releaseGeneration": 3,
+    "releaseArtifactFingerprint": "artifact-v1:b88835b8471143e721eb6aca22bd9510b900b349b0b3c52faf984709629a74dc",
+    "configSnapshotGeneration": 3,
+    "observedGeneration": 3,
+    "conditions": [
+      {
+        "type": "Ready",
+        "status": "False",
+        "observedGeneration": 3,
+        "lastTransitionTime": "2026-10-15T04:23:56Z",
+        "reason": "AutoHibernated",
+        "message": "idle ≥30s on free tier; wakes on next request"
+      },
+      {
+        "type": "PublicRouting",
+        "status": "True",
+        "observedGeneration": 3,
+        "lastTransitionTime": "2026-10-15T04:23:56Z",
+        "reason": "Routed",
+        "message": "serving at web.onbex.co"
+      },
+      {
+        "type": "Serving",
+        "status": "False",
+        "observedGeneration": 3,
+        "lastTransitionTime": "2026-10-15T04:23:56Z",
+        "reason": "ServingRevisionUnavailable",
+        "message": "no pod of the active revision is ready"
+      }
+    ]
+  }
+}

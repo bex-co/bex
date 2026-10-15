@@ -1,0 +1,11 @@
+{
+  "source": "https://api.github.com/repos/render-oss/cli/releases/tags/v2.29.0",
+  "tag_name": "v2.29.0",
+  "html_url": "https://github.com/render-oss/cli/releases/tag/v2.29.0",
+  "published_at": "2026-10-12T18:09:49Z",
+  "draft": false,
+  "prerelease": false,
+  "tag_commit": "af9bdd180e90ab9d1e971d73185687fed9ef08d8",
+  "release_body_sha256": "93a9694d6add60d9cf67fc2a292b89e0c7ca5f26db79931268d2b411fbb60229",
+  "relevant_change_summary": "The published v2.29.0 release includes reconnecting text/JSON log tails after dropped or unresponsive connections."
+}

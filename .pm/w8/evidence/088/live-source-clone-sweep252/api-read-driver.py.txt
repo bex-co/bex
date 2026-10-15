@@ -1,0 +1,39 @@
+from pathlib import Path
+import json,subprocess,datetime,time,yaml,os
+p=Path(__file__).parent;root=Path('/Volumes/nvme4tbfish/projects/bex8');c=json.loads((root/'.playwright-mcp/cli-qa-w8-checkpoint.json').read_text())
+x=next(v for v in c['resources'] if v.get('sweep')==252 and v['client']=='bex' and v['role']=='source')
+assert x['create_result']['exit']==0 and x['id']==x['create_response']['id'] and x['git_runtime_ready'] and not x['state'].startswith('deleted:')
+ws=x['workspace'];sid=x['id'];cfg=yaml.safe_load((p/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token
+ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')'
+auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+ws+'"\n'
+records=[]
+prior=p/'sweep252-api-reads-unscoped-initial.json'
+if not prior.exists() and (p/'sweep252-api-reads.json').exists():
+ prior.write_bytes((p/'sweep252-api-reads.json').read_bytes());prior.chmod(0o600)
+def save():
+ f=p/'sweep252-api-reads.json';f.write_text(json.dumps(records,indent=2,ensure_ascii=False)+'\n');f.chmod(0o600)
+def post(label,path,body):
+ file=p/'sweep252-read-request.json';file.write_text(json.dumps(body));file.chmod(0o600);started=time.monotonic()
+ try:
+  r=subprocess.run(['curl','--disable','-sS','--max-time','30','--config','-','-H','Content-Type: application/json','-H','Accept: application/json, text/event-stream','-H','MCP-Protocol-Version: 2025-03-26','--data-binary','@'+str(file),'-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=36)
+ finally:file.unlink(missing_ok=True)
+ text,_,status=r.stdout.rpartition('\n');record={'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'api_only':True,'label':label,'request':{'method':'POST','path':path,'body':body,'workspace':ws,'user_agent':ua,'authorization':'REDACTED'},'HTTP':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-started,3),'response':text,'stderr':r.stderr};assert token not in json.dumps(record);records.append(record);save()
+ print(json.dumps({'label':label,'HTTP':status,'curl_exit':r.returncode}),flush=True)
+ assert r.returncode==0 and status=='200'
+ if text.lstrip().startswith('data:') or text.startswith('event:'):
+  data=[line[5:].strip() for line in text.splitlines() if line.startswith('data:')];assert len(data)==1;return json.loads(data[0])
+ return json.loads(text)
+read=post('GraphQL own service projection','/graphql',{'query':'query QA252($id:String!){service(id:$id){id repo imagePath runtime builder branch}}','variables':{'id':sid}})
+assert not read.get('errors');service=read['data']['service'];assert service['id']==sid and service['runtime']=='docker' and service['repo']=='https://github.com/traefik/whoami' and not service.get('imagePath')
+mread=post('MCP own service projection','/mcp',{'jsonrpc':'2.0','id':1,'method':'tools/call','params':{'name':'get_service','arguments':{'serviceId':sid,'workspaceId':ws}}})
+assert not mread.get('error');mres=mread['result'];assert not mres.get('isError');service=mres.get('structuredContent') or json.loads(mres['content'][0]['text']);assert service['id']==sid and service['serviceDetails']['runtime']=='docker' and service['repo']=='https://github.com/traefik/whoami' and not service.get('imagePath')
+r=post('REST own source export','/v1/blueprints/generate',{'ownerId':ws,'serviceIds':[sid]})
+g=post('GraphQL own source export','/graphql',{'query':'query QA252Export($owner:String!,$ids:[String]){generateBlueprint(ownerId:$owner,serviceIds:$ids){filename manifest}}','variables':{'owner':ws,'ids':[sid]}})
+assert not g.get('errors');g=g['data']['generateBlueprint']
+m=post('MCP own source export','/mcp',{'jsonrpc':'2.0','id':2,'method':'tools/call','params':{'name':'generate_blueprint','arguments':{'serviceIds':[sid],'workspaceId':ws}}})
+assert not m.get('error');mres=m['result'];assert not mres.get('isError');m=mres.get('structuredContent') or json.loads(mres['content'][0]['text'])
+assert r['manifest']==g['manifest']==m['manifest'];assert r['filename']==g['filename']==m['filename']=='render.yaml'
+manifest=yaml.safe_load(r['manifest']);entry=manifest['services'][0]
+assert len(manifest['services'])==1 and entry['runtime']=='docker' and entry['repo']=='https://github.com/traefik/whoami' and not entry.get('image')
+f=p/'sweep252-export-render.yaml';f.write_text(r['manifest']);f.chmod(0o600)
+print('All three exports match exactly; owned service runtime is docker through REST/GraphQL/MCP.',flush=True)

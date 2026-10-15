@@ -1,0 +1,6 @@
+{
+  "QA_email_password_config_credentials": "masked if present; none published",
+  "owned_temp_directory": "<owned-temp>",
+  "harmless_configuration": "MESSAGE nonce and NODE_VERSION18/24 preserved",
+  "data_types": "non-secret JSON values/types, complete native stdout/stderr, IDs and statuses retained"
+}

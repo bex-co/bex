@@ -1,0 +1,2065 @@
+{
+  "sweep": 258,
+  "client": "bex",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "name": "qa-20261015-d07a90-http",
+  "nonce": "d07a90",
+  "marker": "QA258_d07a90",
+  "type": "static_site",
+  "time": "2026-10-15T02:38:28.351498+00:00",
+  "source_head": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+  "dependency_ids": [],
+  "recorded_child_ids": [
+    "dep-db83p98umfhs73fe7iv0"
+  ],
+  "capacity_proof": {
+    "at": "2026-10-15T02:38:27.164136+00:00",
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "authorization": "[REDACTED]"
+    },
+    "status": "200",
+    "elapsed": 0.419,
+    "curl_exit": 0,
+    "stderr": "",
+    "headers": {
+      "content-type": "application/json",
+      "cf-ray": "a4ab729979abc4f3-SJC"
+    },
+    "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+  },
+  "pre_create_inventory": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.125,
+    "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T02:38:06Z\",\n        \"nextRunAt\": \"2026-10-15T02:39:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T02:38:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T02:38:07Z\",\n        \"nextRunAt\": \"2026-10-15T02:39:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T02:38:07Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T02:38:06Z\",\n        \"nextRunAt\": \"2026-10-15T02:39:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T02:38:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T02:30:36Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T00:05:33Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T00:05:28Z\"\n    }\n  }\n]",
+    "stderr": ""
+  },
+  "create_command": [
+    "bex",
+    "services",
+    "create",
+    "--name",
+    "qa-20261015-d07a90-http",
+    "--type",
+    "static_site",
+    "--repo",
+    "https://github.com/bex-co/bex",
+    "--branch",
+    "main",
+    "--root-directory",
+    "examples/static-site",
+    "--build-command",
+    "printf '%s' 'QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\n' > version.txt; printf '%s' '<html><body>QA258_d07a90-SPA-index-abcdefghijklmnopqrstuvwxyz</body></html>\n' > index.html",
+    "--publish-directory",
+    ".",
+    "--auto-deploy=false",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "expected_version": "QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\n",
+  "expected_index": "<html><body>QA258_d07a90-SPA-index-abcdefghijklmnopqrstuvwxyz</body></html>\n",
+  "etag": "\"QA258_d07a90\"",
+  "state": "deleted: API404/listabsent/runtime404/baseline present/quota terminating0",
+  "create_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261015-d07a90-http",
+      "--type",
+      "static_site",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/static-site",
+      "--build-command",
+      "printf '%s' 'QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\n' > version.txt; printf '%s' '<html><body>QA258_d07a90-SPA-index-abcdefghijklmnopqrstuvwxyz</body></html>\n' > index.html",
+      "--publish-directory",
+      ".",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.183,
+    "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T02:38:29Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db83p98umfhs73fe7iug\",\n  \"id\": \"srv-db83p98umfhs73fe7iug\",\n  \"name\": \"qa-20261015-d07a90-http\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/static-site\",\n  \"serviceDetails\": {\n    \"buildCommand\": \"printf '%s' 'QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\\n' \\u003e version.txt; printf '%s' '\\u003chtml\\u003e\\u003cbody\\u003eQA258_d07a90-SPA-index-abcdefghijklmnopqrstuvwxyz\\u003c/body\\u003e\\u003c/html\\u003e\\n' \\u003e index.html\",\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"publishPath\": \".\",\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"url\": \"https://qa-20261015-d07a90-http.onbex.co\"\n  },\n  \"slug\": \"qa-20261015-d07a90-http\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"static_site\",\n  \"updatedAt\": \"2026-10-15T02:38:29.447536298Z\"\n}",
+    "stderr": ""
+  },
+  "id": "srv-db83p98umfhs73fe7iug",
+  "create_response": {
+    "autoDeploy": "no",
+    "autoDeployTrigger": "off",
+    "branch": "main",
+    "createdAt": "2026-10-15T02:38:29Z",
+    "dashboardUrl": "https://dashboard.bex.co/static/srv-db83p98umfhs73fe7iug",
+    "id": "srv-db83p98umfhs73fe7iug",
+    "name": "qa-20261015-d07a90-http",
+    "notifyOnFail": "default",
+    "ownerId": "tea-daif693dqjvc73e7as3g",
+    "repo": "https://github.com/bex-co/bex",
+    "rootDir": "examples/static-site",
+    "serviceDetails": {
+      "buildCommand": "printf '%s' 'QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\n' > version.txt; printf '%s' '<html><body>QA258_d07a90-SPA-index-abcdefghijklmnopqrstuvwxyz</body></html>\n' > index.html",
+      "numInstances": 1,
+      "plan": "free",
+      "publishPath": ".",
+      "region": "fsn1",
+      "renderSubdomainPolicy": "enabled",
+      "url": "https://qa-20261015-d07a90-http.onbex.co"
+    },
+    "slug": "qa-20261015-d07a90-http",
+    "suspended": "not_suspended",
+    "suspenders": [],
+    "type": "static_site",
+    "updatedAt": "2026-10-15T02:38:29.447536298Z"
+  },
+  "deploy_children": [
+    {
+      "commit": {
+        "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+        "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+      },
+      "createdAt": "2026-10-15T02:38:29.402469Z",
+      "finishedAt": "2026-10-15T02:40:42.364025Z",
+      "id": "dep-db83p98umfhs73fe7iv0",
+      "startedAt": "2026-10-15T02:39:42.400513Z",
+      "status": "live",
+      "trigger": "other",
+      "updatedAt": "2026-10-15T02:40:42.364027Z"
+    }
+  ],
+  "history_receipts": [
+    {
+      "at": "2026-10-15T02:38:47.241992+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db83p98umfhs73fe7iug",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.675,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:38:29.402469Z\",\n    \"id\": \"dep-db83p98umfhs73fe7iv0\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:38:42.414292Z\"\n  }\n]",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-15T02:39:50.765636+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db83p98umfhs73fe7iug",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.338,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:38:29.402469Z\",\n    \"id\": \"dep-db83p98umfhs73fe7iv0\",\n    \"startedAt\": \"2026-10-15T02:39:42.400513Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:39:42.400515Z\"\n  }\n]",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-15T02:41:11.195764+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db83p98umfhs73fe7iug",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.415,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:38:29.402469Z\",\n    \"finishedAt\": \"2026-10-15T02:40:42.364025Z\",\n    \"id\": \"dep-db83p98umfhs73fe7iv0\",\n    \"startedAt\": \"2026-10-15T02:39:42.400513Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:40:42.364027Z\"\n  }\n]",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-15T02:43:00.519353+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db83p98umfhs73fe7iug",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.492,
+        "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:38:29.402469Z\",\n    \"finishedAt\": \"2026-10-15T02:40:42.364025Z\",\n    \"id\": \"dep-db83p98umfhs73fe7iv0\",\n    \"startedAt\": \"2026-10-15T02:39:42.400513Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:40:42.364027Z\"\n  }\n]",
+        "stderr": ""
+      }
+    }
+  ],
+  "observations": [
+    {
+      "at": "2026-10-15T02:38:48.051620+00:00",
+      "deploy": {
+        "commit": {
+          "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+          "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+        },
+        "createdAt": "2026-10-15T02:38:29.402469Z",
+        "id": "dep-db83p98umfhs73fe7iv0",
+        "status": "queued",
+        "trigger": "other",
+        "updatedAt": "2026-10-15T02:38:42.414292Z"
+      },
+      "runtime": {
+        "at": "2026-10-15T02:38:48.051558+00:00",
+        "request": {
+          "method": "GET",
+          "url": "https://qa-20261015-d07a90-http.onbex.co/version.txt?qa=d07a90",
+          "headers": {
+            "Accept-Encoding": "identity"
+          }
+        },
+        "HTTP": "404",
+        "curl_exit": 0,
+        "headers": {
+          "content-type": "text/plain; charset=utf-8",
+          "x-content-type-options": "nosniff",
+          "content-length": "19",
+          "date": "Thu, 15 Oct 2026 02:38:47 GMT"
+        },
+        "body_utf8": "404 page not found\n",
+        "body_bytes": 19,
+        "stderr": "",
+        "HEAD_body_qualification": null
+      },
+      "exact_marker": false
+    },
+    {
+      "at": "2026-10-15T02:39:51.544282+00:00",
+      "deploy": {
+        "commit": {
+          "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+          "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+        },
+        "createdAt": "2026-10-15T02:38:29.402469Z",
+        "id": "dep-db83p98umfhs73fe7iv0",
+        "startedAt": "2026-10-15T02:39:42.400513Z",
+        "status": "build_in_progress",
+        "trigger": "other",
+        "updatedAt": "2026-10-15T02:39:42.400515Z"
+      },
+      "runtime": {
+        "at": "2026-10-15T02:39:51.544249+00:00",
+        "request": {
+          "method": "GET",
+          "url": "https://qa-20261015-d07a90-http.onbex.co/version.txt?qa=d07a90",
+          "headers": {
+            "Accept-Encoding": "identity"
+          }
+        },
+        "HTTP": "404",
+        "curl_exit": 0,
+        "headers": {
+          "content-type": "text/plain; charset=utf-8",
+          "x-content-type-options": "nosniff",
+          "content-length": "19",
+          "date": "Thu, 15 Oct 2026 02:39:51 GMT"
+        },
+        "body_utf8": "404 page not found\n",
+        "body_bytes": 19,
+        "stderr": "",
+        "HEAD_body_qualification": null
+      },
+      "exact_marker": false
+    },
+    {
+      "at": "2026-10-15T02:41:12.003270+00:00",
+      "deploy": {
+        "commit": {
+          "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+          "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+        },
+        "createdAt": "2026-10-15T02:38:29.402469Z",
+        "finishedAt": "2026-10-15T02:40:42.364025Z",
+        "id": "dep-db83p98umfhs73fe7iv0",
+        "startedAt": "2026-10-15T02:39:42.400513Z",
+        "status": "live",
+        "trigger": "other",
+        "updatedAt": "2026-10-15T02:40:42.364027Z"
+      },
+      "runtime": {
+        "at": "2026-10-15T02:41:12.003213+00:00",
+        "request": {
+          "method": "GET",
+          "url": "https://qa-20261015-d07a90-http.onbex.co/version.txt?qa=d07a90",
+          "headers": {
+            "Accept-Encoding": "identity"
+          }
+        },
+        "HTTP": "200",
+        "curl_exit": 0,
+        "headers": {
+          "accept-ranges": "bytes",
+          "cache-control": "public, max-age=0, must-revalidate",
+          "content-type": "text/plain",
+          "date": "Thu, 15 Oct 2026 02:41:11 GMT",
+          "content-length": "51"
+        },
+        "body_utf8": "QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\n",
+        "body_bytes": 51,
+        "stderr": "",
+        "HEAD_body_qualification": null
+      },
+      "exact_marker": true
+    }
+  ],
+  "configuration_intent": {
+    "at": "2026-10-15T02:41:35.160745+00:00",
+    "body": {
+      "query": "mutation QA258($id:String!,$headers:[StaticHeaderInput],$routes:[StaticRouteInput]){setStaticHeaders(id:$id,headers:$headers){id} setStaticRoutes(id:$id,routes:$routes){id}}",
+      "variables": {
+        "id": "srv-db83p98umfhs73fe7iug",
+        "headers": [
+          {
+            "path": "/*",
+            "name": "ETag",
+            "value": "\"QA258_d07a90\""
+          }
+        ],
+        "routes": [
+          {
+            "type": "rewrite",
+            "source": "/qa-rewrite.txt",
+            "destination": "/version.txt"
+          }
+        ]
+      }
+    }
+  },
+  "configuration_result": {
+    "at": "2026-10-15T02:41:35.997479+00:00",
+    "api_only": true,
+    "request": {
+      "method": "POST",
+      "path": "/graphql",
+      "body": {
+        "query": "mutation QA258($id:String!,$headers:[StaticHeaderInput],$routes:[StaticRouteInput]){setStaticHeaders(id:$id,headers:$headers){id} setStaticRoutes(id:$id,routes:$routes){id}}",
+        "variables": {
+          "id": "srv-db83p98umfhs73fe7iug",
+          "headers": [
+            {
+              "path": "/*",
+              "name": "ETag",
+              "value": "\"QA258_d07a90\""
+            }
+          ],
+          "routes": [
+            {
+              "type": "rewrite",
+              "source": "/qa-rewrite.txt",
+              "destination": "/version.txt"
+            }
+          ]
+        }
+      },
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "status": "200",
+    "curl_exit": 0,
+    "elapsed": 0.705,
+    "response": "{\"data\":{\"setStaticHeaders\":{\"id\":\"srv-db83p98umfhs73fe7iug\"},\"setStaticRoutes\":{\"id\":\"srv-db83p98umfhs73fe7iug\"}}}\n",
+    "stderr": ""
+  },
+  "configuration_reads": [
+    {
+      "at": "2026-10-15T02:41:37.065227+00:00",
+      "api_only": true,
+      "request": {
+        "method": "POST",
+        "path": "/graphql",
+        "body": {
+          "query": "query QA258($id:String!){service(id:$id){id headers{path name value} routes{type source destination}}}",
+          "variables": {
+            "id": "srv-db83p98umfhs73fe7iug"
+          }
+        },
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.699,
+      "response": "{\"data\":{\"service\":{\"headers\":[{\"name\":\"ETag\",\"path\":\"/*\",\"value\":\"\\\"QA258_d07a90\\\"\"}],\"id\":\"srv-db83p98umfhs73fe7iug\",\"routes\":[{\"destination\":\"/version.txt\",\"source\":\"/qa-rewrite.txt\",\"type\":\"rewrite\"}]}}}\n",
+      "stderr": ""
+    }
+  ],
+  "readiness_receipts": [
+    {
+      "at": "2026-10-15T02:41:54.575840+00:00",
+      "reads": [
+        {
+          "at": "2026-10-15T02:41:53.355335+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261015-d07a90-http.onbex.co/version.txt?qa=d07a90",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "HTTP": "200",
+          "curl_exit": 0,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/plain",
+            "date": "Thu, 15 Oct 2026 02:41:53 GMT",
+            "etag": "\"QA258_d07a90\"",
+            "content-length": "51"
+          },
+          "body_utf8": "QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\n",
+          "body_bytes": 51,
+          "stderr": "",
+          "HEAD_body_qualification": null
+        },
+        {
+          "at": "2026-10-15T02:41:53.903347+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261015-d07a90-http.onbex.co/qa-rewrite.txt?qa=d07a90",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "HTTP": "200",
+          "curl_exit": 0,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/plain",
+            "date": "Thu, 15 Oct 2026 02:41:53 GMT",
+            "etag": "\"QA258_d07a90\"",
+            "content-length": "51"
+          },
+          "body_utf8": "QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\n",
+          "body_bytes": 51,
+          "stderr": "",
+          "HEAD_body_qualification": null
+        },
+        {
+          "at": "2026-10-15T02:41:54.575755+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261015-d07a90-http.onbex.co/qa-spa?qa=d07a90",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "HTTP": "200",
+          "curl_exit": 0,
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/html",
+            "date": "Thu, 15 Oct 2026 02:41:54 GMT",
+            "etag": "\"QA258_d07a90\"",
+            "content-length": "76"
+          },
+          "body_utf8": "<html><body>QA258_d07a90-SPA-index-abcdefghijklmnopqrstuvwxyz</body></html>\n",
+          "body_bytes": 76,
+          "stderr": "",
+          "HEAD_body_qualification": null
+        }
+      ],
+      "ready": true
+    }
+  ],
+  "probe_rounds": [
+    {
+      "at": "2026-10-15T02:42:36.498732+00:00",
+      "results": [
+        {
+          "label": "ordinary GET",
+          "path": "/version.txt",
+          "expected_status": "200",
+          "expected_body_utf8": "QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\n",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:03.900850+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/version.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity"
+              }
+            },
+            "HTTP": "200",
+            "curl_exit": 0,
+            "headers": {
+              "accept-ranges": "bytes",
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-type": "text/plain",
+              "date": "Thu, 15 Oct 2026 02:42:03 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "51"
+            },
+            "body_utf8": "QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\n",
+            "body_bytes": 51,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "ordinary HEAD",
+          "path": "/version.txt",
+          "expected_status": "200",
+          "expected_body_utf8": "",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:04.661780+00:00",
+            "request": {
+              "method": "HEAD",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/version.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity"
+              }
+            },
+            "HTTP": "200",
+            "curl_exit": 0,
+            "headers": {
+              "accept-ranges": "bytes",
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-type": "text/plain",
+              "date": "Thu, 15 Oct 2026 02:42:04 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "51"
+            },
+            "body_utf8": "",
+            "body_bytes": 0,
+            "stderr": "",
+            "HEAD_body_qualification": "curl --head requests headers only; raw empty wire body not independently read"
+          }
+        },
+        {
+          "label": "matching GET",
+          "path": "/version.txt",
+          "expected_status": "304",
+          "expected_body_utf8": "",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:05.366085+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/version.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-None-Match": "\"QA258_d07a90\""
+              }
+            },
+            "HTTP": "304",
+            "curl_exit": 0,
+            "headers": {
+              "cache-control": "public, max-age=0, must-revalidate",
+              "date": "Thu, 15 Oct 2026 02:42:05 GMT",
+              "etag": "\"QA258_d07a90\""
+            },
+            "body_utf8": "",
+            "body_bytes": 0,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "matching HEAD",
+          "path": "/version.txt",
+          "expected_status": "304",
+          "expected_body_utf8": "",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:06.063023+00:00",
+            "request": {
+              "method": "HEAD",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/version.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-None-Match": "\"QA258_d07a90\""
+              }
+            },
+            "HTTP": "304",
+            "curl_exit": 0,
+            "headers": {
+              "cache-control": "public, max-age=0, must-revalidate",
+              "date": "Thu, 15 Oct 2026 02:42:05 GMT",
+              "etag": "\"QA258_d07a90\""
+            },
+            "body_utf8": "",
+            "body_bytes": 0,
+            "stderr": "",
+            "HEAD_body_qualification": "curl --head requests headers only; raw empty wire body not independently read"
+          }
+        },
+        {
+          "label": "weak tag",
+          "path": "/version.txt",
+          "expected_status": "304",
+          "expected_body_utf8": "",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:06.762635+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/version.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-None-Match": "W/\"QA258_d07a90\""
+              }
+            },
+            "HTTP": "304",
+            "curl_exit": 0,
+            "headers": {
+              "cache-control": "public, max-age=0, must-revalidate",
+              "date": "Thu, 15 Oct 2026 02:42:06 GMT",
+              "etag": "\"QA258_d07a90\""
+            },
+            "body_utf8": "",
+            "body_bytes": 0,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "tag list",
+          "path": "/version.txt",
+          "expected_status": "304",
+          "expected_body_utf8": "",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:07.457052+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/version.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-None-Match": "\"absent\", \"QA258_d07a90\""
+              }
+            },
+            "HTTP": "304",
+            "curl_exit": 0,
+            "headers": {
+              "cache-control": "public, max-age=0, must-revalidate",
+              "date": "Thu, 15 Oct 2026 02:42:07 GMT",
+              "etag": "\"QA258_d07a90\""
+            },
+            "body_utf8": "",
+            "body_bytes": 0,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "wildcard existing",
+          "path": "/version.txt",
+          "expected_status": "304",
+          "expected_body_utf8": "",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:08.152367+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/version.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-None-Match": "*"
+              }
+            },
+            "HTTP": "304",
+            "curl_exit": 0,
+            "headers": {
+              "cache-control": "public, max-age=0, must-revalidate",
+              "date": "Thu, 15 Oct 2026 02:42:08 GMT",
+              "etag": "\"QA258_d07a90\""
+            },
+            "body_utf8": "",
+            "body_bytes": 0,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "different tag",
+          "path": "/version.txt",
+          "expected_status": "200",
+          "expected_body_utf8": "QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\n",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:08.856298+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/version.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-None-Match": "\"absent\""
+              }
+            },
+            "HTTP": "200",
+            "curl_exit": 0,
+            "headers": {
+              "accept-ranges": "bytes",
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-type": "text/plain",
+              "date": "Thu, 15 Oct 2026 02:42:08 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "51"
+            },
+            "body_utf8": "QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\n",
+            "body_bytes": 51,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "failed match",
+          "path": "/version.txt",
+          "expected_status": "412",
+          "expected_body_utf8": "",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:09.734278+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/version.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-Match": "\"absent\""
+              }
+            },
+            "HTTP": "412",
+            "curl_exit": 0,
+            "headers": {
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-type": "text/plain",
+              "date": "Thu, 15 Oct 2026 02:42:09 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "0"
+            },
+            "body_utf8": "",
+            "body_bytes": 0,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "failed match HEAD",
+          "path": "/version.txt",
+          "expected_status": "412",
+          "expected_body_utf8": "",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:10.427294+00:00",
+            "request": {
+              "method": "HEAD",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/version.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-Match": "\"absent\""
+              }
+            },
+            "HTTP": "412",
+            "curl_exit": 0,
+            "headers": {
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-type": "text/plain",
+              "date": "Thu, 15 Oct 2026 02:42:10 GMT",
+              "etag": "\"QA258_d07a90\""
+            },
+            "body_utf8": "",
+            "body_bytes": 0,
+            "stderr": "",
+            "HEAD_body_qualification": "curl --head requests headers only; raw empty wire body not independently read"
+          }
+        },
+        {
+          "label": "matching strong",
+          "path": "/version.txt",
+          "expected_status": "200",
+          "expected_body_utf8": "QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\n",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:11.136904+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/version.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-Match": "\"QA258_d07a90\""
+              }
+            },
+            "HTTP": "200",
+            "curl_exit": 0,
+            "headers": {
+              "accept-ranges": "bytes",
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-type": "text/plain",
+              "date": "Thu, 15 Oct 2026 02:42:11 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "51"
+            },
+            "body_utf8": "QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\n",
+            "body_bytes": 51,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "prefix range",
+          "path": "/version.txt",
+          "expected_status": "206",
+          "expected_body_utf8": "QA258_d",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:11.828538+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/version.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "Range": "bytes=0-6"
+              }
+            },
+            "HTTP": "206",
+            "curl_exit": 0,
+            "headers": {
+              "accept-ranges": "bytes",
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-range": "bytes 0-6/51",
+              "content-type": "text/plain",
+              "date": "Thu, 15 Oct 2026 02:42:11 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "7"
+            },
+            "body_utf8": "QA258_d",
+            "body_bytes": 7,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "suffix range",
+          "path": "/version.txt",
+          "expected_status": "206",
+          "expected_body_utf8": "uvwxyz\n",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:12.551989+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/version.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "Range": "bytes=-7"
+              }
+            },
+            "HTTP": "206",
+            "curl_exit": 0,
+            "headers": {
+              "accept-ranges": "bytes",
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-range": "bytes 44-50/51",
+              "content-type": "text/plain",
+              "date": "Thu, 15 Oct 2026 02:42:12 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "7"
+            },
+            "body_utf8": "uvwxyz\n",
+            "body_bytes": 7,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "matching If-Range",
+          "path": "/version.txt",
+          "expected_status": "206",
+          "expected_body_utf8": "QA258_d",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:13.236541+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/version.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "Range": "bytes=0-6",
+                "If-Range": "\"QA258_d07a90\""
+              }
+            },
+            "HTTP": "206",
+            "curl_exit": 0,
+            "headers": {
+              "accept-ranges": "bytes",
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-range": "bytes 0-6/51",
+              "content-type": "text/plain",
+              "date": "Thu, 15 Oct 2026 02:42:13 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "7"
+            },
+            "body_utf8": "QA258_d",
+            "body_bytes": 7,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "different If-Range",
+          "path": "/version.txt",
+          "expected_status": "200",
+          "expected_body_utf8": "QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\n",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:13.931741+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/version.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "Range": "bytes=0-6",
+                "If-Range": "\"absent\""
+              }
+            },
+            "HTTP": "200",
+            "curl_exit": 0,
+            "headers": {
+              "accept-ranges": "bytes",
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-type": "text/plain",
+              "date": "Thu, 15 Oct 2026 02:42:13 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "51"
+            },
+            "body_utf8": "QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\n",
+            "body_bytes": 51,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "ordinary GET",
+          "path": "/qa-rewrite.txt",
+          "expected_status": "200",
+          "expected_body_utf8": "QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\n",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:14.624118+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-rewrite.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity"
+              }
+            },
+            "HTTP": "200",
+            "curl_exit": 0,
+            "headers": {
+              "accept-ranges": "bytes",
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-type": "text/plain",
+              "date": "Thu, 15 Oct 2026 02:42:14 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "51"
+            },
+            "body_utf8": "QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\n",
+            "body_bytes": 51,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "ordinary HEAD",
+          "path": "/qa-rewrite.txt",
+          "expected_status": "200",
+          "expected_body_utf8": "",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:15.321910+00:00",
+            "request": {
+              "method": "HEAD",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-rewrite.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity"
+              }
+            },
+            "HTTP": "200",
+            "curl_exit": 0,
+            "headers": {
+              "accept-ranges": "bytes",
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-type": "text/plain",
+              "date": "Thu, 15 Oct 2026 02:42:15 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "51"
+            },
+            "body_utf8": "",
+            "body_bytes": 0,
+            "stderr": "",
+            "HEAD_body_qualification": "curl --head requests headers only; raw empty wire body not independently read"
+          }
+        },
+        {
+          "label": "matching GET",
+          "path": "/qa-rewrite.txt",
+          "expected_status": "304",
+          "expected_body_utf8": "",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:16.019525+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-rewrite.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-None-Match": "\"QA258_d07a90\""
+              }
+            },
+            "HTTP": "304",
+            "curl_exit": 0,
+            "headers": {
+              "cache-control": "public, max-age=0, must-revalidate",
+              "date": "Thu, 15 Oct 2026 02:42:15 GMT",
+              "etag": "\"QA258_d07a90\""
+            },
+            "body_utf8": "",
+            "body_bytes": 0,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "matching HEAD",
+          "path": "/qa-rewrite.txt",
+          "expected_status": "304",
+          "expected_body_utf8": "",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:16.719334+00:00",
+            "request": {
+              "method": "HEAD",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-rewrite.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-None-Match": "\"QA258_d07a90\""
+              }
+            },
+            "HTTP": "304",
+            "curl_exit": 0,
+            "headers": {
+              "cache-control": "public, max-age=0, must-revalidate",
+              "date": "Thu, 15 Oct 2026 02:42:16 GMT",
+              "etag": "\"QA258_d07a90\""
+            },
+            "body_utf8": "",
+            "body_bytes": 0,
+            "stderr": "",
+            "HEAD_body_qualification": "curl --head requests headers only; raw empty wire body not independently read"
+          }
+        },
+        {
+          "label": "weak tag",
+          "path": "/qa-rewrite.txt",
+          "expected_status": "304",
+          "expected_body_utf8": "",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:17.421764+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-rewrite.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-None-Match": "W/\"QA258_d07a90\""
+              }
+            },
+            "HTTP": "304",
+            "curl_exit": 0,
+            "headers": {
+              "cache-control": "public, max-age=0, must-revalidate",
+              "date": "Thu, 15 Oct 2026 02:42:17 GMT",
+              "etag": "\"QA258_d07a90\""
+            },
+            "body_utf8": "",
+            "body_bytes": 0,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "tag list",
+          "path": "/qa-rewrite.txt",
+          "expected_status": "304",
+          "expected_body_utf8": "",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:18.121922+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-rewrite.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-None-Match": "\"absent\", \"QA258_d07a90\""
+              }
+            },
+            "HTTP": "304",
+            "curl_exit": 0,
+            "headers": {
+              "cache-control": "public, max-age=0, must-revalidate",
+              "date": "Thu, 15 Oct 2026 02:42:18 GMT",
+              "etag": "\"QA258_d07a90\""
+            },
+            "body_utf8": "",
+            "body_bytes": 0,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "wildcard existing",
+          "path": "/qa-rewrite.txt",
+          "expected_status": "304",
+          "expected_body_utf8": "",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:18.830393+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-rewrite.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-None-Match": "*"
+              }
+            },
+            "HTTP": "304",
+            "curl_exit": 0,
+            "headers": {
+              "cache-control": "public, max-age=0, must-revalidate",
+              "date": "Thu, 15 Oct 2026 02:42:18 GMT",
+              "etag": "\"QA258_d07a90\""
+            },
+            "body_utf8": "",
+            "body_bytes": 0,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "different tag",
+          "path": "/qa-rewrite.txt",
+          "expected_status": "200",
+          "expected_body_utf8": "QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\n",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:19.560146+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-rewrite.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-None-Match": "\"absent\""
+              }
+            },
+            "HTTP": "200",
+            "curl_exit": 0,
+            "headers": {
+              "accept-ranges": "bytes",
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-type": "text/plain",
+              "date": "Thu, 15 Oct 2026 02:42:19 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "51"
+            },
+            "body_utf8": "QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\n",
+            "body_bytes": 51,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "failed match",
+          "path": "/qa-rewrite.txt",
+          "expected_status": "412",
+          "expected_body_utf8": "",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:20.272014+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-rewrite.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-Match": "\"absent\""
+              }
+            },
+            "HTTP": "412",
+            "curl_exit": 0,
+            "headers": {
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-type": "text/plain",
+              "date": "Thu, 15 Oct 2026 02:42:20 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "0"
+            },
+            "body_utf8": "",
+            "body_bytes": 0,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "failed match HEAD",
+          "path": "/qa-rewrite.txt",
+          "expected_status": "412",
+          "expected_body_utf8": "",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:20.991682+00:00",
+            "request": {
+              "method": "HEAD",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-rewrite.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-Match": "\"absent\""
+              }
+            },
+            "HTTP": "412",
+            "curl_exit": 0,
+            "headers": {
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-type": "text/plain",
+              "date": "Thu, 15 Oct 2026 02:42:20 GMT",
+              "etag": "\"QA258_d07a90\""
+            },
+            "body_utf8": "",
+            "body_bytes": 0,
+            "stderr": "",
+            "HEAD_body_qualification": "curl --head requests headers only; raw empty wire body not independently read"
+          }
+        },
+        {
+          "label": "matching strong",
+          "path": "/qa-rewrite.txt",
+          "expected_status": "200",
+          "expected_body_utf8": "QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\n",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:21.795779+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-rewrite.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-Match": "\"QA258_d07a90\""
+              }
+            },
+            "HTTP": "200",
+            "curl_exit": 0,
+            "headers": {
+              "accept-ranges": "bytes",
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-type": "text/plain",
+              "date": "Thu, 15 Oct 2026 02:42:21 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "51"
+            },
+            "body_utf8": "QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\n",
+            "body_bytes": 51,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "prefix range",
+          "path": "/qa-rewrite.txt",
+          "expected_status": "206",
+          "expected_body_utf8": "QA258_d",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:22.492903+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-rewrite.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "Range": "bytes=0-6"
+              }
+            },
+            "HTTP": "206",
+            "curl_exit": 0,
+            "headers": {
+              "accept-ranges": "bytes",
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-range": "bytes 0-6/51",
+              "content-type": "text/plain",
+              "date": "Thu, 15 Oct 2026 02:42:22 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "7"
+            },
+            "body_utf8": "QA258_d",
+            "body_bytes": 7,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "suffix range",
+          "path": "/qa-rewrite.txt",
+          "expected_status": "206",
+          "expected_body_utf8": "uvwxyz\n",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:23.188277+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-rewrite.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "Range": "bytes=-7"
+              }
+            },
+            "HTTP": "206",
+            "curl_exit": 0,
+            "headers": {
+              "accept-ranges": "bytes",
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-range": "bytes 44-50/51",
+              "content-type": "text/plain",
+              "date": "Thu, 15 Oct 2026 02:42:23 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "7"
+            },
+            "body_utf8": "uvwxyz\n",
+            "body_bytes": 7,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "matching If-Range",
+          "path": "/qa-rewrite.txt",
+          "expected_status": "206",
+          "expected_body_utf8": "QA258_d",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:23.898014+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-rewrite.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "Range": "bytes=0-6",
+                "If-Range": "\"QA258_d07a90\""
+              }
+            },
+            "HTTP": "206",
+            "curl_exit": 0,
+            "headers": {
+              "accept-ranges": "bytes",
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-range": "bytes 0-6/51",
+              "content-type": "text/plain",
+              "date": "Thu, 15 Oct 2026 02:42:23 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "7"
+            },
+            "body_utf8": "QA258_d",
+            "body_bytes": 7,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "different If-Range",
+          "path": "/qa-rewrite.txt",
+          "expected_status": "200",
+          "expected_body_utf8": "QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\n",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:24.757412+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-rewrite.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "Range": "bytes=0-6",
+                "If-Range": "\"absent\""
+              }
+            },
+            "HTTP": "200",
+            "curl_exit": 0,
+            "headers": {
+              "accept-ranges": "bytes",
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-type": "text/plain",
+              "date": "Thu, 15 Oct 2026 02:42:24 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "51"
+            },
+            "body_utf8": "QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\n",
+            "body_bytes": 51,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "ordinary GET",
+          "path": "/qa-spa",
+          "expected_status": "200",
+          "expected_body_utf8": "<html><body>QA258_d07a90-SPA-index-abcdefghijklmnopqrstuvwxyz</body></html>\n",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:25.631329+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-spa?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity"
+              }
+            },
+            "HTTP": "200",
+            "curl_exit": 0,
+            "headers": {
+              "accept-ranges": "bytes",
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-type": "text/html",
+              "date": "Thu, 15 Oct 2026 02:42:25 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "76"
+            },
+            "body_utf8": "<html><body>QA258_d07a90-SPA-index-abcdefghijklmnopqrstuvwxyz</body></html>\n",
+            "body_bytes": 76,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "ordinary HEAD",
+          "path": "/qa-spa",
+          "expected_status": "200",
+          "expected_body_utf8": "",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:26.336814+00:00",
+            "request": {
+              "method": "HEAD",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-spa?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity"
+              }
+            },
+            "HTTP": "200",
+            "curl_exit": 0,
+            "headers": {
+              "accept-ranges": "bytes",
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-type": "text/html",
+              "date": "Thu, 15 Oct 2026 02:42:26 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "76"
+            },
+            "body_utf8": "",
+            "body_bytes": 0,
+            "stderr": "",
+            "HEAD_body_qualification": "curl --head requests headers only; raw empty wire body not independently read"
+          }
+        },
+        {
+          "label": "matching GET",
+          "path": "/qa-spa",
+          "expected_status": "304",
+          "expected_body_utf8": "",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:27.046569+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-spa?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-None-Match": "\"QA258_d07a90\""
+              }
+            },
+            "HTTP": "304",
+            "curl_exit": 0,
+            "headers": {
+              "cache-control": "public, max-age=0, must-revalidate",
+              "date": "Thu, 15 Oct 2026 02:42:26 GMT",
+              "etag": "\"QA258_d07a90\""
+            },
+            "body_utf8": "",
+            "body_bytes": 0,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "matching HEAD",
+          "path": "/qa-spa",
+          "expected_status": "304",
+          "expected_body_utf8": "",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:27.756386+00:00",
+            "request": {
+              "method": "HEAD",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-spa?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-None-Match": "\"QA258_d07a90\""
+              }
+            },
+            "HTTP": "304",
+            "curl_exit": 0,
+            "headers": {
+              "cache-control": "public, max-age=0, must-revalidate",
+              "date": "Thu, 15 Oct 2026 02:42:27 GMT",
+              "etag": "\"QA258_d07a90\""
+            },
+            "body_utf8": "",
+            "body_bytes": 0,
+            "stderr": "",
+            "HEAD_body_qualification": "curl --head requests headers only; raw empty wire body not independently read"
+          }
+        },
+        {
+          "label": "weak tag",
+          "path": "/qa-spa",
+          "expected_status": "304",
+          "expected_body_utf8": "",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:28.635633+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-spa?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-None-Match": "W/\"QA258_d07a90\""
+              }
+            },
+            "HTTP": "304",
+            "curl_exit": 0,
+            "headers": {
+              "cache-control": "public, max-age=0, must-revalidate",
+              "date": "Thu, 15 Oct 2026 02:42:28 GMT",
+              "etag": "\"QA258_d07a90\""
+            },
+            "body_utf8": "",
+            "body_bytes": 0,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "tag list",
+          "path": "/qa-spa",
+          "expected_status": "304",
+          "expected_body_utf8": "",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:29.323484+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-spa?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-None-Match": "\"absent\", \"QA258_d07a90\""
+              }
+            },
+            "HTTP": "304",
+            "curl_exit": 0,
+            "headers": {
+              "cache-control": "public, max-age=0, must-revalidate",
+              "date": "Thu, 15 Oct 2026 02:42:29 GMT",
+              "etag": "\"QA258_d07a90\""
+            },
+            "body_utf8": "",
+            "body_bytes": 0,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "wildcard existing",
+          "path": "/qa-spa",
+          "expected_status": "304",
+          "expected_body_utf8": "",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:30.023098+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-spa?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-None-Match": "*"
+              }
+            },
+            "HTTP": "304",
+            "curl_exit": 0,
+            "headers": {
+              "cache-control": "public, max-age=0, must-revalidate",
+              "date": "Thu, 15 Oct 2026 02:42:29 GMT",
+              "etag": "\"QA258_d07a90\""
+            },
+            "body_utf8": "",
+            "body_bytes": 0,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "different tag",
+          "path": "/qa-spa",
+          "expected_status": "200",
+          "expected_body_utf8": "<html><body>QA258_d07a90-SPA-index-abcdefghijklmnopqrstuvwxyz</body></html>\n",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:30.724931+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-spa?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-None-Match": "\"absent\""
+              }
+            },
+            "HTTP": "200",
+            "curl_exit": 0,
+            "headers": {
+              "accept-ranges": "bytes",
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-type": "text/html",
+              "date": "Thu, 15 Oct 2026 02:42:30 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "76"
+            },
+            "body_utf8": "<html><body>QA258_d07a90-SPA-index-abcdefghijklmnopqrstuvwxyz</body></html>\n",
+            "body_bytes": 76,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "failed match",
+          "path": "/qa-spa",
+          "expected_status": "412",
+          "expected_body_utf8": "",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:31.436181+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-spa?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-Match": "\"absent\""
+              }
+            },
+            "HTTP": "412",
+            "curl_exit": 0,
+            "headers": {
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-type": "text/html",
+              "date": "Thu, 15 Oct 2026 02:42:31 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "0"
+            },
+            "body_utf8": "",
+            "body_bytes": 0,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "failed match HEAD",
+          "path": "/qa-spa",
+          "expected_status": "412",
+          "expected_body_utf8": "",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:32.137252+00:00",
+            "request": {
+              "method": "HEAD",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-spa?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-Match": "\"absent\""
+              }
+            },
+            "HTTP": "412",
+            "curl_exit": 0,
+            "headers": {
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-type": "text/html",
+              "date": "Thu, 15 Oct 2026 02:42:32 GMT",
+              "etag": "\"QA258_d07a90\""
+            },
+            "body_utf8": "",
+            "body_bytes": 0,
+            "stderr": "",
+            "HEAD_body_qualification": "curl --head requests headers only; raw empty wire body not independently read"
+          }
+        },
+        {
+          "label": "matching strong",
+          "path": "/qa-spa",
+          "expected_status": "200",
+          "expected_body_utf8": "<html><body>QA258_d07a90-SPA-index-abcdefghijklmnopqrstuvwxyz</body></html>\n",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:32.823700+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-spa?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-Match": "\"QA258_d07a90\""
+              }
+            },
+            "HTTP": "200",
+            "curl_exit": 0,
+            "headers": {
+              "accept-ranges": "bytes",
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-type": "text/html",
+              "date": "Thu, 15 Oct 2026 02:42:32 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "76"
+            },
+            "body_utf8": "<html><body>QA258_d07a90-SPA-index-abcdefghijklmnopqrstuvwxyz</body></html>\n",
+            "body_bytes": 76,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "prefix range",
+          "path": "/qa-spa",
+          "expected_status": "206",
+          "expected_body_utf8": "<html><",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:33.547475+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-spa?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "Range": "bytes=0-6"
+              }
+            },
+            "HTTP": "206",
+            "curl_exit": 0,
+            "headers": {
+              "accept-ranges": "bytes",
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-range": "bytes 0-6/76",
+              "content-type": "text/html",
+              "date": "Thu, 15 Oct 2026 02:42:33 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "7"
+            },
+            "body_utf8": "<html><",
+            "body_bytes": 7,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "suffix range",
+          "path": "/qa-spa",
+          "expected_status": "206",
+          "expected_body_utf8": "/html>\n",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:34.284504+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-spa?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "Range": "bytes=-7"
+              }
+            },
+            "HTTP": "206",
+            "curl_exit": 0,
+            "headers": {
+              "accept-ranges": "bytes",
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-range": "bytes 69-75/76",
+              "content-type": "text/html",
+              "date": "Thu, 15 Oct 2026 02:42:34 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "7"
+            },
+            "body_utf8": "/html>\n",
+            "body_bytes": 7,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "matching If-Range",
+          "path": "/qa-spa",
+          "expected_status": "206",
+          "expected_body_utf8": "<html><",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:35.068290+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-spa?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "Range": "bytes=0-6",
+                "If-Range": "\"QA258_d07a90\""
+              }
+            },
+            "HTTP": "206",
+            "curl_exit": 0,
+            "headers": {
+              "accept-ranges": "bytes",
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-range": "bytes 0-6/76",
+              "content-type": "text/html",
+              "date": "Thu, 15 Oct 2026 02:42:34 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "7"
+            },
+            "body_utf8": "<html><",
+            "body_bytes": 7,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "different If-Range",
+          "path": "/qa-spa",
+          "expected_status": "200",
+          "expected_body_utf8": "<html><body>QA258_d07a90-SPA-index-abcdefghijklmnopqrstuvwxyz</body></html>\n",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:35.771674+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-spa?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "Range": "bytes=0-6",
+                "If-Range": "\"absent\""
+              }
+            },
+            "HTTP": "200",
+            "curl_exit": 0,
+            "headers": {
+              "accept-ranges": "bytes",
+              "cache-control": "public, max-age=0, must-revalidate",
+              "content-type": "text/html",
+              "date": "Thu, 15 Oct 2026 02:42:35 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "content-length": "76"
+            },
+            "body_utf8": "<html><body>QA258_d07a90-SPA-index-abcdefghijklmnopqrstuvwxyz</body></html>\n",
+            "body_bytes": 76,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        },
+        {
+          "label": "missing asset stays404",
+          "pass": true,
+          "receipt": {
+            "at": "2026-10-15T02:42:36.498691+00:00",
+            "request": {
+              "method": "GET",
+              "url": "https://qa-20261015-d07a90-http.onbex.co/qa-missing-d07a90.txt?qa=d07a90",
+              "headers": {
+                "Accept-Encoding": "identity",
+                "If-None-Match": "*"
+              }
+            },
+            "HTTP": "404",
+            "curl_exit": 0,
+            "headers": {
+              "content-type": "text/plain; charset=utf-8",
+              "date": "Thu, 15 Oct 2026 02:42:36 GMT",
+              "etag": "\"QA258_d07a90\"",
+              "x-content-type-options": "nosniff",
+              "content-length": "10"
+            },
+            "body_utf8": "not found\n",
+            "body_bytes": 10,
+            "stderr": "",
+            "HEAD_body_qualification": null
+          }
+        }
+      ],
+      "all_pass": true
+    }
+  ],
+  "delete_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "delete",
+      "srv-db83p98umfhs73fe7iug",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.69,
+    "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-15T02:38:29Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db83p98umfhs73fe7iug\",\n    \"id\": \"srv-db83p98umfhs73fe7iug\",\n    \"name\": \"qa-20261015-d07a90-http\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/static-site\",\n    \"serviceDetails\": {\n      \"buildCommand\": \"printf '%s' 'QA258_d07a90-0123456789-abcdefghijklmnopqrstuvwxyz\\n' \\u003e version.txt; printf '%s' '\\u003chtml\\u003e\\u003cbody\\u003eQA258_d07a90-SPA-index-abcdefghijklmnopqrstuvwxyz\\u003c/body\\u003e\\u003c/html\\u003e\\n' \\u003e index.html\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"publishPath\": \".\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"url\": \"https://qa-20261015-d07a90-http.onbex.co\"\n    },\n    \"slug\": \"qa-20261015-d07a90-http\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"static_site\",\n    \"updatedAt\": \"2026-10-15T02:41:35.875583607Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+    "stderr": ""
+  },
+  "cleanup_reconciliations": [
+    {
+      "at": "2026-10-15T02:43:05.013968+00:00",
+      "detail": {
+        "at": "2026-10-15T02:43:03.513703+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db83p98umfhs73fe7iug",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "authorization": "[REDACTED]"
+        },
+        "status": "404",
+        "elapsed": 0.589,
+        "curl_exit": 0,
+        "stderr": "",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a4ab79579dc6cec5-SJC"
+        },
+        "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+      },
+      "list_ids": [
+        "srv-daif6dsmg29s73d1umvg",
+        "srv-dap3r714dm7c7390q91g",
+        "srv-dap3umrbdpcs73f5eeug",
+        "srv-dap3v694dm7c7390q930",
+        "srv-db09u90ehcmc739j12cg",
+        "srv-db09vbgehcmc739j12i0"
+      ],
+      "baseline_present": true,
+      "runtime": {
+        "exit": 0,
+        "HTTP": "404",
+        "stderr": ""
+      },
+      "quota": {
+        "at": "2026-10-15T02:43:05.007086+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "authorization": "[REDACTED]"
+        },
+        "status": "200",
+        "elapsed": 0.286,
+        "curl_exit": 0,
+        "stderr": "",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a4ab7962df9026d3-SJC"
+        },
+        "response": "{\"services\":{\"used\":7,\"terminating\":1,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+      }
+    },
+    {
+      "at": "2026-10-15T02:43:43.817584+00:00",
+      "detail": {
+        "at": "2026-10-15T02:43:41.837837+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db83p98umfhs73fe7iug",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "authorization": "[REDACTED]"
+        },
+        "status": "404",
+        "elapsed": 0.416,
+        "curl_exit": 0,
+        "stderr": "",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a4ab7a484b055527-SJC"
+        },
+        "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+      },
+      "list_ids": [
+        "srv-daif6dsmg29s73d1umvg",
+        "srv-dap3r714dm7c7390q91g",
+        "srv-dap3umrbdpcs73f5eeug",
+        "srv-dap3v694dm7c7390q930",
+        "srv-db09u90ehcmc739j12cg",
+        "srv-db09vbgehcmc739j12i0"
+      ],
+      "baseline_present": true,
+      "runtime": {
+        "exit": 0,
+        "HTTP": "404",
+        "stderr": ""
+      },
+      "quota": {
+        "at": "2026-10-15T02:43:43.811530+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "authorization": "[REDACTED]"
+        },
+        "status": "200",
+        "elapsed": 0.459,
+        "curl_exit": 0,
+        "stderr": "",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a4ab7a545f037542-SJC"
+        },
+        "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+      }
+    }
+  ]
+}

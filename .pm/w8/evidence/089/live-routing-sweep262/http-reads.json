@@ -1,0 +1,98 @@
+[
+  {
+    "at": "2026-10-15T03:10:15.118464+00:00",
+    "label": "OAuth resource",
+    "request": {
+      "method": "GET",
+      "url": "https://oauth.bex.co/web/srv-db83tioumfhs73fe7j0g?qa=sweep262&view=deployment",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "auth": "none, redirects not followed"
+    },
+    "HTTP": "302",
+    "curl_exit": 0,
+    "headers": {
+      "location": "https://dashboard.bex.co/web/srv-db83tioumfhs73fe7j0g?qa=sweep262&view=deployment",
+      "server": "cloudflare",
+      "cf-ray": "a4aba12d086aebe7-SJC"
+    },
+    "body": "Found",
+    "stderr": ""
+  },
+  {
+    "at": "2026-10-15T03:10:15.754110+00:00",
+    "label": "OAuth deploy",
+    "request": {
+      "method": "GET",
+      "url": "https://oauth.bex.co/web/srv-db83tioumfhs73fe7j0g/deploys/dep-db83tioumfhs73fe7j10?qa=sweep262&view=deployment",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "auth": "none, redirects not followed"
+    },
+    "HTTP": "302",
+    "curl_exit": 0,
+    "headers": {
+      "location": "https://dashboard.bex.co/web/srv-db83tioumfhs73fe7j0g/deploys/dep-db83tioumfhs73fe7j10?qa=sweep262&view=deployment",
+      "server": "cloudflare",
+      "cf-ray": "a4aba130eca04d21-SJC"
+    },
+    "body": "Found",
+    "stderr": ""
+  },
+  {
+    "at": "2026-10-15T03:10:16.529735+00:00",
+    "label": "dashboard resource control",
+    "request": {
+      "method": "GET",
+      "url": "https://dashboard.bex.co/web/srv-db83tioumfhs73fe7j0g?qa=sweep262&view=deployment",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "auth": "none, redirects not followed"
+    },
+    "HTTP": "307",
+    "curl_exit": 0,
+    "headers": {
+      "location": "/services/srv-db83tioumfhs73fe7j0g?qa=sweep262&view=deployment",
+      "server": "cloudflare",
+      "cf-ray": "a4aba135cc25613d-PDX"
+    },
+    "body": "",
+    "stderr": ""
+  },
+  {
+    "at": "2026-10-15T03:10:17.275047+00:00",
+    "label": "dashboard deploy control",
+    "request": {
+      "method": "GET",
+      "url": "https://dashboard.bex.co/web/srv-db83tioumfhs73fe7j0g/deploys/dep-db83tioumfhs73fe7j10?qa=sweep262&view=deployment",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "auth": "none, redirects not followed"
+    },
+    "HTTP": "307",
+    "curl_exit": 0,
+    "headers": {
+      "location": "/services/srv-db83tioumfhs73fe7j0g/deploys/dep-db83tioumfhs73fe7j10?qa=sweep262&view=deployment",
+      "server": "cloudflare",
+      "cf-ray": "a4aba139fcf6fef7-PDX"
+    },
+    "body": "",
+    "stderr": ""
+  },
+  {
+    "at": "2026-10-15T03:10:17.959458+00:00",
+    "label": "public issuer metadata",
+    "request": {
+      "method": "GET",
+      "url": "https://oauth.bex.co/.well-known/openid-configuration",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "auth": "none, redirects not followed"
+    },
+    "HTTP": "200",
+    "curl_exit": 0,
+    "headers": {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "private, no-cache, no-store, must-revalidate",
+      "server": "cloudflare",
+      "cf-ray": "a4aba13e6dd52368-SJC"
+    },
+    "body": "{\"issuer\":\"https://oauth.bex.co\",\"authorization_endpoint\":\"https://oauth.bex.co/oauth2/auth\",\"device_authorization_endpoint\":\"https://oauth.bex.co/oauth2/device/auth\",\"token_endpoint\":\"https://oauth.bex.co/oauth2/token\",\"jwks_uri\":\"https://oauth.bex.co/.well-known/jwks.json\",\"subject_types_supported\":[\"public\",\"pairwise\"],\"response_types_supported\":[\"code\",\"code id_token\",\"id_token\",\"token id_token\",\"token\",\"token id_token code\"],\"claims_supported\":[\"sub\"],\"grant_types_supported\":[\"authorization_code\",\"implicit\",\"client_credentials\",\"refresh_token\",\"urn:ietf:params:oauth:grant-type:device_code\"],\"response_modes_supported\":[\"query\",\"fragment\",\"form_post\"],\"userinfo_endpoint\":\"https://oauth.bex.co/userinfo\",\"scopes_supported\":[\"offline_access\",\"offline\",\"openid\"],\"token_endpoint_auth_methods_supported\":[\"client_secret_post\",\"client_secret_basic\",\"private_key_jwt\",\"none\"],\"userinfo_signing_alg_values_supported\":[\"none\",\"RS256\"],\"id_token_signing_alg_values_supported\":[\"RS256\"],\"id_token_signed_response_alg\":[\"RS256\"],\"userinfo_signed_response_alg\":[\"RS256\"],\"request_parameter_supported\":true,\"request_uri_parameter_supported\":true,\"require_request_uri_registration\":true,\"claims_parameter_supported\":false,\"revocation_endpoint\":\"https://oauth.bex.co/oauth2/revoke\",\"backchannel_logout_supported\":true,\"backchannel_logout_session_supported\":true,\"frontchannel_logout_supported\":true,\"frontchannel_logout_session_supported\":true,\"end_session_endpoint\":\"https://oauth.bex.co/oauth2/sessions/logout\",\"request_object_signing_alg_values_supported\":[\"none\",\"RS256\",\"ES256\"],\"code_challenge_methods_supported\":[\"plain\",\"S256\"],\"credentials_endpoint_draft_00\":\"https://oauth.bex.co/credentials\",\"credentials_supported_draft_00\":[{\"format\":\"jwt_vc_json\",\"types\":[\"VerifiableCredential\",\"UserInfoCredential\"],\"cryptographic_binding_methods_supported\":[\"jwk\"],\"cryptographic_suites_supported\":[\"PS256\",\"RS256\",\"ES256\",\"PS384\",\"RS384\",\"ES384\",\"PS512\",\"RS512\",\"ES512\",\"EdDSA\"]}]}\n",
+    "stderr": ""
+  }
+]

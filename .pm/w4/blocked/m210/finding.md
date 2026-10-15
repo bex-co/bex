@@ -63,3 +63,7 @@ Searched open/blocked/done boards for cron history, old/newest/reappearing recor
 ## Cleanup
 
 Native DeleteService true17:19:19.183 UTC. Service and run-list REST404, all seven exact baseline ID sets restored17:19:26.541. Own logout succeeds; whoami401, cookies0, one blank page17:20:47.445. Own observers removed and stat-matched session handles deleted. No baseline resource, paid plan or cybersecurity action. No implementation shipped.
+
+## Native CLI corroboration (2026-10-15 UTC)
+
+[Fresh w8 sweep254](../../../w8/evidence/cron-history-sweep254/README.md) reproduces the same incorrect retained set on one CLI-created Free native Go cron in bex-canary. Native command replacement and recovery work, all12 accepted manual API triggers terminate as expected, both clients preserve all12 log messages, and REST/GraphQL/MCP agree on the wrong cap11/recovery12 membership/order. The source fix f42f5d086 is on main and its four focused tests pass; deployed revision is unknown. This is attached to the existing defect, with no new implementation bug or execution-replay claim. Exact service/run404, baseline-six and quota-zero-termination cleanup is retained.

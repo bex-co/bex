@@ -1,0 +1,37 @@
+{
+  "sweep": 269,
+  "date_UTC": "2026-10-15T04:43:49.708872+00:00",
+  "source_head": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+  "deployed_revision": "unknown",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "auth": "continuing isolated human QA OAuth",
+  "Bex_release": "v0.3.2",
+  "Bex_binary_sha256": "585a5456678ce3bc73d5a71117b901d08add1fab230464d3b5b228101a55c34c",
+  "upstream_pin": "2.27.0/a764810a768202704e7206eb7b87a47211fcd98e",
+  "native_filter_checks": 32,
+  "initial_native_log_control": 1,
+  "HTTP_emissions": 6,
+  "new_findings": 0,
+  "owned_services_deleted": 1,
+  "enumerated_children": 1,
+  "final_quota": {
+    "services": {
+      "used": 6,
+      "terminating": 0,
+      "limit": 25
+    },
+    "postgres": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    },
+    "keyValues": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    }
+  },
+  "native_wire_captured": false,
+  "product_change": false,
+  "commit_push": false
+}

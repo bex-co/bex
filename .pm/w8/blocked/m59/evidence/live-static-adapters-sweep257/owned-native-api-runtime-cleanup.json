@@ -1,0 +1,1439 @@
+[
+  {
+    "sweep": 257,
+    "client": "bex",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "name": "qa-20261015-23359b-static",
+    "nonce": "23359b",
+    "marker": "QA257_23359b",
+    "type": "static_site",
+    "adapter": "GraphQL",
+    "time": "2026-10-15T02:27:39.593679+00:00",
+    "source_head": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+    "dependency_ids": [],
+    "recorded_child_ids": [
+      "dep-db83k79aomdc7381ka3g",
+      "dep-db83le9aomdc7381ka40",
+      "dep-db83lshaomdc7381ka6g"
+    ],
+    "capacity_proof": {
+      "at": "2026-10-15T02:27:38.534702+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.819,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4ab62c13c9a6cd4-SJC"
+      },
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "pre_create_inventory": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.0,
+      "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T02:27:07Z\",\n        \"nextRunAt\": \"2026-10-15T02:28:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T02:27:07Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T02:27:06Z\",\n        \"nextRunAt\": \"2026-10-15T02:28:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T02:27:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T02:27:06Z\",\n        \"nextRunAt\": \"2026-10-15T02:28:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T02:27:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T02:15:36Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T00:05:33Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T00:05:28Z\"\n    }\n  }\n]",
+      "stderr": ""
+    },
+    "create_command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261015-23359b-static",
+      "--type",
+      "static_site",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/runtime-version/node",
+      "--build-command",
+      "printf '%s' '{\"qa_marker\":\"QA257_23359b\"}' > package.json",
+      "--publish-directory",
+      ".",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "state": "deleted: API404/listabsent/runtime404/baseline present/quota terminating0",
+    "create_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--name",
+        "qa-20261015-23359b-static",
+        "--type",
+        "static_site",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--branch",
+        "main",
+        "--root-directory",
+        "examples/runtime-version/node",
+        "--build-command",
+        "printf '%s' '{\"qa_marker\":\"QA257_23359b\"}' > package.json",
+        "--publish-directory",
+        ".",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.446,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T02:27:41Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db83k79aomdc7381ka30\",\n  \"id\": \"srv-db83k79aomdc7381ka30\",\n  \"name\": \"qa-20261015-23359b-static\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/runtime-version/node\",\n  \"serviceDetails\": {\n    \"buildCommand\": \"printf '%s' '{\\\"qa_marker\\\":\\\"QA257_23359b\\\"}' \\u003e package.json\",\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"publishPath\": \".\",\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"url\": \"https://qa-20261015-23359b-static.onbex.co\"\n  },\n  \"slug\": \"qa-20261015-23359b-static\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"static_site\",\n  \"updatedAt\": \"2026-10-15T02:27:41.079261971Z\"\n}",
+      "stderr": ""
+    },
+    "id": "srv-db83k79aomdc7381ka30",
+    "create_response": {
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "branch": "main",
+      "createdAt": "2026-10-15T02:27:41Z",
+      "dashboardUrl": "https://dashboard.bex.co/static/srv-db83k79aomdc7381ka30",
+      "id": "srv-db83k79aomdc7381ka30",
+      "name": "qa-20261015-23359b-static",
+      "notifyOnFail": "default",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/bex-co/bex",
+      "rootDir": "examples/runtime-version/node",
+      "serviceDetails": {
+        "buildCommand": "printf '%s' '{\"qa_marker\":\"QA257_23359b\"}' > package.json",
+        "numInstances": 1,
+        "plan": "free",
+        "publishPath": ".",
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "url": "https://qa-20261015-23359b-static.onbex.co"
+      },
+      "slug": "qa-20261015-23359b-static",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "static_site",
+      "updatedAt": "2026-10-15T02:27:41.079261971Z"
+    },
+    "deploy_children": [
+      {
+        "commit": {
+          "createdAt": "2026-10-14T21:21:13Z",
+          "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+          "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+        },
+        "createdAt": "2026-10-15T02:31:14.59071Z",
+        "finishedAt": "2026-10-15T02:31:42.528298Z",
+        "id": "dep-db83lshaomdc7381ka6g",
+        "startedAt": "2026-10-15T02:31:27.856711Z",
+        "status": "live",
+        "trigger": "api",
+        "updatedAt": "2026-10-15T02:31:42.528299Z"
+      },
+      {
+        "commit": {
+          "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+          "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+        },
+        "createdAt": "2026-10-15T02:30:17.440001Z",
+        "finishedAt": "2026-10-15T02:30:42.44975Z",
+        "id": "dep-db83le9aomdc7381ka40",
+        "startedAt": "2026-10-15T02:30:28.021277Z",
+        "status": "deactivated",
+        "trigger": "service_updated",
+        "updatedAt": "2026-10-15T02:31:42.532114Z"
+      },
+      {
+        "commit": {
+          "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+          "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+        },
+        "createdAt": "2026-10-15T02:27:41.026668Z",
+        "finishedAt": "2026-10-15T02:29:57.966692Z",
+        "id": "dep-db83k79aomdc7381ka3g",
+        "startedAt": "2026-10-15T02:28:58.159612Z",
+        "status": "deactivated",
+        "trigger": "other",
+        "updatedAt": "2026-10-15T02:30:42.460411Z"
+      }
+    ],
+    "history_receipts": [
+      {
+        "at": "2026-10-15T02:28:12.114575+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db83k79aomdc7381ka30",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.388,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:27:41.026668Z\",\n    \"id\": \"dep-db83k79aomdc7381ka3g\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:27:42.448095Z\"\n  }\n]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-15T02:28:59.951107+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db83k79aomdc7381ka30",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.354,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:27:41.026668Z\",\n    \"id\": \"dep-db83k79aomdc7381ka3g\",\n    \"startedAt\": \"2026-10-15T02:28:58.159612Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:28:58.159613Z\"\n  }\n]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-15T02:30:10.067861+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db83k79aomdc7381ka30",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.801,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:27:41.026668Z\",\n    \"finishedAt\": \"2026-10-15T02:29:57.966692Z\",\n    \"id\": \"dep-db83k79aomdc7381ka3g\",\n    \"startedAt\": \"2026-10-15T02:28:58.159612Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:29:57.966693Z\"\n  }\n]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-15T02:30:16.890043+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db83k79aomdc7381ka30",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.32,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:27:41.026668Z\",\n    \"finishedAt\": \"2026-10-15T02:29:57.966692Z\",\n    \"id\": \"dep-db83k79aomdc7381ka3g\",\n    \"startedAt\": \"2026-10-15T02:28:58.159612Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:29:57.966693Z\"\n  }\n]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-15T02:30:46.043023+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db83k79aomdc7381ka30",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.355,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:30:17.440001Z\",\n    \"finishedAt\": \"2026-10-15T02:30:42.44975Z\",\n    \"id\": \"dep-db83le9aomdc7381ka40\",\n    \"startedAt\": \"2026-10-15T02:30:28.021277Z\",\n    \"status\": \"live\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-15T02:30:42.449752Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:27:41.026668Z\",\n    \"finishedAt\": \"2026-10-15T02:29:57.966692Z\",\n    \"id\": \"dep-db83k79aomdc7381ka3g\",\n    \"startedAt\": \"2026-10-15T02:28:58.159612Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:30:42.460411Z\"\n  }\n]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-15T02:31:13.584034+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db83k79aomdc7381ka30",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.339,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:30:17.440001Z\",\n    \"finishedAt\": \"2026-10-15T02:30:42.44975Z\",\n    \"id\": \"dep-db83le9aomdc7381ka40\",\n    \"startedAt\": \"2026-10-15T02:30:28.021277Z\",\n    \"status\": \"live\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-15T02:30:42.449752Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:27:41.026668Z\",\n    \"finishedAt\": \"2026-10-15T02:29:57.966692Z\",\n    \"id\": \"dep-db83k79aomdc7381ka3g\",\n    \"startedAt\": \"2026-10-15T02:28:58.159612Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:30:42.460411Z\"\n  }\n]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-15T02:31:46.552815+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db83k79aomdc7381ka30",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.349,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-14T21:21:13Z\",\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:31:14.59071Z\",\n    \"finishedAt\": \"2026-10-15T02:31:42.528298Z\",\n    \"id\": \"dep-db83lshaomdc7381ka6g\",\n    \"startedAt\": \"2026-10-15T02:31:27.856711Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-15T02:31:42.528299Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:30:17.440001Z\",\n    \"finishedAt\": \"2026-10-15T02:30:42.44975Z\",\n    \"id\": \"dep-db83le9aomdc7381ka40\",\n    \"startedAt\": \"2026-10-15T02:30:28.021277Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-15T02:31:42.532114Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:27:41.026668Z\",\n    \"finishedAt\": \"2026-10-15T02:29:57.966692Z\",\n    \"id\": \"dep-db83k79aomdc7381ka3g\",\n    \"startedAt\": \"2026-10-15T02:28:58.159612Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:30:42.460411Z\"\n  }\n]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-15T02:32:26.384296+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db83k79aomdc7381ka30",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.804,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-14T21:21:13Z\",\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:31:14.59071Z\",\n    \"finishedAt\": \"2026-10-15T02:31:42.528298Z\",\n    \"id\": \"dep-db83lshaomdc7381ka6g\",\n    \"startedAt\": \"2026-10-15T02:31:27.856711Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-15T02:31:42.528299Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:30:17.440001Z\",\n    \"finishedAt\": \"2026-10-15T02:30:42.44975Z\",\n    \"id\": \"dep-db83le9aomdc7381ka40\",\n    \"startedAt\": \"2026-10-15T02:30:28.021277Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-15T02:31:42.532114Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:27:41.026668Z\",\n    \"finishedAt\": \"2026-10-15T02:29:57.966692Z\",\n    \"id\": \"dep-db83k79aomdc7381ka3g\",\n    \"startedAt\": \"2026-10-15T02:28:58.159612Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:30:42.460411Z\"\n  }\n]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-15T02:33:20.067629+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db83k79aomdc7381ka30",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.442,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-14T21:21:13Z\",\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:31:14.59071Z\",\n    \"finishedAt\": \"2026-10-15T02:31:42.528298Z\",\n    \"id\": \"dep-db83lshaomdc7381ka6g\",\n    \"startedAt\": \"2026-10-15T02:31:27.856711Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-15T02:31:42.528299Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:30:17.440001Z\",\n    \"finishedAt\": \"2026-10-15T02:30:42.44975Z\",\n    \"id\": \"dep-db83le9aomdc7381ka40\",\n    \"startedAt\": \"2026-10-15T02:30:28.021277Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-15T02:31:42.532114Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:27:41.026668Z\",\n    \"finishedAt\": \"2026-10-15T02:29:57.966692Z\",\n    \"id\": \"dep-db83k79aomdc7381ka3g\",\n    \"startedAt\": \"2026-10-15T02:28:58.159612Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:30:42.460411Z\"\n  }\n]",
+          "stderr": ""
+        }
+      }
+    ],
+    "observations": [
+      {
+        "at": "2026-10-15T02:28:12.833175+00:00",
+        "stage": "initial",
+        "latest_deploy": {
+          "commit": {
+            "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+            "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+          },
+          "createdAt": "2026-10-15T02:27:41.026668Z",
+          "id": "dep-db83k79aomdc7381ka3g",
+          "status": "queued",
+          "trigger": "other",
+          "updatedAt": "2026-10-15T02:27:42.448095Z"
+        },
+        "HTTP": "404",
+        "curl_exit": 0,
+        "url": "https://qa-20261015-23359b-static.onbex.co/package.json?qa=23359b-initial",
+        "body": "404 page not found\n",
+        "decoded": null,
+        "stderr": "",
+        "exact_expected_content": false
+      },
+      {
+        "at": "2026-10-15T02:29:00.669355+00:00",
+        "stage": "initial",
+        "latest_deploy": {
+          "commit": {
+            "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+            "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+          },
+          "createdAt": "2026-10-15T02:27:41.026668Z",
+          "id": "dep-db83k79aomdc7381ka3g",
+          "startedAt": "2026-10-15T02:28:58.159612Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-15T02:28:58.159613Z"
+        },
+        "HTTP": "404",
+        "curl_exit": 0,
+        "url": "https://qa-20261015-23359b-static.onbex.co/package.json?qa=23359b-initial",
+        "body": "404 page not found\n",
+        "decoded": null,
+        "stderr": "",
+        "exact_expected_content": false
+      },
+      {
+        "at": "2026-10-15T02:30:10.879011+00:00",
+        "stage": "initial",
+        "latest_deploy": {
+          "commit": {
+            "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+            "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+          },
+          "createdAt": "2026-10-15T02:27:41.026668Z",
+          "finishedAt": "2026-10-15T02:29:57.966692Z",
+          "id": "dep-db83k79aomdc7381ka3g",
+          "startedAt": "2026-10-15T02:28:58.159612Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-15T02:29:57.966693Z"
+        },
+        "HTTP": "200",
+        "curl_exit": 0,
+        "url": "https://qa-20261015-23359b-static.onbex.co/package.json?qa=23359b-initial",
+        "body": "{\"qa_marker\":\"QA257_23359b\"}",
+        "decoded": {
+          "qa_marker": "QA257_23359b"
+        },
+        "stderr": "",
+        "exact_expected_content": true
+      },
+      {
+        "at": "2026-10-15T02:30:46.778232+00:00",
+        "stage": "cleared",
+        "latest_deploy": {
+          "commit": {
+            "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+            "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+          },
+          "createdAt": "2026-10-15T02:30:17.440001Z",
+          "finishedAt": "2026-10-15T02:30:42.44975Z",
+          "id": "dep-db83le9aomdc7381ka40",
+          "startedAt": "2026-10-15T02:30:28.021277Z",
+          "status": "live",
+          "trigger": "service_updated",
+          "updatedAt": "2026-10-15T02:30:42.449752Z"
+        },
+        "HTTP": "200",
+        "curl_exit": 0,
+        "url": "https://qa-20261015-23359b-static.onbex.co/package.json?qa=23359b-cleared",
+        "body": "{\n  \"name\": \"runtime-version-node\",\n  \"version\": \"1.0.0\",\n  \"main\": \"main.js\",\n  \"scripts\": {\n    \"start\": \"node main.js\"\n  }\n}\n",
+        "decoded": {
+          "name": "runtime-version-node",
+          "version": "1.0.0",
+          "main": "main.js",
+          "scripts": {
+            "start": "node main.js"
+          }
+        },
+        "stderr": "",
+        "exact_expected_content": true
+      },
+      {
+        "at": "2026-10-15T02:32:27.192293+00:00",
+        "stage": "redeploy",
+        "latest_deploy": {
+          "commit": {
+            "createdAt": "2026-10-14T21:21:13Z",
+            "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+            "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+          },
+          "createdAt": "2026-10-15T02:31:14.59071Z",
+          "finishedAt": "2026-10-15T02:31:42.528298Z",
+          "id": "dep-db83lshaomdc7381ka6g",
+          "startedAt": "2026-10-15T02:31:27.856711Z",
+          "status": "live",
+          "trigger": "api",
+          "updatedAt": "2026-10-15T02:31:42.528299Z"
+        },
+        "HTTP": "200",
+        "curl_exit": 0,
+        "url": "https://qa-20261015-23359b-static.onbex.co/package.json?qa=23359b-redeploy",
+        "body": "{\n  \"name\": \"runtime-version-node\",\n  \"version\": \"1.0.0\",\n  \"main\": \"main.js\",\n  \"scripts\": {\n    \"start\": \"node main.js\"\n  }\n}\n",
+        "decoded": {
+          "name": "runtime-version-node",
+          "version": "1.0.0",
+          "main": "main.js",
+          "scripts": {
+            "start": "node main.js"
+          }
+        },
+        "stderr": "",
+        "exact_expected_content": true
+      }
+    ],
+    "clear_intent": {
+      "at": "2026-10-15T02:30:17.035969+00:00",
+      "before_deploy_ids": [
+        "dep-db83k79aomdc7381ka3g"
+      ],
+      "request_path": "/graphql",
+      "body": {
+        "query": "mutation QA257($id:String!,$command:String!){setBuildCommand(id:$id,command:$command){id buildCommand builder publishPath}}",
+        "variables": {
+          "id": "srv-db83k79aomdc7381ka30",
+          "command": ""
+        }
+      }
+    },
+    "clear_result": {
+      "at": "2026-10-15T02:30:17.580134+00:00",
+      "api_only": true,
+      "request": {
+        "method": "POST",
+        "path": "/graphql",
+        "body": {
+          "query": "mutation QA257($id:String!,$command:String!){setBuildCommand(id:$id,command:$command){id buildCommand builder publishPath}}",
+          "variables": {
+            "id": "srv-db83k79aomdc7381ka30",
+            "command": ""
+          }
+        },
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.411,
+      "response": "{\"data\":{\"setBuildCommand\":{\"buildCommand\":\"\",\"builder\":\"auto\",\"id\":\"srv-db83k79aomdc7381ka30\",\"publishPath\":\".\"}}}\n",
+      "stderr": ""
+    },
+    "configuration_reads": [
+      {
+        "at": "2026-10-15T02:30:45.291396+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA257($id:String!){service(id:$id){id buildCommand builder publishPath}}",
+            "variables": {
+              "id": "srv-db83k79aomdc7381ka30"
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.32,
+        "response": "{\"data\":{\"service\":{\"buildCommand\":\"\",\"builder\":\"auto\",\"id\":\"srv-db83k79aomdc7381ka30\",\"publishPath\":\".\"}}}\n",
+        "stderr": ""
+      }
+    ],
+    "source_comparisons": [
+      {
+        "at": "2026-10-15T02:31:12.856310+00:00",
+        "stage": "cleared",
+        "deploy_id": "dep-db83le9aomdc7381ka40",
+        "commit": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+        "path": "examples/runtime-version/node/package.json",
+        "source_bytes_utf8": "{\n  \"name\": \"runtime-version-node\",\n  \"version\": \"1.0.0\",\n  \"main\": \"main.js\",\n  \"scripts\": {\n    \"start\": \"node main.js\"\n  }\n}\n",
+        "hosted_bytes_utf8": "{\n  \"name\": \"runtime-version-node\",\n  \"version\": \"1.0.0\",\n  \"main\": \"main.js\",\n  \"scripts\": {\n    \"start\": \"node main.js\"\n  }\n}\n",
+        "exact_source_bytes": true
+      },
+      {
+        "at": "2026-10-15T02:32:27.545326+00:00",
+        "stage": "redeploy",
+        "deploy_id": "dep-db83lshaomdc7381ka6g",
+        "commit": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+        "path": "examples/runtime-version/node/package.json",
+        "source_bytes_utf8": "{\n  \"name\": \"runtime-version-node\",\n  \"version\": \"1.0.0\",\n  \"main\": \"main.js\",\n  \"scripts\": {\n    \"start\": \"node main.js\"\n  }\n}\n",
+        "hosted_bytes_utf8": "{\n  \"name\": \"runtime-version-node\",\n  \"version\": \"1.0.0\",\n  \"main\": \"main.js\",\n  \"scripts\": {\n    \"start\": \"node main.js\"\n  }\n}\n",
+        "exact_source_bytes": true
+      }
+    ],
+    "later_native_deploy_intent": {
+      "at": "2026-10-15T02:31:13.725162+00:00",
+      "before_deploy_ids": [
+        "dep-db83le9aomdc7381ka40",
+        "dep-db83k79aomdc7381ka3g"
+      ],
+      "command": [
+        "bex",
+        "deploys",
+        "create",
+        "srv-db83k79aomdc7381ka30",
+        "--wait",
+        "--confirm",
+        "-o",
+        "json"
+      ]
+    },
+    "later_native_deploy_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "create",
+        "srv-db83k79aomdc7381ka30",
+        "--wait",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 32.114,
+      "stdout": "{\n  \"commit\": {\n    \"createdAt\": \"2026-10-14T21:21:13Z\",\n    \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n    \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n  },\n  \"createdAt\": \"2026-10-15T02:31:14.59071Z\",\n  \"finishedAt\": \"2026-10-15T02:31:42.528298Z\",\n  \"id\": \"dep-db83lshaomdc7381ka6g\",\n  \"startedAt\": \"2026-10-15T02:31:27.856711Z\",\n  \"status\": \"live\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-15T02:31:42.528299Z\"\n}",
+      "stderr": "Waiting for deploy dep-db83lshaomdc7381ka6g to complete...\n\n"
+    },
+    "later_native_fresh_deploys": [
+      {
+        "commit": {
+          "createdAt": "2026-10-14T21:21:13Z",
+          "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+          "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+        },
+        "createdAt": "2026-10-15T02:31:14.59071Z",
+        "finishedAt": "2026-10-15T02:31:42.528298Z",
+        "id": "dep-db83lshaomdc7381ka6g",
+        "startedAt": "2026-10-15T02:31:27.856711Z",
+        "status": "live",
+        "trigger": "api",
+        "updatedAt": "2026-10-15T02:31:42.528299Z"
+      }
+    ],
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db83k79aomdc7381ka30",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.409,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-15T02:27:41Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db83k79aomdc7381ka30\",\n    \"id\": \"srv-db83k79aomdc7381ka30\",\n    \"name\": \"qa-20261015-23359b-static\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/runtime-version/node\",\n    \"serviceDetails\": {\n      \"buildCommand\": \"\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"publishPath\": \".\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"url\": \"https://qa-20261015-23359b-static.onbex.co\"\n    },\n    \"slug\": \"qa-20261015-23359b-static\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"static_site\",\n    \"updatedAt\": \"2026-10-15T02:31:33Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "cleanup_reconciliations": [
+      {
+        "at": "2026-10-15T02:33:43.217169+00:00",
+        "detail": {
+          "at": "2026-10-15T02:33:41.507542+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db83k79aomdc7381ka30",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "404",
+          "elapsed": 0.728,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4ab6b9e6fbdfa32-SJC"
+          },
+          "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+        },
+        "list_ids": [
+          "srv-daif6dsmg29s73d1umvg",
+          "srv-dap3r714dm7c7390q91g",
+          "srv-dap3umrbdpcs73f5eeug",
+          "srv-dap3v694dm7c7390q930",
+          "srv-db09u90ehcmc739j12cg",
+          "srv-db09vbgehcmc739j12i0"
+        ],
+        "baseline_present": true,
+        "runtime": {
+          "exit": 0,
+          "HTTP": "404",
+          "stderr": ""
+        },
+        "quota": {
+          "at": "2026-10-15T02:33:43.206113+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "200",
+          "elapsed": 0.407,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4ab6bab7f937ae2-SJC"
+          },
+          "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+        }
+      }
+    ]
+  },
+  {
+    "sweep": 257,
+    "client": "render",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "name": "qa-20261015-683a59-static",
+    "nonce": "683a59",
+    "marker": "QA257_683a59",
+    "type": "static_site",
+    "adapter": "MCP",
+    "time": "2026-10-15T02:27:53.950882+00:00",
+    "source_head": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+    "dependency_ids": [],
+    "recorded_child_ids": [
+      "dep-db83kaoumfhs73fe7is0",
+      "dep-db83lg9aomdc7381ka5g",
+      "dep-db83mfoumfhs73fe7it0"
+    ],
+    "capacity_proof": {
+      "at": "2026-10-15T02:27:53.316829+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.711,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4ab631e8bbf15f1-SJC"
+      },
+      "response": "{\"services\":{\"used\":7,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "pre_create_inventory": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.584,
+      "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T02:27:07Z\",\n        \"nextRunAt\": \"2026-10-15T02:28:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T02:27:07Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T02:27:06Z\",\n        \"nextRunAt\": \"2026-10-15T02:28:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T02:27:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T02:27:06Z\",\n        \"nextRunAt\": \"2026-10-15T02:28:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T02:27:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-10-15T02:27:41Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db83k79aomdc7381ka30\",\n      \"id\": \"srv-db83k79aomdc7381ka30\",\n      \"name\": \"qa-20261015-23359b-static\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/runtime-version/node\",\n      \"serviceDetails\": {\n        \"buildCommand\": \"printf '%s' '{\\\"qa_marker\\\":\\\"QA257_23359b\\\"}' \\u003e package.json\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"publishPath\": \".\",\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"url\": \"https://qa-20261015-23359b-static.onbex.co\"\n      },\n      \"slug\": \"qa-20261015-23359b-static\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"static_site\",\n      \"updatedAt\": \"2026-10-15T02:27:42Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T02:15:36Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T00:05:33Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T00:05:28Z\"\n    }\n  }\n]",
+      "stderr": ""
+    },
+    "create_command": [
+      "render",
+      "services",
+      "create",
+      "--name",
+      "qa-20261015-683a59-static",
+      "--type",
+      "static_site",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/runtime-version/node",
+      "--build-command",
+      "printf '%s' '{\"qa_marker\":\"QA257_683a59\"}' > package.json",
+      "--publish-directory",
+      ".",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "state": "deleted: API404/listabsent/runtime404/baseline present/quota terminating0",
+    "create_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "create",
+        "--name",
+        "qa-20261015-683a59-static",
+        "--type",
+        "static_site",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--branch",
+        "main",
+        "--root-directory",
+        "examples/runtime-version/node",
+        "--build-command",
+        "printf '%s' '{\"qa_marker\":\"QA257_683a59\"}' > package.json",
+        "--publish-directory",
+        ".",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.191,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T02:27:55Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db83kaoumfhs73fe7irg\",\n  \"id\": \"srv-db83kaoumfhs73fe7irg\",\n  \"name\": \"qa-20261015-683a59-static\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/runtime-version/node\",\n  \"serviceDetails\": {\n    \"buildCommand\": \"printf '%s' '{\\\"qa_marker\\\":\\\"QA257_683a59\\\"}' \\u003e package.json\",\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"publishPath\": \".\",\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"url\": \"https://qa-20261015-683a59-static.onbex.co\"\n  },\n  \"slug\": \"qa-20261015-683a59-static\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"static_site\",\n  \"updatedAt\": \"2026-10-15T02:27:55.064808782Z\"\n}",
+      "stderr": ""
+    },
+    "id": "srv-db83kaoumfhs73fe7irg",
+    "create_response": {
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "branch": "main",
+      "createdAt": "2026-10-15T02:27:55Z",
+      "dashboardUrl": "https://dashboard.bex.co/static/srv-db83kaoumfhs73fe7irg",
+      "id": "srv-db83kaoumfhs73fe7irg",
+      "name": "qa-20261015-683a59-static",
+      "notifyOnFail": "default",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/bex-co/bex",
+      "rootDir": "examples/runtime-version/node",
+      "serviceDetails": {
+        "buildCommand": "printf '%s' '{\"qa_marker\":\"QA257_683a59\"}' > package.json",
+        "numInstances": 1,
+        "plan": "free",
+        "publishPath": ".",
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "url": "https://qa-20261015-683a59-static.onbex.co"
+      },
+      "slug": "qa-20261015-683a59-static",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "static_site",
+      "updatedAt": "2026-10-15T02:27:55.064808782Z"
+    },
+    "deploy_children": [
+      {
+        "commit": {
+          "createdAt": "2026-10-14T21:21:13Z",
+          "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+          "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+        },
+        "createdAt": "2026-10-15T02:32:31.237653Z",
+        "finishedAt": "2026-10-15T02:32:57.936798Z",
+        "id": "dep-db83mfoumfhs73fe7it0",
+        "startedAt": "2026-10-15T02:32:42.711801Z",
+        "status": "live",
+        "trigger": "api",
+        "updatedAt": "2026-10-15T02:32:57.936799Z"
+      },
+      {
+        "commit": {
+          "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+          "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+        },
+        "createdAt": "2026-10-15T02:30:25.338083Z",
+        "finishedAt": "2026-10-15T02:30:42.485014Z",
+        "id": "dep-db83lg9aomdc7381ka5g",
+        "startedAt": "2026-10-15T02:30:28.051868Z",
+        "status": "deactivated",
+        "trigger": "service_updated",
+        "updatedAt": "2026-10-15T02:32:57.945535Z"
+      },
+      {
+        "commit": {
+          "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+          "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+        },
+        "createdAt": "2026-10-15T02:27:55.008436Z",
+        "finishedAt": "2026-10-15T02:29:58.039928Z",
+        "id": "dep-db83kaoumfhs73fe7is0",
+        "startedAt": "2026-10-15T02:28:42.403414Z",
+        "status": "deactivated",
+        "trigger": "other",
+        "updatedAt": "2026-10-15T02:30:42.489095Z"
+      }
+    ],
+    "history_receipts": [
+      {
+        "at": "2026-10-15T02:28:13.670434+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db83kaoumfhs73fe7irg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.445,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:27:55.008436Z\",\n    \"id\": \"dep-db83kaoumfhs73fe7is0\",\n    \"status\": \"queued\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:27:58.020423Z\"\n  }\n]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-15T02:29:01.415108+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db83kaoumfhs73fe7irg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.37,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:27:55.008436Z\",\n    \"id\": \"dep-db83kaoumfhs73fe7is0\",\n    \"startedAt\": \"2026-10-15T02:28:42.403414Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:28:42.403414Z\"\n  }\n]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-15T02:30:11.638135+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db83kaoumfhs73fe7irg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.374,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:27:55.008436Z\",\n    \"finishedAt\": \"2026-10-15T02:29:58.039928Z\",\n    \"id\": \"dep-db83kaoumfhs73fe7is0\",\n    \"startedAt\": \"2026-10-15T02:28:42.403414Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:29:58.03993Z\"\n  }\n]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-15T02:30:24.651975+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db83kaoumfhs73fe7irg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.311,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:27:55.008436Z\",\n    \"finishedAt\": \"2026-10-15T02:29:58.039928Z\",\n    \"id\": \"dep-db83kaoumfhs73fe7is0\",\n    \"startedAt\": \"2026-10-15T02:28:42.403414Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:29:58.03993Z\"\n  }\n]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-15T02:30:48.163747+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db83kaoumfhs73fe7irg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.286,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:30:25.338083Z\",\n    \"finishedAt\": \"2026-10-15T02:30:42.485014Z\",\n    \"id\": \"dep-db83lg9aomdc7381ka5g\",\n    \"startedAt\": \"2026-10-15T02:30:28.051868Z\",\n    \"status\": \"live\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-15T02:30:42.485015Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:27:55.008436Z\",\n    \"finishedAt\": \"2026-10-15T02:29:58.039928Z\",\n    \"id\": \"dep-db83kaoumfhs73fe7is0\",\n    \"startedAt\": \"2026-10-15T02:28:42.403414Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:30:42.489095Z\"\n  }\n]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-15T02:32:28.240505+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db83kaoumfhs73fe7irg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.327,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:30:25.338083Z\",\n    \"finishedAt\": \"2026-10-15T02:30:42.485014Z\",\n    \"id\": \"dep-db83lg9aomdc7381ka5g\",\n    \"startedAt\": \"2026-10-15T02:30:28.051868Z\",\n    \"status\": \"live\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-15T02:30:42.485015Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:27:55.008436Z\",\n    \"finishedAt\": \"2026-10-15T02:29:58.039928Z\",\n    \"id\": \"dep-db83kaoumfhs73fe7is0\",\n    \"startedAt\": \"2026-10-15T02:28:42.403414Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:30:42.489095Z\"\n  }\n]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-15T02:32:30.161544+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db83kaoumfhs73fe7irg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.377,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:30:25.338083Z\",\n    \"finishedAt\": \"2026-10-15T02:30:42.485014Z\",\n    \"id\": \"dep-db83lg9aomdc7381ka5g\",\n    \"startedAt\": \"2026-10-15T02:30:28.051868Z\",\n    \"status\": \"live\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-15T02:30:42.485015Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:27:55.008436Z\",\n    \"finishedAt\": \"2026-10-15T02:29:58.039928Z\",\n    \"id\": \"dep-db83kaoumfhs73fe7is0\",\n    \"startedAt\": \"2026-10-15T02:28:42.403414Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:30:42.489095Z\"\n  }\n]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-15T02:33:03.081292+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db83kaoumfhs73fe7irg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.342,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-14T21:21:13Z\",\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:32:31.237653Z\",\n    \"finishedAt\": \"2026-10-15T02:32:57.936798Z\",\n    \"id\": \"dep-db83mfoumfhs73fe7it0\",\n    \"startedAt\": \"2026-10-15T02:32:42.711801Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-15T02:32:57.936799Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:30:25.338083Z\",\n    \"finishedAt\": \"2026-10-15T02:30:42.485014Z\",\n    \"id\": \"dep-db83lg9aomdc7381ka5g\",\n    \"startedAt\": \"2026-10-15T02:30:28.051868Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-15T02:32:57.945535Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:27:55.008436Z\",\n    \"finishedAt\": \"2026-10-15T02:29:58.039928Z\",\n    \"id\": \"dep-db83kaoumfhs73fe7is0\",\n    \"startedAt\": \"2026-10-15T02:28:42.403414Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:30:42.489095Z\"\n  }\n]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-15T02:33:18.114083+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db83kaoumfhs73fe7irg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.362,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-14T21:21:13Z\",\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:32:31.237653Z\",\n    \"finishedAt\": \"2026-10-15T02:32:57.936798Z\",\n    \"id\": \"dep-db83mfoumfhs73fe7it0\",\n    \"startedAt\": \"2026-10-15T02:32:42.711801Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-15T02:32:57.936799Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:30:25.338083Z\",\n    \"finishedAt\": \"2026-10-15T02:30:42.485014Z\",\n    \"id\": \"dep-db83lg9aomdc7381ka5g\",\n    \"startedAt\": \"2026-10-15T02:30:28.051868Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-15T02:32:57.945535Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:27:55.008436Z\",\n    \"finishedAt\": \"2026-10-15T02:29:58.039928Z\",\n    \"id\": \"dep-db83kaoumfhs73fe7is0\",\n    \"startedAt\": \"2026-10-15T02:28:42.403414Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:30:42.489095Z\"\n  }\n]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-15T02:33:22.496756+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db83kaoumfhs73fe7irg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.323,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"createdAt\": \"2026-10-14T21:21:13Z\",\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:32:31.237653Z\",\n    \"finishedAt\": \"2026-10-15T02:32:57.936798Z\",\n    \"id\": \"dep-db83mfoumfhs73fe7it0\",\n    \"startedAt\": \"2026-10-15T02:32:42.711801Z\",\n    \"status\": \"live\",\n    \"trigger\": \"api\",\n    \"updatedAt\": \"2026-10-15T02:32:57.936799Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:30:25.338083Z\",\n    \"finishedAt\": \"2026-10-15T02:30:42.485014Z\",\n    \"id\": \"dep-db83lg9aomdc7381ka5g\",\n    \"startedAt\": \"2026-10-15T02:30:28.051868Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"service_updated\",\n    \"updatedAt\": \"2026-10-15T02:32:57.945535Z\"\n  },\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:27:55.008436Z\",\n    \"finishedAt\": \"2026-10-15T02:29:58.039928Z\",\n    \"id\": \"dep-db83kaoumfhs73fe7is0\",\n    \"startedAt\": \"2026-10-15T02:28:42.403414Z\",\n    \"status\": \"deactivated\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:30:42.489095Z\"\n  }\n]",
+          "stderr": ""
+        }
+      }
+    ],
+    "observations": [
+      {
+        "at": "2026-10-15T02:28:14.373484+00:00",
+        "stage": "initial",
+        "latest_deploy": {
+          "commit": {
+            "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+            "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+          },
+          "createdAt": "2026-10-15T02:27:55.008436Z",
+          "id": "dep-db83kaoumfhs73fe7is0",
+          "status": "queued",
+          "trigger": "other",
+          "updatedAt": "2026-10-15T02:27:58.020423Z"
+        },
+        "HTTP": "404",
+        "curl_exit": 0,
+        "url": "https://qa-20261015-683a59-static.onbex.co/package.json?qa=683a59-initial",
+        "body": "404 page not found\n",
+        "decoded": null,
+        "stderr": "",
+        "exact_expected_content": false
+      },
+      {
+        "at": "2026-10-15T02:29:02.084542+00:00",
+        "stage": "initial",
+        "latest_deploy": {
+          "commit": {
+            "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+            "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+          },
+          "createdAt": "2026-10-15T02:27:55.008436Z",
+          "id": "dep-db83kaoumfhs73fe7is0",
+          "startedAt": "2026-10-15T02:28:42.403414Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-15T02:28:42.403414Z"
+        },
+        "HTTP": "404",
+        "curl_exit": 0,
+        "url": "https://qa-20261015-683a59-static.onbex.co/package.json?qa=683a59-initial",
+        "body": "404 page not found\n",
+        "decoded": null,
+        "stderr": "",
+        "exact_expected_content": false
+      },
+      {
+        "at": "2026-10-15T02:30:12.377440+00:00",
+        "stage": "initial",
+        "latest_deploy": {
+          "commit": {
+            "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+            "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+          },
+          "createdAt": "2026-10-15T02:27:55.008436Z",
+          "finishedAt": "2026-10-15T02:29:58.039928Z",
+          "id": "dep-db83kaoumfhs73fe7is0",
+          "startedAt": "2026-10-15T02:28:42.403414Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-15T02:29:58.03993Z"
+        },
+        "HTTP": "200",
+        "curl_exit": 0,
+        "url": "https://qa-20261015-683a59-static.onbex.co/package.json?qa=683a59-initial",
+        "body": "{\"qa_marker\":\"QA257_683a59\"}",
+        "decoded": {
+          "qa_marker": "QA257_683a59"
+        },
+        "stderr": "",
+        "exact_expected_content": true
+      },
+      {
+        "at": "2026-10-15T02:30:48.856200+00:00",
+        "stage": "cleared",
+        "latest_deploy": {
+          "commit": {
+            "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+            "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+          },
+          "createdAt": "2026-10-15T02:30:25.338083Z",
+          "finishedAt": "2026-10-15T02:30:42.485014Z",
+          "id": "dep-db83lg9aomdc7381ka5g",
+          "startedAt": "2026-10-15T02:30:28.051868Z",
+          "status": "live",
+          "trigger": "service_updated",
+          "updatedAt": "2026-10-15T02:30:42.485015Z"
+        },
+        "HTTP": "200",
+        "curl_exit": 0,
+        "url": "https://qa-20261015-683a59-static.onbex.co/package.json?qa=683a59-cleared",
+        "body": "{\"qa_marker\":\"QA257_683a59\"}",
+        "decoded": {
+          "qa_marker": "QA257_683a59"
+        },
+        "stderr": "",
+        "exact_expected_content": false
+      },
+      {
+        "at": "2026-10-15T02:32:29.058595+00:00",
+        "stage": "cleared",
+        "latest_deploy": {
+          "commit": {
+            "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+            "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+          },
+          "createdAt": "2026-10-15T02:30:25.338083Z",
+          "finishedAt": "2026-10-15T02:30:42.485014Z",
+          "id": "dep-db83lg9aomdc7381ka5g",
+          "startedAt": "2026-10-15T02:30:28.051868Z",
+          "status": "live",
+          "trigger": "service_updated",
+          "updatedAt": "2026-10-15T02:30:42.485015Z"
+        },
+        "HTTP": "200",
+        "curl_exit": 0,
+        "url": "https://qa-20261015-683a59-static.onbex.co/package.json?qa=683a59-cleared",
+        "body": "{\n  \"name\": \"runtime-version-node\",\n  \"version\": \"1.0.0\",\n  \"main\": \"main.js\",\n  \"scripts\": {\n    \"start\": \"node main.js\"\n  }\n}\n",
+        "decoded": {
+          "name": "runtime-version-node",
+          "version": "1.0.0",
+          "main": "main.js",
+          "scripts": {
+            "start": "node main.js"
+          }
+        },
+        "stderr": "",
+        "exact_expected_content": true
+      },
+      {
+        "at": "2026-10-15T02:33:18.849001+00:00",
+        "stage": "redeploy",
+        "latest_deploy": {
+          "commit": {
+            "createdAt": "2026-10-14T21:21:13Z",
+            "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+            "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+          },
+          "createdAt": "2026-10-15T02:32:31.237653Z",
+          "finishedAt": "2026-10-15T02:32:57.936798Z",
+          "id": "dep-db83mfoumfhs73fe7it0",
+          "startedAt": "2026-10-15T02:32:42.711801Z",
+          "status": "live",
+          "trigger": "api",
+          "updatedAt": "2026-10-15T02:32:57.936799Z"
+        },
+        "HTTP": "200",
+        "curl_exit": 0,
+        "url": "https://qa-20261015-683a59-static.onbex.co/package.json?qa=683a59-redeploy",
+        "body": "{\n  \"name\": \"runtime-version-node\",\n  \"version\": \"1.0.0\",\n  \"main\": \"main.js\",\n  \"scripts\": {\n    \"start\": \"node main.js\"\n  }\n}\n",
+        "decoded": {
+          "name": "runtime-version-node",
+          "version": "1.0.0",
+          "main": "main.js",
+          "scripts": {
+            "start": "node main.js"
+          }
+        },
+        "stderr": "",
+        "exact_expected_content": true
+      }
+    ],
+    "clear_intent": {
+      "at": "2026-10-15T02:30:24.799312+00:00",
+      "before_deploy_ids": [
+        "dep-db83kaoumfhs73fe7is0"
+      ],
+      "request_path": "/mcp",
+      "body": {
+        "jsonrpc": "2.0",
+        "id": 257,
+        "method": "tools/call",
+        "params": {
+          "name": "update_service",
+          "arguments": {
+            "workspaceId": "tea-daif693dqjvc73e7as3g",
+            "serviceId": "srv-db83kaoumfhs73fe7irg",
+            "buildCommand": ""
+          }
+        }
+      }
+    },
+    "clear_result": {
+      "at": "2026-10-15T02:30:25.469555+00:00",
+      "api_only": true,
+      "request": {
+        "method": "POST",
+        "path": "/mcp",
+        "body": {
+          "jsonrpc": "2.0",
+          "id": 257,
+          "method": "tools/call",
+          "params": {
+            "name": "update_service",
+            "arguments": {
+              "workspaceId": "tea-daif693dqjvc73e7as3g",
+              "serviceId": "srv-db83kaoumfhs73fe7irg",
+              "buildCommand": ""
+            }
+          }
+        },
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.524,
+      "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":257,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"autoDeploy\\\":\\\"no\\\",\\\"autoDeployTrigger\\\":\\\"off\\\",\\\"branch\\\":\\\"main\\\",\\\"createdAt\\\":\\\"2026-10-15T02:27:55Z\\\",\\\"dashboardUrl\\\":\\\"https://dashboard.bex.co/static/srv-db83kaoumfhs73fe7irg\\\",\\\"displayName\\\":\\\"\\\",\\\"id\\\":\\\"srv-db83kaoumfhs73fe7irg\\\",\\\"idleTTLSeconds\\\":0,\\\"immutableName\\\":\\\"qa-20261015-683a59-static\\\",\\\"name\\\":\\\"qa-20261015-683a59-static\\\",\\\"notificationsToSend\\\":\\\"default\\\",\\\"notifyOnFail\\\":\\\"default\\\",\\\"ownerId\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"phase\\\":\\\"Running\\\",\\\"replicas\\\":1,\\\"repo\\\":\\\"https://github.com/bex-co/bex\\\",\\\"revision\\\":\\\"rev-1\\\",\\\"rootDir\\\":\\\"examples/runtime-version/node\\\",\\\"serviceDetails\\\":{\\\"buildCommand\\\":\\\"\\\",\\\"numInstances\\\":1,\\\"plan\\\":\\\"free\\\",\\\"publishPath\\\":\\\".\\\",\\\"region\\\":\\\"fsn1\\\",\\\"renderSubdomainPolicy\\\":\\\"enabled\\\",\\\"url\\\":\\\"https://qa-20261015-683a59-static.onbex.co\\\"},\\\"slug\\\":\\\"qa-20261015-683a59-static\\\",\\\"suspended\\\":\\\"not_suspended\\\",\\\"suspenders\\\":[],\\\"type\\\":\\\"static_site\\\",\\\"updatedAt\\\":\\\"2026-10-15T02:30:25.249637714Z\\\",\\\"urls\\\":[\\\"https://qa-20261015-683a59-static.onbex.co\\\"]}\"}],\"structuredContent\":{\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"branch\":\"main\",\"createdAt\":\"2026-10-15T02:27:55Z\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db83kaoumfhs73fe7irg\",\"displayName\":\"\",\"id\":\"srv-db83kaoumfhs73fe7irg\",\"idleTTLSeconds\":0,\"immutableName\":\"qa-20261015-683a59-static\",\"name\":\"qa-20261015-683a59-static\",\"notificationsToSend\":\"default\",\"notifyOnFail\":\"default\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"replicas\":1,\"repo\":\"https://github.com/bex-co/bex\",\"revision\":\"rev-1\",\"rootDir\":\"examples/runtime-version/node\",\"serviceDetails\":{\"buildCommand\":\"\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\".\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261015-683a59-static.onbex.co\"},\"slug\":\"qa-20261015-683a59-static\",\"suspended\":\"not_suspended\",\"suspenders\":[],\"type\":\"static_site\",\"updatedAt\":\"2026-10-15T02:30:25.249637714Z\",\"urls\":[\"https://qa-20261015-683a59-static.onbex.co\"]}}}\n\n",
+      "stderr": ""
+    },
+    "configuration_reads": [
+      {
+        "at": "2026-10-15T02:30:47.489152+00:00",
+        "api_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA257($id:String!){service(id:$id){id buildCommand builder publishPath}}",
+            "variables": {
+              "id": "srv-db83kaoumfhs73fe7irg"
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.344,
+        "response": "{\"data\":{\"service\":{\"buildCommand\":\"\",\"builder\":\"auto\",\"id\":\"srv-db83kaoumfhs73fe7irg\",\"publishPath\":\".\"}}}\n",
+        "stderr": ""
+      }
+    ],
+    "source_comparisons": [
+      {
+        "at": "2026-10-15T02:32:29.411043+00:00",
+        "stage": "cleared",
+        "deploy_id": "dep-db83lg9aomdc7381ka5g",
+        "commit": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+        "path": "examples/runtime-version/node/package.json",
+        "source_bytes_utf8": "{\n  \"name\": \"runtime-version-node\",\n  \"version\": \"1.0.0\",\n  \"main\": \"main.js\",\n  \"scripts\": {\n    \"start\": \"node main.js\"\n  }\n}\n",
+        "hosted_bytes_utf8": "{\n  \"name\": \"runtime-version-node\",\n  \"version\": \"1.0.0\",\n  \"main\": \"main.js\",\n  \"scripts\": {\n    \"start\": \"node main.js\"\n  }\n}\n",
+        "exact_source_bytes": true
+      },
+      {
+        "at": "2026-10-15T02:33:19.220548+00:00",
+        "stage": "redeploy",
+        "deploy_id": "dep-db83mfoumfhs73fe7it0",
+        "commit": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+        "path": "examples/runtime-version/node/package.json",
+        "source_bytes_utf8": "{\n  \"name\": \"runtime-version-node\",\n  \"version\": \"1.0.0\",\n  \"main\": \"main.js\",\n  \"scripts\": {\n    \"start\": \"node main.js\"\n  }\n}\n",
+        "hosted_bytes_utf8": "{\n  \"name\": \"runtime-version-node\",\n  \"version\": \"1.0.0\",\n  \"main\": \"main.js\",\n  \"scripts\": {\n    \"start\": \"node main.js\"\n  }\n}\n",
+        "exact_source_bytes": true
+      }
+    ],
+    "later_native_deploy_intent": {
+      "at": "2026-10-15T02:32:30.311539+00:00",
+      "before_deploy_ids": [
+        "dep-db83lg9aomdc7381ka5g",
+        "dep-db83kaoumfhs73fe7is0"
+      ],
+      "command": [
+        "render",
+        "deploys",
+        "create",
+        "srv-db83kaoumfhs73fe7irg",
+        "--wait",
+        "--confirm",
+        "-o",
+        "json"
+      ]
+    },
+    "later_native_deploy_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "deploys",
+        "create",
+        "srv-db83kaoumfhs73fe7irg",
+        "--wait",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 32.081,
+      "stdout": "{\n  \"commit\": {\n    \"createdAt\": \"2026-10-14T21:21:13Z\",\n    \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n    \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n  },\n  \"createdAt\": \"2026-10-15T02:32:31.237653Z\",\n  \"finishedAt\": \"2026-10-15T02:32:57.936798Z\",\n  \"id\": \"dep-db83mfoumfhs73fe7it0\",\n  \"startedAt\": \"2026-10-15T02:32:42.711801Z\",\n  \"status\": \"live\",\n  \"trigger\": \"api\",\n  \"updatedAt\": \"2026-10-15T02:32:57.936799Z\"\n}",
+      "stderr": "Waiting for deploy dep-db83mfoumfhs73fe7it0 to complete...\n\n"
+    },
+    "later_native_fresh_deploys": [
+      {
+        "commit": {
+          "createdAt": "2026-10-14T21:21:13Z",
+          "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+          "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+        },
+        "createdAt": "2026-10-15T02:32:31.237653Z",
+        "finishedAt": "2026-10-15T02:32:57.936798Z",
+        "id": "dep-db83mfoumfhs73fe7it0",
+        "startedAt": "2026-10-15T02:32:42.711801Z",
+        "status": "live",
+        "trigger": "api",
+        "updatedAt": "2026-10-15T02:32:57.936799Z"
+      }
+    ],
+    "delete_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "delete",
+        "srv-db83kaoumfhs73fe7irg",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.865,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-15T02:27:55Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db83kaoumfhs73fe7irg\",\n    \"id\": \"srv-db83kaoumfhs73fe7irg\",\n    \"name\": \"qa-20261015-683a59-static\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/runtime-version/node\",\n    \"serviceDetails\": {\n      \"buildCommand\": \"\",\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"publishPath\": \".\",\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"url\": \"https://qa-20261015-683a59-static.onbex.co\"\n    },\n    \"slug\": \"qa-20261015-683a59-static\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"static_site\",\n    \"updatedAt\": \"2026-10-15T02:32:49Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "cleanup_reconciliations": [
+      {
+        "at": "2026-10-15T02:33:45.557776+00:00",
+        "detail": {
+          "at": "2026-10-15T02:33:43.997995+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db83kaoumfhs73fe7irg",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "404",
+          "elapsed": 0.381,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4ab6bb01ecc34c3-SJC"
+          },
+          "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+        },
+        "list_ids": [
+          "srv-daif6dsmg29s73d1umvg",
+          "srv-dap3r714dm7c7390q91g",
+          "srv-dap3umrbdpcs73f5eeug",
+          "srv-dap3v694dm7c7390q930",
+          "srv-db09u90ehcmc739j12cg",
+          "srv-db09vbgehcmc739j12i0"
+        ],
+        "baseline_present": true,
+        "runtime": {
+          "exit": 0,
+          "HTTP": "404",
+          "stderr": ""
+        },
+        "quota": {
+          "at": "2026-10-15T02:33:45.546118+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "200",
+          "elapsed": 0.285,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4ab6bba4e7b9cd0-SJC"
+          },
+          "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+        }
+      }
+    ]
+  }
+]

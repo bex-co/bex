@@ -1,0 +1,56 @@
+from pathlib import Path
+import datetime,json,os,re,shutil,signal,subprocess,sys,time
+os.umask(0o077)
+p=Path(__file__).parent;cp=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(cp.read_text());family=sys.argv[1];assert family in ('postgres','keyvalue','app')
+x=next(v for v in c['resources'] if v.get('sweep')==259 and v['family']==family);assert x['ready'] and x['create_result']['exit']==0 and x['id']==x['create_response']['id'] and not x['state'].startswith('deleted:');assert not x.get('native_tail_checks')
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();cp.write_text(json.dumps(c,ensure_ascii=False,indent=2)+'\n');cp.chmod(0o600)
+def read(file):
+ try:return json.loads(file.read_text())
+ except (FileNotFoundError,ValueError):return []
+def rows(text):
+ decoder=json.JSONDecoder();at=0;out=[]
+ while at<len(text):
+  while at<len(text) and text[at].isspace():at+=1
+  if at==len(text):break
+  value,at=decoder.raw_decode(text,at);out.extend(value if isinstance(value,list) else [value])
+ return out
+for client in ('bex','render'):
+ wire=p/('sweep259-'+family+'-'+client+'-wire.json');assert not wire.exists();proxy=subprocess.Popen([str(p/'sweep259-log-relay'),x['id'],str(wire)],stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,start_new_session=True)
+ cfgdir=p/('sweep259-tail-config-'+family+'-'+client);child=None;cfgdir.mkdir(mode=0o700)
+ record={'at':now(),'client':client,'family':family,'native_request_capture':'unchanged GET/logs/WS forwarding to fixed api.bex.co for exact owned resource only; authorization never captured'};x.setdefault('native_tail_checks',[]).append(record);save();start=time.monotonic()
+ try:
+  port=int(proxy.stdout.readline().strip());origin='http://127.0.0.1:'+str(port)+'/v1/';cfgtext,n=re.subn(r'(?m)^(\s+)host:.*$',lambda m:m[1]+'host: '+origin,(p/'config/cli.yaml').read_text());assert n==1;cfg=cfgdir/'cli.yaml';cfg.write_text(cfgtext);cfg.chmod(0o600)
+  prefix='BEX' if client=='bex' else 'RENDER';env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_'))};env.update({prefix+'_HOST':origin,prefix+'_CLI_CONFIG_DIR':str(cfgdir),prefix+'_CLI_CONFIG_PATH':str(cfg),prefix+'_WORKSPACE':x['workspace'],prefix+'_CLI_DISABLE_ANALYTICS':'1',prefix+'_NO_UPDATE_NOTIFIER':'1','BROWSER':'/usr/bin/true'});binary=p/'release/bex' if client=='bex' else p/'render-pin';marker=x['marker']+'_'+client;args=['logs','--resources',x['id'],'--text',marker,'--limit','100','--tail','--confirm','-o','json'];record['command']=[client,*args];save()
+  if family!='app':
+   try:r=subprocess.run([str(binary),*args],env=env,text=True,capture_output=True,timeout=20);result={'exit':r.returncode,'elapsed':round(time.monotonic()-start,3),'stdout':r.stdout,'stderr':r.stderr}
+   except subprocess.TimeoutExpired as e:result={'exit':124,'elapsed':round(time.monotonic()-start,3),'stdout':(e.stdout or b'').decode() if isinstance(e.stdout,bytes) else e.stdout or '','stderr':(e.stderr or b'').decode() if isinstance(e.stderr,bytes) else e.stderr or ''}
+   record['result']=result;captured=read(wire);message='managed '+('Postgres' if family=='postgres' else 'Key Value')+' live log subscription is not supported; use the historical logs query';subscriptions=[v for v in captured if v['request']['path'].startswith('/v1/logs/subscribe?')];record['passed']=result['exit'] not in (0,124) and message in result['stderr'] and bool(subscriptions) and all(v['status']==400 and message in v.get('response','') and not v['response_headers'].get('Upgrade') for v in subscriptions);save()
+  else:
+   stdout=p/('sweep259-app-'+client+'-tail.stdout');stderr=p/('sweep259-app-'+client+'-tail.stderr')
+   with stdout.open('w') as out,stderr.open('w') as err:
+    child=subprocess.Popen([str(binary),*args],env=env,stdout=out,stderr=err,text=True,start_new_session=True)
+    for attempt in range(32):
+     if any(v['status']==101 for v in read(wire)) or child.poll() is not None:break
+     time.sleep(.25)
+    upgraded=any(v['status']==101 for v in read(wire));record['actual_websocket_101_before_emit']=upgraded;save()
+    if upgraded:
+     url=x['create_response']['serviceDetails']['url']+'/emit/'+marker;r=subprocess.run(['curl','--disable','-sS','--max-time','10','-w','\n%{http_code}',url],text=True,capture_output=True,timeout=15);body,_,status=r.stdout.rpartition('\n');record['single_emit_request']={'at':now(),'url':url,'HTTP':status,'body':body,'curl_exit':r.returncode};save()
+     for attempt in range(40):
+      if marker in stdout.read_text() or child.poll() is not None:break
+      time.sleep(.5)
+    record['explicit_bounded_stop']='SIGINT after own marker or bounded wait';save()
+    if child.poll() is None:os.killpg(child.pid,signal.SIGINT)
+    try:child.wait(timeout=5)
+    except subprocess.TimeoutExpired:os.killpg(child.pid,signal.SIGKILL);child.wait(timeout=5);record['forced_stop']=True
+   result={'exit':child.returncode,'elapsed':round(time.monotonic()-start,3),'stdout':stdout.read_text(),'stderr':stderr.read_text()};record['result']=result
+   try:decoded=rows(result['stdout'])
+   except ValueError:decoded=[]
+   record['decoded_rows']=decoded;record['passed']=upgraded and not record.get('forced_stop') and len(decoded)==1 and decoded[0].get('message')==marker and record.get('single_emit_request',{}).get('HTTP')=='200';save()
+ finally:
+  if child is not None and child.poll() is None:os.killpg(child.pid,signal.SIGKILL);child.wait(timeout=5)
+  if proxy.poll() is None:os.killpg(proxy.pid,signal.SIGTERM)
+  try:proxy.wait(timeout=5)
+  except subprocess.TimeoutExpired:os.killpg(proxy.pid,signal.SIGKILL);proxy.wait(timeout=5)
+  shutil.rmtree(cfgdir);record['wire']=read(wire);record['cleanup']='native/relay processes reaped and exact copied config removed';save()
+ print(json.dumps({'family':family,'client':client,'exit':record.get('result',{}).get('exit'),'elapsed':record.get('result',{}).get('elapsed'),'passed':record.get('passed'),'statuses':[v['status'] for v in record['wire']],'stderr':record.get('result',{}).get('stderr') if family!='app' else None}),flush=True)

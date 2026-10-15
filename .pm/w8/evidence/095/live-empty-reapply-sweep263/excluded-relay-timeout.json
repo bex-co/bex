@@ -1,0 +1,41 @@
+[
+  {
+    "at": "2026-10-15T03:18:28.443797+00:00",
+    "client": "render",
+    "case": "space",
+    "layout": "root",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep263-root-space.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 1,
+      "elapsed": 25.166,
+      "stdout": "",
+      "stderr": "Error: validation request failed with status 502: <!DOCTYPE HTML>\n<html lang=\"en\">\n    <head>\n        <meta charset=\"utf-8\">\n        <style type=\"text/css\">\n            :root {\n                color-scheme: light dark;\n            }\n        </style>\n        <title>Error response</title>\n    </head>\n    <body>\n        <h1>Error response</h1>\n        <p>Error code: 502</p>\n        <p>Message: Bad Gateway.</p>\n        <p>Error code explanation: 502 - Invalid responses from another server/proxy.</p>\n    </body>\n</html>\n\n"
+    },
+    "captures": [
+      {
+        "transport_error": "TimeoutError"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": false,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-7a8bf1-emptygroup",
+      "expected_id": "evg-db84b2paomdc7381kae0",
+      "expected_source_path": "#/envVarGroups/0"
+    },
+    "group_actions": [],
+    "native_summary_matches_server": true,
+    "excluded_reason": "Owned HTTPS forwarding relay raised TimeoutError after25s before any server response; its local502 is not a captured Bex status. Read-only validation will be retried after pause."
+  }
+]

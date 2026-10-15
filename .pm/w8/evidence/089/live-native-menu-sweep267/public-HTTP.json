@@ -1,0 +1,92 @@
+[
+  {
+    "at": "2026-10-15T04:33:57.758272+00:00",
+    "case": "service OAuth native argument",
+    "request": {
+      "method": "GET",
+      "url": "https://oauth.bex.co/cron/srv-dap3v694dm7c7390q930",
+      "authentication": "none",
+      "follow_redirects": false
+    },
+    "curl_exit": 0,
+    "status": "302",
+    "headers": "HTTP/2 302 \ndate: Thu, 15 Oct 2026 04:33:57 GMT\ncontent-length: 5\nlocation: https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\ncf-cache-status: DYNAMIC\nreport-to: {\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=hlKxqaUWNDR05CborHxfxzHORf9nuffg0mnhnItOrocTTt5onXsQ0vigelttHTpPezRVJ98s3EqvI591ZqWSd6tEQTu2A8QjCtuC8f%2BUbwsfXnNJtc2keZVUU3RJOk1vayNomy23PW3mUWw%3D\"}]}\nnel: {\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}\nserver: cloudflare\ncf-ray: a4ac1bcc9dff2157-SJC\nalt-svc: h3=\":443\"; ma=86400\n",
+    "body": "Found",
+    "stderr": "",
+    "expected_status": 302,
+    "expected_location": "https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930",
+    "pass": true
+  },
+  {
+    "at": "2026-10-15T04:33:58.419133+00:00",
+    "case": "service dashboard alias",
+    "request": {
+      "method": "GET",
+      "url": "https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930",
+      "authentication": "none",
+      "follow_redirects": false
+    },
+    "curl_exit": 0,
+    "status": "307",
+    "headers": "HTTP/2 307 \ndate: Thu, 15 Oct 2026 04:33:58 GMT\nlocation: /services/srv-dap3v694dm7c7390q930\ncf-cache-status: DYNAMIC\nreport-to: {\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=dK%2BvFqjuGurviH%2Fc3gTQtdKFs3s769x46TWuZR0eNTPpZqkh%2FJNefWc%2BkJUxvcM21ylIveUIwhqGcQZL0R6lbQqF1lnRhY83Pl3WB%2FgviXEO9hWmfyS%2BX%2BWQrjIQNT2D4eVuTl2ILZTJlY8Nzviw\"}]}\nnel: {\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}\nserver: cloudflare\ncf-ray: a4ac1bd0af9767f4-SJC\nalt-svc: h3=\":443\"; ma=86400\n",
+    "body": "",
+    "stderr": "",
+    "expected_status": 307,
+    "expected_location": "/services/srv-dap3v694dm7c7390q930",
+    "pass": true
+  },
+  {
+    "at": "2026-10-15T04:33:59.034190+00:00",
+    "case": "deploy OAuth native argument",
+    "request": {
+      "method": "GET",
+      "url": "https://oauth.bex.co/cron/srv-dap3v694dm7c7390q930/deploys/dep-dap3v694dm7c7390q93g",
+      "authentication": "none",
+      "follow_redirects": false
+    },
+    "curl_exit": 0,
+    "status": "302",
+    "headers": "HTTP/2 302 \ndate: Thu, 15 Oct 2026 04:33:59 GMT\ncontent-length: 5\nlocation: https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930/deploys/dep-dap3v694dm7c7390q93g\ncf-cache-status: DYNAMIC\nreport-to: {\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=3uFOhzPQDKyUoYLpMfRLi4fHWnu7a55ClxiBXT1xiKQ3YOugY6J7RuxPLYWjDfvoWIaNfI9DQL015c7fDaMEUi6rVMOcHLqc7GeD8yd%2FTU7QzL3G9W5vXOgL1ocpvVM6IPsWwCMgNF52ejU%3D\"}]}\nnel: {\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}\nserver: cloudflare\ncf-ray: a4ac1bd47b40f9e4-SJC\nalt-svc: h3=\":443\"; ma=86400\n",
+    "body": "Found",
+    "stderr": "",
+    "expected_status": 302,
+    "expected_location": "https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930/deploys/dep-dap3v694dm7c7390q93g",
+    "pass": true
+  },
+  {
+    "at": "2026-10-15T04:33:59.823962+00:00",
+    "case": "deploy dashboard alias",
+    "request": {
+      "method": "GET",
+      "url": "https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930/deploys/dep-dap3v694dm7c7390q93g",
+      "authentication": "none",
+      "follow_redirects": false
+    },
+    "curl_exit": 0,
+    "status": "307",
+    "headers": "HTTP/2 307 \ndate: Thu, 15 Oct 2026 04:33:59 GMT\nlocation: /services/srv-dap3v694dm7c7390q930/deploys/dep-dap3v694dm7c7390q93g\ncf-cache-status: DYNAMIC\nreport-to: {\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=oVGyrEKOHpar%2F2gDsvAw2HIOHT6acDXBj0euYkRMQOWH7lfdzTpTEaNIBG84e3%2Fk6ozfYm78qS2iAnJVA7s4EYSHhyq%2BHHSVl00yIJv2%2FNi5zEMhKl0Ww0jz%2BT%2F2OVs4zadp4e%2BoaWIuij7tA5%2B5\"}]}\nnel: {\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}\nserver: cloudflare\ncf-ray: a4ac1bd8f914ce7c-SJC\nalt-svc: h3=\":443\"; ma=86400\n",
+    "body": "",
+    "stderr": "",
+    "expected_status": 307,
+    "expected_location": "/services/srv-dap3v694dm7c7390q930/deploys/dep-dap3v694dm7c7390q93g",
+    "pass": true
+  },
+  {
+    "at": "2026-10-15T04:34:00.572701+00:00",
+    "case": "issuer neighbor",
+    "request": {
+      "method": "GET",
+      "url": "https://oauth.bex.co/.well-known/openid-configuration",
+      "authentication": "none",
+      "follow_redirects": false
+    },
+    "curl_exit": 0,
+    "status": "200",
+    "headers": "HTTP/2 200 \ndate: Thu, 15 Oct 2026 04:34:00 GMT\ncontent-type: application/json; charset=utf-8\ncontent-length: 1980\ncache-control: private, no-cache, no-store, must-revalidate\ncf-cache-status: DYNAMIC\nreport-to: {\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=KHaOVznn4AEpLsW8%2BhgfHKg96QUqIaeNe90AQuNzV0dbFyFprTBuRxueJngr0touIv1X5%2BxmERuD8N4Nz6pfgTvt%2FTuKuipdruLotOdqhK6Aua%2B%2BJOBeF71FrtZfYdPunUX6eZ5Ru0v%2F8oo%3D\"}]}\nnel: {\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}\nserver: cloudflare\ncf-ray: a4ac1bde1fa12364-SJC\nalt-svc: h3=\":443\"; ma=86400\n",
+    "body": "{\"issuer\":\"https://oauth.bex.co\",\"authorization_endpoint\":\"https://oauth.bex.co/oauth2/auth\",\"device_authorization_endpoint\":\"https://oauth.bex.co/oauth2/device/auth\",\"token_endpoint\":\"https://oauth.bex.co/oauth2/token\",\"jwks_uri\":\"https://oauth.bex.co/.well-known/jwks.json\",\"subject_types_supported\":[\"public\",\"pairwise\"],\"response_types_supported\":[\"code\",\"code id_token\",\"id_token\",\"token id_token\",\"token\",\"token id_token code\"],\"claims_supported\":[\"sub\"],\"grant_types_supported\":[\"authorization_code\",\"implicit\",\"client_credentials\",\"refresh_token\",\"urn:ietf:params:oauth:grant-type:device_code\"],\"response_modes_supported\":[\"query\",\"fragment\",\"form_post\"],\"userinfo_endpoint\":\"https://oauth.bex.co/userinfo\",\"scopes_supported\":[\"offline_access\",\"offline\",\"openid\"],\"token_endpoint_auth_methods_supported\":[\"client_secret_post\",\"client_secret_basic\",\"private_key_jwt\",\"none\"],\"userinfo_signing_alg_values_supported\":[\"none\",\"RS256\"],\"id_token_signing_alg_values_supported\":[\"RS256\"],\"id_token_signed_response_alg\":[\"RS256\"],\"userinfo_signed_response_alg\":[\"RS256\"],\"request_parameter_supported\":true,\"request_uri_parameter_supported\":true,\"require_request_uri_registration\":true,\"claims_parameter_supported\":false,\"revocation_endpoint\":\"https://oauth.bex.co/oauth2/revoke\",\"backchannel_logout_supported\":true,\"backchannel_logout_session_supported\":true,\"frontchannel_logout_supported\":true,\"frontchannel_logout_session_supported\":true,\"end_session_endpoint\":\"https://oauth.bex.co/oauth2/sessions/logout\",\"request_object_signing_alg_values_supported\":[\"none\",\"RS256\",\"ES256\"],\"code_challenge_methods_supported\":[\"plain\",\"S256\"],\"credentials_endpoint_draft_00\":\"https://oauth.bex.co/credentials\",\"credentials_supported_draft_00\":[{\"format\":\"jwt_vc_json\",\"types\":[\"VerifiableCredential\",\"UserInfoCredential\"],\"cryptographic_binding_methods_supported\":[\"jwk\"],\"cryptographic_suites_supported\":[\"PS256\",\"RS256\",\"ES256\",\"PS384\",\"RS384\",\"ES384\",\"PS512\",\"RS512\",\"ES512\",\"EdDSA\"]}]}\n",
+    "stderr": "",
+    "expected_status": 200,
+    "expected_location": null,
+    "pass": true
+  }
+]

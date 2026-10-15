@@ -1,0 +1,3230 @@
+[
+  {
+    "at": "2026-10-15T03:02:19.856076+00:00",
+    "client": "bex",
+    "case": "exact",
+    "layout": "root",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-root-exact.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 1.141,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261015-12da34-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:02:21.073245+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=3d655cac5711943dca9d65e6a98f29ca3a1815e45b770c7fa460724cbf35",
+          "body": "--3d655cac5711943dca9d65e6a98f29ca3a1815e45b770c7fa460724cbf35\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--3d655cac5711943dca9d65e6a98f29ca3a1815e45b770c7fa460724cbf35\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-root-exact.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa-20261015-12da34-envgroup\",\n      \"envVars\": []\n    }\n  ]\n}\n\r\n--3d655cac5711943dca9d65e6a98f29ca3a1815e45b770c7fa460724cbf35--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa-20261015-12da34-envgroup\",\n      \"envVars\": []\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab959768c86c48-SJC"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261015-12da34-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261015-12da34-envgroup\",\"sourcePath\":\"#/envVarGroups/0\",\"resourceId\":\"evg-db8442haomdc7381kab0\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-12da34-envgroup",
+      "expected_id": "evg-db8442haomdc7381kab0",
+      "expected_source_path": "#/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "update",
+        "kind": "env_var_group",
+        "name": "qa-20261015-12da34-envgroup",
+        "sourcePath": "#/envVarGroups/0",
+        "resourceId": "evg-db8442haomdc7381kab0",
+        "changedFields": [
+          {
+            "path": "envVars"
+          },
+          {
+            "path": "name"
+          }
+        ]
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:02:21.847842+00:00",
+    "client": "bex",
+    "case": "leading",
+    "layout": "root",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-root-leading.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 1.26,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261015-12da34-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:02:23.185982+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=b14c1c7566b35259c6b26cd3c5dc4b1d4da1ed5ec4d237e613caa8d25e3e",
+          "body": "--b14c1c7566b35259c6b26cd3c5dc4b1d4da1ed5ec4d237e613caa8d25e3e\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--b14c1c7566b35259c6b26cd3c5dc4b1d4da1ed5ec4d237e613caa8d25e3e\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-root-leading.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \"  qa-20261015-12da34-envgroup\",\n      \"envVars\": []\n    }\n  ]\n}\n\r\n--b14c1c7566b35259c6b26cd3c5dc4b1d4da1ed5ec4d237e613caa8d25e3e--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"  qa-20261015-12da34-envgroup\",\n      \"envVars\": []\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab95a45c12e22a-PDX"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261015-12da34-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261015-12da34-envgroup\",\"sourcePath\":\"#/envVarGroups/0\",\"resourceId\":\"evg-db8442haomdc7381kab0\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-12da34-envgroup",
+      "expected_id": "evg-db8442haomdc7381kab0",
+      "expected_source_path": "#/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "update",
+        "kind": "env_var_group",
+        "name": "qa-20261015-12da34-envgroup",
+        "sourcePath": "#/envVarGroups/0",
+        "resourceId": "evg-db8442haomdc7381kab0",
+        "changedFields": [
+          {
+            "path": "envVars"
+          },
+          {
+            "path": "name"
+          }
+        ]
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:02:54.383111+00:00",
+    "client": "render",
+    "case": "exact",
+    "layout": "root",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-root-exact.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 1.401,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261015-12da34-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:02:55.860221+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=6feec112e2098a874413e4c14e0a8a52f5412349036ed89ac29362af17c4",
+          "body": "--6feec112e2098a874413e4c14e0a8a52f5412349036ed89ac29362af17c4\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--6feec112e2098a874413e4c14e0a8a52f5412349036ed89ac29362af17c4\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-root-exact.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa-20261015-12da34-envgroup\",\n      \"envVars\": []\n    }\n  ]\n}\n\r\n--6feec112e2098a874413e4c14e0a8a52f5412349036ed89ac29362af17c4--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa-20261015-12da34-envgroup\",\n      \"envVars\": []\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab9670bceed74d-PDX"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261015-12da34-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261015-12da34-envgroup\",\"sourcePath\":\"#/envVarGroups/0\",\"resourceId\":\"evg-db8442haomdc7381kab0\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-12da34-envgroup",
+      "expected_id": "evg-db8442haomdc7381kab0",
+      "expected_source_path": "#/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "update",
+        "kind": "env_var_group",
+        "name": "qa-20261015-12da34-envgroup",
+        "sourcePath": "#/envVarGroups/0",
+        "resourceId": "evg-db8442haomdc7381kab0",
+        "changedFields": [
+          {
+            "path": "envVars"
+          },
+          {
+            "path": "name"
+          }
+        ]
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:02:56.430528+00:00",
+    "client": "render",
+    "case": "leading",
+    "layout": "root",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-root-leading.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.861,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261015-12da34-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:02:57.366423+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=56d00988e62da8b35d5cd70ead37cb221c0e0a32bbb2ddb40786bafa9c84",
+          "body": "--56d00988e62da8b35d5cd70ead37cb221c0e0a32bbb2ddb40786bafa9c84\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--56d00988e62da8b35d5cd70ead37cb221c0e0a32bbb2ddb40786bafa9c84\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-root-leading.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \"  qa-20261015-12da34-envgroup\",\n      \"envVars\": []\n    }\n  ]\n}\n\r\n--56d00988e62da8b35d5cd70ead37cb221c0e0a32bbb2ddb40786bafa9c84--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"  qa-20261015-12da34-envgroup\",\n      \"envVars\": []\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab967c6e2e35d6-SJC"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261015-12da34-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261015-12da34-envgroup\",\"sourcePath\":\"#/envVarGroups/0\",\"resourceId\":\"evg-db8442haomdc7381kab0\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-12da34-envgroup",
+      "expected_id": "evg-db8442haomdc7381kab0",
+      "expected_source_path": "#/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "update",
+        "kind": "env_var_group",
+        "name": "qa-20261015-12da34-envgroup",
+        "sourcePath": "#/envVarGroups/0",
+        "resourceId": "evg-db8442haomdc7381kab0",
+        "changedFields": [
+          {
+            "path": "envVars"
+          },
+          {
+            "path": "name"
+          }
+        ]
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:02:57.922853+00:00",
+    "client": "bex",
+    "case": "trailing",
+    "layout": "root",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-root-trailing.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 1.708,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261015-12da34-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:02:59.711040+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=8ba8a87f0066bf2128ba8337cc3bfa952c4424e422f0fd486772ecc8bce5",
+          "body": "--8ba8a87f0066bf2128ba8337cc3bfa952c4424e422f0fd486772ecc8bce5\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--8ba8a87f0066bf2128ba8337cc3bfa952c4424e422f0fd486772ecc8bce5\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-root-trailing.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa-20261015-12da34-envgroup  \",\n      \"envVars\": []\n    }\n  ]\n}\n\r\n--8ba8a87f0066bf2128ba8337cc3bfa952c4424e422f0fd486772ecc8bce5--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa-20261015-12da34-envgroup  \",\n      \"envVars\": []\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab968618aaccd1-PDX"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261015-12da34-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261015-12da34-envgroup\",\"sourcePath\":\"#/envVarGroups/0\",\"resourceId\":\"evg-db8442haomdc7381kab0\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-12da34-envgroup",
+      "expected_id": "evg-db8442haomdc7381kab0",
+      "expected_source_path": "#/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "update",
+        "kind": "env_var_group",
+        "name": "qa-20261015-12da34-envgroup",
+        "sourcePath": "#/envVarGroups/0",
+        "resourceId": "evg-db8442haomdc7381kab0",
+        "changedFields": [
+          {
+            "path": "envVars"
+          },
+          {
+            "path": "name"
+          }
+        ]
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:00.422966+00:00",
+    "client": "render",
+    "case": "trailing",
+    "layout": "root",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-root-trailing.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.664,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261015-12da34-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:01.163407+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=cbf2d91ed188a9e7e03aaff7eee017175bd2de25f6bed0ca3f523aeef45f",
+          "body": "--cbf2d91ed188a9e7e03aaff7eee017175bd2de25f6bed0ca3f523aeef45f\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--cbf2d91ed188a9e7e03aaff7eee017175bd2de25f6bed0ca3f523aeef45f\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-root-trailing.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa-20261015-12da34-envgroup  \",\n      \"envVars\": []\n    }\n  ]\n}\n\r\n--cbf2d91ed188a9e7e03aaff7eee017175bd2de25f6bed0ca3f523aeef45f--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa-20261015-12da34-envgroup  \",\n      \"envVars\": []\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab9694da0ef9d0-SJC"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261015-12da34-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261015-12da34-envgroup\",\"sourcePath\":\"#/envVarGroups/0\",\"resourceId\":\"evg-db8442haomdc7381kab0\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-12da34-envgroup",
+      "expected_id": "evg-db8442haomdc7381kab0",
+      "expected_source_path": "#/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "update",
+        "kind": "env_var_group",
+        "name": "qa-20261015-12da34-envgroup",
+        "sourcePath": "#/envVarGroups/0",
+        "resourceId": "evg-db8442haomdc7381kab0",
+        "changedFields": [
+          {
+            "path": "envVars"
+          },
+          {
+            "path": "name"
+          }
+        ]
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:01.906527+00:00",
+    "client": "bex",
+    "case": "Unicode",
+    "layout": "root",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-root-Unicode.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.777,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261015-12da34-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:02.760199+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=d286e30c49e30c76a380bc2bd2d0db561327c1116a0224dc2ab13da1da6f",
+          "body": "--d286e30c49e30c76a380bc2bd2d0db561327c1116a0224dc2ab13da1da6f\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--d286e30c49e30c76a380bc2bd2d0db561327c1116a0224dc2ab13da1da6f\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-root-Unicode.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \" qa-20261015-12da34-envgroup \",\n      \"envVars\": []\n    }\n  ]\n}\n\r\n--d286e30c49e30c76a380bc2bd2d0db561327c1116a0224dc2ab13da1da6f--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \" qa-20261015-12da34-envgroup \",\n      \"envVars\": []\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab969e2b7367af-SJC"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261015-12da34-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261015-12da34-envgroup\",\"sourcePath\":\"#/envVarGroups/0\",\"resourceId\":\"evg-db8442haomdc7381kab0\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-12da34-envgroup",
+      "expected_id": "evg-db8442haomdc7381kab0",
+      "expected_source_path": "#/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "update",
+        "kind": "env_var_group",
+        "name": "qa-20261015-12da34-envgroup",
+        "sourcePath": "#/envVarGroups/0",
+        "resourceId": "evg-db8442haomdc7381kab0",
+        "changedFields": [
+          {
+            "path": "envVars"
+          },
+          {
+            "path": "name"
+          }
+        ]
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:03.385042+00:00",
+    "client": "render",
+    "case": "Unicode",
+    "layout": "root",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-root-Unicode.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 1.054,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261015-12da34-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:04.524866+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=9ab956981627d3241cb453b2b1d93144dacb6d001c2fc7316570e8c2bf27",
+          "body": "--9ab956981627d3241cb453b2b1d93144dacb6d001c2fc7316570e8c2bf27\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--9ab956981627d3241cb453b2b1d93144dacb6d001c2fc7316570e8c2bf27\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-root-Unicode.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \" qa-20261015-12da34-envgroup \",\n      \"envVars\": []\n    }\n  ]\n}\n\r\n--9ab956981627d3241cb453b2b1d93144dacb6d001c2fc7316570e8c2bf27--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \" qa-20261015-12da34-envgroup \",\n      \"envVars\": []\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab96a77e827e27-SJC"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261015-12da34-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261015-12da34-envgroup\",\"sourcePath\":\"#/envVarGroups/0\",\"resourceId\":\"evg-db8442haomdc7381kab0\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-12da34-envgroup",
+      "expected_id": "evg-db8442haomdc7381kab0",
+      "expected_source_path": "#/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "update",
+        "kind": "env_var_group",
+        "name": "qa-20261015-12da34-envgroup",
+        "sourcePath": "#/envVarGroups/0",
+        "resourceId": "evg-db8442haomdc7381kab0",
+        "changedFields": [
+          {
+            "path": "envVars"
+          },
+          {
+            "path": "name"
+          }
+        ]
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:05.374397+00:00",
+    "client": "bex",
+    "case": "absent",
+    "layout": "root",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-root-absent.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 1.175,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-12da34-absent\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:06.624617+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=7085d9ec914d8c8a083ee0b45e49211bef56d1cbbc1a2b5c4e305c836378",
+          "body": "--7085d9ec914d8c8a083ee0b45e49211bef56d1cbbc1a2b5c4e305c836378\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--7085d9ec914d8c8a083ee0b45e49211bef56d1cbbc1a2b5c4e305c836378\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-root-absent.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \"  qa-12da34-absent  \",\n      \"envVars\": []\n    }\n  ]\n}\n\r\n--7085d9ec914d8c8a083ee0b45e49211bef56d1cbbc1a2b5c4e305c836378--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"  qa-12da34-absent  \",\n      \"envVars\": []\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab96b45f36ff12-PDX"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-12da34-absent\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa-12da34-absent\",\"sourcePath\":\"#/envVarGroups/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "create",
+      "expected_name": "qa-12da34-absent",
+      "expected_id": null,
+      "expected_source_path": "#/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "create",
+        "kind": "env_var_group",
+        "name": "qa-12da34-absent",
+        "sourcePath": "#/envVarGroups/0"
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:07.355798+00:00",
+    "client": "render",
+    "case": "absent",
+    "layout": "root",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-root-absent.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.856,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-12da34-absent\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:08.287639+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=1f6f74bd81d4501b450bfc95410fe464da3e9c45017416273d66c8d3882e",
+          "body": "--1f6f74bd81d4501b450bfc95410fe464da3e9c45017416273d66c8d3882e\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--1f6f74bd81d4501b450bfc95410fe464da3e9c45017416273d66c8d3882e\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-root-absent.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \"  qa-12da34-absent  \",\n      \"envVars\": []\n    }\n  ]\n}\n\r\n--1f6f74bd81d4501b450bfc95410fe464da3e9c45017416273d66c8d3882e--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"  qa-12da34-absent  \",\n      \"envVars\": []\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab96c07b5e1ef3-PDX"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-12da34-absent\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa-12da34-absent\",\"sourcePath\":\"#/envVarGroups/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "create",
+      "expected_name": "qa-12da34-absent",
+      "expected_id": null,
+      "expected_source_path": "#/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "create",
+        "kind": "env_var_group",
+        "name": "qa-12da34-absent",
+        "sourcePath": "#/envVarGroups/0"
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:08.832365+00:00",
+    "client": "bex",
+    "case": "interior",
+    "layout": "root",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-root-interior.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.977,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa 12da34  interior\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:09.884102+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=ac2241167f37fd5df7f386e48559b26a7a2c998a00821eb5617763f809f7",
+          "body": "--ac2241167f37fd5df7f386e48559b26a7a2c998a00821eb5617763f809f7\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--ac2241167f37fd5df7f386e48559b26a7a2c998a00821eb5617763f809f7\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-root-interior.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa 12da34  interior\",\n      \"envVars\": []\n    }\n  ]\n}\n\r\n--ac2241167f37fd5df7f386e48559b26a7a2c998a00821eb5617763f809f7--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa 12da34  interior\",\n      \"envVars\": []\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab96c96f842289-SJC"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa 12da34  interior\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa 12da34  interior\",\"sourcePath\":\"#/envVarGroups/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "create",
+      "expected_name": "qa 12da34  interior",
+      "expected_id": null,
+      "expected_source_path": "#/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "create",
+        "kind": "env_var_group",
+        "name": "qa 12da34  interior",
+        "sourcePath": "#/envVarGroups/0"
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:10.321912+00:00",
+    "client": "render",
+    "case": "interior",
+    "layout": "root",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-root-interior.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.944,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa 12da34  interior\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:11.342845+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=ee08823f2d390b902927bbe8e3fac0abdaa21df842b95895aefbfed6eecf",
+          "body": "--ee08823f2d390b902927bbe8e3fac0abdaa21df842b95895aefbfed6eecf\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--ee08823f2d390b902927bbe8e3fac0abdaa21df842b95895aefbfed6eecf\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-root-interior.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa 12da34  interior\",\n      \"envVars\": []\n    }\n  ]\n}\n\r\n--ee08823f2d390b902927bbe8e3fac0abdaa21df842b95895aefbfed6eecf--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"qa 12da34  interior\",\n      \"envVars\": []\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab96d2fc22da91-PDX"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa 12da34  interior\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa 12da34  interior\",\"sourcePath\":\"#/envVarGroups/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "create",
+      "expected_name": "qa 12da34  interior",
+      "expected_id": null,
+      "expected_source_path": "#/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "create",
+        "kind": "env_var_group",
+        "name": "qa 12da34  interior",
+        "sourcePath": "#/envVarGroups/0"
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:11.800301+00:00",
+    "client": "bex",
+    "case": "blank",
+    "layout": "root",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-root-blank.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.372,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"an envVarGroups entry is missing its name\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:12.248863+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=da3ca72c563c7f196c400b00e881f010d6d0968c1c00f629ede1e447b883",
+          "body": "--da3ca72c563c7f196c400b00e881f010d6d0968c1c00f629ede1e447b883\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--da3ca72c563c7f196c400b00e881f010d6d0968c1c00f629ede1e447b883\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-root-blank.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \"   \",\n      \"envVars\": []\n    }\n  ]\n}\n\r\n--da3ca72c563c7f196c400b00e881f010d6d0968c1c00f629ede1e447b883--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"   \",\n      \"envVars\": []\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab96dc2ef4b7b9-PDX"
+        },
+        "response": "{\"valid\":false,\"errors\":[{\"error\":\"an envVarGroups entry is missing its name\"}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": false,
+      "expected_operation": null,
+      "expected_name": null,
+      "expected_id": null,
+      "expected_source_path": "#/envVarGroups/0"
+    },
+    "group_actions": [],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:12.772300+00:00",
+    "client": "render",
+    "case": "blank",
+    "layout": "root",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-root-blank.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.435,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"an envVarGroups entry is missing its name\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:13.282574+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=a41388084cdb47135217f717a95184e0c6d084a1cbf7a714ba1ef27cef74",
+          "body": "--a41388084cdb47135217f717a95184e0c6d084a1cbf7a714ba1ef27cef74\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--a41388084cdb47135217f717a95184e0c6d084a1cbf7a714ba1ef27cef74\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-root-blank.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \"   \",\n      \"envVars\": []\n    }\n  ]\n}\n\r\n--a41388084cdb47135217f717a95184e0c6d084a1cbf7a714ba1ef27cef74--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"   \",\n      \"envVars\": []\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab96e24fcbfc1e-PDX"
+        },
+        "response": "{\"valid\":false,\"errors\":[{\"error\":\"an envVarGroups entry is missing its name\"}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": false,
+      "expected_operation": null,
+      "expected_name": null,
+      "expected_id": null,
+      "expected_source_path": "#/envVarGroups/0"
+    },
+    "group_actions": [],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:13.738839+00:00",
+    "client": "bex",
+    "case": "duplicate",
+    "layout": "root",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-root-duplicate.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.446,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"duplicate name \\\"qa-20261015-12da34-envgroup\\\" for env_var_group (first declared at #/envVarGroups/0)\",\n      \"line\": 7,\n      \"path\": \"envVarGroups[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:14.257509+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=361165373631d571e24e7051228f64186f4d58a928af1a9e622e64080d09",
+          "body": "--361165373631d571e24e7051228f64186f4d58a928af1a9e622e64080d09\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--361165373631d571e24e7051228f64186f4d58a928af1a9e622e64080d09\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-root-duplicate.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \"  qa-20261015-12da34-envgroup\",\n      \"envVars\": []\n    },\n    {\n      \"name\": \"qa-20261015-12da34-envgroup\",\n      \"envVars\": []\n    }\n  ]\n}\n\r\n--361165373631d571e24e7051228f64186f4d58a928af1a9e622e64080d09--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"  qa-20261015-12da34-envgroup\",\n      \"envVars\": []\n    },\n    {\n      \"name\": \"qa-20261015-12da34-envgroup\",\n      \"envVars\": []\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab96e8c94b5ecd-PDX"
+        },
+        "response": "{\"valid\":false,\"errors\":[{\"code\":\"BLUEPRINT_DUPLICATE_RESOURCE\",\"error\":\"duplicate name \\\"qa-20261015-12da34-envgroup\\\" for env_var_group (first declared at #/envVarGroups/0)\",\"line\":7,\"column\":5,\"path\":\"envVarGroups[1]\"}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": false,
+      "expected_operation": null,
+      "expected_name": null,
+      "expected_id": null,
+      "expected_source_path": "#/envVarGroups/0"
+    },
+    "group_actions": [],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:14.720777+00:00",
+    "client": "render",
+    "case": "duplicate",
+    "layout": "root",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-root-duplicate.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.304,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"duplicate name \\\"qa-20261015-12da34-envgroup\\\" for env_var_group (first declared at #/envVarGroups/0)\",\n      \"line\": 7,\n      \"path\": \"envVarGroups[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:15.102096+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=2473f0943bedd08b255b3eedf3ff006ba81a79b40fca48317f58b71b4977",
+          "body": "--2473f0943bedd08b255b3eedf3ff006ba81a79b40fca48317f58b71b4977\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--2473f0943bedd08b255b3eedf3ff006ba81a79b40fca48317f58b71b4977\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-root-duplicate.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"envVarGroups\": [\n    {\n      \"name\": \"  qa-20261015-12da34-envgroup\",\n      \"envVars\": []\n    },\n    {\n      \"name\": \"qa-20261015-12da34-envgroup\",\n      \"envVars\": []\n    }\n  ]\n}\n\r\n--2473f0943bedd08b255b3eedf3ff006ba81a79b40fca48317f58b71b4977--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"envVarGroups\": [\n    {\n      \"name\": \"  qa-20261015-12da34-envgroup\",\n      \"envVars\": []\n    },\n    {\n      \"name\": \"qa-20261015-12da34-envgroup\",\n      \"envVars\": []\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab96ee2934fa3a-SJC"
+        },
+        "response": "{\"valid\":false,\"errors\":[{\"code\":\"BLUEPRINT_DUPLICATE_RESOURCE\",\"error\":\"duplicate name \\\"qa-20261015-12da34-envgroup\\\" for env_var_group (first declared at #/envVarGroups/0)\",\"line\":7,\"column\":5,\"path\":\"envVarGroups[1]\"}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": false,
+      "expected_operation": null,
+      "expected_name": null,
+      "expected_id": null,
+      "expected_source_path": "#/envVarGroups/0"
+    },
+    "group_actions": [],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:15.694229+00:00",
+    "client": "bex",
+    "case": "exact",
+    "layout": "ungrouped",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-ungrouped-exact.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.853,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261015-12da34-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:16.622027+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=430df506286727308407b554e2628a321a17e7fffb58d8b1e49bf9ff03f6",
+          "body": "--430df506286727308407b554e2628a321a17e7fffb58d8b1e49bf9ff03f6\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--430df506286727308407b554e2628a321a17e7fffb58d8b1e49bf9ff03f6\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-ungrouped-exact.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"qa-20261015-12da34-envgroup\",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n\r\n--430df506286727308407b554e2628a321a17e7fffb58d8b1e49bf9ff03f6--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"qa-20261015-12da34-envgroup\",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab96f49bc05ec3-PDX"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261015-12da34-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261015-12da34-envgroup\",\"sourcePath\":\"#/ungrouped/envVarGroups/0\",\"resourceId\":\"evg-db8442haomdc7381kab0\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-12da34-envgroup",
+      "expected_id": "evg-db8442haomdc7381kab0",
+      "expected_source_path": "#/ungrouped/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "update",
+        "kind": "env_var_group",
+        "name": "qa-20261015-12da34-envgroup",
+        "sourcePath": "#/ungrouped/envVarGroups/0",
+        "resourceId": "evg-db8442haomdc7381kab0",
+        "changedFields": [
+          {
+            "path": "envVars"
+          },
+          {
+            "path": "name"
+          }
+        ]
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:17.187256+00:00",
+    "client": "render",
+    "case": "exact",
+    "layout": "ungrouped",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-ungrouped-exact.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.731,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261015-12da34-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:17.992706+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=d6e1cd5b262758c09aea1add32efc67001645a8469c537a6e6d275aa7fb4",
+          "body": "--d6e1cd5b262758c09aea1add32efc67001645a8469c537a6e6d275aa7fb4\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--d6e1cd5b262758c09aea1add32efc67001645a8469c537a6e6d275aa7fb4\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-ungrouped-exact.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"qa-20261015-12da34-envgroup\",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n\r\n--d6e1cd5b262758c09aea1add32efc67001645a8469c537a6e6d275aa7fb4--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"qa-20261015-12da34-envgroup\",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab96fdd992dabf-PDX"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261015-12da34-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261015-12da34-envgroup\",\"sourcePath\":\"#/ungrouped/envVarGroups/0\",\"resourceId\":\"evg-db8442haomdc7381kab0\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-12da34-envgroup",
+      "expected_id": "evg-db8442haomdc7381kab0",
+      "expected_source_path": "#/ungrouped/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "update",
+        "kind": "env_var_group",
+        "name": "qa-20261015-12da34-envgroup",
+        "sourcePath": "#/ungrouped/envVarGroups/0",
+        "resourceId": "evg-db8442haomdc7381kab0",
+        "changedFields": [
+          {
+            "path": "envVars"
+          },
+          {
+            "path": "name"
+          }
+        ]
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:18.667636+00:00",
+    "client": "bex",
+    "case": "leading",
+    "layout": "ungrouped",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-ungrouped-leading.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.856,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261015-12da34-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:19.599410+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=9ab9d07252029f9249672b7deb6dc606c3842f491fc59e5517bc7d4b524a",
+          "body": "--9ab9d07252029f9249672b7deb6dc606c3842f491fc59e5517bc7d4b524a\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--9ab9d07252029f9249672b7deb6dc606c3842f491fc59e5517bc7d4b524a\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-ungrouped-leading.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"  qa-20261015-12da34-envgroup\",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n\r\n--9ab9d07252029f9249672b7deb6dc606c3842f491fc59e5517bc7d4b524a--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"  qa-20261015-12da34-envgroup\",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab97073efc8736-PDX"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261015-12da34-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261015-12da34-envgroup\",\"sourcePath\":\"#/ungrouped/envVarGroups/0\",\"resourceId\":\"evg-db8442haomdc7381kab0\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-12da34-envgroup",
+      "expected_id": "evg-db8442haomdc7381kab0",
+      "expected_source_path": "#/ungrouped/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "update",
+        "kind": "env_var_group",
+        "name": "qa-20261015-12da34-envgroup",
+        "sourcePath": "#/ungrouped/envVarGroups/0",
+        "resourceId": "evg-db8442haomdc7381kab0",
+        "changedFields": [
+          {
+            "path": "envVars"
+          },
+          {
+            "path": "name"
+          }
+        ]
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:20.146631+00:00",
+    "client": "render",
+    "case": "leading",
+    "layout": "ungrouped",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-ungrouped-leading.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.767,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261015-12da34-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:20.990275+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=9bf3f610e1db5b6df3bf3ba54c3129d6a2a7335a54b9aca6c382ea9f3b44",
+          "body": "--9bf3f610e1db5b6df3bf3ba54c3129d6a2a7335a54b9aca6c382ea9f3b44\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--9bf3f610e1db5b6df3bf3ba54c3129d6a2a7335a54b9aca6c382ea9f3b44\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-ungrouped-leading.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"  qa-20261015-12da34-envgroup\",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n\r\n--9bf3f610e1db5b6df3bf3ba54c3129d6a2a7335a54b9aca6c382ea9f3b44--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"  qa-20261015-12da34-envgroup\",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab97105f6bc12a-PDX"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261015-12da34-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261015-12da34-envgroup\",\"sourcePath\":\"#/ungrouped/envVarGroups/0\",\"resourceId\":\"evg-db8442haomdc7381kab0\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-12da34-envgroup",
+      "expected_id": "evg-db8442haomdc7381kab0",
+      "expected_source_path": "#/ungrouped/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "update",
+        "kind": "env_var_group",
+        "name": "qa-20261015-12da34-envgroup",
+        "sourcePath": "#/ungrouped/envVarGroups/0",
+        "resourceId": "evg-db8442haomdc7381kab0",
+        "changedFields": [
+          {
+            "path": "envVars"
+          },
+          {
+            "path": "name"
+          }
+        ]
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:21.621238+00:00",
+    "client": "bex",
+    "case": "trailing",
+    "layout": "ungrouped",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-ungrouped-trailing.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.781,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261015-12da34-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:22.478051+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=bde2cd781d56ec8e032b10d748bbe6483768ab4a7b8333168f6c81d34c8a",
+          "body": "--bde2cd781d56ec8e032b10d748bbe6483768ab4a7b8333168f6c81d34c8a\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--bde2cd781d56ec8e032b10d748bbe6483768ab4a7b8333168f6c81d34c8a\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-ungrouped-trailing.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"qa-20261015-12da34-envgroup  \",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n\r\n--bde2cd781d56ec8e032b10d748bbe6483768ab4a7b8333168f6c81d34c8a--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"qa-20261015-12da34-envgroup  \",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab9719aa01e612-SJC"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261015-12da34-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261015-12da34-envgroup\",\"sourcePath\":\"#/ungrouped/envVarGroups/0\",\"resourceId\":\"evg-db8442haomdc7381kab0\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-12da34-envgroup",
+      "expected_id": "evg-db8442haomdc7381kab0",
+      "expected_source_path": "#/ungrouped/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "update",
+        "kind": "env_var_group",
+        "name": "qa-20261015-12da34-envgroup",
+        "sourcePath": "#/ungrouped/envVarGroups/0",
+        "resourceId": "evg-db8442haomdc7381kab0",
+        "changedFields": [
+          {
+            "path": "envVars"
+          },
+          {
+            "path": "name"
+          }
+        ]
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:23.105369+00:00",
+    "client": "render",
+    "case": "trailing",
+    "layout": "ungrouped",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-ungrouped-trailing.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 1.507,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261015-12da34-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:24.692293+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=6570f7b24155b75d07e118f70bee2a6e2a951564d7f203dd9784a511258c",
+          "body": "--6570f7b24155b75d07e118f70bee2a6e2a951564d7f203dd9784a511258c\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--6570f7b24155b75d07e118f70bee2a6e2a951564d7f203dd9784a511258c\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-ungrouped-trailing.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"qa-20261015-12da34-envgroup  \",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n\r\n--6570f7b24155b75d07e118f70bee2a6e2a951564d7f203dd9784a511258c--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"qa-20261015-12da34-envgroup  \",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab97229bc92714-SJC"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261015-12da34-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261015-12da34-envgroup\",\"sourcePath\":\"#/ungrouped/envVarGroups/0\",\"resourceId\":\"evg-db8442haomdc7381kab0\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-12da34-envgroup",
+      "expected_id": "evg-db8442haomdc7381kab0",
+      "expected_source_path": "#/ungrouped/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "update",
+        "kind": "env_var_group",
+        "name": "qa-20261015-12da34-envgroup",
+        "sourcePath": "#/ungrouped/envVarGroups/0",
+        "resourceId": "evg-db8442haomdc7381kab0",
+        "changedFields": [
+          {
+            "path": "envVars"
+          },
+          {
+            "path": "name"
+          }
+        ]
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:25.091664+00:00",
+    "client": "bex",
+    "case": "Unicode",
+    "layout": "ungrouped",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-ungrouped-Unicode.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.852,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261015-12da34-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:26.020146+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=c8b94ea752c7f569ae1a5ca5ac2e1a93ebdc1cc3e560c9a1708f3e31f7ee",
+          "body": "--c8b94ea752c7f569ae1a5ca5ac2e1a93ebdc1cc3e560c9a1708f3e31f7ee\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--c8b94ea752c7f569ae1a5ca5ac2e1a93ebdc1cc3e560c9a1708f3e31f7ee\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-ungrouped-Unicode.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \" qa-20261015-12da34-envgroup \",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n\r\n--c8b94ea752c7f569ae1a5ca5ac2e1a93ebdc1cc3e560c9a1708f3e31f7ee--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \" qa-20261015-12da34-envgroup \",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab972f0bdacf1e-SJC"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261015-12da34-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261015-12da34-envgroup\",\"sourcePath\":\"#/ungrouped/envVarGroups/0\",\"resourceId\":\"evg-db8442haomdc7381kab0\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-12da34-envgroup",
+      "expected_id": "evg-db8442haomdc7381kab0",
+      "expected_source_path": "#/ungrouped/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "update",
+        "kind": "env_var_group",
+        "name": "qa-20261015-12da34-envgroup",
+        "sourcePath": "#/ungrouped/envVarGroups/0",
+        "resourceId": "evg-db8442haomdc7381kab0",
+        "changedFields": [
+          {
+            "path": "envVars"
+          },
+          {
+            "path": "name"
+          }
+        ]
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:26.576236+00:00",
+    "client": "render",
+    "case": "Unicode",
+    "layout": "ungrouped",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-ungrouped-Unicode.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.745,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261015-12da34-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:27.398327+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=198cb1b2bf0ef12768800b69c07e1732b9dfd3a49177e354dd28098890b9",
+          "body": "--198cb1b2bf0ef12768800b69c07e1732b9dfd3a49177e354dd28098890b9\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--198cb1b2bf0ef12768800b69c07e1732b9dfd3a49177e354dd28098890b9\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-ungrouped-Unicode.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \" qa-20261015-12da34-envgroup \",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n\r\n--198cb1b2bf0ef12768800b69c07e1732b9dfd3a49177e354dd28098890b9--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \" qa-20261015-12da34-envgroup \",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab97384d2b0dac-SJC"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261015-12da34-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261015-12da34-envgroup\",\"sourcePath\":\"#/ungrouped/envVarGroups/0\",\"resourceId\":\"evg-db8442haomdc7381kab0\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-12da34-envgroup",
+      "expected_id": "evg-db8442haomdc7381kab0",
+      "expected_source_path": "#/ungrouped/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "update",
+        "kind": "env_var_group",
+        "name": "qa-20261015-12da34-envgroup",
+        "sourcePath": "#/ungrouped/envVarGroups/0",
+        "resourceId": "evg-db8442haomdc7381kab0",
+        "changedFields": [
+          {
+            "path": "envVars"
+          },
+          {
+            "path": "name"
+          }
+        ]
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:28.059796+00:00",
+    "client": "bex",
+    "case": "absent",
+    "layout": "ungrouped",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-ungrouped-absent.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 1.753,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-12da34-absent\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:29.888226+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=f0567c85bb148a3fff1d7c0effb477ec5d959e732d10e712cb99a3d15ebb",
+          "body": "--f0567c85bb148a3fff1d7c0effb477ec5d959e732d10e712cb99a3d15ebb\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--f0567c85bb148a3fff1d7c0effb477ec5d959e732d10e712cb99a3d15ebb\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-ungrouped-absent.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"  qa-12da34-absent  \",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n\r\n--f0567c85bb148a3fff1d7c0effb477ec5d959e732d10e712cb99a3d15ebb--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"  qa-12da34-absent  \",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab9741e88e58c2-PDX"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-12da34-absent\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa-12da34-absent\",\"sourcePath\":\"#/ungrouped/envVarGroups/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "create",
+      "expected_name": "qa-12da34-absent",
+      "expected_id": null,
+      "expected_source_path": "#/ungrouped/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "create",
+        "kind": "env_var_group",
+        "name": "qa-12da34-absent",
+        "sourcePath": "#/ungrouped/envVarGroups/0"
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:30.563672+00:00",
+    "client": "render",
+    "case": "absent",
+    "layout": "ungrouped",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-ungrouped-absent.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.938,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-12da34-absent\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:31.574011+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=a444615e47de618db7ba4d06219a2cf7de8a6af09d0a28238d5c9bf905b7",
+          "body": "--a444615e47de618db7ba4d06219a2cf7de8a6af09d0a28238d5c9bf905b7\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--a444615e47de618db7ba4d06219a2cf7de8a6af09d0a28238d5c9bf905b7\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-ungrouped-absent.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"  qa-12da34-absent  \",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n\r\n--a444615e47de618db7ba4d06219a2cf7de8a6af09d0a28238d5c9bf905b7--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"  qa-12da34-absent  \",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab97519c133d49-PDX"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-12da34-absent\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa-12da34-absent\",\"sourcePath\":\"#/ungrouped/envVarGroups/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "create",
+      "expected_name": "qa-12da34-absent",
+      "expected_id": null,
+      "expected_source_path": "#/ungrouped/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "create",
+        "kind": "env_var_group",
+        "name": "qa-12da34-absent",
+        "sourcePath": "#/ungrouped/envVarGroups/0"
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:32.042346+00:00",
+    "client": "bex",
+    "case": "interior",
+    "layout": "ungrouped",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-ungrouped-interior.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.909,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa 12da34  interior\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:33.023800+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=e2effc76d9ade8d05e2470615d39bfa1115fd0c4a5d63d0ecb5b5f30d6d6",
+          "body": "--e2effc76d9ade8d05e2470615d39bfa1115fd0c4a5d63d0ecb5b5f30d6d6\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--e2effc76d9ade8d05e2470615d39bfa1115fd0c4a5d63d0ecb5b5f30d6d6\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-ungrouped-interior.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"qa 12da34  interior\",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n\r\n--e2effc76d9ade8d05e2470615d39bfa1115fd0c4a5d63d0ecb5b5f30d6d6--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"qa 12da34  interior\",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab975b082bccf8-SJC"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa 12da34  interior\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa 12da34  interior\",\"sourcePath\":\"#/ungrouped/envVarGroups/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "create",
+      "expected_name": "qa 12da34  interior",
+      "expected_id": null,
+      "expected_source_path": "#/ungrouped/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "create",
+        "kind": "env_var_group",
+        "name": "qa 12da34  interior",
+        "sourcePath": "#/ungrouped/envVarGroups/0"
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:33.516048+00:00",
+    "client": "render",
+    "case": "interior",
+    "layout": "ungrouped",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-ungrouped-interior.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 1.059,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa 12da34  interior\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:34.649907+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=37d2ba372cea5ccc1b2ae53e89f1ed1879cf7929d598910473eff14734a9",
+          "body": "--37d2ba372cea5ccc1b2ae53e89f1ed1879cf7929d598910473eff14734a9\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--37d2ba372cea5ccc1b2ae53e89f1ed1879cf7929d598910473eff14734a9\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-ungrouped-interior.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"qa 12da34  interior\",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n\r\n--37d2ba372cea5ccc1b2ae53e89f1ed1879cf7929d598910473eff14734a9--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"qa 12da34  interior\",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab97639eda1ff0-SJC"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa 12da34  interior\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa 12da34  interior\",\"sourcePath\":\"#/ungrouped/envVarGroups/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "create",
+      "expected_name": "qa 12da34  interior",
+      "expected_id": null,
+      "expected_source_path": "#/ungrouped/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "create",
+        "kind": "env_var_group",
+        "name": "qa 12da34  interior",
+        "sourcePath": "#/ungrouped/envVarGroups/0"
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:35.504314+00:00",
+    "client": "bex",
+    "case": "blank",
+    "layout": "ungrouped",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-ungrouped-blank.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.415,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"an envVarGroups entry is missing its name\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:35.993140+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=0e3aa137eedbbde9311cd536bf04bd0d80ff37a620629fc8f4bf57318525",
+          "body": "--0e3aa137eedbbde9311cd536bf04bd0d80ff37a620629fc8f4bf57318525\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--0e3aa137eedbbde9311cd536bf04bd0d80ff37a620629fc8f4bf57318525\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-ungrouped-blank.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"   \",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n\r\n--0e3aa137eedbbde9311cd536bf04bd0d80ff37a620629fc8f4bf57318525--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"   \",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab977069be9935-PDX"
+        },
+        "response": "{\"valid\":false,\"errors\":[{\"error\":\"an envVarGroups entry is missing its name\"}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": false,
+      "expected_operation": null,
+      "expected_name": null,
+      "expected_id": null,
+      "expected_source_path": "#/ungrouped/envVarGroups/0"
+    },
+    "group_actions": [],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:36.496500+00:00",
+    "client": "render",
+    "case": "blank",
+    "layout": "ungrouped",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-ungrouped-blank.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.365,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"an envVarGroups entry is missing its name\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:36.936839+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=88b79de6b71fdb019879001428f1b548894eacaea633127f8b8e6330e4be",
+          "body": "--88b79de6b71fdb019879001428f1b548894eacaea633127f8b8e6330e4be\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--88b79de6b71fdb019879001428f1b548894eacaea633127f8b8e6330e4be\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-ungrouped-blank.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"   \",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n\r\n--88b79de6b71fdb019879001428f1b548894eacaea633127f8b8e6330e4be--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"   \",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab977699a4fef0-PDX"
+        },
+        "response": "{\"valid\":false,\"errors\":[{\"error\":\"an envVarGroups entry is missing its name\"}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": false,
+      "expected_operation": null,
+      "expected_name": null,
+      "expected_id": null,
+      "expected_source_path": "#/ungrouped/envVarGroups/0"
+    },
+    "group_actions": [],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:37.468538+00:00",
+    "client": "bex",
+    "case": "duplicate",
+    "layout": "ungrouped",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-ungrouped-duplicate.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.358,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 7,\n      \"error\": \"duplicate name \\\"qa-20261015-12da34-envgroup\\\" for env_var_group (first declared at #/ungrouped/envVarGroups/0)\",\n      \"line\": 8,\n      \"path\": \"ungrouped.envVarGroups[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:37.901778+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=9f29d779ca231feb598f3ea1c5ffe94902f7f135b0e3237525584ce2521e",
+          "body": "--9f29d779ca231feb598f3ea1c5ffe94902f7f135b0e3237525584ce2521e\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--9f29d779ca231feb598f3ea1c5ffe94902f7f135b0e3237525584ce2521e\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-ungrouped-duplicate.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"  qa-20261015-12da34-envgroup\",\n        \"envVars\": []\n      },\n      {\n        \"name\": \"qa-20261015-12da34-envgroup\",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n\r\n--9f29d779ca231feb598f3ea1c5ffe94902f7f135b0e3237525584ce2521e--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"  qa-20261015-12da34-envgroup\",\n        \"envVars\": []\n      },\n      {\n        \"name\": \"qa-20261015-12da34-envgroup\",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab977c9f1f69d4-PDX"
+        },
+        "response": "{\"valid\":false,\"errors\":[{\"code\":\"BLUEPRINT_DUPLICATE_RESOURCE\",\"error\":\"duplicate name \\\"qa-20261015-12da34-envgroup\\\" for env_var_group (first declared at #/ungrouped/envVarGroups/0)\",\"line\":8,\"column\":7,\"path\":\"ungrouped.envVarGroups[1]\"}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": false,
+      "expected_operation": null,
+      "expected_name": null,
+      "expected_id": null,
+      "expected_source_path": "#/ungrouped/envVarGroups/0"
+    },
+    "group_actions": [],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:38.446836+00:00",
+    "client": "render",
+    "case": "duplicate",
+    "layout": "ungrouped",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-ungrouped-duplicate.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.442,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 7,\n      \"error\": \"duplicate name \\\"qa-20261015-12da34-envgroup\\\" for env_var_group (first declared at #/ungrouped/envVarGroups/0)\",\n      \"line\": 8,\n      \"path\": \"ungrouped.envVarGroups[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:38.962952+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=e67d4d2f6e51aada2eee0b7c8213e0de2825721750c68a1d765de596de54",
+          "body": "--e67d4d2f6e51aada2eee0b7c8213e0de2825721750c68a1d765de596de54\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--e67d4d2f6e51aada2eee0b7c8213e0de2825721750c68a1d765de596de54\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-ungrouped-duplicate.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"  qa-20261015-12da34-envgroup\",\n        \"envVars\": []\n      },\n      {\n        \"name\": \"qa-20261015-12da34-envgroup\",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n\r\n--e67d4d2f6e51aada2eee0b7c8213e0de2825721750c68a1d765de596de54--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"ungrouped\": {\n    \"envVarGroups\": [\n      {\n        \"name\": \"  qa-20261015-12da34-envgroup\",\n        \"envVars\": []\n      },\n      {\n        \"name\": \"qa-20261015-12da34-envgroup\",\n        \"envVars\": []\n      }\n    ]\n  }\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab9782ec0a15a8-SJC"
+        },
+        "response": "{\"valid\":false,\"errors\":[{\"code\":\"BLUEPRINT_DUPLICATE_RESOURCE\",\"error\":\"duplicate name \\\"qa-20261015-12da34-envgroup\\\" for env_var_group (first declared at #/ungrouped/envVarGroups/0)\",\"line\":8,\"column\":7,\"path\":\"ungrouped.envVarGroups[1]\"}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": false,
+      "expected_operation": null,
+      "expected_name": null,
+      "expected_id": null,
+      "expected_source_path": "#/ungrouped/envVarGroups/0"
+    },
+    "group_actions": [],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:39.424664+00:00",
+    "client": "bex",
+    "case": "exact",
+    "layout": "environment",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-environment-exact.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.677,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261015-12da34-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:40.178017+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=c210117f6e03c95ce820149d70f6ad83e794e7508a02122fabdd7db15432",
+          "body": "--c210117f6e03c95ce820149d70f6ad83e794e7508a02122fabdd7db15432\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--c210117f6e03c95ce820149d70f6ad83e794e7508a02122fabdd7db15432\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-environment-exact.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"qa-20261015-12da34-envgroup\",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--c210117f6e03c95ce820149d70f6ad83e794e7508a02122fabdd7db15432--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"qa-20261015-12da34-envgroup\",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab97890e9f4b39-SJC"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261015-12da34-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261015-12da34-envgroup\",\"sourcePath\":\"#/projects/0/environments/0/envVarGroups/0\",\"resourceId\":\"evg-db8442haomdc7381kab0\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-12da34-envgroup",
+      "expected_id": "evg-db8442haomdc7381kab0",
+      "expected_source_path": "#/projects/0/environments/0/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "update",
+        "kind": "env_var_group",
+        "name": "qa-20261015-12da34-envgroup",
+        "sourcePath": "#/projects/0/environments/0/envVarGroups/0",
+        "resourceId": "evg-db8442haomdc7381kab0",
+        "changedFields": [
+          {
+            "path": "envVars"
+          },
+          {
+            "path": "name"
+          }
+        ]
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:40.902092+00:00",
+    "client": "render",
+    "case": "exact",
+    "layout": "environment",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-environment-exact.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.791,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261015-12da34-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:41.764771+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=8bd148259424e1f75e510a61dc9ae48a8a1f9e8dfbac2c003d36d1b07c51",
+          "body": "--8bd148259424e1f75e510a61dc9ae48a8a1f9e8dfbac2c003d36d1b07c51\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--8bd148259424e1f75e510a61dc9ae48a8a1f9e8dfbac2c003d36d1b07c51\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-environment-exact.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"qa-20261015-12da34-envgroup\",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--8bd148259424e1f75e510a61dc9ae48a8a1f9e8dfbac2c003d36d1b07c51--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"qa-20261015-12da34-envgroup\",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab97920a5bff0e-PDX"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261015-12da34-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261015-12da34-envgroup\",\"sourcePath\":\"#/projects/0/environments/0/envVarGroups/0\",\"resourceId\":\"evg-db8442haomdc7381kab0\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-12da34-envgroup",
+      "expected_id": "evg-db8442haomdc7381kab0",
+      "expected_source_path": "#/projects/0/environments/0/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "update",
+        "kind": "env_var_group",
+        "name": "qa-20261015-12da34-envgroup",
+        "sourcePath": "#/projects/0/environments/0/envVarGroups/0",
+        "resourceId": "evg-db8442haomdc7381kab0",
+        "changedFields": [
+          {
+            "path": "envVars"
+          },
+          {
+            "path": "name"
+          }
+        ]
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:42.382841+00:00",
+    "client": "bex",
+    "case": "leading",
+    "layout": "environment",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-environment-leading.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.868,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261015-12da34-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:43.322478+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=213cfbd82695264f02e0c3ddcc4bcb49e3d909ddd148b2bf3bbcc43ff33d",
+          "body": "--213cfbd82695264f02e0c3ddcc4bcb49e3d909ddd148b2bf3bbcc43ff33d\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--213cfbd82695264f02e0c3ddcc4bcb49e3d909ddd148b2bf3bbcc43ff33d\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-environment-leading.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"  qa-20261015-12da34-envgroup\",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--213cfbd82695264f02e0c3ddcc4bcb49e3d909ddd148b2bf3bbcc43ff33d--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"  qa-20261015-12da34-envgroup\",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab979b5bacef88-PDX"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261015-12da34-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261015-12da34-envgroup\",\"sourcePath\":\"#/projects/0/environments/0/envVarGroups/0\",\"resourceId\":\"evg-db8442haomdc7381kab0\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-12da34-envgroup",
+      "expected_id": "evg-db8442haomdc7381kab0",
+      "expected_source_path": "#/projects/0/environments/0/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "update",
+        "kind": "env_var_group",
+        "name": "qa-20261015-12da34-envgroup",
+        "sourcePath": "#/projects/0/environments/0/envVarGroups/0",
+        "resourceId": "evg-db8442haomdc7381kab0",
+        "changedFields": [
+          {
+            "path": "envVars"
+          },
+          {
+            "path": "name"
+          }
+        ]
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:43.858868+00:00",
+    "client": "render",
+    "case": "leading",
+    "layout": "environment",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-environment-leading.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.729,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261015-12da34-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:44.667185+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=c0d8bfe24fb056ac7a192ab2e0cbee7a1dc6a7a365aebc6891000a1ee95d",
+          "body": "--c0d8bfe24fb056ac7a192ab2e0cbee7a1dc6a7a365aebc6891000a1ee95d\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--c0d8bfe24fb056ac7a192ab2e0cbee7a1dc6a7a365aebc6891000a1ee95d\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-environment-leading.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"  qa-20261015-12da34-envgroup\",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--c0d8bfe24fb056ac7a192ab2e0cbee7a1dc6a7a365aebc6891000a1ee95d--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"  qa-20261015-12da34-envgroup\",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab97a498fbad76-PDX"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261015-12da34-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261015-12da34-envgroup\",\"sourcePath\":\"#/projects/0/environments/0/envVarGroups/0\",\"resourceId\":\"evg-db8442haomdc7381kab0\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-12da34-envgroup",
+      "expected_id": "evg-db8442haomdc7381kab0",
+      "expected_source_path": "#/projects/0/environments/0/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "update",
+        "kind": "env_var_group",
+        "name": "qa-20261015-12da34-envgroup",
+        "sourcePath": "#/projects/0/environments/0/envVarGroups/0",
+        "resourceId": "evg-db8442haomdc7381kab0",
+        "changedFields": [
+          {
+            "path": "envVars"
+          },
+          {
+            "path": "name"
+          }
+        ]
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:45.356896+00:00",
+    "client": "bex",
+    "case": "trailing",
+    "layout": "environment",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-environment-trailing.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.751,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261015-12da34-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:46.185424+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=00fb5939710071c668211b228e7d3f535f26c1bb25c7ee56cc8ca6c930dc",
+          "body": "--00fb5939710071c668211b228e7d3f535f26c1bb25c7ee56cc8ca6c930dc\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--00fb5939710071c668211b228e7d3f535f26c1bb25c7ee56cc8ca6c930dc\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-environment-trailing.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"qa-20261015-12da34-envgroup  \",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--00fb5939710071c668211b228e7d3f535f26c1bb25c7ee56cc8ca6c930dc--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"qa-20261015-12da34-envgroup  \",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab97ae0ee2ff0e-PDX"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261015-12da34-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261015-12da34-envgroup\",\"sourcePath\":\"#/projects/0/environments/0/envVarGroups/0\",\"resourceId\":\"evg-db8442haomdc7381kab0\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-12da34-envgroup",
+      "expected_id": "evg-db8442haomdc7381kab0",
+      "expected_source_path": "#/projects/0/environments/0/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "update",
+        "kind": "env_var_group",
+        "name": "qa-20261015-12da34-envgroup",
+        "sourcePath": "#/projects/0/environments/0/envVarGroups/0",
+        "resourceId": "evg-db8442haomdc7381kab0",
+        "changedFields": [
+          {
+            "path": "envVars"
+          },
+          {
+            "path": "name"
+          }
+        ]
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:46.848290+00:00",
+    "client": "render",
+    "case": "trailing",
+    "layout": "environment",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-environment-trailing.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.638,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261015-12da34-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:47.564949+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=0846b8e872438e7668c6bc1115980197d1e57ab0dc51a6d8e680dc3302a1",
+          "body": "--0846b8e872438e7668c6bc1115980197d1e57ab0dc51a6d8e680dc3302a1\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--0846b8e872438e7668c6bc1115980197d1e57ab0dc51a6d8e680dc3302a1\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-environment-trailing.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"qa-20261015-12da34-envgroup  \",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--0846b8e872438e7668c6bc1115980197d1e57ab0dc51a6d8e680dc3302a1--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"qa-20261015-12da34-envgroup  \",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab97b74e4d1319-PDX"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261015-12da34-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261015-12da34-envgroup\",\"sourcePath\":\"#/projects/0/environments/0/envVarGroups/0\",\"resourceId\":\"evg-db8442haomdc7381kab0\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-12da34-envgroup",
+      "expected_id": "evg-db8442haomdc7381kab0",
+      "expected_source_path": "#/projects/0/environments/0/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "update",
+        "kind": "env_var_group",
+        "name": "qa-20261015-12da34-envgroup",
+        "sourcePath": "#/projects/0/environments/0/envVarGroups/0",
+        "resourceId": "evg-db8442haomdc7381kab0",
+        "changedFields": [
+          {
+            "path": "envVars"
+          },
+          {
+            "path": "name"
+          }
+        ]
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:48.323038+00:00",
+    "client": "bex",
+    "case": "Unicode",
+    "layout": "environment",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-environment-Unicode.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 1.269,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261015-12da34-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:49.669370+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=3ee157a3558b30bb610d578552159fa2fd76a9a54c7bf50ac2357dd264f9",
+          "body": "--3ee157a3558b30bb610d578552159fa2fd76a9a54c7bf50ac2357dd264f9\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--3ee157a3558b30bb610d578552159fa2fd76a9a54c7bf50ac2357dd264f9\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-environment-Unicode.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \" qa-20261015-12da34-envgroup \",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--3ee157a3558b30bb610d578552159fa2fd76a9a54c7bf50ac2357dd264f9--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \" qa-20261015-12da34-envgroup \",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab97c10aa6ff17-PDX"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261015-12da34-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261015-12da34-envgroup\",\"sourcePath\":\"#/projects/0/environments/0/envVarGroups/0\",\"resourceId\":\"evg-db8442haomdc7381kab0\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-12da34-envgroup",
+      "expected_id": "evg-db8442haomdc7381kab0",
+      "expected_source_path": "#/projects/0/environments/0/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "update",
+        "kind": "env_var_group",
+        "name": "qa-20261015-12da34-envgroup",
+        "sourcePath": "#/projects/0/environments/0/envVarGroups/0",
+        "resourceId": "evg-db8442haomdc7381kab0",
+        "changedFields": [
+          {
+            "path": "envVars"
+          },
+          {
+            "path": "name"
+          }
+        ]
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:50.327552+00:00",
+    "client": "render",
+    "case": "Unicode",
+    "layout": "environment",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-environment-Unicode.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.784,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-20261015-12da34-envgroup\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:51.188203+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=200fc973bd39edb3d07676a5492698e6670fcb28acc3d1282c15c6f1d63c",
+          "body": "--200fc973bd39edb3d07676a5492698e6670fcb28acc3d1282c15c6f1d63c\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--200fc973bd39edb3d07676a5492698e6670fcb28acc3d1282c15c6f1d63c\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-environment-Unicode.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \" qa-20261015-12da34-envgroup \",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--200fc973bd39edb3d07676a5492698e6670fcb28acc3d1282c15c6f1d63c--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \" qa-20261015-12da34-envgroup \",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab97ccfd61cb90-PDX"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-20261015-12da34-envgroup\"],\"totalActions\":1,\"actions\":[{\"operation\":\"update\",\"kind\":\"env_var_group\",\"name\":\"qa-20261015-12da34-envgroup\",\"sourcePath\":\"#/projects/0/environments/0/envVarGroups/0\",\"resourceId\":\"evg-db8442haomdc7381kab0\",\"changedFields\":[{\"path\":\"envVars\"},{\"path\":\"name\"}]}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "update",
+      "expected_name": "qa-20261015-12da34-envgroup",
+      "expected_id": "evg-db8442haomdc7381kab0",
+      "expected_source_path": "#/projects/0/environments/0/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "update",
+        "kind": "env_var_group",
+        "name": "qa-20261015-12da34-envgroup",
+        "sourcePath": "#/projects/0/environments/0/envVarGroups/0",
+        "resourceId": "evg-db8442haomdc7381kab0",
+        "changedFields": [
+          {
+            "path": "envVars"
+          },
+          {
+            "path": "name"
+          }
+        ]
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:51.803033+00:00",
+    "client": "bex",
+    "case": "absent",
+    "layout": "environment",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-environment-absent.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.701,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-12da34-absent\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:52.582439+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=1b8832f515cf1403b10411f082b2edd90630a903471a0c896e47fa7a5b21",
+          "body": "--1b8832f515cf1403b10411f082b2edd90630a903471a0c896e47fa7a5b21\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--1b8832f515cf1403b10411f082b2edd90630a903471a0c896e47fa7a5b21\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-environment-absent.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"  qa-12da34-absent  \",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--1b8832f515cf1403b10411f082b2edd90630a903471a0c896e47fa7a5b21--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"  qa-12da34-absent  \",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab97d5fb7237c1-SJC"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-12da34-absent\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa-12da34-absent\",\"sourcePath\":\"#/projects/0/environments/0/envVarGroups/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "create",
+      "expected_name": "qa-12da34-absent",
+      "expected_id": null,
+      "expected_source_path": "#/projects/0/environments/0/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "create",
+        "kind": "env_var_group",
+        "name": "qa-12da34-absent",
+        "sourcePath": "#/projects/0/environments/0/envVarGroups/0"
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:53.285443+00:00",
+    "client": "render",
+    "case": "absent",
+    "layout": "environment",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-environment-absent.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 1.492,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa-12da34-absent\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:54.857655+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=b94f1cb9f65fad5b7c41c300085ce02bb4292f3e0787750c5d1506db7220",
+          "body": "--b94f1cb9f65fad5b7c41c300085ce02bb4292f3e0787750c5d1506db7220\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--b94f1cb9f65fad5b7c41c300085ce02bb4292f3e0787750c5d1506db7220\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-environment-absent.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"  qa-12da34-absent  \",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--b94f1cb9f65fad5b7c41c300085ce02bb4292f3e0787750c5d1506db7220--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"  qa-12da34-absent  \",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab97df7f865ec3-PDX"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa-12da34-absent\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa-12da34-absent\",\"sourcePath\":\"#/projects/0/environments/0/envVarGroups/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "create",
+      "expected_name": "qa-12da34-absent",
+      "expected_id": null,
+      "expected_source_path": "#/projects/0/environments/0/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "create",
+        "kind": "env_var_group",
+        "name": "qa-12da34-absent",
+        "sourcePath": "#/projects/0/environments/0/envVarGroups/0"
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:55.275642+00:00",
+    "client": "bex",
+    "case": "interior",
+    "layout": "environment",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-environment-interior.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.732,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa 12da34  interior\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:56.084791+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=ef9925a2570517d1d9b8c1085dd4b794cf28676d39391f85c3fc46df9cf7",
+          "body": "--ef9925a2570517d1d9b8c1085dd4b794cf28676d39391f85c3fc46df9cf7\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--ef9925a2570517d1d9b8c1085dd4b794cf28676d39391f85c3fc46df9cf7\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-environment-interior.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"qa 12da34  interior\",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--ef9925a2570517d1d9b8c1085dd4b794cf28676d39391f85c3fc46df9cf7--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"qa 12da34  interior\",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab97ebed9a9873-PDX"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa 12da34  interior\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa 12da34  interior\",\"sourcePath\":\"#/projects/0/environments/0/envVarGroups/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "create",
+      "expected_name": "qa 12da34  interior",
+      "expected_id": null,
+      "expected_source_path": "#/projects/0/environments/0/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "create",
+        "kind": "env_var_group",
+        "name": "qa 12da34  interior",
+        "sourcePath": "#/projects/0/environments/0/envVarGroups/0"
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:56.763443+00:00",
+    "client": "render",
+    "case": "interior",
+    "layout": "environment",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-environment-interior.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 1.055,
+      "stdout": "{\n  \"plan\": {\n    \"envGroups\": [\n      \"qa 12da34  interior\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:57.895371+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=8048854f54fb41394442f388ac8e44dfe056ac61683e85810d719087b9e1",
+          "body": "--8048854f54fb41394442f388ac8e44dfe056ac61683e85810d719087b9e1\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--8048854f54fb41394442f388ac8e44dfe056ac61683e85810d719087b9e1\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-environment-interior.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"qa 12da34  interior\",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--8048854f54fb41394442f388ac8e44dfe056ac61683e85810d719087b9e1--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"qa 12da34  interior\",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab97f58fdab338-PDX"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"envGroups\":[\"qa 12da34  interior\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"env_var_group\",\"name\":\"qa 12da34  interior\",\"sourcePath\":\"#/projects/0/environments/0/envVarGroups/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_operation": "create",
+      "expected_name": "qa 12da34  interior",
+      "expected_id": null,
+      "expected_source_path": "#/projects/0/environments/0/envVarGroups/0"
+    },
+    "group_actions": [
+      {
+        "operation": "create",
+        "kind": "env_var_group",
+        "name": "qa 12da34  interior",
+        "sourcePath": "#/projects/0/environments/0/envVarGroups/0"
+      }
+    ],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:58.731434+00:00",
+    "client": "bex",
+    "case": "blank",
+    "layout": "environment",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-environment-blank.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.398,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"an envVarGroups entry is missing its name\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:03:59.205313+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=8dd9b2a6a0da8a740e0e111f1dfec0090ca229542f171009b7c7b0402e64",
+          "body": "--8dd9b2a6a0da8a740e0e111f1dfec0090ca229542f171009b7c7b0402e64\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--8dd9b2a6a0da8a740e0e111f1dfec0090ca229542f171009b7c7b0402e64\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-environment-blank.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"   \",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--8dd9b2a6a0da8a740e0e111f1dfec0090ca229542f171009b7c7b0402e64--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"   \",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab98018801ff06-PDX"
+        },
+        "response": "{\"valid\":false,\"errors\":[{\"error\":\"an envVarGroups entry is missing its name\"}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": false,
+      "expected_operation": null,
+      "expected_name": null,
+      "expected_id": null,
+      "expected_source_path": "#/projects/0/environments/0/envVarGroups/0"
+    },
+    "group_actions": [],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:03:59.712016+00:00",
+    "client": "render",
+    "case": "blank",
+    "layout": "environment",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-environment-blank.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.314,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"error\": \"an envVarGroups entry is missing its name\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:04:00.099735+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=681b8d5a48b62bfc9ced4f644c6eb7c04bc5735ed4ee5db06f2876f3f75b",
+          "body": "--681b8d5a48b62bfc9ced4f644c6eb7c04bc5735ed4ee5db06f2876f3f75b\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--681b8d5a48b62bfc9ced4f644c6eb7c04bc5735ed4ee5db06f2876f3f75b\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-environment-blank.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"   \",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--681b8d5a48b62bfc9ced4f644c6eb7c04bc5735ed4ee5db06f2876f3f75b--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"   \",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab98075fec938c-SJC"
+        },
+        "response": "{\"valid\":false,\"errors\":[{\"error\":\"an envVarGroups entry is missing its name\"}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": false,
+      "expected_operation": null,
+      "expected_name": null,
+      "expected_id": null,
+      "expected_source_path": "#/projects/0/environments/0/envVarGroups/0"
+    },
+    "group_actions": [],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:04:00.681681+00:00",
+    "client": "bex",
+    "case": "duplicate",
+    "layout": "environment",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-environment-duplicate.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.393,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"duplicate name \\\"qa-20261015-12da34-envgroup\\\" for env_var_group (first declared at #/projects/0/environments/0/envVarGroups/0)\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].envVarGroups[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:04:01.147772+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=32a2edd448325450659a5ac8465a623b5d92aebabf75a70f0fc4e2048f33",
+          "body": "--32a2edd448325450659a5ac8465a623b5d92aebabf75a70f0fc4e2048f33\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--32a2edd448325450659a5ac8465a623b5d92aebabf75a70f0fc4e2048f33\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-environment-duplicate.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"  qa-20261015-12da34-envgroup\",\n              \"envVars\": []\n            },\n            {\n              \"name\": \"qa-20261015-12da34-envgroup\",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--32a2edd448325450659a5ac8465a623b5d92aebabf75a70f0fc4e2048f33--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"  qa-20261015-12da34-envgroup\",\n              \"envVars\": []\n            },\n            {\n              \"name\": \"qa-20261015-12da34-envgroup\",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab980d78d68f74-SJC"
+        },
+        "response": "{\"valid\":false,\"errors\":[{\"code\":\"BLUEPRINT_DUPLICATE_RESOURCE\",\"error\":\"duplicate name \\\"qa-20261015-12da34-envgroup\\\" for env_var_group (first declared at #/projects/0/environments/0/envVarGroups/0)\",\"line\":13,\"column\":13,\"path\":\"projects[0].environments[0].envVarGroups[1]\"}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": false,
+      "expected_operation": null,
+      "expected_name": null,
+      "expected_id": null,
+      "expected_source_path": "#/projects/0/environments/0/envVarGroups/0"
+    },
+    "group_actions": [],
+    "native_summary_matches_server": true
+  },
+  {
+    "at": "2026-10-15T03:04:01.641317+00:00",
+    "client": "render",
+    "case": "duplicate",
+    "layout": "environment",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8opbf/sweep261-environment-duplicate.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.307,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"duplicate name \\\"qa-20261015-12da34-envgroup\\\" for env_var_group (first declared at #/projects/0/environments/0/envVarGroups/0)\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].envVarGroups[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T03:04:02.023993+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=afed91dc5ab032e9f60cfc0d9a42c62b0ead8fc81a7060e6d21fa9685b45",
+          "body": "--afed91dc5ab032e9f60cfc0d9a42c62b0ead8fc81a7060e6d21fa9685b45\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--afed91dc5ab032e9f60cfc0d9a42c62b0ead8fc81a7060e6d21fa9685b45\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep261-environment-duplicate.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\n{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"  qa-20261015-12da34-envgroup\",\n              \"envVars\": []\n            },\n            {\n              \"name\": \"qa-20261015-12da34-envgroup\",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\r\n--afed91dc5ab032e9f60cfc0d9a42c62b0ead8fc81a7060e6d21fa9685b45--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "{\n  \"projects\": [\n    {\n      \"name\": \"qa-12da34-plan-project\",\n      \"environments\": [\n        {\n          \"name\": \"qa-12da34-plan-env\",\n          \"envVarGroups\": [\n            {\n              \"name\": \"  qa-20261015-12da34-envgroup\",\n              \"envVars\": []\n            },\n            {\n              \"name\": \"qa-20261015-12da34-envgroup\",\n              \"envVars\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4ab98136e0934a1-SJC"
+        },
+        "response": "{\"valid\":false,\"errors\":[{\"code\":\"BLUEPRINT_DUPLICATE_RESOURCE\",\"error\":\"duplicate name \\\"qa-20261015-12da34-envgroup\\\" for env_var_group (first declared at #/projects/0/environments/0/envVarGroups/0)\",\"line\":13,\"column\":13,\"path\":\"projects[0].environments[0].envVarGroups[1]\"}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": false,
+      "expected_operation": null,
+      "expected_name": null,
+      "expected_id": null,
+      "expected_source_path": "#/projects/0/environments/0/envVarGroups/0"
+    },
+    "group_actions": [],
+    "native_summary_matches_server": true
+  }
+]

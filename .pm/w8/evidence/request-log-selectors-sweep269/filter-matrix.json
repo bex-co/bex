@@ -1,0 +1,1526 @@
+[
+  {
+    "client": "bex",
+    "case": "all owned paths",
+    "flags": [
+      "--path",
+      "/qa269-5588fe/*"
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:18.412387169Z-7434537c",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:18.412387169Z-7434537c",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "/qa269-5588fe/*"
+      ],
+      "exit": 0,
+      "elapsed": 0.663,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49809\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49809\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":3212818,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2874448,\\\"OriginStatus\\\":200,\\\"Overhead\\\":338370,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/literal,a.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:15Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:15.460872412Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49814\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49814\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":145,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":5859095,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":145,\\\"OriginDuration\\\":4463053,\\\"OriginStatus\\\":200,\\\"Overhead\\\":1396042,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/plain.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:16.240087639Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:16.240087639Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:16Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:16.246244241Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"POST\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"201\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49821\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49821\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":148,\\\"DownstreamStatus\\\":201,\\\"Duration\\\":2256109,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":148,\\\"OriginDuration\\\":1749340,\\\"OriginStatus\\\":201,\\\"Overhead\\\":506769,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"POST\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/created.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:17.024651406Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:17.024651406Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:17Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:17.027181513Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"404\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49830\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49830\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":147,\\\"DownstreamStatus\\\":404,\\\"Duration\\\":2188209,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":147,\\\"OriginDuration\\\":1779349,\\\"OriginStatus\\\":404,\\\"Overhead\\\":408860,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/missing.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:17.724902937Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:17.724902937Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:17Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:17.727431326Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:18.412387169Z-7434537c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"HEAD\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49833\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49833\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":0,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":2470203,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":0,\\\"OriginDuration\\\":2081247,\\\"OriginStatus\\\":200,\\\"Overhead\\\":388956,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"HEAD\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/head.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:18.40956465Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:18.40956465Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:18Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:18.412387169Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49839\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49839\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":2578497,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2122260,\\\"OriginStatus\\\":200,\\\"Overhead\\\":456237,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/caf%C3%A9.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:19.124584988Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:19.124584988Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:19Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:19.127671891Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "bex",
+    "case": "literal comma path",
+    "flags": [
+      "--path",
+      "\"/qa269-5588fe/literal,a.txt\""
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "\"/qa269-5588fe/literal,a.txt\""
+      ],
+      "exit": 0,
+      "elapsed": 0.488,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49809\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49809\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":3212818,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2874448,\\\"OriginStatus\\\":200,\\\"Overhead\\\":338370,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/literal,a.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:15Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:15.460872412Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "bex",
+    "case": "two path OR",
+    "flags": [
+      "--path",
+      "\"/qa269-5588fe/literal,a.txt\",/qa269-5588fe/plain.txt"
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "\"/qa269-5588fe/literal,a.txt\",/qa269-5588fe/plain.txt"
+      ],
+      "exit": 0,
+      "elapsed": 0.674,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49809\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49809\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":3212818,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2874448,\\\"OriginStatus\\\":200,\\\"Overhead\\\":338370,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/literal,a.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:15Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:15.460872412Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49814\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49814\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":145,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":5859095,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":145,\\\"OriginDuration\\\":4463053,\\\"OriginStatus\\\":200,\\\"Overhead\\\":1396042,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/plain.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:16.240087639Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:16.240087639Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:16Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:16.246244241Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "bex",
+    "case": "encoded Unicode path",
+    "flags": [
+      "--path",
+      "/qa269-5588fe/caf%C3%A9.txt"
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "/qa269-5588fe/caf%C3%A9.txt"
+      ],
+      "exit": 0,
+      "elapsed": 0.702,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49839\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49839\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":2578497,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2122260,\\\"OriginStatus\\\":200,\\\"Overhead\\\":456237,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/caf%C3%A9.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:19.124584988Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:19.124584988Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:19Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:19.127671891Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "bex",
+    "case": "GET only",
+    "flags": [
+      "--path",
+      "/qa269-5588fe/*",
+      "--method",
+      "GET"
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "/qa269-5588fe/*",
+        "--method",
+        "GET"
+      ],
+      "exit": 0,
+      "elapsed": 0.731,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49809\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49809\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":3212818,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2874448,\\\"OriginStatus\\\":200,\\\"Overhead\\\":338370,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/literal,a.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:15Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:15.460872412Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49814\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49814\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":145,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":5859095,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":145,\\\"OriginDuration\\\":4463053,\\\"OriginStatus\\\":200,\\\"Overhead\\\":1396042,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/plain.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:16.240087639Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:16.240087639Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:16Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:16.246244241Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"404\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49830\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49830\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":147,\\\"DownstreamStatus\\\":404,\\\"Duration\\\":2188209,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":147,\\\"OriginDuration\\\":1779349,\\\"OriginStatus\\\":404,\\\"Overhead\\\":408860,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/missing.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:17.724902937Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:17.724902937Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:17Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:17.727431326Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49839\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49839\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":2578497,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2122260,\\\"OriginStatus\\\":200,\\\"Overhead\\\":456237,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/caf%C3%A9.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:19.124584988Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:19.124584988Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:19Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:19.127671891Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "bex",
+    "case": "POST only",
+    "flags": [
+      "--path",
+      "/qa269-5588fe/*",
+      "--method",
+      "POST"
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "/qa269-5588fe/*",
+        "--method",
+        "POST"
+      ],
+      "exit": 0,
+      "elapsed": 0.321,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"POST\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"201\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49821\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49821\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":148,\\\"DownstreamStatus\\\":201,\\\"Duration\\\":2256109,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":148,\\\"OriginDuration\\\":1749340,\\\"OriginStatus\\\":201,\\\"Overhead\\\":506769,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"POST\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/created.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:17.024651406Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:17.024651406Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:17Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:17.027181513Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "bex",
+    "case": "HEAD only",
+    "flags": [
+      "--path",
+      "/qa269-5588fe/*",
+      "--method",
+      "HEAD"
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:18.412387169Z-7434537c"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:18.412387169Z-7434537c"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "/qa269-5588fe/*",
+        "--method",
+        "HEAD"
+      ],
+      "exit": 0,
+      "elapsed": 0.339,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:18.412387169Z-7434537c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"HEAD\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49833\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49833\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":0,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":2470203,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":0,\\\"OriginDuration\\\":2081247,\\\"OriginStatus\\\":200,\\\"Overhead\\\":388956,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"HEAD\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/head.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:18.40956465Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:18.40956465Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:18Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:18.412387169Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "bex",
+    "case": "method OR",
+    "flags": [
+      "--path",
+      "/qa269-5588fe/*",
+      "--method",
+      "GET,POST"
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "/qa269-5588fe/*",
+        "--method",
+        "GET,POST"
+      ],
+      "exit": 0,
+      "elapsed": 0.331,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49809\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49809\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":3212818,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2874448,\\\"OriginStatus\\\":200,\\\"Overhead\\\":338370,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/literal,a.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:15Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:15.460872412Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49814\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49814\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":145,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":5859095,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":145,\\\"OriginDuration\\\":4463053,\\\"OriginStatus\\\":200,\\\"Overhead\\\":1396042,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/plain.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:16.240087639Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:16.240087639Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:16Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:16.246244241Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"POST\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"201\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49821\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49821\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":148,\\\"DownstreamStatus\\\":201,\\\"Duration\\\":2256109,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":148,\\\"OriginDuration\\\":1749340,\\\"OriginStatus\\\":201,\\\"Overhead\\\":506769,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"POST\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/created.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:17.024651406Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:17.024651406Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:17Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:17.027181513Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"404\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49830\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49830\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":147,\\\"DownstreamStatus\\\":404,\\\"Duration\\\":2188209,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":147,\\\"OriginDuration\\\":1779349,\\\"OriginStatus\\\":404,\\\"Overhead\\\":408860,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/missing.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:17.724902937Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:17.724902937Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:17Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:17.727431326Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49839\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49839\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":2578497,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2122260,\\\"OriginStatus\\\":200,\\\"Overhead\\\":456237,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/caf%C3%A9.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:19.124584988Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:19.124584988Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:19Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:19.127671891Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "bex",
+    "case": "404 only",
+    "flags": [
+      "--path",
+      "/qa269-5588fe/*",
+      "--status-code",
+      "404"
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "/qa269-5588fe/*",
+        "--status-code",
+        "404"
+      ],
+      "exit": 0,
+      "elapsed": 0.305,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"404\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49830\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49830\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":147,\\\"DownstreamStatus\\\":404,\\\"Duration\\\":2188209,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":147,\\\"OriginDuration\\\":1779349,\\\"OriginStatus\\\":404,\\\"Overhead\\\":408860,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/missing.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:17.724902937Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:17.724902937Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:17Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:17.727431326Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "bex",
+    "case": "2xx class",
+    "flags": [
+      "--path",
+      "/qa269-5588fe/*",
+      "--status-code",
+      "2xx"
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:18.412387169Z-7434537c",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:18.412387169Z-7434537c",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "/qa269-5588fe/*",
+        "--status-code",
+        "2xx"
+      ],
+      "exit": 0,
+      "elapsed": 0.352,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49809\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49809\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":3212818,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2874448,\\\"OriginStatus\\\":200,\\\"Overhead\\\":338370,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/literal,a.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:15Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:15.460872412Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49814\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49814\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":145,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":5859095,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":145,\\\"OriginDuration\\\":4463053,\\\"OriginStatus\\\":200,\\\"Overhead\\\":1396042,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/plain.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:16.240087639Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:16.240087639Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:16Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:16.246244241Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"POST\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"201\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49821\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49821\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":148,\\\"DownstreamStatus\\\":201,\\\"Duration\\\":2256109,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":148,\\\"OriginDuration\\\":1749340,\\\"OriginStatus\\\":201,\\\"Overhead\\\":506769,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"POST\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/created.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:17.024651406Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:17.024651406Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:17Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:17.027181513Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:18.412387169Z-7434537c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"HEAD\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49833\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49833\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":0,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":2470203,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":0,\\\"OriginDuration\\\":2081247,\\\"OriginStatus\\\":200,\\\"Overhead\\\":388956,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"HEAD\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/head.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:18.40956465Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:18.40956465Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:18Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:18.412387169Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49839\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49839\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":2578497,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2122260,\\\"OriginStatus\\\":200,\\\"Overhead\\\":456237,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/caf%C3%A9.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:19.124584988Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:19.124584988Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:19Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:19.127671891Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "bex",
+    "case": "path-method-status AND",
+    "flags": [
+      "--path",
+      "\"/qa269-5588fe/literal,a.txt\"",
+      "--method",
+      "GET",
+      "--status-code",
+      "200"
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "\"/qa269-5588fe/literal,a.txt\"",
+        "--method",
+        "GET",
+        "--status-code",
+        "200"
+      ],
+      "exit": 0,
+      "elapsed": 0.421,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49809\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49809\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":3212818,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2874448,\\\"OriginStatus\\\":200,\\\"Overhead\\\":338370,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/literal,a.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:15Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:15.460872412Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "bex",
+    "case": "contradictory method",
+    "flags": [
+      "--path",
+      "\"/qa269-5588fe/literal,a.txt\"",
+      "--method",
+      "POST"
+    ],
+    "expected_ids": [],
+    "actual_ids": [],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "\"/qa269-5588fe/literal,a.txt\"",
+        "--method",
+        "POST"
+      ],
+      "exit": 0,
+      "elapsed": 0.818,
+      "stdout": "",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "bex",
+    "case": "host equality",
+    "flags": [
+      "--path",
+      "/qa269-5588fe/*",
+      "--host",
+      "qa-20261015-5588fe-requests.onbex.co"
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:18.412387169Z-7434537c",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:18.412387169Z-7434537c",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "/qa269-5588fe/*",
+        "--host",
+        "qa-20261015-5588fe-requests.onbex.co"
+      ],
+      "exit": 0,
+      "elapsed": 0.299,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49809\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49809\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":3212818,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2874448,\\\"OriginStatus\\\":200,\\\"Overhead\\\":338370,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/literal,a.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:15Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:15.460872412Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49814\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49814\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":145,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":5859095,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":145,\\\"OriginDuration\\\":4463053,\\\"OriginStatus\\\":200,\\\"Overhead\\\":1396042,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/plain.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:16.240087639Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:16.240087639Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:16Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:16.246244241Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"POST\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"201\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49821\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49821\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":148,\\\"DownstreamStatus\\\":201,\\\"Duration\\\":2256109,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":148,\\\"OriginDuration\\\":1749340,\\\"OriginStatus\\\":201,\\\"Overhead\\\":506769,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"POST\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/created.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:17.024651406Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:17.024651406Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:17Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:17.027181513Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"404\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49830\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49830\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":147,\\\"DownstreamStatus\\\":404,\\\"Duration\\\":2188209,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":147,\\\"OriginDuration\\\":1779349,\\\"OriginStatus\\\":404,\\\"Overhead\\\":408860,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/missing.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:17.724902937Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:17.724902937Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:17Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:17.727431326Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:18.412387169Z-7434537c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"HEAD\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49833\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49833\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":0,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":2470203,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":0,\\\"OriginDuration\\\":2081247,\\\"OriginStatus\\\":200,\\\"Overhead\\\":388956,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"HEAD\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/head.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:18.40956465Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:18.40956465Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:18Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:18.412387169Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49839\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49839\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":2578497,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2122260,\\\"OriginStatus\\\":200,\\\"Overhead\\\":456237,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/caf%C3%A9.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:19.124584988Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:19.124584988Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:19Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:19.127671891Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "bex",
+    "case": "host absent",
+    "flags": [
+      "--path",
+      "/qa269-5588fe/*",
+      "--host",
+      "qa-20261015-5588fe-requests.onbex.co.invalid"
+    ],
+    "expected_ids": [],
+    "actual_ids": [],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "/qa269-5588fe/*",
+        "--host",
+        "qa-20261015-5588fe-requests.onbex.co.invalid"
+      ],
+      "exit": 0,
+      "elapsed": 0.375,
+      "stdout": "",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "bex",
+    "case": "literal comma text",
+    "flags": [
+      "--path",
+      "/qa269-5588fe/*",
+      "--text",
+      "\"literal,a.txt\""
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "/qa269-5588fe/*",
+        "--text",
+        "\"literal,a.txt\""
+      ],
+      "exit": 0,
+      "elapsed": 0.316,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49809\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49809\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":3212818,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2874448,\\\"OriginStatus\\\":200,\\\"Overhead\\\":338370,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/literal,a.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:15Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:15.460872412Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "bex",
+    "case": "two text terms OR",
+    "flags": [
+      "--path",
+      "/qa269-5588fe/*",
+      "--text",
+      "\"literal,a.txt\",missing.txt"
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "/qa269-5588fe/*",
+        "--text",
+        "\"literal,a.txt\",missing.txt"
+      ],
+      "exit": 0,
+      "elapsed": 0.401,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49809\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49809\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":3212818,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2874448,\\\"OriginStatus\\\":200,\\\"Overhead\\\":338370,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/literal,a.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:15Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:15.460872412Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"404\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49830\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49830\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":147,\\\"DownstreamStatus\\\":404,\\\"Duration\\\":2188209,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":147,\\\"OriginDuration\\\":1779349,\\\"OriginStatus\\\":404,\\\"Overhead\\\":408860,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/missing.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:17.724902937Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:17.724902937Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:17Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:17.727431326Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "render",
+    "case": "all owned paths",
+    "flags": [
+      "--path",
+      "/qa269-5588fe/*"
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:18.412387169Z-7434537c",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:18.412387169Z-7434537c",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "/qa269-5588fe/*"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.371,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49809\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49809\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":3212818,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2874448,\\\"OriginStatus\\\":200,\\\"Overhead\\\":338370,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/literal,a.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:15Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:15.460872412Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49814\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49814\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":145,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":5859095,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":145,\\\"OriginDuration\\\":4463053,\\\"OriginStatus\\\":200,\\\"Overhead\\\":1396042,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/plain.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:16.240087639Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:16.240087639Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:16Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:16.246244241Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"POST\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"201\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49821\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49821\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":148,\\\"DownstreamStatus\\\":201,\\\"Duration\\\":2256109,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":148,\\\"OriginDuration\\\":1749340,\\\"OriginStatus\\\":201,\\\"Overhead\\\":506769,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"POST\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/created.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:17.024651406Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:17.024651406Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:17Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:17.027181513Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"404\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49830\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49830\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":147,\\\"DownstreamStatus\\\":404,\\\"Duration\\\":2188209,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":147,\\\"OriginDuration\\\":1779349,\\\"OriginStatus\\\":404,\\\"Overhead\\\":408860,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/missing.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:17.724902937Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:17.724902937Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:17Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:17.727431326Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:18.412387169Z-7434537c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"HEAD\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49833\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49833\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":0,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":2470203,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":0,\\\"OriginDuration\\\":2081247,\\\"OriginStatus\\\":200,\\\"Overhead\\\":388956,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"HEAD\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/head.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:18.40956465Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:18.40956465Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:18Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:18.412387169Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49839\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49839\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":2578497,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2122260,\\\"OriginStatus\\\":200,\\\"Overhead\\\":456237,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/caf%C3%A9.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:19.124584988Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:19.124584988Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:19Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:19.127671891Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "render",
+    "case": "literal comma path",
+    "flags": [
+      "--path",
+      "\"/qa269-5588fe/literal,a.txt\""
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "\"/qa269-5588fe/literal,a.txt\""
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.383,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49809\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49809\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":3212818,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2874448,\\\"OriginStatus\\\":200,\\\"Overhead\\\":338370,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/literal,a.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:15Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:15.460872412Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "render",
+    "case": "two path OR",
+    "flags": [
+      "--path",
+      "\"/qa269-5588fe/literal,a.txt\",/qa269-5588fe/plain.txt"
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "\"/qa269-5588fe/literal,a.txt\",/qa269-5588fe/plain.txt"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.326,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49809\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49809\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":3212818,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2874448,\\\"OriginStatus\\\":200,\\\"Overhead\\\":338370,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/literal,a.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:15Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:15.460872412Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49814\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49814\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":145,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":5859095,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":145,\\\"OriginDuration\\\":4463053,\\\"OriginStatus\\\":200,\\\"Overhead\\\":1396042,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/plain.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:16.240087639Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:16.240087639Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:16Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:16.246244241Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "render",
+    "case": "encoded Unicode path",
+    "flags": [
+      "--path",
+      "/qa269-5588fe/caf%C3%A9.txt"
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "/qa269-5588fe/caf%C3%A9.txt"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.396,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49839\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49839\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":2578497,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2122260,\\\"OriginStatus\\\":200,\\\"Overhead\\\":456237,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/caf%C3%A9.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:19.124584988Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:19.124584988Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:19Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:19.127671891Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "render",
+    "case": "GET only",
+    "flags": [
+      "--path",
+      "/qa269-5588fe/*",
+      "--method",
+      "GET"
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "/qa269-5588fe/*",
+        "--method",
+        "GET"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.497,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49809\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49809\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":3212818,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2874448,\\\"OriginStatus\\\":200,\\\"Overhead\\\":338370,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/literal,a.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:15Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:15.460872412Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49814\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49814\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":145,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":5859095,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":145,\\\"OriginDuration\\\":4463053,\\\"OriginStatus\\\":200,\\\"Overhead\\\":1396042,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/plain.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:16.240087639Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:16.240087639Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:16Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:16.246244241Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"404\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49830\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49830\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":147,\\\"DownstreamStatus\\\":404,\\\"Duration\\\":2188209,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":147,\\\"OriginDuration\\\":1779349,\\\"OriginStatus\\\":404,\\\"Overhead\\\":408860,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/missing.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:17.724902937Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:17.724902937Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:17Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:17.727431326Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49839\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49839\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":2578497,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2122260,\\\"OriginStatus\\\":200,\\\"Overhead\\\":456237,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/caf%C3%A9.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:19.124584988Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:19.124584988Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:19Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:19.127671891Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "render",
+    "case": "POST only",
+    "flags": [
+      "--path",
+      "/qa269-5588fe/*",
+      "--method",
+      "POST"
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "/qa269-5588fe/*",
+        "--method",
+        "POST"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.327,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"POST\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"201\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49821\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49821\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":148,\\\"DownstreamStatus\\\":201,\\\"Duration\\\":2256109,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":148,\\\"OriginDuration\\\":1749340,\\\"OriginStatus\\\":201,\\\"Overhead\\\":506769,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"POST\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/created.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:17.024651406Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:17.024651406Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:17Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:17.027181513Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "render",
+    "case": "HEAD only",
+    "flags": [
+      "--path",
+      "/qa269-5588fe/*",
+      "--method",
+      "HEAD"
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:18.412387169Z-7434537c"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:18.412387169Z-7434537c"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "/qa269-5588fe/*",
+        "--method",
+        "HEAD"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.501,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:18.412387169Z-7434537c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"HEAD\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49833\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49833\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":0,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":2470203,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":0,\\\"OriginDuration\\\":2081247,\\\"OriginStatus\\\":200,\\\"Overhead\\\":388956,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"HEAD\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/head.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:18.40956465Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:18.40956465Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:18Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:18.412387169Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "render",
+    "case": "method OR",
+    "flags": [
+      "--path",
+      "/qa269-5588fe/*",
+      "--method",
+      "GET,POST"
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "/qa269-5588fe/*",
+        "--method",
+        "GET,POST"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.375,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49809\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49809\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":3212818,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2874448,\\\"OriginStatus\\\":200,\\\"Overhead\\\":338370,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/literal,a.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:15Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:15.460872412Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49814\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49814\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":145,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":5859095,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":145,\\\"OriginDuration\\\":4463053,\\\"OriginStatus\\\":200,\\\"Overhead\\\":1396042,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/plain.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:16.240087639Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:16.240087639Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:16Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:16.246244241Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"POST\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"201\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49821\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49821\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":148,\\\"DownstreamStatus\\\":201,\\\"Duration\\\":2256109,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":148,\\\"OriginDuration\\\":1749340,\\\"OriginStatus\\\":201,\\\"Overhead\\\":506769,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"POST\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/created.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:17.024651406Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:17.024651406Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:17Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:17.027181513Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"404\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49830\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49830\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":147,\\\"DownstreamStatus\\\":404,\\\"Duration\\\":2188209,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":147,\\\"OriginDuration\\\":1779349,\\\"OriginStatus\\\":404,\\\"Overhead\\\":408860,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/missing.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:17.724902937Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:17.724902937Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:17Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:17.727431326Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49839\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49839\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":2578497,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2122260,\\\"OriginStatus\\\":200,\\\"Overhead\\\":456237,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/caf%C3%A9.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:19.124584988Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:19.124584988Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:19Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:19.127671891Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "render",
+    "case": "404 only",
+    "flags": [
+      "--path",
+      "/qa269-5588fe/*",
+      "--status-code",
+      "404"
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "/qa269-5588fe/*",
+        "--status-code",
+        "404"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.317,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"404\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49830\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49830\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":147,\\\"DownstreamStatus\\\":404,\\\"Duration\\\":2188209,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":147,\\\"OriginDuration\\\":1779349,\\\"OriginStatus\\\":404,\\\"Overhead\\\":408860,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/missing.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:17.724902937Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:17.724902937Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:17Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:17.727431326Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "render",
+    "case": "2xx class",
+    "flags": [
+      "--path",
+      "/qa269-5588fe/*",
+      "--status-code",
+      "2xx"
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:18.412387169Z-7434537c",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:18.412387169Z-7434537c",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "/qa269-5588fe/*",
+        "--status-code",
+        "2xx"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.42,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49809\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49809\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":3212818,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2874448,\\\"OriginStatus\\\":200,\\\"Overhead\\\":338370,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/literal,a.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:15Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:15.460872412Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49814\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49814\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":145,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":5859095,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":145,\\\"OriginDuration\\\":4463053,\\\"OriginStatus\\\":200,\\\"Overhead\\\":1396042,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/plain.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:16.240087639Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:16.240087639Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:16Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:16.246244241Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"POST\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"201\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49821\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49821\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":148,\\\"DownstreamStatus\\\":201,\\\"Duration\\\":2256109,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":148,\\\"OriginDuration\\\":1749340,\\\"OriginStatus\\\":201,\\\"Overhead\\\":506769,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"POST\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/created.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:17.024651406Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:17.024651406Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:17Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:17.027181513Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:18.412387169Z-7434537c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"HEAD\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49833\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49833\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":0,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":2470203,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":0,\\\"OriginDuration\\\":2081247,\\\"OriginStatus\\\":200,\\\"Overhead\\\":388956,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"HEAD\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/head.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:18.40956465Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:18.40956465Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:18Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:18.412387169Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49839\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49839\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":2578497,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2122260,\\\"OriginStatus\\\":200,\\\"Overhead\\\":456237,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/caf%C3%A9.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:19.124584988Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:19.124584988Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:19Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:19.127671891Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "render",
+    "case": "path-method-status AND",
+    "flags": [
+      "--path",
+      "\"/qa269-5588fe/literal,a.txt\"",
+      "--method",
+      "GET",
+      "--status-code",
+      "200"
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "\"/qa269-5588fe/literal,a.txt\"",
+        "--method",
+        "GET",
+        "--status-code",
+        "200"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.353,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49809\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49809\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":3212818,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2874448,\\\"OriginStatus\\\":200,\\\"Overhead\\\":338370,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/literal,a.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:15Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:15.460872412Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "render",
+    "case": "contradictory method",
+    "flags": [
+      "--path",
+      "\"/qa269-5588fe/literal,a.txt\"",
+      "--method",
+      "POST"
+    ],
+    "expected_ids": [],
+    "actual_ids": [],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "\"/qa269-5588fe/literal,a.txt\"",
+        "--method",
+        "POST"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.4,
+      "stdout": "",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "render",
+    "case": "host equality",
+    "flags": [
+      "--path",
+      "/qa269-5588fe/*",
+      "--host",
+      "qa-20261015-5588fe-requests.onbex.co"
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:18.412387169Z-7434537c",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:18.412387169Z-7434537c",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "/qa269-5588fe/*",
+        "--host",
+        "qa-20261015-5588fe-requests.onbex.co"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.45,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49809\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49809\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":3212818,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2874448,\\\"OriginStatus\\\":200,\\\"Overhead\\\":338370,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/literal,a.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:15Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:15.460872412Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:16.246244241Z-f0fbbc82\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49814\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49814\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":145,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":5859095,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":145,\\\"OriginDuration\\\":4463053,\\\"OriginStatus\\\":200,\\\"Overhead\\\":1396042,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/plain.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:16.240087639Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:16.240087639Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:16Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:16.246244241Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.027181513Z-d1c23096\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"POST\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"201\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49821\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49821\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":148,\\\"DownstreamStatus\\\":201,\\\"Duration\\\":2256109,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":148,\\\"OriginDuration\\\":1749340,\\\"OriginStatus\\\":201,\\\"Overhead\\\":506769,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"POST\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/created.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:17.024651406Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:17.024651406Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:17Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:17.027181513Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"404\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49830\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49830\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":147,\\\"DownstreamStatus\\\":404,\\\"Duration\\\":2188209,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":147,\\\"OriginDuration\\\":1779349,\\\"OriginStatus\\\":404,\\\"Overhead\\\":408860,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/missing.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:17.724902937Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:17.724902937Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:17Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:17.727431326Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:18.412387169Z-7434537c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"HEAD\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49833\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49833\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":0,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":2470203,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":0,\\\"OriginDuration\\\":2081247,\\\"OriginStatus\\\":200,\\\"Overhead\\\":388956,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"HEAD\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/head.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:18.40956465Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:18.40956465Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:18Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:18.412387169Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:19.127671891Z-6fa1119a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49839\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49839\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":2578497,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2122260,\\\"OriginStatus\\\":200,\\\"Overhead\\\":456237,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/caf%C3%A9.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:19.124584988Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:19.124584988Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:19Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:19.127671891Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "render",
+    "case": "host absent",
+    "flags": [
+      "--path",
+      "/qa269-5588fe/*",
+      "--host",
+      "qa-20261015-5588fe-requests.onbex.co.invalid"
+    ],
+    "expected_ids": [],
+    "actual_ids": [],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "/qa269-5588fe/*",
+        "--host",
+        "qa-20261015-5588fe-requests.onbex.co.invalid"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.323,
+      "stdout": "",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "render",
+    "case": "literal comma text",
+    "flags": [
+      "--path",
+      "/qa269-5588fe/*",
+      "--text",
+      "\"literal,a.txt\""
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "/qa269-5588fe/*",
+        "--text",
+        "\"literal,a.txt\""
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.402,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49809\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49809\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":3212818,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2874448,\\\"OriginStatus\\\":200,\\\"Overhead\\\":338370,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/literal,a.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:15Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:15.460872412Z\"\n}",
+      "stderr": ""
+    }
+  },
+  {
+    "client": "render",
+    "case": "two text terms OR",
+    "flags": [
+      "--path",
+      "/qa269-5588fe/*",
+      "--text",
+      "\"literal,a.txt\",missing.txt"
+    ],
+    "expected_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a"
+    ],
+    "actual_ids": [
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2",
+      "srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a"
+    ],
+    "pass": true,
+    "driver_exit": 0,
+    "driver_stderr": "",
+    "native_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--resources",
+        "srv-db85hf8umfhs73fe7jhg",
+        "--type",
+        "request",
+        "--start",
+        "2026-10-15T04:41:14.845341+00:00",
+        "--limit",
+        "100",
+        "--confirm",
+        "-o",
+        "json",
+        "--path",
+        "/qa269-5588fe/*",
+        "--text",
+        "\"literal,a.txt\",missing.txt"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.484,
+      "stdout": "{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:15.460872412Z-e28a9eb2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"200\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49809\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49809\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":149,\\\"DownstreamStatus\\\":200,\\\"Duration\\\":3212818,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":149,\\\"OriginDuration\\\":2874448,\\\"OriginStatus\\\":200,\\\"Overhead\\\":338370,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/literal,a.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:15.457207142Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:15Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:15.460872412Z\"\n}{\n  \"id\": \"srv-db85hf8umfhs73fe7jhg-2026-10-15T04:41:17.727431326Z-2bb9811a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"request\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db85hf8umfhs73fe7jhg\"\n    },\n    {\n      \"name\": \"method\",\n      \"value\": \"GET\"\n    },\n    {\n      \"name\": \"statusCode\",\n      \"value\": \"404\"\n    }\n  ],\n  \"message\": \"{\\\"ClientAddr\\\":\\\"162.224.81.143:49830\\\",\\\"ClientHost\\\":\\\"162.224.81.143\\\",\\\"ClientPort\\\":\\\"49830\\\",\\\"ClientUsername\\\":\\\"-\\\",\\\"DownstreamContentSize\\\":147,\\\"DownstreamStatus\\\":404,\\\"Duration\\\":2188209,\\\"KubernetesIngressName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesIngressNamespace\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"KubernetesServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests\\\",\\\"KubernetesServicePort\\\":\\\"3000\\\",\\\"OriginContentSize\\\":147,\\\"OriginDuration\\\":1779349,\\\"OriginStatus\\\":404,\\\"Overhead\\\":408860,\\\"RequestAddr\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestContentSize\\\":0,\\\"RequestHost\\\":\\\"qa-20261015-5588fe-requests.onbex.co\\\",\\\"RequestMethod\\\":\\\"GET\\\",\\\"RequestPath\\\":\\\"/qa269-5588fe/missing.txt\\\",\\\"RequestPort\\\":\\\"-\\\",\\\"RequestProtocol\\\":\\\"HTTP/2.0\\\",\\\"RequestScheme\\\":\\\"https\\\",\\\"RetryAttempts\\\":0,\\\"ServiceName\\\":\\\"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261015-5588fe-requests-3000@kubernetes\\\",\\\"StartLocal\\\":\\\"2026-10-15T04:41:17.724902937Z\\\",\\\"StartUTC\\\":\\\"2026-10-15T04:41:17.724902937Z\\\",\\\"TLSCipher\\\":\\\"TLS_CHACHA20_POLY1305_SHA256\\\",\\\"TLSVersion\\\":\\\"1.3\\\",\\\"entryPointName\\\":\\\"websecure\\\",\\\"level\\\":\\\"info\\\",\\\"msg\\\":\\\"\\\",\\\"time\\\":\\\"2026-10-15T04:41:17Z\\\"}\",\n  \"timestamp\": \"2026-10-15T04:41:17.727431326Z\"\n}",
+      "stderr": ""
+    }
+  }
+]

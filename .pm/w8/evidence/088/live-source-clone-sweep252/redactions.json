@@ -1,0 +1,6 @@
+{
+  "credentials": "QA email/password and owned config credential values masked; none published",
+  "owned_temp_path": "<owned-temp>",
+  "network_addresses": "incidental IPv4/IPv6 values in HTTP echoes masked; original private receipts retained",
+  "types": "non-secret JSON types, CLI exits, own nonce paths/headers, status, IDs and runtime fields retained"
+}

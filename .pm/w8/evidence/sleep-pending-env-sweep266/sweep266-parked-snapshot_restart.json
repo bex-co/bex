@@ -1,0 +1,79 @@
+{
+  "metadata": {
+    "name": "web",
+    "namespace": "qa266",
+    "resourceVersion": "1021",
+    "generation": 3,
+    "labels": {
+      "app.bex.co/workspace": "qa266"
+    },
+    "annotations": {
+      "app.bex.co/last-active": "2026-10-15T03:23:56Z",
+      "app.bex.co/release-generation": "3",
+      "app.bex.co/release-wake-generation": "3",
+      "app.bex.co/tls-secret-history": "[\"web-tls\"]"
+    },
+    "finalizers": [
+      "app.bex.co/finalizer"
+    ]
+  },
+  "spec": {
+    "type": "web_service",
+    "image": "nginx:1",
+    "replicas": 1,
+    "port": 3000,
+    "envFromSecret": "web-env",
+    "idleTTLSeconds": 30,
+    "restartedAt": "2026-10-15T04:23:56.243293Z",
+    "releaseConfig": {
+      "generation": 3,
+      "sourceGeneration": 1,
+      "image": "nginx:1",
+      "preserveGroupValues": true
+    },
+    "tier": "free",
+    "expose": true
+  },
+  "status": {
+    "phase": "Hibernated",
+    "url": "https://web.onbex.co",
+    "urls": [
+      "https://web.onbex.co"
+    ],
+    "activeRevision": "rev-3",
+    "image": "nginx:1",
+    "artifactFingerprint": "artifact-v1:64e9d630b9eb90e7cb391f889320acd1dba88ed7993bcd131284034b4984b6b3",
+    "artifactImage": "nginx:1",
+    "releaseFingerprint": "release-v2:44c4e0ca09424e4d546b4b62c5ae418146e18c8546e60b1f47f38542e987fbcc",
+    "releaseGeneration": 3,
+    "releaseArtifactFingerprint": "artifact-v1:64e9d630b9eb90e7cb391f889320acd1dba88ed7993bcd131284034b4984b6b3",
+    "configSnapshotGeneration": 3,
+    "observedGeneration": 3,
+    "conditions": [
+      {
+        "type": "Ready",
+        "status": "False",
+        "observedGeneration": 3,
+        "lastTransitionTime": "2026-10-15T04:23:56Z",
+        "reason": "AutoHibernated",
+        "message": "idle ≥30s on free tier; wakes on next request"
+      },
+      {
+        "type": "PublicRouting",
+        "status": "True",
+        "observedGeneration": 3,
+        "lastTransitionTime": "2026-10-15T04:23:56Z",
+        "reason": "Routed",
+        "message": "serving at web.onbex.co"
+      },
+      {
+        "type": "Serving",
+        "status": "False",
+        "observedGeneration": 3,
+        "lastTransitionTime": "2026-10-15T04:23:56Z",
+        "reason": "ServingRevisionUnavailable",
+        "message": "no pod of the active revision is ready"
+      }
+    ]
+  }
+}

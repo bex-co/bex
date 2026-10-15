@@ -1,0 +1,21 @@
+{
+  "command": [
+    "go",
+    "test",
+    "-json",
+    "-count=1",
+    "-run",
+    "^(TestCappedCronHistoryKeepsTheNewestTenInOrder|TestCanceledPreStartRunKeepsItsPlaceAfterItsJobIsDeleted|TestLegacyClocklessRecordKeepsItsPriorPosition|TestTiedCronRunsOrderDeterministically)$",
+    "./internal/controller"
+  ],
+  "cwd": "lego/operator",
+  "source_head": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+  "exit": 0,
+  "elapsed": 9.414,
+  "passed": [
+    "TestCappedCronHistoryKeepsTheNewestTenInOrder",
+    "TestCanceledPreStartRunKeepsItsPlaceAfterItsJobIsDeleted",
+    "TestLegacyClocklessRecordKeepsItsPriorPosition",
+    "TestTiedCronRunsOrderDeterministically"
+  ]
+}

@@ -1,0 +1,73 @@
+from pathlib import Path
+import base64,hashlib,http.server,json,os,select,shutil,signal,socket,struct,subprocess,threading,time,urllib.parse
+os.umask(0o077)
+p=Path(__file__).parent;out=p/'sweep272-tail-recovery-results.json';assert not out.exists()
+resource='srv-00000000000000000000';workspace='tea-00000000000000000000'
+def log(letter,second):return {'id':'QA272_'+letter,'labels':[{'name':'resource','value':resource},{'name':'type','value':'app'}],'message':'QA272 recovery '+letter,'timestamp':f'2026-10-15T01:00:0{second}Z'}
+a,b=log('A',0),log('B',1)
+def frame(opcode,payload):return bytes([0x80|opcode,len(payload)])+payload if len(payload)<126 else bytes([0x80|opcode,126])+struct.pack('!H',len(payload))+payload
+def frames(text):
+ rows=[];d=json.JSONDecoder()
+ while text.strip():
+  value,n=d.raw_decode(text.lstrip());rows.append(value);text=text.lstrip()[n:]
+ return rows
+results=[]
+for client,binary,prefix in [('bex-pin',p/'release/bex','BEX'),('render-pin',p/'render-pin','RENDER'),('render-2.29-tag',p/'sweep272-render-2.29','RENDER')]:
+ assert binary.exists()
+ for scenario in ['abrupt_empty','abrupt_after_A','error1011_after_A']:
+  events=[];requests=[];workers=[];stop=threading.Event();lock=threading.Lock()
+  class Handler(http.server.BaseHTTPRequestHandler):
+   protocol_version='HTTP/1.1'
+   def log_message(self,*args):pass
+   def do_GET(self):
+    assert urllib.parse.urlsplit(self.path).path=='/v1/logs/subscribe'
+    workers.append(threading.current_thread())
+    with lock:
+     requests.append({'method':'GET','path':self.path,'headers':{k:('<SYNTHETIC_FIXTURE_TOKEN>' if k.lower()=='authorization' else v) for k,v in self.headers.items()}});index=len(requests)
+    accept=base64.b64encode(hashlib.sha1((self.headers['Sec-WebSocket-Key']+'258EAFA5-E914-47DA-95CA-C5AB0DC85B11').encode()).digest()).decode()
+    self.send_response(101);self.send_header('Upgrade','websocket');self.send_header('Connection','Upgrade');self.send_header('Sec-WebSocket-Accept',accept);self.end_headers();self.wfile.flush();events.append({'connection':index,'HTTP':101})
+    payloads=([a] if scenario!='abrupt_empty' else []) if index==1 else [a,b]
+    for row in payloads:self.wfile.write(frame(1,json.dumps(row).encode()));self.wfile.flush();events.append({'connection':index,'websocket_opcode':1,'payload':row})
+    if index==1:
+     time.sleep(.1)
+     if scenario.startswith('error1011'):
+      self.wfile.write(frame(8,struct.pack('!H',1011)+b'QA272 planned server error'));self.wfile.flush();events.append({'connection':index,'close_code':1011,'reason':'QA272 planned server error'});time.sleep(.1)
+     else:events.append({'connection':index,'transport':'TCP shutdown without WebSocket close frame'})
+    else:
+     self.connection.settimeout(.1)
+     while not stop.is_set():
+      try:
+       if not self.connection.recv(1024):break
+      except socket.timeout:continue
+      except OSError:break
+    self.close_connection=True
+    try:self.connection.shutdown(socket.SHUT_RDWR)
+    except OSError:pass
+  server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler);server.daemon_threads=True;thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start();host=f'http://127.0.0.1:{server.server_port}/v1/'
+  cfgdir=p/f'sweep272-recovery-{client}-{scenario}-config';assert not cfgdir.exists();cfgdir.mkdir(mode=0o700);cfg=cfgdir/'cli.yaml';cfg.write_text('version: 1\napi:\n  key: qa272-synthetic-not-a-real-credential\n');cfg.chmod(0o600)
+  env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_')) and k not in ('HTTP_PROXY','HTTPS_PROXY','ALL_PROXY','http_proxy','https_proxy','all_proxy')};env.update({prefix+'_HOST':host,prefix+'_CLI_CONFIG_PATH':str(cfg),prefix+'_CLI_CONFIG_DIR':str(cfgdir),prefix+'_WORKSPACE':workspace,'DO_NOT_TRACK':'1','BEX_CLI_DISABLE_ANALYTICS':'1','BEX_NO_UPDATE_NOTIFIER':'1','RENDER_NO_UPDATE_NOTIFIER':'1'})
+  args=[str(binary),'logs','--resources',resource,'--tail','--confirm','-o','json'];start=time.monotonic();proc=subprocess.Popen(args,env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE);buffers={proc.stdout:b'',proc.stderr:b''};observed=False;forced=False;signal_sent=None
+  try:
+   while time.monotonic()-start<6:
+    ready,_,_=select.select(list(buffers),[],[],.1)
+    for pipe in ready:
+     part=os.read(pipe.fileno(),65536)
+     if part:buffers[pipe]+=part
+    try:decoded=frames(buffers[proc.stdout].decode())
+    except (ValueError,UnicodeError):decoded=[]
+    if [v.get('id') for v in decoded]==['QA272_A','QA272_B'] and proc.poll() is None:observed=True;break
+    if proc.poll() is not None:break
+   alive_before_stop=proc.poll() is None
+   if alive_before_stop:proc.send_signal(signal.SIGINT);signal_sent='SIGINT: explicit bounded harness stop after observation or 6s'
+   try:remaining_stdout,remaining_stderr=proc.communicate(timeout=2)
+   except subprocess.TimeoutExpired:forced=True;proc.kill();remaining_stdout,remaining_stderr=proc.communicate(timeout=2)
+   stdout=(buffers[proc.stdout]+remaining_stdout).decode(errors='replace');stderr=(buffers[proc.stderr]+remaining_stderr).decode(errors='replace')
+  finally:
+   if proc.poll() is None:proc.kill();proc.wait(timeout=2)
+   stop.set();server.shutdown();server.server_close();thread.join(timeout=2)
+   for worker in workers:worker.join(timeout=2)
+   shutil.rmtree(cfgdir)
+  try:decoded=frames(stdout)
+  except ValueError:decoded=[]
+  value={'client':client,'scenario':scenario,'source_tag':'v2.29.0/af9bdd180e90ab9d1e971d73185687fed9ef08d8' if client=='render-2.29-tag' else 'Bex v0.3.2 / Render2.27.0/a764810a7682','command':[client,*args[1:]],'endpoint':host,'credentials':'synthetic local fixture only','requests':requests,'server_events':events,'received_ids':[v.get('id') for v in decoded],'recovered_A_B_once_while_alive':observed,'alive_before_harness_stop':alive_before_stop,'harness_signal':signal_sent,'native_exit':proc.returncode,'forced_kill':forced,'elapsed':round(time.monotonic()-start,3),'stdout':stdout,'stderr':stderr,'cleanup':{'native_reaped':proc.poll() is not None,'config_removed':not cfgdir.exists(),'server_stopped':not thread.is_alive() and not any(w.is_alive() for w in workers)}}
+  results.append(value);out.write_text(json.dumps(results,indent=2)+'\n');out.chmod(0o600);print(json.dumps({k:value[k] for k in ['client','scenario','received_ids','recovered_A_B_once_while_alive','native_exit','harness_signal','elapsed']}),flush=True)

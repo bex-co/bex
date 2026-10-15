@@ -1,0 +1,23 @@
+{
+  "sweep": 272,
+  "at_UTC": "2026-10-15T05:01:25.857483+00:00",
+  "Bex_source_head": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+  "Bex_release": "v0.3.2",
+  "Bex_binary_sha256": "585a5456678ce3bc73d5a71117b901d08add1fab230464d3b5b228101a55c34c",
+  "current_upstream_pin": "2.27.0/a764810a768202704e7206eb7b87a47211fcd98e",
+  "comparison": "unmodified v2.29.0 tag checkout, Go1.27.2 build",
+  "comparison_commit": "af9bdd180e90ab9d1e971d73185687fed9ef08d8",
+  "comparison_binary_sha256": "d1027158d22b827efc7ec788dc36c90924168a2b0e571381b46a78b117499cb5",
+  "comparison_checkout_clean": true,
+  "comparison_build_command": "GOWORK=off GOTOOLCHAIN=go1.27.2 go build -o <owned-temp>/sweep272-render-2.29 .",
+  "comparison_test_command": "GOWORK=off GOTOOLCHAIN=go1.27.2 go test ./pkg/logs -run '^(TestTailLogsResume|TestTailLogsReconnectBeforeFirstLogArrives|TestTailLogsFailures|TestTailLogsCancellation)$' -count=1 -json",
+  "comparison_named_tests_pass": 17,
+  "API_operator_deployed_revision": "unknown and not relevant to loopback reproduction",
+  "credentials": "only synthetic local values for fault tests; continuing isolated human QA for read-only production inventory/quota",
+  "hosted_mutations": 0,
+  "native_close_cases": 10,
+  "native_recovery_cases": 9,
+  "new_finding": ".pm/w8/m67",
+  "product_code_changed": false,
+  "commit_push": false
+}

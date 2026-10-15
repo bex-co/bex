@@ -1,0 +1,47 @@
+from pathlib import Path
+import csv,io,json,subprocess,urllib.parse
+p=Path(__file__).parent;cp=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json')
+def fixture():return next(v for v in json.loads(cp.read_text())['resources'] if v.get('sweep')==269)
+def records(text):
+ d=json.JSONDecoder();rows=[]
+ while text.strip():
+  v,n=d.raw_decode(text.lstrip());rows.extend(v if isinstance(v,list) else [v]);text=text.lstrip()[n:]
+ return rows
+def csvarg(values):
+ f=io.StringIO();csv.writer(f,lineterminator='').writerow(values);return f.getvalue()
+x=fixture();initial=x['native_log_queries'][0];assert initial['result']['exit']==0
+base=records(initial['result']['stdout']);assert len(base)==6
+decoded=[(row,json.loads(row['message'])) for row in base]
+prefix=x['emission_intent']['prefix'];host=urllib.parse.urlsplit(x['create_response']['serviceDetails']['url']).netloc
+def select(predicate):return sorted(row['id'] for row,m in decoded if predicate(m))
+allids=select(lambda m:True)
+cases=[
+ ('all owned paths',['--path',prefix+'/*'],allids),
+ ('literal comma path',['--path',csvarg([prefix+'/literal,a.txt'])],select(lambda m:m['RequestPath']==prefix+'/literal,a.txt')),
+ ('two path OR',['--path',csvarg([prefix+'/literal,a.txt',prefix+'/plain.txt'])],select(lambda m:m['RequestPath'] in [prefix+'/literal,a.txt',prefix+'/plain.txt'])),
+ ('encoded Unicode path',['--path',prefix+'/caf%C3%A9.txt'],select(lambda m:m['RequestPath']==prefix+'/caf%C3%A9.txt')),
+ ('GET only',['--path',prefix+'/*','--method','GET'],select(lambda m:m['RequestMethod']=='GET')),
+ ('POST only',['--path',prefix+'/*','--method','POST'],select(lambda m:m['RequestMethod']=='POST')),
+ ('HEAD only',['--path',prefix+'/*','--method','HEAD'],select(lambda m:m['RequestMethod']=='HEAD')),
+ ('method OR',['--path',prefix+'/*','--method','GET,POST'],select(lambda m:m['RequestMethod'] in ['GET','POST'])),
+ ('404 only',['--path',prefix+'/*','--status-code','404'],select(lambda m:m['DownstreamStatus']==404)),
+ ('2xx class',['--path',prefix+'/*','--status-code','2xx'],select(lambda m:200<=m['DownstreamStatus']<300)),
+ ('path-method-status AND',['--path',csvarg([prefix+'/literal,a.txt']),'--method','GET','--status-code','200'],select(lambda m:m['RequestPath']==prefix+'/literal,a.txt' and m['RequestMethod']=='GET' and m['DownstreamStatus']==200)),
+ ('contradictory method',['--path',csvarg([prefix+'/literal,a.txt']),'--method','POST'],[]),
+ ('host equality',['--path',prefix+'/*','--host',host],allids),
+ ('host absent',['--path',prefix+'/*','--host',host+'.invalid'],[]),
+ ('literal comma text',['--path',prefix+'/*','--text',csvarg(['literal,a.txt'])],select(lambda m:m['RequestPath'].endswith('/literal,a.txt'))),
+ ('two text terms OR',['--path',prefix+'/*','--text',csvarg(['literal,a.txt','missing.txt'])],select(lambda m:m['RequestPath'].endswith(('/literal,a.txt','/missing.txt')))),
+]
+out=p/'sweep269-filter-results.json';assert not out.exists();results=[]
+for client in ['bex','render']:
+ for name,flags,expected in cases:
+  r=subprocess.run(['python3',str(p/'sweep269-request-filters.py'),'logs',client,*flags],text=True,capture_output=True,timeout=55)
+  latest=fixture()['native_log_queries'][-1]
+  assert latest['client']==client and latest['command'][-len(flags):]==flags
+  native=latest['result'];actual=records(native['stdout']) if native['exit']==0 else []
+  ids=sorted(v['id'] for v in actual);passed=r.returncode==0 and native['exit']==0 and ids==expected
+  results.append({'client':client,'case':name,'flags':flags,'expected_ids':expected,'actual_ids':ids,'pass':passed,'driver_exit':r.returncode,'driver_stderr':r.stderr,'native_result':native})
+  out.write_text(json.dumps(results,indent=2)+'\n');out.chmod(0o600)
+  print(json.dumps({'client':client,'case':name,'pass':passed,'expected':len(expected),'actual':len(ids),'native_exit':native['exit']}),flush=True)
+print(json.dumps({'cases':len(results),'all_pass':all(v['pass'] for v in results)}),flush=True)

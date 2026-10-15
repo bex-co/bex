@@ -1,0 +1,1873 @@
+[
+  {
+    "sweep": 259,
+    "family": "app",
+    "client": "bex",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "web_service",
+    "name": "qa-20261015-347e64-tailapp",
+    "nonce": "347e64",
+    "marker": "QA259_347e64",
+    "time": "2026-10-15T02:47:38.416185+00:00",
+    "source_head": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+    "dependency_ids": [],
+    "recorded_child_ids": [
+      "dep-db83tioumfhs73fe7j10"
+    ],
+    "capacity_proof": {
+      "at": "2026-10-15T02:47:37.170818+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.382,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4ab80075bc6d4f9-SJC"
+      },
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "pre_create_inventory": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.184,
+      "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T02:47:06Z\",\n        \"nextRunAt\": \"2026-10-15T02:48:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T02:47:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T02:47:07Z\",\n        \"nextRunAt\": \"2026-10-15T02:48:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T02:47:07Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T02:47:06Z\",\n        \"nextRunAt\": \"2026-10-15T02:48:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T02:47:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T02:45:36Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T00:05:33Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T00:05:28Z\"\n    }\n  }\n]",
+      "stderr": ""
+    },
+    "pre_create_ids": [
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3v694dm7c7390q930",
+      "srv-db09u90ehcmc739j12cg",
+      "srv-db09vbgehcmc739j12i0"
+    ],
+    "create_command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261015-347e64-tailapp",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--type",
+      "web_service",
+      "--runtime",
+      "node",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/runtime-version/node",
+      "--build-command",
+      "/bin/cat > qa_tail.js <<'QA259_NODE'\nconst http=require('node:http');http.createServer((req,res)=>{if(req.url.startsWith('/emit/'))console.log(req.url.slice(6));res.end(process.env.MESSAGE+'\\n');}).listen(Number(process.env.PORT||3000),'0.0.0.0');\nQA259_NODE\n/usr/local/bin/node --check qa_tail.js",
+      "--start-command",
+      "/usr/local/bin/node /opt/render/project/src/qa_tail.js",
+      "--env-var",
+      "MESSAGE=QA259_347e64",
+      "--health-check-path",
+      "/",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "state": "deleted: detail404/listabsent/baseline present/quota restored termination0/runtime404",
+    "create_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--name",
+        "qa-20261015-347e64-tailapp",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--branch",
+        "main",
+        "--root-directory",
+        "examples/runtime-version/node",
+        "--build-command",
+        "/bin/cat > qa_tail.js <<'QA259_NODE'\nconst http=require('node:http');http.createServer((req,res)=>{if(req.url.startsWith('/emit/'))console.log(req.url.slice(6));res.end(process.env.MESSAGE+'\\n');}).listen(Number(process.env.PORT||3000),'0.0.0.0');\nQA259_NODE\n/usr/local/bin/node --check qa_tail.js",
+        "--start-command",
+        "/usr/local/bin/node /opt/render/project/src/qa_tail.js",
+        "--env-var",
+        "MESSAGE=QA259_347e64",
+        "--health-check-path",
+        "/",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.639,
+      "stdout": "{\n  \"autoDeploy\": \"no\",\n  \"autoDeployTrigger\": \"off\",\n  \"branch\": \"main\",\n  \"createdAt\": \"2026-10-15T02:47:40Z\",\n  \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db83tioumfhs73fe7j0g\",\n  \"id\": \"srv-db83tioumfhs73fe7j0g\",\n  \"name\": \"qa-20261015-347e64-tailapp\",\n  \"notifyOnFail\": \"default\",\n  \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n  \"repo\": \"https://github.com/bex-co/bex\",\n  \"rootDir\": \"examples/runtime-version/node\",\n  \"serviceDetails\": {\n    \"env\": \"node\",\n    \"envSpecificDetails\": {\n      \"buildCommand\": \"/bin/cat \\u003e qa_tail.js \\u003c\\u003c'QA259_NODE'\\nconst http=require('node:http');http.createServer((req,res)=\\u003e{if(req.url.startsWith('/emit/'))console.log(req.url.slice(6));res.end(process.env.MESSAGE+'\\\\n');}).listen(Number(process.env.PORT||3000),'0.0.0.0');\\nQA259_NODE\\n/usr/local/bin/node --check qa_tail.js\",\n      \"preDeployCommand\": \"\",\n      \"startCommand\": \"/usr/local/bin/node /opt/render/project/src/qa_tail.js\"\n    },\n    \"healthCheckPath\": \"/\",\n    \"internalAddress\": \"qa-20261015-347e64-tailapp:3000\",\n    \"maintenanceMode\": {\n      \"enabled\": false,\n      \"uri\": \"\"\n    },\n    \"maxShutdownDelaySeconds\": 30,\n    \"numInstances\": 1,\n    \"plan\": \"free\",\n    \"port\": 3000,\n    \"region\": \"fsn1\",\n    \"renderSubdomainPolicy\": \"enabled\",\n    \"runtime\": \"node\",\n    \"url\": \"https://qa-20261015-347e64-tailapp.onbex.co\"\n  },\n  \"slug\": \"qa-20261015-347e64-tailapp\",\n  \"suspended\": \"not_suspended\",\n  \"suspenders\": [],\n  \"type\": \"web_service\",\n  \"updatedAt\": \"2026-10-15T02:47:40Z\"\n}",
+      "stderr": ""
+    },
+    "id": "srv-db83tioumfhs73fe7j0g",
+    "create_response": {
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "branch": "main",
+      "createdAt": "2026-10-15T02:47:40Z",
+      "dashboardUrl": "https://dashboard.bex.co/web/srv-db83tioumfhs73fe7j0g",
+      "id": "srv-db83tioumfhs73fe7j0g",
+      "name": "qa-20261015-347e64-tailapp",
+      "notifyOnFail": "default",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/bex-co/bex",
+      "rootDir": "examples/runtime-version/node",
+      "serviceDetails": {
+        "env": "node",
+        "envSpecificDetails": {
+          "buildCommand": "/bin/cat > qa_tail.js <<'QA259_NODE'\nconst http=require('node:http');http.createServer((req,res)=>{if(req.url.startsWith('/emit/'))console.log(req.url.slice(6));res.end(process.env.MESSAGE+'\\n');}).listen(Number(process.env.PORT||3000),'0.0.0.0');\nQA259_NODE\n/usr/local/bin/node --check qa_tail.js",
+          "preDeployCommand": "",
+          "startCommand": "/usr/local/bin/node /opt/render/project/src/qa_tail.js"
+        },
+        "healthCheckPath": "/",
+        "internalAddress": "qa-20261015-347e64-tailapp:3000",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "free",
+        "port": 3000,
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "node",
+        "url": "https://qa-20261015-347e64-tailapp.onbex.co"
+      },
+      "slug": "qa-20261015-347e64-tailapp",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "web_service",
+      "updatedAt": "2026-10-15T02:47:40Z"
+    },
+    "deploy_children": [
+      {
+        "commit": {
+          "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+          "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+        },
+        "createdAt": "2026-10-15T02:47:39.713145Z",
+        "finishedAt": "2026-10-15T02:49:58.048618Z",
+        "id": "dep-db83tioumfhs73fe7j10",
+        "startedAt": "2026-10-15T02:48:42.393387Z",
+        "status": "live",
+        "trigger": "other",
+        "updatedAt": "2026-10-15T02:49:58.048619Z"
+      }
+    ],
+    "history_receipts": [
+      {
+        "at": "2026-10-15T02:49:25.692762+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db83tioumfhs73fe7j0g",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.466,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:47:39.713145Z\",\n    \"id\": \"dep-db83tioumfhs73fe7j10\",\n    \"startedAt\": \"2026-10-15T02:48:42.393387Z\",\n    \"status\": \"build_in_progress\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:48:42.393388Z\"\n  }\n]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-15T02:50:34.807689+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db83tioumfhs73fe7j0g",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.354,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:47:39.713145Z\",\n    \"finishedAt\": \"2026-10-15T02:49:58.048618Z\",\n    \"id\": \"dep-db83tioumfhs73fe7j10\",\n    \"startedAt\": \"2026-10-15T02:48:42.393387Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:49:58.048619Z\"\n  }\n]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-15T02:51:49.814484+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db83tioumfhs73fe7j0g",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.347,
+          "stdout": "[\n  {\n    \"commit\": {\n      \"id\": \"6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459\",\n      \"message\": \"fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\\n\\nChinese Metrics charts kept English accessible names and the English\\n\\\"No data in range\\\" text. Chart names, per-bar labels and the default\\nempty message are now translated (English also gets correct singular).\\n\\nBoard: parked in blocked/ pending deploy + live replay.\"\n    },\n    \"createdAt\": \"2026-10-15T02:47:39.713145Z\",\n    \"finishedAt\": \"2026-10-15T02:49:58.048618Z\",\n    \"id\": \"dep-db83tioumfhs73fe7j10\",\n    \"startedAt\": \"2026-10-15T02:48:42.393387Z\",\n    \"status\": \"live\",\n    \"trigger\": \"other\",\n    \"updatedAt\": \"2026-10-15T02:49:58.048619Z\"\n  }\n]",
+          "stderr": ""
+        }
+      }
+    ],
+    "observations": [
+      {
+        "at": "2026-10-15T02:49:26.469146+00:00",
+        "deploy": {
+          "commit": {
+            "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+            "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+          },
+          "createdAt": "2026-10-15T02:47:39.713145Z",
+          "id": "dep-db83tioumfhs73fe7j10",
+          "startedAt": "2026-10-15T02:48:42.393387Z",
+          "status": "build_in_progress",
+          "trigger": "other",
+          "updatedAt": "2026-10-15T02:48:42.393388Z"
+        },
+        "HTTP": "404",
+        "curl_exit": 0,
+        "body": "404 page not found\n",
+        "ready": false
+      },
+      {
+        "at": "2026-10-15T02:50:35.501646+00:00",
+        "deploy": {
+          "commit": {
+            "id": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+            "message": "fix(dashboard): localize metrics chart accessible names and empty-range copy (w4/297)\n\nChinese Metrics charts kept English accessible names and the English\n\"No data in range\" text. Chart names, per-bar labels and the default\nempty message are now translated (English also gets correct singular).\n\nBoard: parked in blocked/ pending deploy + live replay."
+          },
+          "createdAt": "2026-10-15T02:47:39.713145Z",
+          "finishedAt": "2026-10-15T02:49:58.048618Z",
+          "id": "dep-db83tioumfhs73fe7j10",
+          "startedAt": "2026-10-15T02:48:42.393387Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-15T02:49:58.048619Z"
+        },
+        "HTTP": "200",
+        "curl_exit": 0,
+        "body": "QA259_347e64\n",
+        "ready": true
+      }
+    ],
+    "ready": true,
+    "native_tail_checks": [
+      {
+        "at": "2026-10-15T02:51:22.407432+00:00",
+        "client": "bex",
+        "family": "app",
+        "native_request_capture": "unchanged GET/logs/WS forwarding to fixed api.bex.co for exact owned resource only; authorization never captured",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "srv-db83tioumfhs73fe7j0g",
+          "--text",
+          "QA259_347e64_bex",
+          "--limit",
+          "100",
+          "--tail",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "actual_websocket_101_before_emit": true,
+        "single_emit_request": {
+          "at": "2026-10-15T02:51:24.139227+00:00",
+          "url": "https://qa-20261015-347e64-tailapp.onbex.co/emit/QA259_347e64_bex",
+          "HTTP": "200",
+          "body": "QA259_347e64\n",
+          "curl_exit": 0
+        },
+        "explicit_bounded_stop": "SIGINT after own marker or bounded wait",
+        "result": {
+          "exit": -2,
+          "elapsed": 1.843,
+          "stdout": "{\n  \"id\": \"srv-db83tioumfhs73fe7j0g-8v4l7u3o3f34hfu5cfb5-2026-10-15T02:51:24.058792019Z-93cc0e33\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db83tioumfhs73fe7j0g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db83tioumfhs73fe7j0g-8v4l7u3o3f34hfu5cfb5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA259_347e64_bex\",\n  \"timestamp\": \"2026-10-15T02:51:24.058792019Z\"\n}",
+          "stderr": ""
+        },
+        "decoded_rows": [
+          {
+            "id": "srv-db83tioumfhs73fe7j0g-8v4l7u3o3f34hfu5cfb5-2026-10-15T02:51:24.058792019Z-93cc0e33",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db83tioumfhs73fe7j0g"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db83tioumfhs73fe7j0g-8v4l7u3o3f34hfu5cfb5"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              }
+            ],
+            "message": "QA259_347e64_bex",
+            "timestamp": "2026-10-15T02:51:24.058792019Z"
+          }
+        ],
+        "passed": true,
+        "wire": [
+          {
+            "at": "2026-10-15T02:51:23.306543Z",
+            "request": {
+              "headers": {
+                "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+              },
+              "method": "GET",
+              "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db83tioumfhs73fe7j0g&text=QA259_347e64_bex&limit=100"
+            },
+            "response_headers": {
+              "CF-Ray": "a4ab858b6ec06c4d-SJC",
+              "Connection": "upgrade",
+              "Sec-WebSocket-Accept": "iOXZkY1V0fALG7QtlV+tiSrQpXI=",
+              "Upgrade": "websocket"
+            },
+            "server_read_end": "read tcp [2600:1700:45f0:963f:fd3e:ea2b:34d1:59d3]:57168->[2606:4700:3033::ac43:9497]:443: use of closed network connection",
+            "server_ws_bytes": "gX4Bd3siaWQiOiJzcnYtZGI4M3Rpb3VtZmhzNzNmZTdqMGctOHY0bDd1M28zZjM0aGZ1NWNmYjUtMjAyNi0xMC0xNVQwMjo1MToyNC4wNTg3OTIwMTlaLTkzY2MwZTMzIiwibWVzc2FnZSI6IlFBMjU5XzM0N2U2NF9iZXgiLCJ0aW1lc3RhbXAiOiIyMDI2LTEwLTE1VDAyOjUxOjI0LjA1ODc5MjAxOVoiLCJsYWJlbHMiOlt7Im5hbWUiOiJ0eXBlIiwidmFsdWUiOiJhcHAifSx7Im5hbWUiOiJyZXNvdXJjZSIsInZhbHVlIjoic3J2LWRiODN0aW91bWZoczczZmU3ajBnIn0seyJuYW1lIjoiaW5zdGFuY2UiLCJ2YWx1ZSI6InNydi1kYjgzdGlvdW1maHM3M2ZlN2owZy04djRsN3UzbzNmMzRoZnU1Y2ZiNSJ9LHsibmFtZSI6ImNvbnRhaW5lciIsInZhbHVlIjoiYXBwIn1dfQ==",
+            "status": 101
+          }
+        ],
+        "cleanup": "native/relay processes reaped and exact copied config removed"
+      },
+      {
+        "at": "2026-10-15T02:51:24.656884+00:00",
+        "client": "render",
+        "family": "app",
+        "native_request_capture": "unchanged GET/logs/WS forwarding to fixed api.bex.co for exact owned resource only; authorization never captured",
+        "command": [
+          "render",
+          "logs",
+          "--resources",
+          "srv-db83tioumfhs73fe7j0g",
+          "--text",
+          "QA259_347e64_render",
+          "--limit",
+          "100",
+          "--tail",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "actual_websocket_101_before_emit": true,
+        "single_emit_request": {
+          "at": "2026-10-15T02:51:26.354346+00:00",
+          "url": "https://qa-20261015-347e64-tailapp.onbex.co/emit/QA259_347e64_render",
+          "HTTP": "200",
+          "body": "QA259_347e64\n",
+          "curl_exit": 0
+        },
+        "explicit_bounded_stop": "SIGINT after own marker or bounded wait",
+        "result": {
+          "exit": -2,
+          "elapsed": 1.837,
+          "stdout": "{\n  \"id\": \"srv-db83tioumfhs73fe7j0g-8v4l7u3o3f34hfu5cfb5-2026-10-15T02:51:26.274131117Z-6ff229b0\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"app\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db83tioumfhs73fe7j0g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db83tioumfhs73fe7j0g-8v4l7u3o3f34hfu5cfb5\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"app\"\n    }\n  ],\n  \"message\": \"QA259_347e64_render\",\n  \"timestamp\": \"2026-10-15T02:51:26.274131117Z\"\n}",
+          "stderr": ""
+        },
+        "decoded_rows": [
+          {
+            "id": "srv-db83tioumfhs73fe7j0g-8v4l7u3o3f34hfu5cfb5-2026-10-15T02:51:26.274131117Z-6ff229b0",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db83tioumfhs73fe7j0g"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db83tioumfhs73fe7j0g-8v4l7u3o3f34hfu5cfb5"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              }
+            ],
+            "message": "QA259_347e64_render",
+            "timestamp": "2026-10-15T02:51:26.274131117Z"
+          }
+        ],
+        "passed": true,
+        "wire": [
+          {
+            "at": "2026-10-15T02:51:25.536854Z",
+            "request": {
+              "headers": {
+                "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+              },
+              "method": "GET",
+              "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db83tioumfhs73fe7j0g&text=QA259_347e64_render&limit=100"
+            },
+            "response_headers": {
+              "CF-Ray": "a4ab85994fbefca9-SJC",
+              "Connection": "upgrade",
+              "Sec-WebSocket-Accept": "V2ZAnHqbr5L/4KfrOfhfzGtR+Do=",
+              "Upgrade": "websocket"
+            },
+            "server_read_end": "read tcp [2600:1700:45f0:963f:fd3e:ea2b:34d1:59d3]:57186->[2606:4700:3033::ac43:9497]:443: use of closed network connection",
+            "server_ws_bytes": "gX4BensiaWQiOiJzcnYtZGI4M3Rpb3VtZmhzNzNmZTdqMGctOHY0bDd1M28zZjM0aGZ1NWNmYjUtMjAyNi0xMC0xNVQwMjo1MToyNi4yNzQxMzExMTdaLTZmZjIyOWIwIiwibWVzc2FnZSI6IlFBMjU5XzM0N2U2NF9yZW5kZXIiLCJ0aW1lc3RhbXAiOiIyMDI2LTEwLTE1VDAyOjUxOjI2LjI3NDEzMTExN1oiLCJsYWJlbHMiOlt7Im5hbWUiOiJ0eXBlIiwidmFsdWUiOiJhcHAifSx7Im5hbWUiOiJyZXNvdXJjZSIsInZhbHVlIjoic3J2LWRiODN0aW91bWZoczczZmU3ajBnIn0seyJuYW1lIjoiaW5zdGFuY2UiLCJ2YWx1ZSI6InNydi1kYjgzdGlvdW1maHM3M2ZlN2owZy04djRsN3UzbzNmMzRoZnU1Y2ZiNSJ9LHsibmFtZSI6ImNvbnRhaW5lciIsInZhbHVlIjoiYXBwIn1dfQ==",
+            "status": 101
+          }
+        ],
+        "cleanup": "native/relay processes reaped and exact copied config removed"
+      }
+    ],
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db83tioumfhs73fe7j0g",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.731,
+      "stdout": "{\n  \"data\": {\n    \"autoDeploy\": \"no\",\n    \"autoDeployTrigger\": \"off\",\n    \"branch\": \"main\",\n    \"createdAt\": \"2026-10-15T02:47:40Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db83tioumfhs73fe7j0g\",\n    \"id\": \"srv-db83tioumfhs73fe7j0g\",\n    \"name\": \"qa-20261015-347e64-tailapp\",\n    \"notifyOnFail\": \"default\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"repo\": \"https://github.com/bex-co/bex\",\n    \"rootDir\": \"examples/runtime-version/node\",\n    \"serviceDetails\": {\n      \"env\": \"node\",\n      \"envSpecificDetails\": {\n        \"buildCommand\": \"/bin/cat \\u003e qa_tail.js \\u003c\\u003c'QA259_NODE'\\nconst http=require('node:http');http.createServer((req,res)=\\u003e{if(req.url.startsWith('/emit/'))console.log(req.url.slice(6));res.end(process.env.MESSAGE+'\\\\n');}).listen(Number(process.env.PORT||3000),'0.0.0.0');\\nQA259_NODE\\n/usr/local/bin/node --check qa_tail.js\",\n        \"preDeployCommand\": \"\",\n        \"startCommand\": \"/usr/local/bin/node /opt/render/project/src/qa_tail.js\"\n      },\n      \"healthCheckPath\": \"/\",\n      \"internalAddress\": \"qa-20261015-347e64-tailapp:3000\",\n      \"maintenanceMode\": {\n        \"enabled\": false,\n        \"uri\": \"\"\n      },\n      \"maxShutdownDelaySeconds\": 30,\n      \"numInstances\": 1,\n      \"plan\": \"free\",\n      \"port\": 3000,\n      \"region\": \"fsn1\",\n      \"renderSubdomainPolicy\": \"enabled\",\n      \"runtime\": \"node\",\n      \"url\": \"https://qa-20261015-347e64-tailapp.onbex.co\"\n    },\n    \"slug\": \"qa-20261015-347e64-tailapp\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": [],\n    \"type\": \"web_service\",\n    \"updatedAt\": \"2026-10-15T02:49:53Z\",\n    \"environmentId\": null,\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "cleanup_reconciliations": [
+      {
+        "at": "2026-10-15T02:52:00.102734+00:00",
+        "detail": {
+          "at": "2026-10-15T02:51:57.900892+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db83tioumfhs73fe7j0g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "404",
+          "elapsed": 0.894,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4ab86622c101990-SJC"
+          },
+          "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+        },
+        "inventory": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "services",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.557,
+          "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T02:51:06Z\",\n        \"nextRunAt\": \"2026-10-15T02:52:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T02:51:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T02:51:07Z\",\n        \"nextRunAt\": \"2026-10-15T02:52:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T02:51:07Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T02:51:06Z\",\n        \"nextRunAt\": \"2026-10-15T02:52:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T02:51:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T02:45:36Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T00:05:33Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-14T00:05:28Z\"\n    }\n  }\n]",
+          "stderr": ""
+        },
+        "baseline_service_ids": [
+          "srv-daif6dsmg29s73d1umvg",
+          "srv-dap3r714dm7c7390q91g",
+          "srv-dap3umrbdpcs73f5eeug",
+          "srv-dap3v694dm7c7390q930",
+          "srv-db09u90ehcmc739j12cg",
+          "srv-db09vbgehcmc739j12i0"
+        ],
+        "quota": {
+          "at": "2026-10-15T02:51:59.546335+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "200",
+          "elapsed": 0.275,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4ab866fdfaf6e82-SJC"
+          },
+          "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+        },
+        "runtime": {
+          "HTTP": "404",
+          "curl_exit": 0
+        },
+        "direct_database_connection_teardown": "not tested: no data endpoint was accessed or credential fetched"
+      }
+    ]
+  },
+  {
+    "sweep": 259,
+    "family": "keyvalue",
+    "client": "bex",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "keyvalue",
+    "name": "qa-20261015-927598-kvtail",
+    "nonce": "927598",
+    "marker": "QA259_927598",
+    "time": "2026-10-15T02:47:41.989544+00:00",
+    "source_head": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+    "dependency_ids": [],
+    "recorded_child_ids": [],
+    "capacity_proof": {
+      "at": "2026-10-15T02:47:41.439333+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.671,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4ab80202e981f2f-SJC"
+      },
+      "response": "{\"services\":{\"used\":7,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "pre_create_inventory": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "keyvalues",
+        "list",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.492,
+      "stdout": "{\n  \"data\": []\n}",
+      "stderr": ""
+    },
+    "pre_create_ids": [],
+    "create_command": [
+      "bex",
+      "keyvalues",
+      "create",
+      "--name",
+      "qa-20261015-927598-kvtail",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--memory-policy",
+      "queue",
+      "--persistence-mode",
+      "journal_snapshot",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "state": "deleted: detail404/listabsent/baseline present/quota restored termination0",
+    "create_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "keyvalues",
+        "create",
+        "--name",
+        "qa-20261015-927598-kvtail",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--memory-policy",
+        "queue",
+        "--persistence-mode",
+        "journal_snapshot",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.423,
+      "stdout": "{\n  \"data\": {\n    \"id\": \"red-db83tjgumfhs73fe7j1g\",\n    \"name\": \"qa-20261015-927598-kvtail\",\n    \"plan\": \"free\",\n    \"region\": \"fsn1\",\n    \"status\": \"creating\",\n    \"createdAt\": \"2026-10-15T02:47:42Z\",\n    \"updatedAt\": \"2026-10-15T02:47:42.460151161Z\",\n    \"version\": \"8\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"ownerType\": \"team\",\n    \"projectId\": null,\n    \"environmentId\": null,\n    \"ipAllowList\": [],\n    \"maxmemoryPolicy\": \"noeviction\",\n    \"persistenceMode\": \"journal_snapshot\"\n  }\n}",
+      "stderr": ""
+    },
+    "id": "red-db83tjgumfhs73fe7j1g",
+    "create_response": {
+      "id": "red-db83tjgumfhs73fe7j1g",
+      "name": "qa-20261015-927598-kvtail",
+      "plan": "free",
+      "region": "fsn1",
+      "status": "creating",
+      "createdAt": "2026-10-15T02:47:42Z",
+      "updatedAt": "2026-10-15T02:47:42.460151161Z",
+      "version": "8",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "ownerType": "team",
+      "projectId": null,
+      "environmentId": null,
+      "ipAllowList": [],
+      "maxmemoryPolicy": "noeviction",
+      "persistenceMode": "journal_snapshot"
+    },
+    "last_readback": {
+      "id": "red-db83tjgumfhs73fe7j1g",
+      "name": "qa-20261015-927598-kvtail",
+      "plan": "free",
+      "region": "fsn1",
+      "status": "available",
+      "createdAt": "2026-10-15T02:47:42Z",
+      "updatedAt": "2026-10-15T02:48:21Z",
+      "version": "8",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "ownerType": "team",
+      "projectId": null,
+      "environmentId": null,
+      "ipAllowList": [],
+      "maxmemoryPolicy": "noeviction",
+      "persistenceMode": "journal_snapshot"
+    },
+    "observations": [
+      {
+        "at": "2026-10-15T02:49:24.074190+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "keyvalues",
+            "get",
+            "red-db83tjgumfhs73fe7j1g",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.427,
+          "stdout": "{\n  \"data\": {\n    \"id\": \"red-db83tjgumfhs73fe7j1g\",\n    \"name\": \"qa-20261015-927598-kvtail\",\n    \"plan\": \"free\",\n    \"region\": \"fsn1\",\n    \"status\": \"available\",\n    \"createdAt\": \"2026-10-15T02:47:42Z\",\n    \"updatedAt\": \"2026-10-15T02:48:21Z\",\n    \"version\": \"8\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"ownerType\": \"team\",\n    \"projectId\": null,\n    \"environmentId\": null,\n    \"ipAllowList\": [],\n    \"maxmemoryPolicy\": \"noeviction\",\n    \"persistenceMode\": \"journal_snapshot\"\n  }\n}",
+          "stderr": ""
+        },
+        "status": "available",
+        "ready": true
+      }
+    ],
+    "ready": true,
+    "native_tail_checks": [
+      {
+        "at": "2026-10-15T02:50:03.405851+00:00",
+        "client": "bex",
+        "family": "keyvalue",
+        "native_request_capture": "unchanged GET/logs/WS forwarding to fixed api.bex.co for exact owned resource only; authorization never captured",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "red-db83tjgumfhs73fe7j1g",
+          "--text",
+          "QA259_927598_bex",
+          "--limit",
+          "100",
+          "--tail",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "result": {
+          "exit": 1,
+          "elapsed": 1.082,
+          "stdout": "",
+          "stderr": "Error: error tailing logs: failed to tail logs: {\"error\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\"}\n\n"
+        },
+        "passed": true,
+        "wire": [
+          {
+            "at": "2026-10-15T02:50:04.622191Z",
+            "request": {
+              "headers": {
+                "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+              },
+              "method": "GET",
+              "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=red-db83tjgumfhs73fe7j1g&text=QA259_927598_bex&limit=100"
+            },
+            "response": "{\"error\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\"}\n",
+            "response_headers": {
+              "CF-Ray": "a4ab839e88471949-SJC",
+              "Content-Type": "application/json"
+            },
+            "status": 400
+          }
+        ],
+        "cleanup": "native/relay processes reaped and exact copied config removed"
+      },
+      {
+        "at": "2026-10-15T02:50:04.889091+00:00",
+        "client": "render",
+        "family": "keyvalue",
+        "native_request_capture": "unchanged GET/logs/WS forwarding to fixed api.bex.co for exact owned resource only; authorization never captured",
+        "command": [
+          "render",
+          "logs",
+          "--resources",
+          "red-db83tjgumfhs73fe7j1g",
+          "--text",
+          "QA259_927598_render",
+          "--limit",
+          "100",
+          "--tail",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "result": {
+          "exit": 1,
+          "elapsed": 0.938,
+          "stdout": "",
+          "stderr": "Error: error tailing logs: failed to tail logs: {\"error\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\"}\n\n"
+        },
+        "passed": true,
+        "wire": [
+          {
+            "at": "2026-10-15T02:50:05.955325Z",
+            "request": {
+              "headers": {
+                "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+              },
+              "method": "GET",
+              "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=red-db83tjgumfhs73fe7j1g&text=QA259_927598_render&limit=100"
+            },
+            "response": "{\"error\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\"}\n",
+            "response_headers": {
+              "CF-Ray": "a4ab83a7482d36e8-SJC",
+              "Content-Type": "application/json"
+            },
+            "status": 400
+          }
+        ],
+        "cleanup": "native/relay processes reaped and exact copied config removed"
+      }
+    ],
+    "historical_controls": [
+      {
+        "client": "bex",
+        "at": "2026-10-15T02:50:36.254446+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "red-db83tjgumfhs73fe7j1g",
+            "--limit",
+            "5",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.368,
+          "stdout": "{\n  \"id\": \"red-db83tjgumfhs73fe7j1g-50p601pb2lqgda645t0b-2026-10-15T02:48:17.702400918Z-aacbd3ac\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db83tjgumfhs73fe7j1g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db83tjgumfhs73fe7j1g-50p601pb2lqgda645t0b\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 15 Oct 2026 02:48:17.702 * Done loading RDB, keys loaded: 0, keys expired: 0.\",\n  \"timestamp\": \"2026-10-15T02:48:17.702400918Z\"\n}{\n  \"id\": \"red-db83tjgumfhs73fe7j1g-50p601pb2lqgda645t0b-2026-10-15T02:48:17.702784605Z-595b202b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db83tjgumfhs73fe7j1g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db83tjgumfhs73fe7j1g-50p601pb2lqgda645t0b\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 15 Oct 2026 02:48:17.702 * DB loaded from base file appendonly.aof.1.base.rdb: 0.095 seconds\",\n  \"timestamp\": \"2026-10-15T02:48:17.702784605Z\"\n}{\n  \"id\": \"red-db83tjgumfhs73fe7j1g-50p601pb2lqgda645t0b-2026-10-15T02:48:17.702866033Z-74fcf67a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db83tjgumfhs73fe7j1g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db83tjgumfhs73fe7j1g-50p601pb2lqgda645t0b\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 15 Oct 2026 02:48:17.702 * DB loaded from append only file: 0.095 seconds\",\n  \"timestamp\": \"2026-10-15T02:48:17.702866033Z\"\n}{\n  \"id\": \"red-db83tjgumfhs73fe7j1g-50p601pb2lqgda645t0b-2026-10-15T02:48:17.703136517Z-b6521ba3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db83tjgumfhs73fe7j1g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db83tjgumfhs73fe7j1g-50p601pb2lqgda645t0b\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 15 Oct 2026 02:48:17.702 * Opening AOF incr file appendonly.aof.1.incr.aof on server start\",\n  \"timestamp\": \"2026-10-15T02:48:17.703136517Z\"\n}{\n  \"id\": \"red-db83tjgumfhs73fe7j1g-50p601pb2lqgda645t0b-2026-10-15T02:48:17.703158528Z-f0870fee\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db83tjgumfhs73fe7j1g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db83tjgumfhs73fe7j1g-50p601pb2lqgda645t0b\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 15 Oct 2026 02:48:17.702 * Ready to accept connections tcp\",\n  \"timestamp\": \"2026-10-15T02:48:17.703158528Z\"\n}",
+          "stderr": ""
+        }
+      },
+      {
+        "client": "render",
+        "at": "2026-10-15T02:50:36.993001+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "logs",
+            "--resources",
+            "red-db83tjgumfhs73fe7j1g",
+            "--limit",
+            "5",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.354,
+          "stdout": "{\n  \"id\": \"red-db83tjgumfhs73fe7j1g-50p601pb2lqgda645t0b-2026-10-15T02:48:17.702400918Z-aacbd3ac\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db83tjgumfhs73fe7j1g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db83tjgumfhs73fe7j1g-50p601pb2lqgda645t0b\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 15 Oct 2026 02:48:17.702 * Done loading RDB, keys loaded: 0, keys expired: 0.\",\n  \"timestamp\": \"2026-10-15T02:48:17.702400918Z\"\n}{\n  \"id\": \"red-db83tjgumfhs73fe7j1g-50p601pb2lqgda645t0b-2026-10-15T02:48:17.702784605Z-595b202b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db83tjgumfhs73fe7j1g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db83tjgumfhs73fe7j1g-50p601pb2lqgda645t0b\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 15 Oct 2026 02:48:17.702 * DB loaded from base file appendonly.aof.1.base.rdb: 0.095 seconds\",\n  \"timestamp\": \"2026-10-15T02:48:17.702784605Z\"\n}{\n  \"id\": \"red-db83tjgumfhs73fe7j1g-50p601pb2lqgda645t0b-2026-10-15T02:48:17.702866033Z-74fcf67a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db83tjgumfhs73fe7j1g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db83tjgumfhs73fe7j1g-50p601pb2lqgda645t0b\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 15 Oct 2026 02:48:17.702 * DB loaded from append only file: 0.095 seconds\",\n  \"timestamp\": \"2026-10-15T02:48:17.702866033Z\"\n}{\n  \"id\": \"red-db83tjgumfhs73fe7j1g-50p601pb2lqgda645t0b-2026-10-15T02:48:17.703136517Z-b6521ba3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db83tjgumfhs73fe7j1g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db83tjgumfhs73fe7j1g-50p601pb2lqgda645t0b\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 15 Oct 2026 02:48:17.702 * Opening AOF incr file appendonly.aof.1.incr.aof on server start\",\n  \"timestamp\": \"2026-10-15T02:48:17.703136517Z\"\n}{\n  \"id\": \"red-db83tjgumfhs73fe7j1g-50p601pb2lqgda645t0b-2026-10-15T02:48:17.703158528Z-f0870fee\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"keyvalue\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"red-db83tjgumfhs73fe7j1g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"red-db83tjgumfhs73fe7j1g-50p601pb2lqgda645t0b\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"valkey\"\n    }\n  ],\n  \"message\": \"1:M 15 Oct 2026 02:48:17.702 * Ready to accept connections tcp\",\n  \"timestamp\": \"2026-10-15T02:48:17.703158528Z\"\n}",
+          "stderr": ""
+        }
+      }
+    ],
+    "transport_refusals": [
+      {
+        "at": "2026-10-15T02:51:15.689322+00:00",
+        "api_only": true,
+        "family": "keyvalue",
+        "mixed_with_owned_app": false,
+        "transport": "SSE",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&limit=5&resource=red-db83tjgumfhs73fe7j1g",
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+            "Accept": "text/event-stream"
+          },
+          "authorization": "REDACTED"
+        },
+        "HTTP": "400",
+        "curl_exit": 0,
+        "elapsed": 0.292,
+        "headers": {
+          "date": "Thu, 15 Oct 2026 02:51:15 GMT",
+          "content-type": "application/json",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "cf-cache-status": "DYNAMIC",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=%2BZBZbBkn1H940qB5TM9E4VHdBi0kp%2FTGvL2LVrM6ISYbJWYkNY5w%2Bn3jYbu16pTDdnHu3QNIVFBONiOMjqhVPzeI0IsNtzHdRBXOuC3REDL3tsM2lIaQMXtpPtD82%2BuPd2wA58i0X2ne\"}]}",
+          "server": "cloudflare",
+          "cf-ray": "a4ab855dadaca709-SJC",
+          "alt-svc": "h3=\":443\"; ma=86400"
+        },
+        "body": "{\"error\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\"}\n",
+        "stderr": "",
+        "passed": true
+      },
+      {
+        "at": "2026-10-15T02:51:16.123175+00:00",
+        "api_only": true,
+        "family": "keyvalue",
+        "mixed_with_owned_app": false,
+        "transport": "NDJSON",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&limit=5&resource=red-db83tjgumfhs73fe7j1g",
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+            "Accept": "application/x-ndjson"
+          },
+          "authorization": "REDACTED"
+        },
+        "HTTP": "400",
+        "curl_exit": 0,
+        "elapsed": 0.282,
+        "headers": {
+          "date": "Thu, 15 Oct 2026 02:51:16 GMT",
+          "content-type": "application/json",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "cf-cache-status": "DYNAMIC",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=bBf8oitpc5PVIk4ubrt7C%2FVN5cPeUf8RRGZGLXtMWZ9tU8LRFrF8r6Y4XaC8WugfjjdZr%2BgsEkH5bRgjcyKVr0mNmRBw0F18XR%2F%2BSy8DGH1NP7I%2FzCrZAd4%2FYOfkdDKFiSssPdeHKYQQ\"}]}",
+          "server": "cloudflare",
+          "cf-ray": "a4ab85606ae12953-SJC",
+          "alt-svc": "h3=\":443\"; ma=86400"
+        },
+        "body": "{\"error\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\"}\n",
+        "stderr": "",
+        "passed": true
+      },
+      {
+        "at": "2026-10-15T02:51:16.907321+00:00",
+        "api_only": true,
+        "family": "keyvalue",
+        "mixed_with_owned_app": false,
+        "transport": "WebSocket",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&limit=5&resource=red-db83tjgumfhs73fe7j1g",
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+            "Accept": "application/json",
+            "Connection": "Upgrade",
+            "Upgrade": "websocket",
+            "Sec-WebSocket-Version": "13",
+            "Sec-WebSocket-Key": "cWEyNTktcHJvdG9jb2xubw=="
+          },
+          "authorization": "REDACTED"
+        },
+        "HTTP": "400",
+        "curl_exit": 0,
+        "elapsed": 0.631,
+        "headers": {
+          "date": "Thu, 15 Oct 2026 02:51:16 GMT",
+          "content-type": "application/json",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "cf-cache-status": "DYNAMIC",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=USygNeNO2hnOKlNDjxlpTKUrpTZ2j%2BmazqaiV8PrZXeAryP0tX1k46NBhacPvzEjW3Pf7r2Bwq4frBMulxpz2FbSQ%2BsIYliNj0zscHep4Lwv0JOe2YW%2FnJBk8eu6h3J4ivLDXsDdqxAN\"}]}",
+          "server": "cloudflare",
+          "cf-ray": "a4ab8563192e3023-SJC",
+          "alt-svc": "h3=\":443\"; ma=86400"
+        },
+        "body": "{\"error\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\"}\n",
+        "stderr": "",
+        "passed": true
+      },
+      {
+        "at": "2026-10-15T02:51:17.341094+00:00",
+        "api_only": true,
+        "family": "keyvalue",
+        "mixed_with_owned_app": true,
+        "transport": "SSE",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&limit=5&resource=srv-db83tioumfhs73fe7j0g&resource=red-db83tjgumfhs73fe7j1g",
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+            "Accept": "text/event-stream"
+          },
+          "authorization": "REDACTED"
+        },
+        "HTTP": "400",
+        "curl_exit": 0,
+        "elapsed": 0.293,
+        "headers": {
+          "date": "Thu, 15 Oct 2026 02:51:17 GMT",
+          "content-type": "application/json",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "cf-cache-status": "DYNAMIC",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=drb%2B9mnAL4Vmc3Ntlfe2VaFmq0nF6ywsiD7YYdBQpII65kSPtNG6uxbLrexqTwRfkW6F1UoKp%2FjYxOxA%2B0U9xBCz%2B%2FSdHqMLT%2BhC6vwWIc0QDIFYwiDZDf8Q1gM0DddSQ6yMmlY%2FeLCt\"}]}",
+          "server": "cloudflare",
+          "cf-ray": "a4ab85680cd526d3-SJC",
+          "alt-svc": "h3=\":443\"; ma=86400"
+        },
+        "body": "{\"error\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\"}\n",
+        "stderr": "",
+        "passed": true
+      },
+      {
+        "at": "2026-10-15T02:51:17.784945+00:00",
+        "api_only": true,
+        "family": "keyvalue",
+        "mixed_with_owned_app": true,
+        "transport": "NDJSON",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&limit=5&resource=srv-db83tioumfhs73fe7j0g&resource=red-db83tjgumfhs73fe7j1g",
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+            "Accept": "application/x-ndjson"
+          },
+          "authorization": "REDACTED"
+        },
+        "HTTP": "400",
+        "curl_exit": 0,
+        "elapsed": 0.307,
+        "headers": {
+          "date": "Thu, 15 Oct 2026 02:51:17 GMT",
+          "content-type": "application/json",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "cf-cache-status": "DYNAMIC",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=8hgad6YqMadu1zunuj1XBMcZc7eox0DuO%2FHJJZ6Y1KaKipnVz4nGPBiuI1miEmNNQfdJ%2BauYnIpirB9%2FABpZrflo%2FrymNQ1hxd7TP%2Fvk4pvDxi8H3X2okI%2FOnuH9CmP1F5%2BDiVmYlZJS\"}]}",
+          "server": "cloudflare",
+          "cf-ray": "a4ab856aa94f7e56-SJC",
+          "alt-svc": "h3=\":443\"; ma=86400"
+        },
+        "body": "{\"error\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\"}\n",
+        "stderr": "",
+        "passed": true
+      },
+      {
+        "at": "2026-10-15T02:51:18.566324+00:00",
+        "api_only": true,
+        "family": "keyvalue",
+        "mixed_with_owned_app": true,
+        "transport": "WebSocket",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&limit=5&resource=srv-db83tioumfhs73fe7j0g&resource=red-db83tjgumfhs73fe7j1g",
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+            "Accept": "application/json",
+            "Connection": "Upgrade",
+            "Upgrade": "websocket",
+            "Sec-WebSocket-Version": "13",
+            "Sec-WebSocket-Key": "cWEyNTktcHJvdG9jb2xubw=="
+          },
+          "authorization": "REDACTED"
+        },
+        "HTTP": "400",
+        "curl_exit": 0,
+        "elapsed": 0.639,
+        "headers": {
+          "date": "Thu, 15 Oct 2026 02:51:18 GMT",
+          "content-type": "application/json",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "cf-cache-status": "DYNAMIC",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=cjfTEdlZlM8GFnDSDCruSFZN0mB88zTPhSjeiHmqO%2FR%2BizZgD0gK5RdlR6FW%2Fl6IbxsBpcNI1mNaCUgZDRCKBVCTaFcTNEE9YBKKBvQsZSbqNUa4rGjaeo8kG8Pj%2BBFCBAoXoNJVCq5Z\"}]}",
+          "server": "cloudflare",
+          "cf-ray": "a4ab856d6f4b1587-SJC",
+          "alt-svc": "h3=\":443\"; ma=86400"
+        },
+        "body": "{\"error\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\"}\n",
+        "stderr": "",
+        "passed": true
+      }
+    ],
+    "dependent_inventory_before_delete": {
+      "at": "2026-10-15T02:51:47.998740+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db83tjgumfhs73fe7j1g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.294,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4ab8627791e1f2f-SJC"
+      },
+      "response": "{\"id\":\"red-db83tjgumfhs73fe7j1g\",\"name\":\"qa-20261015-927598-kvtail\",\"plan\":\"free\",\"status\":\"available\",\"suspended\":\"not_suspended\",\"createdAt\":\"2026-10-15T02:47:42Z\",\"updatedAt\":\"2026-10-15T02:48:21Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"QA_PRIVATE_VALUE_REDACTED\",\"type\":\"team\"},\"region\":\"fsn1\",\"dashboardUrl\":\"https://dashboard.bex.co/r/red-db83tjgumfhs73fe7j1g\",\"version\":\"8\",\"options\":{\"maxmemoryPolicy\":\"noeviction\",\"persistenceMode\":\"journal_snapshot\"},\"ipAllowList\":[],\"public\":false}\n"
+    },
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "keyvalues",
+        "delete",
+        "red-db83tjgumfhs73fe7j1g",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.736,
+      "stdout": "{\n  \"data\": {\n    \"id\": \"red-db83tjgumfhs73fe7j1g\",\n    \"name\": \"qa-20261015-927598-kvtail\",\n    \"plan\": \"free\",\n    \"region\": \"fsn1\",\n    \"status\": \"available\",\n    \"createdAt\": \"2026-10-15T02:47:42Z\",\n    \"updatedAt\": \"2026-10-15T02:48:21Z\",\n    \"version\": \"8\",\n    \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n    \"ownerType\": \"team\",\n    \"projectId\": null,\n    \"environmentId\": null,\n    \"ipAllowList\": [],\n    \"maxmemoryPolicy\": \"noeviction\",\n    \"persistenceMode\": \"journal_snapshot\"\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "cleanup_reconciliations": [
+      {
+        "at": "2026-10-15T02:51:56.594190+00:00",
+        "detail": {
+          "at": "2026-10-15T02:51:55.048638+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/key-value/red-db83tjgumfhs73fe7j1g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "404",
+          "elapsed": 0.266,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4ab8653c8772b10-SJC"
+          },
+          "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+        },
+        "inventory": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "keyvalues",
+            "list",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.491,
+          "stdout": "{\n  \"data\": []\n}",
+          "stderr": ""
+        },
+        "baseline_service_ids": [
+          "srv-daif6dsmg29s73d1umvg",
+          "srv-dap3r714dm7c7390q91g",
+          "srv-dap3umrbdpcs73f5eeug",
+          "srv-dap3v694dm7c7390q930",
+          "srv-db09u90ehcmc739j12cg",
+          "srv-db09vbgehcmc739j12i0"
+        ],
+        "quota": {
+          "at": "2026-10-15T02:51:56.584803+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "200",
+          "elapsed": 0.374,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4ab865cb9c64833-SJC"
+          },
+          "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+        },
+        "runtime": null,
+        "direct_database_connection_teardown": "not tested: no data endpoint was accessed or credential fetched"
+      }
+    ]
+  },
+  {
+    "sweep": 259,
+    "family": "postgres",
+    "client": "bex",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "postgres",
+    "name": "qa-20261015-ee8a8a-pgtail",
+    "nonce": "ee8a8a",
+    "marker": "QA259_ee8a8a",
+    "time": "2026-10-15T02:47:43.968711+00:00",
+    "source_head": "6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459",
+    "dependency_ids": [],
+    "recorded_child_ids": [],
+    "capacity_proof": {
+      "at": "2026-10-15T02:47:43.415035+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.279,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4ab802efb55eb28-SJC"
+      },
+      "response": "{\"services\":{\"used\":7,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":1,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "pre_create_inventory": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "postgres",
+        "list",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.501,
+      "stdout": "{\n  \"data\": []\n}",
+      "stderr": ""
+    },
+    "pre_create_ids": [],
+    "create_command": [
+      "bex",
+      "postgres",
+      "create",
+      "--name",
+      "qa-20261015-ee8a8a-pgtail",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--version",
+      "18",
+      "--connection-pool",
+      "none",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "state": "deleted: detail404/listabsent/baseline present/quota restored termination0",
+    "create_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "postgres",
+        "create",
+        "--name",
+        "qa-20261015-ee8a8a-pgtail",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--version",
+        "18",
+        "--connection-pool",
+        "none",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.383,
+      "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-15T02:47:44Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db83tk0umfhs73fe7j2g\",\n    \"databaseName\": \"dpg_db83tk0umfhs73fe7j2g\",\n    \"databaseUser\": \"dpg_db83tk0umfhs73fe7j2g_user\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db83tk0umfhs73fe7j2g\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"\"\n      }\n    ],\n    \"name\": \"qa-20261015-ee8a8a-pgtail\",\n    \"owner\": {\n      \"email\": \"QA_PRIVATE_VALUE_REDACTED\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"creating\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-15T02:47:44.407563769Z\",\n    \"version\": \"18\",\n    \"projectId\": null\n  }\n}",
+      "stderr": ""
+    },
+    "id": "dpg-db83tk0umfhs73fe7j2g",
+    "create_response": {
+      "connectionPool": "none",
+      "createdAt": "2026-10-15T02:47:44Z",
+      "dashboardUrl": "https://dashboard.bex.co/d/dpg-db83tk0umfhs73fe7j2g",
+      "databaseName": "dpg_db83tk0umfhs73fe7j2g",
+      "databaseUser": "dpg_db83tk0umfhs73fe7j2g_user",
+      "diskAutoscalingEnabled": false,
+      "diskSizeGB": 1,
+      "highAvailabilityEnabled": false,
+      "id": "dpg-db83tk0umfhs73fe7j2g",
+      "ipAllowList": [
+        {
+          "cidrBlock": "0.0.0.0/0",
+          "description": ""
+        },
+        {
+          "cidrBlock": "::/0",
+          "description": ""
+        }
+      ],
+      "name": "qa-20261015-ee8a8a-pgtail",
+      "owner": {
+        "email": "QA_PRIVATE_VALUE_REDACTED",
+        "id": "tea-daif693dqjvc73e7as3g",
+        "name": "bex-canary",
+        "type": "team"
+      },
+      "plan": "free",
+      "readReplicas": [],
+      "region": "fsn1",
+      "role": "",
+      "status": "creating",
+      "suspended": "not_suspended",
+      "suspenders": null,
+      "updatedAt": "2026-10-15T02:47:44.407563769Z",
+      "version": "18",
+      "projectId": null
+    },
+    "last_readback": {
+      "connectionPool": "none",
+      "createdAt": "2026-10-15T02:47:44Z",
+      "dashboardUrl": "https://dashboard.bex.co/d/dpg-db83tk0umfhs73fe7j2g",
+      "databaseName": "dpg_db83tk0umfhs73fe7j2g",
+      "databaseUser": "dpg_db83tk0umfhs73fe7j2g_user",
+      "diskAutoscalingEnabled": false,
+      "diskSizeGB": 1,
+      "highAvailabilityEnabled": false,
+      "id": "dpg-db83tk0umfhs73fe7j2g",
+      "ipAllowList": [
+        {
+          "cidrBlock": "0.0.0.0/0",
+          "description": ""
+        },
+        {
+          "cidrBlock": "::/0",
+          "description": ""
+        }
+      ],
+      "name": "qa-20261015-ee8a8a-pgtail",
+      "owner": {
+        "email": "QA_PRIVATE_VALUE_REDACTED",
+        "id": "tea-daif693dqjvc73e7as3g",
+        "name": "bex-canary",
+        "type": "team"
+      },
+      "plan": "free",
+      "readReplicas": [],
+      "region": "fsn1",
+      "role": "",
+      "status": "available",
+      "suspended": "not_suspended",
+      "suspenders": null,
+      "updatedAt": "2026-10-15T02:50:09Z",
+      "version": "18",
+      "projectId": null
+    },
+    "observations": [
+      {
+        "at": "2026-10-15T02:49:24.853513+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "postgres",
+            "get",
+            "dpg-db83tk0umfhs73fe7j2g",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.383,
+          "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-15T02:47:44Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db83tk0umfhs73fe7j2g\",\n    \"databaseName\": \"dpg_db83tk0umfhs73fe7j2g\",\n    \"databaseUser\": \"dpg_db83tk0umfhs73fe7j2g_user\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db83tk0umfhs73fe7j2g\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"\"\n      }\n    ],\n    \"name\": \"qa-20261015-ee8a8a-pgtail\",\n    \"owner\": {\n      \"email\": \"QA_PRIVATE_VALUE_REDACTED\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"creating\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-15T02:47:44.407563769Z\",\n    \"version\": \"18\",\n    \"projectId\": null\n  }\n}",
+          "stderr": ""
+        },
+        "status": "creating",
+        "ready": false
+      },
+      {
+        "at": "2026-10-15T02:50:34.048487+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "postgres",
+            "get",
+            "dpg-db83tk0umfhs73fe7j2g",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.412,
+          "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-15T02:47:44Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db83tk0umfhs73fe7j2g\",\n    \"databaseName\": \"dpg_db83tk0umfhs73fe7j2g\",\n    \"databaseUser\": \"dpg_db83tk0umfhs73fe7j2g_user\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db83tk0umfhs73fe7j2g\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"\"\n      }\n    ],\n    \"name\": \"qa-20261015-ee8a8a-pgtail\",\n    \"owner\": {\n      \"email\": \"QA_PRIVATE_VALUE_REDACTED\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"available\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-15T02:50:09Z\",\n    \"version\": \"18\",\n    \"projectId\": null\n  }\n}",
+          "stderr": ""
+        },
+        "status": "available",
+        "ready": true
+      }
+    ],
+    "ready": true,
+    "native_tail_checks": [
+      {
+        "at": "2026-10-15T02:51:10.319712+00:00",
+        "client": "bex",
+        "family": "postgres",
+        "native_request_capture": "unchanged GET/logs/WS forwarding to fixed api.bex.co for exact owned resource only; authorization never captured",
+        "command": [
+          "bex",
+          "logs",
+          "--resources",
+          "dpg-db83tk0umfhs73fe7j2g",
+          "--text",
+          "QA259_ee8a8a_bex",
+          "--limit",
+          "100",
+          "--tail",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "result": {
+          "exit": 1,
+          "elapsed": 1.15,
+          "stdout": "",
+          "stderr": "Error: error tailing logs: failed to tail logs: {\"error\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\"}\n\n"
+        },
+        "passed": true,
+        "wire": [
+          {
+            "at": "2026-10-15T02:51:11.616072Z",
+            "request": {
+              "headers": {
+                "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+              },
+              "method": "GET",
+              "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=dpg-db83tk0umfhs73fe7j2g&text=QA259_ee8a8a_bex&limit=100"
+            },
+            "response": "{\"error\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\"}\n",
+            "response_headers": {
+              "CF-Ray": "a4ab853fea847a33-SJC",
+              "Content-Type": "application/json"
+            },
+            "status": 400
+          }
+        ],
+        "cleanup": "native/relay processes reaped and exact copied config removed"
+      },
+      {
+        "at": "2026-10-15T02:51:11.888741+00:00",
+        "client": "render",
+        "family": "postgres",
+        "native_request_capture": "unchanged GET/logs/WS forwarding to fixed api.bex.co for exact owned resource only; authorization never captured",
+        "command": [
+          "render",
+          "logs",
+          "--resources",
+          "dpg-db83tk0umfhs73fe7j2g",
+          "--text",
+          "QA259_ee8a8a_render",
+          "--limit",
+          "100",
+          "--tail",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "result": {
+          "exit": 1,
+          "elapsed": 0.867,
+          "stdout": "",
+          "stderr": "Error: error tailing logs: failed to tail logs: {\"error\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\"}\n\n"
+        },
+        "passed": true,
+        "wire": [
+          {
+            "at": "2026-10-15T02:51:12.880872Z",
+            "request": {
+              "headers": {
+                "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+              },
+              "method": "GET",
+              "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=dpg-db83tk0umfhs73fe7j2g&text=QA259_ee8a8a_render&limit=100"
+            },
+            "response": "{\"error\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\"}\n",
+            "response_headers": {
+              "CF-Ray": "a4ab8549790acf2a-SJC",
+              "Content-Type": "application/json"
+            },
+            "status": 400
+          }
+        ],
+        "cleanup": "native/relay processes reaped and exact copied config removed"
+      }
+    ],
+    "historical_controls": [
+      {
+        "client": "bex",
+        "at": "2026-10-15T02:51:13.901282+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "dpg-db83tk0umfhs73fe7j2g",
+            "--limit",
+            "5",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.488,
+          "stdout": "{\n  \"id\": \"dpg-db83tk0umfhs73fe7j2g-5vpk877e2hd4olmrrgqc-2026-10-15T02:49:46.065363141Z-8ade02b3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db83tk0umfhs73fe7j2g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db83tk0umfhs73fe7j2g-5vpk877e2hd4olmrrgqc\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-15 02:49:46.060 UTC [22] LOG:  listening on IPv6 address \\\"::\\\", port 5432\",\n  \"timestamp\": \"2026-10-15T02:49:46.065363141Z\"\n}{\n  \"id\": \"dpg-db83tk0umfhs73fe7j2g-5vpk877e2hd4olmrrgqc-2026-10-15T02:49:46.275571935Z-3edc036e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db83tk0umfhs73fe7j2g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db83tk0umfhs73fe7j2g-5vpk877e2hd4olmrrgqc\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-15 02:49:46.275 UTC [22] LOG:  listening on Unix socket \\\"/controller/run/.s.PGSQL.5432\\\"\",\n  \"timestamp\": \"2026-10-15T02:49:46.275571935Z\"\n}{\n  \"id\": \"dpg-db83tk0umfhs73fe7j2g-5vpk877e2hd4olmrrgqc-2026-10-15T02:49:47.064512037Z-2eda3f33\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db83tk0umfhs73fe7j2g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db83tk0umfhs73fe7j2g-5vpk877e2hd4olmrrgqc\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-15 02:49:47.063 UTC [30] LOG:  database system was shut down at 2026-10-15 02:49:21 UTC\",\n  \"timestamp\": \"2026-10-15T02:49:47.064512037Z\"\n}{\n  \"id\": \"dpg-db83tk0umfhs73fe7j2g-5vpk877e2hd4olmrrgqc-2026-10-15T02:49:47.560523926Z-9405b6c2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db83tk0umfhs73fe7j2g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db83tk0umfhs73fe7j2g-5vpk877e2hd4olmrrgqc\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-15 02:49:47.402 UTC [31] FATAL:  the database system is starting up\",\n  \"timestamp\": \"2026-10-15T02:49:47.560523926Z\"\n}{\n  \"id\": \"dpg-db83tk0umfhs73fe7j2g-5vpk877e2hd4olmrrgqc-2026-10-15T02:49:47.560568623Z-ff60857f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db83tk0umfhs73fe7j2g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db83tk0umfhs73fe7j2g-5vpk877e2hd4olmrrgqc\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-15 02:49:47.503 UTC [22] LOG:  database system is ready to accept connections\",\n  \"timestamp\": \"2026-10-15T02:49:47.560568623Z\"\n}",
+          "stderr": ""
+        }
+      },
+      {
+        "client": "render",
+        "at": "2026-10-15T02:51:15.040341+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "logs",
+            "--resources",
+            "dpg-db83tk0umfhs73fe7j2g",
+            "--limit",
+            "5",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.737,
+          "stdout": "{\n  \"id\": \"dpg-db83tk0umfhs73fe7j2g-5vpk877e2hd4olmrrgqc-2026-10-15T02:49:46.065363141Z-8ade02b3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db83tk0umfhs73fe7j2g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db83tk0umfhs73fe7j2g-5vpk877e2hd4olmrrgqc\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-15 02:49:46.060 UTC [22] LOG:  listening on IPv6 address \\\"::\\\", port 5432\",\n  \"timestamp\": \"2026-10-15T02:49:46.065363141Z\"\n}{\n  \"id\": \"dpg-db83tk0umfhs73fe7j2g-5vpk877e2hd4olmrrgqc-2026-10-15T02:49:46.275571935Z-3edc036e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db83tk0umfhs73fe7j2g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db83tk0umfhs73fe7j2g-5vpk877e2hd4olmrrgqc\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-15 02:49:46.275 UTC [22] LOG:  listening on Unix socket \\\"/controller/run/.s.PGSQL.5432\\\"\",\n  \"timestamp\": \"2026-10-15T02:49:46.275571935Z\"\n}{\n  \"id\": \"dpg-db83tk0umfhs73fe7j2g-5vpk877e2hd4olmrrgqc-2026-10-15T02:49:47.064512037Z-2eda3f33\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db83tk0umfhs73fe7j2g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db83tk0umfhs73fe7j2g-5vpk877e2hd4olmrrgqc\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-15 02:49:47.063 UTC [30] LOG:  database system was shut down at 2026-10-15 02:49:21 UTC\",\n  \"timestamp\": \"2026-10-15T02:49:47.064512037Z\"\n}{\n  \"id\": \"dpg-db83tk0umfhs73fe7j2g-5vpk877e2hd4olmrrgqc-2026-10-15T02:49:47.560523926Z-9405b6c2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db83tk0umfhs73fe7j2g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db83tk0umfhs73fe7j2g-5vpk877e2hd4olmrrgqc\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"error\"\n    }\n  ],\n  \"message\": \"2026-10-15 02:49:47.402 UTC [31] FATAL:  the database system is starting up\",\n  \"timestamp\": \"2026-10-15T02:49:47.560523926Z\"\n}{\n  \"id\": \"dpg-db83tk0umfhs73fe7j2g-5vpk877e2hd4olmrrgqc-2026-10-15T02:49:47.560568623Z-ff60857f\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"dpg-db83tk0umfhs73fe7j2g\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"dpg-db83tk0umfhs73fe7j2g-5vpk877e2hd4olmrrgqc\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"postgres\"\n    },\n    {\n      \"name\": \"level\",\n      \"value\": \"info\"\n    }\n  ],\n  \"message\": \"2026-10-15 02:49:47.503 UTC [22] LOG:  database system is ready to accept connections\",\n  \"timestamp\": \"2026-10-15T02:49:47.560568623Z\"\n}",
+          "stderr": ""
+        }
+      }
+    ],
+    "transport_refusals": [
+      {
+        "at": "2026-10-15T02:51:19.094404+00:00",
+        "api_only": true,
+        "family": "postgres",
+        "mixed_with_owned_app": false,
+        "transport": "SSE",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&limit=5&resource=dpg-db83tk0umfhs73fe7j2g",
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+            "Accept": "text/event-stream"
+          },
+          "authorization": "REDACTED"
+        },
+        "HTTP": "400",
+        "curl_exit": 0,
+        "elapsed": 0.38,
+        "headers": {
+          "date": "Thu, 15 Oct 2026 02:51:19 GMT",
+          "content-type": "application/json",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "cf-cache-status": "DYNAMIC",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=TqFNBgbd88geP9BsqeQsaLJPUIurEY83KgqeyKrGWTdWtyK32SJAkmIghPWaIpRuiNuZjq%2F2vdzgH%2FjFJZY56uvJWSCoN9SxSf8AAKauEIVxs8vbBUCn0x%2BhQOj%2Bd3%2F%2FD9Mv13lBuIhZ\"}]}",
+          "server": "cloudflare",
+          "cf-ray": "a4ab8572d8a07803-SJC",
+          "alt-svc": "h3=\":443\"; ma=86400"
+        },
+        "body": "{\"error\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\"}\n",
+        "stderr": "",
+        "passed": true
+      },
+      {
+        "at": "2026-10-15T02:51:19.618558+00:00",
+        "api_only": true,
+        "family": "postgres",
+        "mixed_with_owned_app": false,
+        "transport": "NDJSON",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&limit=5&resource=dpg-db83tk0umfhs73fe7j2g",
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+            "Accept": "application/x-ndjson"
+          },
+          "authorization": "REDACTED"
+        },
+        "HTTP": "400",
+        "curl_exit": 0,
+        "elapsed": 0.379,
+        "headers": {
+          "date": "Thu, 15 Oct 2026 02:51:19 GMT",
+          "content-type": "application/json",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "cf-cache-status": "DYNAMIC",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=YZMwxcsq6ltqofdf8oOcFsNYNxl%2FAYwTHj1Vw11QrVFMi3vk5xtXrb%2FXsxvHr15XSnpNC%2Fy%2BCAm%2F%2BPlypCgbgf6ztZvKn0j5AB0vt1WMVx25v1MJTfBlo6%2FoAaJiqrkR4aHKZXfYlnvC\"}]}",
+          "server": "cloudflare",
+          "cf-ray": "a4ab8576396df993-SJC",
+          "alt-svc": "h3=\":443\"; ma=86400"
+        },
+        "body": "{\"error\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\"}\n",
+        "stderr": "",
+        "passed": true
+      },
+      {
+        "at": "2026-10-15T02:51:20.476715+00:00",
+        "api_only": true,
+        "family": "postgres",
+        "mixed_with_owned_app": false,
+        "transport": "WebSocket",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&limit=5&resource=dpg-db83tk0umfhs73fe7j2g",
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+            "Accept": "application/json",
+            "Connection": "Upgrade",
+            "Upgrade": "websocket",
+            "Sec-WebSocket-Version": "13",
+            "Sec-WebSocket-Key": "cWEyNTktcHJvdG9jb2xubw=="
+          },
+          "authorization": "REDACTED"
+        },
+        "HTTP": "400",
+        "curl_exit": 0,
+        "elapsed": 0.699,
+        "headers": {
+          "date": "Thu, 15 Oct 2026 02:51:20 GMT",
+          "content-type": "application/json",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "cf-cache-status": "DYNAMIC",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=ifqScyYQLFllRpjfD51tGEUzschvJlg%2BjY00jQEiwcQAnUFn03vnoIrVksG7UIrHaOwZm6hOxR6V5nOaP%2BSIXc74WKqiShc7G%2F4pjn8JyTq4MqI72uV6or9RrRINMRy4cXxkzslZ%2Fs7T\"}]}",
+          "server": "cloudflare",
+          "cf-ray": "a4ab85797c98cf17-SJC",
+          "alt-svc": "h3=\":443\"; ma=86400"
+        },
+        "body": "{\"error\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\"}\n",
+        "stderr": "",
+        "passed": true
+      },
+      {
+        "at": "2026-10-15T02:51:20.933809+00:00",
+        "api_only": true,
+        "family": "postgres",
+        "mixed_with_owned_app": true,
+        "transport": "SSE",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&limit=5&resource=srv-db83tioumfhs73fe7j0g&resource=dpg-db83tk0umfhs73fe7j2g",
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+            "Accept": "text/event-stream"
+          },
+          "authorization": "REDACTED"
+        },
+        "HTTP": "400",
+        "curl_exit": 0,
+        "elapsed": 0.303,
+        "headers": {
+          "date": "Thu, 15 Oct 2026 02:51:20 GMT",
+          "content-type": "application/json",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "cf-cache-status": "DYNAMIC",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=LwU2wCLarMZL%2BjtmkJ8We3sI2NGi8Q9UjnE6qe7bXSaE6gTop%2FW3ksvnYlxJq%2FED%2Fc4BMhHZXE%2BMYaz3H5LYNQ6T1kV%2F8b4YqLiE3ZJBNiwl9MLS%2ByF8u4N9MkBlNAbFMRxAI5FnLQdW\"}]}",
+          "server": "cloudflare",
+          "cf-ray": "a4ab857e5b86de51-SJC",
+          "alt-svc": "h3=\":443\"; ma=86400"
+        },
+        "body": "{\"error\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\"}\n",
+        "stderr": "",
+        "passed": true
+      },
+      {
+        "at": "2026-10-15T02:51:21.587204+00:00",
+        "api_only": true,
+        "family": "postgres",
+        "mixed_with_owned_app": true,
+        "transport": "NDJSON",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&limit=5&resource=srv-db83tioumfhs73fe7j0g&resource=dpg-db83tk0umfhs73fe7j2g",
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+            "Accept": "application/x-ndjson"
+          },
+          "authorization": "REDACTED"
+        },
+        "HTTP": "400",
+        "curl_exit": 0,
+        "elapsed": 0.495,
+        "headers": {
+          "date": "Thu, 15 Oct 2026 02:51:21 GMT",
+          "content-type": "application/json",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "cf-cache-status": "DYNAMIC",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=%2BF1iP%2BSwCoJ%2Biqh2ptkhUMyvdfaJ6cAy1EuXyTPhk8Ks%2BhVPs99ID6EqOdRuV7FYmVzTnEpQH9ABnOADE34z5mSzntF44L4Q6Xkk1e07Pov7bj1BlMQWOhwCBRiKIUFoXR8dXr7Z%2Fmsr\"}]}",
+          "server": "cloudflare",
+          "cf-ray": "a4ab85813a87d81b-SJC",
+          "alt-svc": "h3=\":443\"; ma=86400"
+        },
+        "body": "{\"error\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\"}\n",
+        "stderr": "",
+        "passed": true
+      },
+      {
+        "at": "2026-10-15T02:51:22.022855+00:00",
+        "api_only": true,
+        "family": "postgres",
+        "mixed_with_owned_app": true,
+        "transport": "WebSocket",
+        "request": {
+          "method": "GET",
+          "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&limit=5&resource=srv-db83tioumfhs73fe7j0g&resource=dpg-db83tk0umfhs73fe7j2g",
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+            "Accept": "application/json",
+            "Connection": "Upgrade",
+            "Upgrade": "websocket",
+            "Sec-WebSocket-Version": "13",
+            "Sec-WebSocket-Key": "cWEyNTktcHJvdG9jb2xubw=="
+          },
+          "authorization": "REDACTED"
+        },
+        "HTTP": "400",
+        "curl_exit": 0,
+        "elapsed": 0.296,
+        "headers": {
+          "date": "Thu, 15 Oct 2026 02:51:22 GMT",
+          "content-type": "application/json",
+          "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+          "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+          "strict-transport-security": "max-age=63072000; includeSubDomains",
+          "vary": "Origin",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "cf-cache-status": "DYNAMIC",
+          "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=fAOKc7xcDrSwvG7ipHHWIHbbQtj8tOz3h3lES51PZYf8ENagQrkSCLnApCCkJjDOxizaLEWaHJKHDrMjzHrPM52UhqC0al%2F1NHPleZOtinkz4UYvMqW%2Bv81g%2FV0S51A308JGEPdGfT%2Bl\"}]}",
+          "server": "cloudflare",
+          "cf-ray": "a4ab8585283aeb21-SJC",
+          "alt-svc": "h3=\":443\"; ma=86400"
+        },
+        "body": "{\"error\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\"}\n",
+        "stderr": "",
+        "passed": true
+      }
+    ],
+    "dependent_inventory_before_delete": {
+      "at": "2026-10-15T02:51:46.381228+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db83tk0umfhs73fe7j2g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.413,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4ab861d2d44eb24-SJC"
+      },
+      "response": "{\"id\":\"dpg-db83tk0umfhs73fe7j2g\",\"name\":\"qa-20261015-ee8a8a-pgtail\",\"plan\":\"free\",\"version\":\"18\",\"status\":\"available\",\"databaseName\":\"dpg_db83tk0umfhs73fe7j2g\",\"databaseUser\":\"dpg_db83tk0umfhs73fe7j2g_user\",\"diskSizeGB\":1,\"diskAutoscalingEnabled\":false,\"highAvailabilityEnabled\":false,\"readReplicas\":[],\"suspended\":\"not_suspended\",\"createdAt\":\"2026-10-15T02:47:44Z\",\"updatedAt\":\"2026-10-15T02:50:09Z\",\"region\":\"fsn1\",\"dashboardUrl\":\"https://dashboard.bex.co/d/dpg-db83tk0umfhs73fe7j2g\",\"externalHost\":\"dpg-db83tk0umfhs73fe7j2g.db.bex.co\",\"public\":true,\"ipAllowList\":[{\"cidrBlock\":\"0.0.0.0/0\",\"description\":\"\"},{\"cidrBlock\":\"::/0\",\"description\":\"\"}],\"poolerEnabled\":false,\"connectionPool\":\"none\",\"backupsEnabled\":false,\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"QA_PRIVATE_VALUE_REDACTED\",\"type\":\"team\"}}\n"
+    },
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "postgres",
+        "delete",
+        "dpg-db83tk0umfhs73fe7j2g",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.601,
+      "stdout": "{\n  \"data\": {\n    \"connectionPool\": \"none\",\n    \"createdAt\": \"2026-10-15T02:47:44Z\",\n    \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db83tk0umfhs73fe7j2g\",\n    \"databaseName\": \"dpg_db83tk0umfhs73fe7j2g\",\n    \"databaseUser\": \"dpg_db83tk0umfhs73fe7j2g_user\",\n    \"diskAutoscalingEnabled\": false,\n    \"diskSizeGB\": 1,\n    \"highAvailabilityEnabled\": false,\n    \"id\": \"dpg-db83tk0umfhs73fe7j2g\",\n    \"ipAllowList\": [\n      {\n        \"cidrBlock\": \"0.0.0.0/0\",\n        \"description\": \"\"\n      },\n      {\n        \"cidrBlock\": \"::/0\",\n        \"description\": \"\"\n      }\n    ],\n    \"name\": \"qa-20261015-ee8a8a-pgtail\",\n    \"owner\": {\n      \"email\": \"QA_PRIVATE_VALUE_REDACTED\",\n      \"id\": \"tea-daif693dqjvc73e7as3g\",\n      \"name\": \"bex-canary\",\n      \"type\": \"team\"\n    },\n    \"plan\": \"free\",\n    \"readReplicas\": [],\n    \"region\": \"fsn1\",\n    \"role\": \"\",\n    \"status\": \"available\",\n    \"suspended\": \"not_suspended\",\n    \"suspenders\": null,\n    \"updatedAt\": \"2026-10-15T02:50:09Z\",\n    \"version\": \"18\",\n    \"projectId\": null\n  },\n  \"meta\": {\n    \"deleted\": true\n  }\n}",
+      "stderr": ""
+    },
+    "cleanup_reconciliations": [
+      {
+        "at": "2026-10-15T02:51:54.395966+00:00",
+        "detail": {
+          "at": "2026-10-15T02:51:52.626929+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/postgres/dpg-db83tk0umfhs73fe7j2g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "404",
+          "elapsed": 0.368,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4ab86447a8a49d2-SJC"
+          },
+          "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n"
+        },
+        "inventory": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "postgres",
+            "list",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.66,
+          "stdout": "{\n  \"data\": []\n}",
+          "stderr": ""
+        },
+        "baseline_service_ids": [
+          "srv-daif6dsmg29s73d1umvg",
+          "srv-dap3r714dm7c7390q91g",
+          "srv-dap3umrbdpcs73f5eeug",
+          "srv-dap3v694dm7c7390q930",
+          "srv-db09u90ehcmc739j12cg",
+          "srv-db09vbgehcmc739j12i0"
+        ],
+        "quota": {
+          "at": "2026-10-15T02:51:54.389907+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "200",
+          "elapsed": 0.359,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4ab864f4a6115d0-SJC"
+          },
+          "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+        },
+        "runtime": null,
+        "direct_database_connection_teardown": "not tested: no data endpoint was accessed or credential fetched"
+      }
+    ]
+  }
+]

@@ -1,0 +1,6 @@
+{
+  "credentials": "known QA email/password and isolated config credential strings masked if present; Authorization omitted",
+  "generated_fixture_variable": "actual random QA_GENERATED value replaced immediately with <OWN_QA_GENERATED_VALUE_REDACTED> before saving each read; only its SHA256 retained for equality",
+  "nonsecret_values": "empty/single-space literals, harmless marker values, IDs/revisions and full native/API results preserved",
+  "private_paths": "<owned-temp>"
+}

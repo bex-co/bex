@@ -1,0 +1,474 @@
+[
+  {
+    "at": "2026-10-15T02:51:15.689322+00:00",
+    "api_only": true,
+    "family": "keyvalue",
+    "mixed_with_owned_app": false,
+    "transport": "SSE",
+    "request": {
+      "method": "GET",
+      "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&limit=5&resource=red-db83tjgumfhs73fe7j1g",
+      "headers": {
+        "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+        "Accept": "text/event-stream"
+      },
+      "authorization": "REDACTED"
+    },
+    "HTTP": "400",
+    "curl_exit": 0,
+    "elapsed": 0.292,
+    "headers": {
+      "date": "Thu, 15 Oct 2026 02:51:15 GMT",
+      "content-type": "application/json",
+      "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+      "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+      "strict-transport-security": "max-age=63072000; includeSubDomains",
+      "vary": "Origin",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "cf-cache-status": "DYNAMIC",
+      "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=%2BZBZbBkn1H940qB5TM9E4VHdBi0kp%2FTGvL2LVrM6ISYbJWYkNY5w%2Bn3jYbu16pTDdnHu3QNIVFBONiOMjqhVPzeI0IsNtzHdRBXOuC3REDL3tsM2lIaQMXtpPtD82%2BuPd2wA58i0X2ne\"}]}",
+      "server": "cloudflare",
+      "cf-ray": "a4ab855dadaca709-SJC",
+      "alt-svc": "h3=\":443\"; ma=86400"
+    },
+    "body": "{\"error\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\"}\n",
+    "stderr": "",
+    "passed": true
+  },
+  {
+    "at": "2026-10-15T02:51:16.123175+00:00",
+    "api_only": true,
+    "family": "keyvalue",
+    "mixed_with_owned_app": false,
+    "transport": "NDJSON",
+    "request": {
+      "method": "GET",
+      "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&limit=5&resource=red-db83tjgumfhs73fe7j1g",
+      "headers": {
+        "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+        "Accept": "application/x-ndjson"
+      },
+      "authorization": "REDACTED"
+    },
+    "HTTP": "400",
+    "curl_exit": 0,
+    "elapsed": 0.282,
+    "headers": {
+      "date": "Thu, 15 Oct 2026 02:51:16 GMT",
+      "content-type": "application/json",
+      "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+      "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+      "strict-transport-security": "max-age=63072000; includeSubDomains",
+      "vary": "Origin",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "cf-cache-status": "DYNAMIC",
+      "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=bBf8oitpc5PVIk4ubrt7C%2FVN5cPeUf8RRGZGLXtMWZ9tU8LRFrF8r6Y4XaC8WugfjjdZr%2BgsEkH5bRgjcyKVr0mNmRBw0F18XR%2F%2BSy8DGH1NP7I%2FzCrZAd4%2FYOfkdDKFiSssPdeHKYQQ\"}]}",
+      "server": "cloudflare",
+      "cf-ray": "a4ab85606ae12953-SJC",
+      "alt-svc": "h3=\":443\"; ma=86400"
+    },
+    "body": "{\"error\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\"}\n",
+    "stderr": "",
+    "passed": true
+  },
+  {
+    "at": "2026-10-15T02:51:16.907321+00:00",
+    "api_only": true,
+    "family": "keyvalue",
+    "mixed_with_owned_app": false,
+    "transport": "WebSocket",
+    "request": {
+      "method": "GET",
+      "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&limit=5&resource=red-db83tjgumfhs73fe7j1g",
+      "headers": {
+        "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+        "Accept": "application/json",
+        "Connection": "Upgrade",
+        "Upgrade": "websocket",
+        "Sec-WebSocket-Version": "13",
+        "Sec-WebSocket-Key": "cWEyNTktcHJvdG9jb2xubw=="
+      },
+      "authorization": "REDACTED"
+    },
+    "HTTP": "400",
+    "curl_exit": 0,
+    "elapsed": 0.631,
+    "headers": {
+      "date": "Thu, 15 Oct 2026 02:51:16 GMT",
+      "content-type": "application/json",
+      "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+      "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+      "strict-transport-security": "max-age=63072000; includeSubDomains",
+      "vary": "Origin",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "cf-cache-status": "DYNAMIC",
+      "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=USygNeNO2hnOKlNDjxlpTKUrpTZ2j%2BmazqaiV8PrZXeAryP0tX1k46NBhacPvzEjW3Pf7r2Bwq4frBMulxpz2FbSQ%2BsIYliNj0zscHep4Lwv0JOe2YW%2FnJBk8eu6h3J4ivLDXsDdqxAN\"}]}",
+      "server": "cloudflare",
+      "cf-ray": "a4ab8563192e3023-SJC",
+      "alt-svc": "h3=\":443\"; ma=86400"
+    },
+    "body": "{\"error\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\"}\n",
+    "stderr": "",
+    "passed": true
+  },
+  {
+    "at": "2026-10-15T02:51:17.341094+00:00",
+    "api_only": true,
+    "family": "keyvalue",
+    "mixed_with_owned_app": true,
+    "transport": "SSE",
+    "request": {
+      "method": "GET",
+      "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&limit=5&resource=srv-db83tioumfhs73fe7j0g&resource=red-db83tjgumfhs73fe7j1g",
+      "headers": {
+        "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+        "Accept": "text/event-stream"
+      },
+      "authorization": "REDACTED"
+    },
+    "HTTP": "400",
+    "curl_exit": 0,
+    "elapsed": 0.293,
+    "headers": {
+      "date": "Thu, 15 Oct 2026 02:51:17 GMT",
+      "content-type": "application/json",
+      "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+      "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+      "strict-transport-security": "max-age=63072000; includeSubDomains",
+      "vary": "Origin",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "cf-cache-status": "DYNAMIC",
+      "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=drb%2B9mnAL4Vmc3Ntlfe2VaFmq0nF6ywsiD7YYdBQpII65kSPtNG6uxbLrexqTwRfkW6F1UoKp%2FjYxOxA%2B0U9xBCz%2B%2FSdHqMLT%2BhC6vwWIc0QDIFYwiDZDf8Q1gM0DddSQ6yMmlY%2FeLCt\"}]}",
+      "server": "cloudflare",
+      "cf-ray": "a4ab85680cd526d3-SJC",
+      "alt-svc": "h3=\":443\"; ma=86400"
+    },
+    "body": "{\"error\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\"}\n",
+    "stderr": "",
+    "passed": true
+  },
+  {
+    "at": "2026-10-15T02:51:17.784945+00:00",
+    "api_only": true,
+    "family": "keyvalue",
+    "mixed_with_owned_app": true,
+    "transport": "NDJSON",
+    "request": {
+      "method": "GET",
+      "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&limit=5&resource=srv-db83tioumfhs73fe7j0g&resource=red-db83tjgumfhs73fe7j1g",
+      "headers": {
+        "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+        "Accept": "application/x-ndjson"
+      },
+      "authorization": "REDACTED"
+    },
+    "HTTP": "400",
+    "curl_exit": 0,
+    "elapsed": 0.307,
+    "headers": {
+      "date": "Thu, 15 Oct 2026 02:51:17 GMT",
+      "content-type": "application/json",
+      "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+      "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+      "strict-transport-security": "max-age=63072000; includeSubDomains",
+      "vary": "Origin",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "cf-cache-status": "DYNAMIC",
+      "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=8hgad6YqMadu1zunuj1XBMcZc7eox0DuO%2FHJJZ6Y1KaKipnVz4nGPBiuI1miEmNNQfdJ%2BauYnIpirB9%2FABpZrflo%2FrymNQ1hxd7TP%2Fvk4pvDxi8H3X2okI%2FOnuH9CmP1F5%2BDiVmYlZJS\"}]}",
+      "server": "cloudflare",
+      "cf-ray": "a4ab856aa94f7e56-SJC",
+      "alt-svc": "h3=\":443\"; ma=86400"
+    },
+    "body": "{\"error\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\"}\n",
+    "stderr": "",
+    "passed": true
+  },
+  {
+    "at": "2026-10-15T02:51:18.566324+00:00",
+    "api_only": true,
+    "family": "keyvalue",
+    "mixed_with_owned_app": true,
+    "transport": "WebSocket",
+    "request": {
+      "method": "GET",
+      "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&limit=5&resource=srv-db83tioumfhs73fe7j0g&resource=red-db83tjgumfhs73fe7j1g",
+      "headers": {
+        "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+        "Accept": "application/json",
+        "Connection": "Upgrade",
+        "Upgrade": "websocket",
+        "Sec-WebSocket-Version": "13",
+        "Sec-WebSocket-Key": "cWEyNTktcHJvdG9jb2xubw=="
+      },
+      "authorization": "REDACTED"
+    },
+    "HTTP": "400",
+    "curl_exit": 0,
+    "elapsed": 0.639,
+    "headers": {
+      "date": "Thu, 15 Oct 2026 02:51:18 GMT",
+      "content-type": "application/json",
+      "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+      "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+      "strict-transport-security": "max-age=63072000; includeSubDomains",
+      "vary": "Origin",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "cf-cache-status": "DYNAMIC",
+      "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=cjfTEdlZlM8GFnDSDCruSFZN0mB88zTPhSjeiHmqO%2FR%2BizZgD0gK5RdlR6FW%2Fl6IbxsBpcNI1mNaCUgZDRCKBVCTaFcTNEE9YBKKBvQsZSbqNUa4rGjaeo8kG8Pj%2BBFCBAoXoNJVCq5Z\"}]}",
+      "server": "cloudflare",
+      "cf-ray": "a4ab856d6f4b1587-SJC",
+      "alt-svc": "h3=\":443\"; ma=86400"
+    },
+    "body": "{\"error\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Key Value live log subscription is not supported; use the historical logs query\"}\n",
+    "stderr": "",
+    "passed": true
+  },
+  {
+    "at": "2026-10-15T02:51:19.094404+00:00",
+    "api_only": true,
+    "family": "postgres",
+    "mixed_with_owned_app": false,
+    "transport": "SSE",
+    "request": {
+      "method": "GET",
+      "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&limit=5&resource=dpg-db83tk0umfhs73fe7j2g",
+      "headers": {
+        "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+        "Accept": "text/event-stream"
+      },
+      "authorization": "REDACTED"
+    },
+    "HTTP": "400",
+    "curl_exit": 0,
+    "elapsed": 0.38,
+    "headers": {
+      "date": "Thu, 15 Oct 2026 02:51:19 GMT",
+      "content-type": "application/json",
+      "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+      "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+      "strict-transport-security": "max-age=63072000; includeSubDomains",
+      "vary": "Origin",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "cf-cache-status": "DYNAMIC",
+      "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=TqFNBgbd88geP9BsqeQsaLJPUIurEY83KgqeyKrGWTdWtyK32SJAkmIghPWaIpRuiNuZjq%2F2vdzgH%2FjFJZY56uvJWSCoN9SxSf8AAKauEIVxs8vbBUCn0x%2BhQOj%2Bd3%2F%2FD9Mv13lBuIhZ\"}]}",
+      "server": "cloudflare",
+      "cf-ray": "a4ab8572d8a07803-SJC",
+      "alt-svc": "h3=\":443\"; ma=86400"
+    },
+    "body": "{\"error\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\"}\n",
+    "stderr": "",
+    "passed": true
+  },
+  {
+    "at": "2026-10-15T02:51:19.618558+00:00",
+    "api_only": true,
+    "family": "postgres",
+    "mixed_with_owned_app": false,
+    "transport": "NDJSON",
+    "request": {
+      "method": "GET",
+      "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&limit=5&resource=dpg-db83tk0umfhs73fe7j2g",
+      "headers": {
+        "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+        "Accept": "application/x-ndjson"
+      },
+      "authorization": "REDACTED"
+    },
+    "HTTP": "400",
+    "curl_exit": 0,
+    "elapsed": 0.379,
+    "headers": {
+      "date": "Thu, 15 Oct 2026 02:51:19 GMT",
+      "content-type": "application/json",
+      "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+      "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+      "strict-transport-security": "max-age=63072000; includeSubDomains",
+      "vary": "Origin",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "cf-cache-status": "DYNAMIC",
+      "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=YZMwxcsq6ltqofdf8oOcFsNYNxl%2FAYwTHj1Vw11QrVFMi3vk5xtXrb%2FXsxvHr15XSnpNC%2Fy%2BCAm%2F%2BPlypCgbgf6ztZvKn0j5AB0vt1WMVx25v1MJTfBlo6%2FoAaJiqrkR4aHKZXfYlnvC\"}]}",
+      "server": "cloudflare",
+      "cf-ray": "a4ab8576396df993-SJC",
+      "alt-svc": "h3=\":443\"; ma=86400"
+    },
+    "body": "{\"error\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\"}\n",
+    "stderr": "",
+    "passed": true
+  },
+  {
+    "at": "2026-10-15T02:51:20.476715+00:00",
+    "api_only": true,
+    "family": "postgres",
+    "mixed_with_owned_app": false,
+    "transport": "WebSocket",
+    "request": {
+      "method": "GET",
+      "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&limit=5&resource=dpg-db83tk0umfhs73fe7j2g",
+      "headers": {
+        "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+        "Accept": "application/json",
+        "Connection": "Upgrade",
+        "Upgrade": "websocket",
+        "Sec-WebSocket-Version": "13",
+        "Sec-WebSocket-Key": "cWEyNTktcHJvdG9jb2xubw=="
+      },
+      "authorization": "REDACTED"
+    },
+    "HTTP": "400",
+    "curl_exit": 0,
+    "elapsed": 0.699,
+    "headers": {
+      "date": "Thu, 15 Oct 2026 02:51:20 GMT",
+      "content-type": "application/json",
+      "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+      "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+      "strict-transport-security": "max-age=63072000; includeSubDomains",
+      "vary": "Origin",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "cf-cache-status": "DYNAMIC",
+      "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=ifqScyYQLFllRpjfD51tGEUzschvJlg%2BjY00jQEiwcQAnUFn03vnoIrVksG7UIrHaOwZm6hOxR6V5nOaP%2BSIXc74WKqiShc7G%2F4pjn8JyTq4MqI72uV6or9RrRINMRy4cXxkzslZ%2Fs7T\"}]}",
+      "server": "cloudflare",
+      "cf-ray": "a4ab85797c98cf17-SJC",
+      "alt-svc": "h3=\":443\"; ma=86400"
+    },
+    "body": "{\"error\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\"}\n",
+    "stderr": "",
+    "passed": true
+  },
+  {
+    "at": "2026-10-15T02:51:20.933809+00:00",
+    "api_only": true,
+    "family": "postgres",
+    "mixed_with_owned_app": true,
+    "transport": "SSE",
+    "request": {
+      "method": "GET",
+      "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&limit=5&resource=srv-db83tioumfhs73fe7j0g&resource=dpg-db83tk0umfhs73fe7j2g",
+      "headers": {
+        "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+        "Accept": "text/event-stream"
+      },
+      "authorization": "REDACTED"
+    },
+    "HTTP": "400",
+    "curl_exit": 0,
+    "elapsed": 0.303,
+    "headers": {
+      "date": "Thu, 15 Oct 2026 02:51:20 GMT",
+      "content-type": "application/json",
+      "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+      "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+      "strict-transport-security": "max-age=63072000; includeSubDomains",
+      "vary": "Origin",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "cf-cache-status": "DYNAMIC",
+      "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=LwU2wCLarMZL%2BjtmkJ8We3sI2NGi8Q9UjnE6qe7bXSaE6gTop%2FW3ksvnYlxJq%2FED%2Fc4BMhHZXE%2BMYaz3H5LYNQ6T1kV%2F8b4YqLiE3ZJBNiwl9MLS%2ByF8u4N9MkBlNAbFMRxAI5FnLQdW\"}]}",
+      "server": "cloudflare",
+      "cf-ray": "a4ab857e5b86de51-SJC",
+      "alt-svc": "h3=\":443\"; ma=86400"
+    },
+    "body": "{\"error\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\"}\n",
+    "stderr": "",
+    "passed": true
+  },
+  {
+    "at": "2026-10-15T02:51:21.587204+00:00",
+    "api_only": true,
+    "family": "postgres",
+    "mixed_with_owned_app": true,
+    "transport": "NDJSON",
+    "request": {
+      "method": "GET",
+      "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&limit=5&resource=srv-db83tioumfhs73fe7j0g&resource=dpg-db83tk0umfhs73fe7j2g",
+      "headers": {
+        "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+        "Accept": "application/x-ndjson"
+      },
+      "authorization": "REDACTED"
+    },
+    "HTTP": "400",
+    "curl_exit": 0,
+    "elapsed": 0.495,
+    "headers": {
+      "date": "Thu, 15 Oct 2026 02:51:21 GMT",
+      "content-type": "application/json",
+      "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+      "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+      "strict-transport-security": "max-age=63072000; includeSubDomains",
+      "vary": "Origin",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "cf-cache-status": "DYNAMIC",
+      "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=%2BF1iP%2BSwCoJ%2Biqh2ptkhUMyvdfaJ6cAy1EuXyTPhk8Ks%2BhVPs99ID6EqOdRuV7FYmVzTnEpQH9ABnOADE34z5mSzntF44L4Q6Xkk1e07Pov7bj1BlMQWOhwCBRiKIUFoXR8dXr7Z%2Fmsr\"}]}",
+      "server": "cloudflare",
+      "cf-ray": "a4ab85813a87d81b-SJC",
+      "alt-svc": "h3=\":443\"; ma=86400"
+    },
+    "body": "{\"error\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\"}\n",
+    "stderr": "",
+    "passed": true
+  },
+  {
+    "at": "2026-10-15T02:51:22.022855+00:00",
+    "api_only": true,
+    "family": "postgres",
+    "mixed_with_owned_app": true,
+    "transport": "WebSocket",
+    "request": {
+      "method": "GET",
+      "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&limit=5&resource=srv-db83tioumfhs73fe7j0g&resource=dpg-db83tk0umfhs73fe7j2g",
+      "headers": {
+        "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "X-Bex-Workspace": "tea-daif693dqjvc73e7as3g",
+        "Accept": "application/json",
+        "Connection": "Upgrade",
+        "Upgrade": "websocket",
+        "Sec-WebSocket-Version": "13",
+        "Sec-WebSocket-Key": "cWEyNTktcHJvdG9jb2xubw=="
+      },
+      "authorization": "REDACTED"
+    },
+    "HTTP": "400",
+    "curl_exit": 0,
+    "elapsed": 0.296,
+    "headers": {
+      "date": "Thu, 15 Oct 2026 02:51:22 GMT",
+      "content-type": "application/json",
+      "nel": "{\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}",
+      "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+      "strict-transport-security": "max-age=63072000; includeSubDomains",
+      "vary": "Origin",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "cf-cache-status": "DYNAMIC",
+      "report-to": "{\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=fAOKc7xcDrSwvG7ipHHWIHbbQtj8tOz3h3lES51PZYf8ENagQrkSCLnApCCkJjDOxizaLEWaHJKHDrMjzHrPM52UhqC0al%2F1NHPleZOtinkz4UYvMqW%2Bv81g%2FV0S51A308JGEPdGfT%2Bl\"}]}",
+      "server": "cloudflare",
+      "cf-ray": "a4ab8585283aeb21-SJC",
+      "alt-svc": "h3=\":443\"; ma=86400"
+    },
+    "body": "{\"error\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\",\"id\":\"bad_request\",\"message\":\"bad request: managed Postgres live log subscription is not supported; use the historical logs query\"}\n",
+    "stderr": "",
+    "passed": true
+  }
+]

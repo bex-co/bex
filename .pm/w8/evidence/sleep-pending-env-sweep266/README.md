@@ -1,0 +1,48 @@
+# Saved environment across sleep, wake and restart — sweep266
+
+2026-10-15 UTC, isolated human QA in bex-canary. Published Bex v0.3.2 and the unchanged Render 2.27.0/a764810a7682 run against Bex production. Source6255ed8b2ca67c8c0f85fd0eadc19bedbbe62459; deployed revision unknown. Three newly created Free Node web services, auto-deploy off, with harmless build/runtime MESSAGE markers and boot UUIDs. All three are cleaned; final service inventory/quota is six baseline services, terminating0.
+
+[Complete native/API/runtime and cleanup receipts](owned-native-api-runtime-cleanup.json), [versions/boundaries](metadata.json), [redactions](redactions.json). This files [w8/106](../../106.md), a minor deploy-history settlement defect, with no product fix or ship.
+
+## Passing environment semantics
+
+Each initial release builds and serves V1. API-only setIdleTimeout sets this owned fixture's timeout to30 seconds; an API-only sparse environment PATCH saves MESSAGE=V2 with saveMode=save_only and returns rolledOut:false without creating a deploy. Public responses continue to show built/runtime V1 while saved readback is V2. After metadata confirms Hibernated/zero instances, ordinary HTTP wakes each primary fixture in about12.3 seconds: new boot UUID, still built/runtime V1, unchanged deploy IDs and saved V2. These are supported saved-versus-deployed semantics, consistent with [Render environment documentation](https://render.com/docs/configure-environment-variables).
+
+The primary Render fixture then accepts a native standard deploy from sleep. Its build is queued waiting for platform capacity. The private harness reaches its240-second bound and its original timeout handler throws before preserving native output/exit; native exit is unknown. This attempt is inconclusive for native waited completion, not a product failure. [Metadata during the wait](sweep266-render-wait-progress.json) and [native build logs](sweep266-render-wait-build-logs.json) preserve the queue evidence. The same child later becomes Live without public requests during completion, then HTTP200 proves built/runtime V2. No duplicate deploy is issued. The private runner's timeout handling was corrected for later probes, without changing the Render binary; [runner source](run-render.py.txt).
+
+## Confirmed history defect
+
+The primary Bex fixture's native restart exits0, creating dep-db84uf9aomdc7381kajg. Metadata at03:58:54Z,04:00:22Z and04:04:21Z shows Hibernated/rev-3/zero instances with that row update_in_progress. An HTTP wake then serves V1; metadata at04:05:13Z shows Running/rev-3 and the row Live. Saved V2 remains staged. The first sample was65 seconds after restart, so this round alone cannot establish whether restart originally woke the service.
+
+A fresh unchanged-Render reproducer resolves that uncertainty. Restart of srv-db853f8umfhs73fe7je0 exits0 at04:18:02Z and allocates dep-db857upaomdc7381kal0. Metadata-only sampling, with no public HTTP requests during this interval:
+
+| UTC      | phase/revision   | instances | target deploy      |
+| -------- | ---------------- | --------- | ------------------ |
+| 04:18:06 | Hibernated/rev-1 | 0         | created            |
+| 04:18:13 | Deploying/rev-1  | 1         | update_in_progress |
+| 04:18:27 | Deploying/rev-1  | 2         | update_in_progress |
+| 04:18:33 | Running/rev-3    | 1         | update_in_progress |
+| 04:18:40 | Hibernated/rev-3 | 0         | update_in_progress |
+| 04:19:08 | Hibernated/rev-3 | 0         | update_in_progress |
+
+The later pre-control sample still shows Hibernated/zero instances/pending. A bounded ordinary HTTP wake serves200 with built/runtime V1, and the next metadata sample is Running/rev-3 with the exact same deploy Live. Saved readback is still V2. Full timestamps, responses and native streams are in the receipt ledger. [Events before the Render wake control](sweep266-repro-events-before-wake.json) and [before the Bex wake control](sweep266-bex-restart-events-before-wake.json) are complete captured metadata. Event absence does not establish absence of wake; the tighter phase/instance monitor demonstrates that native restart did wake and roll successfully. No failed wake or environment regression is claimed. [Render restart semantics](https://render.com/docs/deploys) also preserve the currently deployed configuration.
+
+## Source counterexample and fix boundary
+
+`lego/backend/internal/store/reconciler.go:1342` observedDeployStatus only accepts matching active-release proof inside its PhaseRunning branch at1403. A PhaseHibernated App falls through, returning no transition while within budget, or update_failed after the gate. Its sole production caller is recordDeploy at816/817. `releaseIsActive` at1590 already checks ReleaseGeneration and matching ActiveRevision for modern status. Operator markRunning at app_controller.go:3007 stamps ActiveRevision; hibernated at2989 changes the current phase/Ready without discarding that served-release proof.
+
+The [operator virtual probe](qa266_restart_wake_probe_test.go.txt) follows actual reconciliation from served release1 through park, release3 wake, successful rollout and park again, using four variants (new image, plain restart, snapshot restart, saved-V2 snapshot restart). [All four pass](sweep266-restart-probe.jsonl) and emit typed App JSON with Hibernated/release3/active rev-3. The [backend virtual probe](qa266_parked_status_probe_test.go.txt) consumes [the saved-snapshot producer JSON](sweep266-parked-snapshot_restart_saved.json), preserving module boundaries. [Its diagnostic run](sweep266-parked-status-probe.jsonl) fails exactly the two completed-and-parked cases: pending before deadline and update_failed after deadline instead of Live. Running-completed, unserved-parked and legacy-unknown controls pass. [Replay commands/overlays](probe-commands.json).
+
+[Existing classifier, suspend and parked-failure controls pass](sweep266-classifier-controls.jsonl); [command/exit](sweep266-classifier-controls-summary.json). [Existing operator wake/config-snapshot checks pass](sweep266-source-tests.jsonl); [command/exit](sweep266-source-tests-summary.json). These are targeted source checks, not the full platform suite. No repository Go test or implementation is changed.
+
+Fix the shared history classifier to recognize strictly generation-matched durable successful-release proof while parked, after preserving cancel/supersede/pre-deploy/recorded-failure precedence. Do not turn every parked release Live, rely on the legacy observedGeneration fallback, or change the truthful current service phase to Running. REST/GraphQL/MCP/dashboard consume persisted deploy status; check all readers and add the served-then-parked regression alongside unserved, failure, cancellation and legacy controls. Pinned restart is correctly asynchronous: pkg/tui/views/restartview.go:27 → pkg/resource/service.go:223 → pkg/service/repo.go:151. Its success exit is not the defect. Deploy readers consume the persisted status; pkg/tui/views/deploycreate.go:67 WaitForDeploy polls until pkg/deploy/util.go:20 IsComplete.
+
+Source reader census: the single classifier caller records the shared deploy row. Two shared domain readers, `deploys.Service.List` and `Get` (service.go:364/408), use `view` at151, which copies persisted Status at155. REST `toRenderDeploy` (rest.go:117/121) copies it; GraphQL status at graphql.go:38 and list/get resolvers at116/146 delegate to those readers, as do MCP list/get at mcp.go:141/160. Dashboard `use-deploy.ts` queries this GraphQL deploy and `deploy-detail-page.tsx:124` renders deploy.status. The source impact is shared deploy-history readers across service kinds; hosted reproduction here is Free web restart only. No datastore restart-status change is proposed.
+
+## Dedupe, limits and cleanup
+
+Searches covered open/done `.pm` for hibernation/history/settlement, observedDeployStatus and served-release proof plus targeted git history. Existing w6/done/076 is deploy wake-up; wake succeeds here. w6/done/m147 preserves failed-rollout diagnosis and defers parking unsettled rollouts; this one already reaches Running/active rev-3, then parks successfully. w4/done/m201 chooses the actual served source for Restart despite lagging SQL; V1 source selection passes here. w1/done/106 concerns never-served legacy proof, guarded explicitly in this proposed fix. w8/done/m46 excluded an earlier hibernation timing probe and certifies awake concurrency. No existing item owns this served-then-parked history gap, and no matching fix was found in current main.
+
+The30-second override accelerates a missed observation window; default15-minute timing, deployed image identity, hosted eventual deadline failure, browser presentation and hosted GraphQL/MCP deploy-history reads are unverified. Local source proves the false timeout classification, not a hosted18-minute failure. Mutation wire was not intercepted; complete native stdout/stderr/exits and independent API reads are retained. One initial repro GET503 while already idle was retained and followed by bounded successful wake, not treated as a separate bug.
+
+Six deploy children were enumerated across three exact-owned parents. Native deletion exits0, each detail/list/public endpoint confirms absence, the final inventory retains all six immutable baseline IDs and quota terminating0. Initial terminating1 samples are retained before convergence. No shared or baseline resource was mutated. [Primary finite driver](sweep266-sleep-pending.py.txt), [fresh Render reproducer driver](sweep266-restart-repro.py.txt). Drivers include mutations and one-time guards; use fresh ownership state rather than replaying against deleted IDs.

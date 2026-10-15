@@ -33,3 +33,9 @@
 - **Scope:** one operator history producer and optional internal CR status ordering metadata, with adapter/consumer regression verification. Preserve max10, IDs, statuses, failure reasons, execution/acknowledgement, UTC schedule, permissions and poll semantics. No product redesign or long-term history store.
 - **Render parity:** included because public reads/UI reflect the producer. Bex GET history is a documented extension; compare primary trigger/cancel contracts and preserve field/wrapper/vocabulary compatibility without inventing upstream retention guarantees. Authenticated Render was not tested.
 - **Limits:** only manual runs on one owned Free BusyBox cron were exercised. Scheduled mixes, cancellation, process restart, deleted tombstones, legacy migration, cursor tails, MCP/CLI and broad suites are verification tasks, not this pass's completed guarantees.
+
+## CLI replay (2026-10-15 UTC)
+
+[sweep254 evidence in w8](../../../w8/evidence/cron-history-sweep254/README.md) adds a native Go cron created and maintained through published Bex, with both pinned clients reading its service metadata and logs. Bodyless API triggers run one success, ten failures and recovery sequentially. After run11 all REST/GraphQL/MCP histories still put the oldest success first and displace a newer failure; recovery puts the old success second. Both clients retrieve exactly12 execution messages and the success timestamp advances correctly on recovery. All owned resources are cleaned, service/runs404 and quota6/terminating0.
+
+Current source6255ed8b2 contains f42f5d086 and all four focused new ordering tests pass. Deployed revision remains unknown, so this does not establish whether the source fix has reached the exercised controller or another case remains. t007 stays blocked; the original image/UI and broader DoD remain unverified by this CLI/manual-Go replay.

@@ -1,0 +1,114 @@
+from pathlib import Path
+import json,datetime,secrets,subprocess,sys,shutil,yaml,time
+p=Path(__file__).parent;root=Path('/Volumes/nvme4tbfish/projects/bex8');cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json';c=json.loads(cp.read_text())
+assert c.get('sync255_result')==0 and not c.get('active_sync_stash')
+mode,client,role=sys.argv[1:4];assert client in ('bex','render') and role=='source'
+assert role!='unsupported' or client=='bex'
+ws='tea-daif693dqjvc73e7as3g';base={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']}
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():
+ c['last_updated']=now();cp.write_text(json.dumps(c,indent=2,ensure_ascii=False)+'\n');cp.chmod(0o600)
+def cli(args,bound=45):
+ cfg=p/'render-config/cli.yaml'
+ try:
+  if client=='render':assert not cfg.exists();shutil.copyfile(p/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  runner=['python3',str(p/'run-render.py')] if client=='render' else ['python3',str(p/'run.py'),'--release']
+  return json.loads(subprocess.check_output([*runner,'--bound='+str(bound),*args],text=True,timeout=bound+15))
+ finally:
+  if client=='render':cfg.unlink(missing_ok=True)
+def wire(path):return json.loads(subprocess.check_output(['python3',str(p/'wire.py'),'GET',path],text=True,timeout=45))
+def patch_environment(x,selector):
+ own(x);body={'saveMode':'save_only','envVars':[{'key':'NODE_VERSION','value':selector}]}
+ cfg=yaml.safe_load((p/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token
+ ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')';auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+ws+'"\n';path='/v1/services/'+x['id']+'/environment';f=p/'sweep255-environment-request.json';f.write_text(json.dumps(body));f.chmod(0o600);started=time.monotonic()
+ try:r=subprocess.run(['curl','--disable','-sS','--max-time','30','--config','-','-X','PATCH','-H','Content-Type: application/json','--data-binary','@'+str(f),'-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=36)
+ finally:f.unlink(missing_ok=True)
+ text,_,status=r.stdout.rpartition('\n');record={'at':now(),'api_only':True,'request':{'method':'PATCH','path':path,'body':body,'workspace':ws,'user_agent':ua,'authorization':'REDACTED'},'status':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-started,3),'response':text,'stderr':r.stderr};assert token not in json.dumps(record)
+ return record
+def find(client,role):return next(v for v in c['resources'] if v.get('sweep')==255 and v['client']==client and v['role']==role)
+def own(x):
+ assert x['workspace']==ws and x['id'] not in base and x['create_response']['id']==x['id'] and x['create_result']['exit']==0 and x['create_response']['ownerId']==ws
+ assert x['create_response']['serviceDetails']['plan']=='free' and not x['state'].startswith('deleted:')
+def history(x):
+ r=cli(['deploys','list',x['id'],'--confirm','-o','json']);assert r['exit']==0;rows=json.loads(r['stdout']);x['deploy_children']=rows
+ for v in rows:
+  if v['id'] not in x['recorded_child_ids']:x['recorded_child_ids'].append(v['id'])
+ x.setdefault('history_receipts',[]).append({'at':now(),'result':r});save();return rows
+if mode=='create':
+ assert not any(v.get('sweep')==255 and v.get('client')==client and v.get('role')==role for v in c['resources'])
+ q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';limits=json.loads(q['response'])['services'];assert limits['used']+limits['terminating']<limits['limit']
+ inv=cli(['services','--confirm','-o','json']);assert inv['exit']==0;existing=json.loads(inv['stdout']) or [];ids={v.get('service',v)['id'] for v in existing};assert base<=ids
+ nonce=secrets.token_hex(3);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-'+('nv' if role=='source' else 'ov' if role=='override' else 'bad');marker='QA255_'+nonce
+ selector=None if role=='source' else '18' if role=='unsupported' else '24' if client=='bex' else '>=24 <26'
+ expected_major=22 if role=='source' else None if role=='unsupported' else 24
+ args=['services','create','--name',name,'--plan','free','--region','frankfurt','--env-var','MESSAGE='+marker,'--auto-deploy=false','--confirm','-o','json'];dependencies=[]
+ program="const fs=require('node:fs'),http=require('node:http');\nfunction snap(){return {version:process.version,marker:process.env.MESSAGE,nvmrc:fs.readFileSync('/opt/render/project/src/.nvmrc','utf8'),selector:process.env.NODE_VERSION};}\nif(process.argv[2]==='--snapshot'){console.log(JSON.stringify(snap()));}else{const built=JSON.parse(fs.readFileSync('/opt/render/project/src/qa-built.json','utf8'));http.createServer((req,res)=>{res.setHeader('Content-Type','application/json');res.end(JSON.stringify({built,runtime:snap()}));}).listen(Number(process.env.PORT||3000),'0.0.0.0');}\n"
+ build="/bin/cat > qa_version.js <<'QA255_NODE'\n"+program+"QA255_NODE\n/usr/local/bin/node qa_version.js --snapshot > qa-built.json\n/bin/cat qa-built.json"
+ start='/usr/local/bin/node /opt/render/project/src/qa_version.js'
+ if role=='source':args+=['--type','web_service','--runtime','node','--repo','https://github.com/bex-co/bex','--branch','main','--root-directory','examples/runtime-version/node','--build-command',build,'--start-command',start,'--health-check-path','/']
+ else:
+  parent=find(client,'source');own(parent);assert parent.get('ready');args+=['--from',parent['id'],'--env-var','NODE_VERSION='+selector];dependencies=[parent['id']]
+ assert all(v.get('service',v)['name']!=name for v in existing)
+ x={'sweep':255,'source_head':c['head'],'workspace':ws,'type':'web_service','client':client,'role':role,'name':name,'nonce':nonce,'marker':marker,'time':now(),'selector':selector,'expected_major':expected_major,'dependency_ids':dependencies,'recorded_child_ids':[],'capacity_proof':q,'precreate_inventory_ids':sorted(ids),'generated_program':program,'build_program':build,'start_program':start,'state':'native create intent persisted','create_command':[client,*args]};c['resources'].append(x);save();r=cli(args);x.update(create_result=r,state='native result received; reconcile before retry');save();assert r['exit']==0
+ v=json.loads(r['stdout']);v=v.get('data',v);v=v.get('service',v);assert v['id'] not in ids and v['ownerId']==ws and v['name']==name and v['serviceDetails']['plan']=='free'
+ x.update(id=v['id'],create_response=v,state='created: native version build pending');save();print(json.dumps({'client':client,'role':role,'id':v['id'],'exit':r['exit'],'selector':selector,'expected_major':expected_major}),flush=True);raise SystemExit(0)
+x=find(client,role);own(x);sid=x['id']
+if mode=='observe':
+ rows=history(x);file=p/('sweep255-'+client+'-'+role+'-body.txt');r=subprocess.run(['curl','--disable','-sS','--max-time','10','-o',str(file),'-w','%{http_code}',x['create_response']['serviceDetails']['url']+'/qa255-'+x['nonce']],text=True,capture_output=True,timeout=15)
+ raw=file.read_text() if file.exists() else '';file.unlink(missing_ok=True)
+ try:body=json.loads(raw)
+ except ValueError:body=None
+ exact=False
+ if x['expected_major'] and r.stdout=='200' and isinstance(body,dict):
+  built=body.get('built',{});runtime=body.get('runtime',{});prefix='v'+str(x['expected_major'])+'.'
+  exact=built.get('version','').startswith(prefix) and built.get('version')==runtime.get('version') and built.get('marker')==runtime.get('marker')==x['marker'] and built.get('nvmrc')==runtime.get('nvmrc')=='22\n'
+  if x['selector']:exact=exact and built.get('selector')==runtime.get('selector')==x['selector']
+ o={'at':now(),'latest_deploy':rows[0] if rows else None,'runtime':{'exit':r.returncode,'HTTP':r.stdout,'body':body,'raw_body':raw,'stderr':r.stderr},'exact_expected_version_and_values':exact};x.setdefault('observations',[]).append(o)
+ if rows and rows[0]['status']=='live' and exact:x['ready']=True
+ save();print(json.dumps({'client':client,'role':role,'status':rows[0]['status'] if rows else None,'HTTP':r.stdout,'exact':exact,'runtime_version':body.get('runtime',{}).get('version') if isinstance(body,dict) else None}),flush=True)
+elif mode=='logs':
+ phase=x.get('wait_intents',[])[-1]['kind'] if x.get('wait_intents') else 'initial'
+ log_start=x['wait_intents'][-1]['at'] if x.get('wait_intents') else x['time']
+ args=['logs','--resources',sid,'--type','build','--start',log_start,'--direction','forward','--limit','100','--confirm','-o','json'];r=cli(args);x.setdefault('build_log_receipts',[]).append({'at':now(),'result':r});save();assert r['exit']==0
+ dec=json.JSONDecoder();s=r['stdout'];at=0;values=[]
+ while at<len(s):
+  while at<len(s) and s[at].isspace():at+=1
+  if at>=len(s):break
+  v,at=dec.raw_decode(s,at);values.extend(v if isinstance(v,list) else [v])
+ messages=[v.get('message','') for v in values];relevant=[v for v in messages if any(k in v for k in ('Using Node','NODE_VERSION','not a supported','QA255_'))]
+ x['relevant_build_messages']=relevant
+ if phase=='bad':x['named_unsupported_failure_seen']=any('NODE_VERSION=18' in v and 'not a supported Node version' in v for v in messages)
+ if phase=='good':x['recovery_env_version_seen']=any('Using Node 24 (from NODE_VERSION=24)' in v for v in messages)
+ if role=='unsupported':x['unsupported_named_refusal']=any('NODE_VERSION=18' in v and 'not a supported Node version' in v for v in messages)
+ save();print(json.dumps({'client':client,'role':role,'exit':r['exit'],'rows':len(values),'relevant':relevant,'named_refusal':x.get('unsupported_named_refusal')}),flush=True)
+elif mode in ('env-bad','env-good'):
+ kind='bad' if mode=='env-bad' else 'good';selector='18' if kind=='bad' else '24';assert x.get('ready') and not any(v['kind']==kind for v in x.get('environment_changes',[]))
+ before=history(x)
+ if kind=='bad':
+  initial=next(v for v in reversed(x['observations']) if v['exact_expected_version_and_values'] and v['latest_deploy']['status']=='live');x['baseline_runtime']=initial['runtime']['body'];r=cli(['services','instances',sid,'--confirm','-o','json']);assert r['exit']==0;instances=json.loads(r['stdout']);assert instances;x['baseline_instances_receipt']=r;x['baseline_instance_ids']=[v['id'] for v in instances]
+ else:assert x.get('old_release_retained') and x.get('bad_wait_contract_pass')
+ action={'at':now(),'kind':kind,'selector':selector,'before_deploy_ids':[v['id'] for v in before],'state':'own save_only env patch intent persisted'};x.setdefault('environment_changes',[]).append(action);save();result=patch_environment(x,selector);action['result']=result;save();assert result['status']=='200' and json.loads(result['response'])['rolledOut'] is False
+ after=history(x);action['after_deploy_ids']=[v['id'] for v in after];action['no_implicit_deploy']=action['after_deploy_ids']==action['before_deploy_ids'];save();assert action['no_implicit_deploy']
+ read=wire('/v1/services/'+sid+'/env-vars/NODE_VERSION');action['readback']=read;save();assert read['status']=='200';v=json.loads(read['response']);v=v.get('envVar',v);assert v['value']==selector;x['pending_selector']=selector;save();print(json.dumps({'client':client,'mode':mode,'API_status':result['status'],'rolledOut':False,'deploy_set_unchanged':True,'saved_selector':selector}),flush=True)
+elif mode in ('deploy-bad','deploy-good'):
+ kind='bad' if mode=='deploy-bad' else 'good';assert x.get('pending_selector')==('18' if kind=='bad' else '24') and not any(v['kind']==kind for v in x.get('wait_intents',[]))
+ before=history(x);args=['deploys','create',sid,'--wait','--confirm','-o','json'];intent={'at':now(),'kind':kind,'command':[client,*args],'before_deploy_ids':[v['id'] for v in before],'state':'native waited deploy intent persisted'};x.setdefault('wait_intents',[]).append(intent)
+ if kind=='good':x['expected_major']=24;x['selector']='24'
+ save();r=cli(args,240);intent['result']=r;intent['state']='bounded native wait returned; reconcile target before any retry';save();after=history(x);fresh=[v for v in after if v['id'] not in intent['before_deploy_ids']];intent['new_deploys']=fresh
+ try:output=json.loads(r['stdout'])
+ except ValueError:output=None
+ intent['parsed_native_stdout']=output
+ contract=isinstance(output,dict) and len(fresh)==1 and output.get('id')==fresh[0]['id'] and output.get('status')==fresh[0]['status'] and r['exit']==(1 if kind=='bad' else 0) and fresh[0]['status']==('build_failed' if kind=='bad' else 'live')
+ x[kind+'_wait_contract_pass']=contract;save();print(json.dumps({'client':client,'kind':kind,'native_exit':r['exit'],'elapsed':r['elapsed'],'new_deploys':[(v['id'],v['status']) for v in fresh],'contract_pass':contract,'stderr':r['stderr']}),flush=True)
+elif mode=='verify-old':
+ assert x.get('bad_wait_contract_pass');before=x['observations'][-1];assert before['runtime']['HTTP']=='200' and before['runtime']['body']==x['baseline_runtime'];r=cli(['services','instances',sid,'--confirm','-o','json']);assert r['exit']==0;ids=[v['id'] for v in json.loads(r['stdout'])];x['post_bad_instances_receipt']=r;x['old_release_retained']=ids==x['baseline_instance_ids'];save();print(json.dumps({'client':client,'old_response_unchanged':True,'instance_ids_unchanged':x['old_release_retained']}),flush=True)
+elif mode=='verify-good':
+ assert x.get('good_wait_contract_pass');o=x['observations'][-1];assert o['latest_deploy']['status']=='live' and o['exact_expected_version_and_values'] and o['runtime']['body']['runtime']['version'].startswith('v24.');r=cli(['services','instances',sid,'--confirm','-o','json']);assert r['exit']==0;ids=[v['id'] for v in json.loads(r['stdout'])];x['post_good_instances_receipt']=r;x['new_instance_serves_24']=bool(ids) and ids!=x['baseline_instance_ids'];save();print(json.dumps({'client':client,'Node24_exact':True,'new_instance':x['new_instance_serves_24']}),flush=True)
+elif mode=='delete':
+ assert 'delete_result' not in x and not any(v.get('id') and sid in v.get('dependency_ids',[]) and not v['state'].startswith('deleted:') for v in c['resources'])
+ history(x);x['state']='exact-owned delete intent persisted';save();x['delete_result']=cli(['services','delete',sid,'--confirm','-o','json']);save();print(json.dumps({'client':client,'role':role,'delete_exit':x['delete_result']['exit'],'children':len(x['recorded_child_ids'])}),flush=True)
+elif mode=='reconcile':
+ assert 'delete_result' in x;detail=wire('/v1/services/'+sid);inv=cli(['services','--confirm','-o','json']);assert inv['exit']==0;ids={v.get('service',v)['id'] for v in json.loads(inv['stdout']) or []};assert base<=ids
+ r=subprocess.run(['curl','--disable','-sS','--max-time','10','-o','/dev/null','-w','%{http_code}',x['create_response']['serviceDetails']['url']],text=True,capture_output=True,timeout=15);q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';terminating=json.loads(q['response'])['services']['terminating'];done=detail['status']=='404' and sid not in ids and r.returncode==0 and r.stdout=='404' and terminating==0
+ x.setdefault('cleanup_reconciliations',[]).append({'at':now(),'detail':detail,'list_ids':sorted(ids),'baseline_present':True,'runtime':{'exit':r.returncode,'HTTP':r.stdout,'stderr':r.stderr},'quota':q});x['state']='deleted: API404/listabsent/runtime404/baseline present/quota terminating0' if done else 'delete acknowledged: detail/runtime/quota convergence pending';save();print(json.dumps({'client':client,'role':role,'complete':done,'detail':detail['status'],'runtime':r.stdout,'terminating':terminating}),flush=True)
+else:raise ValueError(mode)

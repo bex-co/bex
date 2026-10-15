@@ -1,0 +1,6 @@
+{
+  "known_QA_and_isolated_credential_values": "masked if present",
+  "private_temp_directory": "<owned-temp>",
+  "native_terminal": "complete decoded text retained; raw bytes checked against known private values and omitted from durable base64",
+  "HTTP": "unauthenticated GET/no follow; any Set-Cookie field replaced before serialization"
+}

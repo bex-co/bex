@@ -1,0 +1,134 @@
+[
+  {
+    "at": "2026-10-15T00:47:07.617288+00:00",
+    "api_only": true,
+    "label": "GraphQL own service projection",
+    "request": {
+      "method": "POST",
+      "path": "/graphql",
+      "body": {
+        "query": "query QA252($id:String!){service(id:$id){id repo imagePath runtime builder branch}}",
+        "variables": {
+          "id": "srv-db7ugd9llfps73emuh8g"
+        }
+      },
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "HTTP": "200",
+    "curl_exit": 0,
+    "elapsed": 0.315,
+    "response": "{\"data\":{\"service\":{\"branch\":\"master\",\"builder\":\"auto\",\"id\":\"srv-db7ugd9llfps73emuh8g\",\"imagePath\":\"\",\"repo\":\"https://github.com/traefik/whoami\",\"runtime\":\"docker\"}}}\n",
+    "stderr": ""
+  },
+  {
+    "at": "2026-10-15T00:47:08.142016+00:00",
+    "api_only": true,
+    "label": "MCP own service projection",
+    "request": {
+      "method": "POST",
+      "path": "/mcp",
+      "body": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+          "name": "get_service",
+          "arguments": {
+            "serviceId": "srv-db7ugd9llfps73emuh8g",
+            "workspaceId": "tea-daif693dqjvc73e7as3g"
+          }
+        }
+      },
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "HTTP": "200",
+    "curl_exit": 0,
+    "elapsed": 0.523,
+    "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"autoDeploy\\\":\\\"no\\\",\\\"autoDeployTrigger\\\":\\\"off\\\",\\\"branch\\\":\\\"master\\\",\\\"createdAt\\\":\\\"2026-10-14T20:38:13Z\\\",\\\"dashboardUrl\\\":\\\"https://dashboard.bex.co/web/srv-db7ugd9llfps73emuh8g\\\",\\\"displayName\\\":\\\"\\\",\\\"healthCheckPath\\\":\\\"/\\\",\\\"id\\\":\\\"srv-db7ugd9llfps73emuh8g\\\",\\\"idleTTLSeconds\\\":0,\\\"immutableName\\\":\\\"qa-20261014-c54efc-src\\\",\\\"name\\\":\\\"qa-20261014-c54efc-src\\\",\\\"notificationsToSend\\\":\\\"default\\\",\\\"notifyOnFail\\\":\\\"default\\\",\\\"ownerId\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"phase\\\":\\\"Running\\\",\\\"pushDeliveryMethod\\\":\\\"manual_webhook\\\",\\\"replicas\\\":1,\\\"repo\\\":\\\"https://github.com/traefik/whoami\\\",\\\"revision\\\":\\\"rev-3\\\",\\\"serviceDetails\\\":{\\\"env\\\":\\\"docker\\\",\\\"envSpecificDetails\\\":{\\\"dockerCommand\\\":\\\"\\\",\\\"dockerContext\\\":\\\"\\\",\\\"dockerfilePath\\\":\\\"\\\"},\\\"healthCheckPath\\\":\\\"/\\\",\\\"internalAddress\\\":\\\"qa-20261014-c54efc-src:3000\\\",\\\"maintenanceMode\\\":{\\\"enabled\\\":false,\\\"uri\\\":\\\"\\\"},\\\"maxShutdownDelaySeconds\\\":30,\\\"numInstances\\\":1,\\\"plan\\\":\\\"free\\\",\\\"port\\\":3000,\\\"region\\\":\\\"fsn1\\\",\\\"renderSubdomainPolicy\\\":\\\"enabled\\\",\\\"runtime\\\":\\\"docker\\\",\\\"url\\\":\\\"https://qa-20261014-c54efc-src.onbex.co\\\"},\\\"slug\\\":\\\"qa-20261014-c54efc-src\\\",\\\"suspended\\\":\\\"not_suspended\\\",\\\"suspenders\\\":[],\\\"type\\\":\\\"web_service\\\",\\\"updatedAt\\\":\\\"2026-10-15T00:36:41Z\\\",\\\"urls\\\":[\\\"https://qa-20261014-c54efc-src.onbex.co\\\"]}\"}],\"structuredContent\":{\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"branch\":\"master\",\"createdAt\":\"2026-10-14T20:38:13Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db7ugd9llfps73emuh8g\",\"displayName\":\"\",\"healthCheckPath\":\"/\",\"id\":\"srv-db7ugd9llfps73emuh8g\",\"idleTTLSeconds\":0,\"immutableName\":\"qa-20261014-c54efc-src\",\"name\":\"qa-20261014-c54efc-src\",\"notificationsToSend\":\"default\",\"notifyOnFail\":\"default\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"pushDeliveryMethod\":\"manual_webhook\",\"replicas\":1,\"repo\":\"https://github.com/traefik/whoami\",\"revision\":\"rev-3\",\"serviceDetails\":{\"env\":\"docker\",\"envSpecificDetails\":{\"dockerCommand\":\"\",\"dockerContext\":\"\",\"dockerfilePath\":\"\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261014-c54efc-src:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"docker\",\"url\":\"https://qa-20261014-c54efc-src.onbex.co\"},\"slug\":\"qa-20261014-c54efc-src\",\"suspended\":\"not_suspended\",\"suspenders\":[],\"type\":\"web_service\",\"updatedAt\":\"2026-10-15T00:36:41Z\",\"urls\":[\"https://qa-20261014-c54efc-src.onbex.co\"]}}}\n\n",
+    "stderr": ""
+  },
+  {
+    "at": "2026-10-15T00:47:08.666108+00:00",
+    "api_only": true,
+    "label": "REST own source export",
+    "request": {
+      "method": "POST",
+      "path": "/v1/blueprints/generate",
+      "body": {
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "serviceIds": [
+          "srv-db7ugd9llfps73emuh8g"
+        ]
+      },
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "HTTP": "200",
+    "curl_exit": 0,
+    "elapsed": 0.523,
+    "response": "{\"manifest\":\"services:\\n- autoDeployTrigger: \\\"off\\\"\\n  branch: master\\n  envVars:\\n  - key: HTTP_PORT\\n    sync: false\\n  - key: WHOAMI_PORT_NUMBER\\n    sync: false\\n  healthCheckPath: /\\n  name: qa-20261014-c54efc-src\\n  repo: https://github.com/traefik/whoami\\n  runtime: docker\\n  type: web\\n\",\"filename\":\"render.yaml\"}\n",
+    "stderr": ""
+  },
+  {
+    "at": "2026-10-15T00:47:08.967834+00:00",
+    "api_only": true,
+    "label": "GraphQL own source export",
+    "request": {
+      "method": "POST",
+      "path": "/graphql",
+      "body": {
+        "query": "query QA252Export($owner:String!,$ids:[String]){generateBlueprint(ownerId:$owner,serviceIds:$ids){filename manifest}}",
+        "variables": {
+          "owner": "tea-daif693dqjvc73e7as3g",
+          "ids": [
+            "srv-db7ugd9llfps73emuh8g"
+          ]
+        }
+      },
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "HTTP": "200",
+    "curl_exit": 0,
+    "elapsed": 0.301,
+    "response": "{\"data\":{\"generateBlueprint\":{\"filename\":\"render.yaml\",\"manifest\":\"services:\\n- autoDeployTrigger: \\\"off\\\"\\n  branch: master\\n  envVars:\\n  - key: HTTP_PORT\\n    sync: false\\n  - key: WHOAMI_PORT_NUMBER\\n    sync: false\\n  healthCheckPath: /\\n  name: qa-20261014-c54efc-src\\n  repo: https://github.com/traefik/whoami\\n  runtime: docker\\n  type: web\\n\"}}}\n",
+    "stderr": ""
+  },
+  {
+    "at": "2026-10-15T00:47:09.377239+00:00",
+    "api_only": true,
+    "label": "MCP own source export",
+    "request": {
+      "method": "POST",
+      "path": "/mcp",
+      "body": {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/call",
+        "params": {
+          "name": "generate_blueprint",
+          "arguments": {
+            "serviceIds": [
+              "srv-db7ugd9llfps73emuh8g"
+            ],
+            "workspaceId": "tea-daif693dqjvc73e7as3g"
+          }
+        }
+      },
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "HTTP": "200",
+    "curl_exit": 0,
+    "elapsed": 0.409,
+    "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"filename\\\":\\\"render.yaml\\\",\\\"manifest\\\":\\\"services:\\\\n- autoDeployTrigger: \\\\\\\"off\\\\\\\"\\\\n  branch: master\\\\n  envVars:\\\\n  - key: HTTP_PORT\\\\n    sync: false\\\\n  - key: WHOAMI_PORT_NUMBER\\\\n    sync: false\\\\n  healthCheckPath: /\\\\n  name: qa-20261014-c54efc-src\\\\n  repo: https://github.com/traefik/whoami\\\\n  runtime: docker\\\\n  type: web\\\\n\\\"}\"}],\"structuredContent\":{\"filename\":\"render.yaml\",\"manifest\":\"services:\\n- autoDeployTrigger: \\\"off\\\"\\n  branch: master\\n  envVars:\\n  - key: HTTP_PORT\\n    sync: false\\n  - key: WHOAMI_PORT_NUMBER\\n    sync: false\\n  healthCheckPath: /\\n  name: qa-20261014-c54efc-src\\n  repo: https://github.com/traefik/whoami\\n  runtime: docker\\n  type: web\\n\"}}}\n\n",
+    "stderr": ""
+  }
+]
