@@ -4,6 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { PanelLeftIcon } from "lucide-react";
 
 import { useIsMobile } from "@/common/hooks/use-mobile";
+import { useTranslations } from "@/common/hooks/use-translations";
 import { cn } from "@/common/lib/utils/utils.ts";
 import { Button } from "@/common/components/ui/button.tsx";
 import { Input } from "@/common/components/ui/input.tsx";
@@ -228,6 +229,7 @@ function Sidebar({
   collapsible?: "offcanvas" | "icon" | "none";
 }) {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+  const { t } = useTranslations();
 
   // Track hydration for this component to prevent conditional rendering mismatch
   const [isHydrated, setIsHydrated] = React.useState(false);
@@ -268,8 +270,10 @@ function Sidebar({
           side={side}
         >
           <SheetHeader className="sr-only">
-            <SheetTitle>Sidebar</SheetTitle>
-            <SheetDescription>Displays the mobile sidebar.</SheetDescription>
+            <SheetTitle>{t("common.sidebarTitle")}</SheetTitle>
+            <SheetDescription>
+              {t("common.sidebarMobileDescription")}
+            </SheetDescription>
           </SheetHeader>
           <div className="flex h-full w-full flex-col">{children}</div>
         </SheetContent>
@@ -337,6 +341,7 @@ function SidebarTrigger({
   ...props
 }: React.ComponentProps<typeof Button>) {
   const { toggleSidebar } = useSidebar();
+  const { t } = useTranslations();
 
   return (
     <Button
@@ -352,7 +357,7 @@ function SidebarTrigger({
       {...props}
     >
       <PanelLeftIcon />
-      <span className="sr-only">Toggle Sidebar</span>
+      <span className="sr-only">{t("common.sidebarToggle")}</span>
     </Button>
   );
 }
@@ -373,6 +378,7 @@ function SidebarTrigger({
 function SidebarRail({ className, ...props }: React.ComponentProps<"div">) {
   const { open, width, setWidth, setOpen, toggleSidebar, wrapperRef } =
     useSidebar();
+  const { t } = useTranslations();
   const drag = React.useRef<{
     pointerId: number;
     startX: number;
@@ -476,12 +482,12 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="sidebar-rail"
       role="separator"
       aria-orientation="vertical"
-      aria-label="Resize sidebar"
+      aria-label={t("common.sidebarResize")}
       aria-valuemin={SIDEBAR_MIN_WIDTH_PX}
       aria-valuemax={SIDEBAR_MAX_WIDTH_PX}
       aria-valuenow={open ? width : SIDEBAR_MIN_WIDTH_PX}
       tabIndex={0}
-      title="Drag to resize · double-click to toggle"
+      title={t("common.sidebarResizeHint")}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={endDrag}

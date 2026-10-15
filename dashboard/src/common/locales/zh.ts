@@ -30,6 +30,27 @@ const zhCommon: Record<string, TranslationEntry> = {
     description:
       "Accessible name of the shared dialog's built-in close (X) button.",
   },
+  "common.sidebarTitle": {
+    message: "侧边栏",
+    description: "Screen-reader title of the mobile navigation drawer.",
+  },
+  "common.sidebarMobileDescription": {
+    message: "显示移动端侧边栏。",
+    description: "Screen-reader description of the mobile navigation drawer.",
+  },
+  "common.sidebarToggle": {
+    message: "切换侧边栏",
+    description:
+      "Accessible name of the button that opens or collapses the navigation sidebar.",
+  },
+  "common.sidebarResize": {
+    message: "调整侧边栏宽度",
+    description: "Accessible name of the sidebar's draggable resize separator.",
+  },
+  "common.sidebarResizeHint": {
+    message: "拖动调整宽度 · 双击展开或收起",
+    description: "Hover tooltip on the sidebar's resize separator.",
+  },
   "common.cancel": {
     message: "取消",
     description:
