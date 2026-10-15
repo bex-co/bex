@@ -132,8 +132,10 @@ func JobName(name, revision string) string {
 
 // Job constructs the pre-deploy Job for o (a pure function — no cluster access —
 // so the Job shape is unit-testable). The single container is the new image with
-// the app pod's env/secrets, running `sh -c <Command>`; it never restarts or
-// retries and is bounded by predeployTimeout.
+// the app pod's env/secrets, running `/bin/sh -c <Command>`; it never restarts or
+// retries and is bounded by predeployTimeout. The shell is absolute because the
+// runtime resolves a bare program against the app's own PATH, which may be empty
+// or narrow (w8/m61).
 func Job(o Options) *batchv1.Job {
 	deadline := int64(predeployTimeout / time.Second)
 	backoff := int32(0) // never retry a migration — a partial re-run can corrupt data
@@ -142,7 +144,7 @@ func Job(o Options) *batchv1.Job {
 	container := corev1.Container{
 		Name:            containerName,
 		Image:           o.Image,
-		Command:         []string{"sh", "-c", o.Command},
+		Command:         []string{"/bin/sh", "-c", o.Command},
 		Env:             o.Env,
 		EnvFrom:         o.EnvFrom,
 		Resources:       o.Resources,

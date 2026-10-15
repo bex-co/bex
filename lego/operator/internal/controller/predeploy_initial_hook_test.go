@@ -84,7 +84,7 @@ func TestPreDeployRunsTheInitialHookOnlyUntilItCompletes(t *testing.T) {
 		done := &batchv1.Job{
 			ObjectMeta: metav1.ObjectMeta{Name: predeploy.JobName("web", appv1alpha1.BuildRevision(1)), Namespace: ns,
 				Labels: map[string]string{predeploy.LabelService: "web", execution.LabelApp: "web", execution.LabelAppUID: "app-uid", predeploy.LabelComponent: predeploy.ComponentValue}},
-			Spec: batchv1.JobSpec{Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "pre-deploy", Command: []string{"sh", "-c", "echo initial"}}}}}},
+			Spec: batchv1.JobSpec{Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "pre-deploy", Command: []string{"/bin/sh", "-c", "echo initial"}}}}}},
 			Status: batchv1.JobStatus{Conditions: []batchv1.JobCondition{
 				{Type: batchv1.JobSuccessCriteriaMet, Status: corev1.ConditionTrue},
 				{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
