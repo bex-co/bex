@@ -44,30 +44,55 @@ const (
 
 // ResolveNativeBuild is the resolve phase: env bundle and Dockerfile paths,
 // the service's root directory in the checkout, and the runtime. It returns
-// the choice it applied; an *UnsupportedVersionError is tenant input.
-func ResolveNativeBuild(runtime, bundlePath, dockerfilePath, sourceDir string) (NativeChoice, error) {
+// the choices it applied, the primary toolchain first and then any opted-in
+// companion (Bun); an *UnsupportedVersionError is tenant input.
+func ResolveNativeBuild(runtime, bundlePath, dockerfilePath, sourceDir string) ([]NativeChoice, error) {
 	env, err := readEnvBundle(bundlePath)
 	if err != nil {
-		return NativeChoice{}, err
+		return nil, err
 	}
-	choice, err := ResolveNativeVersion(runtime, env, func(name string) ([]byte, bool) {
-		return readVersionFile(sourceDir, name)
-	})
+	readFile := func(name string) ([]byte, bool) { return readVersionFile(sourceDir, name) }
+	choice, err := ResolveNativeVersion(runtime, env, readFile)
 	if err != nil {
-		return NativeChoice{}, err
+		return nil, err
+	}
+	bun, withBun, err := ResolveNativeBun(env, readFile)
+	if err != nil {
+		return nil, err
 	}
 	dockerfile, err := os.ReadFile(dockerfilePath)
 	if err != nil {
-		return NativeChoice{}, fmt.Errorf("read generated Dockerfile: %w", err)
+		return nil, fmt.Errorf("read generated Dockerfile: %w", err)
 	}
 	rewritten, err := rewriteNativeBase(string(dockerfile), nativeToolchains[runtime].defaultImage(), choice.Image)
 	if err != nil {
-		return NativeChoice{}, err
+		return nil, err
+	}
+	choices := []NativeChoice{choice}
+	if withBun {
+		if rewritten, err = addNativeBun(rewritten, choice.Image, bun.Image); err != nil {
+			return nil, err
+		}
+		choices = append(choices, bun)
 	}
 	if err := os.WriteFile(dockerfilePath, []byte(rewritten), 0o600); err != nil {
-		return NativeChoice{}, fmt.Errorf("write generated Dockerfile: %w", err)
+		return nil, fmt.Errorf("write generated Dockerfile: %w", err)
 	}
-	return choice, nil
+	return choices, nil
+}
+
+// addNativeBun copies the chosen Bun binary into the toolchain image right
+// after its FROM, before the source and the authored build, so the build, the
+// pre-deploy step and the started service all find bun and bunx on the image
+// PATH. --link keeps the Bun layer cached when the primary line changes.
+func addNativeBun(dockerfile, baseImage, bunImage string) (string, error) {
+	from := "\nFROM " + baseImage + "\n"
+	if !strings.Contains(dockerfile, from) {
+		return "", fmt.Errorf("generated Dockerfile does not carry the base %s", baseImage)
+	}
+	bun := "COPY --link --from=" + bunImage + " /usr/local/bin/bun /usr/local/bin/bun\n" +
+		"RUN ln -sf bun /usr/local/bin/bunx\n"
+	return strings.Replace(dockerfile, from, from+bun, 1), nil
 }
 
 // readEnvBundle decodes the preparer's KEY=base64 bundle. A later line wins,

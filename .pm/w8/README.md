@@ -25,7 +25,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m72** — [Provide Poetry in native Python builds and runtime](m72/README.md) (7 tasks,3h10m) — major Python toolchain gap: both native creates fail with missing Poetry/exit127; Python3.12 and env controls pass, Poetry remains ENOENT at build/runtime. Two parents/four deploys cleaned.
 
-- [ ] **m71** — [Make explicit Bun opt-in usable in native builds and runtime](m71/README.md) (7 tasks,3h20m) — major runtime gap: both native creates preserve BUN_VERSION yet fail with missing Bun/exit127; Node controls pass and confirm build/runtime ENOENT. Two parents/four deploys cleaned.
+- [ ] **m71** — [Make explicit Bun opt-in usable in native builds and runtime](blocked/m71/README.md) (7 tasks,3h20m) — **BLOCKED (2026-10-15: t001–t006 done — BUN_VERSION / .bun-version / Bun lockfile select a reviewed digest-pinned Bun line (1.2, 1.3) that the resolve phase copies into the native image before the authored build; execution-tested on node and python bases. Needs the operator deploy, then the hosted two-client explicit-Bun replay and cleanup (t007))**
 
 - [ ] **m70** — [Make Blueprint source switches deploy their declared artifact](blocked/m70/README.md) (6 tasks,2h55m) — **BLOCKED (2026-10-15: t001–t005 done — a declared or inherited new repo now replaces a prebuilt image/rollback override, clone token and image-only credential; a declared image drops the repo and a baked native start command; the declared strategy applies on a kind switch; same-repo rollbacks keep their override. Needs the deploy, then the hosted two-client inline/persistent image→Git replay serving the declared commit with no manual recovery, plus cleanup (t006))**
 

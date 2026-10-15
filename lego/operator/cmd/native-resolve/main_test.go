@@ -69,3 +69,27 @@ func TestRunNarratesOrRefusesAsTenantError(t *testing.T) {
 		t.Error("a refused request must leave the Dockerfile untouched")
 	}
 }
+
+// An opted-in Bun narrates its own line after the primary toolchain (w8/m71).
+func TestRunNarratesAnOptedInBun(t *testing.T) {
+	dir := t.TempDir()
+	dockerfile, bundle := filepath.Join(dir, "Dockerfile"), filepath.Join(dir, "render-env")
+	base := "# syntax=docker/dockerfile:1.7\n" +
+		"FROM node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0\n" +
+		"RUN true\n"
+	if err := os.WriteFile(dockerfile, []byte(base), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	env := "BUN_VERSION=" + base64.StdEncoding.EncodeToString([]byte("1.3.4")) + "\n"
+	if err := os.WriteFile(bundle, []byte(env), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var out, errOut bytes.Buffer
+	if code := run("node", dir, bundle, dockerfile, &out, &errOut); code != 0 {
+		t.Fatalf("exit %d: %s", code, errOut.String())
+	}
+	const want = "==> Using Node 24 (default)\n==> Using Bun 1.3 (from BUN_VERSION=1.3.4)"
+	if got := strings.TrimSpace(out.String()); got != want {
+		t.Errorf("narration = %q", got)
+	}
+}
