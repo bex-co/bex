@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -344,18 +345,14 @@ var existingHostTargets = map[string]string{
 // existingHostTargets App.
 func existingHostService(t *testing.T) *Service {
 	t.Helper()
-	svc := newBlueprintValidator(t)
-	svc.Workspace = fakeWorkspace{"id-a": connOwner}
+	apps := make([]*appv1alpha1.App, 0, len(existingHostTargets))
 	for name, appType := range existingHostTargets {
-		app := &appv1alpha1.App{
+		apps = append(apps, &appv1alpha1.App{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default", Labels: map[string]string{core.LabelTenant: connOwner, core.LabelServiceName: name}},
 			Spec:       appv1alpha1.AppSpec{Type: appType, Image: "nginx:1.27", Port: 3000, Subdomain: name + "-slug"},
-		}
-		if err := svc.Client.Create(ownershipCtx(), app); err != nil {
-			t.Fatal(err)
-		}
+		})
 	}
-	return svc
+	return workspaceValidator(t, apps...)
 }
 
 // existingHostManifest is one consumer referencing target's host with refType,
@@ -510,28 +507,7 @@ func TestDeployStackRefusesInvalidExistingHostTargetBeforeWriting(t *testing.T) 
 // errors and errorDetails) and MCP validate_bex_yml return the same located
 // host-reference refusals as the shared core, with REST answering 200.
 func TestHostReferenceRefusalsAgreeAcrossValidationSurfaces(t *testing.T) {
-	svc := existingHostService(t)
-	mux := http.NewServeMux()
-	svc.RegisterREST(mux)
-	schema := blueprintSchema(t, svc)
-	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
-	svc.RegisterMCP(srv)
-	serverT, clientT := mcp.NewInMemoryTransports()
-	if _, err := srv.Connect(ownershipCtx(), serverT, nil); err != nil {
-		t.Fatal(err)
-	}
-	mc, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(context.Background(), clientT, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = mc.Close() })
-
-	type detail struct {
-		Error  string `json:"error"`
-		Path   string `json:"path"`
-		Line   int    `json:"line"`
-		Column int    `json:"column"`
-	}
+	validate := validationSurfaces(t, existingHostService(t))
 	for name, doc := range map[string]string{
 		"missing twice": `services:
   - type: web
@@ -553,49 +529,105 @@ func TestHostReferenceRefusalsAgreeAcrossValidationSurfaces(t *testing.T) {
 `,
 	} {
 		t.Run(name, func(t *testing.T) {
-			direct, err := svc.ValidateBlueprint(ownershipCtx(), connOwner, doc, "")
-			if err != nil || direct.Valid || len(direct.Errors) != 2 {
-				t.Fatalf("direct = %+v, %v; want two refusals", direct, err)
+			direct, surfaces := validate(t, doc)
+			if direct.Valid || len(direct.Errors) != 2 {
+				t.Fatalf("direct = %+v; want two refusals", direct)
 			}
-			want := make([]detail, 0, len(direct.Errors))
-			for _, e := range direct.Errors {
-				want = append(want, detail{e.Error, *e.Path, *e.Line, *e.Column})
-			}
-
-			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, multipartBlueprintRequest(t, connOwner, "render.yaml", doc).WithContext(ownershipCtx()))
-			var rest struct {
-				Valid  bool     `json:"valid"`
-				Errors []detail `json:"errors"`
-			}
-			if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &rest) != nil || rest.Valid || fmt.Sprint(rest.Errors) != fmt.Sprint(want) {
-				t.Fatalf("REST %d %s, want %+v", rec.Code, rec.Body, want)
-			}
-
-			res := graphql.Do(graphql.Params{Schema: schema, Context: ownershipCtx(), RequestString: `query($y: String!, $o: String) { validateBlueprint(bexYaml: $y, ownerId: $o) { valid errors errorDetails { error path line column } } }`,
-				VariableValues: map[string]any{"y": doc, "o": connOwner}})
-			if len(res.Errors) > 0 {
-				t.Fatalf("GraphQL: %v", res.Errors)
-			}
-			raw, _ := json.Marshal(res.Data.(map[string]any)["validateBlueprint"])
-			var gql struct {
-				Valid        bool     `json:"valid"`
-				Errors       []string `json:"errors"`
-				ErrorDetails []detail `json:"errorDetails"`
-			}
-			if err := json.Unmarshal(raw, &gql); err != nil || gql.Valid || fmt.Sprint(gql.ErrorDetails) != fmt.Sprint(want) || len(gql.Errors) != len(want) || gql.Errors[1] != want[1].Error {
-				t.Fatalf("GraphQL = %s, want %+v", raw, want)
-			}
-
-			call, err := mc.CallTool(context.Background(), &mcp.CallToolParams{Name: "validate_bex_yml", Arguments: map[string]any{"bexYaml": doc}})
-			if err != nil || call.IsError {
-				t.Fatalf("MCP: %v %+v", err, call)
-			}
-			raw, _ = json.Marshal(call.StructuredContent)
-			rest.Errors = nil
-			if err := json.Unmarshal(raw, &rest); err != nil || rest.Valid || fmt.Sprint(rest.Errors) != fmt.Sprint(want) {
-				t.Fatalf("MCP = %s, want %+v", raw, want)
+			for surface, got := range surfaces {
+				if fmt.Sprint(got) != fmt.Sprint(direct) {
+					t.Errorf("%s = %+v, want %+v", surface, got, direct)
+				}
 			}
 		})
+	}
+}
+
+// surfaceValidation is one surface's decoded validity and located errors.
+type surfaceValidation struct {
+	Valid  bool `json:"valid"`
+	Errors []struct {
+		Error  string `json:"error"`
+		Path   string `json:"path"`
+		Line   int    `json:"line"`
+		Column int    `json:"column"`
+	} `json:"errors"`
+}
+
+// validationSurfaces validates a document as connOwner's member through the
+// shared core and through every exposed surface: the CLI's REST multipart
+// upload (which must answer 200), the dashboard's GraphQL validateBlueprint
+// (errorDetails, and the legacy errors strings as messages only) and MCP
+// validate_bex_yml.
+func validationSurfaces(t *testing.T, svc *Service) func(*testing.T, string) (surfaceValidation, map[string]surfaceValidation) {
+	t.Helper()
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	schema := blueprintSchema(t, svc)
+	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	serverT, clientT := mcp.NewInMemoryTransports()
+	if _, err := srv.Connect(ownershipCtx(), serverT, nil); err != nil {
+		t.Fatal(err)
+	}
+	mc, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(context.Background(), clientT, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = mc.Close() })
+	decode := func(t *testing.T, raw []byte) surfaceValidation {
+		t.Helper()
+		var out surfaceValidation
+		if err := json.Unmarshal(raw, &out); err != nil {
+			t.Fatalf("decode %s: %v", raw, err)
+		}
+		return out
+	}
+	return func(t *testing.T, doc string) (surfaceValidation, map[string]surfaceValidation) {
+		t.Helper()
+		v, err := svc.ValidateBlueprint(ownershipCtx(), connOwner, doc, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw, _ := json.Marshal(v)
+		direct := decode(t, raw)
+		surfaces := map[string]surfaceValidation{}
+
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, multipartBlueprintRequest(t, connOwner, "render.yaml", doc).WithContext(ownershipCtx()))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("REST %d %s", rec.Code, rec.Body)
+		}
+		surfaces["REST"] = decode(t, rec.Body.Bytes())
+
+		res := graphql.Do(graphql.Params{Schema: schema, Context: ownershipCtx(), RequestString: `query($y: String!, $o: String) { validateBlueprint(bexYaml: $y, ownerId: $o) { valid errors errorDetails { error path line column } } }`,
+			VariableValues: map[string]any{"y": doc, "o": connOwner}})
+		if len(res.Errors) > 0 {
+			t.Fatalf("GraphQL: %v", res.Errors)
+		}
+		raw, _ = json.Marshal(res.Data.(map[string]any)["validateBlueprint"])
+		var gql struct {
+			Valid        bool            `json:"valid"`
+			Errors       []string        `json:"errors"`
+			ErrorDetails json.RawMessage `json:"errorDetails"`
+		}
+		if err := json.Unmarshal(raw, &gql); err != nil {
+			t.Fatal(err)
+		}
+		surfaces["GraphQL"] = decode(t, []byte(fmt.Sprintf(`{"valid":%v,"errors":%s}`, gql.Valid, gql.ErrorDetails)))
+		messages := make([]string, 0, len(direct.Errors))
+		for _, e := range direct.Errors {
+			messages = append(messages, e.Error)
+		}
+		if !slices.Equal(gql.Errors, messages) {
+			t.Errorf("GraphQL legacy errors = %q, want %q", gql.Errors, messages)
+		}
+
+		call, err := mc.CallTool(context.Background(), &mcp.CallToolParams{Name: "validate_bex_yml", Arguments: map[string]any{"bexYaml": doc}})
+		if err != nil || call.IsError {
+			t.Fatalf("MCP: %v %+v", err, call)
+		}
+		raw, _ = json.Marshal(call.StructuredContent)
+		surfaces["MCP"] = decode(t, raw)
+		return direct, surfaces
 	}
 }

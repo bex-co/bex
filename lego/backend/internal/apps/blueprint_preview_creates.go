@@ -67,7 +67,7 @@ func (s *Service) previewStackCreates(ctx context.Context, st parsedStack, plan 
 		if !creates[BlueprintResourceService][svc.req.Name] {
 			continue
 		}
-		desired, err := specFromCreate(svc.req)
+		desired, err := blueprintReadSpec(ctx, svc.req)
 		if err == nil {
 			_, err = s.planStackApp(ctx, svc.req, desired)
 		}
