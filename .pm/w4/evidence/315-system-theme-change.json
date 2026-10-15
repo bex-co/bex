@@ -1,0 +1,393 @@
+{
+  "pass": "a612",
+  "date": "2026-10-15",
+  "researchHead": "499590c8b99c83d3da7936f392da3684e642e1a9",
+  "finding": "System theme snapshots the current preference but ignores later native media-query change events",
+  "environment": {
+    "browser": "isolated headless Chromium",
+    "preferenceControl": "Playwright page.emulateMedia({colorScheme:'light'|'dark'}), scoped to this browser page; physical OS settings were not changed.",
+    "instrumentation": "A read-only MediaQueryList change-event observer on the fresh mobile page; removed in finally. No app function, DOM or response override.",
+    "resourcesCreatedOrModified": []
+  },
+  "initialPreferences": {
+    "document": "en",
+    "languageStored": "en",
+    "themeClass": "light",
+    "themeKeys": [],
+    "storageKey": "vite-ui-theme",
+    "initialThemePreference": "absent: no localStorage key containing theme existed"
+  },
+  "steps": [
+    "Language control: switch English→中文 through Avatar; document lang and translated copy settle together, and Chinese survives reload.",
+    "Select 深色, confirm dark styling and persistence after reload.",
+    "Set browser preference light, then select 跟随系统 through the actual Avatar theme menu. Stored mode system and light CSS are correct.",
+    "Change only browser preference to dark. matchMedia reports true, but document class/body background stay light for the sampled interval.",
+    "Fresh reload at 390×844 while preference is dark: stored system now renders dark. Attach read-only change observer; change preference to light. The change event reports false, but class/background stay dark.",
+    "Use the mobile avatar's direct theme items: explicit Light stays light under a dark preference; explicit Dark stays dark under a light preference. Switching from an explicit mode back to System applies the current preference.",
+    "Restore English, reset emulated color scheme to null, remove only the theme preference added by this test, reload to the initial light/default state, reconcile all seven resource ID sets and log out."
+  ],
+  "observations": {
+    "languageControl": {
+      "observations": [
+        {
+          "at": "2026-10-15T17:50:26.087Z",
+          "lang": "en",
+          "chineseSearchButtons": 0,
+          "url": "https://dashboard.bex.co/"
+        },
+        {
+          "at": "2026-10-15T17:50:26.192Z",
+          "lang": "en",
+          "chineseSearchButtons": 0,
+          "url": "https://dashboard.bex.co/"
+        },
+        {
+          "at": "2026-10-15T17:50:26.696Z",
+          "lang": "zh",
+          "chineseSearchButtons": 1,
+          "url": "https://dashboard.bex.co/"
+        },
+        {
+          "at": "2026-10-15T17:50:28.201Z",
+          "lang": "zh",
+          "chineseSearchButtons": 1,
+          "url": "https://dashboard.bex.co/"
+        },
+        {
+          "at": "2026-10-15T17:50:31.206Z",
+          "lang": "zh",
+          "chineseSearchButtons": 1,
+          "url": "https://dashboard.bex.co/"
+        }
+      ],
+      "reloaded": {
+        "at": "2026-10-15T17:50:33.201Z",
+        "locale": {
+          "document": "zh",
+          "stored": "zh",
+          "cookie": "i18nextLng=zh"
+        }
+      }
+    },
+    "desktop": {
+      "dark": {
+        "at": "2026-10-15T17:52:06.455Z",
+        "state": {
+          "className": "dark",
+          "theme": "dark",
+          "background": "oklch(0.12 0.008 260)"
+        }
+      },
+      "reloadDark": {
+        "at": "2026-10-15T17:52:08.757Z",
+        "state": {
+          "className": "dark",
+          "theme": "dark",
+          "background": "oklch(0.12 0.008 260)"
+        }
+      },
+      "systemLight": {
+        "at": "2026-10-15T17:52:09.748Z",
+        "state": {
+          "className": "light",
+          "theme": "system",
+          "mediaDark": false,
+          "background": "oklch(0.98 0.002 260)"
+        }
+      },
+      "observations": [
+        {
+          "at": "2026-10-15T17:52:09.852Z",
+          "state": {
+            "className": "light",
+            "theme": "system",
+            "mediaDark": true,
+            "background": "oklch(0.98 0.002 260)"
+          }
+        },
+        {
+          "at": "2026-10-15T17:52:10.556Z",
+          "state": {
+            "className": "light",
+            "theme": "system",
+            "mediaDark": true,
+            "background": "oklch(0.98 0.002 260)"
+          }
+        },
+        {
+          "at": "2026-10-15T17:52:12.560Z",
+          "state": {
+            "className": "light",
+            "theme": "system",
+            "mediaDark": true,
+            "background": "oklch(0.98 0.002 260)"
+          }
+        }
+      ]
+    },
+    "freshMobile": {
+      "at": "2026-10-15T17:53:41.452Z",
+      "width": 390,
+      "initial": {
+        "at": "2026-10-15T17:53:38.737Z",
+        "state": {
+          "theme": "system",
+          "className": "dark",
+          "mediaDark": true,
+          "background": "oklch(0.12 0.008 260)"
+        }
+      },
+      "observations": [
+        {
+          "at": "2026-10-15T17:53:38.842Z",
+          "state": {
+            "theme": "system",
+            "className": "dark",
+            "mediaDark": false,
+            "background": "oklch(0.12 0.008 260)",
+            "events": [
+              {
+                "matches": false,
+                "at": 2511.899999976158
+              }
+            ]
+          }
+        },
+        {
+          "at": "2026-10-15T17:53:39.446Z",
+          "state": {
+            "theme": "system",
+            "className": "dark",
+            "mediaDark": false,
+            "background": "oklch(0.12 0.008 260)",
+            "events": [
+              {
+                "matches": false,
+                "at": 2511.899999976158
+              }
+            ]
+          }
+        },
+        {
+          "at": "2026-10-15T17:53:41.450Z",
+          "state": {
+            "theme": "system",
+            "className": "dark",
+            "mediaDark": false,
+            "background": "oklch(0.12 0.008 260)",
+            "events": [
+              {
+                "matches": false,
+                "at": 2511.899999976158
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "forcedModeControls": {
+      "explicitLight": {
+        "at": "2026-10-15T17:57:41.943Z",
+        "state": {
+          "theme": "light",
+          "className": "light",
+          "mediaDark": true,
+          "background": "oklch(0.98 0.002 260)"
+        }
+      },
+      "explicitDark": {
+        "at": "2026-10-15T17:57:42.628Z",
+        "state": {
+          "theme": "dark",
+          "className": "dark",
+          "mediaDark": false,
+          "background": "oklch(0.12 0.008 260)"
+        }
+      },
+      "systemReselected": {
+        "at": "2026-10-15T17:57:43.226Z",
+        "state": {
+          "theme": "system",
+          "className": "light",
+          "mediaDark": false,
+          "background": "oklch(0.98 0.002 260)"
+        }
+      }
+    },
+    "restoredPreferences": {
+      "at": "2026-10-15T17:57:47.071Z",
+      "state": {
+        "document": "en",
+        "languageStored": "en",
+        "themeStored": null,
+        "themeKeys": [],
+        "className": "light",
+        "mediaDark": false,
+        "background": "oklch(0.98 0.002 260)",
+        "languageCookie": "i18nextLng=en"
+      },
+      "mediaOverrideReset": true
+    },
+    "themeMenu": {
+      "at": "2026-10-15T17:50:52.197Z",
+      "menu": "- menu \"主题 跟随系统\":\n  - menuitem \"浅色\"\n  - menuitem \"深色\"\n  - menuitem \"跟随系统\""
+    }
+  },
+  "research": {
+    "root": {
+      "file": "dashboard/src/common/providers/theme-provider/index.tsx",
+      "lines": "88–110",
+      "cause": "The hydrated effect reads getSystemTheme only when theme/isHydrated changes; it registers no MediaQueryList change listener."
+    },
+    "correctSnapshotHelper": {
+      "file": "dashboard/src/common/providers/theme-provider/utils.ts",
+      "lines": "3–11"
+    },
+    "startupOnlyScript": "dashboard/src/common/components/document/theme-script.js.txt",
+    "providerMounts": [
+      {
+        "file": "dashboard/src/common/providers/root-provider.tsx",
+        "line": 38
+      }
+    ],
+    "rootProviderMounts": [
+      {
+        "file": "dashboard/src/common/root-route/root-component.tsx",
+        "line": 49
+      }
+    ],
+    "activeUiUseThemeCallers": [
+      {
+        "file": "dashboard/src/common/components/user-nav.tsx",
+        "line": 91
+      },
+      {
+        "file": "dashboard/src/common/components/ui/sonner.tsx",
+        "line": 15
+      }
+    ],
+    "snapshotHelperCallers": [
+      {
+        "file": "dashboard/src/common/providers/theme-provider/index.tsx",
+        "line": 103
+      },
+      {
+        "file": "dashboard/src/common/providers/theme-provider/hooks.ts",
+        "line": 17,
+        "inside": "useIsDarkTheme; zero external production callers"
+      }
+    ],
+    "menuVariants": "user-nav.tsx:190–221: flat mobile items and desktop submenu use the same setTheme(value) action",
+    "standard": "https://drafts.csswg.org/cssom-view/#the-mediaquerylist-interface",
+    "dedupe": {
+      "boardMarkdownFiles": 9193,
+      "actualOpenOrBlockedMilestones": 73,
+      "nextInbox": 315,
+      "matchingItem": "w4/blocked/302: mobile menu availability, distinct from System-mode reactivity",
+      "targetHistory": "Provider/startup script last changed in scaffold 15c7be64e; no current-main fix. Last40 product commits inspected."
+    }
+  },
+  "cleanup": {
+    "inventoryAt": "2026-10-15T18:00:21.445Z",
+    "baselineIds": {
+      "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+      "databases": [
+        "dpg-d9nqg95cavls73fp8m20",
+        "dpg-d9rrkoc4h4mc73edurp0",
+        "dpg-d9rs3ee0ccis738kc7c0",
+        "dpg-db34l9bor55s73cqpq9g"
+      ],
+      "envGroups": ["evg-db0s94c48ccs739jikr0"],
+      "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+      "projects": [
+        "prj-d9dgeo0bd9nc73a0vh1g",
+        "prj-d9e5qct5qe4s73b1mjn0",
+        "prj-d9sgfnbjghus73cg6hg0"
+      ],
+      "services": [
+        "srv-d9bj8s3eg85c7390eb9g",
+        "srv-d9bkcspg9s7c73d0n8ug",
+        "srv-d9e40ei9086p3l1jri30",
+        "srv-d9ndt8hmcglc739fkp50",
+        "srv-d9nqg9dcavls73fp8m2g"
+      ],
+      "webhookEndpoints": []
+    },
+    "afterIds": {
+      "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+      "databases": [
+        "dpg-d9nqg95cavls73fp8m20",
+        "dpg-d9rrkoc4h4mc73edurp0",
+        "dpg-d9rs3ee0ccis738kc7c0",
+        "dpg-db34l9bor55s73cqpq9g"
+      ],
+      "envGroups": ["evg-db0s94c48ccs739jikr0"],
+      "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+      "projects": [
+        "prj-d9dgeo0bd9nc73a0vh1g",
+        "prj-d9e5qct5qe4s73b1mjn0",
+        "prj-d9sgfnbjghus73cg6hg0"
+      ],
+      "services": [
+        "srv-d9bj8s3eg85c7390eb9g",
+        "srv-d9bkcspg9s7c73d0n8ug",
+        "srv-d9e40ei9086p3l1jri30",
+        "srv-d9ndt8hmcglc739fkp50",
+        "srv-d9nqg9dcavls73fp8m2g"
+      ],
+      "webhookEndpoints": []
+    },
+    "allSevenFamiliesMatch": {
+      "blueprints": true,
+      "databases": true,
+      "envGroups": true,
+      "keyValues": true,
+      "projects": true,
+      "services": true,
+      "webhookEndpoints": true
+    },
+    "preferences": {
+      "at": "2026-10-15T17:57:47.071Z",
+      "state": {
+        "document": "en",
+        "languageStored": "en",
+        "themeStored": null,
+        "themeKeys": [],
+        "className": "light",
+        "mediaDark": false,
+        "background": "oklch(0.98 0.002 260)",
+        "languageCookie": "i18nextLng=en"
+      },
+      "mediaOverrideReset": true
+    },
+    "logout": "canonical helper exit 0: ok logged-out",
+    "browser": {
+      "at": "2026-10-15T18:01:31.373Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "console": "0 errors, 0 warnings"
+  },
+  "limits": [
+    "Physical OS settings, Firefox/WebKit, auth-page navigation and URL theme overrides were not exercised; media changes were native per-page browser emulation.",
+    "No issue is claimed for the initial preference snapshot, explicit modes, dark-mode reload persistence or language switching; those controls passed.",
+    "The first explicit-mode control attempt used a desktop hover path on mobile; it was discarded and replaced with the actual flat mobile menu controls above.",
+    "Independent Render production UI was not tested."
+  ],
+  "postPullDedupe": {
+    "head": "562cbfd25a6a75c559d705efc3736432425e9c7d",
+    "boardMarkdownFilesExcludingOwn315": 9193,
+    "actualOpenMilestones": 73,
+    "hitsExcludingOwnNoteAndEntry": [".pm/w4/blocked/302.md"],
+    "incomingProductPaths": [
+      "dashboard/src/features/logs/components/__tests__/log-viewer.test.tsx",
+      "dashboard/src/features/logs/components/log-viewer.tsx",
+      "dashboard/src/features/metrics/hooks/__tests__/use-live-range.test.tsx",
+      "dashboard/src/features/metrics/hooks/use-live-range.ts"
+    ],
+    "themeProviderUnchanged": true,
+    "policyPathsChanged": []
+  }
+}

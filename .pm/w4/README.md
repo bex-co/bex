@@ -272,6 +272,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **315** — [System theme ignores later browser preference changes](315.md) (minor, 35m) ← functional QA a612, 2026-10-15; desktop/fresh-mobile native media changes leave System mode in the old color, while load/fixed-mode controls pass; global provider lacks a listener, preferences/session restored.
+
 - [ ] **314** — [Generate Blueprint reports copied when clipboard access fails](314.md) (minor, 30m) ← functional QA a610, 2026-10-15; native desktop/fresh-mobile browser denial leaves clipboard unchanged but shows success and raises pageerror; Download/retry controls pass, own unlinked group and session cleaned.
 
 - [ ] **313** — [Chinese repository selectors retain English guidance and clear labels](313.md) (minor, 35m) ← functional QA a606, 2026-10-15; native Chinese desktop/mobile Blueprint branch controls keep English fallback copy, 3 render sites/4 contexts traced; read-only pass, locale/session restored.
