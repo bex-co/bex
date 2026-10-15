@@ -1,0 +1,17 @@
+from pathlib import Path
+import datetime,json,os,shutil,subprocess,time
+os.umask(0o077)
+P=Path(__file__).resolve().parent;CP=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(CP.read_text());x=c['sweep313_name_validation'];assert len(x['results'])==30 and not x['corrected_round']
+def save():
+ c['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();t=CP.with_name('.'+CP.name+'.qa313.tmp');t.write_text(json.dumps(c,indent=2));t.chmod(0o600);t.replace(CP)
+f=P/'sweep313-render.yaml';cfg=P/'render-config/cli.yaml';assert not f.exists() and not cfg.exists()
+try:
+ for client,runner,flags in [('installed Bex0.2.1','run.py',[]),('published Bex0.3.2','run.py',['--release']),('unchanged Render2.27','run-render.py',[])]:
+  for case in (v for v in x['cases'] if v['case'] in x['corrected_cases']):
+   f.write_text(case['manifest']);args=['blueprints','validate',str(f),'--confirm','-o','json'];entry={'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'client':client,'case':case['case'],'command':[client,*args],'round':'corrected envVarGroups root; validation only','state':'finite validation intent persisted'};x['corrected_round'].append(entry);x['results'].append(entry);save()
+   try:
+    if runner=='run-render.py':shutil.copyfile(P/'config/cli.yaml',cfg);cfg.chmod(0o600)
+    result=json.loads(subprocess.check_output(['python3',str(P/runner),*flags,'--bound=35',*args],text=True,timeout=50));entry['native']=result
+   finally:f.unlink(missing_ok=True);cfg.unlink(missing_ok=True)
+   decoded=json.loads(result['stdout']);match=decoded['valid'] is case['expected_valid'] and result['exit']==(0 if case['expected_valid'] else 1);entry.update(decoded=decoded,validity_and_exit_match=bool(match),state='native validation complete; file/config copy removed');save();print(json.dumps({'client':client,'case':case['case'],'native_exit':result['exit'],'valid':decoded['valid'],'validity_match':bool(match)}),flush=True);time.sleep(.35)
+finally:x['input_removed']=not f.exists();x['copied_render_config_removed']=not cfg.exists();save()

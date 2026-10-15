@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: qa318-node-r
+    runtime: node
+    plan: free
+    buildCommand: node --version
+    startCommand: node server.js
+    repo: not-a-repository

@@ -1,0 +1,98 @@
+from pathlib import Path
+import datetime, json, os, secrets, shutil, subprocess, sys, time, re, yaml
+os.umask(0o077)
+P=Path(__file__).resolve().parent
+ROOT=Path('/Volumes/nvme4tbfish/projects/bex8');CP=ROOT/'.playwright-mcp/cli-qa-w8-checkpoint.json'
+c=json.loads(CP.read_text());assert c.get('sync320_result')==0 and not c.get('active_sync_stash')
+mode=sys.argv[1];client=sys.argv[2] if len(sys.argv)>2 else 'bex';assert client in ('bex','render')
+WS='tea-daif693dqjvc73e7as3g'
+def unwrap(v):
+ for key in ('service','postgres','keyValue'):
+  if isinstance(v.get(key),dict):return v[key]
+ return v
+BASE={v if isinstance(v,str) else unwrap(v)['id'] for v in c['baseline']['services']}
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():
+ c['last_updated']=now();f=CP.with_name('.'+CP.name+'.qa320.tmp');f.write_text(json.dumps(c,indent=2,ensure_ascii=False));f.chmod(0o600);f.replace(CP)
+def cli(args,bound=40):
+ cfg=P/'render-config/cli.yaml'
+ try:
+  if client=='render':assert not cfg.exists();shutil.copyfile(P/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  env={k:v for k,v in os.environ.items() if not k.startswith(('RENDER_','BEX_','QA_','PG'))}
+  prefix='BEX' if client=='bex' else 'RENDER';directory=P/('config' if client=='bex' else 'render-config')
+  env.update({prefix+'_HOST':'https://api.bex.co/v1/',prefix+'_CLI_CONFIG_DIR':str(directory),prefix+'_CLI_CONFIG_PATH':str(directory/'cli.yaml'),prefix+'_WORKSPACE':WS,prefix+'_NO_UPDATE_NOTIFIER':'1','BEX_CLI_DISABLE_ANALYTICS':'1','DO_NOT_TRACK':'1','BROWSER':'/usr/bin/true','PGCONNECT_TIMEOUT':'10','PGCLIENTENCODING':'UTF8'})
+  start=time.monotonic();timedout=False
+  try:r=subprocess.run([str(P/('release/bex' if client=='bex' else 'render-pin')),*args],env=env,text=True,capture_output=True,timeout=bound);code=r.returncode;out=r.stdout;err=r.stderr
+  except subprocess.TimeoutExpired as e:
+   timedout=True;code=None;out=e.stdout or '';err=e.stderr or ''
+   if isinstance(out,bytes):out=out.decode(errors='replace')
+   if isinstance(err,bytes):err=err.decode(errors='replace')
+  private=yaml.safe_load((P/'config/cli.yaml').read_text())['api'];token=private.get('token') or private.get('key') or private.get('access_token');assert token
+  out=out.replace(token,'QA_TOKEN_REDACTED');err=err.replace(token,'QA_TOKEN_REDACTED')
+  for line in (ROOT/'muse.env').read_text().splitlines():
+   k,sep,v=line.partition('=')
+   if sep and k.strip() in ('QA_EMAIL','QA_PASSWORD') and v.strip().strip('\"\''):
+    secret=v.strip().strip('\"\'');out=out.replace(secret,'QA_PRIVATE_REDACTED');err=err.replace(secret,'QA_PRIVATE_REDACTED')
+  out=re.sub(r'(?:postgres(?:ql)?|rediss?)://[^\s\"\']+','[CONNECTION URI REDACTED]',out);err=re.sub(r'(?:postgres(?:ql)?|rediss?)://[^\s\"\']+','[CONNECTION URI REDACTED]',err)
+  return {'at':now(),'binary':'released Bex0.3.2' if client=='bex' else 'unchanged Render2.27.0/a764810a7682','command':[client,*args],'native_exit':code,'harness_timeout':timedout,'elapsed':round(time.monotonic()-start,3),'stdout':out,'stderr':err}
+ finally:
+  if client=='render':cfg.unlink(missing_ok=True)
+def api(method,path):
+ cfg=yaml.safe_load((P/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token
+ ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')';auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+WS+'"\n'
+ start=time.monotonic();r=subprocess.run(['curl','--disable','-sS','--max-time','25','--config','-','-X',method,'-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=30);raw,_,status=r.stdout.rpartition('\n');out={'at':now(),'API_only':True,'request':{'method':method,'path':path,'workspace':WS,'user_agent':ua,'authorization':'REDACTED'},'status':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-start,3),'response':raw,'stderr':r.stderr};assert token not in json.dumps(out);return out
+def rows(args):
+ r=cli([*args,'--confirm','-o','json']);assert r['native_exit']==0,r['stderr'];v=json.loads(r['stdout']);v=v.get('data',v) if isinstance(v,dict) else v;return r,[unwrap(z) for z in (v or [])]
+def pgval(r):
+ v=json.loads(r['stdout']);v=v.get('data',v);return unwrap(v)
+def detail():
+ r=api('GET','/v1/postgres/'+x['id']);x.setdefault('details',[]).append(r);save();assert r['status']=='200';v=json.loads(r['response']);assert v['id']==x['id'] and (v.get('ownerId') or v.get('owner',{}).get('id'))==WS and v['plan']=='free' and v['version']=='18';return r,v
+def sql(label,command,selector=None):
+ assert client=='bex'
+ event={'at':now(),'label':label,'intent':'SQL on own fresh Free database','selector':selector or x['id'],'command':command};x.setdefault('sql_events',[]).append(event);save()
+ r=cli(['psql',selector or x['id'],'--command',command,'--confirm','-o','json','--','-X','-q','-t','-A','-v','ON_ERROR_STOP=1']);event['result']=r;save()
+ print(json.dumps({'SQL':label,'native_exit':r['native_exit'],'harness_timeout':r['harness_timeout'],'stderr':r['stderr'],'stdout':r['stdout'][:2200]}),flush=True)
+ return event
+if mode=='create':
+ assert client=='bex' and not any(v.get('sweep')==320 for v in c['resources'])
+ q=api('GET','/v1/owners/'+WS+'/limits');assert q['status']=='200';lim=json.loads(q['response'])['postgres'];assert lim['used']==0 and lim['terminating']==0 and lim['limit']>=1
+ inv,pgs=rows(['postgres','list']);assert not pgs;sr,svcs=rows(['services']);assert {v['id'] for v in svcs}==BASE
+ nonce=secrets.token_hex(3);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-pgdata';args=['postgres','create','--name',name,'--plan','free','--version','18','--region','frankfurt','--connection-pool','none','--confirm','-o','json']
+ x={'sweep':320,'client':'bex','workspace':WS,'type':'postgres','name':name,'nonce':nonce,'time':now(),'source_head':c['head'],'capacity':q,'pre_inventory':inv,'pre_service_inventory':sr,'pre_ids':[],'dependency_ids':[],'recorded_child_ids':[],'table':'qa320_'+nonce,'create_command':['bex',*args],'state':'native explicit Free Postgres18 create intent persisted'};c['resources'].append(x);save();r=cli(args);x['create_result']=r;x['state']='create returned: reconcile before retry';save();assert r['native_exit']==0;v=pgval(r);assert v['id'] not in x['pre_ids'] and v['name']==name and v['plan']=='free' and v['version']=='18' and (v.get('ownerId') or v.get('owner',{}).get('id'))==WS;x.update(id=v['id'],create_response=v,state='created: native0/ID/workspace/Free ownership proved');save();print(json.dumps({'native_exit':0,'id':x['id'],'plan':v['plan'],'version':v['version']}));raise SystemExit(0)
+x=next(v for v in c['resources'] if v.get('sweep')==320);sid=x['id'];v=x['create_response'];assert x['workspace']==WS and x['create_result']['native_exit']==0 and v['id']==sid and sid not in x['pre_ids'] and v['plan']=='free' and (v.get('ownerId') or v.get('owner',{}).get('id'))==WS and (mode=='reconcile' or not x['state'].startswith('deleted:'))
+t=x['table'];assert re.fullmatch('qa320_[a-f0-9]{6}',t)
+if mode=='ready':
+ r=cli(['postgres','get',sid,'--confirm','-o','json']);d,v=detail();x.setdefault('readiness',[]).append({'at':now(),'client':client,'native':r,'detail':d});save();print(json.dumps({'client':client,'exit':r['native_exit'],'status':v['status']}))
+elif mode=='inventory':
+ r,pgs=rows(['postgres','list']);entry={'at':now(),'client':client,'native':r,'matches':[v['id'] for v in pgs if v['name']==x['name']]};x.setdefault('selector_inventories',[]).append(entry);save();assert entry['matches']==[sid] and len(pgs)==1;print(json.dumps({'client':client,'unique_owned_name_match':entry['matches']}),flush=True)
+elif mode=='seed':
+ assert client=='bex' and not x.get('sql_events');d,v=detail();assert v['status']=='available'
+ command=f'''BEGIN; CREATE TABLE {t} (id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,k text NOT NULL UNIQUE,v text,amount numeric(28,9),payload jsonb,raw bytea,ticks integer NOT NULL DEFAULT 0); INSERT INTO {t}(k,v,amount,payload,raw) VALUES ('ascii','committed-{x['nonce']}',123456789.123456789,'{{"ok":true,"n":1}}',decode('00017f80ff','hex')),('unicode','日本語 café 🐟',-0.000000001,'{{"label":"🐟","items":[1,null,"x"]}}',decode('deadbeef00','hex')),('multiline',E'first\\nsecond\\tend',0.000000000,'{{}}',decode('','hex')),('nullable',NULL,NULL,NULL,NULL); COMMIT;'''
+ sql('seed-committed-four-rows',command)
+elif mode=='probe':
+ label=sys.argv[3];selector=x['name'] if len(sys.argv)>4 and sys.argv[4]=='name' else sid
+ command=f'''SELECT jsonb_build_object('server_version',current_setting('server_version_num'),'postmaster_start',pg_postmaster_start_time()::text,'rows',(SELECT jsonb_agg(jsonb_build_object('id',id,'k',k,'v',v,'amount',amount::text,'payload',payload,'raw',encode(raw,'hex'),'ticks',ticks) ORDER BY id) FROM {t}),'sequence_last',(SELECT last_value FROM {t}_id_seq),'sequence_called',(SELECT is_called FROM {t}_id_seq))::text;'''
+ e=sql(label,command,selector)
+ if e['result']['native_exit']==0:
+  payload=json.loads(json.loads(e['result']['stdout'])['output'].strip());e['observed']=payload
+  prior=next((z['observed'] for z in x['sql_events'] if z.get('label')=='baseline-data' and 'observed' in z),None)
+  if label=='baseline-data':
+   expected=[{'id':1,'k':'ascii','v':'committed-'+x['nonce'],'amount':'123456789.123456789','payload':{'ok':True,'n':1},'raw':'00017f80ff','ticks':0},{'id':2,'k':'unicode','v':'日本語 café 🐟','amount':'-0.000000001','payload':{'label':'🐟','items':[1,None,'x']},'raw':'deadbeef00','ticks':0},{'id':3,'k':'multiline','v':'first\nsecond\tend','amount':'0.000000000','payload':{},'raw':'','ticks':0},{'id':4,'k':'nullable','v':None,'amount':None,'payload':None,'raw':None,'ticks':0}]
+   e['data_pass']=payload['rows']==expected and payload['sequence_last']==4 and payload['sequence_called'] is True and payload['server_version'].startswith('18')
+  elif label.startswith('cycle1'):
+   assert prior;e['data_pass']=payload['rows']==prior['rows'] and payload['sequence_last']==4 and payload['sequence_called'] is True;e['new_postmaster']=payload['postmaster_start']!=prior['postmaster_start']
+  elif label.startswith('cycle2'):
+   previous=next(z['observed'] for z in x['sql_events'] if z.get('label')=='cycle1-data' and 'observed' in z);expected=[{**z,'ticks':z['ticks']+1} for z in prior['rows']]+[{'id':5,'k':'after-cycle1','v':'second-commit','amount':None,'payload':None,'raw':None,'ticks':0}];e['data_pass']=payload['rows']==expected and payload['sequence_last']==5 and payload['sequence_called'] is True;e['new_postmaster']=payload['postmaster_start']!=previous['postmaster_start']
+  save();print(json.dumps({'label':label,'data_pass':e.get('data_pass'),'new_postmaster':e.get('new_postmaster')}),flush=True)
+elif mode=='commit2':
+ assert any(e.get('label')=='cycle1-data' and e.get('data_pass') and e.get('new_postmaster') for e in x['sql_events']) and not any(e.get('label')=='second-commit-and-rollback' for e in x['sql_events'])
+ sql('second-commit-and-rollback',f"BEGIN; UPDATE {t} SET ticks=ticks+1; INSERT INTO {t}(k,v) VALUES('after-cycle1','second-commit'); COMMIT; BEGIN; UPDATE {t} SET v='rolled-back'; DELETE FROM {t} WHERE k='unicode'; ROLLBACK;")
+elif mode in ('suspend','resume'):
+ cycle=int(sys.argv[3]);assert cycle in (1,2);d,v=detail();expected='available' if mode=='suspend' else 'suspended';assert v['status']==expected
+ events=x.setdefault('lifecycle',[]);assert not any(z['cycle']==cycle and z['action']==mode for z in events)
+ selector=x['name'] if client=='render' else sid;e={'at':now(),'cycle':cycle,'action':mode,'client':client,'selector':selector,'before':d,'intent':'native lifecycle on owned Free database'};events.append(e);save();e['result']=cli(['postgres',mode,selector,'--confirm','-o','json']);save();print(json.dumps({'cycle':cycle,'action':mode,'native_exit':e['result']['native_exit'],'harness_timeout':e['result']['harness_timeout'],'stderr':e['result']['stderr'],'stdout':e['result']['stdout'][:500]}),flush=True)
+elif mode=='delete':
+ assert 'delete_intent' not in x;d,v=detail();assert v['readReplicas']==[] and v['connectionPool']=='none';assert not any(sid in z.get('dependency_ids',[]) and not z['state'].startswith('deleted:') for z in c['resources']);x['dependent_inventory']=d;x['delete_intent']={'at':now(),'client':client,'id':sid};save();x['delete_result']=cli(['postgres','delete',sid,'--confirm','-o','json']);save();print(json.dumps({'delete_native_exit':x['delete_result']['native_exit'],'stderr':x['delete_result']['stderr']}),flush=True)
+elif mode=='reconcile':
+ assert 'delete_result' in x;d=api('GET','/v1/postgres/'+sid);inv,pgs=rows(['postgres','list']);sr,svcs=rows(['services']);q=api('GET','/v1/owners/'+WS+'/limits');e={'at':now(),'detail':d,'inventory':inv,'service_inventory':sr,'quota':q,'baseline_preserved':BASE<={v['id'] for v in svcs}};x.setdefault('cleanup_receipts',[]).append(e);save();assert q['status']=='200';lim=json.loads(q['response'])['postgres'];done=d['status']=='404' and not pgs and e['baseline_preserved'] and lim['used']==0 and lim['terminating']==0;x['state']='deleted: native0/detail404/listempty/baseline6/PGquota0/terminating0' if done and x['delete_result']['native_exit']==0 else ('deleted: detail404/listempty/baseline6/PGquota0/terminating0' if done else 'cleanup pending: reconcile required');save();print(json.dumps({'cleanup_complete':done,'detail':d['status'],'used':lim['used'],'terminating':lim['terminating']}),flush=True)
+else:raise ValueError(mode)

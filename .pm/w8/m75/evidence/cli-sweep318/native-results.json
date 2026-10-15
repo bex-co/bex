@@ -1,0 +1,3786 @@
+{
+  "head": "eebd8ce27b12195f10dc977f8cddb64a9657246c",
+  "actual_native_commands": 123,
+  "selected_main_receipts": 83,
+  "masked_original_mattermost_receipts": 3,
+  "qualified_main_comparisons": 80,
+  "qualified_main_false_refusals": 20,
+  "qualified_main_controls": 60,
+  "results": [
+    {
+      "at": "2026-10-15T21:08:26.112643+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "plain-web",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.911,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa313-c2ebae-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa313-c2ebae-consumer"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:08:27.675658+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "service-and-database",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.895,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"services\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "databases": ["qa313-c2ebae-shared"],
+          "services": ["qa313-c2ebae-shared"],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:08:29.225970+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "service-and-keyvalue",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.73,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"services\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": ["qa313-c2ebae-shared"],
+          "services": ["qa313-c2ebae-shared"],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:08:30.938835+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "three-kinds",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.99,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"keyValue\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"services\": [\n      \"qa313-c2ebae-shared\",\n      \"qa313-c2ebae-consumer\"\n    ],\n    \"totalActions\": 4\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "databases": ["qa313-c2ebae-shared"],
+          "keyValue": ["qa313-c2ebae-shared"],
+          "services": ["qa313-c2ebae-shared", "qa313-c2ebae-consumer"],
+          "totalActions": 4
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:08:32.657423+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "three-kinds-and-envgroup",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.757,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"envGroups\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"keyValue\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"services\": [\n      \"qa313-c2ebae-shared\",\n      \"qa313-c2ebae-consumer\"\n    ],\n    \"totalActions\": 5\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "databases": ["qa313-c2ebae-shared"],
+          "envGroups": ["qa313-c2ebae-shared"],
+          "keyValue": ["qa313-c2ebae-shared"],
+          "services": ["qa313-c2ebae-shared", "qa313-c2ebae-consumer"],
+          "totalActions": 5
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:08:35.068665+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "same-service-kind-different-types",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.724,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" for service (first declared at #/services/0)\",\n      \"line\": 8,\n      \"path\": \"services[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "duplicate name \"qa313-c2ebae-shared\" for service (first declared at #/services/0)",
+            "line": 8,
+            "path": "services[1]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[1]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:08:36.454613+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "duplicate-database",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.451,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" for postgres (first declared at #/databases/0)\",\n      \"line\": 4,\n      \"path\": \"databases[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "duplicate name \"qa313-c2ebae-shared\" for postgres (first declared at #/databases/0)",
+            "line": 4,
+            "path": "databases[1]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["databases[1]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:08:37.557607+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "duplicate-keyvalue",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.668,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" for key_value (first declared at #/services/0)\",\n      \"line\": 6,\n      \"path\": \"services[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "duplicate name \"qa313-c2ebae-shared\" for key_value (first declared at #/services/0)",
+            "line": 6,
+            "path": "services[1]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[1]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:08:38.885571+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "duplicate-envgroup",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.628,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" for env_var_group (first declared at #/envVarGroups/0)\",\n      \"line\": 13,\n      \"path\": \"envVarGroups[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "duplicate name \"qa313-c2ebae-shared\" for env_var_group (first declared at #/envVarGroups/0)",
+            "line": 13,
+            "path": "envVarGroups[1]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["envVarGroups[1]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:08:40.157543+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "database-does-not-satisfy-web-ref",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.676,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa313-c2ebae-consumer\\\": fromService references unknown service \\\"qa313-c2ebae-shared\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 16,\n      \"path\": \"services[0].envVars[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa313-c2ebae-consumer\": fromService references unknown service \"qa313-c2ebae-shared\" (declare it under services: or create it in this workspace first)",
+            "line": 16,
+            "path": "services[0].envVars[1]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[0].envVars[1]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:08:41.494339+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "keyvalue-does-not-satisfy-web-ref",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.489,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa313-c2ebae-consumer\\\": fromService references unknown service \\\"qa313-c2ebae-shared\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 18,\n      \"path\": \"services[1].envVars[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa313-c2ebae-consumer\": fromService references unknown service \"qa313-c2ebae-shared\" (declare it under services: or create it in this workspace first)",
+            "line": 18,
+            "path": "services[1].envVars[1]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[1].envVars[1]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:08:42.647220+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "missing-database-control",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.919,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"fromDatabase references unknown database \\\"qa313-c2ebae-shared\\\" in this workspace\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "fromDatabase references unknown database \"qa313-c2ebae-shared\" in this workspace",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[0].envVars[0]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:08:44.223979+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "render-example-ghost",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.416,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"ghost\\\": one of repo or image is required\",\n      \"line\": 2,\n      \"path\": \"services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "service \"ghost\": one of repo or image is required",
+            "line": 2,
+            "path": "services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].image"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:08:45.305867+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "render-example-wordpress",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.575,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"wordpress\\\": one of repo or image is required\",\n      \"line\": 2,\n      \"path\": \"services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "service \"wordpress\": one of repo or image is required",
+            "line": 2,
+            "path": "services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].image"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:08:46.553390+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "render-example-mattermost",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.644,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"mattermost-minio\\\": one of repo or image is required\",\n      \"line\": 7,\n      \"path\": \"services[0].image\"\n    },\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"mattermost\\\": one of repo or image is required\",\n      \"line\": 22,\n      \"path\": \"services[1].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "service \"mattermost-minio\": one of repo or image is required",
+            "line": 7,
+            "path": "services[0].image"
+          },
+          {
+            "column": 3,
+            "error": "service \"mattermost\": one of repo or image is required",
+            "line": 22,
+            "path": "services[1].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].image", "services[1].image"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:08:47.859072+00:00",
+      "client": "published Bex0.3.2",
+      "case": "plain-web",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.554,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa313-c2ebae-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa313-c2ebae-consumer"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:08:49.069471+00:00",
+      "client": "published Bex0.3.2",
+      "case": "service-and-database",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.498,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"services\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "databases": ["qa313-c2ebae-shared"],
+          "services": ["qa313-c2ebae-shared"],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:08:50.224493+00:00",
+      "client": "published Bex0.3.2",
+      "case": "service-and-keyvalue",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.628,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"services\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": ["qa313-c2ebae-shared"],
+          "services": ["qa313-c2ebae-shared"],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:08:51.543657+00:00",
+      "client": "published Bex0.3.2",
+      "case": "three-kinds",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.565,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"keyValue\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"services\": [\n      \"qa313-c2ebae-shared\",\n      \"qa313-c2ebae-consumer\"\n    ],\n    \"totalActions\": 4\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "databases": ["qa313-c2ebae-shared"],
+          "keyValue": ["qa313-c2ebae-shared"],
+          "services": ["qa313-c2ebae-shared", "qa313-c2ebae-consumer"],
+          "totalActions": 4
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:08:52.821432+00:00",
+      "client": "published Bex0.3.2",
+      "case": "three-kinds-and-envgroup",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.458,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"envGroups\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"keyValue\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"services\": [\n      \"qa313-c2ebae-shared\",\n      \"qa313-c2ebae-consumer\"\n    ],\n    \"totalActions\": 5\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "databases": ["qa313-c2ebae-shared"],
+          "envGroups": ["qa313-c2ebae-shared"],
+          "keyValue": ["qa313-c2ebae-shared"],
+          "services": ["qa313-c2ebae-shared", "qa313-c2ebae-consumer"],
+          "totalActions": 5
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:08:54.938591+00:00",
+      "client": "published Bex0.3.2",
+      "case": "same-service-kind-different-types",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.442,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" for service (first declared at #/services/0)\",\n      \"line\": 8,\n      \"path\": \"services[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "duplicate name \"qa313-c2ebae-shared\" for service (first declared at #/services/0)",
+            "line": 8,
+            "path": "services[1]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[1]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:08:56.040455+00:00",
+      "client": "published Bex0.3.2",
+      "case": "duplicate-database",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.708,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" for postgres (first declared at #/databases/0)\",\n      \"line\": 4,\n      \"path\": \"databases[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "duplicate name \"qa313-c2ebae-shared\" for postgres (first declared at #/databases/0)",
+            "line": 4,
+            "path": "databases[1]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["databases[1]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:08:57.398743+00:00",
+      "client": "published Bex0.3.2",
+      "case": "duplicate-keyvalue",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.421,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" for key_value (first declared at #/services/0)\",\n      \"line\": 6,\n      \"path\": \"services[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "duplicate name \"qa313-c2ebae-shared\" for key_value (first declared at #/services/0)",
+            "line": 6,
+            "path": "services[1]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[1]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:08:58.477318+00:00",
+      "client": "published Bex0.3.2",
+      "case": "duplicate-envgroup",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.403,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" for env_var_group (first declared at #/envVarGroups/0)\",\n      \"line\": 13,\n      \"path\": \"envVarGroups[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "duplicate name \"qa313-c2ebae-shared\" for env_var_group (first declared at #/envVarGroups/0)",
+            "line": 13,
+            "path": "envVarGroups[1]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["envVarGroups[1]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:08:59.538772+00:00",
+      "client": "published Bex0.3.2",
+      "case": "database-does-not-satisfy-web-ref",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.445,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa313-c2ebae-consumer\\\": fromService references unknown service \\\"qa313-c2ebae-shared\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 16,\n      \"path\": \"services[0].envVars[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa313-c2ebae-consumer\": fromService references unknown service \"qa313-c2ebae-shared\" (declare it under services: or create it in this workspace first)",
+            "line": 16,
+            "path": "services[0].envVars[1]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[0].envVars[1]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:09:00.694739+00:00",
+      "client": "published Bex0.3.2",
+      "case": "keyvalue-does-not-satisfy-web-ref",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.386,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa313-c2ebae-consumer\\\": fromService references unknown service \\\"qa313-c2ebae-shared\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 18,\n      \"path\": \"services[1].envVars[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa313-c2ebae-consumer\": fromService references unknown service \"qa313-c2ebae-shared\" (declare it under services: or create it in this workspace first)",
+            "line": 18,
+            "path": "services[1].envVars[1]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[1].envVars[1]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:09:01.781972+00:00",
+      "client": "published Bex0.3.2",
+      "case": "missing-database-control",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.555,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"fromDatabase references unknown database \\\"qa313-c2ebae-shared\\\" in this workspace\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "fromDatabase references unknown database \"qa313-c2ebae-shared\" in this workspace",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[0].envVars[0]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:09:02.983377+00:00",
+      "client": "published Bex0.3.2",
+      "case": "render-example-ghost",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.439,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"ghost\\\": one of repo or image is required\",\n      \"line\": 2,\n      \"path\": \"services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "service \"ghost\": one of repo or image is required",
+            "line": 2,
+            "path": "services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].image"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:09:04.096698+00:00",
+      "client": "published Bex0.3.2",
+      "case": "render-example-wordpress",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.643,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"wordpress\\\": one of repo or image is required\",\n      \"line\": 2,\n      \"path\": \"services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "service \"wordpress\": one of repo or image is required",
+            "line": 2,
+            "path": "services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].image"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:09:05.407643+00:00",
+      "client": "published Bex0.3.2",
+      "case": "render-example-mattermost",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.879,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"mattermost-minio\\\": one of repo or image is required\",\n      \"line\": 7,\n      \"path\": \"services[0].image\"\n    },\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"mattermost\\\": one of repo or image is required\",\n      \"line\": 22,\n      \"path\": \"services[1].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "service \"mattermost-minio\": one of repo or image is required",
+            "line": 7,
+            "path": "services[0].image"
+          },
+          {
+            "column": 3,
+            "error": "service \"mattermost\": one of repo or image is required",
+            "line": 22,
+            "path": "services[1].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].image", "services[1].image"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:09:06.944410+00:00",
+      "client": "unchanged Render2.27",
+      "case": "plain-web",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.57,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa313-c2ebae-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa313-c2ebae-consumer"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:09:08.169800+00:00",
+      "client": "unchanged Render2.27",
+      "case": "service-and-database",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.443,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"services\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "databases": ["qa313-c2ebae-shared"],
+          "services": ["qa313-c2ebae-shared"],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:09:09.256398+00:00",
+      "client": "unchanged Render2.27",
+      "case": "service-and-keyvalue",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.467,
+        "stdout": "{\n  \"plan\": {\n    \"keyValue\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"services\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"totalActions\": 2\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "keyValue": ["qa313-c2ebae-shared"],
+          "services": ["qa313-c2ebae-shared"],
+          "totalActions": 2
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:09:10.374438+00:00",
+      "client": "unchanged Render2.27",
+      "case": "three-kinds",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.624,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"keyValue\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"services\": [\n      \"qa313-c2ebae-shared\",\n      \"qa313-c2ebae-consumer\"\n    ],\n    \"totalActions\": 4\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "databases": ["qa313-c2ebae-shared"],
+          "keyValue": ["qa313-c2ebae-shared"],
+          "services": ["qa313-c2ebae-shared", "qa313-c2ebae-consumer"],
+          "totalActions": 4
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:09:11.635024+00:00",
+      "client": "unchanged Render2.27",
+      "case": "three-kinds-and-envgroup",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 1.269,
+        "stdout": "{\n  \"plan\": {\n    \"databases\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"envGroups\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"keyValue\": [\n      \"qa313-c2ebae-shared\"\n    ],\n    \"services\": [\n      \"qa313-c2ebae-shared\",\n      \"qa313-c2ebae-consumer\"\n    ],\n    \"totalActions\": 5\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "databases": ["qa313-c2ebae-shared"],
+          "envGroups": ["qa313-c2ebae-shared"],
+          "keyValue": ["qa313-c2ebae-shared"],
+          "services": ["qa313-c2ebae-shared", "qa313-c2ebae-consumer"],
+          "totalActions": 5
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:09:13.555722+00:00",
+      "client": "unchanged Render2.27",
+      "case": "same-service-kind-different-types",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.649,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" for service (first declared at #/services/0)\",\n      \"line\": 8,\n      \"path\": \"services[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "duplicate name \"qa313-c2ebae-shared\" for service (first declared at #/services/0)",
+            "line": 8,
+            "path": "services[1]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[1]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:09:14.851308+00:00",
+      "client": "unchanged Render2.27",
+      "case": "duplicate-database",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.456,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" for postgres (first declared at #/databases/0)\",\n      \"line\": 4,\n      \"path\": \"databases[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "duplicate name \"qa313-c2ebae-shared\" for postgres (first declared at #/databases/0)",
+            "line": 4,
+            "path": "databases[1]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["databases[1]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:09:15.946462+00:00",
+      "client": "unchanged Render2.27",
+      "case": "duplicate-keyvalue",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.37,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" for key_value (first declared at #/services/0)\",\n      \"line\": 6,\n      \"path\": \"services[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "duplicate name \"qa313-c2ebae-shared\" for key_value (first declared at #/services/0)",
+            "line": 6,
+            "path": "services[1]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[1]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:09:16.948330+00:00",
+      "client": "unchanged Render2.27",
+      "case": "duplicate-envgroup",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.395,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" for env_var_group (first declared at #/envVarGroups/0)\",\n      \"line\": 13,\n      \"path\": \"envVarGroups[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "duplicate name \"qa313-c2ebae-shared\" for env_var_group (first declared at #/envVarGroups/0)",
+            "line": 13,
+            "path": "envVarGroups[1]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["envVarGroups[1]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:09:17.994577+00:00",
+      "client": "unchanged Render2.27",
+      "case": "database-does-not-satisfy-web-ref",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.461,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa313-c2ebae-consumer\\\": fromService references unknown service \\\"qa313-c2ebae-shared\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 16,\n      \"path\": \"services[0].envVars[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa313-c2ebae-consumer\": fromService references unknown service \"qa313-c2ebae-shared\" (declare it under services: or create it in this workspace first)",
+            "line": 16,
+            "path": "services[0].envVars[1]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[0].envVars[1]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:09:19.111432+00:00",
+      "client": "unchanged Render2.27",
+      "case": "keyvalue-does-not-satisfy-web-ref",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.648,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa313-c2ebae-consumer\\\": fromService references unknown service \\\"qa313-c2ebae-shared\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 18,\n      \"path\": \"services[1].envVars[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa313-c2ebae-consumer\": fromService references unknown service \"qa313-c2ebae-shared\" (declare it under services: or create it in this workspace first)",
+            "line": 18,
+            "path": "services[1].envVars[1]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[1].envVars[1]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:09:20.413898+00:00",
+      "client": "unchanged Render2.27",
+      "case": "missing-database-control",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.403,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"fromDatabase references unknown database \\\"qa313-c2ebae-shared\\\" in this workspace\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "fromDatabase references unknown database \"qa313-c2ebae-shared\" in this workspace",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[0].envVars[0]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T21:09:21.471329+00:00",
+      "client": "unchanged Render2.27",
+      "case": "render-example-ghost",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.663,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"ghost\\\": one of repo or image is required\",\n      \"line\": 2,\n      \"path\": \"services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "service \"ghost\": one of repo or image is required",
+            "line": 2,
+            "path": "services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].image"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:09:22.781612+00:00",
+      "client": "unchanged Render2.27",
+      "case": "render-example-wordpress",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.405,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"wordpress\\\": one of repo or image is required\",\n      \"line\": 2,\n      \"path\": \"services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "service \"wordpress\": one of repo or image is required",
+            "line": 2,
+            "path": "services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].image"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:09:23.843422+00:00",
+      "client": "unchanged Render2.27",
+      "case": "render-example-mattermost",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.429,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"mattermost-minio\\\": one of repo or image is required\",\n      \"line\": 7,\n      \"path\": \"services[0].image\"\n    },\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"mattermost\\\": one of repo or image is required\",\n      \"line\": 22,\n      \"path\": \"services[1].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "service \"mattermost-minio\": one of repo or image is required",
+            "line": 7,
+            "path": "services[0].image"
+          },
+          {
+            "column": 3,
+            "error": "service \"mattermost\": one of repo or image is required",
+            "line": 22,
+            "path": "services[1].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].image", "services[1].image"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:19:50.311612+00:00",
+      "client": "published Bex0.3.2",
+      "case": "implicit-docker-root",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.943,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"qa318-docker-r\\\": one of repo or image is required\",\n      \"line\": 2,\n      \"path\": \"services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "service \"qa318-docker-r\": one of repo or image is required",
+            "line": 2,
+            "path": "services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].image"],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:19:51.981255+00:00",
+      "client": "published Bex0.3.2",
+      "case": "explicit-docker-root",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.479,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa318-docker-r\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa318-docker-r"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:19:53.172122+00:00",
+      "client": "published Bex0.3.2",
+      "case": "implicit-node-root",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.402,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"qa318-node-r\\\": one of repo or image is required\",\n      \"line\": 2,\n      \"path\": \"services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "service \"qa318-node-r\": one of repo or image is required",
+            "line": 2,
+            "path": "services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].image"],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:19:54.307063+00:00",
+      "client": "published Bex0.3.2",
+      "case": "explicit-node-root",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.854,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa318-node-r\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa318-node-r"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:19:55.882692+00:00",
+      "client": "published Bex0.3.2",
+      "case": "implicit-static-root",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.693,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"qa318-static-r\\\": one of repo or image is required\",\n      \"line\": 2,\n      \"path\": \"services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "service \"qa318-static-r\": one of repo or image is required",
+            "line": 2,
+            "path": "services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].image"],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:19:57.283631+00:00",
+      "client": "published Bex0.3.2",
+      "case": "explicit-static-root",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.37,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa318-static-r\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa318-static-r"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:19:58.371135+00:00",
+      "client": "published Bex0.3.2",
+      "case": "invalid-repo-root",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.742,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"qa318-node-r\\\": repo must be an https/ssh/git URL\",\n      \"line\": 2,\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "service \"qa318-node-r\": repo must be an https/ssh/git URL",
+            "line": 2,
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[0]"],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:19:59.856092+00:00",
+      "client": "published Bex0.3.2",
+      "case": "missing-image-root",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.645,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"qa318-image-r\\\": one of repo or image is required\",\n      \"line\": 2,\n      \"path\": \"services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "service \"qa318-image-r\": one of repo or image is required",
+            "line": 2,
+            "path": "services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[0].image"],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:01.162194+00:00",
+      "client": "published Bex0.3.2",
+      "case": "prebuilt-image-root",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.332,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa318-image-r\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa318-image-r"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:02.186342+00:00",
+      "client": "published Bex0.3.2",
+      "case": "implicit-docker-nested",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.383,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 7,\n      \"error\": \"service \\\"qa318-docker-n\\\": one of repo or image is required\",\n      \"line\": 6,\n      \"path\": \"projects[0].environments[0].services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 7,
+            "error": "service \"qa318-docker-n\": one of repo or image is required",
+            "line": 6,
+            "path": "projects[0].environments[0].services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["projects[0].environments[0].services[0].image"],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:03.287098+00:00",
+      "client": "published Bex0.3.2",
+      "case": "explicit-docker-nested",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.313,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa318-docker-n\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa318-docker-n"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:04.292053+00:00",
+      "client": "published Bex0.3.2",
+      "case": "implicit-node-nested",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.737,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 7,\n      \"error\": \"service \\\"qa318-node-n\\\": one of repo or image is required\",\n      \"line\": 6,\n      \"path\": \"projects[0].environments[0].services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 7,
+            "error": "service \"qa318-node-n\": one of repo or image is required",
+            "line": 6,
+            "path": "projects[0].environments[0].services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["projects[0].environments[0].services[0].image"],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:05.695697+00:00",
+      "client": "published Bex0.3.2",
+      "case": "explicit-node-nested",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.474,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa318-node-n\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa318-node-n"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:06.867675+00:00",
+      "client": "published Bex0.3.2",
+      "case": "implicit-static-nested",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.386,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 7,\n      \"error\": \"service \\\"qa318-static-n\\\": one of repo or image is required\",\n      \"line\": 6,\n      \"path\": \"projects[0].environments[0].services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 7,
+            "error": "service \"qa318-static-n\": one of repo or image is required",
+            "line": 6,
+            "path": "projects[0].environments[0].services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["projects[0].environments[0].services[0].image"],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:08.044282+00:00",
+      "client": "published Bex0.3.2",
+      "case": "explicit-static-nested",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.957,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa318-static-n\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa318-static-n"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:09.665514+00:00",
+      "client": "published Bex0.3.2",
+      "case": "invalid-repo-nested",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.336,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 7,\n      \"error\": \"service \\\"qa318-node-n\\\": repo must be an https/ssh/git URL\",\n      \"line\": 6,\n      \"path\": \"projects[0].environments[0].services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 7,
+            "error": "service \"qa318-node-n\": repo must be an https/ssh/git URL",
+            "line": 6,
+            "path": "projects[0].environments[0].services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["projects[0].environments[0].services[0]"],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:10.717926+00:00",
+      "client": "published Bex0.3.2",
+      "case": "missing-image-nested",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.342,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 7,\n      \"error\": \"service \\\"qa318-image-n\\\": one of repo or image is required\",\n      \"line\": 6,\n      \"path\": \"projects[0].environments[0].services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 7,
+            "error": "service \"qa318-image-n\": one of repo or image is required",
+            "line": 6,
+            "path": "projects[0].environments[0].services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["projects[0].environments[0].services[0].image"],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:11.731143+00:00",
+      "client": "published Bex0.3.2",
+      "case": "prebuilt-image-nested",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.424,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa318-image-n\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa318-image-n"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:12.867437+00:00",
+      "client": "published Bex0.3.2",
+      "case": "render-example-mattermost-volume-floor",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.413,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"mattermost-minio\\\": one of repo or image is required\",\n      \"line\": 6,\n      \"path\": \"services[0].image\"\n    },\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"mattermost\\\": one of repo or image is required\",\n      \"line\": 20,\n      \"path\": \"services[1].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "service \"mattermost-minio\": one of repo or image is required",
+            "line": 6,
+            "path": "services[0].image"
+          },
+          {
+            "column": 3,
+            "error": "service \"mattermost\": one of repo or image is required",
+            "line": 20,
+            "path": "services[1].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].image", "services[1].image"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:20:14.651738+00:00",
+      "client": "unchanged Render2.27",
+      "case": "implicit-docker-root",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.427,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"qa318-docker-r\\\": one of repo or image is required\",\n      \"line\": 2,\n      \"path\": \"services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "service \"qa318-docker-r\": one of repo or image is required",
+            "line": 2,
+            "path": "services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].image"],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:15.991014+00:00",
+      "client": "unchanged Render2.27",
+      "case": "explicit-docker-root",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.418,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa318-docker-r\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa318-docker-r"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:17.137485+00:00",
+      "client": "unchanged Render2.27",
+      "case": "implicit-node-root",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.309,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"qa318-node-r\\\": one of repo or image is required\",\n      \"line\": 2,\n      \"path\": \"services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "service \"qa318-node-r\": one of repo or image is required",
+            "line": 2,
+            "path": "services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].image"],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:18.120774+00:00",
+      "client": "unchanged Render2.27",
+      "case": "explicit-node-root",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.375,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa318-node-r\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa318-node-r"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:19.168843+00:00",
+      "client": "unchanged Render2.27",
+      "case": "implicit-static-root",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.323,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"qa318-static-r\\\": one of repo or image is required\",\n      \"line\": 2,\n      \"path\": \"services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "service \"qa318-static-r\": one of repo or image is required",
+            "line": 2,
+            "path": "services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].image"],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:20.138241+00:00",
+      "client": "unchanged Render2.27",
+      "case": "explicit-static-root",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.531,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa318-static-r\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa318-static-r"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:21.316422+00:00",
+      "client": "unchanged Render2.27",
+      "case": "invalid-repo-root",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.405,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"qa318-node-r\\\": repo must be an https/ssh/git URL\",\n      \"line\": 2,\n      \"path\": \"services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "service \"qa318-node-r\": repo must be an https/ssh/git URL",
+            "line": 2,
+            "path": "services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[0]"],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:22.391267+00:00",
+      "client": "unchanged Render2.27",
+      "case": "missing-image-root",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.316,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"qa318-image-r\\\": one of repo or image is required\",\n      \"line\": 2,\n      \"path\": \"services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "service \"qa318-image-r\": one of repo or image is required",
+            "line": 2,
+            "path": "services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[0].image"],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:23.372579+00:00",
+      "client": "unchanged Render2.27",
+      "case": "prebuilt-image-root",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.41,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa318-image-r\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa318-image-r"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:24.432999+00:00",
+      "client": "unchanged Render2.27",
+      "case": "implicit-docker-nested",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.339,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 7,\n      \"error\": \"service \\\"qa318-docker-n\\\": one of repo or image is required\",\n      \"line\": 6,\n      \"path\": \"projects[0].environments[0].services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 7,
+            "error": "service \"qa318-docker-n\": one of repo or image is required",
+            "line": 6,
+            "path": "projects[0].environments[0].services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["projects[0].environments[0].services[0].image"],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:25.422324+00:00",
+      "client": "unchanged Render2.27",
+      "case": "explicit-docker-nested",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.371,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa318-docker-n\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa318-docker-n"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:26.521036+00:00",
+      "client": "unchanged Render2.27",
+      "case": "implicit-node-nested",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.322,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 7,\n      \"error\": \"service \\\"qa318-node-n\\\": one of repo or image is required\",\n      \"line\": 6,\n      \"path\": \"projects[0].environments[0].services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 7,
+            "error": "service \"qa318-node-n\": one of repo or image is required",
+            "line": 6,
+            "path": "projects[0].environments[0].services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["projects[0].environments[0].services[0].image"],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:27.478138+00:00",
+      "client": "unchanged Render2.27",
+      "case": "explicit-node-nested",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.327,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa318-node-n\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa318-node-n"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:28.448351+00:00",
+      "client": "unchanged Render2.27",
+      "case": "implicit-static-nested",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.303,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 7,\n      \"error\": \"service \\\"qa318-static-n\\\": one of repo or image is required\",\n      \"line\": 6,\n      \"path\": \"projects[0].environments[0].services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 7,
+            "error": "service \"qa318-static-n\": one of repo or image is required",
+            "line": 6,
+            "path": "projects[0].environments[0].services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["projects[0].environments[0].services[0].image"],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:29.390445+00:00",
+      "client": "unchanged Render2.27",
+      "case": "explicit-static-nested",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.344,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa318-static-n\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa318-static-n"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:30.383893+00:00",
+      "client": "unchanged Render2.27",
+      "case": "invalid-repo-nested",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.301,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 7,\n      \"error\": \"service \\\"qa318-node-n\\\": repo must be an https/ssh/git URL\",\n      \"line\": 6,\n      \"path\": \"projects[0].environments[0].services[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 7,
+            "error": "service \"qa318-node-n\": repo must be an https/ssh/git URL",
+            "line": 6,
+            "path": "projects[0].environments[0].services[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["projects[0].environments[0].services[0]"],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:31.331061+00:00",
+      "client": "unchanged Render2.27",
+      "case": "missing-image-nested",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.299,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 7,\n      \"error\": \"service \\\"qa318-image-n\\\": one of repo or image is required\",\n      \"line\": 6,\n      \"path\": \"projects[0].environments[0].services[0].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 7,
+            "error": "service \"qa318-image-n\": one of repo or image is required",
+            "line": 6,
+            "path": "projects[0].environments[0].services[0].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["projects[0].environments[0].services[0].image"],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:32.292963+00:00",
+      "client": "unchanged Render2.27",
+      "case": "prebuilt-image-nested",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.366,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa318-image-n\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa318-image-n"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": null
+    },
+    {
+      "at": "2026-10-15T21:20:33.313531+00:00",
+      "client": "unchanged Render2.27",
+      "case": "render-example-mattermost-volume-floor",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.398,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"mattermost-minio\\\": one of repo or image is required\",\n      \"line\": 6,\n      \"path\": \"services[0].image\"\n    },\n    {\n      \"column\": 3,\n      \"error\": \"service \\\"mattermost\\\": one of repo or image is required\",\n      \"line\": 20,\n      \"path\": \"services[1].image\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "service \"mattermost-minio\": one of repo or image is required",
+            "line": 6,
+            "path": "services[0].image"
+          },
+          {
+            "column": 3,
+            "error": "service \"mattermost\": one of repo or image is required",
+            "line": 20,
+            "path": "services[1].image"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].image", "services[1].image"],
+      "location_match": false
+    }
+  ],
+  "pre_inventory": {
+    "native": {
+      "binary": "released v0.3.2",
+      "command": ["bex", "services", "--confirm", "-o", "json"],
+      "exit": 0,
+      "elapsed": 1.001,
+      "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T21:08:04Z\",\n        \"nextRunAt\": \"2026-10-15T21:09:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T21:08:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T21:08:05Z\",\n        \"nextRunAt\": \"2026-10-15T21:09:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T21:08:05Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T21:08:04Z\",\n        \"nextRunAt\": \"2026-10-15T21:09:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T21:08:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T20:55:19Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T12:22:37Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T06:54:00Z\"\n    }\n  }\n]",
+      "stderr": ""
+    },
+    "baseline_preserved": true,
+    "all_declared_names_absent": true
+  },
+  "post_inventory": {
+    "native": {
+      "binary": "released v0.3.2",
+      "command": ["bex", "services", "--confirm", "-o", "json"],
+      "exit": 0,
+      "elapsed": 0.779,
+      "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T21:23:05Z\",\n        \"nextRunAt\": \"2026-10-15T21:24:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T21:23:05Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T21:23:04Z\",\n        \"nextRunAt\": \"2026-10-15T21:24:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T21:23:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T21:23:06Z\",\n        \"nextRunAt\": \"2026-10-15T21:24:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T21:23:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T21:15:10Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T12:22:37Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T06:54:00Z\"\n    }\n  }\n]",
+      "stderr": ""
+    },
+    "quota": {
+      "at": "2026-10-15T21:23:32.026933+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.325,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4b1e2ab9accebed-SJC"
+      },
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "baseline_preserved": true,
+    "authored_names_absent": true
+  },
+  "input_removed": true,
+  "copied_render_config_removed": true
+}

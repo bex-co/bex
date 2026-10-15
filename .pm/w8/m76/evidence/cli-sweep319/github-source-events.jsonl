@@ -1,0 +1,12 @@
+{"Time":"2026-10-15T14:39:46.437587-07:00","Action":"start","Package":"github.com/bex-co/bex/lego/backend/internal/github"}
+{"Time":"2026-10-15T14:39:46.981626-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/backend/internal/github","Test":"TestListReposPagination"}
+{"Time":"2026-10-15T14:39:46.981714-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/github","Test":"TestListReposPagination","Output":"=== RUN   TestListReposPagination\n"}
+{"Time":"2026-10-15T14:39:47.051389-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/github","Test":"TestListReposPagination","Output":"--- PASS: TestListReposPagination (0.07s)\n"}
+{"Time":"2026-10-15T14:39:47.051444-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/github","Test":"TestListReposPagination","Elapsed":0.07}
+{"Time":"2026-10-15T14:39:47.05146-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/backend/internal/github","Test":"TestRepoAccessible"}
+{"Time":"2026-10-15T14:39:47.051465-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/github","Test":"TestRepoAccessible","Output":"=== RUN   TestRepoAccessible\n"}
+{"Time":"2026-10-15T14:39:47.090775-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/github","Test":"TestRepoAccessible","Output":"--- PASS: TestRepoAccessible (0.04s)\n"}
+{"Time":"2026-10-15T14:39:47.090819-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/github","Test":"TestRepoAccessible","Elapsed":0.04}
+{"Time":"2026-10-15T14:39:47.090829-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/github","Output":"PASS\n"}
+{"Time":"2026-10-15T14:39:47.092153-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/github","Output":"ok  \tgithub.com/bex-co/bex/lego/backend/internal/github\t0.654s\n"}
+{"Time":"2026-10-15T14:39:47.09218-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/github","Elapsed":0.655}

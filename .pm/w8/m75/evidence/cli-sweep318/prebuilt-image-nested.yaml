@@ -1,0 +1,11 @@
+projects:
+  - name: qa318-context-project
+    environments:
+      - name: production
+        services:
+          - type: web
+            name: qa318-image-n
+            runtime: image
+            plan: free
+            image:
+              url: nginx:1.27

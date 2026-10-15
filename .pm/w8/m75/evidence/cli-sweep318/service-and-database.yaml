@@ -1,0 +1,15 @@
+databases:
+  - name: qa313-c2ebae-shared
+    plan: free
+services:
+  - type: web
+    name: qa313-c2ebae-shared
+    runtime: image
+    image:
+      url: nginx:1.27
+    plan: free
+    envVars:
+      - key: QA313_DB
+        fromDatabase:
+          name: qa313-c2ebae-shared
+          property: connectionString

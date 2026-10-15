@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: qa313-c2ebae-consumer
+    runtime: image
+    image:
+      url: nginx:1.27
+    plan: free
+envVarGroups:
+  - name: qa313-c2ebae-shared
+    envVars:
+      - key: QA313_GROUP
+        value: harmless-c2ebae
+  - name: qa313-c2ebae-shared
+    envVars:
+      - key: QA313_GROUP
+        value: harmless-c2ebae

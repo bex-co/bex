@@ -1,0 +1,2233 @@
+{
+  "head": "7f596cbb3bfcdfcf77b0ce33017a82aaf7b573bd",
+  "scope": "native Blueprint validation only; no apply/create",
+  "initial_round": {
+    "cases": [
+      {
+        "case": "plain-web",
+        "manifest": "services:\n- type: web\n  name: qa313-c2ebae-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n",
+        "expected_valid": true,
+        "error_contains": null,
+        "error_path": null
+      },
+      {
+        "case": "service-and-database",
+        "manifest": "databases:\n- name: qa313-c2ebae-shared\n  plan: free\nservices:\n- type: web\n  name: qa313-c2ebae-shared\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: QA313_DB\n    fromDatabase:\n      name: qa313-c2ebae-shared\n      property: connectionString\n",
+        "expected_valid": true,
+        "error_contains": null,
+        "error_path": null
+      },
+      {
+        "case": "service-and-keyvalue",
+        "manifest": "services:\n- type: keyvalue\n  name: qa313-c2ebae-shared\n  plan: free\n  ipAllowList: []\n- type: web\n  name: qa313-c2ebae-shared\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: QA313_KV\n    fromService:\n      type: keyvalue\n      name: qa313-c2ebae-shared\n      property: connectionString\n",
+        "expected_valid": true,
+        "error_contains": null,
+        "error_path": null
+      },
+      {
+        "case": "three-kinds",
+        "manifest": "databases:\n- name: qa313-c2ebae-shared\n  plan: free\nservices:\n- type: keyvalue\n  name: qa313-c2ebae-shared\n  plan: free\n  ipAllowList: []\n- type: web\n  name: qa313-c2ebae-shared\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n- type: web\n  name: qa313-c2ebae-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: QA313_DB\n    fromDatabase:\n      name: qa313-c2ebae-shared\n      property: connectionString\n  - key: QA313_KV\n    fromService:\n      type: keyvalue\n      name: qa313-c2ebae-shared\n      property: connectionString\n  - key: QA313_HOST\n    fromService:\n      type: web\n      name: qa313-c2ebae-shared\n      property: host\n",
+        "expected_valid": true,
+        "error_contains": null,
+        "error_path": null
+      },
+      {
+        "case": "three-kinds-and-envgroup",
+        "manifest": "databases:\n- name: qa313-c2ebae-shared\n  plan: free\nservices:\n- type: keyvalue\n  name: qa313-c2ebae-shared\n  plan: free\n  ipAllowList: []\n- type: web\n  name: qa313-c2ebae-shared\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n- type: web\n  name: qa313-c2ebae-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: QA313_DB\n    fromDatabase:\n      name: qa313-c2ebae-shared\n      property: connectionString\n  - key: QA313_KV\n    fromService:\n      type: keyvalue\n      name: qa313-c2ebae-shared\n      property: connectionString\n  - key: QA313_HOST\n    fromService:\n      type: web\n      name: qa313-c2ebae-shared\n      property: host\nenvGroups:\n- name: qa313-c2ebae-shared\n  envVars:\n  - key: QA313_GROUP\n    value: harmless-c2ebae\n",
+        "expected_valid": true,
+        "error_contains": null,
+        "error_path": null
+      },
+      {
+        "case": "same-service-kind-different-types",
+        "manifest": "services:\n- type: web\n  name: qa313-c2ebae-shared\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n- type: worker\n  name: qa313-c2ebae-shared\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: starter\n",
+        "expected_valid": false,
+        "error_contains": "duplicate name",
+        "error_path": null
+      },
+      {
+        "case": "duplicate-database",
+        "manifest": "databases:\n- name: qa313-c2ebae-shared\n  plan: free\n- name: qa313-c2ebae-shared\n  plan: free\n",
+        "expected_valid": false,
+        "error_contains": "duplicate name",
+        "error_path": null
+      },
+      {
+        "case": "duplicate-keyvalue",
+        "manifest": "services:\n- type: keyvalue\n  name: qa313-c2ebae-shared\n  plan: free\n  ipAllowList: []\n- type: keyvalue\n  name: qa313-c2ebae-shared\n  plan: free\n  ipAllowList: []\n",
+        "expected_valid": false,
+        "error_contains": "duplicate name",
+        "error_path": null
+      },
+      {
+        "case": "duplicate-envgroup",
+        "manifest": "envGroups:\n- name: qa313-c2ebae-shared\n  envVars:\n  - key: QA313_GROUP\n    value: harmless-c2ebae\n- name: qa313-c2ebae-shared\n  envVars:\n  - key: QA313_GROUP\n    value: harmless-c2ebae\nservices:\n- type: web\n  name: qa313-c2ebae-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n",
+        "expected_valid": false,
+        "error_contains": "duplicate name",
+        "error_path": null
+      },
+      {
+        "case": "database-does-not-satisfy-web-ref",
+        "manifest": "databases:\n- name: qa313-c2ebae-shared\n  plan: free\nservices:\n- type: web\n  name: qa313-c2ebae-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: QA313_DB\n    fromDatabase:\n      name: qa313-c2ebae-shared\n      property: connectionString\n  - key: QA313_HOST\n    fromService:\n      type: web\n      name: qa313-c2ebae-shared\n      property: host\n",
+        "expected_valid": false,
+        "error_contains": "unknown service",
+        "error_path": "services[0].envVars[1]"
+      },
+      {
+        "case": "keyvalue-does-not-satisfy-web-ref",
+        "manifest": "services:\n- type: keyvalue\n  name: qa313-c2ebae-shared\n  plan: free\n  ipAllowList: []\n- type: web\n  name: qa313-c2ebae-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: QA313_KV\n    fromService:\n      type: keyvalue\n      name: qa313-c2ebae-shared\n      property: connectionString\n  - key: QA313_HOST\n    fromService:\n      type: web\n      name: qa313-c2ebae-shared\n      property: host\n",
+        "expected_valid": false,
+        "error_contains": "unknown service",
+        "error_path": "services[1].envVars[1]"
+      },
+      {
+        "case": "missing-database-control",
+        "manifest": "services:\n- type: web\n  name: qa313-c2ebae-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: QA313_DB\n    fromDatabase:\n      name: qa313-c2ebae-shared\n      property: connectionString\n",
+        "expected_valid": false,
+        "error_contains": null,
+        "error_path": "services[0].envVars[0]"
+      }
+    ],
+    "results": [
+      {
+        "at": "2026-10-15T20:10:38.710997+00:00",
+        "client": "installed Bex0.2.1",
+        "case": "plain-web",
+        "command": [
+          "installed Bex0.2.1",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "installed Bex",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.985,
+          "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa313-c2ebae-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "plan": {
+            "services": [
+              "qa313-c2ebae-consumer"
+            ],
+            "totalActions": 1
+          },
+          "valid": true
+        },
+        "validity_and_exit_match": true
+      },
+      {
+        "at": "2026-10-15T20:10:40.562329+00:00",
+        "client": "installed Bex0.2.1",
+        "case": "service-and-database",
+        "command": [
+          "installed Bex0.2.1",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "installed Bex",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.856,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" — every service and database name in a render.yaml must be unique\",\n      \"line\": 6,\n      \"path\": \"services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 9,
+              "error": "duplicate name \"qa313-c2ebae-shared\" — every service and database name in a render.yaml must be unique",
+              "line": 6,
+              "path": "services[0].name"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": false
+      },
+      {
+        "at": "2026-10-15T20:10:42.160051+00:00",
+        "client": "installed Bex0.2.1",
+        "case": "service-and-keyvalue",
+        "command": [
+          "installed Bex0.2.1",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "installed Bex",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.794,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" — every service and database name in a render.yaml must be unique\",\n      \"line\": 7,\n      \"path\": \"services[1].name\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 9,
+              "error": "duplicate name \"qa313-c2ebae-shared\" — every service and database name in a render.yaml must be unique",
+              "line": 7,
+              "path": "services[1].name"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": false
+      },
+      {
+        "at": "2026-10-15T20:10:43.910664+00:00",
+        "client": "installed Bex0.2.1",
+        "case": "three-kinds",
+        "command": [
+          "installed Bex0.2.1",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "installed Bex",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.913,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" — every service and database name in a render.yaml must be unique\",\n      \"line\": 6,\n      \"path\": \"services[0].name\"\n    },\n    {\n      \"column\": 9,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" — every service and database name in a render.yaml must be unique\",\n      \"line\": 10,\n      \"path\": \"services[1].name\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 9,
+              "error": "duplicate name \"qa313-c2ebae-shared\" — every service and database name in a render.yaml must be unique",
+              "line": 6,
+              "path": "services[0].name"
+            },
+            {
+              "column": 9,
+              "error": "duplicate name \"qa313-c2ebae-shared\" — every service and database name in a render.yaml must be unique",
+              "line": 10,
+              "path": "services[1].name"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": false
+      },
+      {
+        "at": "2026-10-15T20:10:45.491803+00:00",
+        "client": "installed Bex0.2.1",
+        "case": "three-kinds-and-envgroup",
+        "command": [
+          "installed Bex0.2.1",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "installed Bex",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.344,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 1,\n      \"error\": \"at '': additional properties 'envGroups' not allowed\",\n      \"line\": 37,\n      \"path\": \"envGroups\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 1,
+              "error": "at '': additional properties 'envGroups' not allowed",
+              "line": 37,
+              "path": "envGroups"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": false
+      },
+      {
+        "at": "2026-10-15T20:10:46.486276+00:00",
+        "client": "installed Bex0.2.1",
+        "case": "same-service-kind-different-types",
+        "command": [
+          "installed Bex0.2.1",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "installed Bex",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.851,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" for service (first declared at #/services/0)\",\n      \"line\": 8,\n      \"path\": \"services[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 3,
+              "error": "duplicate name \"qa313-c2ebae-shared\" for service (first declared at #/services/0)",
+              "line": 8,
+              "path": "services[1]"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": true
+      },
+      {
+        "at": "2026-10-15T20:10:47.984109+00:00",
+        "client": "installed Bex0.2.1",
+        "case": "duplicate-database",
+        "command": [
+          "installed Bex0.2.1",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "installed Bex",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.351,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" for postgres (first declared at #/databases/0)\",\n      \"line\": 4,\n      \"path\": \"databases[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 3,
+              "error": "duplicate name \"qa313-c2ebae-shared\" for postgres (first declared at #/databases/0)",
+              "line": 4,
+              "path": "databases[1]"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": true
+      },
+      {
+        "at": "2026-10-15T20:10:49.001821+00:00",
+        "client": "installed Bex0.2.1",
+        "case": "duplicate-keyvalue",
+        "command": [
+          "installed Bex0.2.1",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "installed Bex",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.308,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" for key_value (first declared at #/services/0)\",\n      \"line\": 6,\n      \"path\": \"services[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 3,
+              "error": "duplicate name \"qa313-c2ebae-shared\" for key_value (first declared at #/services/0)",
+              "line": 6,
+              "path": "services[1]"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": true
+      },
+      {
+        "at": "2026-10-15T20:10:49.968856+00:00",
+        "client": "installed Bex0.2.1",
+        "case": "duplicate-envgroup",
+        "command": [
+          "installed Bex0.2.1",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "installed Bex",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.365,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 1,\n      \"error\": \"at '': additional properties 'envGroups' not allowed\",\n      \"line\": 2,\n      \"path\": \"envGroups\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 1,
+              "error": "at '': additional properties 'envGroups' not allowed",
+              "line": 2,
+              "path": "envGroups"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": true
+      },
+      {
+        "at": "2026-10-15T20:10:51.010655+00:00",
+        "client": "installed Bex0.2.1",
+        "case": "database-does-not-satisfy-web-ref",
+        "command": [
+          "installed Bex0.2.1",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "installed Bex",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.68,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa313-c2ebae-consumer\\\": envVars[\\\"QA313_HOST\\\"] fromService host references \\\"qa313-c2ebae-shared\\\" which has no network address (only web/private services are addressable)\",\n      \"line\": 16,\n      \"path\": \"services[0].envVars[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 5,
+              "error": "service \"qa313-c2ebae-consumer\": envVars[\"QA313_HOST\"] fromService host references \"qa313-c2ebae-shared\" which has no network address (only web/private services are addressable)",
+              "line": 16,
+              "path": "services[0].envVars[1]"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": true
+      },
+      {
+        "at": "2026-10-15T20:10:52.368015+00:00",
+        "client": "installed Bex0.2.1",
+        "case": "keyvalue-does-not-satisfy-web-ref",
+        "command": [
+          "installed Bex0.2.1",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "installed Bex",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.429,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa313-c2ebae-consumer\\\": envVars[\\\"QA313_HOST\\\"] fromService host references \\\"qa313-c2ebae-shared\\\" which has no network address (only web/private services are addressable)\",\n      \"line\": 18,\n      \"path\": \"services[1].envVars[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 5,
+              "error": "service \"qa313-c2ebae-consumer\": envVars[\"QA313_HOST\"] fromService host references \"qa313-c2ebae-shared\" which has no network address (only web/private services are addressable)",
+              "line": 18,
+              "path": "services[1].envVars[1]"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": true
+      },
+      {
+        "at": "2026-10-15T20:10:53.498052+00:00",
+        "client": "installed Bex0.2.1",
+        "case": "missing-database-control",
+        "command": [
+          "installed Bex0.2.1",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "installed Bex",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.452,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"fromDatabase references unknown database \\\"qa313-c2ebae-shared\\\" in this workspace\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 5,
+              "error": "fromDatabase references unknown database \"qa313-c2ebae-shared\" in this workspace",
+              "line": 9,
+              "path": "services[0].envVars[0]"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": true
+      },
+      {
+        "at": "2026-10-15T20:10:54.623690+00:00",
+        "client": "published Bex0.3.2",
+        "case": "plain-web",
+        "command": [
+          "published Bex0.3.2",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.497,
+          "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa313-c2ebae-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "plan": {
+            "services": [
+              "qa313-c2ebae-consumer"
+            ],
+            "totalActions": 1
+          },
+          "valid": true
+        },
+        "validity_and_exit_match": true
+      },
+      {
+        "at": "2026-10-15T20:10:55.802827+00:00",
+        "client": "published Bex0.3.2",
+        "case": "service-and-database",
+        "command": [
+          "published Bex0.3.2",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.712,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" — every service and database name in a render.yaml must be unique\",\n      \"line\": 6,\n      \"path\": \"services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 9,
+              "error": "duplicate name \"qa313-c2ebae-shared\" — every service and database name in a render.yaml must be unique",
+              "line": 6,
+              "path": "services[0].name"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": false
+      },
+      {
+        "at": "2026-10-15T20:10:57.189049+00:00",
+        "client": "published Bex0.3.2",
+        "case": "service-and-keyvalue",
+        "command": [
+          "published Bex0.3.2",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.325,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" — every service and database name in a render.yaml must be unique\",\n      \"line\": 7,\n      \"path\": \"services[1].name\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 9,
+              "error": "duplicate name \"qa313-c2ebae-shared\" — every service and database name in a render.yaml must be unique",
+              "line": 7,
+              "path": "services[1].name"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": false
+      },
+      {
+        "at": "2026-10-15T20:10:58.194225+00:00",
+        "client": "published Bex0.3.2",
+        "case": "three-kinds",
+        "command": [
+          "published Bex0.3.2",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.431,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" — every service and database name in a render.yaml must be unique\",\n      \"line\": 6,\n      \"path\": \"services[0].name\"\n    },\n    {\n      \"column\": 9,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" — every service and database name in a render.yaml must be unique\",\n      \"line\": 10,\n      \"path\": \"services[1].name\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 9,
+              "error": "duplicate name \"qa313-c2ebae-shared\" — every service and database name in a render.yaml must be unique",
+              "line": 6,
+              "path": "services[0].name"
+            },
+            {
+              "column": 9,
+              "error": "duplicate name \"qa313-c2ebae-shared\" — every service and database name in a render.yaml must be unique",
+              "line": 10,
+              "path": "services[1].name"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": false
+      },
+      {
+        "at": "2026-10-15T20:10:59.309904+00:00",
+        "client": "published Bex0.3.2",
+        "case": "three-kinds-and-envgroup",
+        "command": [
+          "published Bex0.3.2",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.362,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 1,\n      \"error\": \"at '': additional properties 'envGroups' not allowed\",\n      \"line\": 37,\n      \"path\": \"envGroups\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 1,
+              "error": "at '': additional properties 'envGroups' not allowed",
+              "line": 37,
+              "path": "envGroups"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": false
+      },
+      {
+        "at": "2026-10-15T20:11:00.344798+00:00",
+        "client": "published Bex0.3.2",
+        "case": "same-service-kind-different-types",
+        "command": [
+          "published Bex0.3.2",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.334,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" for service (first declared at #/services/0)\",\n      \"line\": 8,\n      \"path\": \"services[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 3,
+              "error": "duplicate name \"qa313-c2ebae-shared\" for service (first declared at #/services/0)",
+              "line": 8,
+              "path": "services[1]"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": true
+      },
+      {
+        "at": "2026-10-15T20:11:01.360747+00:00",
+        "client": "published Bex0.3.2",
+        "case": "duplicate-database",
+        "command": [
+          "published Bex0.3.2",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.341,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" for postgres (first declared at #/databases/0)\",\n      \"line\": 4,\n      \"path\": \"databases[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 3,
+              "error": "duplicate name \"qa313-c2ebae-shared\" for postgres (first declared at #/databases/0)",
+              "line": 4,
+              "path": "databases[1]"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": true
+      },
+      {
+        "at": "2026-10-15T20:11:02.521106+00:00",
+        "client": "published Bex0.3.2",
+        "case": "duplicate-keyvalue",
+        "command": [
+          "published Bex0.3.2",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.364,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" for key_value (first declared at #/services/0)\",\n      \"line\": 6,\n      \"path\": \"services[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 3,
+              "error": "duplicate name \"qa313-c2ebae-shared\" for key_value (first declared at #/services/0)",
+              "line": 6,
+              "path": "services[1]"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": true
+      },
+      {
+        "at": "2026-10-15T20:11:03.546063+00:00",
+        "client": "published Bex0.3.2",
+        "case": "duplicate-envgroup",
+        "command": [
+          "published Bex0.3.2",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.316,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 1,\n      \"error\": \"at '': additional properties 'envGroups' not allowed\",\n      \"line\": 2,\n      \"path\": \"envGroups\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 1,
+              "error": "at '': additional properties 'envGroups' not allowed",
+              "line": 2,
+              "path": "envGroups"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": true
+      },
+      {
+        "at": "2026-10-15T20:11:04.679879+00:00",
+        "client": "published Bex0.3.2",
+        "case": "database-does-not-satisfy-web-ref",
+        "command": [
+          "published Bex0.3.2",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.432,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa313-c2ebae-consumer\\\": envVars[\\\"QA313_HOST\\\"] fromService host references \\\"qa313-c2ebae-shared\\\" which has no network address (only web/private services are addressable)\",\n      \"line\": 16,\n      \"path\": \"services[0].envVars[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 5,
+              "error": "service \"qa313-c2ebae-consumer\": envVars[\"QA313_HOST\"] fromService host references \"qa313-c2ebae-shared\" which has no network address (only web/private services are addressable)",
+              "line": 16,
+              "path": "services[0].envVars[1]"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": true
+      },
+      {
+        "at": "2026-10-15T20:11:05.793196+00:00",
+        "client": "published Bex0.3.2",
+        "case": "keyvalue-does-not-satisfy-web-ref",
+        "command": [
+          "published Bex0.3.2",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.359,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa313-c2ebae-consumer\\\": envVars[\\\"QA313_HOST\\\"] fromService host references \\\"qa313-c2ebae-shared\\\" which has no network address (only web/private services are addressable)\",\n      \"line\": 18,\n      \"path\": \"services[1].envVars[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 5,
+              "error": "service \"qa313-c2ebae-consumer\": envVars[\"QA313_HOST\"] fromService host references \"qa313-c2ebae-shared\" which has no network address (only web/private services are addressable)",
+              "line": 18,
+              "path": "services[1].envVars[1]"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": true
+      },
+      {
+        "at": "2026-10-15T20:11:06.835712+00:00",
+        "client": "published Bex0.3.2",
+        "case": "missing-database-control",
+        "command": [
+          "published Bex0.3.2",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.367,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"fromDatabase references unknown database \\\"qa313-c2ebae-shared\\\" in this workspace\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 5,
+              "error": "fromDatabase references unknown database \"qa313-c2ebae-shared\" in this workspace",
+              "line": 9,
+              "path": "services[0].envVars[0]"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": true
+      },
+      {
+        "at": "2026-10-15T20:11:07.870227+00:00",
+        "client": "unchanged Render2.27",
+        "case": "plain-web",
+        "command": [
+          "unchanged Render2.27",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.477,
+          "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa313-c2ebae-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "plan": {
+            "services": [
+              "qa313-c2ebae-consumer"
+            ],
+            "totalActions": 1
+          },
+          "valid": true
+        },
+        "validity_and_exit_match": true
+      },
+      {
+        "at": "2026-10-15T20:11:09.013640+00:00",
+        "client": "unchanged Render2.27",
+        "case": "service-and-database",
+        "command": [
+          "unchanged Render2.27",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "native_exit": 1,
+          "harness_timeout": false,
+          "elapsed": 0.366,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" — every service and database name in a render.yaml must be unique\",\n      \"line\": 6,\n      \"path\": \"services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 9,
+              "error": "duplicate name \"qa313-c2ebae-shared\" — every service and database name in a render.yaml must be unique",
+              "line": 6,
+              "path": "services[0].name"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": false
+      },
+      {
+        "at": "2026-10-15T20:11:10.393939+00:00",
+        "client": "unchanged Render2.27",
+        "case": "service-and-keyvalue",
+        "command": [
+          "unchanged Render2.27",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "native_exit": 1,
+          "harness_timeout": false,
+          "elapsed": 0.366,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" — every service and database name in a render.yaml must be unique\",\n      \"line\": 7,\n      \"path\": \"services[1].name\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 9,
+              "error": "duplicate name \"qa313-c2ebae-shared\" — every service and database name in a render.yaml must be unique",
+              "line": 7,
+              "path": "services[1].name"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": false
+      },
+      {
+        "at": "2026-10-15T20:11:11.431025+00:00",
+        "client": "unchanged Render2.27",
+        "case": "three-kinds",
+        "command": [
+          "unchanged Render2.27",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "native_exit": 1,
+          "harness_timeout": false,
+          "elapsed": 0.371,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" — every service and database name in a render.yaml must be unique\",\n      \"line\": 6,\n      \"path\": \"services[0].name\"\n    },\n    {\n      \"column\": 9,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" — every service and database name in a render.yaml must be unique\",\n      \"line\": 10,\n      \"path\": \"services[1].name\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 9,
+              "error": "duplicate name \"qa313-c2ebae-shared\" — every service and database name in a render.yaml must be unique",
+              "line": 6,
+              "path": "services[0].name"
+            },
+            {
+              "column": 9,
+              "error": "duplicate name \"qa313-c2ebae-shared\" — every service and database name in a render.yaml must be unique",
+              "line": 10,
+              "path": "services[1].name"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": false
+      },
+      {
+        "at": "2026-10-15T20:11:12.470320+00:00",
+        "client": "unchanged Render2.27",
+        "case": "three-kinds-and-envgroup",
+        "command": [
+          "unchanged Render2.27",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "native_exit": 1,
+          "harness_timeout": false,
+          "elapsed": 0.426,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 1,\n      \"error\": \"at '': additional properties 'envGroups' not allowed\",\n      \"line\": 37,\n      \"path\": \"envGroups\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 1,
+              "error": "at '': additional properties 'envGroups' not allowed",
+              "line": 37,
+              "path": "envGroups"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": false
+      },
+      {
+        "at": "2026-10-15T20:11:13.560920+00:00",
+        "client": "unchanged Render2.27",
+        "case": "same-service-kind-different-types",
+        "command": [
+          "unchanged Render2.27",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "native_exit": 1,
+          "harness_timeout": false,
+          "elapsed": 0.314,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" for service (first declared at #/services/0)\",\n      \"line\": 8,\n      \"path\": \"services[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 3,
+              "error": "duplicate name \"qa313-c2ebae-shared\" for service (first declared at #/services/0)",
+              "line": 8,
+              "path": "services[1]"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": true
+      },
+      {
+        "at": "2026-10-15T20:11:14.544068+00:00",
+        "client": "unchanged Render2.27",
+        "case": "duplicate-database",
+        "command": [
+          "unchanged Render2.27",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "native_exit": 1,
+          "harness_timeout": false,
+          "elapsed": 0.446,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" for postgres (first declared at #/databases/0)\",\n      \"line\": 4,\n      \"path\": \"databases[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 3,
+              "error": "duplicate name \"qa313-c2ebae-shared\" for postgres (first declared at #/databases/0)",
+              "line": 4,
+              "path": "databases[1]"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": true
+      },
+      {
+        "at": "2026-10-15T20:11:15.650030+00:00",
+        "client": "unchanged Render2.27",
+        "case": "duplicate-keyvalue",
+        "command": [
+          "unchanged Render2.27",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "native_exit": 1,
+          "harness_timeout": false,
+          "elapsed": 0.38,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" for key_value (first declared at #/services/0)\",\n      \"line\": 6,\n      \"path\": \"services[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 3,
+              "error": "duplicate name \"qa313-c2ebae-shared\" for key_value (first declared at #/services/0)",
+              "line": 6,
+              "path": "services[1]"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": true
+      },
+      {
+        "at": "2026-10-15T20:11:16.702355+00:00",
+        "client": "unchanged Render2.27",
+        "case": "duplicate-envgroup",
+        "command": [
+          "unchanged Render2.27",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "native_exit": 1,
+          "harness_timeout": false,
+          "elapsed": 0.404,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 1,\n      \"error\": \"at '': additional properties 'envGroups' not allowed\",\n      \"line\": 2,\n      \"path\": \"envGroups\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 1,
+              "error": "at '': additional properties 'envGroups' not allowed",
+              "line": 2,
+              "path": "envGroups"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": true
+      },
+      {
+        "at": "2026-10-15T20:11:17.767937+00:00",
+        "client": "unchanged Render2.27",
+        "case": "database-does-not-satisfy-web-ref",
+        "command": [
+          "unchanged Render2.27",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "native_exit": 1,
+          "harness_timeout": false,
+          "elapsed": 0.462,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa313-c2ebae-consumer\\\": envVars[\\\"QA313_HOST\\\"] fromService host references \\\"qa313-c2ebae-shared\\\" which has no network address (only web/private services are addressable)\",\n      \"line\": 16,\n      \"path\": \"services[0].envVars[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 5,
+              "error": "service \"qa313-c2ebae-consumer\": envVars[\"QA313_HOST\"] fromService host references \"qa313-c2ebae-shared\" which has no network address (only web/private services are addressable)",
+              "line": 16,
+              "path": "services[0].envVars[1]"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": true
+      },
+      {
+        "at": "2026-10-15T20:11:18.896022+00:00",
+        "client": "unchanged Render2.27",
+        "case": "keyvalue-does-not-satisfy-web-ref",
+        "command": [
+          "unchanged Render2.27",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "native_exit": 1,
+          "harness_timeout": false,
+          "elapsed": 0.396,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa313-c2ebae-consumer\\\": envVars[\\\"QA313_HOST\\\"] fromService host references \\\"qa313-c2ebae-shared\\\" which has no network address (only web/private services are addressable)\",\n      \"line\": 18,\n      \"path\": \"services[1].envVars[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 5,
+              "error": "service \"qa313-c2ebae-consumer\": envVars[\"QA313_HOST\"] fromService host references \"qa313-c2ebae-shared\" which has no network address (only web/private services are addressable)",
+              "line": 18,
+              "path": "services[1].envVars[1]"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": true
+      },
+      {
+        "at": "2026-10-15T20:11:19.962971+00:00",
+        "client": "unchanged Render2.27",
+        "case": "missing-database-control",
+        "command": [
+          "unchanged Render2.27",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "state": "native validation complete; file/config copy removed",
+        "native": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep313-render.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "native_exit": 1,
+          "harness_timeout": false,
+          "elapsed": 0.417,
+          "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"fromDatabase references unknown database \\\"qa313-c2ebae-shared\\\" in this workspace\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+          "stderr": ""
+        },
+        "decoded": {
+          "errors": [
+            {
+              "column": 5,
+              "error": "fromDatabase references unknown database \"qa313-c2ebae-shared\" in this workspace",
+              "line": 9,
+              "path": "services[0].envVars[0]"
+            }
+          ],
+          "valid": false
+        },
+        "validity_and_exit_match": true
+      }
+    ]
+  },
+  "corrected_cases": [
+    "three-kinds-and-envgroup",
+    "duplicate-envgroup"
+  ],
+  "corrected_calls": [
+    {
+      "at": "2026-10-15T20:14:20.380731+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "three-kinds-and-envgroup",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep313-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "round": "corrected envVarGroups root; validation only",
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.815,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" — every service and database name in a render.yaml must be unique\",\n      \"line\": 6,\n      \"path\": \"services[0].name\"\n    },\n    {\n      \"column\": 9,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" — every service and database name in a render.yaml must be unique\",\n      \"line\": 10,\n      \"path\": \"services[1].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "duplicate name \"qa313-c2ebae-shared\" — every service and database name in a render.yaml must be unique",
+            "line": 6,
+            "path": "services[0].name"
+          },
+          {
+            "column": 9,
+            "error": "duplicate name \"qa313-c2ebae-shared\" — every service and database name in a render.yaml must be unique",
+            "line": 10,
+            "path": "services[1].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false
+    },
+    {
+      "at": "2026-10-15T20:14:21.880479+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "duplicate-envgroup",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep313-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "round": "corrected envVarGroups root; validation only",
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.67,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" for env_var_group (first declared at #/envVarGroups/0)\",\n      \"line\": 13,\n      \"path\": \"envVarGroups[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "duplicate name \"qa313-c2ebae-shared\" for env_var_group (first declared at #/envVarGroups/0)",
+            "line": 13,
+            "path": "envVarGroups[1]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T20:14:23.208862+00:00",
+      "client": "published Bex0.3.2",
+      "case": "three-kinds-and-envgroup",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep313-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "round": "corrected envVarGroups root; validation only",
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.415,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" — every service and database name in a render.yaml must be unique\",\n      \"line\": 6,\n      \"path\": \"services[0].name\"\n    },\n    {\n      \"column\": 9,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" — every service and database name in a render.yaml must be unique\",\n      \"line\": 10,\n      \"path\": \"services[1].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "duplicate name \"qa313-c2ebae-shared\" — every service and database name in a render.yaml must be unique",
+            "line": 6,
+            "path": "services[0].name"
+          },
+          {
+            "column": 9,
+            "error": "duplicate name \"qa313-c2ebae-shared\" — every service and database name in a render.yaml must be unique",
+            "line": 10,
+            "path": "services[1].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false
+    },
+    {
+      "at": "2026-10-15T20:14:25.393112+00:00",
+      "client": "published Bex0.3.2",
+      "case": "duplicate-envgroup",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep313-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "round": "corrected envVarGroups root; validation only",
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.373,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" for env_var_group (first declared at #/envVarGroups/0)\",\n      \"line\": 13,\n      \"path\": \"envVarGroups[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "duplicate name \"qa313-c2ebae-shared\" for env_var_group (first declared at #/envVarGroups/0)",
+            "line": 13,
+            "path": "envVarGroups[1]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T20:14:26.419669+00:00",
+      "client": "unchanged Render2.27",
+      "case": "three-kinds-and-envgroup",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep313-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "round": "corrected envVarGroups root; validation only",
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.735,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" — every service and database name in a render.yaml must be unique\",\n      \"line\": 6,\n      \"path\": \"services[0].name\"\n    },\n    {\n      \"column\": 9,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" — every service and database name in a render.yaml must be unique\",\n      \"line\": 10,\n      \"path\": \"services[1].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "duplicate name \"qa313-c2ebae-shared\" — every service and database name in a render.yaml must be unique",
+            "line": 6,
+            "path": "services[0].name"
+          },
+          {
+            "column": 9,
+            "error": "duplicate name \"qa313-c2ebae-shared\" — every service and database name in a render.yaml must be unique",
+            "line": 10,
+            "path": "services[1].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false
+    },
+    {
+      "at": "2026-10-15T20:14:27.929914+00:00",
+      "client": "unchanged Render2.27",
+      "case": "duplicate-envgroup",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep313-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "round": "corrected envVarGroups root; validation only",
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep313-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.611,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"duplicate name \\\"qa313-c2ebae-shared\\\" for env_var_group (first declared at #/envVarGroups/0)\",\n      \"line\": 13,\n      \"path\": \"envVarGroups[1]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "duplicate name \"qa313-c2ebae-shared\" for env_var_group (first declared at #/envVarGroups/0)",
+            "line": 13,
+            "path": "envVarGroups[1]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    }
+  ],
+  "final_selection": [
+    {
+      "case": "plain-web",
+      "client": "installed Bex0.2.1",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": true
+    },
+    {
+      "case": "service-and-database",
+      "client": "installed Bex0.2.1",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": false
+    },
+    {
+      "case": "service-and-keyvalue",
+      "client": "installed Bex0.2.1",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": false
+    },
+    {
+      "case": "three-kinds",
+      "client": "installed Bex0.2.1",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": false
+    },
+    {
+      "case": "same-service-kind-different-types",
+      "client": "installed Bex0.2.1",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": true
+    },
+    {
+      "case": "duplicate-database",
+      "client": "installed Bex0.2.1",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": true
+    },
+    {
+      "case": "duplicate-keyvalue",
+      "client": "installed Bex0.2.1",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": true
+    },
+    {
+      "case": "database-does-not-satisfy-web-ref",
+      "client": "installed Bex0.2.1",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": true
+    },
+    {
+      "case": "keyvalue-does-not-satisfy-web-ref",
+      "client": "installed Bex0.2.1",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": true
+    },
+    {
+      "case": "missing-database-control",
+      "client": "installed Bex0.2.1",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": true
+    },
+    {
+      "case": "plain-web",
+      "client": "published Bex0.3.2",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": true
+    },
+    {
+      "case": "service-and-database",
+      "client": "published Bex0.3.2",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": false
+    },
+    {
+      "case": "service-and-keyvalue",
+      "client": "published Bex0.3.2",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": false
+    },
+    {
+      "case": "three-kinds",
+      "client": "published Bex0.3.2",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": false
+    },
+    {
+      "case": "same-service-kind-different-types",
+      "client": "published Bex0.3.2",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": true
+    },
+    {
+      "case": "duplicate-database",
+      "client": "published Bex0.3.2",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": true
+    },
+    {
+      "case": "duplicate-keyvalue",
+      "client": "published Bex0.3.2",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": true
+    },
+    {
+      "case": "database-does-not-satisfy-web-ref",
+      "client": "published Bex0.3.2",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": true
+    },
+    {
+      "case": "keyvalue-does-not-satisfy-web-ref",
+      "client": "published Bex0.3.2",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": true
+    },
+    {
+      "case": "missing-database-control",
+      "client": "published Bex0.3.2",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": true
+    },
+    {
+      "case": "plain-web",
+      "client": "unchanged Render2.27",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": true
+    },
+    {
+      "case": "service-and-database",
+      "client": "unchanged Render2.27",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": false
+    },
+    {
+      "case": "service-and-keyvalue",
+      "client": "unchanged Render2.27",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": false
+    },
+    {
+      "case": "three-kinds",
+      "client": "unchanged Render2.27",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": false
+    },
+    {
+      "case": "same-service-kind-different-types",
+      "client": "unchanged Render2.27",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": true
+    },
+    {
+      "case": "duplicate-database",
+      "client": "unchanged Render2.27",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": true
+    },
+    {
+      "case": "duplicate-keyvalue",
+      "client": "unchanged Render2.27",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": true
+    },
+    {
+      "case": "database-does-not-satisfy-web-ref",
+      "client": "unchanged Render2.27",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": true
+    },
+    {
+      "case": "keyvalue-does-not-satisfy-web-ref",
+      "client": "unchanged Render2.27",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": true
+    },
+    {
+      "case": "missing-database-control",
+      "client": "unchanged Render2.27",
+      "selected_receipt_round": "initial",
+      "validity_and_exit_match": true
+    },
+    {
+      "case": "three-kinds-and-envgroup",
+      "client": "installed Bex0.2.1",
+      "selected_receipt_round": "corrected",
+      "validity_and_exit_match": false
+    },
+    {
+      "case": "duplicate-envgroup",
+      "client": "installed Bex0.2.1",
+      "selected_receipt_round": "corrected",
+      "validity_and_exit_match": true
+    },
+    {
+      "case": "three-kinds-and-envgroup",
+      "client": "published Bex0.3.2",
+      "selected_receipt_round": "corrected",
+      "validity_and_exit_match": false
+    },
+    {
+      "case": "duplicate-envgroup",
+      "client": "published Bex0.3.2",
+      "selected_receipt_round": "corrected",
+      "validity_and_exit_match": true
+    },
+    {
+      "case": "three-kinds-and-envgroup",
+      "client": "unchanged Render2.27",
+      "selected_receipt_round": "corrected",
+      "validity_and_exit_match": false
+    },
+    {
+      "case": "duplicate-envgroup",
+      "client": "unchanged Render2.27",
+      "selected_receipt_round": "corrected",
+      "validity_and_exit_match": true
+    }
+  ],
+  "post_inventory": {
+    "at": "2026-10-15T20:15:00.619138+00:00",
+    "native": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.67,
+      "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T20:14:06Z\",\n        \"nextRunAt\": \"2026-10-15T20:15:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T20:14:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T20:14:04Z\",\n        \"nextRunAt\": \"2026-10-15T20:15:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T20:14:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T20:14:06Z\",\n        \"nextRunAt\": \"2026-10-15T20:15:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T20:14:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T19:47:36Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T12:22:37Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T06:54:00Z\"\n    }\n  }\n]",
+      "stderr": ""
+    },
+    "quota": {
+      "at": "2026-10-15T20:15:00.612073+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.654,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4b17e491fe988f5-SJC"
+      },
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "baseline_preserved": true,
+    "authored_names_absent": true
+  },
+  "input_removed": true,
+  "copied_config_removed": true,
+  "harness_qualification": "Initial group documents used unsupported envGroups; correct root is envVarGroups. Only those two cases are rerun (six additional native calls), reusing30 unchanged receipts. Initial source helper lacked workspace scope, so validateWorkspaceReferences correctly skipped its unavailable workspace checks. Corrected probe uses the existing fakeWorkspace/ownershipCtx test setup. Initial failures are excluded harness evidence, not product regressions.",
+  "actual_native_calls": 42,
+  "final_comparisons": 36,
+  "validity_exit_matches": 24,
+  "new_issues": 0
+}

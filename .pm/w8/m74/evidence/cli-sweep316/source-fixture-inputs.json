@@ -1,0 +1,12 @@
+[
+  {
+    "id": "srv-db8jl3n1orrc73ejarug",
+    "name": "qa316-9b5ec0-static",
+    "type": "static_site"
+  },
+  {
+    "id": "srv-db8jl4n1orrc73ejas0g",
+    "name": "qa316-ac24f2-web",
+    "type": "web_service"
+  }
+]

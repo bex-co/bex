@@ -1,0 +1,398 @@
+{
+  "head": "7f596cbb3bfcdfcf77b0ce33017a82aaf7b573bd",
+  "checks": {
+    "existing-source": {
+      "terminal_test_events": [
+        {
+          "Test": "TestM118_DanglingWorkspaceReferencesFailValidation/fromDatabase",
+          "Action": "pass",
+          "Elapsed": 0.05
+        },
+        {
+          "Test": "TestM118_DanglingWorkspaceReferencesFailValidation/fromService_to_a_Key_Value",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestM118_DanglingWorkspaceReferencesFailValidation",
+          "Action": "pass",
+          "Elapsed": 0.05
+        },
+        {
+          "Test": "TestBlueprintNamesMayRepeatAcrossKinds",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestBlueprintNamesStayUniqueWithinAKind/two_services_of_different_types",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestBlueprintNamesStayUniqueWithinAKind/two_databases",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestBlueprintNamesStayUniqueWithinAKind/two_Key_Values",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestBlueprintNamesStayUniqueWithinAKind",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestFromServiceIgnoresOtherKindsOfTheSameName",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestBlueprintReferencePointerSkipsSameNamedDatabases",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestValidateBlueprintLocatesDanglingWorkspaceReference",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestValidateBlueprintReportsEveryDanglingWorkspaceReference",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestDeployStackUnknownFromServiceHostCreatesNothing",
+          "Action": "pass",
+          "Elapsed": 0
+        }
+      ],
+      "package_terminal_events": [
+        {
+          "Time": "2026-10-15T13:26:28.762852-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Elapsed": 0.651
+        }
+      ]
+    },
+    "compatibility-source": {
+      "terminal_test_events": [
+        {
+          "Test": "TestGraphQLAndMCPShareValidateBlueprintProblems",
+          "Action": "pass",
+          "Elapsed": 0.04
+        },
+        {
+          "Test": "TestBlueprintDeferredReferenceRefusalLocatesItsOwnEntry/pooler_required",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestBlueprintDeferredReferenceRefusalLocatesItsOwnEntry/nested_pooler_required",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestBlueprintDeferredReferenceRefusalLocatesItsOwnEntry/missing_sibling_key",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestBlueprintDeferredReferenceRefusalLocatesItsOwnEntry/type_mismatch",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestBlueprintDeferredReferenceRefusalLocatesItsOwnEntry/worker_host",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestBlueprintDeferredReferenceRefusalLocatesItsOwnEntry/nested_worker_host",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestBlueprintDeferredReferenceRefusalLocatesItsOwnEntry",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestCopyRefusalCarriesTheAuthoredEntry",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestRESTValidateBlueprintRenderCLIMultipartInvalidReturnsValidationResult",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestGraphQLValidateBlueprintPreservesStringErrorsAndAddsDetails",
+          "Action": "pass",
+          "Elapsed": 0
+        }
+      ],
+      "package_terminal_events": [
+        {
+          "Time": "2026-10-15T13:27:46.636412-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Elapsed": 0.626
+        }
+      ]
+    },
+    "source-regression": {
+      "terminal_test_events": [
+        {
+          "Test": "TestQA314ExactHostReferenceLocations/self-only",
+          "Action": "pass",
+          "Elapsed": 0.05
+        },
+        {
+          "Test": "TestQA314ExactHostReferenceLocations/missing-only",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestQA314ExactHostReferenceLocations/self-before-missing",
+          "Action": "fail",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestQA314ExactHostReferenceLocations/missing-before-self",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestQA314ExactHostReferenceLocations/two-missing-same-target",
+          "Action": "fail",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestQA314ExactHostReferenceLocations/project-self-before-missing",
+          "Action": "fail",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestQA314ExactHostReferenceLocations/project-two-missing-same-target",
+          "Action": "fail",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestQA314ExactHostReferenceLocations/cross-consumer-valid-reference-before-missing",
+          "Action": "fail",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestQA314ExactHostReferenceLocations/cross-consumer-two-missing-same-target",
+          "Action": "fail",
+          "Elapsed": 0
+        },
+        {
+          "Test": "TestQA314ExactHostReferenceLocations",
+          "Action": "fail",
+          "Elapsed": 0.06
+        }
+      ],
+      "package_terminal_events": [
+        {
+          "Time": "2026-10-15T13:26:08.007038-07:00",
+          "Action": "fail",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Elapsed": 0.75
+        }
+      ]
+    }
+  },
+  "exact_input_observations": [
+    {
+      "actual_paths": [],
+      "case": "self-only",
+      "errors": null,
+      "expected_paths": [],
+      "location_match": true,
+      "valid": true
+    },
+    {
+      "actual_paths": [
+        "services[0].envVars[0]"
+      ],
+      "case": "missing-only",
+      "errors": [
+        {
+          "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+          "line": 9,
+          "column": 5,
+          "path": "services[0].envVars[0]"
+        }
+      ],
+      "expected_paths": [
+        "services[0].envVars[0]"
+      ],
+      "location_match": true,
+      "valid": false
+    },
+    {
+      "actual_paths": [
+        "services[0].envVars[0]"
+      ],
+      "case": "self-before-missing",
+      "errors": [
+        {
+          "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+          "line": 9,
+          "column": 5,
+          "path": "services[0].envVars[0]"
+        }
+      ],
+      "expected_paths": [
+        "services[0].envVars[1]"
+      ],
+      "location_match": false,
+      "valid": false
+    },
+    {
+      "actual_paths": [
+        "services[0].envVars[0]"
+      ],
+      "case": "missing-before-self",
+      "errors": [
+        {
+          "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+          "line": 9,
+          "column": 5,
+          "path": "services[0].envVars[0]"
+        }
+      ],
+      "expected_paths": [
+        "services[0].envVars[0]"
+      ],
+      "location_match": true,
+      "valid": false
+    },
+    {
+      "actual_paths": [
+        "services[0].envVars[0]",
+        "services[0].envVars[0]"
+      ],
+      "case": "two-missing-same-target",
+      "errors": [
+        {
+          "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+          "line": 9,
+          "column": 5,
+          "path": "services[0].envVars[0]"
+        },
+        {
+          "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+          "line": 9,
+          "column": 5,
+          "path": "services[0].envVars[0]"
+        }
+      ],
+      "expected_paths": [
+        "services[0].envVars[0]",
+        "services[0].envVars[1]"
+      ],
+      "location_match": false,
+      "valid": false
+    },
+    {
+      "actual_paths": [
+        "projects[0].environments[0].services[0].envVars[0]"
+      ],
+      "case": "project-self-before-missing",
+      "errors": [
+        {
+          "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+          "line": 13,
+          "column": 9,
+          "path": "projects[0].environments[0].services[0].envVars[0]"
+        }
+      ],
+      "expected_paths": [
+        "projects[0].environments[0].services[0].envVars[1]"
+      ],
+      "location_match": false,
+      "valid": false
+    },
+    {
+      "actual_paths": [
+        "projects[0].environments[0].services[0].envVars[0]",
+        "projects[0].environments[0].services[0].envVars[0]"
+      ],
+      "case": "project-two-missing-same-target",
+      "errors": [
+        {
+          "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+          "line": 13,
+          "column": 9,
+          "path": "projects[0].environments[0].services[0].envVars[0]"
+        },
+        {
+          "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+          "line": 13,
+          "column": 9,
+          "path": "projects[0].environments[0].services[0].envVars[0]"
+        }
+      ],
+      "expected_paths": [
+        "projects[0].environments[0].services[0].envVars[0]",
+        "projects[0].environments[0].services[0].envVars[1]"
+      ],
+      "location_match": false,
+      "valid": false
+    },
+    {
+      "actual_paths": [
+        "services[0].envVars[0]"
+      ],
+      "case": "cross-consumer-valid-reference-before-missing",
+      "errors": [
+        {
+          "error": "service \"qa314-ebe6d7-consumer-two\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+          "line": 9,
+          "column": 5,
+          "path": "services[0].envVars[0]"
+        }
+      ],
+      "expected_paths": [
+        "services[1].envVars[0]"
+      ],
+      "location_match": false,
+      "valid": false
+    },
+    {
+      "actual_paths": [
+        "services[0].envVars[0]",
+        "services[0].envVars[0]"
+      ],
+      "case": "cross-consumer-two-missing-same-target",
+      "errors": [
+        {
+          "error": "service \"qa314-ebe6d7-consumer\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+          "line": 9,
+          "column": 5,
+          "path": "services[0].envVars[0]"
+        },
+        {
+          "error": "service \"qa314-ebe6d7-consumer-two\": fromService references unknown service \"qa314-ebe6d7-missing\" (declare it under services: or create it in this workspace first)",
+          "line": 9,
+          "column": 5,
+          "path": "services[0].envVars[0]"
+        }
+      ],
+      "expected_paths": [
+        "services[0].envVars[0]",
+        "services[1].envVars[0]"
+      ],
+      "location_match": false,
+      "valid": false
+    }
+  ],
+  "scope": "24 existing named checks across13 top-level tests pass; diagnostic9 subcases has3 passes,6 real location failures and failing parent; no product implementation/full suite"
+}

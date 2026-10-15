@@ -1,0 +1,893 @@
+{
+  "head": "7f596cbb3bfcdfcf77b0ce33017a82aaf7b573bd",
+  "focused_checks": {
+    "sweep313-source": {
+      "named_passes": 7,
+      "top_level_passes": 4,
+      "events": [
+        {
+          "Time": "2026-10-15T13:09:06.126709-07:00",
+          "Action": "start",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps"
+        },
+        {
+          "Time": "2026-10-15T13:09:06.771224-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintNamesMayRepeatAcrossKinds"
+        },
+        {
+          "Time": "2026-10-15T13:09:06.771316-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintNamesMayRepeatAcrossKinds",
+          "Output": "=== RUN   TestBlueprintNamesMayRepeatAcrossKinds\n"
+        },
+        {
+          "Time": "2026-10-15T13:09:06.778081-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintNamesMayRepeatAcrossKinds",
+          "Output": "--- PASS: TestBlueprintNamesMayRepeatAcrossKinds (0.01s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:09:06.778112-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintNamesMayRepeatAcrossKinds",
+          "Elapsed": 0.01
+        },
+        {
+          "Time": "2026-10-15T13:09:06.778427-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintNamesStayUniqueWithinAKind"
+        },
+        {
+          "Time": "2026-10-15T13:09:06.778439-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintNamesStayUniqueWithinAKind",
+          "Output": "=== RUN   TestBlueprintNamesStayUniqueWithinAKind\n"
+        },
+        {
+          "Time": "2026-10-15T13:09:06.778453-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintNamesStayUniqueWithinAKind/two_services_of_different_types"
+        },
+        {
+          "Time": "2026-10-15T13:09:06.77847-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintNamesStayUniqueWithinAKind/two_services_of_different_types",
+          "Output": "=== RUN   TestBlueprintNamesStayUniqueWithinAKind/two_services_of_different_types\n"
+        },
+        {
+          "Time": "2026-10-15T13:09:06.778492-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintNamesStayUniqueWithinAKind/two_services_of_different_types",
+          "Output": "--- PASS: TestBlueprintNamesStayUniqueWithinAKind/two_services_of_different_types (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:09:06.778497-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintNamesStayUniqueWithinAKind/two_services_of_different_types",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:09:06.778507-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintNamesStayUniqueWithinAKind/two_databases"
+        },
+        {
+          "Time": "2026-10-15T13:09:06.778511-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintNamesStayUniqueWithinAKind/two_databases",
+          "Output": "=== RUN   TestBlueprintNamesStayUniqueWithinAKind/two_databases\n"
+        },
+        {
+          "Time": "2026-10-15T13:09:06.778521-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintNamesStayUniqueWithinAKind/two_databases",
+          "Output": "--- PASS: TestBlueprintNamesStayUniqueWithinAKind/two_databases (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:09:06.778525-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintNamesStayUniqueWithinAKind/two_databases",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:09:06.778529-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintNamesStayUniqueWithinAKind/two_Key_Values"
+        },
+        {
+          "Time": "2026-10-15T13:09:06.778532-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintNamesStayUniqueWithinAKind/two_Key_Values",
+          "Output": "=== RUN   TestBlueprintNamesStayUniqueWithinAKind/two_Key_Values\n"
+        },
+        {
+          "Time": "2026-10-15T13:09:06.778535-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintNamesStayUniqueWithinAKind/two_Key_Values",
+          "Output": "--- PASS: TestBlueprintNamesStayUniqueWithinAKind/two_Key_Values (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:09:06.778538-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintNamesStayUniqueWithinAKind/two_Key_Values",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:09:06.778552-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintNamesStayUniqueWithinAKind",
+          "Output": "--- PASS: TestBlueprintNamesStayUniqueWithinAKind (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:09:06.778555-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintNamesStayUniqueWithinAKind",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:09:06.778557-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestFromServiceIgnoresOtherKindsOfTheSameName"
+        },
+        {
+          "Time": "2026-10-15T13:09:06.778559-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestFromServiceIgnoresOtherKindsOfTheSameName",
+          "Output": "=== RUN   TestFromServiceIgnoresOtherKindsOfTheSameName\n"
+        },
+        {
+          "Time": "2026-10-15T13:09:06.778567-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestFromServiceIgnoresOtherKindsOfTheSameName",
+          "Output": "--- PASS: TestFromServiceIgnoresOtherKindsOfTheSameName (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:09:06.77857-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestFromServiceIgnoresOtherKindsOfTheSameName",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:09:06.778572-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintReferencePointerSkipsSameNamedDatabases"
+        },
+        {
+          "Time": "2026-10-15T13:09:06.778575-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintReferencePointerSkipsSameNamedDatabases",
+          "Output": "=== RUN   TestBlueprintReferencePointerSkipsSameNamedDatabases\n"
+        },
+        {
+          "Time": "2026-10-15T13:09:06.778665-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintReferencePointerSkipsSameNamedDatabases",
+          "Output": "--- PASS: TestBlueprintReferencePointerSkipsSameNamedDatabases (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:09:06.778705-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestBlueprintReferencePointerSkipsSameNamedDatabases",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:09:06.77874-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Output": "PASS\n"
+        },
+        {
+          "Time": "2026-10-15T13:09:06.780298-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Output": "ok  \tgithub.com/bex-co/bex/lego/backend/internal/apps\t0.652s\n"
+        },
+        {
+          "Time": "2026-10-15T13:09:06.780328-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Elapsed": 0.654
+        }
+      ]
+    },
+    "sweep313-exact-source": {
+      "named_passes": 13,
+      "top_level_passes": 1,
+      "events": [
+        {
+          "Time": "2026-10-15T13:14:28.010164-07:00",
+          "Action": "start",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.704805-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.70487-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs",
+          "Output": "=== RUN   TestQA313ExactNameInputs\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.705199-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/plain-web"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.70521-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/plain-web",
+          "Output": "=== RUN   TestQA313ExactNameInputs/plain-web\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.747907-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/plain-web",
+          "Output": "--- PASS: TestQA313ExactNameInputs/plain-web (0.04s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.74795-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/plain-web",
+          "Elapsed": 0.04
+        },
+        {
+          "Time": "2026-10-15T13:14:28.748215-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/service-and-database"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.74822-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/service-and-database",
+          "Output": "=== RUN   TestQA313ExactNameInputs/service-and-database\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.750563-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/service-and-database",
+          "Output": "--- PASS: TestQA313ExactNameInputs/service-and-database (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.750588-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/service-and-database",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:14:28.750594-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/service-and-keyvalue"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.750599-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/service-and-keyvalue",
+          "Output": "=== RUN   TestQA313ExactNameInputs/service-and-keyvalue\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.752024-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/service-and-keyvalue",
+          "Output": "--- PASS: TestQA313ExactNameInputs/service-and-keyvalue (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.75205-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/service-and-keyvalue",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:14:28.752056-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/three-kinds"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.752059-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/three-kinds",
+          "Output": "=== RUN   TestQA313ExactNameInputs/three-kinds\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.753501-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/three-kinds",
+          "Output": "--- PASS: TestQA313ExactNameInputs/three-kinds (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.753517-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/three-kinds",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:14:28.753521-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/three-kinds-and-envgroup"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.753524-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/three-kinds-and-envgroup",
+          "Output": "=== RUN   TestQA313ExactNameInputs/three-kinds-and-envgroup\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.754858-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/three-kinds-and-envgroup",
+          "Output": "--- PASS: TestQA313ExactNameInputs/three-kinds-and-envgroup (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.754879-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/three-kinds-and-envgroup",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:14:28.754896-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/same-service-kind-different-types"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.754901-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/same-service-kind-different-types",
+          "Output": "=== RUN   TestQA313ExactNameInputs/same-service-kind-different-types\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.756-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/same-service-kind-different-types",
+          "Output": "--- PASS: TestQA313ExactNameInputs/same-service-kind-different-types (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.756012-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/same-service-kind-different-types",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:14:28.756018-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/duplicate-database"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.756021-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/duplicate-database",
+          "Output": "=== RUN   TestQA313ExactNameInputs/duplicate-database\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.757074-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/duplicate-database",
+          "Output": "--- PASS: TestQA313ExactNameInputs/duplicate-database (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.757083-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/duplicate-database",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:14:28.757088-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/duplicate-keyvalue"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.757091-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/duplicate-keyvalue",
+          "Output": "=== RUN   TestQA313ExactNameInputs/duplicate-keyvalue\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.758195-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/duplicate-keyvalue",
+          "Output": "--- PASS: TestQA313ExactNameInputs/duplicate-keyvalue (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.75824-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/duplicate-keyvalue",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:14:28.758247-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/duplicate-envgroup"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.758252-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/duplicate-envgroup",
+          "Output": "=== RUN   TestQA313ExactNameInputs/duplicate-envgroup\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.759285-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/duplicate-envgroup",
+          "Output": "--- PASS: TestQA313ExactNameInputs/duplicate-envgroup (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.759309-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/duplicate-envgroup",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:14:28.759324-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/database-does-not-satisfy-web-ref"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.759328-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/database-does-not-satisfy-web-ref",
+          "Output": "=== RUN   TestQA313ExactNameInputs/database-does-not-satisfy-web-ref\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.761518-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/database-does-not-satisfy-web-ref",
+          "Output": "--- PASS: TestQA313ExactNameInputs/database-does-not-satisfy-web-ref (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.76155-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/database-does-not-satisfy-web-ref",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:14:28.761556-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/keyvalue-does-not-satisfy-web-ref"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.76156-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/keyvalue-does-not-satisfy-web-ref",
+          "Output": "=== RUN   TestQA313ExactNameInputs/keyvalue-does-not-satisfy-web-ref\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.762775-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/keyvalue-does-not-satisfy-web-ref",
+          "Output": "--- PASS: TestQA313ExactNameInputs/keyvalue-does-not-satisfy-web-ref (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.762804-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/keyvalue-does-not-satisfy-web-ref",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:14:28.76281-07:00",
+          "Action": "run",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/missing-database-control"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.762814-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/missing-database-control",
+          "Output": "=== RUN   TestQA313ExactNameInputs/missing-database-control\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.763905-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/missing-database-control",
+          "Output": "--- PASS: TestQA313ExactNameInputs/missing-database-control (0.00s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.763921-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs/missing-database-control",
+          "Elapsed": 0
+        },
+        {
+          "Time": "2026-10-15T13:14:28.764268-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs",
+          "Output": "--- PASS: TestQA313ExactNameInputs (0.06s)\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.764287-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Test": "TestQA313ExactNameInputs",
+          "Elapsed": 0.06
+        },
+        {
+          "Time": "2026-10-15T13:14:28.764295-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Output": "PASS\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.766224-07:00",
+          "Action": "output",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Output": "ok  \tgithub.com/bex-co/bex/lego/backend/internal/apps\t0.755s\n"
+        },
+        {
+          "Time": "2026-10-15T13:14:28.766256-07:00",
+          "Action": "pass",
+          "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+          "Elapsed": 0.756
+        }
+      ]
+    }
+  },
+  "exact_input_observations": [
+    {
+      "case": "plain-web",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "database_count": 0,
+      "envgroup_count": 0,
+      "estimated_pricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      },
+      "keyvalue_count": 0,
+      "service_count": 1,
+      "service_roles": [
+        {
+          "database_refs": 0,
+          "host_refs": 0,
+          "keyvalue_refs": 0,
+          "name": "qa313-c2ebae-consumer",
+          "resolved_plan": "free",
+          "type": "web_service"
+        }
+      ],
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "service-and-database",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "database_count": 1,
+      "envgroup_count": 0,
+      "estimated_pricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      },
+      "keyvalue_count": 0,
+      "service_count": 1,
+      "service_roles": [
+        {
+          "database_refs": 1,
+          "host_refs": 0,
+          "keyvalue_refs": 0,
+          "name": "qa313-c2ebae-shared",
+          "resolved_plan": "free",
+          "type": "web_service"
+        }
+      ],
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "service-and-keyvalue",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "database_count": 0,
+      "envgroup_count": 0,
+      "estimated_pricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      },
+      "keyvalue_count": 1,
+      "service_count": 1,
+      "service_roles": [
+        {
+          "database_refs": 0,
+          "host_refs": 0,
+          "keyvalue_refs": 1,
+          "name": "qa313-c2ebae-shared",
+          "resolved_plan": "free",
+          "type": "web_service"
+        }
+      ],
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "three-kinds",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "database_count": 1,
+      "envgroup_count": 0,
+      "estimated_pricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      },
+      "keyvalue_count": 1,
+      "service_count": 2,
+      "service_roles": [
+        {
+          "database_refs": 0,
+          "host_refs": 0,
+          "keyvalue_refs": 0,
+          "name": "qa313-c2ebae-shared",
+          "resolved_plan": "free",
+          "type": "web_service"
+        },
+        {
+          "database_refs": 1,
+          "host_refs": 1,
+          "keyvalue_refs": 1,
+          "name": "qa313-c2ebae-consumer",
+          "resolved_plan": "free",
+          "type": "web_service"
+        }
+      ],
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "three-kinds-and-envgroup",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "database_count": 1,
+      "envgroup_count": 1,
+      "estimated_pricing": {
+        "totalUsd": "0.00",
+        "lines": [],
+        "variable": []
+      },
+      "keyvalue_count": 1,
+      "service_count": 2,
+      "service_roles": [
+        {
+          "database_refs": 0,
+          "host_refs": 0,
+          "keyvalue_refs": 0,
+          "name": "qa313-c2ebae-shared",
+          "resolved_plan": "free",
+          "type": "web_service"
+        },
+        {
+          "database_refs": 1,
+          "host_refs": 1,
+          "keyvalue_refs": 1,
+          "name": "qa313-c2ebae-consumer",
+          "resolved_plan": "free",
+          "type": "web_service"
+        }
+      ],
+      "valid": true,
+      "validation_errors": null
+    },
+    {
+      "case": "same-service-kind-different-types",
+      "compiler_problems": [
+        {
+          "Code": "BLUEPRINT_DUPLICATE_RESOURCE",
+          "Path": "#/services/1",
+          "Message": "duplicate name \"qa313-c2ebae-shared\" for service (first declared at #/services/0)",
+          "Line": 8,
+          "Column": 3
+        }
+      ],
+      "compiler_valid": false,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "code": "BLUEPRINT_DUPLICATE_RESOURCE",
+          "error": "duplicate name \"qa313-c2ebae-shared\" for service (first declared at #/services/0)",
+          "line": 8,
+          "column": 3,
+          "path": "services[1]"
+        }
+      ]
+    },
+    {
+      "case": "duplicate-database",
+      "compiler_problems": [
+        {
+          "Code": "BLUEPRINT_DUPLICATE_RESOURCE",
+          "Path": "#/databases/1",
+          "Message": "duplicate name \"qa313-c2ebae-shared\" for postgres (first declared at #/databases/0)",
+          "Line": 4,
+          "Column": 3
+        }
+      ],
+      "compiler_valid": false,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "code": "BLUEPRINT_DUPLICATE_RESOURCE",
+          "error": "duplicate name \"qa313-c2ebae-shared\" for postgres (first declared at #/databases/0)",
+          "line": 4,
+          "column": 3,
+          "path": "databases[1]"
+        }
+      ]
+    },
+    {
+      "case": "duplicate-keyvalue",
+      "compiler_problems": [
+        {
+          "Code": "BLUEPRINT_DUPLICATE_RESOURCE",
+          "Path": "#/services/1",
+          "Message": "duplicate name \"qa313-c2ebae-shared\" for key_value (first declared at #/services/0)",
+          "Line": 6,
+          "Column": 3
+        }
+      ],
+      "compiler_valid": false,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "code": "BLUEPRINT_DUPLICATE_RESOURCE",
+          "error": "duplicate name \"qa313-c2ebae-shared\" for key_value (first declared at #/services/0)",
+          "line": 6,
+          "column": 3,
+          "path": "services[1]"
+        }
+      ]
+    },
+    {
+      "case": "duplicate-envgroup",
+      "compiler_problems": [
+        {
+          "Code": "BLUEPRINT_DUPLICATE_RESOURCE",
+          "Path": "#/envVarGroups/1",
+          "Message": "duplicate name \"qa313-c2ebae-shared\" for env_var_group (first declared at #/envVarGroups/0)",
+          "Line": 13,
+          "Column": 3
+        }
+      ],
+      "compiler_valid": false,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "code": "BLUEPRINT_DUPLICATE_RESOURCE",
+          "error": "duplicate name \"qa313-c2ebae-shared\" for env_var_group (first declared at #/envVarGroups/0)",
+          "line": 13,
+          "column": 3,
+          "path": "envVarGroups[1]"
+        }
+      ]
+    },
+    {
+      "case": "database-does-not-satisfy-web-ref",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "error": "service \"qa313-c2ebae-consumer\": fromService references unknown service \"qa313-c2ebae-shared\" (declare it under services: or create it in this workspace first)",
+          "line": 16,
+          "column": 5,
+          "path": "services[0].envVars[1]"
+        }
+      ]
+    },
+    {
+      "case": "keyvalue-does-not-satisfy-web-ref",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "error": "service \"qa313-c2ebae-consumer\": fromService references unknown service \"qa313-c2ebae-shared\" (declare it under services: or create it in this workspace first)",
+          "line": 18,
+          "column": 5,
+          "path": "services[1].envVars[1]"
+        }
+      ]
+    },
+    {
+      "case": "missing-database-control",
+      "compiler_problems": null,
+      "compiler_valid": true,
+      "estimated_pricing": null,
+      "valid": false,
+      "validation_errors": [
+        {
+          "error": "fromDatabase references unknown database \"qa313-c2ebae-shared\" in this workspace",
+          "line": 9,
+          "column": 5,
+          "path": "services[0].envVars[0]"
+        }
+      ]
+    }
+  ],
+  "scope": "existing tests and private workspace-configured validator diagnostic; no implementation or full backend suite"
+}

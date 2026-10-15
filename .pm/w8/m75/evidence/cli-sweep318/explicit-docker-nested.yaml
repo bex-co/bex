@@ -1,0 +1,10 @@
+projects:
+  - name: qa318-context-project
+    environments:
+      - name: production
+        services:
+          - type: web
+            name: qa318-docker-n
+            runtime: docker
+            plan: free
+            repo: https://github.com/expressjs/serve-static

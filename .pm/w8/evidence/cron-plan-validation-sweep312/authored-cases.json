@@ -1,0 +1,137 @@
+[
+  {
+    "case": "web-free",
+    "kind": "web",
+    "plan": "free",
+    "name": "qa312-1f25aa-web-free",
+    "manifest": "services:\n  - name: qa312-1f25aa-web-free\n    type: web\n    runtime: image\n    image: {url: nginx:1.27}\n    plan: free\n",
+    "expected_valid": true,
+    "expected_resolved_plan": "free"
+  },
+  {
+    "case": "web-starter",
+    "kind": "web",
+    "plan": "starter",
+    "name": "qa312-1f25aa-web-starter",
+    "manifest": "services:\n  - name: qa312-1f25aa-web-starter\n    type: web\n    runtime: image\n    image: {url: nginx:1.27}\n    plan: starter\n",
+    "expected_valid": true,
+    "expected_resolved_plan": "starter"
+  },
+  {
+    "case": "web-omitted",
+    "kind": "web",
+    "plan": "omitted",
+    "name": "qa312-1f25aa-web-omitted",
+    "manifest": "services:\n  - name: qa312-1f25aa-web-omitted\n    type: web\n    runtime: image\n    image: {url: nginx:1.27}\n",
+    "expected_valid": true,
+    "expected_resolved_plan": "starter"
+  },
+  {
+    "case": "cron-free",
+    "kind": "cron",
+    "plan": "free",
+    "name": "qa312-1f25aa-cron-free",
+    "manifest": "services:\n  - name: qa312-1f25aa-cron-free\n    type: cron\n    runtime: image\n    image: {url: nginx:1.27}\n    schedule: '0 0 1 1 *'\n    plan: free\n",
+    "expected_valid": false,
+    "expected_resolved_plan": null
+  },
+  {
+    "case": "cron-starter",
+    "kind": "cron",
+    "plan": "starter",
+    "name": "qa312-1f25aa-cron-starter",
+    "manifest": "services:\n  - name: qa312-1f25aa-cron-starter\n    type: cron\n    runtime: image\n    image: {url: nginx:1.27}\n    schedule: '0 0 1 1 *'\n    plan: starter\n",
+    "expected_valid": true,
+    "expected_resolved_plan": "starter"
+  },
+  {
+    "case": "cron-omitted",
+    "kind": "cron",
+    "plan": "omitted",
+    "name": "qa312-1f25aa-cron-omitted",
+    "manifest": "services:\n  - name: qa312-1f25aa-cron-omitted\n    type: cron\n    runtime: image\n    image: {url: nginx:1.27}\n    schedule: '0 0 1 1 *'\n",
+    "expected_valid": true,
+    "expected_resolved_plan": "starter"
+  },
+  {
+    "case": "worker-free",
+    "kind": "worker",
+    "plan": "free",
+    "name": "qa312-1f25aa-worker-free",
+    "manifest": "services:\n  - name: qa312-1f25aa-worker-free\n    type: worker\n    runtime: image\n    image: {url: nginx:1.27}\n    plan: free\n",
+    "expected_valid": false,
+    "expected_resolved_plan": null
+  },
+  {
+    "case": "worker-starter",
+    "kind": "worker",
+    "plan": "starter",
+    "name": "qa312-1f25aa-worker-starter",
+    "manifest": "services:\n  - name: qa312-1f25aa-worker-starter\n    type: worker\n    runtime: image\n    image: {url: nginx:1.27}\n    plan: starter\n",
+    "expected_valid": true,
+    "expected_resolved_plan": "starter"
+  },
+  {
+    "case": "worker-omitted",
+    "kind": "worker",
+    "plan": "omitted",
+    "name": "qa312-1f25aa-worker-omitted",
+    "manifest": "services:\n  - name: qa312-1f25aa-worker-omitted\n    type: worker\n    runtime: image\n    image: {url: nginx:1.27}\n",
+    "expected_valid": true,
+    "expected_resolved_plan": "starter"
+  },
+  {
+    "case": "pserv-free",
+    "kind": "pserv",
+    "plan": "free",
+    "name": "qa312-1f25aa-pserv-free",
+    "manifest": "services:\n  - name: qa312-1f25aa-pserv-free\n    type: pserv\n    runtime: image\n    image: {url: nginx:1.27}\n    plan: free\n",
+    "expected_valid": false,
+    "expected_resolved_plan": null
+  },
+  {
+    "case": "pserv-starter",
+    "kind": "pserv",
+    "plan": "starter",
+    "name": "qa312-1f25aa-pserv-starter",
+    "manifest": "services:\n  - name: qa312-1f25aa-pserv-starter\n    type: pserv\n    runtime: image\n    image: {url: nginx:1.27}\n    plan: starter\n",
+    "expected_valid": true,
+    "expected_resolved_plan": "starter"
+  },
+  {
+    "case": "pserv-omitted",
+    "kind": "pserv",
+    "plan": "omitted",
+    "name": "qa312-1f25aa-pserv-omitted",
+    "manifest": "services:\n  - name: qa312-1f25aa-pserv-omitted\n    type: pserv\n    runtime: image\n    image: {url: nginx:1.27}\n",
+    "expected_valid": true,
+    "expected_resolved_plan": "starter"
+  },
+  {
+    "case": "static-free",
+    "kind": "static",
+    "plan": "free",
+    "name": "qa312-1f25aa-static-free",
+    "manifest": "services:\n  - name: qa312-1f25aa-static-free\n    type: web\n    runtime: static\n    repo: https://github.com/expressjs/serve-static\n    branch: master\n    staticPublishPath: public\n    plan: free\n",
+    "expected_valid": false,
+    "expected_resolved_plan": null
+  },
+  {
+    "case": "static-starter",
+    "kind": "static",
+    "plan": "starter",
+    "name": "qa312-1f25aa-static-starter",
+    "manifest": "services:\n  - name: qa312-1f25aa-static-starter\n    type: web\n    runtime: static\n    repo: https://github.com/expressjs/serve-static\n    branch: master\n    staticPublishPath: public\n    plan: starter\n",
+    "expected_valid": false,
+    "expected_resolved_plan": null
+  },
+  {
+    "case": "static-omitted",
+    "kind": "static",
+    "plan": "omitted",
+    "name": "qa312-1f25aa-static-omitted",
+    "manifest": "services:\n  - name: qa312-1f25aa-static-omitted\n    type: web\n    runtime: static\n    repo: https://github.com/expressjs/serve-static\n    branch: master\n    staticPublishPath: public\n",
+    "expected_valid": true,
+    "expected_resolved_plan": "free"
+  }
+]

@@ -1,0 +1,16 @@
+{"Time":"2026-10-15T13:56:09.021721-07:00","Action":"start","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver"}
+{"Time":"2026-10-15T13:56:09.561647-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestSavedETagPreconditions"}
+{"Time":"2026-10-15T13:56:09.561729-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestSavedETagPreconditions","Output":"=== RUN   TestSavedETagPreconditions\n"}
+{"Time":"2026-10-15T13:56:09.561996-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestSavedETagPreconditions","Output":"--- PASS: TestSavedETagPreconditions (0.00s)\n"}
+{"Time":"2026-10-15T13:56:09.562023-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestSavedETagPreconditions","Elapsed":0}
+{"Time":"2026-10-15T13:56:09.562041-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestNoSavedETagOnlyWildcardMatches"}
+{"Time":"2026-10-15T13:56:09.562045-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestNoSavedETagOnlyWildcardMatches","Output":"=== RUN   TestNoSavedETagOnlyWildcardMatches\n"}
+{"Time":"2026-10-15T13:56:09.562066-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestNoSavedETagOnlyWildcardMatches","Output":"--- PASS: TestNoSavedETagOnlyWildcardMatches (0.00s)\n"}
+{"Time":"2026-10-15T13:56:09.562071-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestNoSavedETagOnlyWildcardMatches","Elapsed":0}
+{"Time":"2026-10-15T13:56:09.562075-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestConditionalFramingOverHTTP"}
+{"Time":"2026-10-15T13:56:09.562078-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestConditionalFramingOverHTTP","Output":"=== RUN   TestConditionalFramingOverHTTP\n"}
+{"Time":"2026-10-15T13:56:09.563042-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestConditionalFramingOverHTTP","Output":"--- PASS: TestConditionalFramingOverHTTP (0.00s)\n"}
+{"Time":"2026-10-15T13:56:09.563056-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestConditionalFramingOverHTTP","Elapsed":0}
+{"Time":"2026-10-15T13:56:09.563077-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Output":"PASS\n"}
+{"Time":"2026-10-15T13:56:09.564071-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Output":"ok  \tgithub.com/bex-co/bex/lego/operator/internal/staticserver\t0.541s\n"}
+{"Time":"2026-10-15T13:56:09.564089-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Elapsed":0.542}

@@ -1,0 +1,2085 @@
+{
+  "sweep": 312,
+  "head": "0cc059c22de27d68c5e1f58686ae30d33227913b",
+  "nonce": "1f25aa",
+  "scope": "actual native validation only; no apply or resource create",
+  "cases": [
+    {
+      "case": "web-free",
+      "kind": "web",
+      "plan": "free",
+      "name": "qa312-1f25aa-web-free",
+      "manifest": "services:\n  - name: qa312-1f25aa-web-free\n    type: web\n    runtime: image\n    image: {url: nginx:1.27}\n    plan: free\n",
+      "expected_valid": true,
+      "expected_resolved_plan": "free"
+    },
+    {
+      "case": "web-starter",
+      "kind": "web",
+      "plan": "starter",
+      "name": "qa312-1f25aa-web-starter",
+      "manifest": "services:\n  - name: qa312-1f25aa-web-starter\n    type: web\n    runtime: image\n    image: {url: nginx:1.27}\n    plan: starter\n",
+      "expected_valid": true,
+      "expected_resolved_plan": "starter"
+    },
+    {
+      "case": "web-omitted",
+      "kind": "web",
+      "plan": "omitted",
+      "name": "qa312-1f25aa-web-omitted",
+      "manifest": "services:\n  - name: qa312-1f25aa-web-omitted\n    type: web\n    runtime: image\n    image: {url: nginx:1.27}\n",
+      "expected_valid": true,
+      "expected_resolved_plan": "starter"
+    },
+    {
+      "case": "cron-free",
+      "kind": "cron",
+      "plan": "free",
+      "name": "qa312-1f25aa-cron-free",
+      "manifest": "services:\n  - name: qa312-1f25aa-cron-free\n    type: cron\n    runtime: image\n    image: {url: nginx:1.27}\n    schedule: '0 0 1 1 *'\n    plan: free\n",
+      "expected_valid": false,
+      "expected_resolved_plan": null
+    },
+    {
+      "case": "cron-starter",
+      "kind": "cron",
+      "plan": "starter",
+      "name": "qa312-1f25aa-cron-starter",
+      "manifest": "services:\n  - name: qa312-1f25aa-cron-starter\n    type: cron\n    runtime: image\n    image: {url: nginx:1.27}\n    schedule: '0 0 1 1 *'\n    plan: starter\n",
+      "expected_valid": true,
+      "expected_resolved_plan": "starter"
+    },
+    {
+      "case": "cron-omitted",
+      "kind": "cron",
+      "plan": "omitted",
+      "name": "qa312-1f25aa-cron-omitted",
+      "manifest": "services:\n  - name: qa312-1f25aa-cron-omitted\n    type: cron\n    runtime: image\n    image: {url: nginx:1.27}\n    schedule: '0 0 1 1 *'\n",
+      "expected_valid": true,
+      "expected_resolved_plan": "starter"
+    },
+    {
+      "case": "worker-free",
+      "kind": "worker",
+      "plan": "free",
+      "name": "qa312-1f25aa-worker-free",
+      "manifest": "services:\n  - name: qa312-1f25aa-worker-free\n    type: worker\n    runtime: image\n    image: {url: nginx:1.27}\n    plan: free\n",
+      "expected_valid": false,
+      "expected_resolved_plan": null
+    },
+    {
+      "case": "worker-starter",
+      "kind": "worker",
+      "plan": "starter",
+      "name": "qa312-1f25aa-worker-starter",
+      "manifest": "services:\n  - name: qa312-1f25aa-worker-starter\n    type: worker\n    runtime: image\n    image: {url: nginx:1.27}\n    plan: starter\n",
+      "expected_valid": true,
+      "expected_resolved_plan": "starter"
+    },
+    {
+      "case": "worker-omitted",
+      "kind": "worker",
+      "plan": "omitted",
+      "name": "qa312-1f25aa-worker-omitted",
+      "manifest": "services:\n  - name: qa312-1f25aa-worker-omitted\n    type: worker\n    runtime: image\n    image: {url: nginx:1.27}\n",
+      "expected_valid": true,
+      "expected_resolved_plan": "starter"
+    },
+    {
+      "case": "pserv-free",
+      "kind": "pserv",
+      "plan": "free",
+      "name": "qa312-1f25aa-pserv-free",
+      "manifest": "services:\n  - name: qa312-1f25aa-pserv-free\n    type: pserv\n    runtime: image\n    image: {url: nginx:1.27}\n    plan: free\n",
+      "expected_valid": false,
+      "expected_resolved_plan": null
+    },
+    {
+      "case": "pserv-starter",
+      "kind": "pserv",
+      "plan": "starter",
+      "name": "qa312-1f25aa-pserv-starter",
+      "manifest": "services:\n  - name: qa312-1f25aa-pserv-starter\n    type: pserv\n    runtime: image\n    image: {url: nginx:1.27}\n    plan: starter\n",
+      "expected_valid": true,
+      "expected_resolved_plan": "starter"
+    },
+    {
+      "case": "pserv-omitted",
+      "kind": "pserv",
+      "plan": "omitted",
+      "name": "qa312-1f25aa-pserv-omitted",
+      "manifest": "services:\n  - name: qa312-1f25aa-pserv-omitted\n    type: pserv\n    runtime: image\n    image: {url: nginx:1.27}\n",
+      "expected_valid": true,
+      "expected_resolved_plan": "starter"
+    },
+    {
+      "case": "static-free",
+      "kind": "static",
+      "plan": "free",
+      "name": "qa312-1f25aa-static-free",
+      "manifest": "services:\n  - name: qa312-1f25aa-static-free\n    type: web\n    runtime: static\n    repo: https://github.com/expressjs/serve-static\n    branch: master\n    staticPublishPath: public\n    plan: free\n",
+      "expected_valid": false,
+      "expected_resolved_plan": null
+    },
+    {
+      "case": "static-starter",
+      "kind": "static",
+      "plan": "starter",
+      "name": "qa312-1f25aa-static-starter",
+      "manifest": "services:\n  - name: qa312-1f25aa-static-starter\n    type: web\n    runtime: static\n    repo: https://github.com/expressjs/serve-static\n    branch: master\n    staticPublishPath: public\n    plan: starter\n",
+      "expected_valid": false,
+      "expected_resolved_plan": null
+    },
+    {
+      "case": "static-omitted",
+      "kind": "static",
+      "plan": "omitted",
+      "name": "qa312-1f25aa-static-omitted",
+      "manifest": "services:\n  - name: qa312-1f25aa-static-omitted\n    type: web\n    runtime: static\n    repo: https://github.com/expressjs/serve-static\n    branch: master\n    staticPublishPath: public\n",
+      "expected_valid": true,
+      "expected_resolved_plan": "free"
+    }
+  ],
+  "results": [
+    {
+      "at": "2026-10-15T19:59:17.341588+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "web-free",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.609,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-web-free\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-web-free"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:19.636407+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "web-starter",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.655,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-web-starter\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-web-starter"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:21.049104+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "web-omitted",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.389,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-web-omitted\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-web-omitted"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:22.107740+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "cron-free",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.721,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-cron-free\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-cron-free"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": false
+    },
+    {
+      "at": "2026-10-15T19:59:23.496237+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "cron-starter",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.811,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-cron-starter\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-cron-starter"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:24.967528+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "cron-omitted",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.521,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-cron-omitted\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-cron-omitted"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:26.176287+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "worker-free",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 1.063,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"service \\\"qa312-1f25aa-worker-free\\\": a background_worker requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra\",\n      \"line\": 6,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "service \"qa312-1f25aa-worker-free\": a background_worker requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra",
+            "line": 6,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:27.908332+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "worker-starter",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.413,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-worker-starter\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-worker-starter"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:28.997174+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "worker-omitted",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.807,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-worker-omitted\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-worker-omitted"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:30.493762+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "pserv-free",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.357,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"service \\\"qa312-1f25aa-pserv-free\\\": a private_service requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra\",\n      \"line\": 6,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "service \"qa312-1f25aa-pserv-free\": a private_service requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra",
+            "line": 6,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:31.491265+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "pserv-starter",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.343,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-pserv-starter\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-pserv-starter"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:32.468949+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "pserv-omitted",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.381,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-pserv-omitted\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-pserv-omitted"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:33.486220+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "static-free",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.344,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"at '/services/0': additional properties 'plan' not allowed\",\n      \"line\": 8,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "at '/services/0': additional properties 'plan' not allowed",
+            "line": 8,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:34.495706+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "static-starter",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.482,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"at '/services/0': additional properties 'plan' not allowed\",\n      \"line\": 8,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "at '/services/0': additional properties 'plan' not allowed",
+            "line": 8,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:35.868730+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "static-omitted",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.444,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-static-omitted\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-static-omitted"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:37.662773+00:00",
+      "client": "published Bex0.3.2",
+      "case": "web-free",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.682,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-web-free\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-web-free"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:39.079010+00:00",
+      "client": "published Bex0.3.2",
+      "case": "web-starter",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.377,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-web-starter\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-web-starter"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:40.195915+00:00",
+      "client": "published Bex0.3.2",
+      "case": "web-omitted",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.399,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-web-omitted\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-web-omitted"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:41.312652+00:00",
+      "client": "published Bex0.3.2",
+      "case": "cron-free",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.416,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-cron-free\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-cron-free"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": false
+    },
+    {
+      "at": "2026-10-15T19:59:42.419935+00:00",
+      "client": "published Bex0.3.2",
+      "case": "cron-starter",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.547,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-cron-starter\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-cron-starter"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:44.273544+00:00",
+      "client": "published Bex0.3.2",
+      "case": "cron-omitted",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.443,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-cron-omitted\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-cron-omitted"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:45.419042+00:00",
+      "client": "published Bex0.3.2",
+      "case": "worker-free",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.335,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"service \\\"qa312-1f25aa-worker-free\\\": a background_worker requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra\",\n      \"line\": 6,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "service \"qa312-1f25aa-worker-free\": a background_worker requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra",
+            "line": 6,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:46.925034+00:00",
+      "client": "published Bex0.3.2",
+      "case": "worker-starter",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.584,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-worker-starter\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-worker-starter"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:48.263644+00:00",
+      "client": "published Bex0.3.2",
+      "case": "worker-omitted",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.648,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-worker-omitted\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-worker-omitted"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:49.638265+00:00",
+      "client": "published Bex0.3.2",
+      "case": "pserv-free",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.463,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"service \\\"qa312-1f25aa-pserv-free\\\": a private_service requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra\",\n      \"line\": 6,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "service \"qa312-1f25aa-pserv-free\": a private_service requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra",
+            "line": 6,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:50.859241+00:00",
+      "client": "published Bex0.3.2",
+      "case": "pserv-starter",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.427,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-pserv-starter\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-pserv-starter"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:52.120319+00:00",
+      "client": "published Bex0.3.2",
+      "case": "pserv-omitted",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.609,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-pserv-omitted\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-pserv-omitted"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:53.431613+00:00",
+      "client": "published Bex0.3.2",
+      "case": "static-free",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.571,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"at '/services/0': additional properties 'plan' not allowed\",\n      \"line\": 8,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "at '/services/0': additional properties 'plan' not allowed",
+            "line": 8,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:54.711701+00:00",
+      "client": "published Bex0.3.2",
+      "case": "static-starter",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.777,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"at '/services/0': additional properties 'plan' not allowed\",\n      \"line\": 8,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "at '/services/0': additional properties 'plan' not allowed",
+            "line": 8,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:56.719493+00:00",
+      "client": "published Bex0.3.2",
+      "case": "static-omitted",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.541,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-static-omitted\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-static-omitted"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:58.160585+00:00",
+      "client": "unchanged Render2.27",
+      "case": "web-free",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.546,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-web-free\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-web-free"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T19:59:59.414193+00:00",
+      "client": "unchanged Render2.27",
+      "case": "web-starter",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.366,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-web-starter\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-web-starter"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T20:00:00.466628+00:00",
+      "client": "unchanged Render2.27",
+      "case": "web-omitted",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.469,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-web-omitted\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-web-omitted"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T20:00:01.635089+00:00",
+      "client": "unchanged Render2.27",
+      "case": "cron-free",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.632,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-cron-free\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-cron-free"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": false
+    },
+    {
+      "at": "2026-10-15T20:00:02.956203+00:00",
+      "client": "unchanged Render2.27",
+      "case": "cron-starter",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.549,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-cron-starter\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-cron-starter"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T20:00:04.205726+00:00",
+      "client": "unchanged Render2.27",
+      "case": "cron-omitted",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.697,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-cron-omitted\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-cron-omitted"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T20:00:05.604375+00:00",
+      "client": "unchanged Render2.27",
+      "case": "worker-free",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.422,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"service \\\"qa312-1f25aa-worker-free\\\": a background_worker requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra\",\n      \"line\": 6,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "service \"qa312-1f25aa-worker-free\": a background_worker requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra",
+            "line": 6,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T20:00:06.942660+00:00",
+      "client": "unchanged Render2.27",
+      "case": "worker-starter",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.42,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-worker-starter\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-worker-starter"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T20:00:08.074236+00:00",
+      "client": "unchanged Render2.27",
+      "case": "worker-omitted",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.713,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-worker-omitted\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-worker-omitted"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T20:00:09.510408+00:00",
+      "client": "unchanged Render2.27",
+      "case": "pserv-free",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.6,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"service \\\"qa312-1f25aa-pserv-free\\\": a private_service requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra\",\n      \"line\": 6,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "service \"qa312-1f25aa-pserv-free\": a private_service requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra",
+            "line": 6,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T20:00:10.814233+00:00",
+      "client": "unchanged Render2.27",
+      "case": "pserv-starter",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.502,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-pserv-starter\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-pserv-starter"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T20:00:12.016478+00:00",
+      "client": "unchanged Render2.27",
+      "case": "pserv-omitted",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.459,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-pserv-omitted\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-pserv-omitted"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T20:00:13.200911+00:00",
+      "client": "unchanged Render2.27",
+      "case": "static-free",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.392,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"at '/services/0': additional properties 'plan' not allowed\",\n      \"line\": 8,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "at '/services/0': additional properties 'plan' not allowed",
+            "line": 8,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T20:00:14.337659+00:00",
+      "client": "unchanged Render2.27",
+      "case": "static-starter",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.355,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 11,\n      \"error\": \"at '/services/0': additional properties 'plan' not allowed\",\n      \"line\": 8,\n      \"path\": \"services[0].plan\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 11,
+            "error": "at '/services/0': additional properties 'plan' not allowed",
+            "line": 8,
+            "path": "services[0].plan"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-15T20:00:15.395738+00:00",
+      "client": "unchanged Render2.27",
+      "case": "static-omitted",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep312-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep312-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.458,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa312-1f25aa-static-omitted\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa312-1f25aa-static-omitted"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    }
+  ],
+  "input_removed": true,
+  "copied_render_config_removed": true,
+  "post_inventory": {
+    "at": "2026-10-15T20:00:48.775345+00:00",
+    "native": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.093,
+      "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T20:00:08Z\",\n        \"nextRunAt\": \"2026-10-15T20:01:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T20:00:08Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T20:00:05Z\",\n        \"nextRunAt\": \"2026-10-15T20:01:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T20:00:05Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T20:00:05Z\",\n        \"nextRunAt\": \"2026-10-15T20:01:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T20:00:05Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T19:47:36Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T12:22:37Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T06:54:00Z\"\n    }\n  }\n]",
+      "stderr": ""
+    },
+    "quota": {
+      "at": "2026-10-15T20:00:48.765984+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.334,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4b1697f7d67ff0d-PDX"
+      },
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "baseline_preserved": true,
+    "authored_names_absent": true
+  },
+  "source_harness_qualification": "The first overlay incorrectly treated CompileBlueprintIR as the whole validity gate. Worker/private Free pass schema compilation but are refused by service validation. Its two subcase failures (four fail events incl. parent/package) and observations are retained as excluded harness evidence. Corrected overlay calls actual ValidateBlueprint and separately records compiler validity, validation errors and normalized/estimated plans."
+}

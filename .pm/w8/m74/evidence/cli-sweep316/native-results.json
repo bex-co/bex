@@ -1,0 +1,1097 @@
+{
+  "head": "d5220a952e0f0e172bbf9fc38fe59d023f8a531d",
+  "cases": [
+    {
+      "case": "existing-static-host-root",
+      "manifest": "services:\n- type: web\n  name: qa316-830c50-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: UPSTREAM\n    fromService:\n      type: web\n      name: qa316-9b5ec0-static\n      property: host\n",
+      "expected_valid": false,
+      "expected_error_paths": ["services[0].envVars[0]"]
+    },
+    {
+      "case": "existing-web-wrong-type-root",
+      "manifest": "services:\n- type: web\n  name: qa316-830c50-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: UPSTREAM\n    fromService:\n      type: worker\n      name: qa316-ac24f2-web\n      property: host\n",
+      "expected_valid": false,
+      "expected_error_paths": ["services[0].envVars[0].fromService.type"]
+    },
+    {
+      "case": "existing-static-host-nested",
+      "manifest": "projects:\n- name: qa316-830c50-project\n  environments:\n  - name: production\n    services:\n    - type: web\n      name: qa316-830c50-consumer\n      runtime: image\n      image:\n        url: nginx:1.27\n      plan: free\n      envVars:\n      - key: UPSTREAM\n        fromService:\n          type: web\n          name: qa316-9b5ec0-static\n          property: host\n",
+      "expected_valid": false,
+      "expected_error_paths": [
+        "projects[0].environments[0].services[0].envVars[0]"
+      ]
+    },
+    {
+      "case": "existing-web-wrong-type-nested",
+      "manifest": "projects:\n- name: qa316-830c50-project\n  environments:\n  - name: production\n    services:\n    - type: web\n      name: qa316-830c50-consumer\n      runtime: image\n      image:\n        url: nginx:1.27\n      plan: free\n      envVars:\n      - key: UPSTREAM\n        fromService:\n          type: worker\n          name: qa316-ac24f2-web\n          property: host\n",
+      "expected_valid": false,
+      "expected_error_paths": [
+        "projects[0].environments[0].services[0].envVars[0].fromService.type"
+      ]
+    },
+    {
+      "case": "declared-static-host",
+      "manifest": "services:\n- type: web\n  name: qa316-830c50-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: UPSTREAM\n    fromService:\n      type: web\n      name: qa316-9b5ec0-static\n      property: host\n- name: qa316-9b5ec0-static\n  type: web\n  runtime: static\n  repo: https://github.com/expressjs/serve-static\n  branch: master\n  buildCommand: mkdir -p public\n  staticPublishPath: public\n",
+      "expected_valid": false,
+      "expected_error_paths": ["services[0].envVars[0]"]
+    },
+    {
+      "case": "declared-web-wrong-type",
+      "manifest": "services:\n- type: web\n  name: qa316-830c50-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: UPSTREAM\n    fromService:\n      type: worker\n      name: qa316-ac24f2-web\n      property: host\n- name: qa316-ac24f2-web\n  type: web\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n",
+      "expected_valid": false,
+      "expected_error_paths": ["services[0].envVars[0].fromService.type"]
+    },
+    {
+      "case": "existing-web-correct",
+      "manifest": "services:\n- type: web\n  name: qa316-830c50-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: UPSTREAM\n    fromService:\n      type: web\n      name: qa316-ac24f2-web\n      property: host\n",
+      "expected_valid": true,
+      "expected_error_paths": []
+    },
+    {
+      "case": "missing-host",
+      "manifest": "services:\n- type: web\n  name: qa316-830c50-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: UPSTREAM\n    fromService:\n      type: web\n      name: qa316-830c50-missing\n      property: host\n",
+      "expected_valid": false,
+      "expected_error_paths": ["services[0].envVars[0]"]
+    }
+  ],
+  "results": [
+    {
+      "at": "2026-10-15T20:42:57.719282+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "existing-static-host-root",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep316-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep316-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.647,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa316-830c50-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa316-830c50-consumer"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": [],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:42:59.028639+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "existing-web-wrong-type-root",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep316-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep316-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.419,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa316-830c50-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa316-830c50-consumer"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": [],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:43:00.111711+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "existing-static-host-nested",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep316-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep316-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 6.456,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa316-830c50-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa316-830c50-consumer"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": [],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:43:07.228168+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "existing-web-wrong-type-nested",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep316-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep316-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.421,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa316-830c50-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa316-830c50-consumer"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": [],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:43:08.334350+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "declared-static-host",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep316-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep316-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.392,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa316-830c50-consumer\\\": envVars[\\\"UPSTREAM\\\"] fromService host references \\\"qa316-9b5ec0-static\\\" which has no network address (only web/private services are addressable)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa316-830c50-consumer\": envVars[\"UPSTREAM\"] fromService host references \"qa316-9b5ec0-static\" which has no network address (only web/private services are addressable)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[0].envVars[0]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:43:09.382610+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "declared-web-wrong-type",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep316-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep316-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.353,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa316-830c50-consumer\\\": envVars[\\\"UPSTREAM\\\"] fromService.type \\\"worker\\\" does not match \\\"qa316-ac24f2-web\\\" (want type web)\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars[0].fromService.type\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa316-830c50-consumer\": envVars[\"UPSTREAM\"] fromService.type \"worker\" does not match \"qa316-ac24f2-web\" (want type web)",
+            "line": 11,
+            "path": "services[0].envVars[0].fromService.type"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[0].envVars[0].fromService.type"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:43:10.398407+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "existing-web-correct",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep316-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep316-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.548,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa316-830c50-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa316-830c50-consumer"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:43:11.612941+00:00",
+      "client": "installed Bex0.2.1",
+      "case": "missing-host",
+      "command": [
+        "installed Bex0.2.1",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep316-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "installed Bex",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep316-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.691,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa316-830c50-consumer\\\": fromService references unknown service \\\"qa316-830c50-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa316-830c50-consumer\": fromService references unknown service \"qa316-830c50-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[0].envVars[0]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:43:12.983650+00:00",
+      "client": "published Bex0.3.2",
+      "case": "existing-static-host-root",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep316-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep316-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.824,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa316-830c50-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa316-830c50-consumer"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": [],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:43:14.467637+00:00",
+      "client": "published Bex0.3.2",
+      "case": "existing-web-wrong-type-root",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep316-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep316-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.444,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa316-830c50-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa316-830c50-consumer"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": [],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:43:15.564410+00:00",
+      "client": "published Bex0.3.2",
+      "case": "existing-static-host-nested",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep316-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep316-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.676,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa316-830c50-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa316-830c50-consumer"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": [],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:43:16.900805+00:00",
+      "client": "published Bex0.3.2",
+      "case": "existing-web-wrong-type-nested",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep316-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep316-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.406,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa316-830c50-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa316-830c50-consumer"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": [],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:43:17.968861+00:00",
+      "client": "published Bex0.3.2",
+      "case": "declared-static-host",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep316-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep316-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.393,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa316-830c50-consumer\\\": envVars[\\\"UPSTREAM\\\"] fromService host references \\\"qa316-9b5ec0-static\\\" which has no network address (only web/private services are addressable)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa316-830c50-consumer\": envVars[\"UPSTREAM\"] fromService host references \"qa316-9b5ec0-static\" which has no network address (only web/private services are addressable)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[0].envVars[0]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:43:19.038618+00:00",
+      "client": "published Bex0.3.2",
+      "case": "declared-web-wrong-type",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep316-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep316-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.388,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa316-830c50-consumer\\\": envVars[\\\"UPSTREAM\\\"] fromService.type \\\"worker\\\" does not match \\\"qa316-ac24f2-web\\\" (want type web)\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars[0].fromService.type\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa316-830c50-consumer\": envVars[\"UPSTREAM\"] fromService.type \"worker\" does not match \"qa316-ac24f2-web\" (want type web)",
+            "line": 11,
+            "path": "services[0].envVars[0].fromService.type"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[0].envVars[0].fromService.type"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:43:20.096805+00:00",
+      "client": "published Bex0.3.2",
+      "case": "existing-web-correct",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep316-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep316-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.426,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa316-830c50-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa316-830c50-consumer"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:43:21.192875+00:00",
+      "client": "published Bex0.3.2",
+      "case": "missing-host",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep316-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep316-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.576,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa316-830c50-consumer\\\": fromService references unknown service \\\"qa316-830c50-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa316-830c50-consumer\": fromService references unknown service \"qa316-830c50-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[0].envVars[0]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:43:22.428924+00:00",
+      "client": "unchanged Render2.27",
+      "case": "existing-static-host-root",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep316-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep316-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.778,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa316-830c50-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa316-830c50-consumer"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": [],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:43:23.852773+00:00",
+      "client": "unchanged Render2.27",
+      "case": "existing-web-wrong-type-root",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep316-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep316-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.685,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa316-830c50-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa316-830c50-consumer"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": [],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:43:25.185744+00:00",
+      "client": "unchanged Render2.27",
+      "case": "existing-static-host-nested",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep316-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep316-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.761,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa316-830c50-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa316-830c50-consumer"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": [],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:43:26.593842+00:00",
+      "client": "unchanged Render2.27",
+      "case": "existing-web-wrong-type-nested",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep316-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep316-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.691,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa316-830c50-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa316-830c50-consumer"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": [],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T20:43:27.948818+00:00",
+      "client": "unchanged Render2.27",
+      "case": "declared-static-host",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep316-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep316-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.42,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa316-830c50-consumer\\\": envVars[\\\"UPSTREAM\\\"] fromService host references \\\"qa316-9b5ec0-static\\\" which has no network address (only web/private services are addressable)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa316-830c50-consumer\": envVars[\"UPSTREAM\"] fromService host references \"qa316-9b5ec0-static\" which has no network address (only web/private services are addressable)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[0].envVars[0]"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:43:29.030892+00:00",
+      "client": "unchanged Render2.27",
+      "case": "declared-web-wrong-type",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep316-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep316-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.385,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa316-830c50-consumer\\\": envVars[\\\"UPSTREAM\\\"] fromService.type \\\"worker\\\" does not match \\\"qa316-ac24f2-web\\\" (want type web)\",\n      \"line\": 11,\n      \"path\": \"services[0].envVars[0].fromService.type\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa316-830c50-consumer\": envVars[\"UPSTREAM\"] fromService.type \"worker\" does not match \"qa316-ac24f2-web\" (want type web)",
+            "line": 11,
+            "path": "services[0].envVars[0].fromService.type"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[0].envVars[0].fromService.type"],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:43:30.080363+00:00",
+      "client": "unchanged Render2.27",
+      "case": "existing-web-correct",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep316-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep316-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.426,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa316-830c50-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": ["qa316-830c50-consumer"],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": [],
+      "location_match": true
+    },
+    {
+      "at": "2026-10-15T20:43:31.175424+00:00",
+      "client": "unchanged Render2.27",
+      "case": "missing-host",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep316-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep316-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.795,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa316-830c50-consumer\\\": fromService references unknown service \\\"qa316-830c50-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "service \"qa316-830c50-consumer\": fromService references unknown service \"qa316-830c50-missing\" (declare it under services: or create it in this workspace first)",
+            "line": 9,
+            "path": "services[0].envVars[0]"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[0].envVars[0]"],
+      "location_match": true
+    }
+  ],
+  "input_removed": true,
+  "copied_render_config_removed": true
+}

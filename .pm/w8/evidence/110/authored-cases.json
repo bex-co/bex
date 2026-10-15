@@ -1,0 +1,147 @@
+[
+  {
+    "case": "self-only",
+    "manifest": "services:\n- type: web\n  name: qa314-ebe6d7-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: OWN_HOST\n    fromService:\n      type: web\n      name: qa314-ebe6d7-consumer\n      property: host\n",
+    "expected_valid": true,
+    "expected_error_paths": [],
+    "expected_locations": []
+  },
+  {
+    "case": "missing-only",
+    "manifest": "services:\n- type: web\n  name: qa314-ebe6d7-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: MISSING_HOST\n    fromService:\n      type: web\n      name: qa314-ebe6d7-missing\n      property: host\n",
+    "expected_valid": false,
+    "expected_error_paths": [
+      "services[0].envVars[0]"
+    ],
+    "expected_locations": [
+      {
+        "path": "services[0].envVars[0]",
+        "line": 9,
+        "column": 5
+      }
+    ]
+  },
+  {
+    "case": "self-before-missing",
+    "manifest": "services:\n- type: web\n  name: qa314-ebe6d7-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: OWN_HOST\n    fromService:\n      type: web\n      name: qa314-ebe6d7-consumer\n      property: host\n  - key: MISSING_HOST\n    fromService:\n      type: web\n      name: qa314-ebe6d7-missing\n      property: host\n",
+    "expected_valid": false,
+    "expected_error_paths": [
+      "services[0].envVars[1]"
+    ],
+    "expected_locations": [
+      {
+        "path": "services[0].envVars[1]",
+        "line": 14,
+        "column": 5
+      }
+    ]
+  },
+  {
+    "case": "missing-before-self",
+    "manifest": "services:\n- type: web\n  name: qa314-ebe6d7-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: MISSING_HOST\n    fromService:\n      type: web\n      name: qa314-ebe6d7-missing\n      property: host\n  - key: OWN_HOST\n    fromService:\n      type: web\n      name: qa314-ebe6d7-consumer\n      property: host\n",
+    "expected_valid": false,
+    "expected_error_paths": [
+      "services[0].envVars[0]"
+    ],
+    "expected_locations": [
+      {
+        "path": "services[0].envVars[0]",
+        "line": 9,
+        "column": 5
+      }
+    ]
+  },
+  {
+    "case": "two-missing-same-target",
+    "manifest": "services:\n- type: web\n  name: qa314-ebe6d7-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: MISSING_ONE\n    fromService:\n      type: web\n      name: qa314-ebe6d7-missing\n      property: host\n  - key: MISSING_TWO\n    fromService:\n      type: web\n      name: qa314-ebe6d7-missing\n      property: host\n",
+    "expected_valid": false,
+    "expected_error_paths": [
+      "services[0].envVars[0]",
+      "services[0].envVars[1]"
+    ],
+    "expected_locations": [
+      {
+        "path": "services[0].envVars[0]",
+        "line": 9,
+        "column": 5
+      },
+      {
+        "path": "services[0].envVars[1]",
+        "line": 14,
+        "column": 5
+      }
+    ]
+  },
+  {
+    "case": "project-self-before-missing",
+    "manifest": "projects:\n- name: qa314-ebe6d7-project\n  environments:\n  - name: production\n    services:\n    - type: web\n      name: qa314-ebe6d7-consumer\n      runtime: image\n      image:\n        url: nginx:1.27\n      plan: free\n      envVars:\n      - key: OWN_HOST\n        fromService:\n          type: web\n          name: qa314-ebe6d7-consumer\n          property: host\n      - key: MISSING_HOST\n        fromService:\n          type: web\n          name: qa314-ebe6d7-missing\n          property: host\n",
+    "expected_valid": false,
+    "expected_error_paths": [
+      "projects[0].environments[0].services[0].envVars[1]"
+    ],
+    "expected_locations": [
+      {
+        "path": "projects[0].environments[0].services[0].envVars[1]",
+        "line": 18,
+        "column": 9
+      }
+    ]
+  },
+  {
+    "case": "project-two-missing-same-target",
+    "manifest": "projects:\n- name: qa314-ebe6d7-project\n  environments:\n  - name: production\n    services:\n    - type: web\n      name: qa314-ebe6d7-consumer\n      runtime: image\n      image:\n        url: nginx:1.27\n      plan: free\n      envVars:\n      - key: MISSING_ONE\n        fromService:\n          type: web\n          name: qa314-ebe6d7-missing\n          property: host\n      - key: MISSING_TWO\n        fromService:\n          type: web\n          name: qa314-ebe6d7-missing\n          property: host\n",
+    "expected_valid": false,
+    "expected_error_paths": [
+      "projects[0].environments[0].services[0].envVars[0]",
+      "projects[0].environments[0].services[0].envVars[1]"
+    ],
+    "expected_locations": [
+      {
+        "path": "projects[0].environments[0].services[0].envVars[0]",
+        "line": 13,
+        "column": 9
+      },
+      {
+        "path": "projects[0].environments[0].services[0].envVars[1]",
+        "line": 18,
+        "column": 9
+      }
+    ]
+  },
+  {
+    "case": "cross-consumer-valid-reference-before-missing",
+    "manifest": "services:\n- type: web\n  name: qa314-ebe6d7-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: OWN_HOST\n    fromService:\n      type: web\n      name: qa314-ebe6d7-consumer-two\n      property: host\n- type: web\n  name: qa314-ebe6d7-consumer-two\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: MISSING_HOST\n    fromService:\n      type: web\n      name: qa314-ebe6d7-missing\n      property: host\n",
+    "expected_valid": false,
+    "expected_error_paths": [
+      "services[1].envVars[0]"
+    ],
+    "expected_locations": [
+      {
+        "path": "services[1].envVars[0]",
+        "line": 21,
+        "column": 5
+      }
+    ]
+  },
+  {
+    "case": "cross-consumer-two-missing-same-target",
+    "manifest": "services:\n- type: web\n  name: qa314-ebe6d7-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: MISSING_HOST\n    fromService:\n      type: web\n      name: qa314-ebe6d7-missing\n      property: host\n- type: web\n  name: qa314-ebe6d7-consumer-two\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: MISSING_HOST\n    fromService:\n      type: web\n      name: qa314-ebe6d7-missing\n      property: host\n",
+    "expected_valid": false,
+    "expected_error_paths": [
+      "services[0].envVars[0]",
+      "services[1].envVars[0]"
+    ],
+    "expected_locations": [
+      {
+        "path": "services[0].envVars[0]",
+        "line": 9,
+        "column": 5
+      },
+      {
+        "path": "services[1].envVars[0]",
+        "line": 21,
+        "column": 5
+      }
+    ]
+  }
+]

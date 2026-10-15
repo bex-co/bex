@@ -15,6 +15,14 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m76** — [Honor a GitHub repository default branch on create](m76/README.md) (6 tasks;185m) ← CLI sweep319; two omitted-branch build failures and two explicit-master Live controls, all owned fixtures cleaned.
+
+- [ ] **m75** — [Validate Blueprints with an implicit repository](m75/README.md) (6 tasks;180m) ← CLI sweep318;22 qualified false refusals/62 controls, no allocations; exact1GB Mattermost scope excluded.
+
+- [ ] **m74** — [Preserve Blueprint host-reference origins and target checks](m74/README.md) (7 tasks;185m) ← promoted110/sweep314 + new316 target-metadata gap; all owned fixtures cleaned.
+
+- [ ] **m73** — [Supply pnpm in native Node builds and runtime](m73/README.md) (6 tasks;155m) ← native CLI QA sweep315; two build failures and two Live Node controls, exact-owned cleanup complete.
+
 - [ ] **m72** — [Provide Poetry in native Python builds and runtime](m72/README.md) (7 tasks,3h10m) — major Python toolchain gap: both native creates fail with missing Poetry/exit127; Python3.12 and env controls pass, Poetry remains ENOENT at build/runtime. Two parents/four deploys cleaned.
 
 - [ ] **m71** — [Make explicit Bun opt-in usable in native builds and runtime](m71/README.md) (7 tasks,3h20m) — major runtime gap: both native creates preserve BUN_VERSION yet fail with missing Bun/exit127; Node controls pass and confirm build/runtime ENOENT. Two parents/four deploys cleaned.
@@ -117,6 +125,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## QA evidence for existing work
 
+- [PostgreSQL data across two suspend/resume cycles — sweep320](evidence/postgres-data-sweep320/README.md): one Free18 fixture, Bex/Render lifecycle by ID/name, real Bex psql, all committed/rollback/sequence snapshots and both process-change checks pass; cleaned. No new issue.
+
 - [First saved variable through manual lifecycle](evidence/suspend-pending-first-sweep278/README.md) — sweep278: both clients preserve unset build/runtime through API-only suspend/resume and native Restart, four suspended native409 refusals allocate no rows, then standard deploy consumes V2; four distinct processes per fixture, both cleaned. No new finding.
 
 - [Native request-log selector acceptance](evidence/request-log-selectors-sweep269/README.md) — sweep269: both clients pass32 exact row-ID comparisons for comma/encoded paths, methods, status classes, host/text and AND/OR/empty controls; six HTTP requests independently recorded, fixture cleaned. No new finding; interactive upstream defects remain separate.
@@ -160,6 +170,16 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [PostgreSQL target-floor dry-run recheck](evidence/postgres-upgrade-floor-sweep309/README.md) — sweep309: REST/MCP still accept14/15 previews (existing w4/308); ten other preview controls and both native omitted-version renames pass.24 focused source checks pass. Own Free database cleaned; no duplicate issue.
 
 - [Key Value deadline and data retention acceptance](evidence/keyvalue-deadlines-sweep310/README.md) — sweep310: both native clients complete preview/suspend/resume; independent TLS checks pass30 times across two new processes, preserving exact expiry deadlines and structured data. Own Free instance/credentials cleaned; no new issue.
+
+- [Mixed-family historical log acceptance](evidence/mixed-family-logs-sweep311/README.md) — sweep311:30 native query passes across both clients; two API cursor chains each recover the same33 records from own App/Postgres/Key Value.13 focused source checks pass; three parents/one deploy cleaned. No new issue.
+
+- [Cron plan policy validation recheck](evidence/cron-plan-validation-sweep312/README.md) — sweep312: all three native clients still accept Free cron (existing048);42 neighboring controls and32 final focused/diagnostic source checks pass. Validation only; no hosted mutations.
+
+- [Blueprint per-kind name recheck](evidence/blueprint-name-kinds-sweep313/README.md) — sweep313:42 actual native validations/36 final comparisons; four valid cross-kind cases remain refused per client (existing w1/126),24 validity/exit controls and20 final source checks pass. No resources or new issue.
+
+- [Existing workspace host-target checks](m74/evidence/cli-sweep316/README.md) — sweep316:28 native validations expose14 false accepts/14 controls; four source failures and two invalid fake-client applies,33 existing checks pass. Scheduled with314 origin loss in m74; two Free fixtures cleaned.
+
+- [Static byte-range acceptance and scoped rollout recheck](evidence/static-ranges-sweep317/README.md) — sweep317:62 text/binary/multipart/conditional/HEAD HTTP checks and three source controls pass; all three clients now refuse Free cron and accept the shared service/database name (six validations). Two sites/two deploys cleaned; no new issue.
 
 ## Inbox
 

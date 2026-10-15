@@ -1,0 +1,125 @@
+[
+  {
+    "case": "web-free",
+    "effective_type": "web_service",
+    "problems": null,
+    "resolved_plan": "free",
+    "valid": true
+  },
+  {
+    "case": "web-starter",
+    "effective_type": "web_service",
+    "problems": null,
+    "resolved_plan": "starter",
+    "valid": true
+  },
+  {
+    "case": "web-omitted",
+    "effective_type": "web_service",
+    "problems": null,
+    "resolved_plan": "starter",
+    "valid": true
+  },
+  {
+    "case": "cron-free",
+    "problems": [
+      {
+        "Code": "BLUEPRINT_SCHEMA_INVALID",
+        "Path": "#/services/0/plan",
+        "Message": "a cron_job requires a paid plan; plan must be one of starter|standard|pro|pro_plus|pro_max|pro_ultra",
+        "Line": 7,
+        "Column": 11
+      }
+    ],
+    "valid": false
+  },
+  {
+    "case": "cron-starter",
+    "effective_type": "cron_job",
+    "problems": null,
+    "resolved_plan": "starter",
+    "valid": true
+  },
+  {
+    "case": "cron-omitted",
+    "effective_type": "cron_job",
+    "problems": null,
+    "resolved_plan": "starter",
+    "valid": true
+  },
+  {
+    "case": "worker-free",
+    "effective_type": "background_worker",
+    "problems": null,
+    "resolved_plan": "",
+    "valid": true
+  },
+  {
+    "case": "worker-starter",
+    "effective_type": "background_worker",
+    "problems": null,
+    "resolved_plan": "starter",
+    "valid": true
+  },
+  {
+    "case": "worker-omitted",
+    "effective_type": "background_worker",
+    "problems": null,
+    "resolved_plan": "starter",
+    "valid": true
+  },
+  {
+    "case": "pserv-free",
+    "effective_type": "private_service",
+    "problems": null,
+    "resolved_plan": "",
+    "valid": true
+  },
+  {
+    "case": "pserv-starter",
+    "effective_type": "private_service",
+    "problems": null,
+    "resolved_plan": "starter",
+    "valid": true
+  },
+  {
+    "case": "pserv-omitted",
+    "effective_type": "private_service",
+    "problems": null,
+    "resolved_plan": "starter",
+    "valid": true
+  },
+  {
+    "case": "static-free",
+    "problems": [
+      {
+        "Code": "BLUEPRINT_SCHEMA_INVALID",
+        "Path": "#/services/0/plan",
+        "Message": "at '/services/0': additional properties 'plan' not allowed",
+        "Line": 8,
+        "Column": 11
+      }
+    ],
+    "valid": false
+  },
+  {
+    "case": "static-starter",
+    "problems": [
+      {
+        "Code": "BLUEPRINT_SCHEMA_INVALID",
+        "Path": "#/services/0/plan",
+        "Message": "at '/services/0': additional properties 'plan' not allowed",
+        "Line": 8,
+        "Column": 11
+      }
+    ],
+    "valid": false
+  },
+  {
+    "case": "static-omitted",
+    "effective_type": "static_site",
+    "problems": null,
+    "resolved_plan": "free",
+    "valid": true
+  }
+]

@@ -1,0 +1,33 @@
+from pathlib import Path
+import copy,datetime,json,os,secrets,yaml
+os.umask(0o077)
+P=Path(__file__).resolve().parent;CP=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(CP.read_text());assert c.get('sync313_result')==0 and not c.get('active_sync_stash') and 'sweep313_name_validation' not in c
+nonce=secrets.token_hex(3);shared='qa313-'+nonce+'-shared';consumer='qa313-'+nonce+'-consumer'
+def web(name):return {'type':'web','name':name,'runtime':'image','image':{'url':'nginx:1.27'},'plan':'free'}
+def db(name):return {'name':name,'plan':'free'}
+def kv(name):return {'type':'keyvalue','name':name,'plan':'free','ipAllowList':[]}
+def group(name):return {'name':name,'envVars':[{'key':'QA313_GROUP','value':'harmless-'+nonce}]}
+def refs(name,database=False,cache=False,host=False):
+ env=[]
+ if database:env.append({'key':'QA313_DB','fromDatabase':{'name':name,'property':'connectionString'}})
+ if cache:env.append({'key':'QA313_KV','fromService':{'type':'keyvalue','name':name,'property':'connectionString'}})
+ if host:env.append({'key':'QA313_HOST','fromService':{'type':'web','name':name,'property':'host'}})
+ return env
+cases=[]
+def add(name,doc,valid,error_contains=None,error_path=None):
+ manifest=yaml.safe_dump(doc,sort_keys=False,allow_unicode=True);cases.append({'case':name,'manifest':manifest,'expected_valid':valid,'error_contains':error_contains,'error_path':error_path})
+add('plain-web',{'services':[web(consumer)]},True)
+w=web(shared);w['envVars']=refs(shared,database=True);add('service-and-database',{'databases':[db(shared)],'services':[w]},True)
+w=web(shared);w['envVars']=refs(shared,cache=True);add('service-and-keyvalue',{'services':[kv(shared),w]},True)
+w=web(consumer);w['envVars']=refs(shared,database=True,cache=True,host=True);allkinds={'databases':[db(shared)],'services':[kv(shared),web(shared),w]};add('three-kinds',allkinds,True)
+withgroup=copy.deepcopy(allkinds);withgroup['envGroups']=[group(shared)];add('three-kinds-and-envgroup',withgroup,True)
+worker=web(shared);worker['type']='worker';worker['plan']='starter';add('same-service-kind-different-types',{'services':[web(shared),worker]},False,'duplicate name',None)
+add('duplicate-database',{'databases':[db(shared),db(shared)]},False,'duplicate name',None)
+add('duplicate-keyvalue',{'services':[kv(shared),kv(shared)]},False,'duplicate name',None)
+add('duplicate-envgroup',{'envGroups':[group(shared),group(shared)],'services':[web(consumer)]},False,'duplicate name',None)
+w=web(consumer);w['envVars']=refs(shared,database=True,host=True);add('database-does-not-satisfy-web-ref',{'databases':[db(shared)],'services':[w]},False,'unknown service','services[0].envVars[1]')
+w=web(consumer);w['envVars']=refs(shared,cache=True,host=True);add('keyvalue-does-not-satisfy-web-ref',{'services':[kv(shared),w]},False,'unknown service','services[1].envVars[1]')
+w=web(consumer);w['envVars']=refs(shared,database=True);add('missing-database-control',{'services':[w]},False,None,'services[0].envVars[0]')
+assert len(cases)==12 and sum(v['expected_valid'] for v in cases)==5
+(P/'sweep313-cases.json').write_text(json.dumps(cases,indent=2,ensure_ascii=False));c['sweep313_name_validation']={'sweep':313,'head':c['head'],'nonce':nonce,'scope':'native Blueprint validation only; no apply/create','cases':cases,'results':[]};c['last_updated']=datetime.datetime.now(datetime.timezone.utc).isoformat();CP.write_text(json.dumps(c,indent=2));CP.chmod(0o600)
+print(json.dumps({'authored_cases':12,'positive_cross_kind_controls':5,'duplicate_or_wrong_kind_controls':7,'hosted_mutations':0}))

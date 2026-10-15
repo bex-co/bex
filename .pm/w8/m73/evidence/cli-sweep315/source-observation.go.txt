@@ -1,0 +1,19 @@
+package build
+import("encoding/json";"os";"path/filepath";"strings";"testing")
+func TestQA315NodePackageManagerObservation(t *testing.T){
+ out:=os.Getenv("QA315_OUTPUT");if out==""{t.Fatal("private output required")}
+ observations:=[]map[string]any{}
+ for _,line:=range []string{"22","24","26"}{for _,static:=range []bool{false,true}{
+  name:=line+"_web";if static{name=line+"_static"}
+  t.Run(name,func(t *testing.T){
+   o:=nativeOptions();o.Runtime="node";o.StaticSite=static;o.BuildCommand="printf '%s\\n' QA315_SOURCE";o.StartCommand="printf '%s\\n' QA315_START"
+   bundle,dockerfile,src:=writeResolveFixture(t,o,map[string]string{"NODE_VERSION":line},nil)
+   choice,err:=ResolveNativeBuild("node",bundle,dockerfile,src);if err!=nil{t.Fatal(err)}
+   content,err:=os.ReadFile(dockerfile);if err!=nil{t.Fatal(err)}
+   if choice.Line!=line{t.Fatalf("choice %s want %s",choice.Line,line)}
+   record:=map[string]any{"case":name,"choice":choice,"pnpm_setup_text":strings.Contains(strings.ToLower(string(content)),"pnpm"),"corepack_setup_text":strings.Contains(strings.ToLower(string(content)),"corepack"),"scope":"generated artifact observation, no local image execution"};observations=append(observations,record)
+   if err:=os.WriteFile(filepath.Join(out,name+".Dockerfile"),content,0600);err!=nil{t.Fatal(err)}
+  })
+ }}
+ data,err:=json.MarshalIndent(observations,"","  ");if err!=nil{t.Fatal(err)};if err=os.WriteFile(filepath.Join(out,"observations.json"),data,0600);err!=nil{t.Fatal(err)}
+}

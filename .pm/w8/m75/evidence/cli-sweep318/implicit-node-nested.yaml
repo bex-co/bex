@@ -1,0 +1,11 @@
+projects:
+  - name: qa318-context-project
+    environments:
+      - name: production
+        services:
+          - type: web
+            name: qa318-node-n
+            runtime: node
+            plan: free
+            buildCommand: node --version
+            startCommand: node server.js

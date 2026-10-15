@@ -1,0 +1,48 @@
+package apps
+
+import (
+ "encoding/json"
+ "os"
+ "testing"
+ "strings"
+ "errors"
+ "github.com/bex-co/bex/lego/backend/internal/core"
+ appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+)
+
+func TestQA318ExactNameAndExampleInputs(t *testing.T) {
+ raw,err:=os.ReadFile("<owned-temp>/sweep318-cases.json");if err!=nil{t.Fatal(err)}
+ var cases []struct {Case string `json:"case"`;Manifest string `json:"manifest"`;ExpectedValid bool `json:"expected_valid"`;Eligible *bool `json:"contract_eligible"`;ExpectedPlan string `json:"expected_resolved_plan"`}
+ if err:=json.Unmarshal(raw,&cases);err!=nil{t.Fatal(err)}
+ observations:=[]map[string]any{}
+ for _,tc:=range cases {t.Run(tc.Case,func(t *testing.T){
+  source,ir,problems:=CompileBlueprintIR(tc.Manifest)
+  validator:=newBlueprintValidator(t);validator.Workspace=fakeWorkspace{"id-a":"tea-a"};validation,validationErr:=validator.ValidateBlueprint(ownershipCtx(),connOwner,tc.Manifest,"")
+  if validationErr!=nil{t.Fatal(validationErr)}
+  valid:=validation.Valid
+  result:=map[string]any{"case":tc.Case,"compiler_valid":len(problems)==0,"compiler_problems":problems,"valid":valid,"validation_errors":validation.Errors,"estimated_pricing":validation.EstimatedPricing}
+  observations=append(observations,result)
+  if tc.Eligible!=nil && !*tc.Eligible{t.Skip("Observed upstream1GB disk case; overall validity excluded under documented Bex10GB floor")}
+  if valid!=tc.ExpectedValid{t.Errorf("validation valid=%v errors=%+v, want %v",valid,validation.Errors,tc.ExpectedValid)}
+  if !valid{return}
+  if len(problems)>0{t.Fatalf("valid service has compiler problems: %+v",problems)}
+  st,err:=parseCompiledStack(blueprintParseOverrides{},source,ir);if err!=nil{t.Fatal(err)}
+  result["service_count"]=len(st.services);result["database_count"]=len(st.databases);result["keyvalue_count"]=len(st.keyValues);result["envgroup_count"]=len(st.envGroups)
+  serviceRoles:=[]map[string]any{}
+  for _,svc:=range st.services{tier,err:=normalizeTierForType(effectiveType(svc.req.Type),svc.req.Plan);if err!=nil{t.Fatal(err)};serviceRoles=append(serviceRoles,map[string]any{"name":svc.req.Name,"type":effectiveType(svc.req.Type),"resolved_plan":tier,"database_refs":len(svc.databaseRefs),"keyvalue_refs":len(svc.kvRefs),"host_refs":len(svc.hostRefs)})}
+  result["service_roles"]=serviceRoles
+ })}
+ encoded,err:=json.MarshalIndent(observations,"","  ");if err!=nil{t.Fatal(err)}
+ if err:=os.WriteFile("<owned-temp>/sweep318-source-observations.json",encoded,0o600);err!=nil{t.Fatal(err)}
+}
+
+func TestQA318KnownRepositoryContextControls(t *testing.T){
+ raw,err:=os.ReadFile("<owned-temp>/sweep318-cases.json");if err!=nil{t.Fatal(err)};var cases []struct{Case string `json:"case"`;Manifest string `json:"manifest"`};if err=json.Unmarshal(raw,&cases);err!=nil{t.Fatal(err)};obs:=[]map[string]any{}
+ for _,tc:=range cases{if !strings.HasPrefix(tc.Case,"render-example-"){continue};t.Run(tc.Case,func(t *testing.T){svc:=newBlueprintValidator(t);svc.Workspace=fakeWorkspace{"id-a":"tea-a"};repo:="https://github.com/render-examples/"+strings.TrimSuffix(strings.TrimPrefix(tc.Case,"render-example-"),"-volume-floor");v,err:=svc.blueprintValidationFor(core.WithWorkspace(ownershipCtx(),connOwner),repo,"master",tc.Manifest,"");if err!=nil{t.Fatal(err)};obs=append(obs,map[string]any{"case":tc.Case,"repo_context":repo,"valid":v.Valid,"errors":v.Errors});if tc.Case=="render-example-mattermost"{if v.Valid||len(v.Errors)!=1||!strings.Contains(v.Errors[0].Error,"sizeGB must be at least 10"){t.Errorf("expected documented volume floor, got %+v",v)}}else if !v.Valid{t.Errorf("known repo context refuses: %+v",v.Errors)}})}
+ data,err:=json.MarshalIndent(obs,"","  ");if err!=nil{t.Fatal(err)};if err=os.WriteFile("<owned-temp>/sweep318-context-observations.json",data,0600);err!=nil{t.Fatal(err)}
+}
+func TestQA318ApplyStillRequiresSource(t *testing.T){
+ raw,err:=os.ReadFile("<owned-temp>/sweep318-cases.json");if err!=nil{t.Fatal(err)};var cases []struct{Case string `json:"case"`;Manifest string `json:"manifest"`};if err=json.Unmarshal(raw,&cases);err!=nil{t.Fatal(err)};obs:=[]map[string]any{}
+ for _,tc:=range cases{if !strings.HasPrefix(tc.Case,"implicit-")||!strings.HasSuffix(tc.Case,"-root"){continue};t.Run(tc.Case,func(t *testing.T){svc:=newBlueprintValidator(t);svc.Workspace=fakeWorkspace{"id-a":"tea-a"};_,err:=svc.DeployStack(ownershipCtx(),DeployRequest{OwnerID:connOwner,Manifest:tc.Manifest});var apps appv1alpha1.AppList;if e:=svc.Client.List(ownershipCtx(),&apps);e!=nil{t.Fatal(e)};message:="";if err!=nil{message=err.Error()};obs=append(obs,map[string]any{"case":tc.Case,"error":message,"app_count":len(apps.Items)});if !errors.Is(err,core.ErrBadRequest)||len(apps.Items)!=0{t.Errorf("apply err=%v apps=%d want bad request before writes",err,len(apps.Items))}})}
+ data,err:=json.MarshalIndent(obs,"","  ");if err!=nil{t.Fatal(err)};if err=os.WriteFile("<owned-temp>/sweep318-apply-controls.json",data,0600);err!=nil{t.Fatal(err)}
+}

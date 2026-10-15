@@ -1,0 +1,388 @@
+{
+  "provenance": {
+    "tested_head": "2ed283b3522fa4b026b02084a63bb7cd709f7c2c",
+    "named_passes": 13,
+    "top_level_passes": 3,
+    "failures": 0,
+    "skips": 0,
+    "stderr_bytes": 0,
+    "live_fixture": "not yet created"
+  },
+  "selected_log_files_unchanged_through": "e159320e212f7e1567bfeed05ef465fd4e9b91a4",
+  "events": [
+    {
+      "Time": "2026-10-15T12:32:47.44335-07:00",
+      "Action": "start",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.047783-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.047851-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter",
+      "Output": "=== RUN   TestDatastoreLogsPageCursorsChainOnEveryAdapter\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.098768-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter/GraphQL/dpg-c185th5c2rvvnhbfiltg"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.09881-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter/GraphQL/dpg-c185th5c2rvvnhbfiltg",
+      "Output": "=== RUN   TestDatastoreLogsPageCursorsChainOnEveryAdapter/GraphQL/dpg-c185th5c2rvvnhbfiltg\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.101592-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter/GraphQL/dpg-c185th5c2rvvnhbfiltg",
+      "Output": "--- PASS: TestDatastoreLogsPageCursorsChainOnEveryAdapter/GraphQL/dpg-c185th5c2rvvnhbfiltg (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.101619-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter/GraphQL/dpg-c185th5c2rvvnhbfiltg",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:32:48.102447-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter/GraphQL/red-c185th5c2rvvnhbfiltg"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.102459-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter/GraphQL/red-c185th5c2rvvnhbfiltg",
+      "Output": "=== RUN   TestDatastoreLogsPageCursorsChainOnEveryAdapter/GraphQL/red-c185th5c2rvvnhbfiltg\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.103326-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter/GraphQL/red-c185th5c2rvvnhbfiltg",
+      "Output": "--- PASS: TestDatastoreLogsPageCursorsChainOnEveryAdapter/GraphQL/red-c185th5c2rvvnhbfiltg (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.103341-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter/GraphQL/red-c185th5c2rvvnhbfiltg",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:32:48.103347-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter/MCP/dpg-c185th5c2rvvnhbfiltg"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.103359-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter/MCP/dpg-c185th5c2rvvnhbfiltg",
+      "Output": "=== RUN   TestDatastoreLogsPageCursorsChainOnEveryAdapter/MCP/dpg-c185th5c2rvvnhbfiltg\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.103951-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter/MCP/dpg-c185th5c2rvvnhbfiltg",
+      "Output": "--- PASS: TestDatastoreLogsPageCursorsChainOnEveryAdapter/MCP/dpg-c185th5c2rvvnhbfiltg (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.10396-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter/MCP/dpg-c185th5c2rvvnhbfiltg",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:32:48.103965-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter/MCP/red-c185th5c2rvvnhbfiltg"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.103969-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter/MCP/red-c185th5c2rvvnhbfiltg",
+      "Output": "=== RUN   TestDatastoreLogsPageCursorsChainOnEveryAdapter/MCP/red-c185th5c2rvvnhbfiltg\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.10456-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter/MCP/red-c185th5c2rvvnhbfiltg",
+      "Output": "--- PASS: TestDatastoreLogsPageCursorsChainOnEveryAdapter/MCP/red-c185th5c2rvvnhbfiltg (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.104567-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter/MCP/red-c185th5c2rvvnhbfiltg",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:32:48.104571-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter/REST/dpg-c185th5c2rvvnhbfiltg"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.104575-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter/REST/dpg-c185th5c2rvvnhbfiltg",
+      "Output": "=== RUN   TestDatastoreLogsPageCursorsChainOnEveryAdapter/REST/dpg-c185th5c2rvvnhbfiltg\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.10489-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter/REST/dpg-c185th5c2rvvnhbfiltg",
+      "Output": "--- PASS: TestDatastoreLogsPageCursorsChainOnEveryAdapter/REST/dpg-c185th5c2rvvnhbfiltg (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.104963-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter/REST/dpg-c185th5c2rvvnhbfiltg",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:32:48.104975-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter/REST/red-c185th5c2rvvnhbfiltg"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.104989-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter/REST/red-c185th5c2rvvnhbfiltg",
+      "Output": "=== RUN   TestDatastoreLogsPageCursorsChainOnEveryAdapter/REST/red-c185th5c2rvvnhbfiltg\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.105054-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter/REST/red-c185th5c2rvvnhbfiltg",
+      "Output": "--- PASS: TestDatastoreLogsPageCursorsChainOnEveryAdapter/REST/red-c185th5c2rvvnhbfiltg (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.105077-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter/REST/red-c185th5c2rvvnhbfiltg",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:32:48.105092-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter",
+      "Output": "--- PASS: TestDatastoreLogsPageCursorsChainOnEveryAdapter (0.06s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.105111-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestDatastoreLogsPageCursorsChainOnEveryAdapter",
+      "Elapsed": 0.06
+    },
+    {
+      "Time": "2026-10-15T12:32:48.105429-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestLogResourceFanoutIsBoundedAndDeduplicated"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.105433-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestLogResourceFanoutIsBoundedAndDeduplicated",
+      "Output": "=== RUN   TestLogResourceFanoutIsBoundedAndDeduplicated\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.105437-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestLogResourceFanoutIsBoundedAndDeduplicated",
+      "Output": "--- PASS: TestLogResourceFanoutIsBoundedAndDeduplicated (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.105441-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestLogResourceFanoutIsBoundedAndDeduplicated",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:32:48.105453-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.105457-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings",
+      "Output": "=== RUN   TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.106623-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings/forwardA_"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.106673-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings/forwardA_",
+      "Output": "=== RUN   TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings/forwardA_\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.107399-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings/forwardA_",
+      "Output": "--- PASS: TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings/forwardA_ (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.107445-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings/forwardA_",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:32:48.107502-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings/forwardB_"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.107553-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings/forwardB_",
+      "Output": "=== RUN   TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings/forwardB_\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.107794-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings/forwardB_",
+      "Output": "--- PASS: TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings/forwardB_ (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.107815-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings/forwardB_",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:32:48.107823-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings/backwardA_"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.107829-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings/backwardA_",
+      "Output": "=== RUN   TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings/backwardA_\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.109544-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings/backwardA_",
+      "Output": "--- PASS: TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings/backwardA_ (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.109583-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings/backwardA_",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:32:48.109617-07:00",
+      "Action": "run",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings/backwardB_"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.109633-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings/backwardB_",
+      "Output": "=== RUN   TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings/backwardB_\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.109947-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings/backwardB_",
+      "Output": "--- PASS: TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings/backwardB_ (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.10996-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings/backwardB_",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:32:48.10997-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings",
+      "Output": "--- PASS: TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings (0.00s)\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.109975-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Test": "TestTextUnionPagesAcrossResourcesWithoutLosingBoundarySiblings",
+      "Elapsed": 0
+    },
+    {
+      "Time": "2026-10-15T12:32:48.109979-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Output": "PASS\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.111654-07:00",
+      "Action": "output",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Output": "ok  \tgithub.com/bex-co/bex/lego/backend/internal/logs\t0.668s\n"
+    },
+    {
+      "Time": "2026-10-15T12:32:48.111686-07:00",
+      "Action": "pass",
+      "Package": "github.com/bex-co/bex/lego/backend/internal/logs",
+      "Elapsed": 0.668
+    }
+  ]
+}

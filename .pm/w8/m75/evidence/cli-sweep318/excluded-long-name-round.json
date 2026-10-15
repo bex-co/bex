@@ -1,0 +1,1807 @@
+{
+  "cases": [
+    {
+      "case": "implicit-docker-root",
+      "manifest": "services:\n- type: web\n  name: qa318-source-context-implicit-docker-root\n  runtime: docker\n  plan: free\n",
+      "expected_valid": true,
+      "expected_error_paths": [],
+      "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+      "source_scope": "repo context diagnostic, no apply/allocation"
+    },
+    {
+      "case": "explicit-docker-root",
+      "manifest": "services:\n- type: web\n  name: qa318-source-context-explicit-docker-root\n  runtime: docker\n  plan: free\n  repo: https://github.com/expressjs/serve-static\n",
+      "expected_valid": true,
+      "expected_error_paths": [],
+      "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+      "source_scope": "repo context diagnostic, no apply/allocation"
+    },
+    {
+      "case": "implicit-node-root",
+      "manifest": "services:\n- type: web\n  name: qa318-source-context-implicit-node-root\n  runtime: node\n  plan: free\n  buildCommand: node --version\n  startCommand: node server.js\n",
+      "expected_valid": true,
+      "expected_error_paths": [],
+      "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+      "source_scope": "repo context diagnostic, no apply/allocation"
+    },
+    {
+      "case": "explicit-node-root",
+      "manifest": "services:\n- type: web\n  name: qa318-source-context-explicit-node-root\n  runtime: node\n  plan: free\n  buildCommand: node --version\n  startCommand: node server.js\n  repo: https://github.com/expressjs/serve-static\n",
+      "expected_valid": true,
+      "expected_error_paths": [],
+      "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+      "source_scope": "repo context diagnostic, no apply/allocation"
+    },
+    {
+      "case": "implicit-static-root",
+      "manifest": "services:\n- type: web\n  name: qa318-source-context-implicit-static-root\n  runtime: static\n  buildCommand: mkdir -p public\n  staticPublishPath: public\n",
+      "expected_valid": true,
+      "expected_error_paths": [],
+      "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+      "source_scope": "repo context diagnostic, no apply/allocation"
+    },
+    {
+      "case": "explicit-static-root",
+      "manifest": "services:\n- type: web\n  name: qa318-source-context-explicit-static-root\n  runtime: static\n  buildCommand: mkdir -p public\n  staticPublishPath: public\n  repo: https://github.com/expressjs/serve-static\n",
+      "expected_valid": true,
+      "expected_error_paths": [],
+      "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+      "source_scope": "repo context diagnostic, no apply/allocation"
+    },
+    {
+      "case": "invalid-repo-root",
+      "manifest": "services:\n- type: web\n  name: qa318-source-context-invalid-repo-root\n  runtime: node\n  plan: free\n  buildCommand: node --version\n  startCommand: node server.js\n  repo: not-a-repository\n",
+      "expected_valid": false,
+      "expected_error_paths": [],
+      "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+      "source_scope": "repo context diagnostic, no apply/allocation"
+    },
+    {
+      "case": "missing-image-root",
+      "manifest": "services:\n- type: web\n  name: qa318-source-context-missing-image-root\n  runtime: image\n  plan: free\n",
+      "expected_valid": false,
+      "expected_error_paths": [],
+      "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+      "source_scope": "repo context diagnostic, no apply/allocation"
+    },
+    {
+      "case": "prebuilt-image-root",
+      "manifest": "services:\n- type: web\n  name: qa318-source-context-prebuilt-image-root\n  runtime: image\n  plan: free\n  image:\n    url: nginx:1.27\n",
+      "expected_valid": true,
+      "expected_error_paths": [],
+      "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+      "source_scope": "repo context diagnostic, no apply/allocation"
+    },
+    {
+      "case": "implicit-docker-nested",
+      "manifest": "projects:\n- name: qa318-context-project\n  environments:\n  - name: production\n    services:\n    - type: web\n      name: qa318-source-context-implicit-docker-nested\n      runtime: docker\n      plan: free\n",
+      "expected_valid": true,
+      "expected_error_paths": [],
+      "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+      "source_scope": "repo context diagnostic, no apply/allocation"
+    },
+    {
+      "case": "explicit-docker-nested",
+      "manifest": "projects:\n- name: qa318-context-project\n  environments:\n  - name: production\n    services:\n    - type: web\n      name: qa318-source-context-explicit-docker-nested\n      runtime: docker\n      plan: free\n      repo: https://github.com/expressjs/serve-static\n",
+      "expected_valid": true,
+      "expected_error_paths": [],
+      "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+      "source_scope": "repo context diagnostic, no apply/allocation"
+    },
+    {
+      "case": "implicit-node-nested",
+      "manifest": "projects:\n- name: qa318-context-project\n  environments:\n  - name: production\n    services:\n    - type: web\n      name: qa318-source-context-implicit-node-nested\n      runtime: node\n      plan: free\n      buildCommand: node --version\n      startCommand: node server.js\n",
+      "expected_valid": true,
+      "expected_error_paths": [],
+      "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+      "source_scope": "repo context diagnostic, no apply/allocation"
+    },
+    {
+      "case": "explicit-node-nested",
+      "manifest": "projects:\n- name: qa318-context-project\n  environments:\n  - name: production\n    services:\n    - type: web\n      name: qa318-source-context-explicit-node-nested\n      runtime: node\n      plan: free\n      buildCommand: node --version\n      startCommand: node server.js\n      repo: https://github.com/expressjs/serve-static\n",
+      "expected_valid": true,
+      "expected_error_paths": [],
+      "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+      "source_scope": "repo context diagnostic, no apply/allocation"
+    },
+    {
+      "case": "implicit-static-nested",
+      "manifest": "projects:\n- name: qa318-context-project\n  environments:\n  - name: production\n    services:\n    - type: web\n      name: qa318-source-context-implicit-static-nested\n      runtime: static\n      buildCommand: mkdir -p public\n      staticPublishPath: public\n",
+      "expected_valid": true,
+      "expected_error_paths": [],
+      "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+      "source_scope": "repo context diagnostic, no apply/allocation"
+    },
+    {
+      "case": "explicit-static-nested",
+      "manifest": "projects:\n- name: qa318-context-project\n  environments:\n  - name: production\n    services:\n    - type: web\n      name: qa318-source-context-explicit-static-nested\n      runtime: static\n      buildCommand: mkdir -p public\n      staticPublishPath: public\n      repo: https://github.com/expressjs/serve-static\n",
+      "expected_valid": true,
+      "expected_error_paths": [],
+      "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+      "source_scope": "repo context diagnostic, no apply/allocation"
+    },
+    {
+      "case": "invalid-repo-nested",
+      "manifest": "projects:\n- name: qa318-context-project\n  environments:\n  - name: production\n    services:\n    - type: web\n      name: qa318-source-context-invalid-repo-nested\n      runtime: node\n      plan: free\n      buildCommand: node --version\n      startCommand: node server.js\n      repo: not-a-repository\n",
+      "expected_valid": false,
+      "expected_error_paths": [],
+      "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+      "source_scope": "repo context diagnostic, no apply/allocation"
+    },
+    {
+      "case": "missing-image-nested",
+      "manifest": "projects:\n- name: qa318-context-project\n  environments:\n  - name: production\n    services:\n    - type: web\n      name: qa318-source-context-missing-image-nested\n      runtime: image\n      plan: free\n",
+      "expected_valid": false,
+      "expected_error_paths": [],
+      "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+      "source_scope": "repo context diagnostic, no apply/allocation"
+    },
+    {
+      "case": "prebuilt-image-nested",
+      "manifest": "projects:\n- name: qa318-context-project\n  environments:\n  - name: production\n    services:\n    - type: web\n      name: qa318-source-context-prebuilt-image-nested\n      runtime: image\n      plan: free\n      image:\n        url: nginx:1.27\n",
+      "expected_valid": true,
+      "expected_error_paths": [],
+      "location_expectation": "not asserted for this source-presence neighbor; validity/exit only",
+      "source_scope": "repo context diagnostic, no apply/allocation"
+    }
+  ],
+  "results": [
+    {
+      "at": "2026-10-15T21:13:01.380533+00:00",
+      "client": "published Bex0.3.2",
+      "case": "implicit-docker-root",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.88,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa318-source-context-implicit-docker-root\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 3,\n      \"path\": \"services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa318-source-context-implicit-docker-root\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 3,
+            "path": "services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:02.888635+00:00",
+      "client": "published Bex0.3.2",
+      "case": "explicit-docker-root",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.804,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa318-source-context-explicit-docker-root\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 3,\n      \"path\": \"services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa318-source-context-explicit-docker-root\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 3,
+            "path": "services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:04.329559+00:00",
+      "client": "published Bex0.3.2",
+      "case": "implicit-node-root",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.696,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa318-source-context-implicit-node-root\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 3,\n      \"path\": \"services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa318-source-context-implicit-node-root\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 3,
+            "path": "services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:05.662442+00:00",
+      "client": "published Bex0.3.2",
+      "case": "explicit-node-root",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.696,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa318-source-context-explicit-node-root\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 3,\n      \"path\": \"services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa318-source-context-explicit-node-root\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 3,
+            "path": "services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:06.995896+00:00",
+      "client": "published Bex0.3.2",
+      "case": "implicit-static-root",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.691,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa318-source-context-implicit-static-root\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 3,\n      \"path\": \"services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa318-source-context-implicit-static-root\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 3,
+            "path": "services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:08.320403+00:00",
+      "client": "published Bex0.3.2",
+      "case": "explicit-static-root",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.8,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa318-source-context-explicit-static-root\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 3,\n      \"path\": \"services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa318-source-context-explicit-static-root\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 3,
+            "path": "services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:09.758527+00:00",
+      "client": "published Bex0.3.2",
+      "case": "invalid-repo-root",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.636,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa318-source-context-invalid-repo-root\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 3,\n      \"path\": \"services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa318-source-context-invalid-repo-root\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 3,
+            "path": "services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:11.041370+00:00",
+      "client": "published Bex0.3.2",
+      "case": "missing-image-root",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.368,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa318-source-context-missing-image-root\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 3,\n      \"path\": \"services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa318-source-context-missing-image-root\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 3,
+            "path": "services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:12.057373+00:00",
+      "client": "published Bex0.3.2",
+      "case": "prebuilt-image-root",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.371,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa318-source-context-prebuilt-image-root\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 3,\n      \"path\": \"services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa318-source-context-prebuilt-image-root\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 3,
+            "path": "services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:13.079453+00:00",
+      "client": "published Bex0.3.2",
+      "case": "implicit-docker-nested",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.688,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa318-source-context-implicit-docker-nested\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 7,\n      \"path\": \"projects[0].environments[0].services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa318-source-context-implicit-docker-nested\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 7,
+            "path": "projects[0].environments[0].services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["projects[0].environments[0].services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:14.416428+00:00",
+      "client": "published Bex0.3.2",
+      "case": "explicit-docker-nested",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.381,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa318-source-context-explicit-docker-nested\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 7,\n      \"path\": \"projects[0].environments[0].services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa318-source-context-explicit-docker-nested\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 7,
+            "path": "projects[0].environments[0].services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["projects[0].environments[0].services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:15.486975+00:00",
+      "client": "published Bex0.3.2",
+      "case": "implicit-node-nested",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.367,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa318-source-context-implicit-node-nested\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 7,\n      \"path\": \"projects[0].environments[0].services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa318-source-context-implicit-node-nested\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 7,
+            "path": "projects[0].environments[0].services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["projects[0].environments[0].services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:16.503016+00:00",
+      "client": "published Bex0.3.2",
+      "case": "explicit-node-nested",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.377,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa318-source-context-explicit-node-nested\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 7,\n      \"path\": \"projects[0].environments[0].services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa318-source-context-explicit-node-nested\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 7,
+            "path": "projects[0].environments[0].services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["projects[0].environments[0].services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:17.521188+00:00",
+      "client": "published Bex0.3.2",
+      "case": "implicit-static-nested",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.354,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa318-source-context-implicit-static-nested\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 7,\n      \"path\": \"projects[0].environments[0].services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa318-source-context-implicit-static-nested\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 7,
+            "path": "projects[0].environments[0].services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["projects[0].environments[0].services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:18.521592+00:00",
+      "client": "published Bex0.3.2",
+      "case": "explicit-static-nested",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.438,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa318-source-context-explicit-static-nested\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 7,\n      \"path\": \"projects[0].environments[0].services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa318-source-context-explicit-static-nested\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 7,
+            "path": "projects[0].environments[0].services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["projects[0].environments[0].services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:19.641329+00:00",
+      "client": "published Bex0.3.2",
+      "case": "invalid-repo-nested",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.908,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa318-source-context-invalid-repo-nested\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 7,\n      \"path\": \"projects[0].environments[0].services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa318-source-context-invalid-repo-nested\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 7,
+            "path": "projects[0].environments[0].services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["projects[0].environments[0].services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:21.197747+00:00",
+      "client": "published Bex0.3.2",
+      "case": "missing-image-nested",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.61,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa318-source-context-missing-image-nested\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 7,\n      \"path\": \"projects[0].environments[0].services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa318-source-context-missing-image-nested\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 7,
+            "path": "projects[0].environments[0].services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["projects[0].environments[0].services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:22.441852+00:00",
+      "client": "published Bex0.3.2",
+      "case": "prebuilt-image-nested",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.356,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa318-source-context-prebuilt-image-nested\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 7,\n      \"path\": \"projects[0].environments[0].services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa318-source-context-prebuilt-image-nested\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 7,
+            "path": "projects[0].environments[0].services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["projects[0].environments[0].services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:23.449413+00:00",
+      "client": "unchanged Render2.27",
+      "case": "implicit-docker-root",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.446,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa318-source-context-implicit-docker-root\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 3,\n      \"path\": \"services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa318-source-context-implicit-docker-root\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 3,
+            "path": "services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:24.532241+00:00",
+      "client": "unchanged Render2.27",
+      "case": "explicit-docker-root",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.675,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa318-source-context-explicit-docker-root\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 3,\n      \"path\": \"services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa318-source-context-explicit-docker-root\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 3,
+            "path": "services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:25.855245+00:00",
+      "client": "unchanged Render2.27",
+      "case": "implicit-node-root",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.36,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa318-source-context-implicit-node-root\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 3,\n      \"path\": \"services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa318-source-context-implicit-node-root\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 3,
+            "path": "services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:26.856859+00:00",
+      "client": "unchanged Render2.27",
+      "case": "explicit-node-root",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.68,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa318-source-context-explicit-node-root\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 3,\n      \"path\": \"services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa318-source-context-explicit-node-root\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 3,
+            "path": "services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:28.164275+00:00",
+      "client": "unchanged Render2.27",
+      "case": "implicit-static-root",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.645,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa318-source-context-implicit-static-root\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 3,\n      \"path\": \"services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa318-source-context-implicit-static-root\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 3,
+            "path": "services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:29.446180+00:00",
+      "client": "unchanged Render2.27",
+      "case": "explicit-static-root",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.654,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa318-source-context-explicit-static-root\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 3,\n      \"path\": \"services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa318-source-context-explicit-static-root\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 3,
+            "path": "services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:30.742547+00:00",
+      "client": "unchanged Render2.27",
+      "case": "invalid-repo-root",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.394,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa318-source-context-invalid-repo-root\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 3,\n      \"path\": \"services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa318-source-context-invalid-repo-root\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 3,
+            "path": "services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:31.781223+00:00",
+      "client": "unchanged Render2.27",
+      "case": "missing-image-root",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.402,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa318-source-context-missing-image-root\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 3,\n      \"path\": \"services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa318-source-context-missing-image-root\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 3,
+            "path": "services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:32.829208+00:00",
+      "client": "unchanged Render2.27",
+      "case": "prebuilt-image-root",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.4,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa318-source-context-prebuilt-image-root\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 3,\n      \"path\": \"services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 9,
+            "error": "service \"qa318-source-context-prebuilt-image-root\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 3,
+            "path": "services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:33.873115+00:00",
+      "client": "unchanged Render2.27",
+      "case": "implicit-docker-nested",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.689,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa318-source-context-implicit-docker-nested\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 7,\n      \"path\": \"projects[0].environments[0].services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa318-source-context-implicit-docker-nested\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 7,
+            "path": "projects[0].environments[0].services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["projects[0].environments[0].services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:35.203979+00:00",
+      "client": "unchanged Render2.27",
+      "case": "explicit-docker-nested",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.418,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa318-source-context-explicit-docker-nested\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 7,\n      \"path\": \"projects[0].environments[0].services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa318-source-context-explicit-docker-nested\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 7,
+            "path": "projects[0].environments[0].services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["projects[0].environments[0].services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:36.257335+00:00",
+      "client": "unchanged Render2.27",
+      "case": "implicit-node-nested",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.363,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa318-source-context-implicit-node-nested\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 7,\n      \"path\": \"projects[0].environments[0].services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa318-source-context-implicit-node-nested\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 7,
+            "path": "projects[0].environments[0].services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["projects[0].environments[0].services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:37.270579+00:00",
+      "client": "unchanged Render2.27",
+      "case": "explicit-node-nested",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.48,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa318-source-context-explicit-node-nested\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 7,\n      \"path\": \"projects[0].environments[0].services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa318-source-context-explicit-node-nested\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 7,
+            "path": "projects[0].environments[0].services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["projects[0].environments[0].services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:38.400541+00:00",
+      "client": "unchanged Render2.27",
+      "case": "implicit-static-nested",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.488,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa318-source-context-implicit-static-nested\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 7,\n      \"path\": \"projects[0].environments[0].services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa318-source-context-implicit-static-nested\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 7,
+            "path": "projects[0].environments[0].services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["projects[0].environments[0].services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:39.542020+00:00",
+      "client": "unchanged Render2.27",
+      "case": "explicit-static-nested",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.38,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa318-source-context-explicit-static-nested\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 7,\n      \"path\": \"projects[0].environments[0].services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa318-source-context-explicit-static-nested\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 7,
+            "path": "projects[0].environments[0].services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["projects[0].environments[0].services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:40.566182+00:00",
+      "client": "unchanged Render2.27",
+      "case": "invalid-repo-nested",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.469,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa318-source-context-invalid-repo-nested\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 7,\n      \"path\": \"projects[0].environments[0].services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa318-source-context-invalid-repo-nested\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 7,
+            "path": "projects[0].environments[0].services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["projects[0].environments[0].services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:41.679497+00:00",
+      "client": "unchanged Render2.27",
+      "case": "missing-image-nested",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.338,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa318-source-context-missing-image-nested\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 7,\n      \"path\": \"projects[0].environments[0].services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa318-source-context-missing-image-nested\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 7,
+            "path": "projects[0].environments[0].services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true,
+      "actual_error_paths": ["projects[0].environments[0].services[0].name"],
+      "location_match": false
+    },
+    {
+      "at": "2026-10-15T21:13:42.660187+00:00",
+      "client": "unchanged Render2.27",
+      "case": "prebuilt-image-nested",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep318-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep318-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.713,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa318-source-context-prebuilt-image-nested\\\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\",\n      \"line\": 7,\n      \"path\": \"projects[0].environments[0].services[0].name\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa318-source-context-prebuilt-image-nested\": name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen",
+            "line": 7,
+            "path": "projects[0].environments[0].services[0].name"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": false,
+      "actual_error_paths": ["projects[0].environments[0].services[0].name"],
+      "location_match": false
+    }
+  ],
+  "qualification": "36 correctly rejected too-long authored names; no repo-presence evidence, including masked negative controls"
+}

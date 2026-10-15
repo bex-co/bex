@@ -1,0 +1,33 @@
+package apps
+
+import (
+ "context"
+ "encoding/json"
+ "os"
+ "testing"
+)
+
+func TestQA312ExactPlanInputs(t *testing.T) {
+ raw,err:=os.ReadFile("<owned-temp>/sweep312-cases.json");if err!=nil{t.Fatal(err)}
+ var cases []struct {Case string `json:"case"`;Manifest string `json:"manifest"`;ExpectedValid bool `json:"expected_valid"`;ExpectedPlan string `json:"expected_resolved_plan"`}
+ if err:=json.Unmarshal(raw,&cases);err!=nil{t.Fatal(err)}
+ observations:=[]map[string]any{}
+ for _,tc:=range cases {t.Run(tc.Case,func(t *testing.T){
+  source,ir,problems:=CompileBlueprintIR(tc.Manifest)
+  validation,validationErr:=newBlueprintValidator(t).ValidateBlueprint(context.Background(),"",tc.Manifest,"")
+  if validationErr!=nil{t.Fatal(validationErr)}
+  valid:=validation.Valid
+  result:=map[string]any{"case":tc.Case,"compiler_valid":len(problems)==0,"compiler_problems":problems,"valid":valid,"validation_errors":validation.Errors,"estimated_pricing":validation.EstimatedPricing}
+  observations=append(observations,result)
+  if valid!=tc.ExpectedValid{t.Errorf("validation valid=%v errors=%+v, want %v",valid,validation.Errors,tc.ExpectedValid)}
+  if !valid{return}
+  if len(problems)>0{t.Fatalf("valid service has compiler problems: %+v",problems)}
+  st,err:=parseCompiledStack(blueprintParseOverrides{},source,ir);if err!=nil{t.Fatal(err)}
+  if len(st.services)!=1{t.Fatalf("services=%d, want one",len(st.services))}
+  req:=st.services[0].req;kind:=effectiveType(req.Type);tier,err:=normalizeTierForType(kind,req.Plan)
+  result["effective_type"]=kind;result["resolved_plan"]=tier
+  if err!=nil||tier!=tc.ExpectedPlan{t.Errorf("resolved plan=%q err=%v, want %q",tier,err,tc.ExpectedPlan)}
+ })}
+ encoded,err:=json.MarshalIndent(observations,"","  ");if err!=nil{t.Fatal(err)}
+ if err:=os.WriteFile("<owned-temp>/sweep312-source-observations.json",encoded,0o600);err!=nil{t.Fatal(err)}
+}

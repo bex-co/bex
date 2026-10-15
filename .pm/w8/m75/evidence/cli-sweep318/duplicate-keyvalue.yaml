@@ -1,0 +1,9 @@
+services:
+  - type: keyvalue
+    name: qa313-c2ebae-shared
+    plan: free
+    ipAllowList: []
+  - type: keyvalue
+    name: qa313-c2ebae-shared
+    plan: free
+    ipAllowList: []

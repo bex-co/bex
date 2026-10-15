@@ -1,0 +1,29 @@
+# Mixed service and datastore historical logs — sweep311
+
+[Full native commands/results, API reference/cursor receipts, excluded inputs and cleanup](journey-results.json) · [finite guarded driver](journey-driver.py.txt) · [excluded first image-input driver](excluded-image-input-driver.py.txt) · [focused source test events](source-tests.json).
+
+## Fixtures and fixed window
+
+Published Bex0.3.2/a6350da0 creates a fresh Free native Node web service and a Free Key Value instance; unchanged Render2.27/a764810a7682 creates a Free PostgreSQL18 instance. Explicit plan free is used on each. PostgreSQL uses no pooler/replicas; Key Value uses queue/noeviction and journal_snapshot. Data instances remain at the native private defaults. No database connection-info read, SQL/Redis data command, paid setting or cron fixture is used. Main's new paid-only cron policy is respected. The App uses public expressjs/serve-static/master and a build-written standard-library HTTP program with an isolated harmless env marker.
+
+All become Live/Available, and public App readiness returns the exact marker. Three deliberate /emit requests each return200 and write distinct markers. A342-second window covering these own resources is then frozen; the driver waits at least120seconds beyond its fixed end before querying. This resolves the initial supported reference to33 returned records:8 PostgreSQL,17 Key Value and8 App. Each emitted marker appears exactly once. All three individual REST pages have hasMore:false at limit100. These are the complete results returned for this fixed query, not proof of every underlying CRI/Loki record or resolution of the separate PostgreSQL sampling/startup-prefix investigations.
+
+## Thirty native query passes and two API cursor chains
+
+Both actual clients independently query each resource at limit100 for the identical fixed window. All six native outputs match their corresponding API reference by id, exact nanosecond timestamp and message. Native JSON is the pin's stream of pretty-printed objects, decoded sequentially without rewriting raw stdout into a supposed single response array.
+
+Each client then passes12 actual mixed-resource queries: forward and backward at limits1,7,19; and limit7 in both directions with reversed resource order, a duplicate own ID, and equivalent start/end values expressed at+05:30. Total24 mixed plus6 individual native passes. Results stay chronological and match the source-derived total cap over the combined corpus; the expected cap keeps the complete boundary timestamp group. Resource labels contain only the three exact owned IDs. This does not assert ordering within ties or that a particular layer performed duplicate normalization: native mutation/query wire is not intercepted.
+
+Two additional **API-only** chains feed the returned nextStartTime/nextEndTime back unchanged, at limit7, in forward and backward directions. Each completes in five pages and returns exactly the same33-row multiset, without missing/repeated records. Cursor progress is checked at nanosecond precision. These chains verify the Render-compatible cursor envelope; they do not exercise the native interactive scroll/auto-pagination UI. Full actual CLI argv/stdout/stderr/exit and diagnostic API method/path/query/status/body are retained. API response headers are not captured; Authorization is redacted.
+
+The bounded [queryLogPage and pageCursors implementation](../../../../lego/backend/internal/logs/render.go) merges the family-specific reads, caps globally and advances beyond boundary groups. Thirteen named source checks across three top-level tests pass with no skips or failures: datastore cursor chaining across adapters, text-union boundary siblings and bounded/deduplicated resource fanout. They ran at2ed283b35 before the intervening ship; the selected logs source files are unchanged through current main. This is a focused selection, not the full backend/real-database suite, production artifact identification, or live text/level/instance/HTTP-field filter acceptance. No new finding or product implementation results from this sweep.
+
+## Excluded harness inputs
+
+The first App command incorrectly combined --image with --start-command. The pinned parser refused it locally before a returned resource; source validation and a fresh native all-resource inventory resolve that exact name absent. Its full intent/refusal and inventory are retained. A fresh nonce uses supported native Node source/build/start flags. The native services inventory includes postgres/keyValue wrappers; the harness normalizes these before checking IDs/names. No failed server create is blindly replayed.
+
+An initial API reference request used unsupported limit1000. The server correctly returns400 with `limit must be an integer between 1 and 100`; one complete redacted refusal is retained, while the first identical read failed before capture. Positive API/native references use100. The pinned JSON stream parser was corrected from a single-document assumption before native log capture. These are harness/contract qualifications, not product defects.
+
+## Cleanup and scope
+
+Own Appsrv-db8iq0o9gh6s738uns6g, PostgreSQLdpg-db8ip5g9gh6s738uns3g and Key Valuered-db8ip609gh6s738uns4g are deleted through native commands with exit0. The App's one deploy child is enumerated terminal before parent deletion. Detail404, native absence, former App URL404 and restored quotas follow: services6 used/0 terminating, PostgreSQL0/0, Key Value0/0. The six immutable baseline services remain. Cluster descendants and private data endpoint teardown are not directly inspected. Private copied Render configs/request files are removed; no data credentials were fetched. Only the continuing hunt's isolated login and ownership ledger remain. This sweep's evidence remains reviewable pending a new ship authorization.

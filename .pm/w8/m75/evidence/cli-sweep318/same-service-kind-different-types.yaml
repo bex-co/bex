@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: qa313-c2ebae-shared
+    runtime: image
+    image:
+      url: nginx:1.27
+    plan: free
+  - type: worker
+    name: qa313-c2ebae-shared
+    runtime: image
+    image:
+      url: nginx:1.27
+    plan: starter

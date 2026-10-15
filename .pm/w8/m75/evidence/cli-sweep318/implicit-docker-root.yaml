@@ -1,0 +1,5 @@
+services:
+  - type: web
+    name: qa318-docker-r
+    runtime: docker
+    plan: free

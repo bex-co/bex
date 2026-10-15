@@ -1,0 +1,86 @@
+[
+  {
+    "case": "plain-web",
+    "manifest": "services:\n- type: web\n  name: qa313-c2ebae-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n",
+    "expected_valid": true,
+    "error_contains": null,
+    "error_path": null
+  },
+  {
+    "case": "service-and-database",
+    "manifest": "databases:\n- name: qa313-c2ebae-shared\n  plan: free\nservices:\n- type: web\n  name: qa313-c2ebae-shared\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: QA313_DB\n    fromDatabase:\n      name: qa313-c2ebae-shared\n      property: connectionString\n",
+    "expected_valid": true,
+    "error_contains": null,
+    "error_path": null
+  },
+  {
+    "case": "service-and-keyvalue",
+    "manifest": "services:\n- type: keyvalue\n  name: qa313-c2ebae-shared\n  plan: free\n  ipAllowList: []\n- type: web\n  name: qa313-c2ebae-shared\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: QA313_KV\n    fromService:\n      type: keyvalue\n      name: qa313-c2ebae-shared\n      property: connectionString\n",
+    "expected_valid": true,
+    "error_contains": null,
+    "error_path": null
+  },
+  {
+    "case": "three-kinds",
+    "manifest": "databases:\n- name: qa313-c2ebae-shared\n  plan: free\nservices:\n- type: keyvalue\n  name: qa313-c2ebae-shared\n  plan: free\n  ipAllowList: []\n- type: web\n  name: qa313-c2ebae-shared\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n- type: web\n  name: qa313-c2ebae-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: QA313_DB\n    fromDatabase:\n      name: qa313-c2ebae-shared\n      property: connectionString\n  - key: QA313_KV\n    fromService:\n      type: keyvalue\n      name: qa313-c2ebae-shared\n      property: connectionString\n  - key: QA313_HOST\n    fromService:\n      type: web\n      name: qa313-c2ebae-shared\n      property: host\n",
+    "expected_valid": true,
+    "error_contains": null,
+    "error_path": null
+  },
+  {
+    "case": "three-kinds-and-envgroup",
+    "manifest": "databases:\n- name: qa313-c2ebae-shared\n  plan: free\nservices:\n- type: keyvalue\n  name: qa313-c2ebae-shared\n  plan: free\n  ipAllowList: []\n- type: web\n  name: qa313-c2ebae-shared\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n- type: web\n  name: qa313-c2ebae-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: QA313_DB\n    fromDatabase:\n      name: qa313-c2ebae-shared\n      property: connectionString\n  - key: QA313_KV\n    fromService:\n      type: keyvalue\n      name: qa313-c2ebae-shared\n      property: connectionString\n  - key: QA313_HOST\n    fromService:\n      type: web\n      name: qa313-c2ebae-shared\n      property: host\nenvVarGroups:\n- name: qa313-c2ebae-shared\n  envVars:\n  - key: QA313_GROUP\n    value: harmless-c2ebae\n",
+    "expected_valid": true,
+    "error_contains": null,
+    "error_path": null
+  },
+  {
+    "case": "same-service-kind-different-types",
+    "manifest": "services:\n- type: web\n  name: qa313-c2ebae-shared\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n- type: worker\n  name: qa313-c2ebae-shared\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: starter\n",
+    "expected_valid": false,
+    "error_contains": "duplicate name",
+    "error_path": null
+  },
+  {
+    "case": "duplicate-database",
+    "manifest": "databases:\n- name: qa313-c2ebae-shared\n  plan: free\n- name: qa313-c2ebae-shared\n  plan: free\n",
+    "expected_valid": false,
+    "error_contains": "duplicate name",
+    "error_path": null
+  },
+  {
+    "case": "duplicate-keyvalue",
+    "manifest": "services:\n- type: keyvalue\n  name: qa313-c2ebae-shared\n  plan: free\n  ipAllowList: []\n- type: keyvalue\n  name: qa313-c2ebae-shared\n  plan: free\n  ipAllowList: []\n",
+    "expected_valid": false,
+    "error_contains": "duplicate name",
+    "error_path": null
+  },
+  {
+    "case": "duplicate-envgroup",
+    "manifest": "services:\n- type: web\n  name: qa313-c2ebae-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\nenvVarGroups:\n- name: qa313-c2ebae-shared\n  envVars:\n  - key: QA313_GROUP\n    value: harmless-c2ebae\n- name: qa313-c2ebae-shared\n  envVars:\n  - key: QA313_GROUP\n    value: harmless-c2ebae\n",
+    "expected_valid": false,
+    "error_contains": "duplicate name",
+    "error_path": null
+  },
+  {
+    "case": "database-does-not-satisfy-web-ref",
+    "manifest": "databases:\n- name: qa313-c2ebae-shared\n  plan: free\nservices:\n- type: web\n  name: qa313-c2ebae-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: QA313_DB\n    fromDatabase:\n      name: qa313-c2ebae-shared\n      property: connectionString\n  - key: QA313_HOST\n    fromService:\n      type: web\n      name: qa313-c2ebae-shared\n      property: host\n",
+    "expected_valid": false,
+    "error_contains": "unknown service",
+    "error_path": "services[0].envVars[1]"
+  },
+  {
+    "case": "keyvalue-does-not-satisfy-web-ref",
+    "manifest": "services:\n- type: keyvalue\n  name: qa313-c2ebae-shared\n  plan: free\n  ipAllowList: []\n- type: web\n  name: qa313-c2ebae-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: QA313_KV\n    fromService:\n      type: keyvalue\n      name: qa313-c2ebae-shared\n      property: connectionString\n  - key: QA313_HOST\n    fromService:\n      type: web\n      name: qa313-c2ebae-shared\n      property: host\n",
+    "expected_valid": false,
+    "error_contains": "unknown service",
+    "error_path": "services[1].envVars[1]"
+  },
+  {
+    "case": "missing-database-control",
+    "manifest": "services:\n- type: web\n  name: qa313-c2ebae-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: QA313_DB\n    fromDatabase:\n      name: qa313-c2ebae-shared\n      property: connectionString\n",
+    "expected_valid": false,
+    "error_contains": null,
+    "error_path": "services[0].envVars[0]"
+  }
+]

@@ -1,0 +1,223 @@
+[
+  {
+    "at": "2026-10-15T20:26:22.151390+00:00",
+    "client": "bex",
+    "case": "self-before-missing",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "<owned-temp>/sweep314-capture-render.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.503,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T20:26:22.762658+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=fb137c721a1dd1383f68e14cb73db2ffb25c6ac18bb049573b398534e60e",
+          "body": "--fb137c721a1dd1383f68e14cb73db2ffb25c6ac18bb049573b398534e60e\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--fb137c721a1dd1383f68e14cb73db2ffb25c6ac18bb049573b398534e60e\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep314-capture-render.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\nservices:\n- type: web\n  name: qa314-ebe6d7-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: OWN_HOST\n    fromService:\n      type: web\n      name: qa314-ebe6d7-consumer\n      property: host\n  - key: MISSING_HOST\n    fromService:\n      type: web\n      name: qa314-ebe6d7-missing\n      property: host\n\r\n--fb137c721a1dd1383f68e14cb73db2ffb25c6ac18bb049573b398534e60e--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "services:\n- type: web\n  name: qa314-ebe6d7-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: OWN_HOST\n    fromService:\n      type: web\n      name: qa314-ebe6d7-consumer\n      property: host\n  - key: MISSING_HOST\n    fromService:\n      type: web\n      name: qa314-ebe6d7-missing\n      property: host\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4b18ef2685a4833-SJC"
+        },
+        "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\"line\":9,\"column\":5,\"path\":\"services[0].envVars[0]\"}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": false,
+      "expected_error_paths": [
+        "services[0].envVars[1]"
+      ]
+    },
+    "native_summary_matches_server": true,
+    "errors_match": true
+  },
+  {
+    "at": "2026-10-15T20:26:23.405373+00:00",
+    "client": "render",
+    "case": "project-two-missing-same-target",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "<owned-temp>/sweep314-capture-render.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.62,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].services[0].envVars[0]\"\n    },\n    {\n      \"column\": 9,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 13,\n      \"path\": \"projects[0].environments[0].services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T20:26:24.140910+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=22f8d5a8151e061d27b646c37765fac0952a2dbd3df3a7c9e5e7f95766f9",
+          "body": "--22f8d5a8151e061d27b646c37765fac0952a2dbd3df3a7c9e5e7f95766f9\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--22f8d5a8151e061d27b646c37765fac0952a2dbd3df3a7c9e5e7f95766f9\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep314-capture-render.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\nprojects:\n- name: qa314-ebe6d7-project\n  environments:\n  - name: production\n    services:\n    - type: web\n      name: qa314-ebe6d7-consumer\n      runtime: image\n      image:\n        url: nginx:1.27\n      plan: free\n      envVars:\n      - key: MISSING_ONE\n        fromService:\n          type: web\n          name: qa314-ebe6d7-missing\n          property: host\n      - key: MISSING_TWO\n        fromService:\n          type: web\n          name: qa314-ebe6d7-missing\n          property: host\n\r\n--22f8d5a8151e061d27b646c37765fac0952a2dbd3df3a7c9e5e7f95766f9--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "projects:\n- name: qa314-ebe6d7-project\n  environments:\n  - name: production\n    services:\n    - type: web\n      name: qa314-ebe6d7-consumer\n      runtime: image\n      image:\n        url: nginx:1.27\n      plan: free\n      envVars:\n      - key: MISSING_ONE\n        fromService:\n          type: web\n          name: qa314-ebe6d7-missing\n          property: host\n      - key: MISSING_TWO\n        fromService:\n          type: web\n          name: qa314-ebe6d7-missing\n          property: host\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4b18efb3a4746f8-SJC"
+        },
+        "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\"line\":13,\"column\":9,\"path\":\"projects[0].environments[0].services[0].envVars[0]\"},{\"error\":\"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\"line\":13,\"column\":9,\"path\":\"projects[0].environments[0].services[0].envVars[0]\"}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": false,
+      "expected_error_paths": [
+        "projects[0].environments[0].services[0].envVars[0]",
+        "projects[0].environments[0].services[0].envVars[1]"
+      ]
+    },
+    "native_summary_matches_server": true,
+    "errors_match": true
+  },
+  {
+    "at": "2026-10-15T20:26:24.855356+00:00",
+    "client": "bex",
+    "case": "self-only",
+    "command": [
+      "bex",
+      "blueprints",
+      "validate",
+      "<owned-temp>/sweep314-capture-render.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 0,
+      "elapsed": 0.767,
+      "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa314-ebe6d7-consumer\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T20:26:25.752596+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=e1965f545439320a6256d57aa7bf9fc9e2dd8699982c9174c64b3a625a30",
+          "body": "--e1965f545439320a6256d57aa7bf9fc9e2dd8699982c9174c64b3a625a30\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--e1965f545439320a6256d57aa7bf9fc9e2dd8699982c9174c64b3a625a30\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep314-capture-render.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\nservices:\n- type: web\n  name: qa314-ebe6d7-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: OWN_HOST\n    fromService:\n      type: web\n      name: qa314-ebe6d7-consumer\n      property: host\n\r\n--e1965f545439320a6256d57aa7bf9fc9e2dd8699982c9174c64b3a625a30--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "services:\n- type: web\n  name: qa314-ebe6d7-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: OWN_HOST\n    fromService:\n      type: web\n      name: qa314-ebe6d7-consumer\n      property: host\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "X-Bex-Cli-Version": "0.3.2"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4b18f03beb3e92e-DFW"
+        },
+        "response": "{\"valid\":true,\"plan\":{\"mode\":\"current_state\",\"services\":[\"qa314-ebe6d7-consumer\"],\"totalActions\":1,\"actions\":[{\"operation\":\"create\",\"kind\":\"service\",\"name\":\"qa314-ebe6d7-consumer\",\"sourcePath\":\"#/services/0\"}]},\"estimatedPricing\":{\"totalUsd\":\"0.00\",\"lines\":[],\"variable\":[]}}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": true,
+      "expected_error_paths": []
+    },
+    "native_summary_matches_server": true,
+    "errors_match": true
+  },
+  {
+    "at": "2026-10-15T20:26:26.580059+00:00",
+    "client": "render",
+    "case": "missing-only",
+    "command": [
+      "render",
+      "blueprints",
+      "validate",
+      "<owned-temp>/sweep314-capture-render.yaml",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "authority_forwarding": "Exact harmless native multipart file + own workspace; POST validation only to fixed api.bex.co, bytes forwarded unchanged, isolated config, auth not recorded",
+    "native_result": {
+      "exit": 1,
+      "elapsed": 0.702,
+      "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\n      \"line\": 9,\n      \"path\": \"services[0].envVars[0]\"\n    }\n  ],\n  \"valid\": false\n}",
+      "stderr": ""
+    },
+    "captures": [
+      {
+        "at": "2026-10-15T20:26:27.396427+00:00",
+        "request": {
+          "method": "POST",
+          "path": "/v1/blueprints/validate",
+          "content_type": "multipart/form-data; boundary=ef411ae08ede075114b8d1e462a0020883c2e0077c95f2972324b7999acc",
+          "body": "--ef411ae08ede075114b8d1e462a0020883c2e0077c95f2972324b7999acc\r\nContent-Disposition: form-data; name=\"ownerId\"\r\n\r\ntea-daif693dqjvc73e7as3g\r\n--ef411ae08ede075114b8d1e462a0020883c2e0077c95f2972324b7999acc\r\nContent-Disposition: form-data; name=\"file\"; filename=\"sweep314-capture-render.yaml\"\r\nContent-Type: application/octet-stream\r\n\r\nservices:\n- type: web\n  name: qa314-ebe6d7-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: MISSING_HOST\n    fromService:\n      type: web\n      name: qa314-ebe6d7-missing\n      property: host\n\r\n--ef411ae08ede075114b8d1e462a0020883c2e0077c95f2972324b7999acc--\r\n",
+          "decoded_multipart": {
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "file": "services:\n- type: web\n  name: qa314-ebe6d7-consumer\n  runtime: image\n  image:\n    url: nginx:1.27\n  plan: free\n  envVars:\n  - key: MISSING_HOST\n    fromService:\n      type: web\n      name: qa314-ebe6d7-missing\n      property: host\n"
+          },
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          }
+        },
+        "status": 200,
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4b18f0daedcab58-SJC"
+        },
+        "response": "{\"valid\":false,\"errors\":[{\"error\":\"service \\\"qa314-ebe6d7-consumer\\\": fromService references unknown service \\\"qa314-ebe6d7-missing\\\" (declare it under services: or create it in this workspace first)\",\"line\":9,\"column\":5,\"path\":\"services[0].envVars[0]\"}]}\n"
+      }
+    ],
+    "capture_cleanup": "child reaped, server closed, temporary copied config removed",
+    "passed": true,
+    "expected": {
+      "expected_valid": false,
+      "expected_error_paths": [
+        "services[0].envVars[0]"
+      ]
+    },
+    "native_summary_matches_server": true,
+    "errors_match": true
+  }
+]

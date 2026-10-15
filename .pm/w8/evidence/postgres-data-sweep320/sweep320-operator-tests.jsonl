@@ -1,0 +1,8 @@
+{"Time":"2026-10-15T15:03:28.611758-07:00","Action":"start","Package":"github.com/bex-co/bex/lego/operator/internal/controller"}
+{"Time":"2026-10-15T15:03:29.603671-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestSetLifecycleAnnotations"}
+{"Time":"2026-10-15T15:03:29.603805-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestSetLifecycleAnnotations","Output":"=== RUN   TestSetLifecycleAnnotations\n"}
+{"Time":"2026-10-15T15:03:29.603837-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestSetLifecycleAnnotations","Output":"--- PASS: TestSetLifecycleAnnotations (0.00s)\n"}
+{"Time":"2026-10-15T15:03:29.603846-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestSetLifecycleAnnotations","Elapsed":0}
+{"Time":"2026-10-15T15:03:29.603856-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Output":"PASS\n"}
+{"Time":"2026-10-15T15:03:29.604926-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Output":"ok  \tgithub.com/bex-co/bex/lego/operator/internal/controller\t0.993s\n"}
+{"Time":"2026-10-15T15:03:29.604949-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Elapsed":0.993}
