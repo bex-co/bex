@@ -1,0 +1,1304 @@
+{
+  "finding": "w4/316",
+  "pass": "a628",
+  "date": "2026-10-15",
+  "severity": "minor",
+  "sourceHead": "eebd8ce27b12195f10dc977f8cddb64a9657246c",
+  "scope": "Fast failed pre-deploy terminal skips discard a matching recorded Job start; successful, build, cancel and other unknown-time contracts are preserved.",
+  "fixture": {
+    "id": "srv-db8jvjt23p2c7388on5g",
+    "name": "qa-20261015-a628-predeploy",
+    "plan": "free",
+    "appUID": "3e18e1c0-2f38-4ef5-acdc-1aa8b232084b"
+  },
+  "knownTimes": {
+    "fast17": {
+      "id": "dep-db8k09d23p2c7388on7g",
+      "graphQLStartedAt": "",
+      "eventPreDeployStarted": "2026-10-15T21:05:41Z"
+    },
+    "fast19": {
+      "id": "dep-db8k3il23p2c7388onjg",
+      "generation": 5,
+      "operatorJobStart": "2026-10-15T21:12:42Z",
+      "graphQLStartedAt": "",
+      "finishedAt": "2026-10-15T21:12:49.201167Z"
+    },
+    "slow19": {
+      "id": "dep-db8k4kd23p2c7388onlg",
+      "startedAt": "2026-10-15T21:15:04.310232Z",
+      "finishedAt": "2026-10-15T21:15:18.888058Z",
+      "displayedDuration": "14s"
+    }
+  },
+  "limits": [
+    "MCP and pinned CLI timestamp reads are source-traced, not live-probed here.",
+    "Only owned Free prebuilt web was live-tested. Private/worker and repo-backed, timeout/cancel/supersede/missing-record variants need regression checks; no production writes to those cases.",
+    "The raw operator Job start has second precision and can precede the same-second row creation's fractional timestamp. It must not be replaced with row creation or terminal observation time.",
+    "The slow failure's existing observation timestamp must remain unchanged; this finding does not move already-recorded starts to earlier Job timestamps.",
+    "The later selected pod probe is empty after pod GC; the Job and earlier raw operator status remain available evidence.",
+    "Screenshots are local supplementary artifacts; complete native DOM and API evidence below is durable."
+  ],
+  "localScreenshots": [
+    ".playwright-mcp/qa-a628-fast-failure-start-desktop.png",
+    ".playwright-mcp/qa-a628-fast-failure-start-mobile.png"
+  ],
+  "dedupe": {
+    "markdownCount": 9238,
+    "openMilestoneCount": 75,
+    "existingOwnersConsidered": [
+      "w6/done/m123: failed builds; no pre-deploy start sourcing",
+      "w4/blocked/m156: successful terminal skips, explicitly preserves failure contracts",
+      "w1/done/m149: pre-deploy serving phase, reason and log label; those controls pass",
+      "w4/done/m198: canceled step log cutoff"
+    ],
+    "antiGoalConflict": false,
+    "latestRelevantProducerHistory": "bcd05c6cf",
+    "postPullProducerChange": false
+  },
+  "cleanup": {
+    "baselineRestored": true,
+    "ownedServingPods": 0,
+    "knownPredeployJobs": 0
+  },
+  "a628Baseline": {
+    "at": "2026-10-15T21:03:56.062Z",
+    "status": 200,
+    "inventory": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    }
+  },
+  "a628Created": {
+    "at": "2026-10-15T21:04:15.970Z",
+    "request": {
+      "operationName": "CreateService",
+      "variables": {
+        "image": "busybox:1.37",
+        "name": "qa-20261015-a628-predeploy",
+        "type": "web_service",
+        "registryCredentialId": "",
+        "runtime": "image",
+        "startCommand": "sh -c 'mkdir -p /tmp/qa-a628; printf \"MODE=%s\\nPOD=%s\\n\" \"${QA_A628_MODE:-original}\" \"$(hostname)\" > /tmp/qa-a628/index.html; exec httpd -f -p 8886 -h /tmp/qa-a628'",
+        "plan": "free",
+        "port": 8886,
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.3.3"
+        }
+      },
+      "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "createService": {
+          "__typename": "Service",
+          "environmentId": null,
+          "id": "srv-db8jvjt23p2c7388on5g",
+          "latestDeployId": "dep-db8jvjt23p2c7388on60",
+          "name": "qa-20261015-a628-predeploy",
+          "phase": "",
+          "projectId": null,
+          "registryCredentialId": "",
+          "type": "web_service"
+        }
+      }
+    },
+    "url": "https://dashboard.bex.co/services/srv-db8jvjt23p2c7388on5g/deploys/dep-db8jvjt23p2c7388on60"
+  },
+  "a628InitialLive": {
+    "at": "2026-10-15T21:04:34.807Z",
+    "request": {
+      "operationName": "Qaa628State",
+      "query": "query Qaa628State($id:String!){server(id:$id){id name phase revision plan preDeployCommand undeployedChanges url} deploys(serviceId:$id,limit:5){id status failureReason preDeployStatus}}",
+      "variables": {
+        "id": "srv-db8jvjt23p2c7388on5g"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deploys": [
+          {
+            "failureReason": "",
+            "id": "dep-db8jvjt23p2c7388on60",
+            "preDeployStatus": "",
+            "status": "live"
+          }
+        ],
+        "server": {
+          "id": "srv-db8jvjt23p2c7388on5g",
+          "name": "qa-20261015-a628-predeploy",
+          "phase": "Running",
+          "plan": "free",
+          "preDeployCommand": "",
+          "revision": "rev-1",
+          "undeployedChanges": false,
+          "url": "https://qa-20261015-a628-predeploy.onbex.co"
+        }
+      }
+    },
+    "public": {
+      "at": "2026-10-15T21:04:35.360Z",
+      "status": 200,
+      "body": "MODE=original\nPOD=tea-d98210cbbpdc73dcrkvg-qa-20261015-a628-predeploy-5cb85dtvtrl\n"
+    }
+  },
+  "a628FailingPredeploySaved": {
+    "at": "2026-10-15T21:05:41.946Z",
+    "request": {
+      "operationName": "SetPreDeployCommand",
+      "variables": {
+        "id": "srv-db8jvjt23p2c7388on5g",
+        "command": "printf '%s\\n' QA_A628_EXPECTED_PREDEPLOY_FAILURE; exit 17"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.3.3"
+        }
+      },
+      "query": "mutation SetPreDeployCommand($id: String!, $command: String!, $confirm: String) {\n  setPreDeployCommand(id: $id, command: $command, confirm: $confirm) {\n    id\n    preDeployCommand\n    phase\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "setPreDeployCommand": {
+          "__typename": "Service",
+          "id": "srv-db8jvjt23p2c7388on5g",
+          "phase": "Running",
+          "preDeployCommand": "printf '%s\\n' QA_A628_EXPECTED_PREDEPLOY_FAILURE; exit 17"
+        }
+      }
+    },
+    "url": "https://dashboard.bex.co/services/srv-db8jvjt23p2c7388on5g/settings"
+  },
+  "a628FailureRetentionSamples": [
+    {
+      "at": "2026-10-15T21:05:43.463Z",
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "failureReason": "",
+              "id": "dep-db8k09d23p2c7388on7g",
+              "preDeployStatus": "",
+              "status": "created"
+            },
+            {
+              "failureReason": "",
+              "id": "dep-db8jvjt23p2c7388on60",
+              "preDeployStatus": "",
+              "status": "live"
+            }
+          ],
+          "server": {
+            "id": "srv-db8jvjt23p2c7388on5g",
+            "name": "qa-20261015-a628-predeploy",
+            "phase": "Deploying",
+            "plan": "free",
+            "preDeployCommand": "printf '%s\\n' QA_A628_EXPECTED_PREDEPLOY_FAILURE; exit 17",
+            "revision": "rev-1",
+            "undeployedChanges": true,
+            "url": "https://qa-20261015-a628-predeploy.onbex.co"
+          }
+        }
+      },
+      "http": {
+        "status": 200,
+        "body": "MODE=original\nPOD=tea-d98210cbbpdc73dcrkvg-qa-20261015-a628-predeploy-5cb85dtvtrl\n"
+      }
+    },
+    {
+      "at": "2026-10-15T21:05:46.400Z",
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "failureReason": "",
+              "id": "dep-db8k09d23p2c7388on7g",
+              "preDeployStatus": "",
+              "status": "created"
+            },
+            {
+              "failureReason": "",
+              "id": "dep-db8jvjt23p2c7388on60",
+              "preDeployStatus": "",
+              "status": "live"
+            }
+          ],
+          "server": {
+            "id": "srv-db8jvjt23p2c7388on5g",
+            "name": "qa-20261015-a628-predeploy",
+            "phase": "Running",
+            "plan": "free",
+            "preDeployCommand": "printf '%s\\n' QA_A628_EXPECTED_PREDEPLOY_FAILURE; exit 17",
+            "revision": "rev-1",
+            "undeployedChanges": true,
+            "url": "https://qa-20261015-a628-predeploy.onbex.co"
+          }
+        }
+      },
+      "http": {
+        "status": 200,
+        "body": "MODE=original\nPOD=tea-d98210cbbpdc73dcrkvg-qa-20261015-a628-predeploy-5cb85dtvtrl\n"
+      }
+    },
+    {
+      "at": "2026-10-15T21:05:49.430Z",
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "failureReason": "the pre-deploy command exited with code 17; check the pre-deploy logs",
+              "id": "dep-db8k09d23p2c7388on7g",
+              "preDeployStatus": "failed",
+              "status": "pre_deploy_failed"
+            },
+            {
+              "failureReason": "",
+              "id": "dep-db8jvjt23p2c7388on60",
+              "preDeployStatus": "",
+              "status": "live"
+            }
+          ],
+          "server": {
+            "id": "srv-db8jvjt23p2c7388on5g",
+            "name": "qa-20261015-a628-predeploy",
+            "phase": "Running",
+            "plan": "free",
+            "preDeployCommand": "printf '%s\\n' QA_A628_EXPECTED_PREDEPLOY_FAILURE; exit 17",
+            "revision": "rev-1",
+            "undeployedChanges": true,
+            "url": "https://qa-20261015-a628-predeploy.onbex.co"
+          }
+        }
+      },
+      "http": {
+        "status": 200,
+        "body": "MODE=original\nPOD=tea-d98210cbbpdc73dcrkvg-qa-20261015-a628-predeploy-5cb85dtvtrl\n"
+      }
+    }
+  ],
+  "a628FreshMobileFailureDetail": {
+    "at": "2026-10-15T21:06:30.002Z",
+    "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261015-a628-predeploy\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261015-a628-predeploy\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Pre-Deploy Failed\"':\n    - /url: /services/srv-db8jvjt23p2c7388on5g/deploys/dep-db8k09d23p2c7388on7g\n    - text: Latest deploy Pre-Deploy Failed\n  - link \"Free\":\n    - /url: /services/srv-db8jvjt23p2c7388on5g/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db8jvjt23p2c7388on5g\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261015-a628-predeploy.onbex.co\":\n    - /url: https://qa-20261015-a628-predeploy.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261015-a628-predeploy\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 2m\n  - status: Saved changes aren't live yet. Use a standard deploy to apply them.\n  - text: Deploy status Pre-Deploy Failed Config Change dep-db8k09d23p2c7388on7g\n  - paragraph: the pre-deploy command exited with code 17; check the pre-deploy logs\n  - paragraph: Pre-deploy command failed\n  - paragraph: busybox:1.37\n  - term: \"Created:\"\n  - definition: October 15, 2026 at 2:05 PM\n  - term: \"Updated:\"\n  - definition: October 15, 2026 at 2:05 PM\n  - term: \"Finished:\"\n  - definition: October 15, 2026 at 2:05 PM\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 15, 2026 at 2:05 PM\n    - listitem:\n      - paragraph: Pre-Deploy Failed\n      - time: October 15, 2026 at 2:05 PM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\": QA_A628_EXPECTED_PREDEPLOY_FAILURE\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: 02:05:42 PM\n  - button \"Filter logs by instance srv-db8jvjt23p2c7388on5g-otqsr9v3vi0shuhh8f8o\": \"[otqsr]\"\n  - text: QA_A628_EXPECTED_PREDEPLOY_FAILURE"
+  },
+  "a628TimingRead": {
+    "at": "2026-10-15T21:11:04.464Z",
+    "request": {
+      "operationName": "Qaa628DeployTimes",
+      "query": "query Qaa628DeployTimes($service:String!,$deploy:String!){deploy(serviceId:$service,deployId:$deploy){id status createdAt updatedAt startedAt finishedAt preDeployStatus failureReason} serviceEvents(serviceId:$service,limit:50){id type timestamp details{deployId deployStatus fullDeployStatus}}}",
+      "variables": {
+        "service": "srv-db8jvjt23p2c7388on5g",
+        "deploy": "dep-db8k09d23p2c7388on7g"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deploy": {
+          "createdAt": "2026-10-15T21:05:41.148294Z",
+          "failureReason": "the pre-deploy command exited with code 17; check the pre-deploy logs",
+          "finishedAt": "2026-10-15T21:05:49.138037Z",
+          "id": "dep-db8k09d23p2c7388on7g",
+          "preDeployStatus": "failed",
+          "startedAt": "",
+          "status": "pre_deploy_failed",
+          "updatedAt": "2026-10-15T21:05:49.138039Z"
+        },
+        "serviceEvents": [
+          {
+            "details": {
+              "deployId": "dep-db8k1rl23p2c7388onfg",
+              "deployStatus": "succeeded",
+              "fullDeployStatus": ""
+            },
+            "id": "evt-n05eq5o0fe0ai1vne37k",
+            "timestamp": "2026-10-15T21:09:18Z",
+            "type": "deploy_ended"
+          },
+          {
+            "details": {
+              "deployId": "",
+              "deployStatus": "",
+              "fullDeployStatus": ""
+            },
+            "id": "evt-rqj45uovi9v35lrlea2v",
+            "timestamp": "2026-10-15T21:09:02Z",
+            "type": "pre_deploy_command_changed"
+          },
+          {
+            "details": {
+              "deployId": "dep-db8k1rl23p2c7388onfg",
+              "deployStatus": "",
+              "fullDeployStatus": ""
+            },
+            "id": "evt-mgqqh2e9f6pdnog72a2d",
+            "timestamp": "2026-10-15T21:09:02Z",
+            "type": "deploy_started"
+          },
+          {
+            "details": {
+              "deployId": "dep-db8k0vl23p2c7388on90",
+              "deployStatus": "succeeded",
+              "fullDeployStatus": ""
+            },
+            "id": "evt-fgvc2htjj6tq7leae5jb",
+            "timestamp": "2026-10-15T21:07:34Z",
+            "type": "deploy_ended"
+          },
+          {
+            "details": {
+              "deployId": "dep-db8k0vl23p2c7388on90",
+              "deployStatus": "",
+              "fullDeployStatus": ""
+            },
+            "id": "evt-41g5jangs7momaohmpvk",
+            "timestamp": "2026-10-15T21:07:13Z",
+            "type": "pre_deploy_ended"
+          },
+          {
+            "details": {
+              "deployId": "",
+              "deployStatus": "",
+              "fullDeployStatus": ""
+            },
+            "id": "evt-9tm0uv06iup8pjopiaje",
+            "timestamp": "2026-10-15T21:07:10Z",
+            "type": "pre_deploy_command_changed"
+          },
+          {
+            "details": {
+              "deployId": "dep-db8k0vl23p2c7388on90",
+              "deployStatus": "",
+              "fullDeployStatus": ""
+            },
+            "id": "evt-doq0gmfqij05md890viv",
+            "timestamp": "2026-10-15T21:07:10Z",
+            "type": "deploy_started"
+          },
+          {
+            "details": {
+              "deployId": "dep-db8k0vl23p2c7388on90",
+              "deployStatus": "",
+              "fullDeployStatus": ""
+            },
+            "id": "evt-73hlvvj1giqgb8beukcf",
+            "timestamp": "2026-10-15T21:07:10Z",
+            "type": "pre_deploy_started"
+          },
+          {
+            "details": {
+              "deployId": "dep-db8k09d23p2c7388on7g",
+              "deployStatus": "failed",
+              "fullDeployStatus": "pre_deploy_failed"
+            },
+            "id": "evt-ko781lktnq2svkidviad",
+            "timestamp": "2026-10-15T21:05:49Z",
+            "type": "deploy_ended"
+          },
+          {
+            "details": {
+              "deployId": "dep-db8k09d23p2c7388on7g",
+              "deployStatus": "",
+              "fullDeployStatus": ""
+            },
+            "id": "evt-php9eobs832m89qfbspf",
+            "timestamp": "2026-10-15T21:05:44Z",
+            "type": "pre_deploy_ended"
+          },
+          {
+            "details": {
+              "deployId": "",
+              "deployStatus": "",
+              "fullDeployStatus": ""
+            },
+            "id": "evt-20mnkfj61phas7naahgd",
+            "timestamp": "2026-10-15T21:05:41Z",
+            "type": "pre_deploy_command_changed"
+          },
+          {
+            "details": {
+              "deployId": "dep-db8k09d23p2c7388on7g",
+              "deployStatus": "",
+              "fullDeployStatus": ""
+            },
+            "id": "evt-ba2lel4jri08novkm3lh",
+            "timestamp": "2026-10-15T21:05:41Z",
+            "type": "deploy_started"
+          },
+          {
+            "details": {
+              "deployId": "dep-db8k09d23p2c7388on7g",
+              "deployStatus": "",
+              "fullDeployStatus": ""
+            },
+            "id": "evt-978uhgb7hlbcj3b5pok7",
+            "timestamp": "2026-10-15T21:05:41Z",
+            "type": "pre_deploy_started"
+          },
+          {
+            "details": {
+              "deployId": "",
+              "deployStatus": "",
+              "fullDeployStatus": ""
+            },
+            "id": "evt-l3gk988bjka6uabel93n",
+            "timestamp": "2026-10-15T21:05:06Z",
+            "type": "service_environment_changed"
+          },
+          {
+            "details": {
+              "deployId": "dep-db8jvjt23p2c7388on60",
+              "deployStatus": "succeeded",
+              "fullDeployStatus": ""
+            },
+            "id": "evt-333n1pngb4tddmp07vjp",
+            "timestamp": "2026-10-15T21:04:34Z",
+            "type": "deploy_ended"
+          },
+          {
+            "details": {
+              "deployId": "dep-db8jvjt23p2c7388on60",
+              "deployStatus": "",
+              "fullDeployStatus": ""
+            },
+            "id": "evt-u3mt9hm0bp3n3vrbmbum",
+            "timestamp": "2026-10-15T21:04:15Z",
+            "type": "deploy_started"
+          }
+        ]
+      }
+    }
+  },
+  "a628SecondFastFailureSaved": {
+    "at": "2026-10-15T21:12:43.092Z",
+    "request": {
+      "operationName": "SetPreDeployCommand",
+      "variables": {
+        "id": "srv-db8jvjt23p2c7388on5g",
+        "command": "printf '%s\\n' QA_A628_FAST_SECOND; exit 19"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.3.3"
+        }
+      },
+      "query": "mutation SetPreDeployCommand($id: String!, $command: String!, $confirm: String) {\n  setPreDeployCommand(id: $id, command: $command, confirm: $confirm) {\n    id\n    preDeployCommand\n    phase\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "setPreDeployCommand": {
+          "__typename": "Service",
+          "id": "srv-db8jvjt23p2c7388on5g",
+          "phase": "Running",
+          "preDeployCommand": "printf '%s\\n' QA_A628_FAST_SECOND; exit 19"
+        }
+      }
+    },
+    "url": "https://dashboard.bex.co/services/srv-db8jvjt23p2c7388on5g/settings"
+  },
+  "a628SecondFastFailureTimes": {
+    "at": "2026-10-15T21:12:50.669Z",
+    "request": {
+      "operationName": "Qaa628FastTimes",
+      "query": "query Qaa628FastTimes($id:String!){deploys(serviceId:$id,limit:2){id status startedAt finishedAt preDeployStatus failureReason}}",
+      "variables": {
+        "id": "srv-db8jvjt23p2c7388on5g"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deploys": [
+          {
+            "failureReason": "the pre-deploy command exited with code 19; check the pre-deploy logs",
+            "finishedAt": "2026-10-15T21:12:49.201167Z",
+            "id": "dep-db8k3il23p2c7388onjg",
+            "preDeployStatus": "failed",
+            "startedAt": "",
+            "status": "pre_deploy_failed"
+          },
+          {
+            "failureReason": "",
+            "finishedAt": "2026-10-15T21:09:18.917158Z",
+            "id": "dep-db8k1rl23p2c7388onfg",
+            "preDeployStatus": "",
+            "startedAt": "2026-10-15T21:09:04.295789Z",
+            "status": "live"
+          }
+        ]
+      }
+    }
+  },
+  "a628PriorOperatorSnapshot": {
+    "observedAfter": "2026-10-15T21:12:50.669Z",
+    "observedBefore": "2026-10-15T21:14:06.393Z",
+    "request": [
+      "kubectl",
+      "--context",
+      "hetzner-prod",
+      "-n",
+      "tea-d98210cbbpdc73dcrkvg",
+      "get",
+      "app.app.bex.co",
+      "tea-d98210cbbpdc73dcrkvg-qa-20261015-a628-predeploy",
+      "-o",
+      "jsonpath={.metadata.generation}{\"\\n\"}{.status.preDeploy}{\"\\n\"}"
+    ],
+    "stdout": "5\n{\"finishedAt\":\"2026-10-15T21:12:47Z\",\"generation\":5,\"job\":\"predeploy-tea-d98210cbbpdc73dcrkvg-qa-20261015-a62-6e8b42642deb\",\"message\":\"the pre-deploy command exited with code 19; check the pre-deploy logs\",\"startedAt\":\"2026-10-15T21:12:42Z\",\"status\":\"Failed\"}\n",
+    "source": "Transcribed verbatim from this pass's earlier successful native tool result, before the slow control replaced status.preDeploy."
+  },
+  "a628KubeTimingProbes": [
+    {
+      "at": "2026-10-15T21:20:02.676384+00:00",
+      "request": [
+        "kubectl",
+        "--context",
+        "hetzner-prod",
+        "-n",
+        "tea-d98210cbbpdc73dcrkvg",
+        "get",
+        "job",
+        "predeploy-tea-d98210cbbpdc73dcrkvg-qa-20261015-a62-6e8b42642deb",
+        "-o",
+        "jsonpath={.metadata.uid}{\"\\n\"}{.metadata.ownerReferences}{\"\\n\"}{.status}{\"\\n\"}"
+      ],
+      "exitCode": 0,
+      "stdout": "fcc12ddf-4c6a-461f-a22b-2b6bef71ea94\n[{\"apiVersion\":\"app.bex.co/v1alpha1\",\"controller\":true,\"kind\":\"App\",\"name\":\"tea-d98210cbbpdc73dcrkvg-qa-20261015-a628-predeploy\",\"uid\":\"3e18e1c0-2f38-4ef5-acdc-1aa8b232084b\"}]\n{\"conditions\":[{\"lastProbeTime\":\"2026-10-15T21:12:47Z\",\"lastTransitionTime\":\"2026-10-15T21:12:47Z\",\"message\":\"Job has reached the specified backoff limit\",\"reason\":\"BackoffLimitExceeded\",\"status\":\"True\",\"type\":\"FailureTarget\"},{\"lastProbeTime\":\"2026-10-15T21:12:47Z\",\"lastTransitionTime\":\"2026-10-15T21:12:47Z\",\"message\":\"Job has reached the specified backoff limit\",\"reason\":\"BackoffLimitExceeded\",\"status\":\"True\",\"type\":\"Failed\"}],\"failed\":1,\"ready\":0,\"startTime\":\"2026-10-15T21:12:42Z\",\"terminating\":0,\"uncountedTerminatedPods\":{}}\n",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-15T21:20:03.261241+00:00",
+      "request": [
+        "kubectl",
+        "--context",
+        "hetzner-prod",
+        "-n",
+        "tea-d98210cbbpdc73dcrkvg",
+        "get",
+        "pods",
+        "-l",
+        "job-name=predeploy-tea-d98210cbbpdc73dcrkvg-qa-20261015-a62-6e8b42642deb",
+        "-o",
+        "jsonpath={range .items[*]}{.metadata.uid}{\"\\n\"}{.metadata.ownerReferences}{\"\\n\"}{range .status.containerStatuses[*]}{.name}{\" \"}{.state.terminated}{\"\\n\"}{end}{end}"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-15T21:20:04.208316+00:00",
+      "request": [
+        "kubectl",
+        "--context",
+        "hetzner-prod",
+        "-n",
+        "tea-d98210cbbpdc73dcrkvg",
+        "get",
+        "app.app.bex.co",
+        "tea-d98210cbbpdc73dcrkvg-qa-20261015-a628-predeploy",
+        "-o",
+        "jsonpath={.metadata.uid}{\"\\n\"}{.metadata.generation}{\"\\n\"}{.status.preDeploy}{\"\\n\"}"
+      ],
+      "exitCode": 0,
+      "stdout": "3e18e1c0-2f38-4ef5-acdc-1aa8b232084b\n6\n{\"finishedAt\":\"2026-10-15T21:15:16Z\",\"generation\":6,\"job\":\"predeploy-tea-d98210cbbpdc73dcrkvg-qa-20261015-a62-7e45ae94541e\",\"message\":\"the pre-deploy command exited with code 19; check the pre-deploy logs\",\"startedAt\":\"2026-10-15T21:14:57Z\",\"status\":\"Failed\"}\n",
+      "stderr": ""
+    }
+  ],
+  "a628RESTTimesAndDesktopFailure": {
+    "at": "2026-10-15T21:18:56.169Z",
+    "rest": [
+      {
+        "at": "2026-10-15T21:18:53.489Z",
+        "request": {
+          "method": "GET",
+          "url": "https://api.bex.co/v1/services/srv-db8jvjt23p2c7388on5g/deploys/dep-db8k09d23p2c7388on7g"
+        },
+        "status": 200,
+        "body": {
+          "id": "dep-db8k09d23p2c7388on7g",
+          "serviceId": "srv-db8jvjt23p2c7388on5g",
+          "status": "pre_deploy_failed",
+          "trigger": "service_updated",
+          "bexTrigger": "config_change",
+          "image": {
+            "ref": "busybox:1.37"
+          },
+          "createdAt": "2026-10-15T21:05:41.148294Z",
+          "updatedAt": "2026-10-15T21:05:49.138039Z",
+          "finishedAt": "2026-10-15T21:05:49.138037Z",
+          "preDeployStatus": "failed",
+          "failureReason": "the pre-deploy command exited with code 17; check the pre-deploy logs"
+        }
+      },
+      {
+        "at": "2026-10-15T21:18:53.787Z",
+        "request": {
+          "method": "GET",
+          "url": "https://api.bex.co/v1/services/srv-db8jvjt23p2c7388on5g/deploys/dep-db8k3il23p2c7388onjg"
+        },
+        "status": 200,
+        "body": {
+          "id": "dep-db8k3il23p2c7388onjg",
+          "serviceId": "srv-db8jvjt23p2c7388on5g",
+          "status": "pre_deploy_failed",
+          "trigger": "service_updated",
+          "bexTrigger": "config_change",
+          "image": {
+            "ref": "busybox:1.37"
+          },
+          "createdAt": "2026-10-15T21:12:42.326047Z",
+          "updatedAt": "2026-10-15T21:12:49.201168Z",
+          "finishedAt": "2026-10-15T21:12:49.201167Z",
+          "preDeployStatus": "failed",
+          "failureReason": "the pre-deploy command exited with code 19; check the pre-deploy logs"
+        }
+      },
+      {
+        "at": "2026-10-15T21:18:54.027Z",
+        "request": {
+          "method": "GET",
+          "url": "https://api.bex.co/v1/services/srv-db8jvjt23p2c7388on5g/deploys/dep-db8k4kd23p2c7388onlg"
+        },
+        "status": 200,
+        "body": {
+          "id": "dep-db8k4kd23p2c7388onlg",
+          "serviceId": "srv-db8jvjt23p2c7388on5g",
+          "status": "pre_deploy_failed",
+          "trigger": "service_updated",
+          "bexTrigger": "config_change",
+          "image": {
+            "ref": "busybox:1.37"
+          },
+          "createdAt": "2026-10-15T21:14:57.864653Z",
+          "updatedAt": "2026-10-15T21:15:18.888059Z",
+          "startedAt": "2026-10-15T21:15:04.310232Z",
+          "finishedAt": "2026-10-15T21:15:18.888058Z",
+          "preDeployStatus": "failed",
+          "failureReason": "the pre-deploy command exited with code 19; check the pre-deploy logs"
+        }
+      }
+    ],
+    "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261015-a628-predeploy\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261015-a628-predeploy\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Pre-Deploy Failed\"':\n    - /url: /services/srv-db8jvjt23p2c7388on5g/deploys/dep-db8k4kd23p2c7388onlg\n    - text: Latest deploy Pre-Deploy Failed\n  - link \"Free\":\n    - /url: /services/srv-db8jvjt23p2c7388on5g/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db8jvjt23p2c7388on5g\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261015-a628-predeploy.onbex.co\":\n    - /url: https://qa-20261015-a628-predeploy.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261015-a628-predeploy\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-4\n  - term: Created\n  - definition:\n    - time: 14m\n  - text: Deploy status Pre-Deploy Failed Config Change dep-db8k3il23p2c7388onjg\n  - paragraph: the pre-deploy command exited with code 19; check the pre-deploy logs\n  - paragraph: Pre-deploy command failed\n  - paragraph: busybox:1.37\n  - term: \"Created:\"\n  - definition: October 15, 2026 at 2:12 PM\n  - term: \"Updated:\"\n  - definition: October 15, 2026 at 2:12 PM\n  - term: \"Finished:\"\n  - definition: October 15, 2026 at 2:12 PM\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 15, 2026 at 2:12 PM\n    - listitem:\n      - paragraph: Pre-Deploy Failed\n      - time: October 15, 2026 at 2:12 PM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\"\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: 02:12:42 PM\n  - button \"Filter logs by instance srv-db8jvjt23p2c7388on5g-44upenkh63qakn3q3274\": \"[44upe]\"\n  - text: ==> Deploy queued 02:12:45 PM\n  - button \"Filter logs by instance srv-db8jvjt23p2c7388on5g-0nqvnl7oe77lafq3gtii\": \"[0nqvn]\"\n  - text: QA_A628_FAST_SECOND 02:12:49 PM\n  - button \"Filter logs by instance srv-db8jvjt23p2c7388on5g-44upenkh63qakn3q3274\": \"[44upe]\"\n  - text: \"==> Pre-deploy failed: the pre-deploy command exited with code 19; check the pre-deploy logs\""
+  },
+  "a628SlowFailureSaved": {
+    "at": "2026-10-15T21:14:58.635Z",
+    "request": {
+      "operationName": "SetPreDeployCommand",
+      "variables": {
+        "id": "srv-db8jvjt23p2c7388on5g",
+        "command": "printf '%s\\n' QA_A628_SLOW_CONTROL; sleep 12; exit 19"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.3.3"
+        }
+      },
+      "query": "mutation SetPreDeployCommand($id: String!, $command: String!, $confirm: String) {\n  setPreDeployCommand(id: $id, command: $command, confirm: $confirm) {\n    id\n    preDeployCommand\n    phase\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "setPreDeployCommand": {
+          "__typename": "Service",
+          "id": "srv-db8jvjt23p2c7388on5g",
+          "phase": "Running",
+          "preDeployCommand": "printf '%s\\n' QA_A628_SLOW_CONTROL; sleep 12; exit 19"
+        }
+      }
+    },
+    "url": "https://dashboard.bex.co/services/srv-db8jvjt23p2c7388on5g/settings"
+  },
+  "a628SlowFailureControl": {
+    "samples": [
+      {
+        "at": "2026-10-15T21:14:59.451Z",
+        "request": {
+          "operationName": "Qaa628SlowTimes",
+          "query": "query Qaa628SlowTimes($id:String!){deploys(serviceId:$id,limit:2){id status createdAt startedAt finishedAt preDeployStatus failureReason}}",
+          "variables": {
+            "id": "srv-db8jvjt23p2c7388on5g"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "createdAt": "2026-10-15T21:14:57.864653Z",
+                "failureReason": "",
+                "finishedAt": "",
+                "id": "dep-db8k4kd23p2c7388onlg",
+                "preDeployStatus": "",
+                "startedAt": "",
+                "status": "created"
+              },
+              {
+                "createdAt": "2026-10-15T21:12:42.326047Z",
+                "failureReason": "the pre-deploy command exited with code 19; check the pre-deploy logs",
+                "finishedAt": "2026-10-15T21:12:49.201167Z",
+                "id": "dep-db8k3il23p2c7388onjg",
+                "preDeployStatus": "failed",
+                "startedAt": "",
+                "status": "pre_deploy_failed"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "at": "2026-10-15T21:15:01.703Z",
+        "request": {
+          "operationName": "Qaa628SlowTimes",
+          "query": "query Qaa628SlowTimes($id:String!){deploys(serviceId:$id,limit:2){id status createdAt startedAt finishedAt preDeployStatus failureReason}}",
+          "variables": {
+            "id": "srv-db8jvjt23p2c7388on5g"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "createdAt": "2026-10-15T21:14:57.864653Z",
+                "failureReason": "",
+                "finishedAt": "",
+                "id": "dep-db8k4kd23p2c7388onlg",
+                "preDeployStatus": "",
+                "startedAt": "",
+                "status": "created"
+              },
+              {
+                "createdAt": "2026-10-15T21:12:42.326047Z",
+                "failureReason": "the pre-deploy command exited with code 19; check the pre-deploy logs",
+                "finishedAt": "2026-10-15T21:12:49.201167Z",
+                "id": "dep-db8k3il23p2c7388onjg",
+                "preDeployStatus": "failed",
+                "startedAt": "",
+                "status": "pre_deploy_failed"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "at": "2026-10-15T21:15:03.950Z",
+        "request": {
+          "operationName": "Qaa628SlowTimes",
+          "query": "query Qaa628SlowTimes($id:String!){deploys(serviceId:$id,limit:2){id status createdAt startedAt finishedAt preDeployStatus failureReason}}",
+          "variables": {
+            "id": "srv-db8jvjt23p2c7388on5g"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "createdAt": "2026-10-15T21:14:57.864653Z",
+                "failureReason": "",
+                "finishedAt": "",
+                "id": "dep-db8k4kd23p2c7388onlg",
+                "preDeployStatus": "",
+                "startedAt": "",
+                "status": "created"
+              },
+              {
+                "createdAt": "2026-10-15T21:12:42.326047Z",
+                "failureReason": "the pre-deploy command exited with code 19; check the pre-deploy logs",
+                "finishedAt": "2026-10-15T21:12:49.201167Z",
+                "id": "dep-db8k3il23p2c7388onjg",
+                "preDeployStatus": "failed",
+                "startedAt": "",
+                "status": "pre_deploy_failed"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "at": "2026-10-15T21:15:06.199Z",
+        "request": {
+          "operationName": "Qaa628SlowTimes",
+          "query": "query Qaa628SlowTimes($id:String!){deploys(serviceId:$id,limit:2){id status createdAt startedAt finishedAt preDeployStatus failureReason}}",
+          "variables": {
+            "id": "srv-db8jvjt23p2c7388on5g"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "createdAt": "2026-10-15T21:14:57.864653Z",
+                "failureReason": "",
+                "finishedAt": "",
+                "id": "dep-db8k4kd23p2c7388onlg",
+                "preDeployStatus": "running",
+                "startedAt": "2026-10-15T21:15:04.310232Z",
+                "status": "pre_deploy_in_progress"
+              },
+              {
+                "createdAt": "2026-10-15T21:12:42.326047Z",
+                "failureReason": "the pre-deploy command exited with code 19; check the pre-deploy logs",
+                "finishedAt": "2026-10-15T21:12:49.201167Z",
+                "id": "dep-db8k3il23p2c7388onjg",
+                "preDeployStatus": "failed",
+                "startedAt": "",
+                "status": "pre_deploy_failed"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "at": "2026-10-15T21:15:08.466Z",
+        "request": {
+          "operationName": "Qaa628SlowTimes",
+          "query": "query Qaa628SlowTimes($id:String!){deploys(serviceId:$id,limit:2){id status createdAt startedAt finishedAt preDeployStatus failureReason}}",
+          "variables": {
+            "id": "srv-db8jvjt23p2c7388on5g"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "createdAt": "2026-10-15T21:14:57.864653Z",
+                "failureReason": "",
+                "finishedAt": "",
+                "id": "dep-db8k4kd23p2c7388onlg",
+                "preDeployStatus": "running",
+                "startedAt": "2026-10-15T21:15:04.310232Z",
+                "status": "pre_deploy_in_progress"
+              },
+              {
+                "createdAt": "2026-10-15T21:12:42.326047Z",
+                "failureReason": "the pre-deploy command exited with code 19; check the pre-deploy logs",
+                "finishedAt": "2026-10-15T21:12:49.201167Z",
+                "id": "dep-db8k3il23p2c7388onjg",
+                "preDeployStatus": "failed",
+                "startedAt": "",
+                "status": "pre_deploy_failed"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "at": "2026-10-15T21:15:10.720Z",
+        "request": {
+          "operationName": "Qaa628SlowTimes",
+          "query": "query Qaa628SlowTimes($id:String!){deploys(serviceId:$id,limit:2){id status createdAt startedAt finishedAt preDeployStatus failureReason}}",
+          "variables": {
+            "id": "srv-db8jvjt23p2c7388on5g"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "createdAt": "2026-10-15T21:14:57.864653Z",
+                "failureReason": "",
+                "finishedAt": "",
+                "id": "dep-db8k4kd23p2c7388onlg",
+                "preDeployStatus": "running",
+                "startedAt": "2026-10-15T21:15:04.310232Z",
+                "status": "pre_deploy_in_progress"
+              },
+              {
+                "createdAt": "2026-10-15T21:12:42.326047Z",
+                "failureReason": "the pre-deploy command exited with code 19; check the pre-deploy logs",
+                "finishedAt": "2026-10-15T21:12:49.201167Z",
+                "id": "dep-db8k3il23p2c7388onjg",
+                "preDeployStatus": "failed",
+                "startedAt": "",
+                "status": "pre_deploy_failed"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "at": "2026-10-15T21:15:12.943Z",
+        "request": {
+          "operationName": "Qaa628SlowTimes",
+          "query": "query Qaa628SlowTimes($id:String!){deploys(serviceId:$id,limit:2){id status createdAt startedAt finishedAt preDeployStatus failureReason}}",
+          "variables": {
+            "id": "srv-db8jvjt23p2c7388on5g"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "createdAt": "2026-10-15T21:14:57.864653Z",
+                "failureReason": "",
+                "finishedAt": "",
+                "id": "dep-db8k4kd23p2c7388onlg",
+                "preDeployStatus": "running",
+                "startedAt": "2026-10-15T21:15:04.310232Z",
+                "status": "pre_deploy_in_progress"
+              },
+              {
+                "createdAt": "2026-10-15T21:12:42.326047Z",
+                "failureReason": "the pre-deploy command exited with code 19; check the pre-deploy logs",
+                "finishedAt": "2026-10-15T21:12:49.201167Z",
+                "id": "dep-db8k3il23p2c7388onjg",
+                "preDeployStatus": "failed",
+                "startedAt": "",
+                "status": "pre_deploy_failed"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "at": "2026-10-15T21:15:15.184Z",
+        "request": {
+          "operationName": "Qaa628SlowTimes",
+          "query": "query Qaa628SlowTimes($id:String!){deploys(serviceId:$id,limit:2){id status createdAt startedAt finishedAt preDeployStatus failureReason}}",
+          "variables": {
+            "id": "srv-db8jvjt23p2c7388on5g"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "createdAt": "2026-10-15T21:14:57.864653Z",
+                "failureReason": "",
+                "finishedAt": "",
+                "id": "dep-db8k4kd23p2c7388onlg",
+                "preDeployStatus": "running",
+                "startedAt": "2026-10-15T21:15:04.310232Z",
+                "status": "pre_deploy_in_progress"
+              },
+              {
+                "createdAt": "2026-10-15T21:12:42.326047Z",
+                "failureReason": "the pre-deploy command exited with code 19; check the pre-deploy logs",
+                "finishedAt": "2026-10-15T21:12:49.201167Z",
+                "id": "dep-db8k3il23p2c7388onjg",
+                "preDeployStatus": "failed",
+                "startedAt": "",
+                "status": "pre_deploy_failed"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "at": "2026-10-15T21:15:17.432Z",
+        "request": {
+          "operationName": "Qaa628SlowTimes",
+          "query": "query Qaa628SlowTimes($id:String!){deploys(serviceId:$id,limit:2){id status createdAt startedAt finishedAt preDeployStatus failureReason}}",
+          "variables": {
+            "id": "srv-db8jvjt23p2c7388on5g"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "createdAt": "2026-10-15T21:14:57.864653Z",
+                "failureReason": "",
+                "finishedAt": "",
+                "id": "dep-db8k4kd23p2c7388onlg",
+                "preDeployStatus": "running",
+                "startedAt": "2026-10-15T21:15:04.310232Z",
+                "status": "pre_deploy_in_progress"
+              },
+              {
+                "createdAt": "2026-10-15T21:12:42.326047Z",
+                "failureReason": "the pre-deploy command exited with code 19; check the pre-deploy logs",
+                "finishedAt": "2026-10-15T21:12:49.201167Z",
+                "id": "dep-db8k3il23p2c7388onjg",
+                "preDeployStatus": "failed",
+                "startedAt": "",
+                "status": "pre_deploy_failed"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "at": "2026-10-15T21:15:19.705Z",
+        "request": {
+          "operationName": "Qaa628SlowTimes",
+          "query": "query Qaa628SlowTimes($id:String!){deploys(serviceId:$id,limit:2){id status createdAt startedAt finishedAt preDeployStatus failureReason}}",
+          "variables": {
+            "id": "srv-db8jvjt23p2c7388on5g"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "createdAt": "2026-10-15T21:14:57.864653Z",
+                "failureReason": "the pre-deploy command exited with code 19; check the pre-deploy logs",
+                "finishedAt": "2026-10-15T21:15:18.888058Z",
+                "id": "dep-db8k4kd23p2c7388onlg",
+                "preDeployStatus": "failed",
+                "startedAt": "2026-10-15T21:15:04.310232Z",
+                "status": "pre_deploy_failed"
+              },
+              {
+                "createdAt": "2026-10-15T21:12:42.326047Z",
+                "failureReason": "the pre-deploy command exited with code 19; check the pre-deploy logs",
+                "finishedAt": "2026-10-15T21:12:49.201167Z",
+                "id": "dep-db8k3il23p2c7388onjg",
+                "preDeployStatus": "failed",
+                "startedAt": "",
+                "status": "pre_deploy_failed"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "public": {
+      "at": "2026-10-15T21:15:20.281Z",
+      "status": 200,
+      "body": "MODE=pending\nPOD=tea-d98210cbbpdc73dcrkvg-qa-20261015-a628-predeploy-6c78dc8gd6l\n"
+    }
+  },
+  "a628SlowControlDesktopDetail": {
+    "at": "2026-10-15T21:16:50.053Z",
+    "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261015-a628-predeploy\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261015-a628-predeploy\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Pre-Deploy Failed\"':\n    - /url: /services/srv-db8jvjt23p2c7388on5g/deploys/dep-db8k4kd23p2c7388onlg\n    - text: Latest deploy Pre-Deploy Failed\n  - link \"Free\":\n    - /url: /services/srv-db8jvjt23p2c7388on5g/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db8jvjt23p2c7388on5g\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261015-a628-predeploy.onbex.co\":\n    - /url: https://qa-20261015-a628-predeploy.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261015-a628-predeploy\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-4\n  - term: Created\n  - definition:\n    - time: 12m\n  - text: Deploy status Pre-Deploy Failed Config Change dep-db8k4kd23p2c7388onlg\n  - paragraph: the pre-deploy command exited with code 19; check the pre-deploy logs\n  - paragraph: Pre-deploy command failed\n  - paragraph: busybox:1.37\n  - term: \"Created:\"\n  - definition: October 15, 2026 at 2:14 PM\n  - term: \"Updated:\"\n  - definition: October 15, 2026 at 2:15 PM\n  - term: \"Started:\"\n  - definition: October 15, 2026 at 2:15 PM\n  - term: \"Finished:\"\n  - definition: October 15, 2026 at 2:15 PM\n  - term: \"Duration:\"\n  - definition: 14s\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 15, 2026 at 2:14 PM\n    - listitem:\n      - paragraph: Deploy started\n      - time: October 15, 2026 at 2:15 PM\n    - listitem:\n      - paragraph: Pre-Deploy Failed\n      - time: October 15, 2026 at 2:15 PM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\"\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: Loading logs…"
+  },
+  "a628FastFailureFreshMobile": {
+    "at": "2026-10-15T21:20:05.819Z",
+    "url": "https://dashboard.bex.co/services/srv-db8jvjt23p2c7388on5g/deploys/dep-db8k3il23p2c7388onjg",
+    "terms": [
+      "Slug",
+      "Instances",
+      "Revision",
+      "Created",
+      "Created: ",
+      "Updated: ",
+      "Finished: "
+    ],
+    "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261015-a628-predeploy\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261015-a628-predeploy\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Pre-Deploy Failed\"':\n    - /url: /services/srv-db8jvjt23p2c7388on5g/deploys/dep-db8k4kd23p2c7388onlg\n    - text: Latest deploy Pre-Deploy Failed\n  - link \"Free\":\n    - /url: /services/srv-db8jvjt23p2c7388on5g/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db8jvjt23p2c7388on5g\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261015-a628-predeploy.onbex.co\":\n    - /url: https://qa-20261015-a628-predeploy.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261015-a628-predeploy\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-4\n  - term: Created\n  - definition:\n    - time: 15m\n  - text: Deploy status Pre-Deploy Failed Config Change dep-db8k3il23p2c7388onjg\n  - paragraph: the pre-deploy command exited with code 19; check the pre-deploy logs\n  - paragraph: Pre-deploy command failed\n  - paragraph: busybox:1.37\n  - term: \"Created:\"\n  - definition: October 15, 2026 at 2:12 PM\n  - term: \"Updated:\"\n  - definition: October 15, 2026 at 2:12 PM\n  - term: \"Finished:\"\n  - definition: October 15, 2026 at 2:12 PM\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 15, 2026 at 2:12 PM\n    - listitem:\n      - paragraph: Pre-Deploy Failed\n      - time: October 15, 2026 at 2:12 PM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\"\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: Loading logs…"
+  },
+  "a628Deleted": {
+    "at": "2026-10-15T21:20:54.941Z",
+    "request": {
+      "operationName": "DeleteService",
+      "variables": {
+        "id": "srv-db8jvjt23p2c7388on5g"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.3.3"
+        }
+      },
+      "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deleteService": true
+      }
+    },
+    "url": "https://dashboard.bex.co/"
+  },
+  "a628CleanupInventory": {
+    "at": "2026-10-15T21:21:07.848Z",
+    "status": 200,
+    "inventory": {
+      "data": {
+        "blueprints": [
+          {
+            "id": "blp-d9nqg95cavls73fp8m10",
+            "name": "discourse_docker"
+          }
+        ],
+        "databases": [
+          {
+            "id": "dpg-d9nqg95cavls73fp8m20",
+            "name": "beancount-forum-db"
+          },
+          {
+            "id": "dpg-d9rrkoc4h4mc73edurp0",
+            "name": "tianpan-forum-db"
+          },
+          {
+            "id": "dpg-d9rs3ee0ccis738kc7c0",
+            "name": "blockeden-forum-db"
+          },
+          {
+            "id": "dpg-db34l9bor55s73cqpq9g",
+            "name": "qa-20261007-r16-owner-f208ab"
+          }
+        ],
+        "envGroups": [
+          {
+            "id": "evg-db0s94c48ccs739jikr0",
+            "name": "qa-20261003-keys-r85"
+          }
+        ],
+        "keyValues": [
+          {
+            "id": "red-d9p49kdrtmes73c34ovg",
+            "name": "beancount-forum-redis"
+          },
+          {
+            "id": "red-da4086iii7bs73drbqh0",
+            "name": "blockeden-forum-redis"
+          }
+        ],
+        "projects": [
+          {
+            "id": "prj-d9dgeo0bd9nc73a0vh1g",
+            "name": "bex.co"
+          },
+          {
+            "id": "prj-d9e5qct5qe4s73b1mjn0",
+            "name": "beancount.io"
+          },
+          {
+            "id": "prj-d9sgfnbjghus73cg6hg0",
+            "name": "forums"
+          }
+        ],
+        "services": [
+          {
+            "id": "srv-d9bkcspg9s7c73d0n8ug",
+            "name": "agentmarketcap-1",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9bj8s3eg85c7390eb9g",
+            "name": "beancount-cms-v2",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9nqg9dcavls73fp8m2g",
+            "name": "beancount-forum",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9ndt8hmcglc739fkp50",
+            "name": "eden-dash-v3",
+            "type": "web_service"
+          },
+          {
+            "id": "srv-d9e40ei9086p3l1jri30",
+            "name": "eden-cms-v2",
+            "type": "web_service"
+          }
+        ],
+        "webhookEndpoints": []
+      }
+    },
+    "deletedStatus": 404
+  },
+  "a628Cleared": {
+    "at": "2026-10-15T21:22:59.263Z",
+    "whoami": 401,
+    "cookies": 0,
+    "pages": 1,
+    "url": "about:blank"
+  }
+}
