@@ -143,7 +143,7 @@ func TestValidateRepoSourceAccess(t *testing.T) {
 			st := newFakeStore()
 			st.conns = append(st.conns, store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"})
 			svc := &Service{Base: &core.Base{Namespace: "default"}, Store: st, GitHub: &tc.client}
-			err := svc.DeployTokenSource().ValidateRepo(context.Background(), tc.workspace, tc.repo)
+			_, err := svc.DeployTokenSource().ValidateRepo(context.Background(), tc.workspace, tc.repo)
 			if errors.Is(err, core.ErrBadRequest) != tc.wantBadRequest || (err != nil) != (tc.wantBadRequest || tc.wantError) {
 				t.Fatalf("validation error = %v", err)
 			}
@@ -152,4 +152,55 @@ func TestValidateRepoSourceAccess(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestValidateRepoReportsTheRepositoryDefaultBranch is w8/m76's source
+// boundary: the access check's own repository read names the default branch an
+// omitted-branch create builds, through whichever path (installation grant or
+// anonymous public read) answered — one read, never a second lookup.
+func TestValidateRepoReportsTheRepositoryDefaultBranch(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		repo       string
+		client     fakeClient
+		want       string
+		wantErr    bool
+		wantTokens []string
+	}{
+		{name: "public master", repo: "https://github.com/expressjs/serve-static", client: fakeClient{publicRepoOK: true, defaultBranch: "master"}, want: "master", wantTokens: []string{""}},
+		{name: "public trunk", repo: "https://github.com/stranger/app", client: fakeClient{publicRepoOK: true, defaultBranch: "trunk"}, want: "trunk", wantTokens: []string{""}},
+		{name: "granted master via installation", repo: "https://github.com/octo/app", client: fakeClient{token: "installation", repoOK: true, defaultBranch: "master"}, want: "master", wantTokens: []string{"installation"}},
+		{name: "granted main", repo: "https://github.com/octo/app", client: fakeClient{token: "installation", repoOK: true, defaultBranch: "main"}, want: "main", wantTokens: []string{"installation"}},
+		{name: "connected but ungranted public falls through to the public read", repo: "https://github.com/octo/app", client: fakeClient{token: "installation", publicRepoOK: true, defaultBranch: "master"}, want: "master", wantTokens: []string{"installation", ""}},
+		// Reported as-is: a source edit with its own branch must not be refused
+		// over a default it never builds; create judges usability.
+		{name: "absent default is reported as absent", repo: "https://github.com/stranger/app", client: fakeClient{publicRepoOK: true, noDefaultBranch: true}, wantTokens: []string{""}},
+		{name: "unusual default is reported verbatim", repo: "https://github.com/stranger/app", client: fakeClient{publicRepoOK: true, defaultBranch: "-x;y"}, want: "-x;y", wantTokens: []string{""}},
+		{name: "public lookup failure", repo: "https://github.com/stranger/app", client: fakeClient{repoErr: &APIError{Status: 503}}, wantErr: true, wantTokens: []string{""}},
+		{name: "other git provider has no opinion", repo: "https://gitlab.com/octo/app", client: fakeClient{publicRepoOK: true, defaultBranch: "master"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := newFakeStore()
+			st.conns = append(st.conns, store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"})
+			svc := &Service{Base: &core.Base{Namespace: "default"}, Store: st, GitHub: &tc.client}
+			got, err := svc.DeployTokenSource().ValidateRepo(context.Background(), "default", tc.repo)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("ValidateRepo error = %v, wantErr %v", err, tc.wantErr)
+			}
+			if got != tc.want {
+				t.Errorf("default branch = %q, want %q", got, tc.want)
+			}
+			if !reflect.DeepEqual(tc.client.repoTokens, tc.wantTokens) {
+				t.Errorf("repository reads used tokens %q, want %q", tc.client.repoTokens, tc.wantTokens)
+			}
+		})
+	}
+
+	t.Run("github unconfigured has no opinion", func(t *testing.T) {
+		svc := &Service{Base: &core.Base{Namespace: "default"}}
+		got, err := svc.DeployTokenSource().ValidateRepo(context.Background(), "default", "https://github.com/octo/app")
+		if err != nil || got != "" {
+			t.Fatalf("ValidateRepo with GitHub off = %q, %v; want \"\", nil", got, err)
+		}
+	})
 }

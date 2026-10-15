@@ -227,7 +227,11 @@ export function NewServicePage() {
                       label={t("services.createFieldBranch")}
                       value={form.branch}
                       onChange={(branch) => set({ branch })}
-                      placeholder={t("services.createFieldBranchPlaceholder")}
+                      placeholder={
+                        (form.tab === "github" &&
+                          form.selectedRepo?.defaultBranch) ||
+                        t("services.createFieldBranchPlaceholder")
+                      }
                     />
                     <TextField
                       id="svc-rootdir"

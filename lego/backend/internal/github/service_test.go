@@ -255,25 +255,29 @@ func (f *fakeStore) DeleteGitConnection(_ context.Context, workspaceID string, i
 }
 
 type fakeClient struct {
-	installErr     error
-	login          string
-	repos          []Repo
-	reposErr       error
-	branches       []string
-	branchesErr    error
-	gotBranchRepo  []string // (owner, repo) ListBranches was called with
-	tree           []RepoTreeEntry
-	treeErr        error
-	gotTree        []string // (token, owner, repo, path, ref)
-	token          string
-	tokenErr       error
-	repoOK         bool // RepoAccessible result
-	repoErr        error
-	publicRepoOK   bool
-	repoTokens     []string
-	commit         Commit // GetCommit result (w9/001)
-	commitErr      error
-	getCommitCalls int // how many times GetCommit ran (cache assertions)
+	installErr    error
+	login         string
+	repos         []Repo
+	reposErr      error
+	branches      []string
+	branchesErr   error
+	gotBranchRepo []string // (owner, repo) ListBranches was called with
+	tree          []RepoTreeEntry
+	treeErr       error
+	gotTree       []string // (token, owner, repo, path, ref)
+	token         string
+	tokenErr      error
+	repoOK        bool // LookupRepo result
+	repoErr       error
+	publicRepoOK  bool
+	repoTokens    []string
+	// defaultBranch is the LookupRepo metadata's default branch ("main" when
+	// empty, as GitHub always names one, unless noDefaultBranch is set).
+	defaultBranch   string
+	noDefaultBranch bool
+	commit          Commit // GetCommit result (w9/001)
+	commitErr       error
+	getCommitCalls  int // how many times GetCommit ran (cache assertions)
 	// gotCommitRef records the (token, owner, repo, ref) GetCommit was called
 	// with, for assertions.
 	gotCommitRef []string
@@ -340,12 +344,19 @@ func (c *fakeClient) MintInstallationToken(_ context.Context, installationID int
 	return InstallationToken{Token: c.token}, nil
 }
 
-func (c *fakeClient) RepoAccessible(_ context.Context, token, _, _ string) (bool, error) {
+func (c *fakeClient) LookupRepo(_ context.Context, token, _, _ string) (Repo, bool, error) {
 	c.repoTokens = append(c.repoTokens, token)
-	if token == "" && c.publicRepoOK {
-		return true, c.repoErr
+	meta := Repo{DefaultBranch: c.defaultBranch}
+	if meta.DefaultBranch == "" && !c.noDefaultBranch {
+		meta.DefaultBranch = "main" // GitHub always names one; tests opt out explicitly
 	}
-	return c.repoOK, c.repoErr
+	if token == "" && c.publicRepoOK {
+		return meta, true, c.repoErr
+	}
+	if !c.repoOK {
+		return Repo{}, false, c.repoErr
+	}
+	return meta, true, c.repoErr
 }
 
 func (c *fakeClient) GetCommit(_ context.Context, token, owner, repo, ref string) (Commit, error) {
@@ -625,7 +636,7 @@ func TestCloneToken(t *testing.T) {
 	st.conns = append(st.conns, store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"})
 	ctx := context.Background()
 
-	// Repo in the grant (RepoAccessible ok) => a fresh token, across URL forms.
+	// Repo in the grant (LookupRepo ok) => a fresh token, across URL forms.
 	svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{token: "ghs_fresh", repoOK: true}, Store: st}
 	for _, url := range []string{"https://github.com/octo/app", "https://github.com/octo/app.git", "git@github.com:octo/app.git"} {
 		tok, ok, err := svc.cloneToken(ctx, "default", url)
@@ -634,7 +645,7 @@ func TestCloneToken(t *testing.T) {
 		}
 	}
 
-	// Repo NOT in the grant (RepoAccessible false) => no token, no error.
+	// Repo NOT in the grant (LookupRepo false) => no token, no error.
 	notGranted := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{token: "x", repoOK: false}, Store: st}
 	if tok, ok, err := notGranted.cloneToken(ctx, "default", "https://github.com/octo/app"); ok || tok != "" || err != nil {
 		t.Errorf("unconnected repo = %q,%v,%v", tok, ok, err)

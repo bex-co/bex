@@ -387,7 +387,9 @@ func (s *Service) checkSourcePatch(ctx context.Context, a *appv1alpha1.App, patc
 		return sourceFields{}, false, err
 	}
 	if next.repo != "" && next.repo != a.Spec.Repo && s.GitHub != nil {
-		if err := s.GitHub.ValidateRepo(ctx, s.AppWorkspace(ctx, a), next.repo); err != nil {
+		// The reported default is unused: a source edit keeps its own branch
+		// rule (explicit empty restores the legacy default).
+		if _, err := s.GitHub.ValidateRepo(ctx, s.AppWorkspace(ctx, a), next.repo); err != nil {
 			return sourceFields{}, false, err
 		}
 	}
