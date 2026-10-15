@@ -21,12 +21,19 @@ import {
  * (w4/m203), so the first query after the selection ends at the selection time
  * rather than at the mount or the last tick. Leaving for a custom range and
  * coming back to the same preset is a new selection too.
+ *
+ * A changed `resetKey` is a new selection too (w4/306), so a caller whose query
+ * changes under the same preset reads up to that change, not the last tick. A
+ * custom range ignores it: its bounds never read the clock.
  */
-export function useLiveRange(range: RangeWindow | CustomRange) {
+export function useLiveRange(
+  range: RangeWindow | CustomRange,
+  resetKey?: string,
+) {
   const custom = "startTime" in range;
   const selection = custom
     ? "custom"
-    : `${range.spanSeconds}:${range.resolutionSeconds}`;
+    : `${range.spanSeconds}:${range.resolutionSeconds}:${resetKey ?? ""}`;
   const [clock, setClock] = useState(() => ({ selection, now: new Date() }));
   let now = clock.now;
   if (clock.selection !== selection) {
