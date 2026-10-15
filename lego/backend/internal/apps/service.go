@@ -4123,13 +4123,7 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 	// Stamp the pending generation before writing the projector-owned source
 	// row. If the following CR patch loses a race or the API becomes unavailable,
 	// a later projector resync still cannot deploy the new source accidentally.
-	markerBase := client.MergeFrom(a.DeepCopy())
-	metav1.SetMetaDataAnnotation(
-		&a.ObjectMeta,
-		appv1alpha1.AnnotationPendingSourceGeneration,
-		strconv.FormatInt(a.Generation+1, 10),
-	)
-	if err := s.Client.Patch(ctx, a, markerBase); err != nil {
+	if err := s.markSourcePending(ctx, a); err != nil {
 		return AppView{}, err
 	}
 	if s.Store != nil {
@@ -4167,6 +4161,16 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 	// validation, and the CR patch landed.
 	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetSourceAndRegistryCredential)
 	return updated, nil
+}
+
+// markSourcePending stamps the generation a source change will land at, so the
+// operator keeps the active release serving until a deploy verb stamps
+// AnnotationReleaseGeneration at that generation or newer.
+func (s *Service) markSourcePending(ctx context.Context, a *appv1alpha1.App) error {
+	base := client.MergeFrom(a.DeepCopy())
+	metav1.SetMetaDataAnnotation(&a.ObjectMeta, appv1alpha1.AnnotationPendingSourceGeneration,
+		strconv.FormatInt(a.Generation+1, 10))
+	return s.Client.Patch(ctx, a, base)
 }
 
 func sameStringPtr(a, b *string) bool {

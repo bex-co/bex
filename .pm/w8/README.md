@@ -17,7 +17,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m67** — [Keep native live logs running after a transient disconnect](blocked/m67/README.md) — **BLOCKED (2026-10-14: t001 done — Bex built on v2.29.0 reconnects and resumes A/B exactly once, but v2.29 also retries normal 1000 closes, which Bex uses to end a no-running-build tail (w8/020), so `logs --type build --tail` would loop forever. Needs the user to choose a non-retryable refusal close code (non-zero exit), accepting the retry, or waiting for upstream; then t002–t006 and an explicitly requested CLI release)**
 
-- [ ] **m66** — [Keep Blueprint service updates in canonical intent](m66/README.md) (6 tasks,3h5m) ← functional CLI sweep230; source/branch loss live-proven, four missing canonical-write source states
+- [ ] **m66** — [Keep Blueprint service updates in canonical intent](blocked/m66/README.md) — **BLOCKED (2026-10-14: t001–t005 done — Blueprint updates now write source/plan/instances/disk to the canonical App row before the CR patch; needs the API deployed to production plus the sweep230 two-client inline/persistent-sync source replay and cleanup before t006)**
 
 - [ ] **m65** — [Retain PostgreSQL process logs during bursts](blocked/m65/README.md) — **BLOCKED (2026-10-13: t001 done — the fix is upstream CNPG #11131 in operator 1.30.1 / chart 0.29.1, we run 1.30.0; needs the user to approve a CNPG upgrade rollout that restarts every managed Postgres pod (control plane + tenant Free single-instance DBs), or decide to enable in-place instance-manager updates first; then the credentialed chart mirror, live 300/1005-record burst acceptance and cleanup)**
 
