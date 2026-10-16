@@ -19,7 +19,9 @@ package logs
 import (
 	"encoding/json"
 	"os"
+	"runtime"
 	"slices"
+	"strings"
 	"testing"
 	"unicode"
 	"unicode/utf8"
@@ -32,7 +34,8 @@ import (
 // toLowerCase folds a final Σ to ς and İ to two code points; it matches through
 // the same table instead (dashboard/src/features/logs/lib/__tests__/
 // go-lowercase.test.ts), so a deploy search finds what service history finds
-// (w4/m216). Regenerate with BEX_UPDATE_LOWERCASE_RUNS=1 after a Go upgrade
+// (w4/m216). Regenerate with GOWORK=off BEX_UPDATE_LOWERCASE_RUNS=1 — the
+// toolchain bex-api is built with, not the workspace's newer one — after a Go upgrade
 // changes the Unicode tables; both suites then pin the new table.
 const lowercaseRunsPath = "testdata/lowercase-runs.json"
 
@@ -65,7 +68,30 @@ func goLowercaseRuns() []lowercaseRun {
 	return runs
 }
 
+// moduleGoLine is this module's `go` directive (e.g. "1.26"): the toolchain
+// bex-api is built and CI-tested with (lego/Dockerfile and backend-test.yml
+// both build without the workspace). The workspace's go.work can select a
+// newer Go with newer Unicode tables, which is not what the server folds with.
+func moduleGoLine(t *testing.T) string {
+	t.Helper()
+	raw, err := os.ReadFile("../../go.mod")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for line := range strings.SplitSeq(string(raw), "\n") {
+		if version, ok := strings.CutPrefix(line, "go "); ok {
+			parts := strings.SplitN(strings.TrimSpace(version), ".", 3)
+			return parts[0] + "." + parts[1]
+		}
+	}
+	t.Fatal("go.mod has no go directive")
+	return ""
+}
+
 func TestLowercaseRunsMatchGo(t *testing.T) {
+	if line := moduleGoLine(t); !strings.HasPrefix(runtime.Version(), "go"+line+".") && runtime.Version() != "go"+line {
+		t.Skipf("the table pins Go %s's Unicode tables (bex-api's toolchain); this is %s — run with GOWORK=off", line, runtime.Version())
+	}
 	runs := goLowercaseRuns()
 	// The runs reproduce unicode.ToLower exactly, for every scalar value.
 	mapped := map[rune]rune{}
