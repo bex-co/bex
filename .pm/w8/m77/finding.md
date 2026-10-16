@@ -1,0 +1,42 @@
+# Ruby and Python builds lack the secondary JavaScript toolchain
+
+The original sweep321 report below covers Ruby. [Sweep328](evidence/cli-sweep328/README.md) reproduces the same missing companion-tool mechanism on Python3.12 through both native clients. It expands this existing major finding; no duplicate issue is created.
+
+**Severity: major. Owner: operator native image assembly.** A valid native Ruby service that uses Node/Yarn for frontend assets cannot build because node is absent. Both native clients reproduce the failure; their unchanged requests succeed with201 and the server-side build later fails. Ruby-only controls prove that the same repository, branch, root and primary runtime work. [Evidence and qualifications](evidence/cli-sweep321/README.md).
+
+## Contract and impact
+
+[Render's native runtime tools contract](https://render.com/docs/native-runtimes) lists Node, npm, Yarn and pnpm for all native runtimes during builds and at runtime. Its [Rails6/7 guide](https://render.com/docs/deploy-rails-6-7) uses Ruby together with Node.js and Yarn dependencies. This finding is the concrete missing JavaScript toolchain in Ruby; it does not demand every general-purpose native utility or claim a full Rails deployment was attempted.
+
+The two first builds report node: command not found, then a missing probe file because conditional setup was skipped; final recorded build exit is1. Both Ruby-only controls are Live/HTTP200, actual Ruby3.4.11, Bundler2.6.9 and RubyGems3.6.9. In each control's build and runtime snapshot, all four JavaScript executables fail to resolve with ENOENT. Missing Node/Yarn blocks ordinary Ruby frontend build commands; package selection is not a CLI serialization or user credential problem.
+
+## Request and execution path
+
+- Exact pin cmd/servicecreate.go:63–86 declares runtime/build/start/root-directory flags. pkg/service/create.go:23–34,98,134–157 builds the typed native request; captures prove Ruby and commands cross the wire unchanged. The Bex launcher and unchanged Render hit the same production route with201.
+- lego/backend/internal/apps/rest.go:479–501,567–568 maps runtime and build command. apps/service.go:1966–1970,2815,2907 projects the native spec. No backend rewrite supplies Node or runs the authored build locally.
+- The sibling source producers are apps/graphql.go:720–721, apps/mcp.go:270–272 and dashboard/src/features/services/lib/create-service-input.ts:199–209. They carry native runtime/build/start into the service path; this source inspection is not live GraphQL/MCP/dashboard acceptance.
+- lego/operator/internal/controller/app_controller.go:1030–1045 carries Runtime/BuildCommand/StartCommand into build.Options. internal/build/build.go:607,941,1125–1129 selects the native path and preparer/resolver stages.
+- lego/operator/internal/build/native.go:104–107 selects digest-pinned official Ruby images for3.3/3.4/4.0. nativeDockerfile:234–275 emits one primary FROM, source/env setup, the authored build and runtime command. It has no secondary JavaScript assembly. nativeBuildPreparer:301 materializes that same file. The four retained generated artifacts expose the actual result.
+- internal/build/nativeresolve.go:48–75 resolves the Ruby signal and rewrites only the primary base. nativeversion.go:80–81 preserves Gemfile then .ruby-version selection; changing the primary line cannot add Node/npm/Yarn. A repair must integrate with this artifact path rather than install tools in a preparer whose filesystem is absent from the final image.
+
+## Proposed repair and shared-code scope
+
+Supply a reviewed, pinned secondary Node/npm/Yarn toolchain in native Ruby images before the authored build, and retain it in the deployed image. Reuse the existing image/version inventory and freshness discipline; do not substitute the primary Node runtime for Ruby, execute an unreviewed floating installer, require a user shim, or patch the imported CLI. Decide and document the secondary tool versions and handle pnpm consistently with [m73](../blocked/m73/README.md); the Ruby Node/npm/Yarn availability contract remains its own fix.
+
+Keep the selected Ruby/Gem/Bundler paths, Gemfile/.ruby-version precedence, authored PATH, env and secret-file handoff, workdir, command quoting, ENTRYPOINT clearing and deterministic cache identity. Audit default and all three supported Ruby lines plus shared native job/preparer/resolver/runtime and static extraction callers; a changed tool identity must not reuse a stale layer. If a common helper is introduced, verify primary Node/Python/Go/Rust/Elixir and static artifacts remain valid. Shared callers are a separate task. No paid or cron live fixtures are needed.
+
+Dedupe covers open/blocked/done Markdown and recent native generator/resolver history. [m73](../blocked/m73/README.md) is pnpm in primary Node and explicitly excludes broad cross-runtime tooling. [m71](../done/m71/README.md) is Bun, [m72](../blocked/m72/README.md) Poetry in Python, [completed m51](../done/m51/README.md) primary runtime selection and [completed m61](../done/m61/README.md) exact PATH/env/file handoff. Sweep238 used Ruby-only probes and never checked Node/Yarn. These related fixes do not supply Ruby's secondary JavaScript tools; no old full DoD is claimed replayed or reopened. Other utility omissions and other language runtime tool bundles remain unverified.
+
+This QA run supplies live negative/control evidence and source diagnosis, not an implementation or fixed candidate. Schedule meaningful regressions that fail on the missing-tool image and pass on the repair. Prove all supported Ruby image lines locally/CI, then repeat both native Free default-Ruby journeys without an install workaround, requiring build/runtime Node/npm/Yarn success, exact Ruby markers and complete cleanup. Keep any remaining pnpm version semantics explicit instead of silently calling m73 complete.
+
+## Python scope confirmed2026-10-15 — sweep328
+
+Both fresh native Python creates return201/exit0 but their first builds fail on missing node with inner BuildKit exit127. Native Python-only build/start controls then reach Live/HTTP200 on Python3.12.15, with the same explicit PYTHON_VERSION=3.12, no installation workaround and exact build/runtime markers. All four secondary tools node/npm/yarn/pnpm remain ENOENT at both phases in both controls. See the [complete commands, wire, source execution and cleanup](evidence/cli-sweep328/README.md). Ruby's original final build exit1 is retained separately.
+
+Current source5977e4f98 contains the Poetry and pnpm implementations, yet a real generated Python3.12 Docker build still fails at node --version. This rules out deployment lag as a complete repair for m77. Six actual resolved Python artifacts (default3.13 plus3.10–3.14) select the primary Python and Poetry, but no JavaScript companion. These artifact exports are not six image executions. The corresponding Ruby producer path and existing sweep321 evidence remain intact.
+
+The shared boundary is nativeDockerfile/nativeRuntime selection in native.go:243/269 and ResolveNativeBuild in nativeresolve.go:67–84. nativeNodeTools is applied for primary Node; Python currently adds Poetry, optionally Bun, and keeps its Python FROM. Neither it nor Ruby supplies the documented secondary Node/npm/Yarn/pnpm bundle. Preserve Python's selected primary interpreter, pip, Poetry's isolated virtualenv and explicit Bun behavior while assembling a reviewed companion. Coordinate existing pnpm packaging instead of introducing a second unmanaged installer. Count all primary-runtime callers and audit Go/Rust/Elixir applicability without claiming them live-tested.
+
+The fix must cover both reproduced primary runtimes, preserve Ruby/Gem/Bundler and Python/pip/Poetry coexistence, respect primary-language version files and exact command/PATH semantics, and include actual companion execution at build/runtime. File/env selection and cache identity must not silently switch a Python service to Node. Existing REST/GraphQL/MCP/dashboard settings remain common producer inputs; raw native requests stay unchanged.
+
+Both new Python parents and four children are absence-verified, baseline retained and quota terminating0. Combined with sweep321, the filing contains four initial missing-tool builds, four successful primary-only Live controls and complete cleanup of four parents/eight children. All six implementation/closing tasks remain todo. The revised estimate is230m. No product fix, additional ship or release is included.
