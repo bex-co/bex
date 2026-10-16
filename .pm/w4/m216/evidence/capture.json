@@ -1,0 +1,1195 @@
+{
+  "scope": "QA a743; filing only; native writes and complete API responses; text projections are qualified",
+  "receipts": {
+    "a743CreateAccepted": {
+      "at": "2026-10-16T16:04:07.485Z",
+      "request": {
+        "operationName": "CreateService",
+        "variables": {
+          "image": "node:24-alpine",
+          "name": "qa-20261016-a743-case",
+          "type": "web_service",
+          "registryCredentialId": "",
+          "runtime": "image",
+          "startCommand": "node -e 'const http=require(\"http\");for(const line of [\"QA_A743 ΟΣ\",\"QA_A743 ος\",\"QA_A743 οσ\",\"QA_A743 Alpha\"])console.log(line);http.createServer((req,res)=>res.end(\"QA_A743 ready\\n\")).listen(8080,\"0.0.0.0\")'",
+          "plan": "free",
+          "port": 8080,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db94lthkoksc73a7vi10",
+            "latestDeployId": "dep-db94lthkoksc73a7vi1g",
+            "name": "qa-20261016-a743-case",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": "",
+            "type": "web_service"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792166646401.731,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.124,
+        "responseStart": 362.973,
+        "responseEnd": 363.482
+      },
+      "url": "https://dashboard.bex.co/services/srv-db94lthkoksc73a7vi10/deploys/dep-db94lthkoksc73a7vi1g"
+    },
+    "a743CommandAccepted": {
+      "at": "2026-10-16T16:11:14.056Z",
+      "request": {
+        "operationName": "SetStartCommand",
+        "variables": {
+          "id": "srv-db94lthkoksc73a7vi10",
+          "command": "node -e 'const http=require(\"http\");const emit=()=>{for(const line of [\"QA_A743 ΟΣ\",\"QA_A743 ος\",\"QA_A743 οσ\",\"QA_A743 Alpha\"])console.log(line)};setTimeout(emit,3000);http.createServer((req,res)=>{if(req.url===\"/emit\")emit();res.end(\"QA_A743 ready\\n\")}).listen(8080,\"0.0.0.0\")'"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetStartCommand($id: String!, $command: String!, $confirm: String) {\n  setStartCommand(id: $id, command: $command, confirm: $confirm) {\n    id\n    startCommand\n    command\n    phase\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setStartCommand": {
+            "__typename": "Service",
+            "command": "",
+            "id": "srv-db94lthkoksc73a7vi10",
+            "phase": "Running",
+            "startCommand": "node -e 'const http=require(\"http\");const emit=()=>{for(const line of [\"QA_A743 ΟΣ\",\"QA_A743 ος\",\"QA_A743 οσ\",\"QA_A743 Alpha\"])console.log(line)};setTimeout(emit,3000);http.createServer((req,res)=>{if(req.url===\"/emit\")emit();res.end(\"QA_A743 ready\\n\")}).listen(8080,\"0.0.0.0\")'"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792167073031.9587,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.145,
+        "responseStart": 308.8,
+        "responseEnd": 309.261
+      },
+      "url": "https://dashboard.bex.co/services/srv-db94lthkoksc73a7vi10/settings"
+    },
+    "a743DeploysReady": {
+      "at": "2026-10-16T16:11:47.483Z",
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261016-a743-case\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261016-a743-case\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db94lthkoksc73a7vi10/deploys/dep-db94p8ffsf9s73epsggg\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db94lthkoksc73a7vi10/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db94lthkoksc73a7vi10\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261016-a743-case.onbex.co\":\n    - /url: https://qa-20261016-a743-case.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261016-a743-case\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-2\n  - term: Created\n  - definition:\n    - time: 7m\n  - text: Deploys\n  - paragraph: 2 deploys\n  - textbox \"Search loaded deploys and commits\":\n    - /placeholder: Search loaded deploys and commits…\n  - combobox \"Filter by status\": All statuses\n  - table:\n    - rowgroup:\n      - row \"Deploy Trigger Duration Actions\":\n        - columnheader \"Deploy\"\n        - columnheader \"Trigger\"\n        - columnheader \"Duration\"\n        - columnheader \"Actions\"\n    - rowgroup:\n      - row \"Live dep-db94p8ffsf9s73epsggg Deployed just now Config Change —\":\n        - cell \"Live dep-db94p8ffsf9s73epsggg Deployed just now\":\n          - link \"Live dep-db94p8ffsf9s73epsggg\":\n            - /url: /services/srv-db94lthkoksc73a7vi10/deploys/dep-db94p8ffsf9s73epsggg\n          - time: Deployed just now\n        - cell \"Config Change\"\n        - cell \"—\"\n        - cell\n      - row \"Deactivated dep-db94lthkoksc73a7vi1g Deployed 7 minutes ago First Deploy 15s Roll back to dep-db94lthkoksc73a7vi1g\":\n        - cell \"Deactivated dep-db94lthkoksc73a7vi1g Deployed 7 minutes ago\":\n          - link \"Deactivated dep-db94lthkoksc73a7vi1g\":\n            - /url: /services/srv-db94lthkoksc73a7vi10/deploys/dep-db94lthkoksc73a7vi1g\n          - time: Deployed 7 minutes ago\n        - cell \"First Deploy\"\n        - cell \"15s\"\n        - cell \"Roll back to dep-db94lthkoksc73a7vi1g\":\n          - button \"Roll back to dep-db94lthkoksc73a7vi1g\": Rollback"
+    },
+    "a743FullFixture": {
+      "at": "2026-10-16T16:12:03.868Z",
+      "main": "Projects\nqa-20261016-a743-case\nSearch\n⌘ K\nNew\nP\nWEB SERVICE\nqa-20261016-a743-case\nService\nRunning\nLatest deploy\nLive\nFree\nRuntime\nImage\nConnect\nManual Deploy\nService ID:\nsrv-db94lthkoksc73a7vi10\nhttps://qa-20261016-a743-case.onbex.co\nSlug\nqa-20261016-a743-case\n·\nInstances\n1\n·\nRevision\nrev-2\n·\nCreated\n7m\nApplication logs\nLast hour\nFilters\nLive\n\nThe range limits history. Live mode appends new lines as they arrive.\n\n09:04:08 AM\n[rmc8q]\nQA_A743 ος\n09:04:08 AM\n[rmc8q]\nQA_A743 οσ\n09:04:08 AM\n[rmc8q]\nQA_A743 Alpha\n09:11:18 AM\n[78852]\nQA_A743 ΟΣ\n09:11:18 AM\n[78852]\nQA_A743 ος\n09:11:18 AM\n[78852]\nQA_A743 οσ\n09:11:18 AM\n[78852]\nQA_A743 Alpha\n09:11:49 AM\n[78852]\nQA_A743 ΟΣ\n09:11:49 AM\n[78852]\nQA_A743 ος\n09:11:49 AM\n[78852]\nQA_A743 οσ\n09:11:49 AM\n[78852]\nQA_A743 Alpha\n\nLive tail paused"
+    },
+    "a743NormalSigmaWire": {
+      "at": "2026-10-16T16:12:05.875Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db94lthkoksc73a7vi10",
+          "type": "app",
+          "text": "QA_A743 οσ",
+          "textMode": "display",
+          "startTime": "2026-10-16T15:12:04.873Z",
+          "endTime": "2026-10-16T16:12:04.873Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db94lthkoksc73a7vi10-rmc8q1v1e4bc3ogjpnf1",
+                "level": "unknown",
+                "message": "QA_A743 οσ",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T16:04:08.974593779Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn",
+                "level": "unknown",
+                "message": "QA_A743 ΟΣ",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T16:11:18.348201053Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn",
+                "level": "unknown",
+                "message": "QA_A743 οσ",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T16:11:18.34878807Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn",
+                "level": "unknown",
+                "message": "QA_A743 ΟΣ",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T16:11:49.120367531Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn",
+                "level": "unknown",
+                "message": "QA_A743 οσ",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T16:11:49.120408519Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-16T16:04:08.974593778Z",
+            "nextStartTime": "2026-10-16T15:12:04.873Z"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792167124884.5571,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.085,
+        "responseStart": 279.431,
+        "responseEnd": 279.867
+      },
+      "url": "https://dashboard.bex.co/services/srv-db94lthkoksc73a7vi10/logs?type=app&text=QA_A743+%CE%BF%CF%83&live=0"
+    },
+    "a743NormalSigmaView": {
+      "at": "2026-10-16T16:12:07.054Z",
+      "main": "Projects\nqa-20261016-a743-case\nSearch\n⌘ K\nNew\nP\nWEB SERVICE\nqa-20261016-a743-case\nService\nRunning\nLatest deploy\nLive\nFree\nRuntime\nImage\nConnect\nManual Deploy\nService ID:\nsrv-db94lthkoksc73a7vi10\nhttps://qa-20261016-a743-case.onbex.co\nSlug\nqa-20261016-a743-case\n·\nInstances\n1\n·\nRevision\nrev-2\n·\nCreated\n7m\nApplication logs\nLast hour\nFilters\nLive\n\nThe range limits history. Live mode appends new lines as they arrive.\n\n09:04:08 AM\n[rmc8q]\nQA_A743 οσ\n09:11:18 AM\n[78852]\nQA_A743 ΟΣ\n09:11:18 AM\n[78852]\nQA_A743 οσ\n09:11:49 AM\n[78852]\nQA_A743 ΟΣ\n09:11:49 AM\n[78852]\nQA_A743 οσ\n\nLive tail paused"
+    },
+    "a743FinalSigmaWire": {
+      "at": "2026-10-16T16:12:09.089Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db94lthkoksc73a7vi10",
+          "type": "app",
+          "text": "QA_A743 ος",
+          "textMode": "display",
+          "startTime": "2026-10-16T15:12:08.054Z",
+          "endTime": "2026-10-16T16:12:08.054Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db94lthkoksc73a7vi10-rmc8q1v1e4bc3ogjpnf1",
+                "level": "unknown",
+                "message": "QA_A743 ος",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T16:04:08.974571407Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn",
+                "level": "unknown",
+                "message": "QA_A743 ος",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T16:11:18.348775516Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn",
+                "level": "unknown",
+                "message": "QA_A743 ος",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T16:11:49.12039361Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-16T16:04:08.974571406Z",
+            "nextStartTime": "2026-10-16T15:12:08.054Z"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792167128068.882,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.093,
+        "responseStart": 310.54,
+        "responseEnd": 311.297
+      },
+      "url": "https://dashboard.bex.co/services/srv-db94lthkoksc73a7vi10/logs?type=app&text=QA_A743+%CE%BF%CF%82&live=0"
+    },
+    "a743FinalSigmaView": {
+      "at": "2026-10-16T16:12:10.283Z",
+      "main": "Projects\nqa-20261016-a743-case\nSearch\n⌘ K\nNew\nP\nWEB SERVICE\nqa-20261016-a743-case\nService\nRunning\nLatest deploy\nLive\nFree\nRuntime\nImage\nConnect\nManual Deploy\nService ID:\nsrv-db94lthkoksc73a7vi10\nhttps://qa-20261016-a743-case.onbex.co\nSlug\nqa-20261016-a743-case\n·\nInstances\n1\n·\nRevision\nrev-2\n·\nCreated\n7m\nApplication logs\nLast hour\nFilters\nLive\n\nThe range limits history. Live mode appends new lines as they arrive.\n\n09:04:08 AM\n[rmc8q]\nQA_A743 ος\n09:11:18 AM\n[78852]\nQA_A743 ος\n09:11:49 AM\n[78852]\nQA_A743 ος\n\nLive tail paused"
+    },
+    "a743DeployUnfiltered": {
+      "at": "2026-10-16T16:12:31.601Z",
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261016-a743-case\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261016-a743-case\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db94lthkoksc73a7vi10/deploys/dep-db94p8ffsf9s73epsggg\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db94lthkoksc73a7vi10/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db94lthkoksc73a7vi10\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261016-a743-case.onbex.co\":\n    - /url: https://qa-20261016-a743-case.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261016-a743-case\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-2\n  - term: Created\n  - definition:\n    - time: 8m\n  - text: Deploy status Live Config Change dep-db94p8ffsf9s73epsggg\n  - paragraph: node:24-alpine\n  - term: \"Created:\"\n  - definition: October 16, 2026 at 9:11 AM\n  - term: \"Updated:\"\n  - definition: October 16, 2026 at 9:11 AM\n  - term: \"Finished:\"\n  - definition: October 16, 2026 at 9:11 AM\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 16, 2026 at 9:11 AM\n    - listitem:\n      - paragraph: Live\n      - time: October 16, 2026 at 9:11 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\"\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: 09:11:13 AM\n  - button \"Filter logs by instance srv-db94lthkoksc73a7vi10-i05qmjd8ddq9k42i08j5\": \"[i05qm]\"\n  - text: ==> Deploy queued 09:11:18 AM\n  - button \"Filter logs by instance srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn\": \"[78852]\"\n  - text: QA_A743 ΟΣ 09:11:18 AM\n  - button \"Filter logs by instance srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn\": \"[78852]\"\n  - text: QA_A743 ος 09:11:18 AM\n  - button \"Filter logs by instance srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn\": \"[78852]\"\n  - text: QA_A743 οσ 09:11:18 AM\n  - button \"Filter logs by instance srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn\": \"[78852]\"\n  - text: QA_A743 Alpha 09:11:24 AM\n  - button \"Filter logs by instance srv-db94lthkoksc73a7vi10-i05qmjd8ddq9k42i08j5\": \"[i05qm]\"\n  - text: ==> Your service is live 🎉"
+    },
+    "a743DeployNormalSigma": {
+      "at": "2026-10-16T16:12:32.987Z",
+      "main": "Projects\nqa-20261016-a743-case\nSearch\n⌘ K\nNew\nP\nWEB SERVICE\nqa-20261016-a743-case\nService\nRunning\nLatest deploy\nLive\nFree\nRuntime\nImage\nConnect\nManual Deploy\nService ID:\nsrv-db94lthkoksc73a7vi10\nhttps://qa-20261016-a743-case.onbex.co\nSlug\nqa-20261016-a743-case\n·\nInstances\n1\n·\nRevision\nrev-2\n·\nCreated\n8m\nDeploy status\nLive\nConfig Change\ndep-db94p8ffsf9s73epsggg\n\nnode:24-alpine\n\nCreated: October 16, 2026 at 9:11 AM\nUpdated: October 16, 2026 at 9:11 AM\nFinished: October 16, 2026 at 9:11 AM\nStatus timeline\n\nDeploy created\n\nOctober 16, 2026 at 9:11 AM\n\nLive\n\nOctober 16, 2026 at 9:11 AM\nAll logs\n09:11:18 AM\n[78852]\nQA_A743 οσ",
+      "consoleErrors": []
+    },
+    "a743DeployFinalSigma": {
+      "at": "2026-10-16T16:12:34.393Z",
+      "main": "Projects\nqa-20261016-a743-case\nSearch\n⌘ K\nNew\nP\nWEB SERVICE\nqa-20261016-a743-case\nService\nRunning\nLatest deploy\nLive\nFree\nRuntime\nImage\nConnect\nManual Deploy\nService ID:\nsrv-db94lthkoksc73a7vi10\nhttps://qa-20261016-a743-case.onbex.co\nSlug\nqa-20261016-a743-case\n·\nInstances\n1\n·\nRevision\nrev-2\n·\nCreated\n8m\nDeploy status\nLive\nConfig Change\ndep-db94p8ffsf9s73epsggg\n\nnode:24-alpine\n\nCreated: October 16, 2026 at 9:11 AM\nUpdated: October 16, 2026 at 9:11 AM\nFinished: October 16, 2026 at 9:11 AM\nStatus timeline\n\nDeploy created\n\nOctober 16, 2026 at 9:11 AM\n\nLive\n\nOctober 16, 2026 at 9:11 AM\nAll logs\n09:11:18 AM\n[78852]\nQA_A743 ΟΣ\n09:11:18 AM\n[78852]\nQA_A743 ος"
+    },
+    "a743FreshMobileNormalSigma": {
+      "at": "2026-10-16T16:12:56.062Z",
+      "main": "Toggle Sidebar\nqa-20261016-a743-case\nNew\nP\nWEB SERVICE\nqa-20261016-a743-case\nService\nRunning\nLatest deploy\nLive\nFree\nRuntime\nImage\nConnect\nManual Deploy\nService ID:\nsrv-db94lthkoksc73a7vi10\nhttps://qa-20261016-a743-case.onbex.co\nSlug\nqa-20261016-a743-case\n·\nInstances\n1\n·\nRevision\nrev-2\n·\nCreated\n8m\nDeploy status\nLive\nConfig Change\ndep-db94p8ffsf9s73epsggg\n\nnode:24-alpine\n\nCreated: October 16, 2026 at 9:11 AM\nUpdated: October 16, 2026 at 9:11 AM\nFinished: October 16, 2026 at 9:11 AM\nStatus timeline\n\nDeploy created\n\nOctober 16, 2026 at 9:11 AM\n\nLive\n\nOctober 16, 2026 at 9:11 AM\nAll logs\n09:11:18 AM\n[78852]\nQA_A743 οσ",
+      "width": {
+        "viewport": 390,
+        "doc": 390
+      },
+      "consoleErrors": []
+    },
+    "a743MobileControlAndWire": {
+      "at": "2026-10-16T16:13:18.398Z",
+      "alpha": "Toggle Sidebar\nqa-20261016-a743-case\nNew\nP\nWEB SERVICE\nqa-20261016-a743-case\nService\nRunning\nLatest deploy\nLive\nFree\nRuntime\nImage\nConnect\nManual Deploy\nService ID:\nsrv-db94lthkoksc73a7vi10\nhttps://qa-20261016-a743-case.onbex.co\nSlug\nqa-20261016-a743-case\n·\nInstances\n1\n·\nRevision\nrev-2\n·\nCreated\n8m\nDeploy status\nLive\nConfig Change\ndep-db94p8ffsf9s73epsggg\n\nnode:24-alpine\n\nCreated: October 16, 2026 at 9:11 AM\nUpdated: October 16, 2026 at 9:11 AM\nFinished: October 16, 2026 at 9:11 AM\nStatus timeline\n\nDeploy created\n\nOctober 16, 2026 at 9:11 AM\n\nLive\n\nOctober 16, 2026 at 9:11 AM\nAll logs\n09:11:18 AM\n[78852]\nQA_A743 Alpha",
+      "finalSigma": "Toggle Sidebar\nqa-20261016-a743-case\nNew\nP\nWEB SERVICE\nqa-20261016-a743-case\nService\nRunning\nLatest deploy\nLive\nFree\nRuntime\nImage\nConnect\nManual Deploy\nService ID:\nsrv-db94lthkoksc73a7vi10\nhttps://qa-20261016-a743-case.onbex.co\nSlug\nqa-20261016-a743-case\n·\nInstances\n1\n·\nRevision\nrev-2\n·\nCreated\n8m\nDeploy status\nLive\nConfig Change\ndep-db94p8ffsf9s73epsggg\n\nnode:24-alpine\n\nCreated: October 16, 2026 at 9:11 AM\nUpdated: October 16, 2026 at 9:11 AM\nFinished: October 16, 2026 at 9:11 AM\nStatus timeline\n\nDeploy created\n\nOctober 16, 2026 at 9:11 AM\n\nLive\n\nOctober 16, 2026 at 9:11 AM\nAll logs\n09:11:18 AM\n[78852]\nQA_A743 ΟΣ\n09:11:18 AM\n[78852]\nQA_A743 ος",
+      "receipts": [
+        {
+          "request": {
+            "operationName": "Logs",
+            "variables": {
+              "resource": "srv-db94lthkoksc73a7vi10",
+              "startTime": "2026-10-16T16:11:13.244694Z",
+              "endTime": "2026-10-16T16:11:24.82011Z",
+              "limit": 100,
+              "type": "build"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "logs": {
+                "__typename": "LogList",
+                "hasMore": false,
+                "logs": [
+                  {
+                    "__typename": "LogEntry",
+                    "instance": "srv-db94lthkoksc73a7vi10-i05qmjd8ddq9k42i08j5",
+                    "level": "",
+                    "message": "==> Deploy queued",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-16T16:11:13.244694Z",
+                    "type": "build"
+                  },
+                  {
+                    "__typename": "LogEntry",
+                    "instance": "srv-db94lthkoksc73a7vi10-i05qmjd8ddq9k42i08j5",
+                    "level": "",
+                    "message": "==> Your service is live 🎉",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-16T16:11:24.82011Z",
+                    "type": "build"
+                  }
+                ],
+                "nextEndTime": "2026-10-16T16:11:13.244693999Z",
+                "nextStartTime": "2026-10-16T16:11:13.244694Z"
+              }
+            }
+          },
+          "timing": {
+            "startTime": 1792167174899.9421,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.108,
+            "responseStart": 313.198,
+            "responseEnd": 313.74
+          }
+        },
+        {
+          "request": {
+            "operationName": "Logs",
+            "variables": {
+              "resource": "srv-db94lthkoksc73a7vi10",
+              "startTime": "2026-10-16T16:11:13.244694Z",
+              "endTime": "2026-10-16T16:11:24.82011Z",
+              "limit": 100,
+              "type": "app"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "logs": {
+                "__typename": "LogList",
+                "hasMore": false,
+                "logs": [
+                  {
+                    "__typename": "LogEntry",
+                    "instance": "srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn",
+                    "level": "unknown",
+                    "message": "QA_A743 ΟΣ",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-16T16:11:18.348201053Z",
+                    "type": "app"
+                  },
+                  {
+                    "__typename": "LogEntry",
+                    "instance": "srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn",
+                    "level": "unknown",
+                    "message": "QA_A743 ος",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-16T16:11:18.348775516Z",
+                    "type": "app"
+                  },
+                  {
+                    "__typename": "LogEntry",
+                    "instance": "srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn",
+                    "level": "unknown",
+                    "message": "QA_A743 οσ",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-16T16:11:18.34878807Z",
+                    "type": "app"
+                  },
+                  {
+                    "__typename": "LogEntry",
+                    "instance": "srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn",
+                    "level": "unknown",
+                    "message": "QA_A743 Alpha",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-16T16:11:18.348789684Z",
+                    "type": "app"
+                  }
+                ],
+                "nextEndTime": "2026-10-16T16:11:18.348201052Z",
+                "nextStartTime": "2026-10-16T16:11:13.244694Z"
+              }
+            }
+          },
+          "timing": {
+            "startTime": 1792167174899.9421,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.108,
+            "responseStart": 313.198,
+            "responseEnd": 313.74
+          }
+        },
+        {
+          "request": {
+            "operationName": "Logs",
+            "variables": {
+              "resource": "srv-db94lthkoksc73a7vi10",
+              "startTime": "2026-10-16T16:11:13.244694Z",
+              "endTime": "2026-10-16T16:11:24.82011Z",
+              "limit": 100,
+              "type": "build"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "logs": {
+                "__typename": "LogList",
+                "hasMore": false,
+                "logs": [
+                  {
+                    "__typename": "LogEntry",
+                    "instance": "srv-db94lthkoksc73a7vi10-i05qmjd8ddq9k42i08j5",
+                    "level": "",
+                    "message": "==> Deploy queued",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-16T16:11:13.244694Z",
+                    "type": "build"
+                  },
+                  {
+                    "__typename": "LogEntry",
+                    "instance": "srv-db94lthkoksc73a7vi10-i05qmjd8ddq9k42i08j5",
+                    "level": "",
+                    "message": "==> Your service is live 🎉",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-16T16:11:24.82011Z",
+                    "type": "build"
+                  }
+                ],
+                "nextEndTime": "2026-10-16T16:11:13.244693999Z",
+                "nextStartTime": "2026-10-16T16:11:13.244694Z"
+              }
+            }
+          },
+          "timing": {
+            "startTime": 1792167179903.771,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.119,
+            "responseStart": 371.484,
+            "responseEnd": 371.887
+          }
+        },
+        {
+          "request": {
+            "operationName": "Logs",
+            "variables": {
+              "resource": "srv-db94lthkoksc73a7vi10",
+              "startTime": "2026-10-16T16:11:13.244694Z",
+              "endTime": "2026-10-16T16:11:24.82011Z",
+              "limit": 100,
+              "type": "app"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "logs": {
+                "__typename": "LogList",
+                "hasMore": false,
+                "logs": [
+                  {
+                    "__typename": "LogEntry",
+                    "instance": "srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn",
+                    "level": "unknown",
+                    "message": "QA_A743 ΟΣ",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-16T16:11:18.348201053Z",
+                    "type": "app"
+                  },
+                  {
+                    "__typename": "LogEntry",
+                    "instance": "srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn",
+                    "level": "unknown",
+                    "message": "QA_A743 ος",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-16T16:11:18.348775516Z",
+                    "type": "app"
+                  },
+                  {
+                    "__typename": "LogEntry",
+                    "instance": "srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn",
+                    "level": "unknown",
+                    "message": "QA_A743 οσ",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-16T16:11:18.34878807Z",
+                    "type": "app"
+                  },
+                  {
+                    "__typename": "LogEntry",
+                    "instance": "srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn",
+                    "level": "unknown",
+                    "message": "QA_A743 Alpha",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-16T16:11:18.348789684Z",
+                    "type": "app"
+                  }
+                ],
+                "nextEndTime": "2026-10-16T16:11:18.348201052Z",
+                "nextStartTime": "2026-10-16T16:11:13.244694Z"
+              }
+            }
+          },
+          "timing": {
+            "startTime": 1792167179903.771,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.119,
+            "responseStart": 371.484,
+            "responseEnd": 371.887
+          }
+        },
+        {
+          "request": {
+            "operationName": "Logs",
+            "variables": {
+              "resource": "srv-db94lthkoksc73a7vi10",
+              "startTime": "2026-10-16T16:11:13.244694Z",
+              "endTime": "2026-10-16T16:11:24.82011Z",
+              "limit": 100,
+              "type": "build"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "logs": {
+                "__typename": "LogList",
+                "hasMore": false,
+                "logs": [
+                  {
+                    "__typename": "LogEntry",
+                    "instance": "srv-db94lthkoksc73a7vi10-i05qmjd8ddq9k42i08j5",
+                    "level": "",
+                    "message": "==> Deploy queued",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-16T16:11:13.244694Z",
+                    "type": "build"
+                  },
+                  {
+                    "__typename": "LogEntry",
+                    "instance": "srv-db94lthkoksc73a7vi10-i05qmjd8ddq9k42i08j5",
+                    "level": "",
+                    "message": "==> Your service is live 🎉",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-16T16:11:24.82011Z",
+                    "type": "build"
+                  }
+                ],
+                "nextEndTime": "2026-10-16T16:11:13.244693999Z",
+                "nextStartTime": "2026-10-16T16:11:13.244694Z"
+              }
+            }
+          },
+          "timing": {
+            "startTime": 1792167185292.6328,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.205,
+            "responseStart": 365.833,
+            "responseEnd": 366.916
+          }
+        },
+        {
+          "request": {
+            "operationName": "Logs",
+            "variables": {
+              "resource": "srv-db94lthkoksc73a7vi10",
+              "startTime": "2026-10-16T16:11:13.244694Z",
+              "endTime": "2026-10-16T16:11:24.82011Z",
+              "limit": 100,
+              "type": "app"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "logs": {
+                "__typename": "LogList",
+                "hasMore": false,
+                "logs": [
+                  {
+                    "__typename": "LogEntry",
+                    "instance": "srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn",
+                    "level": "unknown",
+                    "message": "QA_A743 ΟΣ",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-16T16:11:18.348201053Z",
+                    "type": "app"
+                  },
+                  {
+                    "__typename": "LogEntry",
+                    "instance": "srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn",
+                    "level": "unknown",
+                    "message": "QA_A743 ος",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-16T16:11:18.348775516Z",
+                    "type": "app"
+                  },
+                  {
+                    "__typename": "LogEntry",
+                    "instance": "srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn",
+                    "level": "unknown",
+                    "message": "QA_A743 οσ",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-16T16:11:18.34878807Z",
+                    "type": "app"
+                  },
+                  {
+                    "__typename": "LogEntry",
+                    "instance": "srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn",
+                    "level": "unknown",
+                    "message": "QA_A743 Alpha",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-16T16:11:18.348789684Z",
+                    "type": "app"
+                  }
+                ],
+                "nextEndTime": "2026-10-16T16:11:18.348201052Z",
+                "nextStartTime": "2026-10-16T16:11:13.244694Z"
+              }
+            }
+          },
+          "timing": {
+            "startTime": 1792167185292.6328,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.205,
+            "responseStart": 365.833,
+            "responseEnd": 366.916
+          }
+        }
+      ]
+    },
+    "a743ExactWindowSearchMatrix": {
+      "at": "2026-10-16T16:13:37.393Z",
+      "results": [
+        {
+          "at": "2026-10-16T16:13:36.859Z",
+          "request": {
+            "operationName": "Logs",
+            "variables": {
+              "resource": "srv-db94lthkoksc73a7vi10",
+              "startTime": "2026-10-16T16:11:13.244694Z",
+              "endTime": "2026-10-16T16:11:24.82011Z",
+              "limit": 100,
+              "type": "app",
+              "text": "QA_A743 οσ",
+              "textMode": "display"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "logs": {
+                "__typename": "LogList",
+                "hasMore": false,
+                "logs": [
+                  {
+                    "__typename": "LogEntry",
+                    "instance": "srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn",
+                    "level": "unknown",
+                    "message": "QA_A743 ΟΣ",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-16T16:11:18.348201053Z",
+                    "type": "app"
+                  },
+                  {
+                    "__typename": "LogEntry",
+                    "instance": "srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn",
+                    "level": "unknown",
+                    "message": "QA_A743 οσ",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-16T16:11:18.34878807Z",
+                    "type": "app"
+                  }
+                ],
+                "nextEndTime": "2026-10-16T16:11:18.348201052Z",
+                "nextStartTime": "2026-10-16T16:11:13.244694Z"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T16:13:37.148Z",
+          "request": {
+            "operationName": "Logs",
+            "variables": {
+              "resource": "srv-db94lthkoksc73a7vi10",
+              "startTime": "2026-10-16T16:11:13.244694Z",
+              "endTime": "2026-10-16T16:11:24.82011Z",
+              "limit": 100,
+              "type": "app",
+              "text": "QA_A743 ος",
+              "textMode": "display"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "logs": {
+                "__typename": "LogList",
+                "hasMore": false,
+                "logs": [
+                  {
+                    "__typename": "LogEntry",
+                    "instance": "srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn",
+                    "level": "unknown",
+                    "message": "QA_A743 ος",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-16T16:11:18.348775516Z",
+                    "type": "app"
+                  }
+                ],
+                "nextEndTime": "2026-10-16T16:11:18.348775515Z",
+                "nextStartTime": "2026-10-16T16:11:13.244694Z"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T16:13:37.393Z",
+          "request": {
+            "operationName": "Logs",
+            "variables": {
+              "resource": "srv-db94lthkoksc73a7vi10",
+              "startTime": "2026-10-16T16:11:13.244694Z",
+              "endTime": "2026-10-16T16:11:24.82011Z",
+              "limit": 100,
+              "type": "app",
+              "text": "qa_a743 alpha",
+              "textMode": "display"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "logs": {
+                "__typename": "LogList",
+                "hasMore": false,
+                "logs": [
+                  {
+                    "__typename": "LogEntry",
+                    "instance": "srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn",
+                    "level": "unknown",
+                    "message": "QA_A743 Alpha",
+                    "method": "",
+                    "statusCode": "",
+                    "timestamp": "2026-10-16T16:11:18.348789684Z",
+                    "type": "app"
+                  }
+                ],
+                "nextEndTime": "2026-10-16T16:11:18.348789683Z",
+                "nextStartTime": "2026-10-16T16:11:13.244694Z"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "a743MobilePanelScreenshot": {
+      "at": "2026-10-16T16:15:02.926Z",
+      "panel": "- button \"Log type\": All logs\n- textbox \"Search logs…\": QA_A743 οσ\n- button \"Log options\"\n- button \"Maximize\"\n- text: 09:11:18 AM\n- button \"Filter logs by instance srv-db94lthkoksc73a7vi10-78852lpnni10ralfhagn\": \"[78852]\"\n- text: QA_A743 οσ"
+    },
+    "a743BrowserLowercaseProof": {
+      "at": "2026-10-16T16:14:14.387Z",
+      "browserVersion": "155.0.8059.84",
+      "lowercases": [
+        {
+          "input": "ΟΣ",
+          "whole": "ος",
+          "perCodePoint": "οσ"
+        },
+        {
+          "input": "ος",
+          "whole": "ος",
+          "perCodePoint": "ος"
+        },
+        {
+          "input": "οσ",
+          "whole": "οσ",
+          "perCodePoint": "οσ"
+        },
+        {
+          "input": "İ",
+          "whole": "i̇",
+          "perCodePoint": "i̇"
+        },
+        {
+          "input": "Alpha",
+          "whole": "alpha",
+          "perCodePoint": "alpha"
+        },
+        {
+          "input": "K",
+          "whole": "k",
+          "perCodePoint": "k"
+        },
+        {
+          "input": "Р",
+          "whole": "р",
+          "perCodePoint": "р"
+        }
+      ]
+    },
+    "a743ProposedMatcherModel": {
+      "at": "2026-10-16T16:18:51.765Z",
+      "qualification": "Proposed table-based client model, not a product change or live fix",
+      "model": [
+        {
+          "query": "QA_A743 οσ",
+          "current": ["QA_A743 οσ"],
+          "proposed": ["QA_A743 ΟΣ", "QA_A743 οσ"]
+        },
+        {
+          "query": "QA_A743 ος",
+          "current": ["QA_A743 ΟΣ", "QA_A743 ος"],
+          "proposed": ["QA_A743 ος"]
+        },
+        {
+          "query": "qa_a743 alpha",
+          "current": ["QA_A743 Alpha"],
+          "proposed": ["QA_A743 Alpha"]
+        }
+      ]
+    },
+    "a743Deleted": {
+      "at": "2026-10-16T16:15:06.997Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db94lthkoksc73a7vi10"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "timing": {
+        "startTime": 1792167305971.654,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.136,
+        "responseStart": 309.073,
+        "responseEnd": 309.46
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "a743Cleanup": {
+      "at": "2026-10-16T16:16:06.464Z",
+      "checks": [
+        {
+          "path": "/v1/services/srv-db94lthkoksc73a7vi10",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db94lthkoksc73a7vi10/deploys/dep-db94lthkoksc73a7vi1g",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db94lthkoksc73a7vi10/deploys/dep-db94p8ffsf9s73epsggg",
+          "status": 404
+        }
+      ],
+      "inventory": {
+        "request": {
+          "operationName": "Qaa467Inventory",
+          "variables": {
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          },
+          "query": "query Qaa467Inventory($ownerId:String!){ services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "blueprints": [
+              {
+                "id": "blp-d9nqg95cavls73fp8m10",
+                "name": "discourse_docker"
+              }
+            ],
+            "databases": [
+              {
+                "id": "dpg-d9nqg95cavls73fp8m20",
+                "name": "beancount-forum-db"
+              },
+              {
+                "id": "dpg-d9rrkoc4h4mc73edurp0",
+                "name": "tianpan-forum-db"
+              },
+              {
+                "id": "dpg-d9rs3ee0ccis738kc7c0",
+                "name": "blockeden-forum-db"
+              },
+              {
+                "id": "dpg-db34l9bor55s73cqpq9g",
+                "name": "qa-20261007-r16-owner-f208ab"
+              }
+            ],
+            "envGroups": [
+              {
+                "id": "evg-db0s94c48ccs739jikr0",
+                "name": "qa-20261003-keys-r85"
+              }
+            ],
+            "keyValues": [
+              {
+                "id": "red-d9p49kdrtmes73c34ovg",
+                "name": "beancount-forum-redis"
+              },
+              {
+                "id": "red-da4086iii7bs73drbqh0",
+                "name": "blockeden-forum-redis"
+              }
+            ],
+            "projects": [
+              {
+                "id": "prj-d9dgeo0bd9nc73a0vh1g",
+                "name": "bex.co"
+              },
+              {
+                "id": "prj-d9e5qct5qe4s73b1mjn0",
+                "name": "beancount.io"
+              },
+              {
+                "id": "prj-d9sgfnbjghus73cg6hg0",
+                "name": "forums"
+              }
+            ],
+            "services": [
+              {
+                "id": "srv-d9bkcspg9s7c73d0n8ug",
+                "name": "agentmarketcap-1",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9bj8s3eg85c7390eb9g",
+                "name": "beancount-cms-v2",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9nqg9dcavls73fp8m2g",
+                "name": "beancount-forum",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9ndt8hmcglc739fkp50",
+                "name": "eden-dash-v3",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9e40ei9086p3l1jri30",
+                "name": "eden-cms-v2",
+                "type": "web_service"
+              }
+            ],
+            "webhookEndpoints": []
+          }
+        }
+      },
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "baselineMatch": true
+    },
+    "a743SessionClearRecovered": {
+      "at": "2026-10-16T16:17:33.394Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "qa-a743-runtime-cleanup.json": {
+      "at": "2026-10-16T16:16:08.747867+00:00",
+      "selector": "app.bex.co/app=tea-d98210cbbpdc73dcrkvg-qa-20261016-a743-case",
+      "items": []
+    },
+    "qa-a743-public-cleanup.json": {
+      "at": "2026-10-16T16:18:25.480542+00:00",
+      "url": "https://qa-20261016-a743-case.onbex.co/",
+      "exitCode": 0,
+      "status": 404,
+      "stderr": ""
+    },
+    "qa-log-search-case-a743-ledger.json": {
+      "pass": "a743",
+      "status": "complete-finding-ready",
+      "resources": [
+        {
+          "id": "srv-db94lthkoksc73a7vi10",
+          "name": "qa-20261016-a743-case",
+          "plan": "free",
+          "deployIds": ["dep-db94lthkoksc73a7vi1g", "dep-db94p8ffsf9s73epsggg"],
+          "revision": 2
+        }
+      ],
+      "scope": "Compare deploy-local Unicode lowercasing to established Go normalized literal search; preserve m58 decisions",
+      "createReceipt": "qa-recovered-a743CreateAccepted.json",
+      "notes": [
+        "Firstloginhelper failednetworkbeforehandoff/noinstalledjar; nofixturecreated. Retrylogincreatedtheactiveownedhandle. Initialfailedhelperphaseunverified; no claim of bulk or historical session cleanup."
+      ],
+      "candidate": "Confirmed deploy local final-sigma mismatch, fresh mobile repeat and exact-window API controls",
+      "cleanup": {
+        "delete": "qa-recovered-a743Deleted.json",
+        "apiAndBaseline": "qa-recovered-a743Cleanup.json",
+        "runtime": "qa-a743-runtime-cleanup.json",
+        "public": "qa-a743-public-cleanup.json",
+        "session": "qa-recovered-a743SessionClearRecovered.json",
+        "exactJarWhoami": 401,
+        "ownHandlesRemoved": true
+      },
+      "qualifications": [
+        "Initial immediate-startup sample omitted its first line; excluded as search evidence. Revised fixture delays startup emission and supports /emit. Complete second-deploy window independently captured all four markers.",
+        "First login helper attempt failed before handoff, with no installed jar or fixture; its exact failed phase is unverified. Successful retry session was explicitly revoked; no bulk or historical session action.",
+        "Logout succeeded and exact jar returned401. Initial browser clear navigated into an auth redirect and timed out; fresh about:blank commit then clear succeeded with0cookies."
+      ]
+    }
+  }
+}
