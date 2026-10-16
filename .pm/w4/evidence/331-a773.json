@@ -1,0 +1,409 @@
+{
+  "pass": "a773",
+  "date": "2026-10-16",
+  "researchHead": "7a5a225df294de49d53765d7c3001ba1ca34bf3e",
+  "scope": "Read-only Blueprint source-tab round trip, valid public main preview, recovery, GitHub-default and independent service controls",
+  "captures": {
+    "a773ValidDraft": {
+      "at": "2026-10-16T20:23:34.321Z",
+      "url": "https://dashboard.bex.co/blueprints/new",
+      "branch": "main",
+      "repo": "https://github.com/bex-co/bex",
+      "name": "qa-20261016-a773-branch",
+      "path": "examples/hello-go/render.yaml"
+    },
+    "a773InitialPreviewState": {
+      "at": "2026-10-16T20:23:53.973Z",
+      "branch": "main",
+      "snapshot": "- main:\n  - navigation \"Breadcrumbs\": Blueprints\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - heading \"New Blueprint Instance\" [level=1]\n  - text: Connect a repository containing a render.yaml Blueprint to create and sync a full stack of services. Connect a repository\n  - tablist:\n    - tab \"GitHub\"\n    - tab \"Public Git URL\" [selected]\n  - tabpanel \"Public Git URL\":\n    - text: Repository URL\n    - textbox \"Repository URL\":\n      - /placeholder: https://github.com/you/your-repo\n      - text: https://github.com/bex-co/bex\n  - text: Blueprint Name\n  - textbox \"Blueprint Name\":\n    - /placeholder: my-stack\n    - text: qa-20261016-a773-branch\n  - text: Branch\n  - combobox \"Branch\": main\n  - button \"Clear input\"\n  - paragraph: The repository branch with the render.yaml file.\n  - text: Blueprint path\n  - textbox \"Blueprint path\":\n    - /placeholder: render.yaml\n    - text: examples/hello-go/render.yaml\n  - paragraph: The path to the Blueprint file in your repo — any .yaml/.yml file works (e.g. infra/bex/stack.yaml). Defaults to render.yaml at the root of your repository.\n  - paragraph: Review Blueprint configuration\n  - paragraph: Blueprint file parsed successfully — 1 resource will change.\n  - list:\n    - listitem: Create hello-go Service\n  - paragraph: All future updates to your Blueprint file on this branch will be synced automatically. You can pause auto-sync after creation.\n  - button \"Cancel\"\n  - button \"Deploy Blueprint\""
+    },
+    "a773RoundTripDesktop": {
+      "at": "2026-10-16T20:24:40.800Z",
+      "before": {
+        "repo": "https://github.com/bex-co/bex",
+        "name": "qa-20261016-a773-branch",
+        "branch": "main",
+        "path": "examples/hello-go/render.yaml",
+        "deployDisabled": false
+      },
+      "ordinaryEdit": {
+        "repo": "https://github.com/bex-co/bex",
+        "name": "qa-20261016-a773-branch-雪",
+        "branch": "main",
+        "path": "examples/hello-go/render.yaml",
+        "deployDisabled": false
+      },
+      "after": {
+        "repo": "https://github.com/bex-co/bex",
+        "name": "qa-20261016-a773-branch-雪",
+        "branch": "",
+        "path": "examples/hello-go/render.yaml",
+        "deployDisabled": true
+      },
+      "snapshot": "- main:\n  - navigation \"Breadcrumbs\": Blueprints\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - heading \"New Blueprint Instance\" [level=1]\n  - text: Connect a repository containing a render.yaml Blueprint to create and sync a full stack of services. Connect a repository\n  - tablist:\n    - tab \"GitHub\"\n    - tab \"Public Git URL\" [selected]\n  - tabpanel \"Public Git URL\":\n    - text: Repository URL\n    - textbox \"Repository URL\":\n      - /placeholder: https://github.com/you/your-repo\n      - text: https://github.com/bex-co/bex\n  - text: Blueprint Name\n  - textbox \"Blueprint Name\":\n    - /placeholder: my-stack\n    - text: qa-20261016-a773-branch-雪\n  - text: Branch\n  - combobox \"Branch\"\n  - paragraph: The repository branch with the render.yaml file.\n  - text: Blueprint path\n  - textbox \"Blueprint path\":\n    - /placeholder: render.yaml\n    - text: examples/hello-go/render.yaml\n  - paragraph: The path to the Blueprint file in your repo — any .yaml/.yml file works (e.g. infra/bex/stack.yaml). Defaults to render.yaml at the root of your repository.\n  - paragraph: Review Blueprint configuration\n  - paragraph: Select a repository and branch to review its Blueprint file before deploying.\n  - button \"Cancel\"\n  - button \"Deploy Blueprint\" [disabled]"
+    },
+    "a773MobileValidPreview": {
+      "at": "2026-10-16T20:25:17.692Z",
+      "request": {
+        "operationName": "BlueprintPreview",
+        "variables": {
+          "repo": "https://github.com/bex-co/bex",
+          "branch": "main",
+          "path": "examples/hello-go/render.yaml",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "blueprintId": null
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query BlueprintPreview($repo: String!, $branch: String!, $path: String, $ownerId: String, $blueprintId: String) {\n  blueprintPreview(\n    repo: $repo\n    branch: $branch\n    path: $path\n    ownerId: $ownerId\n    blueprintId: $blueprintId\n  ) {\n    found\n    commitId\n    error\n    reason\n    retryable\n    validation {\n      valid\n      errors\n      errorDetails {\n        code\n        line\n        column\n        path\n        error\n        __typename\n      }\n      plan {\n        mode\n        services\n        databases\n        keyValue\n        envGroups\n        syncFalseVars\n        totalActions\n        actions {\n          operation\n          kind\n          name\n          sourcePath\n          resourceId\n          changedFields {\n            path\n            __typename\n          }\n          message\n          __typename\n        }\n        __typename\n      }\n      estimatedPricing {\n        totalUsd\n        lines {\n          name\n          tierLabel\n          monthlyUsd\n          instanceUsd\n          storageUsd\n          storageGb\n          __typename\n        }\n        variable {\n          name\n          reason\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprintPreview": {
+            "__typename": "BlueprintPreview",
+            "commitId": "7a5a225df294de49d53765d7c3001ba1ca34bf3e",
+            "error": "",
+            "found": true,
+            "reason": "",
+            "retryable": false,
+            "validation": {
+              "__typename": "BlueprintValidation",
+              "errorDetails": [],
+              "errors": [],
+              "estimatedPricing": {
+                "__typename": "BlueprintEstimatedPricing",
+                "lines": [],
+                "totalUsd": "0.00",
+                "variable": []
+              },
+              "plan": {
+                "__typename": "BlueprintValidationPlan",
+                "actions": [
+                  {
+                    "__typename": "BlueprintPlanAction",
+                    "changedFields": [],
+                    "kind": "service",
+                    "message": "",
+                    "name": "hello-go",
+                    "operation": "create",
+                    "resourceId": "",
+                    "sourcePath": "#/services/0"
+                  }
+                ],
+                "databases": [],
+                "envGroups": [],
+                "keyValue": [],
+                "mode": "current_state",
+                "services": ["hello-go"],
+                "syncFalseVars": [],
+                "totalActions": 1
+              },
+              "valid": true
+            }
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792182315699.6,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.128,
+        "responseStart": 1288.717,
+        "responseEnd": 1289.136
+      },
+      "url": "https://dashboard.bex.co/blueprints/new"
+    },
+    "a773RoundTripFreshMobile": {
+      "at": "2026-10-16T20:25:18.910Z",
+      "before": {
+        "repo": "https://github.com/bex-co/bex",
+        "name": "qa-20261016-a773-mobile",
+        "branch": "main",
+        "path": "examples/hello-go/render.yaml",
+        "deployDisabled": false
+      },
+      "after": {
+        "repo": "https://github.com/bex-co/bex",
+        "name": "qa-20261016-a773-mobile",
+        "branch": "",
+        "path": "examples/hello-go/render.yaml",
+        "deployDisabled": true
+      },
+      "snapshot": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\": Blueprints\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - heading \"New Blueprint Instance\" [level=1]\n  - text: Connect a repository containing a render.yaml Blueprint to create and sync a full stack of services. Connect a repository\n  - tablist:\n    - tab \"GitHub\"\n    - tab \"Public Git URL\" [selected]\n  - tabpanel \"Public Git URL\":\n    - text: Repository URL\n    - textbox \"Repository URL\":\n      - /placeholder: https://github.com/you/your-repo\n      - text: https://github.com/bex-co/bex\n  - text: Blueprint Name\n  - textbox \"Blueprint Name\":\n    - /placeholder: my-stack\n    - text: qa-20261016-a773-mobile\n  - text: Branch\n  - combobox \"Branch\"\n  - paragraph: The repository branch with the render.yaml file.\n  - text: Blueprint path\n  - textbox \"Blueprint path\":\n    - /placeholder: render.yaml\n    - text: examples/hello-go/render.yaml\n  - paragraph: The path to the Blueprint file in your repo — any .yaml/.yml file works (e.g. infra/bex/stack.yaml). Defaults to render.yaml at the root of your repository.\n  - paragraph: Review Blueprint configuration\n  - paragraph: Select a repository and branch to review its Blueprint file before deploying.\n  - button \"Cancel\"\n  - button \"Deploy Blueprint\" [disabled]",
+      "console": []
+    },
+    "a773RecoveryAndGitHubControl": {
+      "at": "2026-10-16T20:26:35.150Z",
+      "restored": {
+        "branch": "main",
+        "deployDisabled": false,
+        "previewText": [
+          "Blueprint file parsed successfully — 1 resource will change.",
+          "hello-go"
+        ]
+      },
+      "sameTab": {
+        "branch": "main",
+        "deployDisabled": false
+      },
+      "selectedGitHub": {
+        "branch": "master",
+        "repo": "bex-co/onefx",
+        "expectedDefault": "master"
+      },
+      "submitted": false
+    },
+    "a773ServiceControl": {
+      "at": "2026-10-16T20:27:23.181Z",
+      "before": {
+        "branch": "main",
+        "repo": "https://github.com/bex-co/bex"
+      },
+      "after": {
+        "branch": "main",
+        "repo": "https://github.com/bex-co/bex"
+      },
+      "submitted": false,
+      "console": []
+    }
+  },
+  "pinnedDependencySource": [
+    {
+      "package": "@radix-ui/react-tabs",
+      "version": "1.2.1",
+      "tarball": "https://registry.npmjs.org/@radix-ui/react-tabs/-/react-tabs-1.2.1.tgz",
+      "integrityVerified": true,
+      "member": "package/dist/index.mjs",
+      "sha256": "add042d623442590b3b54de2a5ed9840a8461314a193737414498860e0c49ac8",
+      "excerpts": [
+        {
+          "fromLine": 39,
+          "toLine": 47,
+          "source": "    } = props;\n    const direction = useDirection(dir);\n    const [value, setValue] = useControllableState({\n      prop: valueProp,\n      onChange: onValueChange,\n      defaultProp: defaultValue ?? \"\",\n      caller: TABS_NAME\n    });\n    return /* @__PURE__ */ jsx("
+        },
+        {
+          "fromLine": 51,
+          "toLine": 59,
+          "source": "        baseId: useId(),\n        value,\n        onValueChange: setValue,\n        orientation,\n        dir: direction,\n        activationMode,\n        children: /* @__PURE__ */ jsx(\n          Primitive.div,\n          {"
+        },
+        {
+          "fromLine": 128,
+          "toLine": 136,
+          "source": "              if (!disabled && event.button === 0 && event.ctrlKey === false) {\n                event.currentTarget.focus();\n                context.onValueChange(value);\n              } else {\n                event.preventDefault();\n              }\n            }),\n            onKeyDown: composeEventHandlers(props.onKeyDown, (event) => {\n              if (disabled || event.target !== event.currentTarget) {"
+        },
+        {
+          "fromLine": 144,
+          "toLine": 152,
+          "source": "              const isAutomaticActivation = context.activationMode !== ActivationMode.Manual;\n              if (!isSelected && !disabled && isAutomaticActivation) {\n                context.onValueChange(value);\n              }\n            })\n          }\n        )\n      }\n    );"
+        }
+      ]
+    },
+    {
+      "package": "@radix-ui/react-use-controllable-state",
+      "version": "1.2.2",
+      "tarball": "https://registry.npmjs.org/@radix-ui/react-use-controllable-state/-/react-use-controllable-state-1.2.2.tgz",
+      "integrityVerified": true,
+      "member": "package/dist/index.mjs",
+      "sha256": "20b974293509b4d0f11c542f4a9985714b5146de8ff9fb5a7ea281d869078ca5",
+      "excerpts": [
+        {
+          "fromLine": 32,
+          "toLine": 40,
+          "source": "  const setValue = React.useCallback(\n    (nextValue) => {\n      if (isControlled) {\n        const value2 = isFunction(nextValue) ? nextValue(prop) : nextValue;\n        if (value2 !== prop) {\n          onChangeRef.current?.(value2);\n        }\n      } else {\n        setUncontrolledProp(nextValue);"
+        }
+      ]
+    }
+  ],
+  "cleanup": {
+    "resourcesCreated": [],
+    "createOrSyncSubmitted": false,
+    "baselineRequest": {
+      "operationName": "Qaa467Inventory",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      },
+      "query": "query Qaa467Inventory($ownerId:String!){ services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name}}"
+    },
+    "baselineResponse": {
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      }
+    },
+    "allSevenIDSets": {
+      "blueprints": {
+        "before": ["blp-d9nqg95cavls73fp8m10"],
+        "after": ["blp-d9nqg95cavls73fp8m10"],
+        "equal": true
+      },
+      "databases": {
+        "before": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "after": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "equal": true
+      },
+      "envGroups": {
+        "before": ["evg-db0s94c48ccs739jikr0"],
+        "after": ["evg-db0s94c48ccs739jikr0"],
+        "equal": true
+      },
+      "keyValues": {
+        "before": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "after": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "equal": true
+      },
+      "projects": {
+        "before": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "after": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "equal": true
+      },
+      "services": {
+        "before": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "after": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "equal": true
+      },
+      "webhookEndpoints": {
+        "before": [],
+        "after": [],
+        "equal": true
+      }
+    },
+    "sessionCleared": {
+      "at": "2026-10-16T20:28:52.473Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "ownHandlesAbsent": true
+  },
+  "limits": [
+    "Native preview operation and its full corresponding response are normalized from the actual request/response; no Create or Sync was sent.",
+    "The public example plans a service named hello-go; it was reviewed only and never applied.",
+    "Only main on this Public Git URL failed live. Nondefault/blank branch, changed URL, cached/in-flight preview and further repositories remain test work.",
+    "GitHub onefx/master is a default-branch control; no claim it contains the selected Blueprint path.",
+    "Mobile before screenshot is a viewport crop omitting the footer; DOM state establishes enabled Deploy. All four screenshots viewed; durable DOM/API evidence is primary.",
+    "Dependency review uses exact lock-pinned archives; exact hosted Radix build version is not independently attested.",
+    "No authenticated Render tab-retention comparison."
+  ]
+}
