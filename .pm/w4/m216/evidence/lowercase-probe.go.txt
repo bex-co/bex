@@ -1,0 +1,20 @@
+package main
+
+import (
+ "encoding/json"
+ "os"
+ "runtime"
+ "strings"
+ "unicode"
+)
+
+func main() {
+ mappings := map[int]string{}
+ for r := rune(0); r <= unicode.MaxRune; r++ {
+  if r >= 0xD800 && r <= 0xDFFF { continue }
+  if lower := unicode.ToLower(r); lower != r { mappings[int(r)] = string(lower) }
+ }
+ samples := map[string]string{}
+ for _, s := range []string{"ΟΣ", "ος", "οσ", "İ", "Alpha", "K", "Р"} { samples[s] = strings.ToLower(s) }
+ json.NewEncoder(os.Stdout).Encode(map[string]any{"go":runtime.Version(), "unicode":unicode.Version, "mappings":mappings, "samples":samples})
+}

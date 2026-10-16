@@ -1,0 +1,345 @@
+{
+  "at": "2026-10-16T16:15:51.595Z",
+  "browserVersion": "155.0.8059.84",
+  "goVersion": "go1.26.5",
+  "goUnicode": "15.0.0",
+  "compared": 1112064,
+  "differences": [
+    {
+      "codePoint": "U+130",
+      "input": "İ",
+      "go": "i",
+      "js": "i̇"
+    },
+    {
+      "codePoint": "U+1C89",
+      "input": "Ᲊ",
+      "go": "Ᲊ",
+      "js": "ᲊ"
+    },
+    {
+      "codePoint": "U+A7CB",
+      "input": "Ɤ",
+      "go": "Ɤ",
+      "js": "ɤ"
+    },
+    {
+      "codePoint": "U+A7CC",
+      "input": "Ꟍ",
+      "go": "Ꟍ",
+      "js": "ꟍ"
+    },
+    {
+      "codePoint": "U+A7CE",
+      "input": "꟎",
+      "go": "꟎",
+      "js": "꟏"
+    },
+    {
+      "codePoint": "U+A7D2",
+      "input": "꟒",
+      "go": "꟒",
+      "js": "ꟓ"
+    },
+    {
+      "codePoint": "U+A7D4",
+      "input": "꟔",
+      "go": "꟔",
+      "js": "ꟕ"
+    },
+    {
+      "codePoint": "U+A7DA",
+      "input": "Ꟛ",
+      "go": "Ꟛ",
+      "js": "ꟛ"
+    },
+    {
+      "codePoint": "U+A7DC",
+      "input": "Ƛ",
+      "go": "Ƛ",
+      "js": "ƛ"
+    },
+    {
+      "codePoint": "U+10D50",
+      "input": "𐵐",
+      "go": "𐵐",
+      "js": "𐵰"
+    },
+    {
+      "codePoint": "U+10D51",
+      "input": "𐵑",
+      "go": "𐵑",
+      "js": "𐵱"
+    },
+    {
+      "codePoint": "U+10D52",
+      "input": "𐵒",
+      "go": "𐵒",
+      "js": "𐵲"
+    },
+    {
+      "codePoint": "U+10D53",
+      "input": "𐵓",
+      "go": "𐵓",
+      "js": "𐵳"
+    },
+    {
+      "codePoint": "U+10D54",
+      "input": "𐵔",
+      "go": "𐵔",
+      "js": "𐵴"
+    },
+    {
+      "codePoint": "U+10D55",
+      "input": "𐵕",
+      "go": "𐵕",
+      "js": "𐵵"
+    },
+    {
+      "codePoint": "U+10D56",
+      "input": "𐵖",
+      "go": "𐵖",
+      "js": "𐵶"
+    },
+    {
+      "codePoint": "U+10D57",
+      "input": "𐵗",
+      "go": "𐵗",
+      "js": "𐵷"
+    },
+    {
+      "codePoint": "U+10D58",
+      "input": "𐵘",
+      "go": "𐵘",
+      "js": "𐵸"
+    },
+    {
+      "codePoint": "U+10D59",
+      "input": "𐵙",
+      "go": "𐵙",
+      "js": "𐵹"
+    },
+    {
+      "codePoint": "U+10D5A",
+      "input": "𐵚",
+      "go": "𐵚",
+      "js": "𐵺"
+    },
+    {
+      "codePoint": "U+10D5B",
+      "input": "𐵛",
+      "go": "𐵛",
+      "js": "𐵻"
+    },
+    {
+      "codePoint": "U+10D5C",
+      "input": "𐵜",
+      "go": "𐵜",
+      "js": "𐵼"
+    },
+    {
+      "codePoint": "U+10D5D",
+      "input": "𐵝",
+      "go": "𐵝",
+      "js": "𐵽"
+    },
+    {
+      "codePoint": "U+10D5E",
+      "input": "𐵞",
+      "go": "𐵞",
+      "js": "𐵾"
+    },
+    {
+      "codePoint": "U+10D5F",
+      "input": "𐵟",
+      "go": "𐵟",
+      "js": "𐵿"
+    },
+    {
+      "codePoint": "U+10D60",
+      "input": "𐵠",
+      "go": "𐵠",
+      "js": "𐶀"
+    },
+    {
+      "codePoint": "U+10D61",
+      "input": "𐵡",
+      "go": "𐵡",
+      "js": "𐶁"
+    },
+    {
+      "codePoint": "U+10D62",
+      "input": "𐵢",
+      "go": "𐵢",
+      "js": "𐶂"
+    },
+    {
+      "codePoint": "U+10D63",
+      "input": "𐵣",
+      "go": "𐵣",
+      "js": "𐶃"
+    },
+    {
+      "codePoint": "U+10D64",
+      "input": "𐵤",
+      "go": "𐵤",
+      "js": "𐶄"
+    },
+    {
+      "codePoint": "U+10D65",
+      "input": "𐵥",
+      "go": "𐵥",
+      "js": "𐶅"
+    },
+    {
+      "codePoint": "U+16EA0",
+      "input": "𖺠",
+      "go": "𖺠",
+      "js": "𖺻"
+    },
+    {
+      "codePoint": "U+16EA1",
+      "input": "𖺡",
+      "go": "𖺡",
+      "js": "𖺼"
+    },
+    {
+      "codePoint": "U+16EA2",
+      "input": "𖺢",
+      "go": "𖺢",
+      "js": "𖺽"
+    },
+    {
+      "codePoint": "U+16EA3",
+      "input": "𖺣",
+      "go": "𖺣",
+      "js": "𖺾"
+    },
+    {
+      "codePoint": "U+16EA4",
+      "input": "𖺤",
+      "go": "𖺤",
+      "js": "𖺿"
+    },
+    {
+      "codePoint": "U+16EA5",
+      "input": "𖺥",
+      "go": "𖺥",
+      "js": "𖻀"
+    },
+    {
+      "codePoint": "U+16EA6",
+      "input": "𖺦",
+      "go": "𖺦",
+      "js": "𖻁"
+    },
+    {
+      "codePoint": "U+16EA7",
+      "input": "𖺧",
+      "go": "𖺧",
+      "js": "𖻂"
+    },
+    {
+      "codePoint": "U+16EA8",
+      "input": "𖺨",
+      "go": "𖺨",
+      "js": "𖻃"
+    },
+    {
+      "codePoint": "U+16EA9",
+      "input": "𖺩",
+      "go": "𖺩",
+      "js": "𖻄"
+    },
+    {
+      "codePoint": "U+16EAA",
+      "input": "𖺪",
+      "go": "𖺪",
+      "js": "𖻅"
+    },
+    {
+      "codePoint": "U+16EAB",
+      "input": "𖺫",
+      "go": "𖺫",
+      "js": "𖻆"
+    },
+    {
+      "codePoint": "U+16EAC",
+      "input": "𖺬",
+      "go": "𖺬",
+      "js": "𖻇"
+    },
+    {
+      "codePoint": "U+16EAD",
+      "input": "𖺭",
+      "go": "𖺭",
+      "js": "𖻈"
+    },
+    {
+      "codePoint": "U+16EAE",
+      "input": "𖺮",
+      "go": "𖺮",
+      "js": "𖻉"
+    },
+    {
+      "codePoint": "U+16EAF",
+      "input": "𖺯",
+      "go": "𖺯",
+      "js": "𖻊"
+    },
+    {
+      "codePoint": "U+16EB0",
+      "input": "𖺰",
+      "go": "𖺰",
+      "js": "𖻋"
+    },
+    {
+      "codePoint": "U+16EB1",
+      "input": "𖺱",
+      "go": "𖺱",
+      "js": "𖻌"
+    },
+    {
+      "codePoint": "U+16EB2",
+      "input": "𖺲",
+      "go": "𖺲",
+      "js": "𖻍"
+    },
+    {
+      "codePoint": "U+16EB3",
+      "input": "𖺳",
+      "go": "𖺳",
+      "js": "𖻎"
+    },
+    {
+      "codePoint": "U+16EB4",
+      "input": "𖺴",
+      "go": "𖺴",
+      "js": "𖻏"
+    },
+    {
+      "codePoint": "U+16EB5",
+      "input": "𖺵",
+      "go": "𖺵",
+      "js": "𖻐"
+    },
+    {
+      "codePoint": "U+16EB6",
+      "input": "𖺶",
+      "go": "𖺶",
+      "js": "𖻑"
+    },
+    {
+      "codePoint": "U+16EB7",
+      "input": "𖺷",
+      "go": "𖺷",
+      "js": "𖻒"
+    },
+    {
+      "codePoint": "U+16EB8",
+      "input": "𖺸",
+      "go": "𖺸",
+      "js": "𖻓"
+    }
+  ]
+}
