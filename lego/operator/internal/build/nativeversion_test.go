@@ -177,12 +177,13 @@ func TestResolveNativeBuildRewritesTheBase(t *testing.T) {
 	bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"PYTHON_VERSION": "3.11.9", "OTHER": "x\ny"}, nil)
 	before, _ := os.ReadFile(dockerfile)
 	choices, err := ResolveNativeBuild("python", bundle, dockerfile, src)
-	if err != nil || len(choices) != 2 || choices[0].Line != "3.11" || choices[1].Label != "Poetry" {
+	if err != nil || len(choices) != 3 || choices[0].Line != "3.11" || choices[1].Label != "Poetry" || choices[2].Label != "Node" {
 		t.Fatalf("resolve = %+v, %v", choices, err)
 	}
 	after, _ := os.ReadFile(dockerfile)
 	py311, _ := nativeToolchains["python"].find("3.11")
 	want := strings.Replace(string(before), "FROM "+nativeToolchains["python"].defaultImage()+"\n", "FROM "+py311.image+"\n"+
+		nativeJSToolLines(nativeToolchains["node"].defaultImage())+
 		"RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry\n", 1)
 	if string(after) != want {
 		t.Fatalf("Dockerfile =\n%s\nwant\n%s", after, want)
@@ -233,7 +234,7 @@ func TestResolveNativeBuildIgnoresSymlinkedVersionFiles(t *testing.T) {
 	bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"SECRET": "s3cr3t"}, nil)
 	must(t, os.Symlink(bundle, filepath.Join(src, ".python-version")))
 	choices, err := ResolveNativeBuild("python", bundle, dockerfile, src)
-	if err != nil || len(choices) != 2 || choices[0].Source != "" {
+	if err != nil || len(choices) != 3 || choices[0].Source != "" {
 		t.Fatalf("symlinked .python-version: %+v, %v; want the default, unread", choices, err)
 	}
 }
@@ -424,7 +425,7 @@ func TestResolveNativeBuildAddsPoetryToPython(t *testing.T) {
 	for _, line := range nativeToolchains["python"].lines {
 		bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"PYTHON_VERSION": line.line, "POETRY_VERSION": "2.1.3"}, nil)
 		choices, err := ResolveNativeBuild("python", bundle, dockerfile, src)
-		if err != nil || len(choices) != 2 || choices[0].Line != line.line || choices[1].Line != "2.1.3" {
+		if err != nil || len(choices) != 3 || choices[0].Line != line.line || choices[1].Line != "2.1.3" {
 			t.Fatalf("python %s choices = %+v, %v", line.line, choices, err)
 		}
 		df, _ := os.ReadFile(dockerfile)
@@ -453,5 +454,68 @@ func TestResolveNativeBuildAddsPoetryToPython(t *testing.T) {
 	}
 	if df, _ := os.ReadFile(dockerfile); strings.Contains(string(df), "poetry") {
 		t.Fatalf("node build gained Poetry:\n%s", df)
+	}
+}
+
+// Ruby and Python builds carry Render's JavaScript tools (w8/m77): the
+// selected Node line's node/npm, Yarn and pnpm land between the primary FROM
+// and the source/build on every primary line, NODE_VERSION picks the Node
+// line, a refused Node request leaves the Dockerfile alone, and runtimes
+// outside the set gain nothing.
+func TestResolveNativeBuildAddsJSToolsToRubyAndPython(t *testing.T) {
+	for _, runtime := range []string{"ruby", "python"} {
+		o := nativeOptions()
+		o.Runtime = runtime
+		for _, line := range nativeToolchains[runtime].lines {
+			versionEnv := map[string]string{"python": "PYTHON_VERSION"}[runtime]
+			env := map[string]string{}
+			files := map[string]string{}
+			if versionEnv != "" {
+				env[versionEnv] = line.line
+			} else {
+				files[".ruby-version"] = line.version + "\n"
+			}
+			bundle, dockerfile, src := writeResolveFixture(t, o, env, files)
+			choices, err := ResolveNativeBuild(runtime, bundle, dockerfile, src)
+			if err != nil || choices[0].Line != line.line || choices[len(choices)-1].Label != "Node" || choices[len(choices)-1].Line != "24" {
+				t.Fatalf("%s %s choices = %+v, %v", runtime, line.line, choices, err)
+			}
+			df, _ := os.ReadFile(dockerfile)
+			from := strings.Index(string(df), "\nFROM "+line.image+"\n")
+			tools := strings.Index(string(df), "\n"+nativeJSToolLines(nativeToolchains["node"].defaultImage()))
+			source, build := strings.Index(string(df), "\nCOPY . .\n"), strings.Index(string(df), "\nRUN --mount=type=secret")
+			if from < 0 || tools < from || source < tools || build < source {
+				t.Fatalf("%s %s: JS tools are not between FROM and the source/build:\n%s", runtime, line.line, df)
+			}
+		}
+
+		bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"NODE_VERSION": "22"}, nil)
+		choices, err := ResolveNativeBuild(runtime, bundle, dockerfile, src)
+		node22, _ := nativeToolchains["node"].find("22")
+		if df, _ := os.ReadFile(dockerfile); err != nil || choices[len(choices)-1].Source != "NODE_VERSION=22" ||
+			!strings.Contains(string(df), "COPY --link --from="+node22.image+" /usr/local/bin/node /usr/local/bin/node\n") {
+			t.Fatalf("%s NODE_VERSION=22: %+v, %v\n%s", runtime, choices, err, df)
+		}
+
+		bundle, dockerfile, src = writeResolveFixture(t, o, map[string]string{"NODE_VERSION": "12"}, nil)
+		before, _ := os.ReadFile(dockerfile)
+		var unsupported *UnsupportedVersionError
+		if _, err := ResolveNativeBuild(runtime, bundle, dockerfile, src); !errors.As(err, &unsupported) {
+			t.Fatalf("%s unsupported NODE_VERSION = %v", runtime, err)
+		}
+		if after, _ := os.ReadFile(dockerfile); string(after) != string(before) {
+			t.Errorf("%s: a refused Node request rewrote the Dockerfile", runtime)
+		}
+	}
+	for _, runtime := range []string{"go", "rust", "elixir"} {
+		o := nativeOptions()
+		o.Runtime = runtime
+		bundle, dockerfile, src := writeResolveFixture(t, o, nil, nil)
+		if _, err := ResolveNativeBuild(runtime, bundle, dockerfile, src); err != nil {
+			t.Fatal(err)
+		}
+		if df, _ := os.ReadFile(dockerfile); strings.Contains(string(df), "/usr/local/bin/node") {
+			t.Fatalf("%s gained the JS companion:\n%s", runtime, df)
+		}
 	}
 }

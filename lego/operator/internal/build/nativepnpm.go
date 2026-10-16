@@ -43,6 +43,12 @@ func nativeNodeTools(o Options) string {
 	if nativeRuntime(o) != nativeNodeRuntime {
 		return ""
 	}
+	return nativePnpmInstall()
+}
+
+// nativePnpmInstall is the pnpm layer pair itself, shared by primary Node
+// builds and the JavaScript companion of Ruby and Python builds (w8/m77).
+func nativePnpmInstall() string {
 	return "ADD --link --checksum=" + nativePnpm.checksum + " https://registry.npmjs.org/pnpm/-/pnpm-" + nativePnpm.version + ".tgz /opt/bex/pnpm.tgz\n" +
 		"RUN mkdir -p /usr/local/lib/node_modules/pnpm" +
 		" && tar -xzf /opt/bex/pnpm.tgz -C /usr/local/lib/node_modules/pnpm --strip-components=1 --no-same-owner && rm /opt/bex/pnpm.tgz" +
