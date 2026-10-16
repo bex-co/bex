@@ -1,0 +1,2103 @@
+{
+  "scope": "Functional QA a751; exact native/API payloads and qualified DOM projections; filing only",
+  "receipts": {
+    "a751Created": {
+      "at": "2026-10-16T17:04:13.728Z",
+      "request": {
+        "operationName": "CreateService",
+        "variables": {
+          "image": "node:24-alpine",
+          "name": "qa-20261016-a751-records",
+          "type": "web_service",
+          "registryCredentialId": "",
+          "runtime": "image",
+          "startCommand": "node -e 'const http=require(\"http\");http.createServer(async(req,res)=>{if(req.url===\"/emit\"){for(let i=0;i<20;i++)console.log(\"QA_A751_FAST\");for(let i=0;i<20;i++)console.log(\"QA_A751_UNIQUE \"+i);for(let i=0;i<20;i++){console.log(\"QA_A751_SLOW\");await new Promise(r=>setTimeout(r,20))}}res.end(\"QA_A751 ready\\n\")}).listen(8080,\"0.0.0.0\")'",
+          "plan": "free",
+          "port": 8080,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db95i31koksc73a7vj4g",
+            "latestDeployId": "dep-db95i31koksc73a7vj50",
+            "name": "qa-20261016-a751-records",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": "",
+            "type": "web_service"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792170252652.514,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.136,
+        "responseStart": 355.314,
+        "responseEnd": 355.817
+      },
+      "url": "https://dashboard.bex.co/services/srv-db95i31koksc73a7vj4g/deploys/dep-db95i31koksc73a7vj50"
+    },
+    "a751FreshFastView": {
+      "at": "2026-10-16T17:05:07.734Z",
+      "count": 1,
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261016-a751-records\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261016-a751-records\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db95i31koksc73a7vj4g/deploys/dep-db95i31koksc73a7vj50\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db95i31koksc73a7vj4g/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db95i31koksc73a7vj4g\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261016-a751-records.onbex.co\":\n    - /url: https://qa-20261016-a751-records.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261016-a751-records\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: now\n  - combobox \"Log type\": Application logs\n  - textbox \"Search logs\": QA_A751_FAST\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\"\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - text: 10:04:33 AM\n  - button \"Filter logs by instance srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98\": \"[1ta3q]\"\n  - text: QA_A751_FAST\n  - paragraph: Live tail paused"
+    },
+    "a751FastExactWire": {
+      "at": "2026-10-16T17:05:26.039Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db95i31koksc73a7vj4g",
+          "type": "app",
+          "text": "qa_a751_fast",
+          "textMode": "display",
+          "startTime": "2026-10-16T16:05:25.036Z",
+          "endTime": "2026-10-16T17:05:25.036Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681127808Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681472037Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681480453Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.68152134Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681546248Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681549454Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681551327Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681606421Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681610879Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681684548Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681693234Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681695659Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681697673Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681699345Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681701339Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681766873Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681771402Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681773416Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681775389Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681777363Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-16T17:04:33.681127807Z",
+            "nextStartTime": "2026-10-16T16:05:25.036Z"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792170325049.236,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.302,
+        "responseStart": 278.493,
+        "responseEnd": 278.925
+      },
+      "url": "https://dashboard.bex.co/services/srv-db95i31koksc73a7vj4g/logs?type=app&text=qa_a751_fast&live=0"
+    },
+    "a751FastExactView": {
+      "at": "2026-10-16T17:05:27.230Z",
+      "count": 1,
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261016-a751-records\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261016-a751-records\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db95i31koksc73a7vj4g/deploys/dep-db95i31koksc73a7vj50\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db95i31koksc73a7vj4g/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db95i31koksc73a7vj4g\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261016-a751-records.onbex.co\":\n    - /url: https://qa-20261016-a751-records.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261016-a751-records\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: now\n  - combobox \"Log type\": Application logs\n  - textbox \"Search logs\": qa_a751_fast\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\"\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - text: 10:04:33 AM\n  - button \"Filter logs by instance srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98\": \"[1ta3q]\"\n  - text: QA_A751_FAST\n  - paragraph: Live tail paused"
+    },
+    "a751SlowWire": {
+      "at": "2026-10-16T17:05:29.443Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db95i31koksc73a7vj4g",
+          "type": "app",
+          "text": "QA_A751_SLOW",
+          "textMode": "display",
+          "startTime": "2026-10-16T16:05:28.229Z",
+          "endTime": "2026-10-16T17:05:28.229Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681897851Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.702300418Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.722657329Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.74308892Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.763710751Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.784600929Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.803853384Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.824142888Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.844561054Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.864869785Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.885306396Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.905602642Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.925934865Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.946246411Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.96770443Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.987990598Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:34.008437308Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:34.028699119Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:34.049071729Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:34.069443789Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-16T17:04:33.68189785Z",
+            "nextStartTime": "2026-10-16T16:05:28.229Z"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792170328244.617,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.11,
+        "responseStart": 481.385,
+        "responseEnd": 482.041
+      },
+      "url": "https://dashboard.bex.co/services/srv-db95i31koksc73a7vj4g/logs?type=app&text=QA_A751_SLOW&live=0"
+    },
+    "a751SlowView": {
+      "at": "2026-10-16T17:05:30.639Z",
+      "count": 20,
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261016-a751-records\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261016-a751-records\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db95i31koksc73a7vj4g/deploys/dep-db95i31koksc73a7vj50\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db95i31koksc73a7vj4g/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db95i31koksc73a7vj4g\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261016-a751-records.onbex.co\":\n    - /url: https://qa-20261016-a751-records.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261016-a751-records\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: now\n  - combobox \"Log type\": Application logs\n  - textbox \"Search logs\": QA_A751_SLOW\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\"\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - text: 10:04:33 AM\n  - button \"Filter logs by instance srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98\": \"[1ta3q]\"\n  - text: QA_A751_SLOW 10:04:33 AM\n  - button \"Filter logs by instance srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98\": \"[1ta3q]\"\n  - text: QA_A751_SLOW 10:04:33 AM\n  - button \"Filter logs by instance srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98\": \"[1ta3q]\"\n  - text: QA_A751_SLOW 10:04:33 AM\n  - button \"Filter logs by instance srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98\": \"[1ta3q]\"\n  - text: QA_A751_SLOW 10:04:33 AM\n  - button \"Filter logs by instance srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98\": \"[1ta3q]\"\n  - text: QA_A751_SLOW 10:04:33 AM\n  - button \"Filter logs by instance srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98\": \"[1ta3q]\"\n  - text: QA_A751_SLOW 10:04:33 AM\n  - button \"Filter logs by instance srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98\": \"[1ta3q]\"\n  - text: QA_A751_SLOW 10:04:33 AM\n  - button \"Filter logs by instance srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98\": \"[1ta3q]\"\n  - text: QA_A751_SLOW 10:04:33 AM\n  - button \"Filter logs by instance srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98\": \"[1ta3q]\"\n  - text: QA_A751_SLOW 10:04:33 AM\n  - button \"Filter logs by instance srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98\": \"[1ta3q]\"\n  - text: QA_A751_SLOW 10:04:33 AM\n  - button \"Filter logs by instance srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98\": \"[1ta3q]\"\n  - text: QA_A751_SLOW 10:04:33 AM\n  - button \"Filter logs by instance srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98\": \"[1ta3q]\"\n  - text: QA_A751_SLOW 10:04:33 AM\n  - button \"Filter logs by instance srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98\": \"[1ta3q]\"\n  - text: QA_A751_SLOW 10:04:33 AM\n  - button \"Filter logs by instance srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98\": \"[1ta3q]\"\n  - text: QA_A751_SLOW 10:04:33 AM\n  - button \"Filter logs by instance srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98\": \"[1ta3q]\"\n  - text: QA_A751_SLOW 10:04:33 AM\n  - button \"Filter logs by instance srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98\": \"[1ta3q]\"\n  - text: QA_A751_SLOW 10:04:34 AM\n  - button \"Filter logs by instance srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98\": \"[1ta3q]\"\n  - text: QA_A751_SLOW 10:04:34 AM\n  - button \"Filter logs by instance srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98\": \"[1ta3q]\"\n  - text: QA_A751_SLOW 10:04:34 AM\n  - button \"Filter logs by instance srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98\": \"[1ta3q]\"\n  - text: QA_A751_SLOW 10:04:34 AM\n  - button \"Filter logs by instance srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98\": \"[1ta3q]\"\n  - text: QA_A751_SLOW\n  - paragraph: Live tail paused"
+    },
+    "a751UniqueWire": {
+      "at": "2026-10-16T17:06:53.227Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db95i31koksc73a7vj4g",
+          "type": "app",
+          "text": "QA_A751_UNIQUE",
+          "textMode": "display",
+          "startTime": "2026-10-16T16:06:52.023Z",
+          "endTime": "2026-10-16T17:06:52.023Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_UNIQUE 0",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681779437Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_UNIQUE 1",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681781832Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_UNIQUE 2",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681789275Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_UNIQUE 3",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.68179151Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_UNIQUE 4",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681810235Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_UNIQUE 5",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681866461Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_UNIQUE 6",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681870298Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_UNIQUE 7",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681872222Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_UNIQUE 8",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681874046Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_UNIQUE 9",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681875899Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_UNIQUE 10",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681878575Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_UNIQUE 11",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681880929Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_UNIQUE 12",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681882903Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_UNIQUE 13",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681884757Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_UNIQUE 14",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.68188663Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_UNIQUE 15",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681888623Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_UNIQUE 16",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681890627Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_UNIQUE 17",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.68189235Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_UNIQUE 18",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681894154Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_UNIQUE 19",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681895997Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-16T17:04:33.681779436Z",
+            "nextStartTime": "2026-10-16T16:06:52.023Z"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792170412036.602,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.109,
+        "responseStart": 475.963,
+        "responseEnd": 476.862
+      },
+      "url": "https://dashboard.bex.co/services/srv-db95i31koksc73a7vj4g/logs?type=app&text=QA_A751_UNIQUE&live=0"
+    },
+    "a751UniqueView": {
+      "at": "2026-10-16T17:06:54.427Z",
+      "numbers": [
+        "QA_A751_UNIQUE 0",
+        "QA_A751_UNIQUE 1",
+        "QA_A751_UNIQUE 2",
+        "QA_A751_UNIQUE 3",
+        "QA_A751_UNIQUE 4",
+        "QA_A751_UNIQUE 5",
+        "QA_A751_UNIQUE 6",
+        "QA_A751_UNIQUE 7",
+        "QA_A751_UNIQUE 8",
+        "QA_A751_UNIQUE 9",
+        "QA_A751_UNIQUE 10",
+        "QA_A751_UNIQUE 11",
+        "QA_A751_UNIQUE 12",
+        "QA_A751_UNIQUE 13",
+        "QA_A751_UNIQUE 14",
+        "QA_A751_UNIQUE 15",
+        "QA_A751_UNIQUE 16",
+        "QA_A751_UNIQUE 17",
+        "QA_A751_UNIQUE 18",
+        "QA_A751_UNIQUE 19"
+      ],
+      "count": 20
+    },
+    "a751FreshMobileFast": {
+      "at": "2026-10-16T17:06:57.568Z",
+      "count": 1,
+      "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261016-a751-records\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261016-a751-records\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db95i31koksc73a7vj4g/deploys/dep-db95i31koksc73a7vj50\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db95i31koksc73a7vj4g/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db95i31koksc73a7vj4g\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261016-a751-records.onbex.co\":\n    - /url: https://qa-20261016-a751-records.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261016-a751-records\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 2m\n  - combobox \"Log type\": Application logs\n  - textbox \"Search logs\": QA_A751_FAST\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\"\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - text: 10:04:33 AM\n  - button \"Filter logs by instance srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98\": \"[1ta3q]\"\n  - text: QA_A751_FAST\n  - paragraph: Live tail paused",
+      "width": {
+        "viewport": 390,
+        "doc": 390
+      },
+      "consoleErrors": []
+    },
+    "a751MobileFastWire": {
+      "at": "2026-10-16T17:06:59.629Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db95i31koksc73a7vj4g",
+          "type": "app",
+          "text": "qa_a751_FAST",
+          "textMode": "display",
+          "startTime": "2026-10-16T16:06:58.580Z",
+          "endTime": "2026-10-16T17:06:58.580Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681127808Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681472037Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681480453Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.68152134Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681546248Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681549454Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681551327Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681606421Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681610879Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681684548Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681693234Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681695659Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681697673Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681699345Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681701339Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681766873Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681771402Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681773416Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681775389Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_FAST",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681777363Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-16T17:04:33.681127807Z",
+            "nextStartTime": "2026-10-16T16:06:58.58Z"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792170418592.07,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.11,
+        "responseStart": 330.546,
+        "responseEnd": 330.896
+      },
+      "url": "https://dashboard.bex.co/services/srv-db95i31koksc73a7vj4g/logs?type=app&text=qa_a751_FAST&live=0"
+    },
+    "a751RestFast": {
+      "at": "2026-10-16T17:08:06.102Z",
+      "request": {
+        "method": "GET",
+        "url": "https://api.bex.co/v1/logs?resource=srv-db95i31koksc73a7vj4g&type=app&text=QA_A751_FAST&limit=100"
+      },
+      "status": 200,
+      "body": {
+        "hasMore": false,
+        "nextStartTime": "2026-10-16T16:08:06.070278176Z",
+        "nextEndTime": "2026-10-16T17:04:33.681127807Z",
+        "logs": [
+          {
+            "id": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98-2026-10-16T17:04:33.681127808Z-1f284f25",
+            "message": "QA_A751_FAST",
+            "timestamp": "2026-10-16T17:04:33.681127808Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db95i31koksc73a7vj4g"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "id": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98-2026-10-16T17:04:33.681472037Z-1f284f25",
+            "message": "QA_A751_FAST",
+            "timestamp": "2026-10-16T17:04:33.681472037Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db95i31koksc73a7vj4g"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "id": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98-2026-10-16T17:04:33.681480453Z-1f284f25",
+            "message": "QA_A751_FAST",
+            "timestamp": "2026-10-16T17:04:33.681480453Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db95i31koksc73a7vj4g"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "id": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98-2026-10-16T17:04:33.68152134Z-1f284f25",
+            "message": "QA_A751_FAST",
+            "timestamp": "2026-10-16T17:04:33.68152134Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db95i31koksc73a7vj4g"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "id": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98-2026-10-16T17:04:33.681546248Z-1f284f25",
+            "message": "QA_A751_FAST",
+            "timestamp": "2026-10-16T17:04:33.681546248Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db95i31koksc73a7vj4g"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "id": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98-2026-10-16T17:04:33.681549454Z-1f284f25",
+            "message": "QA_A751_FAST",
+            "timestamp": "2026-10-16T17:04:33.681549454Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db95i31koksc73a7vj4g"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "id": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98-2026-10-16T17:04:33.681551327Z-1f284f25",
+            "message": "QA_A751_FAST",
+            "timestamp": "2026-10-16T17:04:33.681551327Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db95i31koksc73a7vj4g"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "id": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98-2026-10-16T17:04:33.681606421Z-1f284f25",
+            "message": "QA_A751_FAST",
+            "timestamp": "2026-10-16T17:04:33.681606421Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db95i31koksc73a7vj4g"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "id": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98-2026-10-16T17:04:33.681610879Z-1f284f25",
+            "message": "QA_A751_FAST",
+            "timestamp": "2026-10-16T17:04:33.681610879Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db95i31koksc73a7vj4g"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "id": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98-2026-10-16T17:04:33.681684548Z-1f284f25",
+            "message": "QA_A751_FAST",
+            "timestamp": "2026-10-16T17:04:33.681684548Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db95i31koksc73a7vj4g"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "id": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98-2026-10-16T17:04:33.681693234Z-1f284f25",
+            "message": "QA_A751_FAST",
+            "timestamp": "2026-10-16T17:04:33.681693234Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db95i31koksc73a7vj4g"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "id": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98-2026-10-16T17:04:33.681695659Z-1f284f25",
+            "message": "QA_A751_FAST",
+            "timestamp": "2026-10-16T17:04:33.681695659Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db95i31koksc73a7vj4g"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "id": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98-2026-10-16T17:04:33.681697673Z-1f284f25",
+            "message": "QA_A751_FAST",
+            "timestamp": "2026-10-16T17:04:33.681697673Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db95i31koksc73a7vj4g"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "id": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98-2026-10-16T17:04:33.681699345Z-1f284f25",
+            "message": "QA_A751_FAST",
+            "timestamp": "2026-10-16T17:04:33.681699345Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db95i31koksc73a7vj4g"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "id": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98-2026-10-16T17:04:33.681701339Z-1f284f25",
+            "message": "QA_A751_FAST",
+            "timestamp": "2026-10-16T17:04:33.681701339Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db95i31koksc73a7vj4g"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "id": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98-2026-10-16T17:04:33.681766873Z-1f284f25",
+            "message": "QA_A751_FAST",
+            "timestamp": "2026-10-16T17:04:33.681766873Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db95i31koksc73a7vj4g"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "id": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98-2026-10-16T17:04:33.681771402Z-1f284f25",
+            "message": "QA_A751_FAST",
+            "timestamp": "2026-10-16T17:04:33.681771402Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db95i31koksc73a7vj4g"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "id": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98-2026-10-16T17:04:33.681773416Z-1f284f25",
+            "message": "QA_A751_FAST",
+            "timestamp": "2026-10-16T17:04:33.681773416Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db95i31koksc73a7vj4g"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "id": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98-2026-10-16T17:04:33.681775389Z-1f284f25",
+            "message": "QA_A751_FAST",
+            "timestamp": "2026-10-16T17:04:33.681775389Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db95i31koksc73a7vj4g"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "unknown"
+              }
+            ]
+          },
+          {
+            "id": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98-2026-10-16T17:04:33.681777363Z-1f284f25",
+            "message": "QA_A751_FAST",
+            "timestamp": "2026-10-16T17:04:33.681777363Z",
+            "labels": [
+              {
+                "name": "type",
+                "value": "app"
+              },
+              {
+                "name": "resource",
+                "value": "srv-db95i31koksc73a7vj4g"
+              },
+              {
+                "name": "instance",
+                "value": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98"
+              },
+              {
+                "name": "container",
+                "value": "app"
+              },
+              {
+                "name": "level",
+                "value": "unknown"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "a751SlowReplayWire": {
+      "at": "2026-10-16T17:08:08.660Z",
+      "request": {
+        "operationName": "Logs",
+        "variables": {
+          "resource": "srv-db95i31koksc73a7vj4g",
+          "type": "app",
+          "text": "QA_A751_SLOW",
+          "textMode": "display",
+          "startTime": "2026-10-16T16:08:07.651Z",
+          "endTime": "2026-10-16T17:08:07.651Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.681897851Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.702300418Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.722657329Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.74308892Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.763710751Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.784600929Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.803853384Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.824142888Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.844561054Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.864869785Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.885306396Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.905602642Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.925934865Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.946246411Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.96770443Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:33.987990598Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:34.008437308Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:34.028699119Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:34.049071729Z",
+                "type": "app"
+              },
+              {
+                "__typename": "LogEntry",
+                "instance": "srv-db95i31koksc73a7vj4g-1ta3q3ta2am7hkpnkg98",
+                "level": "unknown",
+                "message": "QA_A751_SLOW",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T17:04:34.069443789Z",
+                "type": "app"
+              }
+            ],
+            "nextEndTime": "2026-10-16T17:04:33.68189785Z",
+            "nextStartTime": "2026-10-16T16:08:07.651Z"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792170487663.646,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.208,
+        "responseStart": 283.437,
+        "responseEnd": 283.889
+      },
+      "url": "https://dashboard.bex.co/services/srv-db95i31koksc73a7vj4g/logs?type=app&text=QA_A751_SLOW&live=0"
+    },
+    "a751SlowReplayControl": {
+      "at": "2026-10-16T17:08:13.460Z",
+      "live": {
+        "count": 20,
+        "main": "Toggle Sidebar\nqa-20261016-a751-records\nNew\nP\nWEB SERVICE\nqa-20261016-a751-records\nService\nRunning\nLatest deploy\nLive\nFree\nRuntime\nImage\nConnect\nManual Deploy\nService ID:\nsrv-db95i31koksc73a7vj4g\nhttps://qa-20261016-a751-records.onbex.co\nSlug\nqa-20261016-a751-records\n·\nInstances\n1\n·\nRevision\nrev-1\n·\nCreated\n3m\nApplication logs\nLast hour\nFilters\nLive\n\nThe range limits history. Live mode appends new lines as they arrive.\n\n10:04:33 AM\n[1ta3q]\nQA_A751_SLOW\n10:04:33 AM\n[1ta3q]\nQA_A751_SLOW\n10:04:33 AM\n[1ta3q]\nQA_A751_SLOW\n10:04:33 AM\n[1ta3q]\nQA_A751_SLOW\n10:04:33 AM\n[1ta3q]\nQA_A751_SLOW\n10:04:33 AM\n[1ta3q]\nQA_A751_SLOW\n10:04:33 AM\n[1ta3q]\nQA_A751_SLOW\n10:04:33 AM\n[1ta3q]\nQA_A751_SLOW\n10:04:33 AM\n[1ta3q]\nQA_A751_SLOW\n10:04:33 AM\n[1ta3q]\nQA_A751_SLOW\n10:04:33 AM\n[1ta3q]\nQA_A751_SLOW\n10:04:33 AM\n[1ta3q]\nQA_A751_SLOW\n10:04:33 AM\n[1ta3q]\nQA_A751_SLOW\n10:04:33 AM\n[1ta3q]\nQA_A751_SLOW\n10:04:33 AM\n[1ta3q]\nQA_A751_SLOW\n10:04:33 AM\n[1ta3q]\nQA_A751_SLOW\n10:04:34 AM\n[1ta3q]\nQA_A751_SLOW\n10:04:34 AM\n[1ta3q]\nQA_A751_SLOW\n10:04:34 AM\n[1ta3q]\nQA_A751_SLOW\n10:04:34 AM\n[1ta3q]\nQA_A751_SLOW\n\nLive — streaming new lines"
+      },
+      "pausedCount": 20
+    },
+    "a751IdentityModel": {
+      "at": "2026-10-16T17:09:15.507Z",
+      "model": {
+        "qualification": "Existing key calculation applied to captured native records; no product change",
+        "wireRecords": 20,
+        "distinctNanoTimestamps": 20,
+        "distinctCurrentKeys": 1,
+        "parsedMilliseconds": [1792170273681]
+      }
+    },
+    "a751Deleted": {
+      "at": "2026-10-16T17:09:19.628Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db95i31koksc73a7vj4g"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "timing": {
+        "startTime": 1792170558561.295,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.128,
+        "responseStart": 345.048,
+        "responseEnd": 345.517
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "a751Cleanup": {
+      "at": "2026-10-16T17:09:57.172Z",
+      "checks": [
+        {
+          "path": "/v1/services/srv-db95i31koksc73a7vj4g",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db95i31koksc73a7vj4g/deploys/dep-db95i31koksc73a7vj50",
+          "status": 404
+        }
+      ],
+      "inventory": {
+        "request": {
+          "operationName": "Qaa467Inventory",
+          "variables": {
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          },
+          "query": "query Qaa467Inventory($ownerId:String!){ services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "blueprints": [
+              {
+                "id": "blp-d9nqg95cavls73fp8m10",
+                "name": "discourse_docker"
+              }
+            ],
+            "databases": [
+              {
+                "id": "dpg-d9nqg95cavls73fp8m20",
+                "name": "beancount-forum-db"
+              },
+              {
+                "id": "dpg-d9rrkoc4h4mc73edurp0",
+                "name": "tianpan-forum-db"
+              },
+              {
+                "id": "dpg-d9rs3ee0ccis738kc7c0",
+                "name": "blockeden-forum-db"
+              },
+              {
+                "id": "dpg-db34l9bor55s73cqpq9g",
+                "name": "qa-20261007-r16-owner-f208ab"
+              }
+            ],
+            "envGroups": [
+              {
+                "id": "evg-db0s94c48ccs739jikr0",
+                "name": "qa-20261003-keys-r85"
+              }
+            ],
+            "keyValues": [
+              {
+                "id": "red-d9p49kdrtmes73c34ovg",
+                "name": "beancount-forum-redis"
+              },
+              {
+                "id": "red-da4086iii7bs73drbqh0",
+                "name": "blockeden-forum-redis"
+              }
+            ],
+            "projects": [
+              {
+                "id": "prj-d9dgeo0bd9nc73a0vh1g",
+                "name": "bex.co"
+              },
+              {
+                "id": "prj-d9e5qct5qe4s73b1mjn0",
+                "name": "beancount.io"
+              },
+              {
+                "id": "prj-d9sgfnbjghus73cg6hg0",
+                "name": "forums"
+              }
+            ],
+            "services": [
+              {
+                "id": "srv-d9bkcspg9s7c73d0n8ug",
+                "name": "agentmarketcap-1",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9bj8s3eg85c7390eb9g",
+                "name": "beancount-cms-v2",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9nqg9dcavls73fp8m2g",
+                "name": "beancount-forum",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9ndt8hmcglc739fkp50",
+                "name": "eden-dash-v3",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9e40ei9086p3l1jri30",
+                "name": "eden-cms-v2",
+                "type": "web_service"
+              }
+            ],
+            "webhookEndpoints": []
+          }
+        }
+      },
+      "baselineMatch": true
+    },
+    "a751SessionCleared": {
+      "at": "2026-10-16T17:10:05.734Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "runtimeCleanup": {
+      "at": "2026-10-16T17:10:00.542398+00:00",
+      "checks": [
+        {
+          "args": [
+            "get",
+            "apps.app.bex.co",
+            "tea-d98210cbbpdc73dcrkvg-qa-20261016-a751-records",
+            "--ignore-not-found",
+            "-o",
+            "name"
+          ],
+          "exitCode": 0,
+          "output": "",
+          "stderr": ""
+        },
+        {
+          "args": [
+            "get",
+            "pods",
+            "-l",
+            "app.bex.co/app=tea-d98210cbbpdc73dcrkvg-qa-20261016-a751-records",
+            "-o",
+            "name"
+          ],
+          "exitCode": 0,
+          "output": "",
+          "stderr": ""
+        }
+      ],
+      "public": {
+        "status": "404",
+        "exitCode": 0,
+        "stderr": ""
+      }
+    }
+  }
+}
