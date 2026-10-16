@@ -15,7 +15,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m86** — [Install automatic npm dependencies for static builds](m86/README.md) (6 tasks) ← major functional CLI sweep358; both original builds fail127/missing dependency, two authored npm-ci controls pass; fixtures cleaned.
+- [ ] **m86** — [Install automatic npm dependencies for static builds](blocked/m86/README.md) (6 tasks) — **BLOCKED (2026-10-16: t001–t005 done — native Node static builds now install an npm project's dependencies (devDependencies included) before the unchanged build command unless SKIP_INSTALL_DEPS=true, leaving other managers' projects and root-publishing sites alone and never failing a build on a failed automatic install; 11-case BuildKit gate, fail-before verified; needs the operator deployed plus a hosted fresh-fixture replay through both native clients with cleanup (t006), runnable with the QA login)**
 
 - [ ] **m85** — [Honor committed Ruby lockfile and tool-version pins](blocked/m85/README.md) (6 tasks) — **BLOCKED (2026-10-16: t001–t005 done — native Ruby now resolves in Render's order (lockfile RUBY VERSION → .ruby-version → .tool-versions → Gemfile → default), so the Discourse shape builds and runs 3.4 not 4.0; a stale unsupported lock defers rather than failing existing services (recorded in ADR060); fail-before verified; needs the operator deployed plus a hosted fresh-fixture replay with cleanup (t006), runnable with the QA login)**
 

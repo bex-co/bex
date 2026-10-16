@@ -93,8 +93,12 @@ func ResolveNativeVersion(runtime string, env map[string]string, readFile func(s
 // major.minor line, as the primary toolchains' do.
 func ResolveNativeBun(env map[string]string, readFile func(string) ([]byte, bool)) (choice NativeChoice, found bool, err error) {
 	r := resolver{t: nativeBun, env: env, readFile: readFile}
-	return r.firstFound(r.fromEnv("BUN_VERSION", r.bunRequest), r.fromFile(".bun-version", r.bunRequest), r.fromLockfile("bun.lock", "bun.lockb"))
+	return r.firstFound(r.fromEnv("BUN_VERSION", r.bunRequest), r.fromFile(".bun-version", r.bunRequest), r.fromLockfile(nativeBunLockfiles...))
 }
+
+// nativeBunLockfiles are Bun's lockfiles, which opt a build into Bun and mark
+// a project as Bun's rather than npm's (w8/m86).
+var nativeBunLockfiles = []string{"bun.lock", "bun.lockb"}
 
 // defaultPoetryVersion is the Poetry a native Python build carries when the
 // service names none — Render's current default for new services (its

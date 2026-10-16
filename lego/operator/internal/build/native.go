@@ -258,16 +258,17 @@ while IFS= read -r record; do
   value="$(printf '%s' "$encoded" | bex_decode 2>/dev/null && printf '.')" || exit 1
   export "$key=${value%.}"
 done < ` + nativeEnvSecretPath + "\n"
-	run := shellJSON(nativeEnvLoaderPrefix + o.BuildCommand)
+	installLines, installStep := nativeStaticInstall(o)
+	run := shellJSON(nativeEnvLoaderPrefix + installStep + o.BuildCommand)
 	base := fmt.Sprintf(`# syntax=docker/dockerfile:1.7
 FROM %s
 %sWORKDIR /opt/render/project/src
 COPY . .
 COPY <<'%s' %s
 %s%s
-RUN --mount=type=secret,id=render-env,target=%s%s %s
+%sRUN --mount=type=secret,id=render-env,target=%s%s %s
 `, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeNodeTools(o)+nativeMediaTools, nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
-		nativeEnvSecretPath, fileMounts.String(), run)
+		installLines, nativeEnvSecretPath, fileMounts.String(), run)
 	if o.StaticSite {
 		// No PORT/CMD: the image only carries the built site for the publish
 		// Job's extract initContainer (ADR029) and never runs as a workload.
