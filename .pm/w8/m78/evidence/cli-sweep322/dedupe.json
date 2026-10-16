@@ -1,0 +1,66 @@
+{
+  "includes_open_blocked_done": true,
+  "searches": [
+    {
+      "query": "per-service repo|explicit repo|different repo|different repository|overrides.*repo|overwrites.*repo",
+      "matches": [
+        ".pm/w1/README.md",
+        ".pm/w1/done/113.md",
+        ".pm/w8/m75/finding.md",
+        ".pm/w8/m75/README.md",
+        ".pm/w8/m75/t005.md",
+        ".pm/w8/m72/finding.md",
+        ".pm/w7/done/m86/done/t004.md",
+        ".pm/w8/blocked/108.md",
+        ".pm/w8/blocked/m70/finding.md",
+        ".pm/w8/blocked/m70/README.md",
+        ".pm/w8/blocked/m70/evidence/cli-sweep294/README.md",
+        ".pm/w8/README.md",
+        ".pm/w8/done/m44/README.md",
+        ".pm/w8/done/042.md",
+        ".pm/w5/done/066.md",
+        ".pm/w4/blocked/m202/finding.md",
+        ".pm/w5/done/m76/README.md",
+        ".pm/w5/done/m78/done/t001.md",
+        ".pm/w8/done/m61/README.md",
+        ".pm/w8/done/m61/done/t003.md",
+        ".pm/w8/done/105.md",
+        ".pm/w8/evidence/native-clone-files-sweep233/README.md",
+        ".pm/w4/done/185.md",
+        ".pm/w4/done/m132/source-115.md"
+      ]
+    },
+    {
+      "query": "blueprint.*(repo override|explicit.*repo|declared.*repo)|sync.*(repo override|declared.*repo)",
+      "matches": [
+        ".pm/w8/README.md",
+        ".pm/w8/m75/finding.md",
+        ".pm/w8/blocked/m64/evidence/live-env-sweep231/README.md",
+        ".pm/w8/blocked/m66/t006.md",
+        ".pm/w8/blocked/m70/finding.md",
+        ".pm/w8/blocked/m70/README.md",
+        ".pm/w8/blocked/m70/done/t002.md",
+        ".pm/w8/blocked/m70/done/t001.md",
+        ".pm/w8/done/055.md",
+        ".pm/w5/done/093.md",
+        ".pm/w5/done/141.md",
+        ".pm/w8/m76/t002.md",
+        ".pm/w8/m76/finding.md",
+        ".pm/w8/done/051.md",
+        ".pm/w2/done/m62/done/t004.md",
+        ".pm/w4/done/m125/done/t002.md",
+        ".pm/w4/done/m133/README.md"
+      ]
+    }
+  ],
+  "related_reviewed": [
+    "w8/m70 former-source coupling",
+    "w8/m66 canonical row writes",
+    "w8/m75 standalone implicit-repo validation",
+    "w8/m76 repo default branch",
+    "w8/done/m37 disconnected Blueprint fencing",
+    "w8/done/m41 reviewed file commit pin",
+    "TestDeployStackRepoOverrideWins direct override contract"
+  ],
+  "disposition": "New persistent containing-source context conflated with explicit direct-deploy override; no matching implementation item found. Broad search is not an exhaustive board audit."
+}

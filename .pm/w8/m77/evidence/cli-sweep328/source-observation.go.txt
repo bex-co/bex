@@ -1,0 +1,49 @@
+package build
+
+import (
+ "context"
+ "encoding/json"
+ "fmt"
+ "os"
+ "os/exec"
+ "path/filepath"
+ "strings"
+ "testing"
+ "time"
+)
+
+func TestQA328PythonGeneratedToolchainObservation(t *testing.T) {
+ out:=os.Getenv("QA328_OUTPUT");if out=="" {t.Fatal("private output required")}
+ observations:=[]map[string]any{}
+ for _,line:=range []string{"default","3.10","3.11","3.12","3.13","3.14"} {
+  t.Run(line,func(t *testing.T){
+   o:=nativeOptions();o.Runtime="python";o.BuildCommand="python --version";o.StartCommand="python qa.py"
+   env:=map[string]string{};want:=line
+   if line=="default" {want="3.13"} else {env["PYTHON_VERSION"]=line}
+   bundle,dockerfile,src:=writeResolveFixture(t,o,env,nil)
+   choices,err:=ResolveNativeBuild("python",bundle,dockerfile,src);if err!=nil{t.Fatal(err)}
+   if len(choices)!=2 || choices[0].Line!=want || choices[1].Label!="Poetry"{t.Fatalf("choices=%+v",choices)}
+   content,err:=os.ReadFile(dockerfile);if err!=nil{t.Fatal(err)}
+   if err=os.WriteFile(filepath.Join(out,line+".Dockerfile"),content,0600);err!=nil{t.Fatal(err)}
+   observations=append(observations,map[string]any{"case":line,"choices":choices,"scope":"actual generated/resolved current-source artifact; image execution is separate"})
+  })
+ }
+ b,err:=json.MarshalIndent(observations,"","  ");if err!=nil{t.Fatal(err)}
+ if err=os.WriteFile(filepath.Join(out,"observations.json"),b,0600);err!=nil{t.Fatal(err)}
+}
+
+func TestQA328PythonJavaScriptBuildExecution(t *testing.T) {
+ o:=nativeOptions();o.Runtime="python";o.BuildCommand="node --version && yarn --version && python --version";o.StartCommand="python --version"
+ bundle,dockerfile,src:=writeResolveFixture(t,o,map[string]string{"PYTHON_VERSION":"3.12"},nil)
+ if _,err:=ResolveNativeBuild("python",bundle,dockerfile,src);err!=nil{t.Fatal(err)}
+ if err:=os.Rename(dockerfile,filepath.Join(src,"Dockerfile"));err!=nil{t.Fatal(err)}
+ tag:=fmt.Sprintf("bex-qa328-python-js:%d",os.Getpid());t.Cleanup(func(){_ = exec.Command("docker","image","rm","-f",tag).Run()})
+ ctx,cancel:=context.WithTimeout(context.Background(),3*time.Minute);defer cancel()
+ build:=exec.CommandContext(ctx,"docker","build","--progress=plain","-t",tag,"--secret","id=render-env,src="+bundle,src);build.Env=append(os.Environ(),"DOCKER_BUILDKIT=1")
+ output,err:=build.CombinedOutput()
+ if ctx.Err()!=nil{t.Fatalf("HARNESS bounded build timeout: %v",ctx.Err())}
+ if err!=nil {
+  if strings.Contains(string(output),"node: command not found") || strings.Contains(string(output),"node: not found") {t.Fatalf("current generated Python3.12 cannot run the advertised Node build tool: %v\n%s",err,output)}
+  t.Fatalf("unclassified builder failure, not a missing-Node finding: %v\n%s",err,output)
+ }
+}

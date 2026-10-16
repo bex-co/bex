@@ -1,0 +1,120 @@
+{
+  "source_head": "c1e83ee783af15c634daab78a11487aaa6d05710",
+  "fix_commit": "2f6451567",
+  "serving_revision": "unobserved",
+  "named_passes": 22,
+  "top_level_passes": 6,
+  "checks": [
+    {
+      "Test": "TestRegisteredRoutesAreNotShadowedByRenderParameters",
+      "Action": "pass",
+      "Elapsed": 0.12
+    },
+    {
+      "Test": "TestLiteralPassThroughRuleIsNarrow/the_m100_case",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestLiteralPassThroughRuleIsNarrow/both_parameterised_is_a_real_intersection",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestLiteralPassThroughRuleIsNarrow/identical_literals_are_not_a_shadow",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestLiteralPassThroughRuleIsNarrow/different_literals_do_not_match_at_all",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestLiteralPassThroughRuleIsNarrow/bex_more_general_than_Render_is_not_a_literal_shadow",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestLiteralPassThroughRuleIsNarrow/arity_must_match",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestLiteralPassThroughRuleIsNarrow/a_literal_after_a_shared_parameter_still_counts",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestLiteralPassThroughRuleIsNarrow",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestEventTypesRouteSurvivesTheRenderValidator/the_bex-native_literal_reaches_its_handler",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestEventTypesRouteSurvivesTheRenderValidator/a_well-formed_webhook_id_is_still_validated_and_handled",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestEventTypesRouteSurvivesTheRenderValidator/a_malformed_webhook_id_is_still_a_validator_400",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestEventTypesRouteSurvivesTheRenderValidator",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestRegisteredShortRoutesAreKnown",
+      "Action": "pass",
+      "Elapsed": 0.3
+    },
+    {
+      "Test": "TestShortRoutePassThroughRuleIsNarrow/the_109_case",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestShortRoutePassThroughRuleIsNarrow/same_length_is_the_literal_rule's_business",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestShortRoutePassThroughRuleIsNarrow/a_literal_trailing_segment_is_a_different_path",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestShortRoutePassThroughRuleIsNarrow/a_differing_prefix_literal",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestShortRoutePassThroughRuleIsNarrow/a_path_Render_documents_itself",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestShortRoutePassThroughRuleIsNarrow/a_catchall_is_not_a_short_route",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestShortRoutePassThroughRuleIsNarrow",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestEnvGroupBulkReplaceSurvivesTheRenderValidator",
+      "Action": "pass",
+      "Elapsed": 0
+    }
+  ],
+  "scope": "six focused maintained route inventory/short/literal/real-validator checks; no product change or new full suite"
+}

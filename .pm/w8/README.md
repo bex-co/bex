@@ -15,6 +15,12 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m79** — [Supply automatic Brotli for static sites](m79/README.md) (5 tasks,170m) ← CLI sweep326: two native Free static sites are Live but all12 Brotli-bearing text/JS/CSS responses remain identity;24 content hashes and controls pass, both parents/children cleaned.
+
+- [ ] **m78** — [Respect per-service Git sources in persistent Blueprints](m78/README.md) (6 tasks, 195m) ← functional CLI QA sweep322: provided sync replaces explicit Express/master with the containing Node/main; four real preparation failures, guarded controls and complete cleanup.
+
+- [ ] **m77** — [Supply JavaScript tools in native Ruby and Python builds and runtime](m77/README.md) (6 tasks,230m) ← CLI sweeps321/328: both native clients reproduce missing Node in both primary runtimes, all four primary-only controls are Live with JavaScript tools absent, current Python image execution also fails; four parents/eight children cleaned.
+
 - [ ] **m76** — [Honor a GitHub repository default branch on create](blocked/m76/README.md) (6 tasks;185m) — **BLOCKED (2026-10-15: t001–t005 done — an omitted branch on a GitHub service create now takes the repository's default_branch from the same access lookup (explicit wins; failed lookup or unsafe default refuses with nothing written); REST/GraphQL/MCP/dashboard agree. Needs the backend + dashboard deploy, then the hosted replay: expressjs/serve-static (default master) created with no branch through published Bex and the unchanged Render 2.27 pin — raw POST without branch, readback branch master, first deploy Live/HTTP 200 — plus an explicit-branch control and exact-owned cleanup (t006))**
 
 - [ ] **m75** — [Validate Blueprints with an implicit repository](blocked/m75/README.md) (6 tasks;180m) — **BLOCKED (2026-10-15: t001–t005 done — manifest-only validation treats an omitted repo on a Git-backed service as the (unknown) enclosing repository instead of refusing it, while create/apply stay strict and invalid repo/branch/missing-image are still refused; REST/GraphQL/MCP agree. Needs the backend deploy, then the hosted replay of the eligible cli-sweep318 files through published Bex and the Render 2.27 pin (implicit cases valid, explicit/prebuilt valid, invalid-repo and missing-image refused, 1GB Mattermost refused on the disk floor), the 36 name controls rechecked and no allocations (t006))**
@@ -25,9 +31,9 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m72** — [Provide Poetry in native Python builds and runtime](blocked/m72/README.md) (7 tasks,3h10m) — **BLOCKED (2026-10-15: t001–t006 done — every native Python build now installs Poetry (POETRY_VERSION exact release, else default 2.1.3) into its own virtualenv before the authored build and keeps it at runtime; execution-tested with Docker on Python 3.12. Needs the operator deploy, then the hosted two-client Poetry replay (build/runtime version markers, omitted-override default, Python-only control) and exact-owned cleanup (t007))**
 
-- [ ] **m71** — [Make explicit Bun opt-in usable in native builds and runtime](blocked/m71/README.md) (7 tasks,3h20m) — **BLOCKED (2026-10-15: t001–t006 done — BUN_VERSION / .bun-version / Bun lockfile select a reviewed digest-pinned Bun line (1.2, 1.3) that the resolve phase copies into the native image before the authored build; execution-tested on node and python bases. Needs the operator deploy, then the hosted two-client explicit-Bun replay and cleanup (t007))**
+- [x] **m71** — [Make explicit Bun opt-in usable in native builds and runtime](done/m71/README.md) (7 tasks,3h20m) — **DONE:** sweep327 accepts both native first Bun deployments Live/HTTP200 with build/runtime Bun1.3.14 for requested1.3.4, a fresh no-opt-in Node control, current source/generated-image checks and complete three-parent/child cleanup.
 
-- [ ] **m70** — [Make Blueprint source switches deploy their declared artifact](blocked/m70/README.md) (6 tasks,2h55m) — **BLOCKED (2026-10-15: t001–t005 done — a declared or inherited new repo now replaces a prebuilt image/rollback override, clone token and image-only credential; a declared image drops the repo and a baked native start command; the declared strategy applies on a kind switch; same-repo rollbacks keep their override. Needs the deploy, then the hosted two-client inline/persistent image→Git replay serving the declared commit with no manual recovery, plus cleanup (t006))**
+- [x] **m70** — [Make Blueprint source switches deploy their declared artifact](done/m70/README.md) (6 tasks) — **DONE 2026-10-15:** source-coupling fix eebd8ce27; first inline and persistent Git artifacts/no-ops, three native clients and REST/GraphQL/MCP readbacks pass with complete cleanup. Different containing/service sources remain [m78](m78/README.md).
 
 - [ ] **m69** — [Preserve native cron startup semantics](blocked/m69/README.md) (6 tasks, 2h50m) — **BLOCKED (2026-10-15: t001, t002, t004, t005 done — a native cron's CLI `startCommand` now stays its baked Bash start command on create, update (REST/GraphQL/MCP), Blueprint edits incl. a docker→native switch, readback/clone and the dashboard Command row; explicit Bex `command` stays a /bin/sh override; legacy duplicates repair on their next command write. Needs the backend + dashboard deployed, then the hosted two-client native cron create on an explicitly approved paid fixture + finite manual run with the exact marker, update/readback/clone checks and owned cleanup (t003/t006))** Sweep302:24 focused source passes; both fresh live runs still fail in /bin/sh, native logs confirm; all own fixtures cleaned.
 
@@ -35,7 +41,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m67** — [Keep native live logs running after a transient disconnect](blocked/m67/README.md) — **BLOCKED (2026-10-14: t001 done — Bex built on v2.29.0 reconnects and resumes A/B exactly once, but v2.29 also retries normal 1000 closes, which Bex uses to end a no-running-build tail (w8/020), so `logs --type build --tail` would loop forever. Needs the user to choose a non-retryable refusal close code (non-zero exit), accepting the retry, or waiting for upstream; then t002–t006 and an explicitly requested CLI release)**
 
-- [ ] **m66** — [Keep Blueprint service updates in canonical intent](blocked/m66/README.md) (6 tasks,185m) — **BLOCKED:** source regressions and sweep288 inline/three-client live acceptance pass; remaining owned persistent-sync gate and closeout.
+- [x] **m66** — [Keep Blueprint service updates in canonical intent](done/m66/README.md) (6 tasks) — **DONE 2026-10-15:** canonical-intent fix62c74aae6; inline sweep288 and persistent sweep330 pass first-artifact/runtime/source, three native waited controls, delayed no-ops, source checks and complete cleanup. Different containing/service sources remain [m78](m78/README.md).
 
 - [ ] **m65** — [Retain PostgreSQL process logs during bursts](blocked/m65/README.md) — **BLOCKED (2026-10-13: t001 done — the fix is upstream CNPG #11131 in operator 1.30.1 / chart 0.29.1, we run 1.30.0; needs the user to approve a CNPG upgrade rollout that restarts every managed Postgres pod (control plane + tenant Free single-instance DBs), or decide to enable in-place instance-manager updates first; then the credentialed chart mirror, live 300/1005-record burst acceptance and cleanup)**
 
@@ -125,6 +131,10 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## QA evidence for existing work
 
+- [Native Key Value policies and name-only continuity — sweep329](evidence/keyvalue-policy-sweep329/README.md): Free/off fixture, both native clients execute real redis-cli; cache/queue/raw-policy runtime checks and delayed rename data/process continuity pass, expected refusals retained; cleaned. No new issue.
+
+- [PostgreSQL settings, native renames and clearing — sweep325](evidence/postgres-settings-sweep325/README.md): one Free18 fixture; both rename clients preserve settings, API replacement and clearing converge in real native SQL, two focused source tests pass; cleaned. No new issue.
+
 - [PostgreSQL data across two suspend/resume cycles — sweep320](evidence/postgres-data-sweep320/README.md): one Free18 fixture, Bex/Render lifecycle by ID/name, real Bex psql, all committed/rollback/sequence snapshots and both process-change checks pass; cleaned. No new issue.
 
 - [First saved variable through manual lifecycle](evidence/suspend-pending-first-sweep278/README.md) — sweep278: both clients preserve unset build/runtime through API-only suspend/resume and native Restart, four suspended native409 refusals allocate no rows, then standard deploy consumes V2; four distinct processes per fixture, both cleaned. No new finding.
@@ -177,13 +187,13 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [Blueprint per-kind name recheck](evidence/blueprint-name-kinds-sweep313/README.md) — sweep313:42 actual native validations/36 final comparisons; four valid cross-kind cases remain refused per client (existing w1/126),24 validity/exit controls and20 final source checks pass. No resources or new issue.
 
-- [Existing workspace host-target checks](m74/evidence/cli-sweep316/README.md) — sweep316:28 native validations expose14 false accepts/14 controls; four source failures and two invalid fake-client applies,33 existing checks pass. Scheduled with314 origin loss in m74; two Free fixtures cleaned.
+- [Existing workspace host-target checks](blocked/m74/evidence/cli-sweep316/README.md) — sweep316:28 native validations expose14 false accepts/14 controls; four source failures and two invalid fake-client applies,33 existing checks pass. Scheduled with314 origin loss in m74; two Free fixtures cleaned.
 
 - [Static byte-range acceptance and scoped rollout recheck](evidence/static-ranges-sweep317/README.md) — sweep317:62 text/binary/multipart/conditional/HEAD HTTP checks and three source controls pass; all three clients now refuse Free cron and accept the shared service/database name (six validations). Two sites/two deploys cleaned; no new issue.
 
 ## Inbox
 
-- [ ] **109** — [Environment-group bulk writes are rejected as a missing single-key parameter](blocked/109.md) — **BLOCKED (2026-10-15: fixed — the Render validator now lets a registered shorter bex route reach its handler when the legacy router overmatches a longer template with empty trailing parameters; inventory/narrowness/behavioral regressions fail-first. Needs the deploy, then the hosted PUT `/v1/env-groups/OWN_ID/env-vars` valid/empty/NUL replay on a fresh own group with cleanup)**
+- [x] **109** — [Environment-group bulk writes are rejected as a missing single-key parameter](done/109.md) — **DONE 2026-10-15:** hosted sweep324 accepts the bulk short route, atomic value refusal and strict single-key/unknown/method neighbors; shared value readbacks and exact unlinked-group cleanup pass.
 
 - [ ] **108** — [Same-type clones silently ignore explicit empty overrides](blocked/108.md) — **BLOCKED (2026-10-15: upstream patch + clone regressions prepared in `evidence/108/upstream/108-upstream.patch` (stacked variant for m68+075); needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release and the two-client live empty-override clone replay with cleanup; no fork/request repair per DO_NOT_DO)** Sweep292 adds137 local applicability/control captures; same issue and estimate.
 - [ ] **107** — [A valid output flag cannot override an invalid output default](blocked/107.md) — **BLOCKED (2026-10-15: upstream root-init patch + real-detector regression prepared in `evidence/107/upstream-output-priority.patch`; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release and the sweep279 native replays; no fork/bridge workaround per DO_NOT_DO)**

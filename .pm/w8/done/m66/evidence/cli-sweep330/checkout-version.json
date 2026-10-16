@@ -1,0 +1,11 @@
+{
+  "binary": "checkout Bex 27d516be80b31fdda1f6f79221350f4dbcc6f0e7",
+  "command": [
+    "bex",
+    "--version"
+  ],
+  "exit": 0,
+  "elapsed": 1.229,
+  "stdout": "bex vdev\ncompatible with Render CLI vdev\n",
+  "stderr": ""
+}

@@ -1,0 +1,7 @@
+{
+  "source_head": "27d516be80b31fdda1f6f79221350f4dbcc6f0e7",
+  "binary": "<owned-temp>/bex-current-330",
+  "sha256": "b6500d1c8e5fafb3c106b23ba30b0dd07057af9bd8d6b9616bfeb2f8c6ce4b56",
+  "Go_build_info": "sweep330-build-info.txt",
+  "qualification": "unmodified checkout build; PM worktree changes set vcs.modified=true; default dev version and pinned upstream preserved"
+}

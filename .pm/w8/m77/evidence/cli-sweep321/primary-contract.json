@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-15T22:19:35.408191+00:00",
+  "sources": [
+    {
+      "url": "https://render.com/docs/native-runtimes",
+      "title": "Native Runtimes",
+      "observed_contract": "The tools list applies to all native runtimes and lists node, npm, yarn and pnpm as available during builds and at runtime.",
+      "applicable_surface": "secondary JavaScript tools in native Ruby build/runtime"
+    },
+    {
+      "url": "https://render.com/docs/deploy-rails-6-7",
+      "title": "Deploy a Rails 6 or 7 App on Render",
+      "observed_contract": "The Rails guide uses Ruby with Node.js and Yarn dependencies; asset-oriented Rails applications need the secondary JavaScript toolchain.",
+      "qualification": "No full Rails application, gems, migration, database or paid pre-deploy is run by this probe."
+    }
+  ]
+}

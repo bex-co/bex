@@ -1,0 +1,127 @@
+{
+  "head": "a4e95b87394c57dcaa8ccd10c82cbc218d7e252c",
+  "context_probe": [
+    {
+      "Test": "TestQA322PersistentBlueprintSourceContext/explicit-other-repo-and-branch",
+      "Action": "fail",
+      "Elapsed": 0.04
+    },
+    {
+      "Test": "TestQA322PersistentBlueprintSourceContext/explicit-other-repo-only-difference",
+      "Action": "fail",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA322PersistentBlueprintSourceContext/same-repo-explicit-other-branch",
+      "Action": "fail",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA322PersistentBlueprintSourceContext/nested-explicit-other-source",
+      "Action": "fail",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA322PersistentBlueprintSourceContext/omitted-source-inherits-parent",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA322PersistentBlueprintSourceContext/explicit-same-source-control",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA322PersistentBlueprintSourceContext/direct-deploy-explicit-override-control",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA322PersistentBlueprintSourceContext/image-source-control",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA322PersistentBlueprintSourceContext",
+      "Action": "fail",
+      "Elapsed": 0.05
+    }
+  ],
+  "four_genuine_failed_subcases_plus_parent": true,
+  "context_controls_pass": 4,
+  "maintained_m70_tests": [
+    {
+      "Test": "TestBlueprintSourceSwitchReplacesTheFormerSource/image_to_native_Git",
+      "Action": "pass",
+      "Elapsed": 0.04
+    },
+    {
+      "Test": "TestBlueprintSourceSwitchReplacesTheFormerSource/image_to_Dockerfile_Git",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestBlueprintSourceSwitchReplacesTheFormerSource/Git_to_image",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestBlueprintSourceSwitchReplacesTheFormerSource/same_Git",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestBlueprintSourceSwitchReplacesTheFormerSource/same_image",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestBlueprintSourceSwitchReplacesTheFormerSource",
+      "Action": "pass",
+      "Elapsed": 0.05
+    },
+    {
+      "Test": "TestBlueprintSourceSwitchKeepsARollbackOverrideOnTheSameRepo",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Test": "TestBlueprintImageToGitDropsImageOnlySettings",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestBlueprintInheritedRepoSwitchesAnImageService",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestBlueprintGitToImageDropsABakedStartCommand",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Test": "TestBlueprintPlanAttributesASourceSwitchToRepo",
+      "Action": "pass",
+      "Elapsed": 0
+    }
+  ],
+  "direct_override_and_reviewed_source_neighbors": [
+    {
+      "Test": "TestSyncBlueprintReviewedSourcePinsCommitAcrossBranchMove",
+      "Action": "pass",
+      "Elapsed": 0.04
+    },
+    {
+      "Test": "TestSyncBlueprintOmitReviewedFollowsMovedHead",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestDeployStackRepoOverrideWins",
+      "Action": "pass",
+      "Elapsed": 0
+    }
+  ],
+  "no_fix_or_full_suite": true
+}

@@ -1,0 +1,16 @@
+{"Time":"2026-10-15T15:41:21.649461-07:00","Action":"start","Package":"github.com/bex-co/bex/lego/backend/internal/apps"}
+{"Time":"2026-10-15T15:41:22.333804-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestSyncBlueprintReviewedSourcePinsCommitAcrossBranchMove"}
+{"Time":"2026-10-15T15:41:22.333905-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestSyncBlueprintReviewedSourcePinsCommitAcrossBranchMove","Output":"=== RUN   TestSyncBlueprintReviewedSourcePinsCommitAcrossBranchMove\n"}
+{"Time":"2026-10-15T15:41:22.377374-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestSyncBlueprintReviewedSourcePinsCommitAcrossBranchMove","Output":"--- PASS: TestSyncBlueprintReviewedSourcePinsCommitAcrossBranchMove (0.04s)\n"}
+{"Time":"2026-10-15T15:41:22.377414-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestSyncBlueprintReviewedSourcePinsCommitAcrossBranchMove","Elapsed":0.04}
+{"Time":"2026-10-15T15:41:22.377441-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestSyncBlueprintOmitReviewedFollowsMovedHead"}
+{"Time":"2026-10-15T15:41:22.377454-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestSyncBlueprintOmitReviewedFollowsMovedHead","Output":"=== RUN   TestSyncBlueprintOmitReviewedFollowsMovedHead\n"}
+{"Time":"2026-10-15T15:41:22.38105-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestSyncBlueprintOmitReviewedFollowsMovedHead","Output":"--- PASS: TestSyncBlueprintOmitReviewedFollowsMovedHead (0.00s)\n"}
+{"Time":"2026-10-15T15:41:22.381076-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestSyncBlueprintOmitReviewedFollowsMovedHead","Elapsed":0}
+{"Time":"2026-10-15T15:41:22.381092-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestDeployStackRepoOverrideWins"}
+{"Time":"2026-10-15T15:41:22.381104-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestDeployStackRepoOverrideWins","Output":"=== RUN   TestDeployStackRepoOverrideWins\n"}
+{"Time":"2026-10-15T15:41:22.384564-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestDeployStackRepoOverrideWins","Output":"--- PASS: TestDeployStackRepoOverrideWins (0.00s)\n"}
+{"Time":"2026-10-15T15:41:22.384614-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestDeployStackRepoOverrideWins","Elapsed":0}
+{"Time":"2026-10-15T15:41:22.384629-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Output":"PASS\n"}
+{"Time":"2026-10-15T15:41:22.386464-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Output":"ok  \tgithub.com/bex-co/bex/lego/backend/internal/apps\t0.736s\n"}
+{"Time":"2026-10-15T15:41:22.38648-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Elapsed":0.737}

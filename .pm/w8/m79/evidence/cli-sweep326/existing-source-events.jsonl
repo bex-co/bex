@@ -1,0 +1,28 @@
+{"Time":"2026-10-15T16:39:52.429649-07:00","Action":"start","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver"}
+{"Time":"2026-10-15T16:39:52.986548-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestSavedETagPreconditions"}
+{"Time":"2026-10-15T16:39:52.986621-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestSavedETagPreconditions","Output":"=== RUN   TestSavedETagPreconditions\n"}
+{"Time":"2026-10-15T16:39:52.986992-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestSavedETagPreconditions","Output":"--- PASS: TestSavedETagPreconditions (0.00s)\n"}
+{"Time":"2026-10-15T16:39:52.987002-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestSavedETagPreconditions","Elapsed":0}
+{"Time":"2026-10-15T16:39:52.987014-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestConditionalFramingOverHTTP"}
+{"Time":"2026-10-15T16:39:52.987018-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestConditionalFramingOverHTTP","Output":"=== RUN   TestConditionalFramingOverHTTP\n"}
+{"Time":"2026-10-15T16:39:52.98818-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestConditionalFramingOverHTTP","Output":"--- PASS: TestConditionalFramingOverHTTP (0.00s)\n"}
+{"Time":"2026-10-15T16:39:52.988194-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestConditionalFramingOverHTTP","Elapsed":0}
+{"Time":"2026-10-15T16:39:52.9882-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestReservedHeaderRulesCannotBreakResponses"}
+{"Time":"2026-10-15T16:39:52.988204-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestReservedHeaderRulesCannotBreakResponses","Output":"=== RUN   TestReservedHeaderRulesCannotBreakResponses\n"}
+{"Time":"2026-10-15T16:39:52.988694-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestReservedHeaderRulesCannotBreakResponses","Output":"--- PASS: TestReservedHeaderRulesCannotBreakResponses (0.00s)\n"}
+{"Time":"2026-10-15T16:39:52.988712-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestReservedHeaderRulesCannotBreakResponses","Elapsed":0}
+{"Time":"2026-10-15T16:39:52.988731-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestCustomHeaderApplied"}
+{"Time":"2026-10-15T16:39:52.988735-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestCustomHeaderApplied","Output":"=== RUN   TestCustomHeaderApplied\n"}
+{"Time":"2026-10-15T16:39:52.99245-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestCustomHeaderApplied","Output":"--- PASS: TestCustomHeaderApplied (0.00s)\n"}
+{"Time":"2026-10-15T16:39:52.992488-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestCustomHeaderApplied","Elapsed":0}
+{"Time":"2026-10-15T16:39:52.992496-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestCacheServesFromMemory"}
+{"Time":"2026-10-15T16:39:52.992502-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestCacheServesFromMemory","Output":"=== RUN   TestCacheServesFromMemory\n"}
+{"Time":"2026-10-15T16:39:52.992658-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestCacheServesFromMemory","Output":"--- PASS: TestCacheServesFromMemory (0.00s)\n"}
+{"Time":"2026-10-15T16:39:52.992684-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestCacheServesFromMemory","Elapsed":0}
+{"Time":"2026-10-15T16:39:52.992719-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestHeadRequestNoBody"}
+{"Time":"2026-10-15T16:39:52.992742-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestHeadRequestNoBody","Output":"=== RUN   TestHeadRequestNoBody\n"}
+{"Time":"2026-10-15T16:39:52.992754-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestHeadRequestNoBody","Output":"--- PASS: TestHeadRequestNoBody (0.00s)\n"}
+{"Time":"2026-10-15T16:39:52.992758-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Test":"TestHeadRequestNoBody","Elapsed":0}
+{"Time":"2026-10-15T16:39:52.992761-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Output":"PASS\n"}
+{"Time":"2026-10-15T16:39:52.994409-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Output":"ok  \tgithub.com/bex-co/bex/lego/operator/internal/staticserver\t0.564s\n"}
+{"Time":"2026-10-15T16:39:52.994428-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/staticserver","Elapsed":0.565}

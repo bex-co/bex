@@ -1,0 +1,56 @@
+from pathlib import Path
+import datetime,hashlib,json,os,secrets,shlex,shutil,subprocess,sys,time,yaml
+os.umask(0o077);P=Path(__file__).resolve().parent;root=Path('/Volumes/nvme4tbfish/projects/bex8');cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json';c=json.loads(cp.read_text());assert c.get('sync324_result')==0 and not c.get('active_sync_stash');mode,case=sys.argv[1:3];assert case in ('service','group');ws='tea-daif693dqjvc73e7as3g';baseline={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']}
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():
+ c['last_updated']=now();f=cp.with_name('.'+cp.name+'.qa324.tmp');f.write_text(json.dumps(c,indent=2));f.chmod(0o600);f.replace(cp)
+def cli(args,client='bex',bound=45):
+ cfg=P/'render-config/cli.yaml'
+ try:
+  if client=='render':assert not cfg.exists();shutil.copyfile(P/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  runner=['python3',str(P/'run-render.py')] if client=='render' else ['python3',str(P/'run.py'),'--release'];r=json.loads(subprocess.check_output([*runner,'--bound='+str(bound),*args],text=True,timeout=bound+15));r['native_exit']=None if r['exit']==124 else r['exit'];return r
+ finally:
+  if client=='render':cfg.unlink(missing_ok=True)
+def api(method,path,body=None):
+ cfg=yaml.safe_load((P/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token;ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')';auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+ws+'"\n';f=P/'sweep324-request.json';assert not f.exists();args=['curl','--disable','-sS','--max-time','30','--config','-','-X',method,'-H','Accept: application/json, text/event-stream','-H','MCP-Protocol-Version: 2025-03-26']
+ if body is not None:f.write_text(json.dumps(body));args+=['-H','Content-Type: application/json','--data-binary','@'+str(f)]
+ start=time.monotonic()
+ try:r=subprocess.run([*args,'-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=36)
+ finally:f.unlink(missing_ok=True)
+ raw,_,status=r.stdout.rpartition('\n');out={'at':now(),'API_only':True,'request':{'method':method,'path':path,'body':body,'workspace':ws,'user_agent':ua,'authorization':'REDACTED'},'status':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-start,3),'response':raw,'stderr':r.stderr};assert token not in json.dumps(out);return out
+def decode(r):
+ text=r['response']
+ if not text.lstrip().startswith(('{','[')):
+  texts=[s[5:].strip() for s in text.splitlines() if s.startswith('data:')];assert len(texts)==1;text=texts[0]
+ return json.loads(text)
+def inventory():
+ r=cli(['services','--confirm','-o','json']);assert r['native_exit']==0;vs=[v.get('service',v.get('postgres',v.get('keyValue',v))) for v in json.loads(r['stdout']) or []];assert baseline<={v['id'] for v in vs};return r,vs
+def groupinv():
+ r=api('GET','/v1/env-groups?ownerId='+ws);assert r['status']=='200';return r,[v.get('envGroup',v) for v in decode(r)]
+def detail():
+ r=api('GET','/v1/env-groups/'+x['id']);x.setdefault('detail_receipts',[]).append(r);save();assert r['status']=='200';v=decode(r);assert v['id']==x['id'] and v['ownerId']==ws and v['serviceLinks']==[];return r,v
+def snapshot():
+ d,v=detail();keys=sorted(z['key'] for z in v.get('envVars',[]));values={};receipts=[]
+ for key in keys:
+  assert key.startswith('QA_');r=api('GET','/v1/env-groups/'+x['id']+'/env-vars/'+key);receipts.append(r);assert r['status']=='200';z=decode(r);assert z['key']==key and 'value' in z;values[key]=z['value']
+ return {'at':now(),'detail':d,'value_receipts':receipts,'values':values}
+if mode=='create':
+ assert case=='group' and not any(v.get('sweep')==324 for v in c['resources']);inv,groups=groupinv();native,services=inventory();assert baseline=={v['id'] for v in services};nonce=secrets.token_hex(3);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-bulk';assert name not in {v['name'] for v in groups};value='QA324_'+nonce+'\n日本語 🐟';body={'ownerId':ws,'name':name,'envVars':[{'key':'QA_LITERAL','value':value}],'serviceIds':[],'secretFiles':[]};x={'sweep':324,'type':'env_group','workspace':ws,'name':name,'nonce':nonce,'literal':value,'time':now(),'source_head':c['head'],'pre_inventory':inv,'pre_service_inventory':native,'pre_ids':[v['id'] for v in groups],'dependency_ids':[],'recorded_child_ids':[],'create_intent':body,'state':'fresh unlinked API-only group create intent persisted'};c['resources'].append(x);save();r=api('POST','/v1/env-groups',body);x['create_result']=r;x['state']='create returned: reconcile before retry';save();assert r['status']=='201';v=decode(r);assert v['id'] not in x['pre_ids'] and v['ownerId']==ws and v['name']==name and v['serviceLinks']==[];x.update(id=v['id'],create_view=v,state='created: exact201/ID/name/workspace/preabsence and no links ownership proved');save();x['initial_snapshot']=snapshot();save();assert x['initial_snapshot']['values']=={'QA_LITERAL':value};print(json.dumps({'created':x['id'],'HTTP':'201','service_links':0,'native_baseline_services':len(services)}),flush=True);raise SystemExit(0)
+x=next(v for v in c['resources'] if v.get('sweep')==324);assert x['workspace']==ws and x['id']==x['create_view']['id'] and x['create_view']['ownerId']==ws and x['id'] not in x['pre_ids'] and x['create_result']['status']=='201' and (mode=='reconcile' or not x['state'].startswith('deleted:'));gid=x['id']
+if mode=='matrix':
+ assert not x.get('matrix_intent');x['matrix_intent']={'at':now(),'scope':'normal own unlinked group bulk route/value/readback/neighbor checks'};save();expected={'QA_LITERAL':x['literal']};path='/v1/env-groups/'+gid
+ cases=[('bulk-same-value','PUT',path+'/env-vars',[{'key':'QA_LITERAL','value':x['literal']}],'200',None,expected.copy()),('bulk-two-values','PUT',path+'/env-vars',[{'key':'QA_LITERAL','value':x['literal']},{'key':'QA_EMPTY','value':''}],'200',None,{**expected,'QA_EMPTY':''}),('bulk-invalid-value-atomic','PUT',path+'/env-vars',[{'key':'QA_LITERAL','value':'must-not-land'},{'key':'QA_BAD','value':'a\0b'}],'400','ENVIRONMENT_VARIABLE_VALUE_INVALID',None),('single-key-valid','PUT',path+'/env-vars/QA_LITERAL',{'value':x['literal']+' single'},'200',None,{'QA_LITERAL':x['literal']+' single','QA_EMPTY':''}),('single-key-wrong-type','PUT',path+'/env-vars/QA_LITERAL',{'value':7},'400',None,None),('unknown-own-route','GET',path+'/qa324-missing',None,'404',None,None),('bulk-wrong-method','POST',path+'/env-vars',[],'405',None,None),('bulk-empty-array','PUT',path+'/env-vars',[],'200',None,{}),('bulk-restore-two-values','PUT',path+'/env-vars',[{'key':'QA_LITERAL','value':x['literal']},{'key':'QA_EMPTY','value':''}],'200',None,{'QA_LITERAL':x['literal'],'QA_EMPTY':''})]
+ for label,method,url,body,status,code,target in cases:
+  before=snapshot();event={'at':now(),'label':label,'expected_HTTP':status,'expected_code':code,'before':before,'intent':{'method':method,'path':url,'body':body}};x.setdefault('matrix',[]).append(event);save();r=api(method,url,body);event['result']=r;save();after=snapshot();event['after']=after;wanted=target if target is not None else before['values'];ok=r['status']==status and after['values']==wanted and (not code or decode(r).get('code')==code);event['pass']=ok;save();print(json.dumps({'case':label,'HTTP':r['status'],'expected_HTTP':status,'values_match':after['values']==wanted,'pass':ok}),flush=True);assert ok,'Preserve response and stop for read-only diagnosis/cleanup; do not repeat mutations'
+ literal=api('GET','/v1/webhooks/event-types');x['native_literal_neighbor']=literal;save();assert literal['status']=='200' and isinstance(decode(literal),list) and all(isinstance(v,str) for v in decode(literal));print(json.dumps({'native_literal_event_types_HTTP':'200'}),flush=True)
+ for key,value in x['matrix'][-1]['after']['values'].items():
+  query='query QA324 { envGroupVar(id: '+json.dumps(gid)+', key: '+json.dumps(key)+') { key value } }';r=api('POST','/graphql',{'query':query});event={'at':now(),'surface':'GraphQL','key':key,'result':r};x.setdefault('shared_value_reads',[]).append(event);save();assert r['status']=='200';v=decode(r);assert not v.get('errors');event['pass']=v['data']['envGroupVar']=={'key':key,'value':value};save();assert event['pass'];print(json.dumps({'surface':'GraphQL','key':key,'same_value':True}),flush=True)
+  r=api('POST','/mcp',{'jsonrpc':'2.0','id':324,'method':'tools/call','params':{'name':'get_env_group_var','arguments':{'id':gid,'key':key}}});event={'at':now(),'surface':'MCP','key':key,'result':r};x['shared_value_reads'].append(event);save();assert r['status']=='200';v=decode(r);assert not v.get('error') and not v['result'].get('isError');data=v['result'].get('structuredContent')
+  if data is None:data=json.loads(next(t['text'] for t in v['result']['content'] if t['type']=='text'))
+  event['pass']=data.get('key')==key and 'value' in data and data['value']==value;save();assert event['pass'];print(json.dumps({'surface':'MCP','key':key,'same_value':True}),flush=True)
+ x['matrix_complete']=True;save()
+elif mode=='delete':
+ assert 'delete_result' not in x;d,v=detail();assert v['serviceLinks']==[] and not any(gid in z.get('dependency_ids',[]) and not z['state'].startswith('deleted:') for z in c['resources']);q=api('POST','/graphql',{'query':'query QA324 { envGroup(id: '+json.dumps(gid)+') { id serviceLinks } }'});x['delete_link_proof']={'detail':d,'GraphQL':q};save();assert q['status']=='200';v=decode(q);assert not v.get('errors') and v['data']['envGroup']['id']==gid and not v['data']['envGroup']['serviceLinks'];x['delete_intent']={'at':now(),'exact_id':gid,'unlinked':True};save();x['delete_result']=api('DELETE','/v1/env-groups/'+gid);save();print(json.dumps({'API_delete_HTTP':x['delete_result']['status'],'service_links':0}),flush=True)
+elif mode=='reconcile':
+ assert 'delete_result' in x;d=api('GET','/v1/env-groups/'+gid);r,groups=groupinv();native,services=inventory();q=api('GET','/v1/owners/'+ws+'/limits');x.setdefault('cleanup_receipts',[]).append({'at':now(),'detail':d,'group_inventory':r,'native_service_inventory':native,'quota':q,'baseline_services_preserved':baseline<={v['id'] for v in services}});save();assert q['status']=='200';term=decode(q)['services']['terminating'];before={z.get('envGroup',z)['id'] for z in decode(x['pre_inventory'])};done=d['status']=='404' and {v['id'] for v in groups}==before and baseline<={v['id'] for v in services} and term==0;x['state']='deleted: API204/detail404/group list baseline/native baseline services/quota terminating0' if done and x['delete_result']['status']=='204' else ('deleted: detail404/group list baseline/native baseline services/quota terminating0' if done else 'cleanup pending: read-only reconciliation required');save();print(json.dumps({'cleanup_complete':done,'detail':d['status'],'remaining_groups':len(groups),'terminating_services':term}),flush=True)
+else:raise ValueError(mode)

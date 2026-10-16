@@ -1,0 +1,16 @@
+{
+  "head": "28948cadeb74d74f050274b9247c9d144227244f",
+  "results": [
+    {
+      "Test": "TestParameterSpecIsTheDeclaredSet",
+      "Action": "pass",
+      "Elapsed": 0.05
+    },
+    {
+      "Test": "TestSpecProjectionDefaultsAndWithdrawnFields",
+      "Action": "pass",
+      "Elapsed": 0
+    }
+  ],
+  "scope": "two existing focused tests; no implementation or new test, no full suite"
+}

@@ -1,0 +1,15 @@
+{
+  "source_head": "5977e4f98c1355cd9dfa5917d3f38d4a49772ea2",
+  "native_external_connection_checks": 17,
+  "policy_updates": 3,
+  "name_only_update": 1,
+  "GET_checks": 4,
+  "server_process_identity_checks": 4,
+  "late_GET_after_rename_seconds": 84.693,
+  "initial_private_setup_exclusions": 2,
+  "expected_validation_refusals": 2,
+  "no_new_issue": true,
+  "cleanup_complete": true,
+  "local_external_dependency": "/opt/homebrew/bin/redis-cli 8.10.1",
+  "wire_qualification": "native command arguments/responses and actual redis-cli output; native HTTP wire not independently captured; public setup and detail/quota are API-only"
+}

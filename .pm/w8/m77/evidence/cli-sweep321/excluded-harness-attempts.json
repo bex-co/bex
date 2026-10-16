@@ -1,0 +1,146 @@
+[
+  {
+    "sweep": 321,
+    "client": "bex",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "name": "qa-20261015-7bcbe8-js-tools",
+    "nonce": "7bcbe8",
+    "marker": "QA321_7bcbe8_JS_TOOLS",
+    "time": "2026-10-15T22:12:14.482820+00:00",
+    "source_head": "c11f862351e18a6c525db9ea55d7673d18237091",
+    "type": "web_service",
+    "requested_primary_runtime": "ruby default 3.4",
+    "commands": {
+      "js-tools": {
+        "build": "node --version && yarn --version && cat > qa321-probe.rb <<'QA321_RUBY_PROBE'\nMARKER = \"QA321_7bcbe8_JS_TOOLS\"\nrequire 'json'\nrequire 'socket'\nrequire 'open3'\ndef tool(args)\n out, err, status = Open3.capture3(*args)\n { 'argv' => args, 'exit' => status.exitstatus, 'stdout' => out, 'stderr' => err }\nrescue Errno::ENOENT\n { 'argv' => args, 'exit' => nil, 'error' => 'ENOENT' }\nend\ndef snapshot\n { 'marker' => MARKER, 'version' => RUBY_VERSION, 'tools' => {\n 'node' => tool(['node','--version']), 'npm' => tool(['npm','--version']),\n 'yarn' => tool(['yarn','--version']), 'pnpm' => tool(['pnpm','--version']),\n 'ruby' => tool(['ruby','--version']), 'bundle' => tool(['bundle','--version']),\n 'gem' => tool(['gem','--version']) } }\nend\nif ARGV.first == '--build'\n File.write('qa321-build.json', JSON.generate(snapshot))\n puts 'QA321_BUILD ' + JSON.generate(snapshot)\nelse\n built = JSON.parse(File.read('qa321-build.json'))\n current = snapshot\n TCPServer.open('0.0.0.0', Integer(ENV.fetch('PORT','8080'))) do |server|\n  loop do\n   connection = server.accept\n   begin\n    while (line = connection.gets) && line != \"\\r\\n\"; end\n    body = JSON.generate(current.merge('built' => built))\n    connection.write(\"HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: #{body.bytesize}\\r\\nConnection: close\\r\\n\\r\\n\")\n    connection.write(body)\n   rescue IOError, SystemCallError\n   ensure\n    connection.close\n   end\n  end\n end\nend\n\nQA321_RUBY_PROBE\nruby qa321-probe.rb --build",
+        "start": "ruby qa321-probe.rb",
+        "probe": "MARKER = \"QA321_7bcbe8_JS_TOOLS\"\nrequire 'json'\nrequire 'socket'\nrequire 'open3'\ndef tool(args)\n out, err, status = Open3.capture3(*args)\n { 'argv' => args, 'exit' => status.exitstatus, 'stdout' => out, 'stderr' => err }\nrescue Errno::ENOENT\n { 'argv' => args, 'exit' => nil, 'error' => 'ENOENT' }\nend\ndef snapshot\n { 'marker' => MARKER, 'version' => RUBY_VERSION, 'tools' => {\n 'node' => tool(['node','--version']), 'npm' => tool(['npm','--version']),\n 'yarn' => tool(['yarn','--version']), 'pnpm' => tool(['pnpm','--version']),\n 'ruby' => tool(['ruby','--version']), 'bundle' => tool(['bundle','--version']),\n 'gem' => tool(['gem','--version']) } }\nend\nif ARGV.first == '--build'\n File.write('qa321-build.json', JSON.generate(snapshot))\n puts 'QA321_BUILD ' + JSON.generate(snapshot)\nelse\n built = JSON.parse(File.read('qa321-build.json'))\n current = snapshot\n TCPServer.open('0.0.0.0', Integer(ENV.fetch('PORT','8080'))) do |server|\n  loop do\n   connection = server.accept\n   begin\n    while (line = connection.gets) && line != \"\\r\\n\"; end\n    body = JSON.generate(current.merge('built' => built))\n    connection.write(\"HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: #{body.bytesize}\\r\\nConnection: close\\r\\n\\r\\n\")\n    connection.write(body)\n   rescue IOError, SystemCallError\n   ensure\n    connection.close\n   end\n  end\n end\nend\n"
+      }
+    },
+    "capacity": {
+      "at": "2026-10-15T22:12:13.454844+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.638,
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+      "stderr": ""
+    },
+    "pre_inventory": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.967,
+      "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T22:12:05Z\",\n        \"nextRunAt\": \"2026-10-15T22:13:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T22:12:05Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T22:12:05Z\",\n        \"nextRunAt\": \"2026-10-15T22:13:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T22:12:05Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T22:12:04Z\",\n        \"nextRunAt\": \"2026-10-15T22:13:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T22:12:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T22:00:21Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T12:22:37Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T21:58:09Z\"\n    }\n  }\n]",
+      "stderr": "",
+      "native_exit": 0
+    },
+    "pre_ids": [
+      "srv-dap3v694dm7c7390q930",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-db09vbgehcmc739j12i0",
+      "srv-db09u90ehcmc739j12cg"
+    ],
+    "dependency_ids": [],
+    "recorded_child_ids": [],
+    "create_command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261015-7bcbe8-js-tools",
+      "--type",
+      "web_service",
+      "--runtime",
+      "ruby",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-dir",
+      "examples/hello-go",
+      "--build-command",
+      "node --version && yarn --version && cat > qa321-probe.rb <<'QA321_RUBY_PROBE'\nMARKER = \"QA321_7bcbe8_JS_TOOLS\"\nrequire 'json'\nrequire 'socket'\nrequire 'open3'\ndef tool(args)\n out, err, status = Open3.capture3(*args)\n { 'argv' => args, 'exit' => status.exitstatus, 'stdout' => out, 'stderr' => err }\nrescue Errno::ENOENT\n { 'argv' => args, 'exit' => nil, 'error' => 'ENOENT' }\nend\ndef snapshot\n { 'marker' => MARKER, 'version' => RUBY_VERSION, 'tools' => {\n 'node' => tool(['node','--version']), 'npm' => tool(['npm','--version']),\n 'yarn' => tool(['yarn','--version']), 'pnpm' => tool(['pnpm','--version']),\n 'ruby' => tool(['ruby','--version']), 'bundle' => tool(['bundle','--version']),\n 'gem' => tool(['gem','--version']) } }\nend\nif ARGV.first == '--build'\n File.write('qa321-build.json', JSON.generate(snapshot))\n puts 'QA321_BUILD ' + JSON.generate(snapshot)\nelse\n built = JSON.parse(File.read('qa321-build.json'))\n current = snapshot\n TCPServer.open('0.0.0.0', Integer(ENV.fetch('PORT','8080'))) do |server|\n  loop do\n   connection = server.accept\n   begin\n    while (line = connection.gets) && line != \"\\r\\n\"; end\n    body = JSON.generate(current.merge('built' => built))\n    connection.write(\"HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: #{body.bytesize}\\r\\nConnection: close\\r\\n\\r\\n\")\n    connection.write(body)\n   rescue IOError, SystemCallError\n   ensure\n    connection.close\n   end\n  end\n end\nend\n\nQA321_RUBY_PROBE\nruby qa321-probe.rb --build",
+      "--start-command",
+      "ruby qa321-probe.rb",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "state": "not created: local unsupported flag refusal, no forwarded request, fresh native inventory proves absence",
+    "create_result": {
+      "binary": "published Bex 0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--name",
+        "qa-20261015-7bcbe8-js-tools",
+        "--type",
+        "web_service",
+        "--runtime",
+        "ruby",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--branch",
+        "main",
+        "--root-dir",
+        "examples/hello-go",
+        "--build-command",
+        "node --version && yarn --version && cat > qa321-probe.rb <<'QA321_RUBY_PROBE'\nMARKER = \"QA321_7bcbe8_JS_TOOLS\"\nrequire 'json'\nrequire 'socket'\nrequire 'open3'\ndef tool(args)\n out, err, status = Open3.capture3(*args)\n { 'argv' => args, 'exit' => status.exitstatus, 'stdout' => out, 'stderr' => err }\nrescue Errno::ENOENT\n { 'argv' => args, 'exit' => nil, 'error' => 'ENOENT' }\nend\ndef snapshot\n { 'marker' => MARKER, 'version' => RUBY_VERSION, 'tools' => {\n 'node' => tool(['node','--version']), 'npm' => tool(['npm','--version']),\n 'yarn' => tool(['yarn','--version']), 'pnpm' => tool(['pnpm','--version']),\n 'ruby' => tool(['ruby','--version']), 'bundle' => tool(['bundle','--version']),\n 'gem' => tool(['gem','--version']) } }\nend\nif ARGV.first == '--build'\n File.write('qa321-build.json', JSON.generate(snapshot))\n puts 'QA321_BUILD ' + JSON.generate(snapshot)\nelse\n built = JSON.parse(File.read('qa321-build.json'))\n current = snapshot\n TCPServer.open('0.0.0.0', Integer(ENV.fetch('PORT','8080'))) do |server|\n  loop do\n   connection = server.accept\n   begin\n    while (line = connection.gets) && line != \"\\r\\n\"; end\n    body = JSON.generate(current.merge('built' => built))\n    connection.write(\"HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: #{body.bytesize}\\r\\nConnection: close\\r\\n\\r\\n\")\n    connection.write(body)\n   rescue IOError, SystemCallError\n   ensure\n    connection.close\n   end\n  end\n end\nend\n\nQA321_RUBY_PROBE\nruby qa321-probe.rb --build",
+        "--start-command",
+        "ruby qa321-probe.rb",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 0.036,
+      "stdout": "",
+      "stderr": "Error: unknown flag: --root-dir\nUsage:\n  bex services create [flags]\n\nExamples:\n  # Create a service from repository configuration\n  bex services create --name my-api --type web_service --repo https://github.com/org/repo --runtime node --build-command \"npm install\" --start-command \"npm start\" --output json\n\n  # Clone configuration from an existing service\n  bex services create --from srv-abc123 --name my-api-clone --output json\n\nFlags:\n      --auto-deploy                             Enable auto-deploy (default true)\n      --branch string                           Set the Git branch\n      --build-command string                    Set the build command\n      --build-filter-ignored-path stringArray   Set build filter ignored paths (can be specified multiple times)\n      --build-filter-path stringArray           Set build filter paths (can be specified multiple times)\n      --cron-command string                     Set the cron command\n      --cron-schedule string                    Set the cron schedule\n      --env-var stringArray                     Set environment variables in KEY=VALUE format (can be specified multiple times)\n      --environment-id string                   Set the environment ID\n      --from string                             Clone configuration from an existing service ID or name and override cloned values with other flags\n      --health-check-path string                Set the health check path\n  -h, --help                                    help for create\n      --image string                            Set the Docker image URL\n      --ip-allow-list stringArray               Set IP allow list entries in cidr=..., description=... format (can be specified multiple times)\n      --maintenance-mode                        Enable maintenance mode\n      --maintenance-mode-uri string             Set the maintenance mode URI\n      --max-shutdown-delay int                  Set max shutdown delay in seconds\n      --name string                             Set the service name\n      --num-instances int                       Set the number of instances\n      --plan string                             Set the service plan\n      --pre-deploy-command string               Set the pre-deploy command\n      --previews enum                           Set preview generation mode\n      --publish-directory string                Set the publish directory\n      --region enum                             Set the deployment region\n      --registry-credential string              Set the registry credential\n      --repo string                             Set the Git repository URL\n      --root-directory string                   Set the root directory\n      --runtime enum                            Set the runtime environment\n      --secret-file stringArray                 Set secret files in NAME:LOCAL_PATH format (can be specified multiple times)\n      --start-command string                    Set the start command\n      --type enum                               Set the service type\n\nGlobal Flags:\n      --confirm         Skip all confirmation prompts\n  -o, --output string   Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default \"interactive\")\n\n",
+      "captures": [],
+      "qualification": "actual native POST forwarded unchanged to production; owned local relay and copied config cleaned",
+      "native_exit": 1
+    },
+    "reconciliation": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.942,
+      "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T22:12:05Z\",\n        \"nextRunAt\": \"2026-10-15T22:14:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T22:13:00Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T22:12:05Z\",\n        \"nextRunAt\": \"2026-10-15T22:14:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T22:13:00Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T22:12:04Z\",\n        \"nextRunAt\": \"2026-10-15T22:14:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T22:13:00Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T22:00:21Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T12:22:37Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T21:58:09Z\"\n    }\n  }\n]",
+      "stderr": ""
+    }
+  }
+]

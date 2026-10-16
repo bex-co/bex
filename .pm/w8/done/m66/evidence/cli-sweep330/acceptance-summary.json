@@ -1,0 +1,163 @@
+{
+  "source_head": "27d516be80b31fdda1f6f79221350f4dbcc6f0e7",
+  "canonical_intent_implementation": "62c74aae6",
+  "coupled_source_implementation": "eebd8ce27",
+  "serving_revision": "unobserved",
+  "timing": {
+    "first_automatic_Git_Live_at": "2026-10-16T00:57:48.369900+00:00",
+    "pre_manual_noop_at": "2026-10-16T01:01:37.548731+00:00",
+    "post_manual_noop_at": "2026-10-16T01:08:26.973369+00:00",
+    "late_Live_at": "2026-10-16T01:09:25.683274+00:00",
+    "post_noop_to_late_seconds": 58.71
+  },
+  "first_Git_deploy": "dep-db8nbmu7925c73etgqcg",
+  "target_reference": {
+    "commit": "1d9a8e7261557ec9a40463fd54e99b601016598c",
+    "package_sha256": "46dd2069300082210c2ee9a92f4812d3336eb31c39e386b6874ac0ab58de70e7",
+    "package_name": "serve-favicon",
+    "qualification": "read-only primary Git reference; deployment commit is separately observed"
+  },
+  "waits": [
+    {
+      "client": "bex",
+      "native_exit": 0,
+      "elapsed": 58.8,
+      "deploy_id": "dep-db8nete7925c73etgqh0"
+    },
+    {
+      "client": "render",
+      "native_exit": 0,
+      "elapsed": 58.867,
+      "deploy_id": "dep-db8nfnm7925c73etgqi0"
+    },
+    {
+      "client": "current",
+      "native_exit": 0,
+      "elapsed": 64.374,
+      "deploy_id": "dep-db8nhhqd4sfs7388qkl0"
+    }
+  ],
+  "source_top_tests": 9,
+  "source_named_passes": 18,
+  "source_failures": 0,
+  "source_skips": 0,
+  "source_results": [
+    {
+      "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+      "Test": "TestBlueprintUpdatePersistsProjectorOwnedIntent/source",
+      "Action": "pass",
+      "Elapsed": 0.04
+    },
+    {
+      "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+      "Test": "TestBlueprintUpdatePersistsProjectorOwnedIntent/plan",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+      "Test": "TestBlueprintUpdatePersistsProjectorOwnedIntent/instances",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+      "Test": "TestBlueprintUpdatePersistsProjectorOwnedIntent/disk",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+      "Test": "TestBlueprintUpdatePersistsProjectorOwnedIntent",
+      "Action": "pass",
+      "Elapsed": 0.05
+    },
+    {
+      "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+      "Test": "TestBlueprintUpdateGrowsTheDiskRow",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+      "Test": "TestBlueprintUpdateRowFailureOpensNoDeploy",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+      "Test": "TestBlueprintUpdateOfUnmanagedAppWritesNoRow",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+      "Test": "TestSyncBlueprintReviewedSourcePinsCommitAcrossBranchMove",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+      "Test": "TestBlueprintSourceSwitchReplacesTheFormerSource/image_to_native_Git",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+      "Test": "TestBlueprintSourceSwitchReplacesTheFormerSource/image_to_Dockerfile_Git",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+      "Test": "TestBlueprintSourceSwitchReplacesTheFormerSource/Git_to_image",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+      "Test": "TestBlueprintSourceSwitchReplacesTheFormerSource/same_Git",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+      "Test": "TestBlueprintSourceSwitchReplacesTheFormerSource/same_image",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+      "Test": "TestBlueprintSourceSwitchReplacesTheFormerSource",
+      "Action": "pass",
+      "Elapsed": 0.02
+    },
+    {
+      "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+      "Test": "TestBlueprintSourceSwitchKeepsARollbackOverrideOnTheSameRepo",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+      "Test": "TestBlueprintPlanAttributesASourceSwitchToRepo",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Package": "github.com/bex-co/bex/lego/backend/internal/apps",
+      "Test": "TestDeployStackRepoOverrideWins",
+      "Action": "pass",
+      "Elapsed": 0
+    }
+  ],
+  "no_QA_product_edit_or_new_full_suite": true,
+  "cleanup": {
+    "services": 1,
+    "blueprints": 1,
+    "deploy_children": 6,
+    "all_absent": true,
+    "baseline_services": 6,
+    "quota_terminating": 0
+  }
+}

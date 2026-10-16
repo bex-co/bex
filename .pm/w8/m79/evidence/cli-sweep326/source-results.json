@@ -1,0 +1,80 @@
+{
+  "head": "82ed0717b60ff156c77604050fed2188f8f10df0",
+  "source_probe_exit": 1,
+  "expected_failure": true,
+  "results": [
+    {
+      "Test": "TestQASweep326AutomaticStaticBrotli/text/br",
+      "Action": "fail",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQASweep326AutomaticStaticBrotli/text/identity",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQASweep326AutomaticStaticBrotli/javascript/br",
+      "Action": "fail",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQASweep326AutomaticStaticBrotli/javascript/identity",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQASweep326AutomaticStaticBrotli/css/br",
+      "Action": "fail",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQASweep326AutomaticStaticBrotli/css/identity",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQASweep326AutomaticStaticBrotli/saved-precompressed-gzip-control",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQASweep326AutomaticStaticBrotli",
+      "Action": "fail",
+      "Elapsed": 0
+    }
+  ],
+  "existing_results": [
+    {
+      "Test": "TestSavedETagPreconditions",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestConditionalFramingOverHTTP",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestReservedHeaderRulesCannotBreakResponses",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestCustomHeaderApplied",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestCacheServesFromMemory",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestHeadRequestNoBody",
+      "Action": "pass",
+      "Elapsed": 0
+    }
+  ],
+  "qualification": "3 genuine Brotli subcase failures, 4 control passes, failing parent; no implementation or fixed candidate, no full suite"
+}

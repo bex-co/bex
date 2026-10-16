@@ -1,0 +1,86 @@
+{
+  "source_head": "a4e95b87394c57dcaa8ccd10c82cbc218d7e252c",
+  "implementation_commit": "eebd8ce27",
+  "serving_revision": "unobserved",
+  "first_Git_Live_at": "2026-10-15T22:57:13.611191+00:00",
+  "identical_reapply_at": "2026-10-15T22:58:32.831219+00:00",
+  "late_Live_at": "2026-10-15T22:59:39.895531+00:00",
+  "first_Live_to_reapply_seconds": 79.22,
+  "reapply_to_late_Live_seconds": 67.064,
+  "maintained_m70_named_results": [
+    {
+      "Test": "TestBlueprintSourceSwitchReplacesTheFormerSource/image_to_native_Git",
+      "Action": "pass",
+      "Elapsed": 0.04
+    },
+    {
+      "Test": "TestBlueprintSourceSwitchReplacesTheFormerSource/image_to_Dockerfile_Git",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestBlueprintSourceSwitchReplacesTheFormerSource/Git_to_image",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestBlueprintSourceSwitchReplacesTheFormerSource/same_Git",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestBlueprintSourceSwitchReplacesTheFormerSource/same_image",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestBlueprintSourceSwitchReplacesTheFormerSource",
+      "Action": "pass",
+      "Elapsed": 0.05
+    },
+    {
+      "Test": "TestBlueprintSourceSwitchKeepsARollbackOverrideOnTheSameRepo",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Test": "TestBlueprintImageToGitDropsImageOnlySettings",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestBlueprintInheritedRepoSwitchesAnImageService",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestBlueprintGitToImageDropsABakedStartCommand",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Test": "TestBlueprintPlanAttributesASourceSwitchToRepo",
+      "Action": "pass",
+      "Elapsed": 0
+    }
+  ],
+  "reviewed_source_and_direct_override_neighbors": [
+    {
+      "Test": "TestSyncBlueprintReviewedSourcePinsCommitAcrossBranchMove",
+      "Action": "pass",
+      "Elapsed": 0.04
+    },
+    {
+      "Test": "TestSyncBlueprintOmitReviewedFollowsMovedHead",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestDeployStackRepoOverrideWins",
+      "Action": "pass",
+      "Elapsed": 0
+    }
+  ],
+  "test_source_unchanged_between_sweeps": true,
+  "no_product_edits_or_new_full_suite": true
+}

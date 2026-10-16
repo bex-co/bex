@@ -1,0 +1,77 @@
+{
+  "create_and_observation_source": "c11f862351e18a6c525db9ea55d7673d18237091",
+  "research_head": "e949b9914d7b5e62a60da5e1ef47f735414244df",
+  "relevant_source_unchanged_between_heads": true,
+  "named_passes": 13,
+  "top_level_passes": 9,
+  "existing_top_level": 8,
+  "observational_cases": 4,
+  "no_implementation_or_fixed_candidate": true,
+  "checks": [
+    {
+      "Test": "TestNativeDockerfilePreservesRenderCommands",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestNativeDockerfileEnvRevisionBustsCacheKey",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestNativeDockerfileKeepsToolchainPATH",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestNativeRuntimeImagesAreDigestPinned",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestNativeBuildJobPreparesDockerfileAndSecretEnv",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestNativeDockerfileClearsTheToolchainEntrypoint",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestResolveNativeVersionRefusesUnsupportedByName",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestResolveNativeBuildRewritesTheBase",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA321RubyGeneratedToolchainObservation/default",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA321RubyGeneratedToolchainObservation/3.3",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA321RubyGeneratedToolchainObservation/3.4",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA321RubyGeneratedToolchainObservation/4.0",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA321RubyGeneratedToolchainObservation",
+      "Action": "pass",
+      "Elapsed": 0
+    }
+  ]
+}

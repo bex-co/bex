@@ -1,0 +1,8 @@
+{"Time":"2026-10-15T16:34:21.16715-07:00","Action":"start","Package":"github.com/bex-co/bex/lego/operator/internal/controller"}
+{"Time":"2026-10-15T16:34:21.897186-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestSpecProjectionDefaultsAndWithdrawnFields"}
+{"Time":"2026-10-15T16:34:21.897273-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestSpecProjectionDefaultsAndWithdrawnFields","Output":"=== RUN   TestSpecProjectionDefaultsAndWithdrawnFields\n"}
+{"Time":"2026-10-15T16:34:21.897868-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestSpecProjectionDefaultsAndWithdrawnFields","Output":"--- PASS: TestSpecProjectionDefaultsAndWithdrawnFields (0.00s)\n"}
+{"Time":"2026-10-15T16:34:21.897913-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestSpecProjectionDefaultsAndWithdrawnFields","Elapsed":0}
+{"Time":"2026-10-15T16:34:21.897933-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Output":"PASS\n"}
+{"Time":"2026-10-15T16:34:21.8996-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Output":"ok  \tgithub.com/bex-co/bex/lego/operator/internal/controller\t0.732s\n"}
+{"Time":"2026-10-15T16:34:21.899641-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Elapsed":0.733}

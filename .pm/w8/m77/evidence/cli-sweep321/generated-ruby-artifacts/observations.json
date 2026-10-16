@@ -1,0 +1,46 @@
+[
+  {
+    "case": "default",
+    "choice": {
+      "Label": "Ruby",
+      "Line": "3.4",
+      "Image": "ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172",
+      "Source": ""
+    },
+    "runtime": "ruby",
+    "scope": "actual generated/resolved Dockerfile; no local image execution or fixed candidate"
+  },
+  {
+    "case": "3.3",
+    "choice": {
+      "Label": "Ruby",
+      "Line": "3.3",
+      "Image": "ruby:3.3-bookworm@sha256:b899e7de6ffa6e974d947202d3ce2ac921c12e46c14cff3106214079388dcff4",
+      "Source": ".ruby-version"
+    },
+    "runtime": "ruby",
+    "scope": "actual generated/resolved Dockerfile; no local image execution or fixed candidate"
+  },
+  {
+    "case": "3.4",
+    "choice": {
+      "Label": "Ruby",
+      "Line": "3.4",
+      "Image": "ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172",
+      "Source": ".ruby-version"
+    },
+    "runtime": "ruby",
+    "scope": "actual generated/resolved Dockerfile; no local image execution or fixed candidate"
+  },
+  {
+    "case": "4.0",
+    "choice": {
+      "Label": "Ruby",
+      "Line": "4.0",
+      "Image": "ruby:4.0-bookworm@sha256:7671dc16cd740b9d8d653a568d8bd2df00e24a32c53a7b7a3fc39a0a194bb9ad",
+      "Source": ".ruby-version"
+    },
+    "runtime": "ruby",
+    "scope": "actual generated/resolved Dockerfile; no local image execution or fixed candidate"
+  }
+]
