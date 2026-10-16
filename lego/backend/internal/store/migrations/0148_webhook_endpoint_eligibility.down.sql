@@ -1,0 +1,3 @@
+DROP TRIGGER webhook_endpoint_eligibility_track ON webhook_endpoints;
+DROP FUNCTION bex_track_webhook_endpoint_eligibility();
+DROP TABLE webhook_endpoint_eligibility;

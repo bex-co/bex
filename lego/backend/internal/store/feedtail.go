@@ -120,7 +120,7 @@ type FeedPass[T any] struct {
 	Until time.Time
 	// Floor optionally starts the READ later than the durable watermark, when the
 	// consumer can prove nothing before it is deliverable anyway (webhooks: the
-	// oldest enabled endpoint's creation). A read-side skip only — nothing is
+	// oldest eligibility interval's start). A read-side skip only — nothing is
 	// persisted, and the park check below still measures the durable cursor, so a
 	// floor can never park the watermark forward over unread rows.
 	Floor time.Time
