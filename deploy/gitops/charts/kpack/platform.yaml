@@ -29,7 +29,7 @@ metadata:
   name: bex-kpack-config
   namespace: bex-system
 data:
-  cnbBuilder: paketobuildpacks/builder-jammy-base@sha256:36c91de1fd14a3f4e5434659c4a8d9f8f379f46408117234b0c77b3f7e35d078
+  cnbBuilder: paketobuildpacks/builder-jammy-base@sha256:c0642791404793f276f92c926c4fe910c0fa5f9dce6b3de8b693323a5962236b
   clusterBuilderTag: zot.local:5000/bex-cnb-builder:latest
 ---
 # The out-of-band registry bootstrap creates bex-registry-push-kpack as a
@@ -57,7 +57,7 @@ spec:
     namespace: bex-system
   # Replaced from bex-kpack-config by kustomize.
   sources:
-    - image: paketobuildpacks/builder-jammy-base@sha256:36c91de1fd14a3f4e5434659c4a8d9f8f379f46408117234b0c77b3f7e35d078
+    - image: paketobuildpacks/builder-jammy-base@sha256:c0642791404793f276f92c926c4fe910c0fa5f9dce6b3de8b693323a5962236b
 ---
 apiVersion: kpack.io/v1alpha2
 kind: ClusterStack
@@ -68,7 +68,7 @@ metadata:
 spec:
   id: io.buildpacks.stacks.jammy
   buildImage:
-    image: paketobuildpacks/build-jammy-base@sha256:bea90980583a314c499cb747596c22b42217c81c6efc8d38ac5561a2cbad70b1
+    image: paketobuildpacks/build-jammy-base@sha256:b8f6a39ca0764598885087bdc0a034c195e4f63a72de8945d7201d9a3234d7f8
   # bex run image (w1/m169): run-jammy-base plus libatomic1, so current Node
   # majors (25+, which link libatomic.so.1) start. Published and Node-checked by
   # .github/workflows/cnb-run-image.yml; recipe in deploy/cnb-run/Dockerfile.
