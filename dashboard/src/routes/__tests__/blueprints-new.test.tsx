@@ -586,6 +586,56 @@ describe("NewBlueprintPage", () => {
     );
   });
 
+  // w4/331 (a773): GitHub → Public Git URL with the URL untouched cleared the
+  // entered Branch, turning a reviewed draft back into "select a branch".
+  it("restores a Public Git branch when returning to the same URL", async () => {
+    previewState.preview = validPreview();
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("tab", { name: /public git/i }));
+    await user.type(
+      screen.getByLabelText("Repository URL"),
+      "https://github.com/acme/public-app",
+    );
+    await user.type(screen.getByRole("combobox", { name: /branch/i }), "main");
+    await user.click(screen.getByRole("tab", { name: /github/i }));
+    await user.click(screen.getByRole("tab", { name: /public git/i }));
+
+    expect(screen.getByLabelText("Repository URL")).toHaveValue(
+      "https://github.com/acme/public-app",
+    );
+    expect(screen.getByRole("combobox", { name: /branch/i })).toHaveValue(
+      "main",
+    );
+    const deploy = screen.getByRole("button", { name: /deploy blueprint/i });
+    expect(deploy).toBeEnabled();
+    await user.click(deploy);
+    expect(create).toHaveBeenCalledWith(
+      "https://github.com/acme/public-app",
+      "main",
+      "render.yaml",
+      "public-app",
+      undefined,
+      [],
+    );
+  });
+
+  it("does not copy a GitHub repository's branch into the Public Git draft", async () => {
+    reposState.repos = [repo()];
+    const user = userEvent.setup();
+    renderPage();
+
+    // A GitHub selection fills its own default branch…
+    await user.click(await screen.findByText("acme/hello-go"));
+    expect(screen.getByRole("combobox", { name: /branch/i })).toHaveValue(
+      "main",
+    );
+    // …which Public Git, with no draft of its own, does not inherit.
+    await user.click(screen.getByRole("tab", { name: /public git/i }));
+    expect(screen.getByRole("combobox", { name: /branch/i })).toHaveValue("");
+  });
+
   it("rejects an invalid public Git URL", async () => {
     const user = userEvent.setup();
     renderPage();
