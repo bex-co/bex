@@ -2253,3 +2253,25 @@ func TestPodReadersKeepInterleavedRecordsWhole(t *testing.T) {
 		t.Errorf("follow = %.80q, want each record whole in arrival order", got)
 	}
 }
+
+// TestGraphQLLogEntryIDIsTheRESTRecordID (w4/m217): GraphQL history exposes
+// the same per-record id REST returns, so the dashboard can keep records that
+// share a millisecond apart while recognizing a replay of one.
+func TestGraphQLLogEntryIDIsTheRESTRecordID(t *testing.T) {
+	entries := []LogEntry{
+		{Timestamp: "2026-10-16T12:24:33.681000001Z", Message: "QA_A751 same", Labels: map[string]string{LabelInstance: "pod-a"}},
+		{Timestamp: "2026-10-16T12:24:33.681000002Z", Message: "QA_A751 same", Labels: map[string]string{LabelInstance: "pod-a"}},
+	}
+	resolve := logGQLType.Fields()["id"].Resolve
+	seen := map[any]bool{}
+	for _, e := range entries {
+		got, err := resolve(graphql.ResolveParams{Source: e})
+		if err != nil || got != toRenderLog(e).ID {
+			t.Fatalf("GraphQL id = %v (%v), REST id = %q", got, err, toRenderLog(e).ID)
+		}
+		seen[got] = true
+	}
+	if len(seen) != 2 {
+		t.Fatalf("records one nanosecond apart share an id: %v", seen)
+	}
+}
