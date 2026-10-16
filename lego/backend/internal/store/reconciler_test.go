@@ -932,6 +932,126 @@ func TestRecordDeployProjectsPreDeployStatus(t *testing.T) {
 	}
 }
 
+// TestReconcileFastFailedPreDeployKeepsRecordedStart is the w4/316 repro: a
+// pre-deploy that failed between two passes was never observed executing, so
+// the close used to leave started_at empty and the deploy page lost Started
+// and Duration. The failed step's recorded Job start is now the row's start; a
+// zero, malformed or empty start keeps it unknown, and an already-observed
+// in-progress start is never moved.
+func TestReconcileFastFailedPreDeployKeepsRecordedStart(t *testing.T) {
+	const recorded = "2026-10-15T21:12:42Z"
+	type wantStart int
+	const (
+		unknownStart wantStart = iota
+		recordedStart
+		observedStart
+	)
+	for _, tc := range []struct {
+		name       string
+		startedAt  string
+		observeRun bool
+		want       wantStart
+	}{
+		{name: "terminal-only failure", startedAt: recorded, want: recordedStart},
+		{name: "zero start", startedAt: "0001-01-01T00:00:00Z"},
+		{name: "malformed start", startedAt: "not-a-time"},
+		{name: "empty start", startedAt: ""},
+		{name: "observed running keeps its start", startedAt: recorded, observeRun: true, want: observedStart},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			rec, st, cl := newTestReconciler(t)
+			ten, _ := st.CreateTenant(ctx, "acme", "free")
+			row, _ := st.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img:1", Port: 80, Replicas: 1, Tier: "free"})
+			if err := rec.ReconcileOnce(ctx); err != nil {
+				t.Fatalf("create projection: %v", err)
+			}
+			open := onlyDeploy(t, st, row.ID)
+			var observed *time.Time
+			if tc.observeRun {
+				app := getApp(t, cl)
+				app.Status.ReleaseGeneration = open.Generation
+				app.Status.PreDeploy = &appv1alpha1.PreDeployStatus{
+					Job: "pre-web-gen-1", Generation: open.Generation,
+					Status: appv1alpha1.PreDeployRunning, StartedAt: tc.startedAt,
+				}
+				if err := cl.Status().Update(ctx, app); err != nil {
+					t.Fatal(err)
+				}
+				if err := rec.ReconcileOnce(ctx); err != nil {
+					t.Fatalf("observe running: %v", err)
+				}
+				observed = onlyDeploy(t, st, row.ID).StartedAt
+				if observed == nil {
+					t.Fatal("pre_deploy_in_progress observation recorded no start")
+				}
+			}
+			app := getApp(t, cl)
+			app.Status.Phase = appv1alpha1.PhaseFailed
+			app.Status.ReleaseGeneration = open.Generation
+			app.Status.PreDeploy = &appv1alpha1.PreDeployStatus{
+				Job: "pre-web-gen-1", Generation: open.Generation,
+				Status: appv1alpha1.PreDeployFailed, StartedAt: tc.startedAt,
+				FinishedAt: "2026-10-15T21:12:49Z",
+			}
+			if err := cl.Status().Update(ctx, app); err != nil {
+				t.Fatal(err)
+			}
+			if err := rec.ReconcileOnce(ctx); err != nil {
+				t.Fatalf("observe failure: %v", err)
+			}
+			got := onlyDeploy(t, st, row.ID)
+			if got.Status != DeployPreDeployFailed || got.FinishedAt == nil {
+				t.Fatalf("deploy = %+v, want pre_deploy_failed with a finish", got)
+			}
+			switch tc.want {
+			case recordedStart:
+				want, _ := time.Parse(time.RFC3339, recorded)
+				if got.StartedAt == nil || !got.StartedAt.Equal(want) {
+					t.Errorf("started_at = %v, want the failed step's recorded %v", got.StartedAt, want)
+				}
+			case observedStart:
+				if got.StartedAt == nil || !got.StartedAt.Equal(*observed) {
+					t.Errorf("started_at = %v, want the observed in-progress start %v kept", got.StartedAt, observed)
+				}
+			case unknownStart:
+				if got.StartedAt != nil {
+					t.Errorf("started_at = %v, want unknown without owned evidence", got.StartedAt)
+				}
+			}
+		})
+	}
+}
+
+// TestFailedPreDeployStart pins the evidence rule behind w4/316: only a failed
+// step recorded for the row's own positive release generation is a start.
+func TestFailedPreDeployStart(t *testing.T) {
+	const recorded = "2026-10-15T21:12:42Z"
+	want, _ := time.Parse(time.RFC3339, recorded)
+	for _, tc := range []struct {
+		name string
+		gen  int64
+		pd   *appv1alpha1.PreDeployStatus
+		ok   bool
+	}{
+		{name: "own failed step", gen: 5, pd: &appv1alpha1.PreDeployStatus{Generation: 5, Status: appv1alpha1.PreDeployFailed, StartedAt: recorded}, ok: true},
+		{name: "stale generation", gen: 5, pd: &appv1alpha1.PreDeployStatus{Generation: 4, Status: appv1alpha1.PreDeployFailed, StartedAt: recorded}},
+		{name: "unattributed row", gen: 0, pd: &appv1alpha1.PreDeployStatus{Generation: 0, Status: appv1alpha1.PreDeployFailed, StartedAt: recorded}},
+		{name: "succeeded step", gen: 5, pd: &appv1alpha1.PreDeployStatus{Generation: 5, Status: appv1alpha1.PreDeploySucceeded, StartedAt: recorded}},
+		{name: "running step", gen: 5, pd: &appv1alpha1.PreDeployStatus{Generation: 5, Status: appv1alpha1.PreDeployRunning, StartedAt: recorded}},
+		{name: "no record", gen: 5},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := &appv1alpha1.App{}
+			app.Status.PreDeploy = tc.pd
+			got := failedPreDeployStart(app, Deploy{Generation: tc.gen})
+			if tc.ok != (got != nil) || (got != nil && !got.Equal(want)) {
+				t.Fatalf("failedPreDeployStart = %v, want ok=%v at %v", got, tc.ok, want)
+			}
+		})
+	}
+}
+
 // TestPreDeployStatusForIgnoresStaleGeneration guards the projection's
 // generation gate: a status.preDeploy left over from a superseded revision must
 // not be projected onto the current rollout's deploy.
