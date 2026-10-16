@@ -1,0 +1,1978 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-16",
+  "scope": "Partial live m213 verification; default Go/Elixir/Rust companions; keep milestone open until full acceptance",
+  "sourceHead": "2b046a09ae3b227dab0edba51fd68a038745503e",
+  "passes": {
+    "go": {
+      "a762Created": {
+        "at": "2026-10-16T18:41:06.942Z",
+        "request": {
+          "operationName": "CreateService",
+          "variables": {
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "name": "qa-20261016-a762-native-go",
+            "type": "web_service",
+            "rootDir": "examples/hello-go",
+            "runtime": "go",
+            "buildCommand": "node -e 'const cp=require(\"child_process\");for(const n of [\"node\",\"npm\",\"yarn\",\"pnpm\",\"go\"]){const r=cp.spawnSync(n,[n===\"go\"?\"version\":\"--version\"],{encoding:\"utf8\"});console.log(\"QA_A762_BUILD \"+n+\" \"+r.stdout.trim());if(r.status!==0)process.exit(r.status||1)}' && go build -o qa-server .",
+            "startCommand": "node -e 'const cp=require(\"child_process\");for(const n of [\"node\",\"npm\",\"yarn\",\"pnpm\"]){const r=cp.spawnSync(n,[\"--version\"],{encoding:\"utf8\"});console.log(\"QA_A762_RUNTIME \"+n+\" \"+r.stdout.trim());if(r.status!==0)process.exit(r.status||1)}' && exec ./qa-server",
+            "plan": "free",
+            "autoDeploy": false,
+            "port": 3000,
+            "envVars": [
+              {
+                "key": "MESSAGE",
+                "value": "QA_A762_NATIVE_GO"
+              }
+            ],
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "createService": {
+              "__typename": "Service",
+              "environmentId": null,
+              "id": "srv-db96vgffsf9s73epsj10",
+              "latestDeployId": "dep-db96vgffsf9s73epsj1g",
+              "name": "qa-20261016-a762-native-go",
+              "phase": "",
+              "projectId": null,
+              "registryCredentialId": null,
+              "type": "web_service"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792176063595.692,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.145,
+          "responseStart": 2622.465,
+          "responseEnd": 2623.004
+        },
+        "url": "https://dashboard.bex.co/services/srv-db96vgffsf9s73epsj10/deploys/dep-db96vgffsf9s73epsj1g"
+      },
+      "a762BuildTools1": {
+        "at": "2026-10-16T18:43:49.282Z",
+        "request": {
+          "operationName": "Qaa762BuildTools",
+          "variables": {
+            "id": "srv-db96vgffsf9s73epsj10"
+          },
+          "query": "query Qaa762BuildTools($id:String!){logs(resource:$id,type:\"build\",text:\"QA_A762_BUILD\",limit:20){hasMore logs{timestamp message type instance}}deploys(serviceId:$id){id status failureReason stallReason finishedAt}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "failureReason": "",
+                "finishedAt": "",
+                "id": "dep-db96vgffsf9s73epsj1g",
+                "stallReason": "",
+                "status": "build_in_progress"
+              }
+            ],
+            "logs": {
+              "hasMore": false,
+              "logs": [
+                {
+                  "instance": "srv-db96vgffsf9s73epsj10-pd9uo9d4gtan769gklb2",
+                  "message": "#26 [stage-0 14/14] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\"/bin/bash\",\"-c\",\". /opt/bex/load-env\\nnode -e 'const cp=require(\"child_process\");for(const n of [\"node\",\"npm\",\"yarn\",\"pnpm\",\"go\"]){const r=cp.spawnSync(n,[n===\"go\"?\"version\":\"--version\"],{encoding:\"utf8\"});console.log(\"QA_A762_BUILD \"+n+\" \"+r.stdout.trim());if(r.status!==0)process.exit(r.status||1)}' && go build -o qa-server .\"]",
+                  "timestamp": "2026-10-16T18:43:02.58846794Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db96vgffsf9s73epsj10-pd9uo9d4gtan769gklb2",
+                  "message": "#26 0.140 QA_A762_BUILD node v24.22.0",
+                  "timestamp": "2026-10-16T18:43:02.588472017Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db96vgffsf9s73epsj10-pd9uo9d4gtan769gklb2",
+                  "message": "#26 0.298 QA_A762_BUILD npm 11.19.1",
+                  "timestamp": "2026-10-16T18:43:02.746553362Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db96vgffsf9s73epsj10-pd9uo9d4gtan769gklb2",
+                  "message": "#26 0.661 QA_A762_BUILD yarn 1.22.22",
+                  "timestamp": "2026-10-16T18:43:03.109018514Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db96vgffsf9s73epsj10-pd9uo9d4gtan769gklb2",
+                  "message": "#26 1.345 QA_A762_BUILD pnpm 10.34.7",
+                  "timestamp": "2026-10-16T18:43:03.794515844Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db96vgffsf9s73epsj10-pd9uo9d4gtan769gklb2",
+                  "message": "#26 1.357 QA_A762_BUILD go go version go1.24.13 linux/amd64",
+                  "timestamp": "2026-10-16T18:43:03.983837654Z",
+                  "type": "build"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "a762RuntimeTools2": {
+        "at": "2026-10-16T18:45:08.656Z",
+        "request": {
+          "operationName": "Qaa762RuntimeTools",
+          "variables": {
+            "id": "srv-db96vgffsf9s73epsj10"
+          },
+          "query": "query Qaa762RuntimeTools($id:String!){service(id:$id){id phase runtime autoDeploy}logs(resource:$id,type:\"app\",text:\"QA_A762_RUNTIME\",limit:20){hasMore logs{timestamp message type instance}}deploys(serviceId:$id){id status failureReason stallReason finishedAt}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "failureReason": "",
+                "finishedAt": "2026-10-16T18:44:54.837715Z",
+                "id": "dep-db96vgffsf9s73epsj1g",
+                "stallReason": "",
+                "status": "live"
+              }
+            ],
+            "logs": {
+              "hasMore": false,
+              "logs": [
+                {
+                  "instance": "srv-db96vgffsf9s73epsj10-k27midtfeu5rml7u0309",
+                  "message": "QA_A762_RUNTIME node v24.22.0",
+                  "timestamp": "2026-10-16T18:44:29.347191346Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db96vgffsf9s73epsj10-k27midtfeu5rml7u0309",
+                  "message": "QA_A762_RUNTIME npm 11.19.1",
+                  "timestamp": "2026-10-16T18:44:30.74755489Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db96vgffsf9s73epsj10-k27midtfeu5rml7u0309",
+                  "message": "QA_A762_RUNTIME yarn 1.22.22",
+                  "timestamp": "2026-10-16T18:44:32.845605434Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db96vgffsf9s73epsj10-k27midtfeu5rml7u0309",
+                  "message": "QA_A762_RUNTIME pnpm 10.34.7",
+                  "timestamp": "2026-10-16T18:44:38.149609143Z",
+                  "type": "app"
+                }
+              ]
+            },
+            "service": {
+              "autoDeploy": false,
+              "id": "srv-db96vgffsf9s73epsj10",
+              "phase": "Running",
+              "runtime": "go"
+            }
+          }
+        },
+        "snapshotHead": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261016-a762-native-go\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261016-a762-native-go\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db96vgffsf9s73epsj10/deploys/dep-db96vgffsf9s73epsj1g\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db96vgffsf9s73epsj10/plan\n  - text: Runtime go\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db96vgffsf9s73epsj10\"\n  - button \"Copy service ID\"\n  - link \"github.com · bex-co / bex\":\n    - /url: https://github.com/bex-co/bex/tree/main\n  - text: main\n  - link \"https://qa-20261016-a762-native-go.onbex.co\":\n    - /url: https://qa-20261016-a762-native-go.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261016-a762-native-go\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 4m\n  - text: Deploy status Live First Deploy dep-db96vgffsf9s73epsj1g\n  - paragraph: \"2b046a0 docs(pm): file custom range edit precision loss\"\n  - term: \"Created:\"\n  - definition: October 16, 2026 at 11:41 AM\n  - term: \"Updated:\"\n  - definition: October 16, 2026 at 11:44 AM\n  - term: \"Started:\"\n  - definition: October 16, 2026 at 11:42 AM\n  - term: \"Finished:\"\n  - definition: October 16, 2026 at 11:44 AM\n  - term: \"Duration:\"\n  - definition: 2m 44s\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 16, 2026 at 11:41 AM\n    - listitem:\n      - paragraph: Deploy started\n      - time: October 16, 2026 at 11:42 AM\n    - listitem:\n      - paragraph: Live\n      - time: October 16, 2026 at 11:44 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\"\n  - button \"Log options\"\n  - button \"Maximize\"\n  - status:\n    - text: Only part of this time range is loaded. Load older to search earlier lines.\n    - button \"Load older\"\n  - text: 11:43:50 AM\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-pd9uo9d4gtan769gklb2\": \"[pd9uo]\"\n  - text: \"#27 exporting layers 14.7s done 11:43:51 AM\"\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-pd9uo9d4gtan769gklb2\": \"[pd9uo]\"\n  - text: \"#27 exporting manifest sha256:b91cf94611e80ac63190ed859924adc51e43d99e0fd44d350d35ef64bb4abe99 0.0s done 11:43:51 AM\"\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-pd9uo9d4gtan769gklb2\": \"[pd9uo]\"\n  - text: \"#27 exporting config sha256:27cdd8907625f967da6bfcd449e7df25acdd99868dc3a897283b735caee890d4 0.0s done 11:43:51 AM\"\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-pd9uo9d4gtan769gklb2\": \"[pd9uo]\"\n  - text: \"#27 sending tarball 11:43:56 AM\"\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-pd9uo9d4gtan769gklb2\": \"[pd9uo]\"\n  - text: \"#27 sending tarball 5.2s done 11:43:56 AM\"\n "
+      },
+      "a762ManualDeployed": {
+        "at": "2026-10-16T18:45:34.795Z",
+        "request": {
+          "operationName": "TriggerDeploy",
+          "variables": {
+            "serviceId": "srv-db96vgffsf9s73epsj10"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation TriggerDeploy($serviceId: String!, $commitId: String, $deployMode: String, $clearCache: String, $confirm: String) {\n  triggerDeploy(\n    serviceId: $serviceId\n    commitId: $commitId\n    deployMode: $deployMode\n    clearCache: $clearCache\n    confirm: $confirm\n  ) {\n    id\n    status\n    createdAt\n    trigger\n    rollbackOf\n    image\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "triggerDeploy": {
+              "__typename": "Deploy",
+              "createdAt": "2026-10-16T18:45:33.894836Z",
+              "id": "dep-db971j9koksc73a7vkl0",
+              "image": "",
+              "rollbackOf": "",
+              "status": "created",
+              "trigger": "api"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792176332209.9329,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.183,
+          "responseStart": 1878.425,
+          "responseEnd": 1879.001
+        },
+        "url": "https://dashboard.bex.co/services/srv-db96vgffsf9s73epsj10/deploys/dep-db96vgffsf9s73epsj1g"
+      },
+      "a762RepeatTools2": {
+        "at": "2026-10-16T18:47:22.309Z",
+        "request": {
+          "operationName": "Qaa762RepeatBuildTools",
+          "variables": {
+            "id": "srv-db96vgffsf9s73epsj10",
+            "start": "2026-10-16T18:45:33.894836Z"
+          },
+          "query": "query Qaa762RepeatBuildTools($id:String!,$start:String!){build:logs(resource:$id,type:\"build\",text:\"QA_A762_BUILD\",startTime:$start,limit:20){hasMore logs{timestamp message type instance}}runtime:logs(resource:$id,type:\"app\",text:\"QA_A762_RUNTIME\",startTime:$start,limit:20){hasMore logs{timestamp message type instance}}deploys(serviceId:$id){id status failureReason stallReason finishedAt}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "build": {
+              "hasMore": false,
+              "logs": [
+                {
+                  "instance": "srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38",
+                  "message": "#26 [stage-0 14/14] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\"/bin/bash\",\"-c\",\". /opt/bex/load-env\\nnode -e 'const cp=require(\"child_process\");for(const n of [\"node\",\"npm\",\"yarn\",\"pnpm\",\"go\"]){const r=cp.spawnSync(n,[n===\"go\"?\"version\":\"--version\"],{encoding:\"utf8\"});console.log(\"QA_A762_BUILD \"+n+\" \"+r.stdout.trim());if(r.status!==0)process.exit(r.status||1)}' && go build -o qa-server .\"]",
+                  "timestamp": "2026-10-16T18:46:42.323289756Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38",
+                  "message": "#26 0.129 QA_A762_BUILD node v24.22.0",
+                  "timestamp": "2026-10-16T18:46:42.323301027Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38",
+                  "message": "#26 0.268 QA_A762_BUILD npm 11.19.1",
+                  "timestamp": "2026-10-16T18:46:42.462237605Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38",
+                  "message": "#26 0.563 QA_A762_BUILD yarn 1.22.22",
+                  "timestamp": "2026-10-16T18:46:42.757369242Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38",
+                  "message": "#26 1.175 QA_A762_BUILD pnpm 10.34.7",
+                  "timestamp": "2026-10-16T18:46:43.369660796Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38",
+                  "message": "#26 1.185 QA_A762_BUILD go go version go1.24.13 linux/amd64",
+                  "timestamp": "2026-10-16T18:46:43.544785511Z",
+                  "type": "build"
+                }
+              ]
+            },
+            "deploys": [
+              {
+                "failureReason": "",
+                "finishedAt": "",
+                "id": "dep-db971j9koksc73a7vkl0",
+                "stallReason": "",
+                "status": "build_in_progress"
+              },
+              {
+                "failureReason": "",
+                "finishedAt": "2026-10-16T18:44:54.837715Z",
+                "id": "dep-db96vgffsf9s73epsj1g",
+                "stallReason": "",
+                "status": "live"
+              }
+            ],
+            "runtime": {
+              "hasMore": false,
+              "logs": []
+            }
+          }
+        },
+        "tail": "Filter logs by instance srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38\": \"[eas9i]\"\n  - text: \"#22 [stage-0 10/14] RUN ln -sf /ffmpeg /usr/local/bin/ffmpeg && ln -sf /ffprobe /usr/local/bin/ffprobe 11:46:42 AM\"\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38\": \"[eas9i]\"\n  - text: \"#22 DONE 0.1s 11:46:42 AM\"\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38\": \"[eas9i]\"\n  - text: 11:46:42 AM\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38\": \"[eas9i]\"\n  - text: \"#23 [stage-0 11/14] WORKDIR /opt/render/project/src 11:46:42 AM\"\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38\": \"[eas9i]\"\n  - text: \"#23 DONE 0.0s 11:46:42 AM\"\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38\": \"[eas9i]\"\n  - text: \"#24 [stage-0 12/14] COPY . . 11:46:42 AM\"\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38\": \"[eas9i]\"\n  - text: \"#24 DONE 0.0s 11:46:42 AM\"\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38\": \"[eas9i]\"\n  - text: \"#25 [stage-0 13/14] COPY <<BEX_LOAD_ENV /opt/bex/load-env 11:46:42 AM\"\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38\": \"[eas9i]\"\n  - text: \"#25 DONE 0.0s 11:46:42 AM\"\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38\": \"[eas9i]\"\n  - text: 11:46:42 AM\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38\": \"[eas9i]\"\n  - text: \"#26 [stage-0 14/14] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\\\"/bin/bash\\\",\\\"-c\\\",\\\". /opt/bex/load-env\\\\nnode -e 'const cp=require(\\\"child_process\\\");for(const n of [\\\"node\\\",\\\"npm\\\",\\\"yarn\\\",\\\"pnpm\\\",\\\"go\\\"]){const r=cp.spawnSync(n,[n===\\\"go\\\"?\\\"version\\\":\\\"--version\\\"],{encoding:\\\"utf8\\\"});console.log(\\\"QA_A762_BUILD \\\"+n+\\\" \\\"+r.stdout.trim());if(r.status!==0)process.exit(r.status||1)}' && go build -o qa-server .\\\"] 11:46:42 AM\"\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38\": \"[eas9i]\"\n  - text: \"#26 0.129 QA_A762_BUILD node v24.22.0 11:46:42 AM\"\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38\": \"[eas9i]\"\n  - text: \"#26 0.268 QA_A762_BUILD npm 11.19.1 11:46:42 AM\"\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38\": \"[eas9i]\"\n  - text: \"#26 0.563 QA_A762_BUILD yarn 1.22.22 11:46:43 AM\"\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38\": \"[eas9i]\"\n  - text: \"#26 1.175 QA_A762_BUILD pnpm 10.34.7 11:46:43 AM\"\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38\": \"[eas9i]\"\n  - text: \"#26 1.185 QA_A762_BUILD go go version go1.24.13 linux/amd64 11:46:50 AM\"\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-k27midtfeu5rml7u0309\": \"[k27mi]\"\n  - text: 2026/10/16 18:46:50 GET / 11:47:13 AM\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38\": \"[eas9i]\"\n  - text: \"#26 DONE 31.3s 11:47:13 AM\"\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38\": \"[eas9i]\"\n  - text: 11:47:13 AM\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38\": \"[eas9i]\"\n  - text: \"#27 exporting to oci image format 11:47:13 AM\"\n  - button \"Filter logs by instance srv-db96vgffsf9s73epsj10-eas9iugdi91dbquuhh38\": \"[eas9i]\"\n  - text: \"#27 exporting layers\""
+      },
+      "a762RepeatRuntime1": {
+        "at": "2026-10-16T18:48:40.093Z",
+        "request": {
+          "operationName": "Qaa762RepeatRuntime",
+          "variables": {
+            "id": "srv-db96vgffsf9s73epsj10",
+            "start": "2026-10-16T18:45:33.894836Z"
+          },
+          "query": "query Qaa762RepeatRuntime($id:String!,$start:String!){service(id:$id){id phase runtime autoDeploy}runtime:logs(resource:$id,type:\"app\",text:\"QA_A762_RUNTIME\",startTime:$start,limit:20){hasMore logs{timestamp message type instance}}deploys(serviceId:$id){id status failureReason stallReason finishedAt}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "failureReason": "",
+                "finishedAt": "2026-10-16T18:48:24.821094Z",
+                "id": "dep-db971j9koksc73a7vkl0",
+                "stallReason": "",
+                "status": "live"
+              },
+              {
+                "failureReason": "",
+                "finishedAt": "2026-10-16T18:44:54.837715Z",
+                "id": "dep-db96vgffsf9s73epsj1g",
+                "stallReason": "",
+                "status": "deactivated"
+              }
+            ],
+            "runtime": {
+              "hasMore": false,
+              "logs": [
+                {
+                  "instance": "srv-db96vgffsf9s73epsj10-j9j8o7fh0pp77atdmsrc",
+                  "message": "QA_A762_RUNTIME node v24.22.0",
+                  "timestamp": "2026-10-16T18:48:01.555000031Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db96vgffsf9s73epsj10-j9j8o7fh0pp77atdmsrc",
+                  "message": "QA_A762_RUNTIME npm 11.19.1",
+                  "timestamp": "2026-10-16T18:48:02.952150261Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db96vgffsf9s73epsj10-j9j8o7fh0pp77atdmsrc",
+                  "message": "QA_A762_RUNTIME yarn 1.22.22",
+                  "timestamp": "2026-10-16T18:48:04.953326236Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db96vgffsf9s73epsj10-j9j8o7fh0pp77atdmsrc",
+                  "message": "QA_A762_RUNTIME pnpm 10.34.7",
+                  "timestamp": "2026-10-16T18:48:10.555060835Z",
+                  "type": "app"
+                }
+              ]
+            },
+            "service": {
+              "autoDeploy": false,
+              "id": "srv-db96vgffsf9s73epsj10",
+              "phase": "Running",
+              "runtime": "go"
+            }
+          }
+        },
+        "docWidth": 390,
+        "consoleErrors": []
+      },
+      "a762FinalAndDelete": {
+        "at": "2026-10-16T18:49:42.624Z",
+        "browserHttp": {
+          "status": 200,
+          "url": "https://qa-20261016-a762-native-go.onbex.co/",
+          "body": "QA_A762_NATIVE_GO"
+        },
+        "request": {
+          "operationName": "Qaa762Final",
+          "variables": {
+            "id": "srv-db96vgffsf9s73epsj10"
+          },
+          "query": "query Qaa762Final($id:String!){service(id:$id){id phase runtime autoDeploy}deploys(serviceId:$id){id status trigger commitId createdAt finishedAt}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "commitId": "2b046a09ae3b227dab0edba51fd68a038745503e",
+                "createdAt": "2026-10-16T18:45:33.894836Z",
+                "finishedAt": "2026-10-16T18:48:24.821094Z",
+                "id": "dep-db971j9koksc73a7vkl0",
+                "status": "live",
+                "trigger": "api"
+              },
+              {
+                "commitId": "2b046a09ae3b227dab0edba51fd68a038745503e",
+                "createdAt": "2026-10-16T18:41:05.243666Z",
+                "finishedAt": "2026-10-16T18:44:54.837715Z",
+                "id": "dep-db96vgffsf9s73epsj1g",
+                "status": "deactivated",
+                "trigger": "create"
+              }
+            ],
+            "service": {
+              "autoDeploy": false,
+              "id": "srv-db96vgffsf9s73epsj10",
+              "phase": "Running",
+              "runtime": "go"
+            }
+          }
+        },
+        "deleteDialog": "- alertdialog \"Delete qa-20261016-a762-native-go?\":\n  - heading \"Delete qa-20261016-a762-native-go?\" [level=2]\n  - paragraph: This action cannot be undone. Are you sure you want to delete this web service?\n  - paragraph:\n    - text: Type\n    - strong: sudo delete web service qa-20261016-a762-native-go\n    - text: below to confirm.\n  - text: Sudo Command\n  - textbox \"Sudo Command\":\n    - /placeholder: sudo delete web service qa-20261016-a762-native-go\n  - button \"Cancel\"\n  - button \"Delete Service\" [disabled]"
+      },
+      "a762Deleted": {
+        "at": "2026-10-16T18:49:44.827Z",
+        "request": {
+          "operationName": "DeleteService",
+          "variables": {
+            "id": "srv-db96vgffsf9s73epsj10"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deleteService": true
+          }
+        },
+        "timing": {
+          "startTime": 1792176583380.7527,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.135,
+          "responseStart": 725.135,
+          "responseEnd": 725.562
+        },
+        "url": "https://dashboard.bex.co/"
+      },
+      "a762Cleanup": {
+        "at": "2026-10-16T18:49:53.540Z",
+        "statuses": [
+          {
+            "path": "/v1/services/srv-db96vgffsf9s73epsj10",
+            "status": 404
+          },
+          {
+            "path": "/v1/services/srv-db96vgffsf9s73epsj10/deploys/dep-db971j9koksc73a7vkl0",
+            "status": 404
+          },
+          {
+            "path": "/v1/services/srv-db96vgffsf9s73epsj10/deploys/dep-db96vgffsf9s73epsj1g",
+            "status": 404
+          }
+        ],
+        "status": 200,
+        "body": {
+          "data": {
+            "blueprints": [
+              {
+                "id": "blp-d9nqg95cavls73fp8m10",
+                "name": "discourse_docker"
+              }
+            ],
+            "databases": [
+              {
+                "id": "dpg-d9nqg95cavls73fp8m20",
+                "name": "beancount-forum-db"
+              },
+              {
+                "id": "dpg-d9rrkoc4h4mc73edurp0",
+                "name": "tianpan-forum-db"
+              },
+              {
+                "id": "dpg-d9rs3ee0ccis738kc7c0",
+                "name": "blockeden-forum-db"
+              },
+              {
+                "id": "dpg-db34l9bor55s73cqpq9g",
+                "name": "qa-20261007-r16-owner-f208ab"
+              }
+            ],
+            "envGroups": [
+              {
+                "id": "evg-db0s94c48ccs739jikr0",
+                "name": "qa-20261003-keys-r85"
+              }
+            ],
+            "keyValues": [
+              {
+                "id": "red-d9p49kdrtmes73c34ovg",
+                "name": "beancount-forum-redis"
+              },
+              {
+                "id": "red-da4086iii7bs73drbqh0",
+                "name": "blockeden-forum-redis"
+              }
+            ],
+            "projects": [
+              {
+                "id": "prj-d9dgeo0bd9nc73a0vh1g",
+                "name": "bex.co"
+              },
+              {
+                "id": "prj-d9e5qct5qe4s73b1mjn0",
+                "name": "beancount.io"
+              },
+              {
+                "id": "prj-d9sgfnbjghus73cg6hg0",
+                "name": "forums"
+              }
+            ],
+            "services": [
+              {
+                "id": "srv-d9bkcspg9s7c73d0n8ug",
+                "name": "agentmarketcap-1",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9bj8s3eg85c7390eb9g",
+                "name": "beancount-cms-v2",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9nqg9dcavls73fp8m2g",
+                "name": "beancount-forum",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9ndt8hmcglc739fkp50",
+                "name": "eden-dash-v3",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9e40ei9086p3l1jri30",
+                "name": "eden-cms-v2",
+                "type": "web_service"
+              }
+            ],
+            "webhookEndpoints": []
+          }
+        },
+        "sets": {
+          "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+          "databases": [
+            "dpg-d9nqg95cavls73fp8m20",
+            "dpg-d9rrkoc4h4mc73edurp0",
+            "dpg-d9rs3ee0ccis738kc7c0",
+            "dpg-db34l9bor55s73cqpq9g"
+          ],
+          "envGroups": ["evg-db0s94c48ccs739jikr0"],
+          "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+          "projects": [
+            "prj-d9dgeo0bd9nc73a0vh1g",
+            "prj-d9e5qct5qe4s73b1mjn0",
+            "prj-d9sgfnbjghus73cg6hg0"
+          ],
+          "services": [
+            "srv-d9bj8s3eg85c7390eb9g",
+            "srv-d9bkcspg9s7c73d0n8ug",
+            "srv-d9e40ei9086p3l1jri30",
+            "srv-d9ndt8hmcglc739fkp50",
+            "srv-d9nqg9dcavls73fp8m2g"
+          ],
+          "webhookEndpoints": []
+        },
+        "baselineMatch": true
+      },
+      "a762SessionCleared": {
+        "at": "2026-10-16T18:50:18.176Z",
+        "whoami": 401,
+        "cookies": 0,
+        "pages": 1,
+        "url": "about:blank"
+      }
+    },
+    "elixir": {
+      "a763Created": {
+        "at": "2026-10-16T18:52:02.579Z",
+        "request": {
+          "operationName": "CreateService",
+          "variables": {
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "name": "qa-20261016-a763-native-elixir",
+            "type": "web_service",
+            "rootDir": "examples/hello-go",
+            "runtime": "elixir",
+            "buildCommand": "elixir --version && node -e 'const fs=require(\"fs\"),cp=require(\"child_process\");fs.writeFileSync(\"qa-a763.ex\",\"defmodule QaA763 do\\n  def start do\\n    tools = Enum.map([\\\"node\\\", \\\"npm\\\", \\\"yarn\\\", \\\"pnpm\\\"], fn name ->\\n      {value, 0} = System.cmd(name, [\\\"--version\\\"], stderr_to_stdout: true)\\n      name <> \\\"=\\\" <> String.trim(value)\\n    end)\\n    body = Enum.join([\\\"QA_A763_ELIXIR雪\\\", \\\"elixir=\\\" <> System.version(), \\\"otp=\\\" <> System.otp_release()] ++ tools, \\\"\\\\n\\\") <> \\\"\\\\n\\\"\\n    IO.write(body)\\n    {:ok, listener} = :gen_tcp.listen(String.to_integer(System.get_env(\\\"PORT\\\") || \\\"3000\\\"), [:binary, active: false, reuseaddr: true, ip: {0, 0, 0, 0}])\\n    serve(listener, body)\\n  end\\n  defp serve(listener, body) do\\n    {:ok, socket} = :gen_tcp.accept(listener)\\n    case :gen_tcp.recv(socket, 0, 5000) do\\n      {:ok, _} -> :gen_tcp.send(socket, \\\"HTTP/1.1 200 OK\\\\r\\\\nContent-Type: text/plain; charset=utf-8\\\\r\\\\nContent-Length: #{byte_size(body)}\\\\r\\\\nConnection: close\\\\r\\\\n\\\\r\\\\n\\\" <> body)\\n      {:error, _} -> :ok\\n    end\\n    :gen_tcp.close(socket)\\n    serve(listener, body)\\n  end\\nend\\n\");for(const n of [\"node\",\"npm\",\"yarn\",\"pnpm\"]){const r=cp.spawnSync(n,[\"--version\"],{encoding:\"utf8\"});console.log(\"QA_A763_BUILD \"+n+\" \"+r.stdout.trim());if(r.status!==0)process.exit(r.status||1)}' && elixirc qa-a763.ex",
+            "startCommand": "elixir -pa . -e 'QaA763.start()'",
+            "plan": "free",
+            "autoDeploy": false,
+            "port": 3000,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "createService": {
+              "__typename": "Service",
+              "environmentId": null,
+              "id": "srv-db974k9koksc73a7vko0",
+              "latestDeployId": "dep-db974k9koksc73a7vkog",
+              "name": "qa-20261016-a763-native-elixir",
+              "phase": "",
+              "projectId": null,
+              "registryCredentialId": null,
+              "type": "web_service"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792176719594.692,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.138,
+          "responseStart": 2275.495,
+          "responseEnd": 2275.972
+        },
+        "url": "https://dashboard.bex.co/services/srv-db974k9koksc73a7vko0/deploys/dep-db974k9koksc73a7vkog"
+      },
+      "a763Tools1": {
+        "at": "2026-10-16T18:55:46.845Z",
+        "request": {
+          "operationName": "Qaa763Tools",
+          "variables": {
+            "id": "srv-db974k9koksc73a7vko0"
+          },
+          "query": "query Qaa763Tools($id:String!){service(id:$id){id phase runtime autoDeploy}build:logs(resource:$id,type:\"build\",text:\"QA_A763_BUILD\",limit:20){hasMore logs{timestamp message type instance}}runtime:logs(resource:$id,type:\"app\",text:\"QA_A763\",limit:20){hasMore logs{timestamp message type instance}}deploys(serviceId:$id){id status failureReason stallReason finishedAt}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "build": {
+              "hasMore": false,
+              "logs": [
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-bl6tt0f67m4jrajk9oh9",
+                  "message": "#26 [stage-0 14/14] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\"/bin/bash\",\"-c\",\". /opt/bex/load-env\\nelixir --version && node -e 'const fs=require(\"fs\"),cp=require(\"child_process\");fs.writeFileSync(\"qa-a763.ex\",\"defmodule QaA763 do\\n  def start do\\n    tools = Enum.map([\\\"node\\\", \\\"npm\\\", \\\"yarn\\\", \\\"pnpm\\\"], fn name ->\\n      {value, 0} = System.cmd(name, [\\\"--version\\\"], stderr_to_stdout: true)\\n      name <> \\\"=\\\" <> String.trim(value)\\n    end)\\n    body = Enum.join([\\\"QA_A763_ELIXIR雪\\\", \\\"elixir=\\\" <> System.version(), \\\"otp=\\\" <> System.otp_release()] ++ tools, \\\"\\\\n\\\") <> \\\"\\\\n\\\"\\n    IO.write(body)\\n    {:ok, listener} = :gen_tcp.listen(String.to_integer(System.get_env(\\\"PORT\\\") || \\\"3000\\\"), [:binary, active: false, reuseaddr: true, ip: {0, 0, 0, 0}])\\n    serve(listener, body)\\n  end\\n  defp serve(listener, body) do\\n    {:ok, socket} = :gen_tcp.accept(listener)\\n    case :gen_tcp.recv(socket, 0, 5000) do\\n      {:ok, _} -> :gen_tcp.send(socket, \\\"HTTP/1.1 200 OK\\\\r\\\\nContent-Type: text/plain; charset=utf-8\\\\r\\\\nContent-Length: #{byte_size(body)}\\\\r\\\\nConnection: close\\\\r\\\\n\\\\r\\\\n\\\" <> body)\\n      {:error, _} -> :ok\\n    end\\n    :gen_tcp.close(socket)\\n    serve(listener, body)\\n  end\\nend\\n\");for(const n of [\"node\",\"npm\",\"yarn\",\"pnpm\"]){const r=cp.spawnSync(n,[\"--version\"],{encoding:\"utf8\"});console.log(\"QA_A763_BUILD \"+n+\" \"+r.stdout.trim());if(r.status!==0)process.exit(r.status||1)}' && elixirc qa-a763.ex\"]",
+                  "timestamp": "2026-10-16T18:54:07.223864939Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-bl6tt0f67m4jrajk9oh9",
+                  "message": "#26 0.691 QA_A763_BUILD node v24.22.0",
+                  "timestamp": "2026-10-16T18:54:07.915860736Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-bl6tt0f67m4jrajk9oh9",
+                  "message": "#26 0.864 QA_A763_BUILD npm 11.19.1",
+                  "timestamp": "2026-10-16T18:54:07.936736554Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-bl6tt0f67m4jrajk9oh9",
+                  "message": "#26 1.217 QA_A763_BUILD yarn 1.22.22",
+                  "timestamp": "2026-10-16T18:54:08.290634945Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-bl6tt0f67m4jrajk9oh9",
+                  "message": "#26 1.869 QA_A763_BUILD pnpm 10.34.7",
+                  "timestamp": "2026-10-16T18:54:08.942099549Z",
+                  "type": "build"
+                }
+              ]
+            },
+            "deploys": [
+              {
+                "failureReason": "",
+                "finishedAt": "",
+                "id": "dep-db974k9koksc73a7vkog",
+                "stallReason": "",
+                "status": "update_in_progress"
+              }
+            ],
+            "runtime": {
+              "hasMore": false,
+              "logs": []
+            },
+            "service": {
+              "autoDeploy": false,
+              "id": "srv-db974k9koksc73a7vko0",
+              "phase": "Deploying",
+              "runtime": "elixir"
+            }
+          }
+        }
+      },
+      "a763Runtime1": {
+        "at": "2026-10-16T18:56:39.059Z",
+        "request": {
+          "operationName": "Qaa763Runtime",
+          "variables": {
+            "id": "srv-db974k9koksc73a7vko0"
+          },
+          "query": "query Qaa763Runtime($id:String!){service(id:$id){id phase runtime autoDeploy}logs(resource:$id,type:\"app\",limit:20){hasMore logs{timestamp message type instance}}deploys(serviceId:$id){id status failureReason stallReason finishedAt}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "failureReason": "",
+                "finishedAt": "2026-10-16T18:56:09.891883Z",
+                "id": "dep-db974k9koksc73a7vkog",
+                "stallReason": "",
+                "status": "live"
+              }
+            ],
+            "logs": {
+              "hasMore": false,
+              "logs": [
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-jdru1qc5frn0o73oqivc",
+                  "message": "QA_A763_ELIXIR雪",
+                  "timestamp": "2026-10-16T18:55:52.604980604Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-jdru1qc5frn0o73oqivc",
+                  "message": "elixir=1.18.4",
+                  "timestamp": "2026-10-16T18:55:52.605030549Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-jdru1qc5frn0o73oqivc",
+                  "message": "otp=28",
+                  "timestamp": "2026-10-16T18:55:52.605033694Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-jdru1qc5frn0o73oqivc",
+                  "message": "node=v24.22.0",
+                  "timestamp": "2026-10-16T18:55:52.605035919Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-jdru1qc5frn0o73oqivc",
+                  "message": "npm=11.19.1",
+                  "timestamp": "2026-10-16T18:55:52.605037972Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-jdru1qc5frn0o73oqivc",
+                  "message": "yarn=1.22.22",
+                  "timestamp": "2026-10-16T18:55:52.605039957Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-jdru1qc5frn0o73oqivc",
+                  "message": "pnpm=10.34.7",
+                  "timestamp": "2026-10-16T18:55:52.605041749Z",
+                  "type": "app"
+                }
+              ]
+            },
+            "service": {
+              "autoDeploy": false,
+              "id": "srv-db974k9koksc73a7vko0",
+              "phase": "Running",
+              "runtime": "elixir"
+            }
+          }
+        }
+      },
+      "a763BrowserAndManualMenu": {
+        "at": "2026-10-16T18:57:00.065Z",
+        "http": {
+          "status": 200,
+          "url": "https://qa-20261016-a763-native-elixir.onbex.co/",
+          "body": "QA_A763_ELIXIR雪\nelixir=1.18.4\notp=28\nnode=v24.22.0\nnpm=11.19.1\nyarn=1.22.22\npnpm=10.34.7\n"
+        },
+        "menu": "- region \"Notifications alt+T\"\n- menu \"Manual Deploy\":\n  - menuitem \"Deploy latest commit\" [disabled]\n  - menuitem \"Deploy a specific commit\" [disabled]\n  - menuitem \"Clear build cache & deploy\" [disabled]\n  - separator\n  - menuitem \"Restart service\" [disabled]"
+      },
+      "a763ManualDeployed": {
+        "at": "2026-10-16T18:57:03.469Z",
+        "request": {
+          "operationName": "TriggerDeploy",
+          "variables": {
+            "serviceId": "srv-db974k9koksc73a7vko0"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation TriggerDeploy($serviceId: String!, $commitId: String, $deployMode: String, $clearCache: String, $confirm: String) {\n  triggerDeploy(\n    serviceId: $serviceId\n    commitId: $commitId\n    deployMode: $deployMode\n    clearCache: $clearCache\n    confirm: $confirm\n  ) {\n    id\n    status\n    createdAt\n    trigger\n    rollbackOf\n    image\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "triggerDeploy": {
+              "__typename": "Deploy",
+              "createdAt": "2026-10-16T18:57:02.654525Z",
+              "id": "dep-db976vhkoksc73a7vkq0",
+              "image": "",
+              "rollbackOf": "",
+              "status": "created",
+              "trigger": "api"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792177021079.5579,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.099,
+          "responseStart": 1680.102,
+          "responseEnd": 1680.609
+        },
+        "url": "https://dashboard.bex.co/services/srv-db974k9koksc73a7vko0/deploys/dep-db976vhkoksc73a7vkq0"
+      },
+      "a763RepeatTools1": {
+        "at": "2026-10-16T18:58:42.211Z",
+        "request": {
+          "operationName": "Qaa763RepeatTools",
+          "variables": {
+            "id": "srv-db974k9koksc73a7vko0",
+            "start": "2026-10-16T18:57:02.654525Z"
+          },
+          "query": "query Qaa763RepeatTools($id:String!,$start:String!){build:logs(resource:$id,type:\"build\",text:\"QA_A763_BUILD\",startTime:$start,limit:20){hasMore logs{timestamp message type instance}}runtime:logs(resource:$id,type:\"app\",startTime:$start,limit:20){hasMore logs{timestamp message type instance}}deploys(serviceId:$id){id status failureReason stallReason finishedAt}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "build": {
+              "hasMore": false,
+              "logs": [
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-3bs1pfoa2t74hpc4uqje",
+                  "message": "#26 [stage-0 14/14] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\"/bin/bash\",\"-c\",\". /opt/bex/load-env\\nelixir --version && node -e 'const fs=require(\"fs\"),cp=require(\"child_process\");fs.writeFileSync(\"qa-a763.ex\",\"defmodule QaA763 do\\n  def start do\\n    tools = Enum.map([\\\"node\\\", \\\"npm\\\", \\\"yarn\\\", \\\"pnpm\\\"], fn name ->\\n      {value, 0} = System.cmd(name, [\\\"--version\\\"], stderr_to_stdout: true)\\n      name <> \\\"=\\\" <> String.trim(value)\\n    end)\\n    body = Enum.join([\\\"QA_A763_ELIXIR雪\\\", \\\"elixir=\\\" <> System.version(), \\\"otp=\\\" <> System.otp_release()] ++ tools, \\\"\\\\n\\\") <> \\\"\\\\n\\\"\\n    IO.write(body)\\n    {:ok, listener} = :gen_tcp.listen(String.to_integer(System.get_env(\\\"PORT\\\") || \\\"3000\\\"), [:binary, active: false, reuseaddr: true, ip: {0, 0, 0, 0}])\\n    serve(listener, body)\\n  end\\n  defp serve(listener, body) do\\n    {:ok, socket} = :gen_tcp.accept(listener)\\n    case :gen_tcp.recv(socket, 0, 5000) do\\n      {:ok, _} -> :gen_tcp.send(socket, \\\"HTTP/1.1 200 OK\\\\r\\\\nContent-Type: text/plain; charset=utf-8\\\\r\\\\nContent-Length: #{byte_size(body)}\\\\r\\\\nConnection: close\\\\r\\\\n\\\\r\\\\n\\\" <> body)\\n      {:error, _} -> :ok\\n    end\\n    :gen_tcp.close(socket)\\n    serve(listener, body)\\n  end\\nend\\n\");for(const n of [\"node\",\"npm\",\"yarn\",\"pnpm\"]){const r=cp.spawnSync(n,[\"--version\"],{encoding:\"utf8\"});console.log(\"QA_A763_BUILD \"+n+\" \"+r.stdout.trim());if(r.status!==0)process.exit(r.status||1)}' && elixirc qa-a763.ex\"]",
+                  "timestamp": "2026-10-16T18:58:10.364171309Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-3bs1pfoa2t74hpc4uqje",
+                  "message": "#26 0.777 QA_A763_BUILD node v24.22.0",
+                  "timestamp": "2026-10-16T18:58:10.990090099Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-3bs1pfoa2t74hpc4uqje",
+                  "message": "#26 0.938 QA_A763_BUILD npm 11.19.1",
+                  "timestamp": "2026-10-16T18:58:11.151431916Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-3bs1pfoa2t74hpc4uqje",
+                  "message": "#26 1.271 QA_A763_BUILD yarn 1.22.22",
+                  "timestamp": "2026-10-16T18:58:11.484203627Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-3bs1pfoa2t74hpc4uqje",
+                  "message": "#26 1.861 QA_A763_BUILD pnpm 10.34.7",
+                  "timestamp": "2026-10-16T18:58:12.074405635Z",
+                  "type": "build"
+                }
+              ]
+            },
+            "deploys": [
+              {
+                "failureReason": "",
+                "finishedAt": "",
+                "id": "dep-db976vhkoksc73a7vkq0",
+                "stallReason": "",
+                "status": "build_in_progress"
+              },
+              {
+                "failureReason": "",
+                "finishedAt": "2026-10-16T18:56:09.891883Z",
+                "id": "dep-db974k9koksc73a7vkog",
+                "stallReason": "",
+                "status": "live"
+              }
+            ],
+            "runtime": {
+              "hasMore": false,
+              "logs": []
+            }
+          }
+        }
+      },
+      "a763RepeatRuntime1": {
+        "at": "2026-10-16T18:59:38.039Z",
+        "request": {
+          "operationName": "Qaa763RepeatRuntime",
+          "variables": {
+            "id": "srv-db974k9koksc73a7vko0",
+            "start": "2026-10-16T18:57:02.654525Z"
+          },
+          "query": "query Qaa763RepeatRuntime($id:String!,$start:String!){service(id:$id){id phase runtime autoDeploy}logs(resource:$id,type:\"app\",startTime:$start,limit:20){hasMore logs{timestamp message type instance}}deploys(serviceId:$id){id status commitId failureReason stallReason finishedAt}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "commitId": "2b046a09ae3b227dab0edba51fd68a038745503e",
+                "failureReason": "",
+                "finishedAt": "",
+                "id": "dep-db976vhkoksc73a7vkq0",
+                "stallReason": "the container is running but its startup health check has not succeeded, so the rollout is waiting: a TCP connect to port 3000. Check that the path returns a 2xx or 3xx status on the service's own port — an unset Health Check Path falls back to a TCP connect, which only asks whether the process is listening.",
+                "status": "update_in_progress"
+              },
+              {
+                "commitId": "2b046a09ae3b227dab0edba51fd68a038745503e",
+                "failureReason": "",
+                "finishedAt": "2026-10-16T18:56:09.891883Z",
+                "id": "dep-db974k9koksc73a7vkog",
+                "stallReason": "",
+                "status": "live"
+              }
+            ],
+            "logs": {
+              "hasMore": false,
+              "logs": [
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-4qtqj7j0ijmbsdu63gmi",
+                  "message": "QA_A763_ELIXIR雪",
+                  "timestamp": "2026-10-16T18:59:17.3921096Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-4qtqj7j0ijmbsdu63gmi",
+                  "message": "elixir=1.18.4",
+                  "timestamp": "2026-10-16T18:59:17.392152021Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-4qtqj7j0ijmbsdu63gmi",
+                  "message": "otp=28",
+                  "timestamp": "2026-10-16T18:59:17.392154466Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-4qtqj7j0ijmbsdu63gmi",
+                  "message": "node=v24.22.0",
+                  "timestamp": "2026-10-16T18:59:17.392155928Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-4qtqj7j0ijmbsdu63gmi",
+                  "message": "npm=11.19.1",
+                  "timestamp": "2026-10-16T18:59:17.392157281Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-4qtqj7j0ijmbsdu63gmi",
+                  "message": "yarn=1.22.22",
+                  "timestamp": "2026-10-16T18:59:17.392158643Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-4qtqj7j0ijmbsdu63gmi",
+                  "message": "pnpm=10.34.7",
+                  "timestamp": "2026-10-16T18:59:17.392159916Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-jdru1qc5frn0o73oqivc",
+                  "message": "",
+                  "timestamp": "2026-10-16T18:59:35.982815854Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-jdru1qc5frn0o73oqivc",
+                  "message": "18:59:35.976 [notice] SIGTERM received - shutting down",
+                  "timestamp": "2026-10-16T18:59:35.982847775Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db974k9koksc73a7vko0-jdru1qc5frn0o73oqivc",
+                  "message": "",
+                  "timestamp": "2026-10-16T18:59:35.982851823Z",
+                  "type": "app"
+                }
+              ]
+            },
+            "service": {
+              "autoDeploy": false,
+              "id": "srv-db974k9koksc73a7vko0",
+              "phase": "Running",
+              "runtime": "elixir"
+            }
+          }
+        }
+      },
+      "a763Settled": {
+        "at": "2026-10-16T19:00:14.883Z",
+        "request": {
+          "operationName": "Qaa763Settled",
+          "variables": {
+            "id": "srv-db974k9koksc73a7vko0"
+          },
+          "query": "query Qaa763Settled($id:String!){service(id:$id){id phase runtime autoDeploy}deploys(serviceId:$id){id status commitId failureReason stallReason createdAt finishedAt}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "commitId": "2b046a09ae3b227dab0edba51fd68a038745503e",
+                "createdAt": "2026-10-16T18:57:02.654525Z",
+                "failureReason": "",
+                "finishedAt": "2026-10-16T18:59:40.492765Z",
+                "id": "dep-db976vhkoksc73a7vkq0",
+                "stallReason": "",
+                "status": "live"
+              },
+              {
+                "commitId": "2b046a09ae3b227dab0edba51fd68a038745503e",
+                "createdAt": "2026-10-16T18:52:01.179982Z",
+                "failureReason": "",
+                "finishedAt": "2026-10-16T18:56:09.891883Z",
+                "id": "dep-db974k9koksc73a7vkog",
+                "stallReason": "",
+                "status": "deactivated"
+              }
+            ],
+            "service": {
+              "autoDeploy": false,
+              "id": "srv-db974k9koksc73a7vko0",
+              "phase": "Running",
+              "runtime": "elixir"
+            }
+          }
+        },
+        "docWidth": 390,
+        "consoleErrors": []
+      },
+      "a763FinalBrowserAndDelete": {
+        "at": "2026-10-16T19:00:59.358Z",
+        "http": {
+          "status": 200,
+          "url": "https://qa-20261016-a763-native-elixir.onbex.co/",
+          "body": "QA_A763_ELIXIR雪\nelixir=1.18.4\notp=28\nnode=v24.22.0\nnpm=11.19.1\nyarn=1.22.22\npnpm=10.34.7\n"
+        },
+        "dialog": "- alertdialog \"Delete qa-20261016-a763-native-elixir?\":\n  - heading \"Delete qa-20261016-a763-native-elixir?\" [level=2]\n  - paragraph: This action cannot be undone. Are you sure you want to delete this web service?\n  - paragraph:\n    - text: Type\n    - strong: sudo delete web service qa-20261016-a763-native-elixir\n    - text: below to confirm.\n  - text: Sudo Command\n  - textbox \"Sudo Command\":\n    - /placeholder: sudo delete web service qa-20261016-a763-native-elixir\n  - button \"Cancel\"\n  - button \"Delete Service\" [disabled]"
+      },
+      "a763Deleted": {
+        "at": "2026-10-16T19:01:01.420Z",
+        "request": {
+          "operationName": "DeleteService",
+          "variables": {
+            "id": "srv-db974k9koksc73a7vko0"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deleteService": true
+          }
+        },
+        "timing": {
+          "startTime": 1792177260163.1418,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.13,
+          "responseStart": 530.676,
+          "responseEnd": 531.172
+        },
+        "url": "https://dashboard.bex.co/"
+      },
+      "a763Cleanup": {
+        "at": "2026-10-16T19:01:12.628Z",
+        "statuses": [
+          {
+            "path": "/v1/services/srv-db974k9koksc73a7vko0",
+            "status": 404
+          },
+          {
+            "path": "/v1/services/srv-db974k9koksc73a7vko0/deploys/dep-db976vhkoksc73a7vkq0",
+            "status": 404
+          },
+          {
+            "path": "/v1/services/srv-db974k9koksc73a7vko0/deploys/dep-db974k9koksc73a7vkog",
+            "status": 404
+          }
+        ],
+        "status": 200,
+        "body": {
+          "data": {
+            "blueprints": [
+              {
+                "id": "blp-d9nqg95cavls73fp8m10",
+                "name": "discourse_docker"
+              }
+            ],
+            "databases": [
+              {
+                "id": "dpg-d9nqg95cavls73fp8m20",
+                "name": "beancount-forum-db"
+              },
+              {
+                "id": "dpg-d9rrkoc4h4mc73edurp0",
+                "name": "tianpan-forum-db"
+              },
+              {
+                "id": "dpg-d9rs3ee0ccis738kc7c0",
+                "name": "blockeden-forum-db"
+              },
+              {
+                "id": "dpg-db34l9bor55s73cqpq9g",
+                "name": "qa-20261007-r16-owner-f208ab"
+              }
+            ],
+            "envGroups": [
+              {
+                "id": "evg-db0s94c48ccs739jikr0",
+                "name": "qa-20261003-keys-r85"
+              }
+            ],
+            "keyValues": [
+              {
+                "id": "red-d9p49kdrtmes73c34ovg",
+                "name": "beancount-forum-redis"
+              },
+              {
+                "id": "red-da4086iii7bs73drbqh0",
+                "name": "blockeden-forum-redis"
+              }
+            ],
+            "projects": [
+              {
+                "id": "prj-d9dgeo0bd9nc73a0vh1g",
+                "name": "bex.co"
+              },
+              {
+                "id": "prj-d9e5qct5qe4s73b1mjn0",
+                "name": "beancount.io"
+              },
+              {
+                "id": "prj-d9sgfnbjghus73cg6hg0",
+                "name": "forums"
+              }
+            ],
+            "services": [
+              {
+                "id": "srv-d9bkcspg9s7c73d0n8ug",
+                "name": "agentmarketcap-1",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9bj8s3eg85c7390eb9g",
+                "name": "beancount-cms-v2",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9nqg9dcavls73fp8m2g",
+                "name": "beancount-forum",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9ndt8hmcglc739fkp50",
+                "name": "eden-dash-v3",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9e40ei9086p3l1jri30",
+                "name": "eden-cms-v2",
+                "type": "web_service"
+              }
+            ],
+            "webhookEndpoints": []
+          }
+        },
+        "sets": {
+          "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+          "databases": [
+            "dpg-d9nqg95cavls73fp8m20",
+            "dpg-d9rrkoc4h4mc73edurp0",
+            "dpg-d9rs3ee0ccis738kc7c0",
+            "dpg-db34l9bor55s73cqpq9g"
+          ],
+          "envGroups": ["evg-db0s94c48ccs739jikr0"],
+          "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+          "projects": [
+            "prj-d9dgeo0bd9nc73a0vh1g",
+            "prj-d9e5qct5qe4s73b1mjn0",
+            "prj-d9sgfnbjghus73cg6hg0"
+          ],
+          "services": [
+            "srv-d9bj8s3eg85c7390eb9g",
+            "srv-d9bkcspg9s7c73d0n8ug",
+            "srv-d9e40ei9086p3l1jri30",
+            "srv-d9ndt8hmcglc739fkp50",
+            "srv-d9nqg9dcavls73fp8m2g"
+          ],
+          "webhookEndpoints": []
+        },
+        "baselineMatch": true
+      },
+      "a763SessionCleared": {
+        "at": "2026-10-16T19:01:22.969Z",
+        "whoami": 401,
+        "cookies": 0,
+        "pages": 1,
+        "url": "about:blank"
+      }
+    },
+    "rust": {
+      "a764Created": {
+        "at": "2026-10-16T19:02:55.758Z",
+        "request": {
+          "operationName": "CreateService",
+          "variables": {
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "name": "qa-20261016-a764-native-rust",
+            "type": "web_service",
+            "rootDir": "examples/hello-go",
+            "runtime": "rust",
+            "buildCommand": "rustc --version && node -e 'const fs=require(\"fs\"),cp=require(\"child_process\");fs.writeFileSync(\"qa-a764.rs\",\"use std::io::{Read, Write};\\nuse std::net::TcpListener;\\nuse std::process::Command;\\nuse std::time::Duration;\\n\\nfn main() {\\n    let mut body = String::from(\\\"QA_A764_RUST雪\\\\n\\\");\\n    for name in [\\\"rustc\\\", \\\"node\\\", \\\"npm\\\", \\\"yarn\\\", \\\"pnpm\\\"] {\\n        let output = Command::new(name).arg(\\\"--version\\\").output().expect(\\\"version process starts\\\");\\n        if !output.status.success() {\\n            eprintln!(\\\"QA_A764_RUNTIME {} failed: {}\\\", name, String::from_utf8_lossy(&output.stderr));\\n            std::process::exit(1);\\n        }\\n        body.push_str(&format!(\\\"{}={}\\\\n\\\", name, String::from_utf8_lossy(&output.stdout).trim()));\\n    }\\n    print!(\\\"{}\\\", body);\\n    let port = std::env::var(\\\"PORT\\\").unwrap_or_else(|_| String::from(\\\"3000\\\"));\\n    let listener = TcpListener::bind(format!(\\\"0.0.0.0:{}\\\", port)).expect(\\\"listen\\\");\\n    for item in listener.incoming() {\\n        let mut stream = match item { Ok(value) => value, Err(_) => continue };\\n        let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));\\n        let mut buffer = [0; 4096];\\n        let _ = stream.read(&mut buffer);\\n        let response = format!(\\\"HTTP/1.1 200 OK\\\\r\\\\nContent-Type: text/plain; charset=utf-8\\\\r\\\\nContent-Length: {}\\\\r\\\\nConnection: close\\\\r\\\\n\\\\r\\\\n{}\\\", body.len(), body);\\n        let _ = stream.write_all(response.as_bytes());\\n    }\\n}\\n\");for(const n of [\"node\",\"npm\",\"yarn\",\"pnpm\"]){const r=cp.spawnSync(n,[\"--version\"],{encoding:\"utf8\"});console.log(\"QA_A764_BUILD \"+n+\" \"+r.stdout.trim());if(r.status!==0)process.exit(r.status||1)}' && rustc qa-a764.rs -o qa-a764-server",
+            "startCommand": "./qa-a764-server",
+            "plan": "free",
+            "autoDeploy": false,
+            "port": 3000,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "createService": {
+              "__typename": "Service",
+              "environmentId": null,
+              "id": "srv-db979nnfsf9s73epsj6g",
+              "latestDeployId": "dep-db979nnfsf9s73epsj70",
+              "name": "qa-20261016-a764-native-rust",
+              "phase": "",
+              "projectId": null,
+              "registryCredentialId": null,
+              "type": "web_service"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792177372325.478,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.139,
+          "responseStart": 2717.418,
+          "responseEnd": 2718.094
+        },
+        "url": "https://dashboard.bex.co/services/srv-db979nnfsf9s73epsj6g/deploys/dep-db979nnfsf9s73epsj70"
+      },
+      "a764BuildTools1": {
+        "at": "2026-10-16T19:04:55.736Z",
+        "request": {
+          "operationName": "Qaa764BuildTools",
+          "variables": {
+            "id": "srv-db979nnfsf9s73epsj6g"
+          },
+          "query": "query Qaa764BuildTools($id:String!){build:logs(resource:$id,type:\"build\",text:\"QA_A764_BUILD\",limit:20){hasMore logs{timestamp message type instance}}deploys(serviceId:$id){id status failureReason stallReason finishedAt}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "build": {
+              "hasMore": false,
+              "logs": [
+                {
+                  "instance": "srv-db979nnfsf9s73epsj6g-nptu1g00k08n47vqja7b",
+                  "message": "#26 [stage-0 14/14] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\"/bin/bash\",\"-c\",\". /opt/bex/load-env\\nrustc --version && node -e 'const fs=require(\"fs\"),cp=require(\"child_process\");fs.writeFileSync(\"qa-a764.rs\",\"use std::io::{Read, Write};\\nuse std::net::TcpListener;\\nuse std::process::Command;\\nuse std::time::Duration;\\n\\nfn main() {\\n    let mut body = String::from(\\\"QA_A764_RUST雪\\\\n\\\");\\n    for name in [\\\"rustc\\\", \\\"node\\\", \\\"npm\\\", \\\"yarn\\\", \\\"pnpm\\\"] {\\n        let output = Command::new(name).arg(\\\"--version\\\").output().expect(\\\"version process starts\\\");\\n        if !output.status.success() {\\n            eprintln!(\\\"QA_A764_RUNTIME {} failed: {}\\\", name, String::from_utf8_lossy(&output.stderr));\\n            std::process::exit(1);\\n        }\\n        body.push_str(&format!(\\\"{}={}\\\\n\\\", name, String::from_utf8_lossy(&output.stdout).trim()));\\n    }\\n    print!(\\\"{}\\\", body);\\n    let port = std::env::var(\\\"PORT\\\").unwrap_or_else(|_| String::from(\\\"3000\\\"));\\n    let listener = TcpListener::bind(format!(\\\"0.0.0.0:{}\\\", port)).expect(\\\"listen\\\");\\n    for item in listener.incoming() {\\n        let mut stream = match item { Ok(value) => value, Err(_) => continue };\\n        let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));\\n        let mut buffer = [0; 4096];\\n        let _ = stream.read(&mut buffer);\\n        let response = format!(\\\"HTTP/1.1 200 OK\\\\r\\\\nContent-Type: text/plain; charset=utf-8\\\\r\\\\nContent-Length: {}\\\\r\\\\nConnection: close\\\\r\\\\n\\\\r\\\\n{}\\\", body.len(), body);\\n        let _ = stream.write_all(response.as_bytes());\\n    }\\n}\\n\");for(const n of [\"node\",\"npm\",\"yarn\",\"pnpm\"]){const r=cp.spawnSync(n,[\"--version\"],{encoding:\"utf8\"});console.log(\"QA_A764_BUILD \"+n+\" \"+r.stdout.trim());if(r.status!==0)process.exit(r.status||1)}' && rustc qa-a764.rs -o qa-a764-server\"]",
+                  "timestamp": "2026-10-16T19:04:41.346939595Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db979nnfsf9s73epsj6g-nptu1g00k08n47vqja7b",
+                  "message": "#26 0.177 QA_A764_BUILD node v24.22.0",
+                  "timestamp": "2026-10-16T19:04:41.550108178Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db979nnfsf9s73epsj6g-nptu1g00k08n47vqja7b",
+                  "message": "#26 0.350 QA_A764_BUILD npm 11.19.1",
+                  "timestamp": "2026-10-16T19:04:41.572033218Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db979nnfsf9s73epsj6g-nptu1g00k08n47vqja7b",
+                  "message": "#26 0.657 QA_A764_BUILD yarn 1.22.22",
+                  "timestamp": "2026-10-16T19:04:41.878771735Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db979nnfsf9s73epsj6g-nptu1g00k08n47vqja7b",
+                  "message": "#26 1.192 QA_A764_BUILD pnpm 10.34.7",
+                  "timestamp": "2026-10-16T19:04:42.413927068Z",
+                  "type": "build"
+                }
+              ]
+            },
+            "deploys": [
+              {
+                "failureReason": "",
+                "finishedAt": "",
+                "id": "dep-db979nnfsf9s73epsj70",
+                "stallReason": "",
+                "status": "build_in_progress"
+              }
+            ]
+          }
+        },
+        "tail": "from(\\\\\\\"3000\\\\\\\"));\\\\n let listener = TcpListener::bind(format!(\\\\\\\"0.0.0.0:{}\\\\\\\", port)).expect(\\\\\\\"listen\\\\\\\");\\\\n for item in listener.incoming() {\\\\n let mut stream = match item { Ok(value) => value, Err(_) => continue };\\\\n let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));\\\\n let mut buffer = [0; 4096];\\\\n let _ = stream.read(&mut buffer);\\\\n let response = format!(\\\\\\\"HTTP/1.1 200 OK\\\\\\\\r\\\\\\\\nContent-Type: text/plain; charset=utf-8\\\\\\\\r\\\\\\\\nContent-Length: {}\\\\\\\\r\\\\\\\\nConnection: close\\\\\\\\r\\\\\\\\n\\\\\\\\r\\\\\\\\n{}\\\\\\\", body.len(), body);\\\\n let _ = stream.write_all(response.as_bytes());\\\\n }\\\\n}\\\\n\\\");for(const n of [\\\"node\\\",\\\"npm\\\",\\\"yarn\\\",\\\"pnpm\\\"]){const r=cp.spawnSync(n,[\\\"--version\\\"],{encoding:\\\"utf8\\\"});console.log(\\\"QA_A764_BUILD \\\"+n+\\\" \\\"+r.stdout.trim());if(r.status!==0)process.exit(r.status||1)}' && rustc qa-a764.rs -o qa-a764-server\\\"] 12:04:41 PM\"\n  - button \"Filter logs by instance srv-db979nnfsf9s73epsj6g-nptu1g00k08n47vqja7b\": \"[nptu1]\"\n  - text: \"#26 0.124 rustc 1.99.1 (58cf8f9c3 2026-10-13) 12:04:41 PM\"\n  - button \"Filter logs by instance srv-db979nnfsf9s73epsj6g-nptu1g00k08n47vqja7b\": \"[nptu1]\"\n  - text: \"#26 0.177 QA_A764_BUILD node v24.22.0 12:04:41 PM\"\n  - button \"Filter logs by instance srv-db979nnfsf9s73epsj6g-nptu1g00k08n47vqja7b\": \"[nptu1]\"\n  - text: \"#26 0.350 QA_A764_BUILD npm 11.19.1 12:04:41 PM\"\n  - button \"Filter logs by instance srv-db979nnfsf9s73epsj6g-nptu1g00k08n47vqja7b\": \"[nptu1]\"\n  - text: \"#26 0.657 QA_A764_BUILD yarn 1.22.22 12:04:42 PM\"\n  - button \"Filter logs by instance srv-db979nnfsf9s73epsj6g-nptu1g00k08n47vqja7b\": \"[nptu1]\"\n  - text: \"#26 1.192 QA_A764_BUILD pnpm 10.34.7 12:04:42 PM\"\n  - button \"Filter logs by instance srv-db979nnfsf9s73epsj6g-nptu1g00k08n47vqja7b\": \"[nptu1]\"\n  - text: \"#26 DONE 1.5s 12:04:42 PM\"\n  - button \"Filter logs by instance srv-db979nnfsf9s73epsj6g-nptu1g00k08n47vqja7b\": \"[nptu1]\"\n  - text: 12:04:42 PM\n  - button \"Filter logs by instance srv-db979nnfsf9s73epsj6g-nptu1g00k08n47vqja7b\": \"[nptu1]\"\n  - text: \"#27 exporting to oci image format 12:04:42 PM\"\n  - button \"Filter logs by instance srv-db979nnfsf9s73epsj6g-nptu1g00k08n47vqja7b\": \"[nptu1]\"\n  - text: \"#27 exporting layers\""
+      },
+      "a764Runtime2": {
+        "at": "2026-10-16T19:06:34.827Z",
+        "request": {
+          "operationName": "Qaa764Runtime",
+          "variables": {
+            "id": "srv-db979nnfsf9s73epsj6g"
+          },
+          "query": "query Qaa764Runtime($id:String!){service(id:$id){id phase runtime autoDeploy}logs(resource:$id,type:\"app\",limit:20){hasMore logs{timestamp message type instance}}deploys(serviceId:$id){id status failureReason stallReason finishedAt}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "failureReason": "",
+                "finishedAt": "2026-10-16T19:06:09.928078Z",
+                "id": "dep-db979nnfsf9s73epsj70",
+                "stallReason": "",
+                "status": "live"
+              }
+            ],
+            "logs": {
+              "hasMore": false,
+              "logs": [
+                {
+                  "instance": "srv-db979nnfsf9s73epsj6g-3lc9fo0h9kremfbnp380",
+                  "message": "QA_A764_RUST雪",
+                  "timestamp": "2026-10-16T19:05:56.557322497Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db979nnfsf9s73epsj6g-3lc9fo0h9kremfbnp380",
+                  "message": "rustc=rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+                  "timestamp": "2026-10-16T19:05:56.557392068Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db979nnfsf9s73epsj6g-3lc9fo0h9kremfbnp380",
+                  "message": "node=v24.22.0",
+                  "timestamp": "2026-10-16T19:05:56.557396627Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db979nnfsf9s73epsj6g-3lc9fo0h9kremfbnp380",
+                  "message": "npm=11.19.1",
+                  "timestamp": "2026-10-16T19:05:56.557397939Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db979nnfsf9s73epsj6g-3lc9fo0h9kremfbnp380",
+                  "message": "yarn=1.22.22",
+                  "timestamp": "2026-10-16T19:05:56.557399051Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db979nnfsf9s73epsj6g-3lc9fo0h9kremfbnp380",
+                  "message": "pnpm=10.34.7",
+                  "timestamp": "2026-10-16T19:05:56.557400003Z",
+                  "type": "app"
+                }
+              ]
+            },
+            "service": {
+              "autoDeploy": false,
+              "id": "srv-db979nnfsf9s73epsj6g",
+              "phase": "Running",
+              "runtime": "rust"
+            }
+          }
+        }
+      },
+      "a764BrowserAndManualMenu": {
+        "at": "2026-10-16T19:07:01.547Z",
+        "http": {
+          "status": 200,
+          "url": "https://qa-20261016-a764-native-rust.onbex.co/",
+          "body": "QA_A764_RUST雪\nrustc=rustc 1.99.1 (58cf8f9c3 2026-10-13)\nnode=v24.22.0\nnpm=11.19.1\nyarn=1.22.22\npnpm=10.34.7\n"
+        },
+        "menu": "- region \"Notifications alt+T\"\n- menu \"Manual Deploy\":\n  - menuitem \"Deploy latest commit\" [disabled]\n  - menuitem \"Deploy a specific commit\" [disabled]\n  - menuitem \"Clear build cache & deploy\" [disabled]\n  - separator\n  - menuitem \"Restart service\" [disabled]"
+      },
+      "a764ManualDeployed": {
+        "at": "2026-10-16T19:07:04.845Z",
+        "request": {
+          "operationName": "TriggerDeploy",
+          "variables": {
+            "serviceId": "srv-db979nnfsf9s73epsj6g"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation TriggerDeploy($serviceId: String!, $commitId: String, $deployMode: String, $clearCache: String, $confirm: String) {\n  triggerDeploy(\n    serviceId: $serviceId\n    commitId: $commitId\n    deployMode: $deployMode\n    clearCache: $clearCache\n    confirm: $confirm\n  ) {\n    id\n    status\n    createdAt\n    trigger\n    rollbackOf\n    image\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "triggerDeploy": {
+              "__typename": "Deploy",
+              "createdAt": "2026-10-16T19:07:04.044634Z",
+              "id": "dep-db97bm1koksc73a7vksg",
+              "image": "",
+              "rollbackOf": "",
+              "status": "created",
+              "trigger": "api"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792177622519.1848,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.152,
+          "responseStart": 1621.668,
+          "responseEnd": 1622.042
+        },
+        "url": "https://dashboard.bex.co/services/srv-db979nnfsf9s73epsj6g/deploys/dep-db979nnfsf9s73epsj70"
+      },
+      "a764RepeatTools1": {
+        "at": "2026-10-16T19:08:37.179Z",
+        "request": {
+          "operationName": "Qaa764RepeatTools",
+          "variables": {
+            "id": "srv-db979nnfsf9s73epsj6g",
+            "start": "2026-10-16T19:07:04.044634Z"
+          },
+          "query": "query Qaa764RepeatTools($id:String!,$start:String!){build:logs(resource:$id,type:\"build\",text:\"QA_A764_BUILD\",startTime:$start,limit:20){hasMore logs{timestamp message type instance}}runtime:logs(resource:$id,type:\"app\",startTime:$start,limit:20){hasMore logs{timestamp message type instance}}deploys(serviceId:$id){id status failureReason stallReason finishedAt}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "build": {
+              "hasMore": false,
+              "logs": [
+                {
+                  "instance": "srv-db979nnfsf9s73epsj6g-vmaisqpn8ngq08kn9q1p",
+                  "message": "#26 [stage-0 14/14] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\"/bin/bash\",\"-c\",\". /opt/bex/load-env\\nrustc --version && node -e 'const fs=require(\"fs\"),cp=require(\"child_process\");fs.writeFileSync(\"qa-a764.rs\",\"use std::io::{Read, Write};\\nuse std::net::TcpListener;\\nuse std::process::Command;\\nuse std::time::Duration;\\n\\nfn main() {\\n    let mut body = String::from(\\\"QA_A764_RUST雪\\\\n\\\");\\n    for name in [\\\"rustc\\\", \\\"node\\\", \\\"npm\\\", \\\"yarn\\\", \\\"pnpm\\\"] {\\n        let output = Command::new(name).arg(\\\"--version\\\").output().expect(\\\"version process starts\\\");\\n        if !output.status.success() {\\n            eprintln!(\\\"QA_A764_RUNTIME {} failed: {}\\\", name, String::from_utf8_lossy(&output.stderr));\\n            std::process::exit(1);\\n        }\\n        body.push_str(&format!(\\\"{}={}\\\\n\\\", name, String::from_utf8_lossy(&output.stdout).trim()));\\n    }\\n    print!(\\\"{}\\\", body);\\n    let port = std::env::var(\\\"PORT\\\").unwrap_or_else(|_| String::from(\\\"3000\\\"));\\n    let listener = TcpListener::bind(format!(\\\"0.0.0.0:{}\\\", port)).expect(\\\"listen\\\");\\n    for item in listener.incoming() {\\n        let mut stream = match item { Ok(value) => value, Err(_) => continue };\\n        let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));\\n        let mut buffer = [0; 4096];\\n        let _ = stream.read(&mut buffer);\\n        let response = format!(\\\"HTTP/1.1 200 OK\\\\r\\\\nContent-Type: text/plain; charset=utf-8\\\\r\\\\nContent-Length: {}\\\\r\\\\nConnection: close\\\\r\\\\n\\\\r\\\\n{}\\\", body.len(), body);\\n        let _ = stream.write_all(response.as_bytes());\\n    }\\n}\\n\");for(const n of [\"node\",\"npm\",\"yarn\",\"pnpm\"]){const r=cp.spawnSync(n,[\"--version\"],{encoding:\"utf8\"});console.log(\"QA_A764_BUILD \"+n+\" \"+r.stdout.trim());if(r.status!==0)process.exit(r.status||1)}' && rustc qa-a764.rs -o qa-a764-server\"]",
+                  "timestamp": "2026-10-16T19:08:05.852241902Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db979nnfsf9s73epsj6g-vmaisqpn8ngq08kn9q1p",
+                  "message": "#26 0.164 QA_A764_BUILD node v24.22.0",
+                  "timestamp": "2026-10-16T19:08:06.049263288Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db979nnfsf9s73epsj6g-vmaisqpn8ngq08kn9q1p",
+                  "message": "#26 0.303 QA_A764_BUILD npm 11.19.1",
+                  "timestamp": "2026-10-16T19:08:06.049318652Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db979nnfsf9s73epsj6g-vmaisqpn8ngq08kn9q1p",
+                  "message": "#26 0.607 QA_A764_BUILD yarn 1.22.22",
+                  "timestamp": "2026-10-16T19:08:06.35404749Z",
+                  "type": "build"
+                },
+                {
+                  "instance": "srv-db979nnfsf9s73epsj6g-vmaisqpn8ngq08kn9q1p",
+                  "message": "#26 1.189 QA_A764_BUILD pnpm 10.34.7",
+                  "timestamp": "2026-10-16T19:08:06.935505117Z",
+                  "type": "build"
+                }
+              ]
+            },
+            "deploys": [
+              {
+                "failureReason": "",
+                "finishedAt": "",
+                "id": "dep-db97bm1koksc73a7vksg",
+                "stallReason": "",
+                "status": "build_in_progress"
+              },
+              {
+                "failureReason": "",
+                "finishedAt": "2026-10-16T19:06:09.928078Z",
+                "id": "dep-db979nnfsf9s73epsj70",
+                "stallReason": "",
+                "status": "live"
+              }
+            ],
+            "runtime": {
+              "hasMore": false,
+              "logs": []
+            }
+          }
+        },
+        "docWidth": 390,
+        "consoleErrors": []
+      },
+      "a764RepeatRuntime1": {
+        "at": "2026-10-16T19:09:32.861Z",
+        "request": {
+          "operationName": "Qaa764RepeatRuntime",
+          "variables": {
+            "id": "srv-db979nnfsf9s73epsj6g",
+            "start": "2026-10-16T19:07:04.044634Z"
+          },
+          "query": "query Qaa764RepeatRuntime($id:String!,$start:String!){service(id:$id){id phase runtime autoDeploy}logs(resource:$id,type:\"app\",startTime:$start,limit:20){hasMore logs{timestamp message type instance}}deploys(serviceId:$id){id status commitId failureReason stallReason finishedAt}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deploys": [
+              {
+                "commitId": "2b046a09ae3b227dab0edba51fd68a038745503e",
+                "failureReason": "",
+                "finishedAt": "2026-10-16T19:09:10.037558Z",
+                "id": "dep-db97bm1koksc73a7vksg",
+                "stallReason": "",
+                "status": "live"
+              },
+              {
+                "commitId": "2b046a09ae3b227dab0edba51fd68a038745503e",
+                "failureReason": "",
+                "finishedAt": "2026-10-16T19:06:09.928078Z",
+                "id": "dep-db979nnfsf9s73epsj70",
+                "stallReason": "",
+                "status": "deactivated"
+              }
+            ],
+            "logs": {
+              "hasMore": false,
+              "logs": [
+                {
+                  "instance": "srv-db979nnfsf9s73epsj6g-s6pla2pq9ead2t5eh0rk",
+                  "message": "QA_A764_RUST雪",
+                  "timestamp": "2026-10-16T19:09:03.442314787Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db979nnfsf9s73epsj6g-s6pla2pq9ead2t5eh0rk",
+                  "message": "rustc=rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+                  "timestamp": "2026-10-16T19:09:03.442417561Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db979nnfsf9s73epsj6g-s6pla2pq9ead2t5eh0rk",
+                  "message": "node=v24.22.0",
+                  "timestamp": "2026-10-16T19:09:03.442429763Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db979nnfsf9s73epsj6g-s6pla2pq9ead2t5eh0rk",
+                  "message": "npm=11.19.1",
+                  "timestamp": "2026-10-16T19:09:03.442432068Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db979nnfsf9s73epsj6g-s6pla2pq9ead2t5eh0rk",
+                  "message": "yarn=1.22.22",
+                  "timestamp": "2026-10-16T19:09:03.442433851Z",
+                  "type": "app"
+                },
+                {
+                  "instance": "srv-db979nnfsf9s73epsj6g-s6pla2pq9ead2t5eh0rk",
+                  "message": "pnpm=10.34.7",
+                  "timestamp": "2026-10-16T19:09:03.442436426Z",
+                  "type": "app"
+                }
+              ]
+            },
+            "service": {
+              "autoDeploy": false,
+              "id": "srv-db979nnfsf9s73epsj6g",
+              "phase": "Running",
+              "runtime": "rust"
+            }
+          }
+        }
+      },
+      "a764FinalBrowserAndDelete": {
+        "at": "2026-10-16T19:09:50.624Z",
+        "http": {
+          "status": 200,
+          "url": "https://qa-20261016-a764-native-rust.onbex.co/",
+          "body": "QA_A764_RUST雪\nrustc=rustc 1.99.1 (58cf8f9c3 2026-10-13)\nnode=v24.22.0\nnpm=11.19.1\nyarn=1.22.22\npnpm=10.34.7\n"
+        },
+        "dialog": "- alertdialog \"Delete qa-20261016-a764-native-rust?\":\n  - heading \"Delete qa-20261016-a764-native-rust?\" [level=2]\n  - paragraph: This action cannot be undone. Are you sure you want to delete this web service?\n  - paragraph:\n    - text: Type\n    - strong: sudo delete web service qa-20261016-a764-native-rust\n    - text: below to confirm.\n  - text: Sudo Command\n  - textbox \"Sudo Command\":\n    - /placeholder: sudo delete web service qa-20261016-a764-native-rust\n  - button \"Cancel\"\n  - button \"Delete Service\" [disabled]"
+      },
+      "a764Deleted": {
+        "at": "2026-10-16T19:09:53.070Z",
+        "request": {
+          "operationName": "DeleteService",
+          "variables": {
+            "id": "srv-db979nnfsf9s73epsj6g"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deleteService": true
+          }
+        },
+        "timing": {
+          "startTime": 1792177791997.926,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.131,
+          "responseStart": 344.843,
+          "responseEnd": 345.455
+        },
+        "url": "https://dashboard.bex.co/"
+      },
+      "a764Cleanup": {
+        "at": "2026-10-16T19:10:06.404Z",
+        "statuses": [
+          {
+            "path": "/v1/services/srv-db979nnfsf9s73epsj6g",
+            "status": 404
+          },
+          {
+            "path": "/v1/services/srv-db979nnfsf9s73epsj6g/deploys/dep-db97bm1koksc73a7vksg",
+            "status": 404
+          },
+          {
+            "path": "/v1/services/srv-db979nnfsf9s73epsj6g/deploys/dep-db979nnfsf9s73epsj70",
+            "status": 404
+          }
+        ],
+        "status": 200,
+        "body": {
+          "data": {
+            "blueprints": [
+              {
+                "id": "blp-d9nqg95cavls73fp8m10",
+                "name": "discourse_docker"
+              }
+            ],
+            "databases": [
+              {
+                "id": "dpg-d9nqg95cavls73fp8m20",
+                "name": "beancount-forum-db"
+              },
+              {
+                "id": "dpg-d9rrkoc4h4mc73edurp0",
+                "name": "tianpan-forum-db"
+              },
+              {
+                "id": "dpg-d9rs3ee0ccis738kc7c0",
+                "name": "blockeden-forum-db"
+              },
+              {
+                "id": "dpg-db34l9bor55s73cqpq9g",
+                "name": "qa-20261007-r16-owner-f208ab"
+              }
+            ],
+            "envGroups": [
+              {
+                "id": "evg-db0s94c48ccs739jikr0",
+                "name": "qa-20261003-keys-r85"
+              }
+            ],
+            "keyValues": [
+              {
+                "id": "red-d9p49kdrtmes73c34ovg",
+                "name": "beancount-forum-redis"
+              },
+              {
+                "id": "red-da4086iii7bs73drbqh0",
+                "name": "blockeden-forum-redis"
+              }
+            ],
+            "projects": [
+              {
+                "id": "prj-d9dgeo0bd9nc73a0vh1g",
+                "name": "bex.co"
+              },
+              {
+                "id": "prj-d9e5qct5qe4s73b1mjn0",
+                "name": "beancount.io"
+              },
+              {
+                "id": "prj-d9sgfnbjghus73cg6hg0",
+                "name": "forums"
+              }
+            ],
+            "services": [
+              {
+                "id": "srv-d9bkcspg9s7c73d0n8ug",
+                "name": "agentmarketcap-1",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9bj8s3eg85c7390eb9g",
+                "name": "beancount-cms-v2",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9nqg9dcavls73fp8m2g",
+                "name": "beancount-forum",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9ndt8hmcglc739fkp50",
+                "name": "eden-dash-v3",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9e40ei9086p3l1jri30",
+                "name": "eden-cms-v2",
+                "type": "web_service"
+              }
+            ],
+            "webhookEndpoints": []
+          }
+        },
+        "sets": {
+          "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+          "databases": [
+            "dpg-d9nqg95cavls73fp8m20",
+            "dpg-d9rrkoc4h4mc73edurp0",
+            "dpg-d9rs3ee0ccis738kc7c0",
+            "dpg-db34l9bor55s73cqpq9g"
+          ],
+          "envGroups": ["evg-db0s94c48ccs739jikr0"],
+          "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+          "projects": [
+            "prj-d9dgeo0bd9nc73a0vh1g",
+            "prj-d9e5qct5qe4s73b1mjn0",
+            "prj-d9sgfnbjghus73cg6hg0"
+          ],
+          "services": [
+            "srv-d9bj8s3eg85c7390eb9g",
+            "srv-d9bkcspg9s7c73d0n8ug",
+            "srv-d9e40ei9086p3l1jri30",
+            "srv-d9ndt8hmcglc739fkp50",
+            "srv-d9nqg9dcavls73fp8m2g"
+          ],
+          "webhookEndpoints": []
+        },
+        "baselineMatch": true
+      },
+      "a764SessionCleared": {
+        "at": "2026-10-16T19:10:32.824Z",
+        "whoami": 401,
+        "cookies": 0,
+        "pages": 1,
+        "url": "about:blank"
+      }
+    }
+  },
+  "limits": [
+    "Go compiler version was measured in both builds, not by a started Go-compiler probe; its compiled server and fourJS runtime checks passed.",
+    "No primary-only-control replay, unsupported-secondary selector refusal, alternate primary/Node line or architecture matrix was driven in these production passes.",
+    "Default runtime and version observations are dated; Rust default now reports1.99.1 rather than the historical finding's1.99.0.",
+    "Keep existing local and cross-base evidence and all remaining DoD requirements; these positive cases are not a new bug.",
+    "Elixir second curl was captured just before API settlement toLive; its postLive browser GET is captured separately. No separate post-settlement external curl is claimed for that second release."
+  ],
+  "independentChecks": {
+    "qa-a762-initial-http-ready.json": {
+      "at": "2026-10-16T18:45:10.339948+00:00",
+      "exitCode": 0,
+      "response": "HTTP/2 200 \ncontent-type: text/plain; charset=utf-8\ndate: Fri, 16 Oct 2026 18:45:10 GMT\ncontent-length: 17\n\nQA_A762_NATIVE_GO",
+      "stderr": ""
+    },
+    "qa-a762-repeat-http-final.json": {
+      "at": "2026-10-16T18:48:41.784067+00:00",
+      "exitCode": 0,
+      "response": "HTTP/2 200 \ncontent-type: text/plain; charset=utf-8\ndate: Fri, 16 Oct 2026 18:48:41 GMT\ncontent-length: 17\n\nQA_A762_NATIVE_GO",
+      "stderr": ""
+    },
+    "qa-a762-runtime-cleanup.json": {
+      "at": "2026-10-16T18:50:14.719740+00:00",
+      "checks": {
+        "app": {
+          "exitCode": 0,
+          "output": "",
+          "error": ""
+        },
+        "pods": {
+          "exitCode": 0,
+          "output": "",
+          "error": ""
+        },
+        "buildJobs": {
+          "exitCode": 0,
+          "output": "",
+          "error": ""
+        },
+        "buildPods": {
+          "exitCode": 0,
+          "output": "",
+          "error": ""
+        },
+        "public": {
+          "exitCode": 0,
+          "status": "404"
+        }
+      }
+    },
+    "qa-a763-initial-http-ready.json": {
+      "at": "2026-10-16T18:56:40.744662+00:00",
+      "exitCode": 0,
+      "response": "HTTP/2 200 \ncontent-type: text/plain; charset=utf-8\ncontent-length: 91\ndate: Fri, 16 Oct 2026 18:56:40 GMT\n\nQA_A763_ELIXIR雪\nelixir=1.18.4\notp=28\nnode=v24.22.0\nnpm=11.19.1\nyarn=1.22.22\npnpm=10.34.7\n",
+      "stderr": ""
+    },
+    "qa-a763-repeat-http.json": {
+      "at": "2026-10-16T18:59:39.740821+00:00",
+      "exitCode": 0,
+      "response": "HTTP/2 200 \ncontent-type: text/plain; charset=utf-8\ncontent-length: 91\ndate: Fri, 16 Oct 2026 18:59:39 GMT\n\nQA_A763_ELIXIR雪\nelixir=1.18.4\notp=28\nnode=v24.22.0\nnpm=11.19.1\nyarn=1.22.22\npnpm=10.34.7\n",
+      "stderr": ""
+    },
+    "qa-a763-runtime-cleanup.json": {
+      "at": "2026-10-16T19:01:17.194364+00:00",
+      "checks": {
+        "app": {
+          "exitCode": 0,
+          "output": "",
+          "error": ""
+        },
+        "pods": {
+          "exitCode": 0,
+          "output": "",
+          "error": ""
+        },
+        "buildJobs": {
+          "exitCode": 0,
+          "output": "",
+          "error": ""
+        },
+        "buildPods": {
+          "exitCode": 0,
+          "output": "",
+          "error": ""
+        },
+        "public": {
+          "exitCode": 0,
+          "status": "404"
+        }
+      }
+    },
+    "qa-a764-initial-http-ready.json": {
+      "at": "2026-10-16T19:06:36.510099+00:00",
+      "exitCode": 0,
+      "response": "HTTP/2 200 \ncontent-type: text/plain; charset=utf-8\ncontent-length: 110\ndate: Fri, 16 Oct 2026 19:06:36 GMT\n\nQA_A764_RUST雪\nrustc=rustc 1.99.1 (58cf8f9c3 2026-10-13)\nnode=v24.22.0\nnpm=11.19.1\nyarn=1.22.22\npnpm=10.34.7\n",
+      "stderr": ""
+    },
+    "qa-a764-repeat-http-final.json": {
+      "at": "2026-10-16T19:09:51.804916+00:00",
+      "exitCode": 0,
+      "response": "HTTP/2 200 \ncontent-type: text/plain; charset=utf-8\ncontent-length: 110\ndate: Fri, 16 Oct 2026 19:09:51 GMT\n\nQA_A764_RUST雪\nrustc=rustc 1.99.1 (58cf8f9c3 2026-10-13)\nnode=v24.22.0\nnpm=11.19.1\nyarn=1.22.22\npnpm=10.34.7\n",
+      "stderr": ""
+    },
+    "qa-a764-runtime-cleanup.json": {
+      "at": "2026-10-16T19:10:28.611168+00:00",
+      "checks": {
+        "app": {
+          "exitCode": 0,
+          "output": "",
+          "error": ""
+        },
+        "pods": {
+          "exitCode": 0,
+          "output": "pod/tea-d98210cbbpdc73dcrkvg-qa-20261016-a764-native-rust-fc47dfc6f",
+          "error": ""
+        },
+        "buildJobs": {
+          "exitCode": 0,
+          "output": "",
+          "error": ""
+        },
+        "buildPods": {
+          "exitCode": 0,
+          "output": "",
+          "error": ""
+        },
+        "public": {
+          "exitCode": 0,
+          "status": "404"
+        }
+      }
+    },
+    "qa-a764-runtime-final.json": {
+      "at": "2026-10-16T19:10:51.435211+00:00",
+      "exitCode": 0,
+      "pods": ""
+    }
+  },
+  "exactHandleAbsence": {
+    "at": "2026-10-16T19:12:13.649408+00:00",
+    "handles": {
+      "a762": {
+        "qa-a762-session.jar": false,
+        "qa-a762-session-handle.json": false
+      },
+      "a763": {
+        "qa-a763-session.jar": false,
+        "qa-a763-session-handle.json": false
+      },
+      "a764": {
+        "qa-a764-session.jar": false,
+        "qa-a764-session-handle.json": false
+      }
+    }
+  }
+}
