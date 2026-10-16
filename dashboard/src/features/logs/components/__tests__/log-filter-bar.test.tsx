@@ -114,9 +114,7 @@ describe("LogFilterBar (w5/008, simplified w7/m42)", () => {
     expect(screen.getByRole("option", { name: "GET" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "POST" })).toBeInTheDocument();
     // Still merged on top of the fallback list, which GET/POST already cover.
-    expect(
-      screen.queryByRole("option", { name: "PATCH" }),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "PATCH" })).toBeInTheDocument();
   });
 
   it("reveals the structured filter controls inside the Filters popover", async () => {
@@ -164,6 +162,18 @@ describe("LogFilterBar (w5/008, simplified w7/m42)", () => {
     fireEvent.click(screen.getByLabelText("Remove Level filter"));
     expect(onChange).toHaveBeenCalledWith({ level: "" });
     expect(onChange).not.toHaveBeenCalledWith({ statusCode: "" });
+  });
+
+  it("keeps a long chip's full value inspectable and removes only it (w4/324)", () => {
+    const instance = "srv-db8tm129cl7s73ae4cm0-n0dcsp78kvbge9eodeos";
+    const { onChange } = renderBar({ filters: { level: "error", instance } });
+    // The chip ellipsizes on a phone (a real-browser measurement: 406px → the
+    // 358px row); the value itself is never shortened.
+    const label = screen.getByText(`Instance: ${instance}`);
+    expect(label).toHaveAttribute("title", `Instance: ${instance}`);
+    fireEvent.click(screen.getByLabelText("Remove Instance filter"));
+    expect(onChange).toHaveBeenCalledWith({ instance: "" });
+    expect(onChange).not.toHaveBeenCalledWith({ level: "" });
   });
 
   it("emits a text patch from the search box", () => {
