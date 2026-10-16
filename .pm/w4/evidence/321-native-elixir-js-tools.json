@@ -1,0 +1,1289 @@
+{
+  "schema": 1,
+  "finding": "Elixir extends the same JS companion predicate issue as w4/321; consolidated in w4/m213",
+  "pass": "a693",
+  "sourceHead": "71ce7fa28df475ea23fc2a5b0fbb591fc847edb1",
+  "probe": {
+    "source": "defmodule QaA693 do\n  def tool(name) do\n    try do\n      {out, code} = System.cmd(name, [\"--version\"], stderr_to_stdout: true)\n      \"exit=#{code} #{String.trim(out)}\"\n    rescue\n      ErlangError -> \"unavailable\"\n    end\n  end\n  def body do\n    \"QA_A693_ELIXIR\\nelixir=#{System.version()}\\notp=#{System.otp_release()}\\n\" <>\n      Enum.map_join([\"node\", \"npm\", \"yarn\", \"pnpm\"], \"\\n\", fn name -> \"#{name}=#{tool(name)}\" end) <> \"\\n\"\n  end\n  def serve(listener) do\n    {:ok, socket} = :gen_tcp.accept(listener)\n    case :gen_tcp.recv(socket, 0, 5000) do\n      {:ok, _request} ->\n        payload = body()\n        :gen_tcp.send(socket, \"HTTP/1.1 200 OK\\r\\nContent-Type: text/plain; charset=utf-8\\r\\nContent-Length: #{byte_size(payload)}\\r\\nConnection: close\\r\\n\\r\\n\" <> payload)\n      _ -> :ok\n    end\n    :gen_tcp.close(socket)\n    serve(listener)\n  end\nend\nport = System.get_env(\"PORT\", \"8080\") |> String.to_integer()\n{:ok, listener} = :gen_tcp.listen(port, [:binary, active: false, reuseaddr: true, packet: :raw])\nIO.puts(\"QA_A693_ELIXIR ready\")\nQaA693.serve(listener)\n",
+    "build": "printf '%s' 'ZGVmbW9kdWxlIFFhQTY5MyBkbwogIGRlZiB0b29sKG5hbWUpIGRvCiAgICB0cnkgZG8KICAgICAge291dCwgY29kZX0gPSBTeXN0ZW0uY21kKG5hbWUsIFsiLS12ZXJzaW9uIl0sIHN0ZGVycl90b19zdGRvdXQ6IHRydWUpCiAgICAgICJleGl0PSN7Y29kZX0gI3tTdHJpbmcudHJpbShvdXQpfSIKICAgIHJlc2N1ZQogICAgICBFcmxhbmdFcnJvciAtPiAidW5hdmFpbGFibGUiCiAgICBlbmQKICBlbmQKICBkZWYgYm9keSBkbwogICAgIlFBX0E2OTNfRUxJWElSXG5lbGl4aXI9I3tTeXN0ZW0udmVyc2lvbigpfVxub3RwPSN7U3lzdGVtLm90cF9yZWxlYXNlKCl9XG4iIDw+CiAgICAgIEVudW0ubWFwX2pvaW4oWyJub2RlIiwgIm5wbSIsICJ5YXJuIiwgInBucG0iXSwgIlxuIiwgZm4gbmFtZSAtPiAiI3tuYW1lfT0je3Rvb2wobmFtZSl9IiBlbmQpIDw+ICJcbiIKICBlbmQKICBkZWYgc2VydmUobGlzdGVuZXIpIGRvCiAgICB7Om9rLCBzb2NrZXR9ID0gOmdlbl90Y3AuYWNjZXB0KGxpc3RlbmVyKQogICAgY2FzZSA6Z2VuX3RjcC5yZWN2KHNvY2tldCwgMCwgNTAwMCkgZG8KICAgICAgezpvaywgX3JlcXVlc3R9IC0+CiAgICAgICAgcGF5bG9hZCA9IGJvZHkoKQogICAgICAgIDpnZW5fdGNwLnNlbmQoc29ja2V0LCAiSFRUUC8xLjEgMjAwIE9LXHJcbkNvbnRlbnQtVHlwZTogdGV4dC9wbGFpbjsgY2hhcnNldD11dGYtOFxyXG5Db250ZW50LUxlbmd0aDogI3tieXRlX3NpemUocGF5bG9hZCl9XHJcbkNvbm5lY3Rpb246IGNsb3NlXHJcblxyXG4iIDw+IHBheWxvYWQpCiAgICAgIF8gLT4gOm9rCiAgICBlbmQKICAgIDpnZW5fdGNwLmNsb3NlKHNvY2tldCkKICAgIHNlcnZlKGxpc3RlbmVyKQogIGVuZAplbmQKcG9ydCA9IFN5c3RlbS5nZXRfZW52KCJQT1JUIiwgIjgwODAiKSB8PiBTdHJpbmcudG9faW50ZWdlcigpCns6b2ssIGxpc3RlbmVyfSA9IDpnZW5fdGNwLmxpc3Rlbihwb3J0LCBbOmJpbmFyeSwgYWN0aXZlOiBmYWxzZSwgcmV1c2VhZGRyOiB0cnVlLCBwYWNrZXQ6IDpyYXddKQpJTy5wdXRzKCJRQV9BNjkzX0VMSVhJUiByZWFkeSIpClFhQTY5My5zZXJ2ZShsaXN0ZW5lcikK' | base64 -d > qa-a693-probe.exs && elixir --erl \"+S 2:2\" --version && node --version && npm --version && yarn --version && pnpm --version && elixir --erl \"+S 2:2\" -e 'Code.string_to_quoted!(File.read!(\"qa-a693-probe.exs\")); IO.puts(\"QA_A693_SYNTAX_OK\")'",
+    "controlBuild": "printf '%s' 'ZGVmbW9kdWxlIFFhQTY5MyBkbwogIGRlZiB0b29sKG5hbWUpIGRvCiAgICB0cnkgZG8KICAgICAge291dCwgY29kZX0gPSBTeXN0ZW0uY21kKG5hbWUsIFsiLS12ZXJzaW9uIl0sIHN0ZGVycl90b19zdGRvdXQ6IHRydWUpCiAgICAgICJleGl0PSN7Y29kZX0gI3tTdHJpbmcudHJpbShvdXQpfSIKICAgIHJlc2N1ZQogICAgICBFcmxhbmdFcnJvciAtPiAidW5hdmFpbGFibGUiCiAgICBlbmQKICBlbmQKICBkZWYgYm9keSBkbwogICAgIlFBX0E2OTNfRUxJWElSXG5lbGl4aXI9I3tTeXN0ZW0udmVyc2lvbigpfVxub3RwPSN7U3lzdGVtLm90cF9yZWxlYXNlKCl9XG4iIDw+CiAgICAgIEVudW0ubWFwX2pvaW4oWyJub2RlIiwgIm5wbSIsICJ5YXJuIiwgInBucG0iXSwgIlxuIiwgZm4gbmFtZSAtPiAiI3tuYW1lfT0je3Rvb2wobmFtZSl9IiBlbmQpIDw+ICJcbiIKICBlbmQKICBkZWYgc2VydmUobGlzdGVuZXIpIGRvCiAgICB7Om9rLCBzb2NrZXR9ID0gOmdlbl90Y3AuYWNjZXB0KGxpc3RlbmVyKQogICAgY2FzZSA6Z2VuX3RjcC5yZWN2KHNvY2tldCwgMCwgNTAwMCkgZG8KICAgICAgezpvaywgX3JlcXVlc3R9IC0+CiAgICAgICAgcGF5bG9hZCA9IGJvZHkoKQogICAgICAgIDpnZW5fdGNwLnNlbmQoc29ja2V0LCAiSFRUUC8xLjEgMjAwIE9LXHJcbkNvbnRlbnQtVHlwZTogdGV4dC9wbGFpbjsgY2hhcnNldD11dGYtOFxyXG5Db250ZW50LUxlbmd0aDogI3tieXRlX3NpemUocGF5bG9hZCl9XHJcbkNvbm5lY3Rpb246IGNsb3NlXHJcblxyXG4iIDw+IHBheWxvYWQpCiAgICAgIF8gLT4gOm9rCiAgICBlbmQKICAgIDpnZW5fdGNwLmNsb3NlKHNvY2tldCkKICAgIHNlcnZlKGxpc3RlbmVyKQogIGVuZAplbmQKcG9ydCA9IFN5c3RlbS5nZXRfZW52KCJQT1JUIiwgIjgwODAiKSB8PiBTdHJpbmcudG9faW50ZWdlcigpCns6b2ssIGxpc3RlbmVyfSA9IDpnZW5fdGNwLmxpc3Rlbihwb3J0LCBbOmJpbmFyeSwgYWN0aXZlOiBmYWxzZSwgcmV1c2VhZGRyOiB0cnVlLCBwYWNrZXQ6IDpyYXddKQpJTy5wdXRzKCJRQV9BNjkzX0VMSVhJUiByZWFkeSIpClFhQTY5My5zZXJ2ZShsaXN0ZW5lcikK' | base64 -d > qa-a693-probe.exs && elixir --erl \"+S 2:2\" --version && elixir --erl \"+S 2:2\" -e 'Code.string_to_quoted!(File.read!(\"qa-a693-probe.exs\")); IO.puts(\"QA_A693_SYNTAX_OK\")'",
+    "start": "elixir --erl \"+S 2:2\" qa-a693-probe.exs"
+  },
+  "receipts": {
+    "a693CreateService": {
+      "at": "2026-10-16T08:37:16.072Z",
+      "request": {
+        "operationName": "CreateService",
+        "variables": {
+          "repo": "https://github.com/bex-co/bex",
+          "branch": "main",
+          "name": "qa-20261016-a693-elixir-js",
+          "type": "web_service",
+          "rootDir": "examples/hello-go",
+          "runtime": "elixir",
+          "buildCommand": "printf '%s' 'ZGVmbW9kdWxlIFFhQTY5MyBkbwogIGRlZiB0b29sKG5hbWUpIGRvCiAgICB0cnkgZG8KICAgICAge291dCwgY29kZX0gPSBTeXN0ZW0uY21kKG5hbWUsIFsiLS12ZXJzaW9uIl0sIHN0ZGVycl90b19zdGRvdXQ6IHRydWUpCiAgICAgICJleGl0PSN7Y29kZX0gI3tTdHJpbmcudHJpbShvdXQpfSIKICAgIHJlc2N1ZQogICAgICBFcmxhbmdFcnJvciAtPiAidW5hdmFpbGFibGUiCiAgICBlbmQKICBlbmQKICBkZWYgYm9keSBkbwogICAgIlFBX0E2OTNfRUxJWElSXG5lbGl4aXI9I3tTeXN0ZW0udmVyc2lvbigpfVxub3RwPSN7U3lzdGVtLm90cF9yZWxlYXNlKCl9XG4iIDw+CiAgICAgIEVudW0ubWFwX2pvaW4oWyJub2RlIiwgIm5wbSIsICJ5YXJuIiwgInBucG0iXSwgIlxuIiwgZm4gbmFtZSAtPiAiI3tuYW1lfT0je3Rvb2wobmFtZSl9IiBlbmQpIDw+ICJcbiIKICBlbmQKICBkZWYgc2VydmUobGlzdGVuZXIpIGRvCiAgICB7Om9rLCBzb2NrZXR9ID0gOmdlbl90Y3AuYWNjZXB0KGxpc3RlbmVyKQogICAgY2FzZSA6Z2VuX3RjcC5yZWN2KHNvY2tldCwgMCwgNTAwMCkgZG8KICAgICAgezpvaywgX3JlcXVlc3R9IC0+CiAgICAgICAgcGF5bG9hZCA9IGJvZHkoKQogICAgICAgIDpnZW5fdGNwLnNlbmQoc29ja2V0LCAiSFRUUC8xLjEgMjAwIE9LXHJcbkNvbnRlbnQtVHlwZTogdGV4dC9wbGFpbjsgY2hhcnNldD11dGYtOFxyXG5Db250ZW50LUxlbmd0aDogI3tieXRlX3NpemUocGF5bG9hZCl9XHJcbkNvbm5lY3Rpb246IGNsb3NlXHJcblxyXG4iIDw+IHBheWxvYWQpCiAgICAgIF8gLT4gOm9rCiAgICBlbmQKICAgIDpnZW5fdGNwLmNsb3NlKHNvY2tldCkKICAgIHNlcnZlKGxpc3RlbmVyKQogIGVuZAplbmQKcG9ydCA9IFN5c3RlbS5nZXRfZW52KCJQT1JUIiwgIjgwODAiKSB8PiBTdHJpbmcudG9faW50ZWdlcigpCns6b2ssIGxpc3RlbmVyfSA9IDpnZW5fdGNwLmxpc3Rlbihwb3J0LCBbOmJpbmFyeSwgYWN0aXZlOiBmYWxzZSwgcmV1c2VhZGRyOiB0cnVlLCBwYWNrZXQ6IDpyYXddKQpJTy5wdXRzKCJRQV9BNjkzX0VMSVhJUiByZWFkeSIpClFhQTY5My5zZXJ2ZShsaXN0ZW5lcikK' | base64 -d > qa-a693-probe.exs && elixir --erl \"+S 2:2\" --version && node --version && npm --version && yarn --version && pnpm --version && elixir --erl \"+S 2:2\" -e 'Code.string_to_quoted!(File.read!(\"qa-a693-probe.exs\")); IO.puts(\"QA_A693_SYNTAX_OK\")'",
+          "startCommand": "elixir --erl \"+S 2:2\" qa-a693-probe.exs",
+          "plan": "free",
+          "autoDeploy": true,
+          "port": 8080,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db8u4endbg8c73dghf1g",
+            "latestDeployId": "dep-db8u4endbg8c73dghf20",
+            "name": "qa-20261016-a693-elixir-js",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": null,
+            "type": "web_service"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792139832657.417,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.12,
+        "responseStart": 2705.573,
+        "responseEnd": 2706
+      },
+      "url": "https://dashboard.bex.co/services/srv-db8u4endbg8c73dghf1g/deploys/dep-db8u4endbg8c73dghf20"
+    },
+    "a693DisableAutoDeploy": {
+      "at": "2026-10-16T08:37:42.458Z",
+      "request": {
+        "operationName": "SetAutoDeploy",
+        "variables": {
+          "id": "srv-db8u4endbg8c73dghf1g",
+          "enabled": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetAutoDeploy($id: String!, $enabled: Boolean!) {\n  setAutoDeploy(id: $id, enabled: $enabled) {\n    id\n    autoDeploy\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setAutoDeploy": {
+            "__typename": "Service",
+            "autoDeploy": false,
+            "id": "srv-db8u4endbg8c73dghf1g"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792139861390.423,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.142,
+        "responseStart": 359.323,
+        "responseEnd": 359.776
+      },
+      "url": "https://dashboard.bex.co/services/srv-db8u4endbg8c73dghf1g/settings"
+    },
+    "a693FirstFailureEvidence": {
+      "at": "2026-10-16T08:39:46.199Z",
+      "request": {
+        "operationName": "QaA693FirstEvidence",
+        "variables": {
+          "id": "srv-db8u4endbg8c73dghf1g",
+          "deploy": "dep-db8u4endbg8c73dghf20"
+        },
+        "query": "query QaA693FirstEvidence($id:String!,$deploy:String!){deploy(serviceId:$id,deployId:$deploy){id status trigger createdAt startedAt finishedAt commitId failureReason} compiler:logs(resource:$id,type:\"build\",text:\"Elixir 1.\",startTime:\"2026-10-16T08:37:14.514859Z\",limit:20){hasMore logs{timestamp message type instance}} missing:logs(resource:$id,type:\"build\",text:\"node: command not found\",startTime:\"2026-10-16T08:37:14.514859Z\",limit:20){hasMore logs{timestamp message type instance}}}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "compiler": {
+            "hasMore": false,
+            "logs": [
+              {
+                "instance": "srv-db8u4endbg8c73dghf1g-okecjj9i1ibcftl5i3tk",
+                "message": "==> Using Elixir 1.18 (default)",
+                "timestamp": "2026-10-16T08:38:36.208462774Z",
+                "type": "build"
+              },
+              {
+                "instance": "srv-db8u4endbg8c73dghf1g-okecjj9i1ibcftl5i3tk",
+                "message": "#12 0.455 Elixir 1.18.4 (compiled with Erlang/OTP 28)",
+                "timestamp": "2026-10-16T08:39:15.200533356Z",
+                "type": "build"
+              },
+              {
+                "instance": "srv-db8u4endbg8c73dghf1g-okecjj9i1ibcftl5i3tk",
+                "message": "0.455 Elixir 1.18.4 (compiled with Erlang/OTP 28)",
+                "timestamp": "2026-10-16T08:39:15.200625137Z",
+                "type": "build"
+              }
+            ]
+          },
+          "deploy": {
+            "commitId": "71ce7fa28df475ea23fc2a5b0fbb591fc847edb1",
+            "createdAt": "2026-10-16T08:37:14.514859Z",
+            "failureReason": "build failed in the docker build step:\njsgY2hhcnNldD11dGYtOFxyXG5Db250ZW50LUxlbmd0aDogI3tieXRlX3NpemUocGF5bG9hZCl9XHJcbkNvbm5lY3Rpb246IGNsb3NlXHJcblxyXG4iIDw+IHBheWxvYWQpCiAgICAgIF8gLT4gOm9rCiAgICBlbmQKICAgIDpnZW5fdGNwLmNsb3NlKHNvY2tldCkKICAgIHNlcnZlKGxpc3RlbmVyKQogIGVuZAplbmQKcG9ydCA9IFN5c3RlbS5nZXRfZW52KCJQT1JUIiwgIjgwODAiKSB8PiBTdHJpbmcudG9faW50ZWdlcigpCns6b2ssIGxpc3RlbmVyfSA9IDpnZW5fdGNwLmxpc3Rlbihwb3J0LCBbOmJpbmFyeSwgYWN0aXZlOiBmYWxzZSwgcmV1c2VhZGRyOiB0cnVlLCBwYWNrZXQ6IDpyYXddKQpJTy5wdXRzKCJRQV9BNjkzX0VMSVhJUiByZWFkeSIpClFhQTY5My5zZXJ2ZShsaXN0ZW5lcikK' | base64 -d > qa-a693-probe.exs && elixir --erl \"+S 2:2\" --version && node --version && npm --version && yarn --version && pnpm --version && elixir --erl \"+S 2:2\" -e 'Code.string_to_quoted!(File.read!(\"qa-a693-probe.exs\")); IO.puts(\"QA_A693_SYNTAX_OK\")'' exited with code 127",
+            "finishedAt": "2026-10-16T08:39:33.399356Z",
+            "id": "dep-db8u4endbg8c73dghf20",
+            "startedAt": "2026-10-16T08:38:32.39001Z",
+            "status": "build_failed",
+            "trigger": "create"
+          },
+          "missing": {
+            "hasMore": false,
+            "logs": [
+              {
+                "instance": "srv-db8u4endbg8c73dghf1g-okecjj9i1ibcftl5i3tk",
+                "message": "#12 0.462 /bin/bash: line 2: node: command not found",
+                "timestamp": "2026-10-16T08:39:15.20057346Z",
+                "type": "build"
+              },
+              {
+                "instance": "srv-db8u4endbg8c73dghf1g-okecjj9i1ibcftl5i3tk",
+                "message": "0.462 /bin/bash: line 2: node: command not found",
+                "timestamp": "2026-10-16T08:39:15.200627772Z",
+                "type": "build"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "a693FreshRetry": {
+      "at": "2026-10-16T08:40:04.729Z",
+      "request": {
+        "operationName": "TriggerDeploy",
+        "variables": {
+          "serviceId": "srv-db8u4endbg8c73dghf1g"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation TriggerDeploy($serviceId: String!, $commitId: String, $deployMode: String, $clearCache: String, $confirm: String) {\n  triggerDeploy(\n    serviceId: $serviceId\n    commitId: $commitId\n    deployMode: $deployMode\n    clearCache: $clearCache\n    confirm: $confirm\n  ) {\n    id\n    status\n    createdAt\n    trigger\n    rollbackOf\n    image\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "triggerDeploy": {
+            "__typename": "Deploy",
+            "createdAt": "2026-10-16T08:40:03.919146Z",
+            "id": "dep-db8u5ovdbg8c73dghf40",
+            "image": "",
+            "rollbackOf": "",
+            "status": "created",
+            "trigger": "api"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792140002465.189,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.125,
+        "responseStart": 1559.581,
+        "responseEnd": 1559.983
+      },
+      "url": "https://dashboard.bex.co/services/srv-db8u4endbg8c73dghf1g/deploys/dep-db8u4endbg8c73dghf20"
+    },
+    "a693RetryFailureEvidence": {
+      "at": "2026-10-16T08:41:22.840Z",
+      "request": {
+        "operationName": "QaA693RetryEvidence",
+        "variables": {
+          "id": "srv-db8u4endbg8c73dghf1g",
+          "deploy": "dep-db8u5ovdbg8c73dghf40"
+        },
+        "query": "query QaA693RetryEvidence($id:String!,$deploy:String!){deploy(serviceId:$id,deployId:$deploy){id status trigger createdAt startedAt finishedAt commitId failureReason} compiler:logs(resource:$id,type:\"build\",text:\"Elixir 1.\",startTime:\"2026-10-16T08:40:03.919146Z\",limit:20){hasMore logs{timestamp message type instance}} missing:logs(resource:$id,type:\"build\",text:\"node: command not found\",startTime:\"2026-10-16T08:40:03.919146Z\",limit:20){hasMore logs{timestamp message type instance}}}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "compiler": {
+            "hasMore": false,
+            "logs": [
+              {
+                "instance": "srv-db8u4endbg8c73dghf1g-5kmkqovp6k1and0llv42",
+                "message": "==> Using Elixir 1.18 (default)",
+                "timestamp": "2026-10-16T08:40:21.499410803Z",
+                "type": "build"
+              },
+              {
+                "instance": "srv-db8u4endbg8c73dghf1g-5kmkqovp6k1and0llv42",
+                "message": "#12 0.468 Elixir 1.18.4 (compiled with Erlang/OTP 28)",
+                "timestamp": "2026-10-16T08:40:47.788544516Z",
+                "type": "build"
+              },
+              {
+                "instance": "srv-db8u4endbg8c73dghf1g-5kmkqovp6k1and0llv42",
+                "message": "0.468 Elixir 1.18.4 (compiled with Erlang/OTP 28)",
+                "timestamp": "2026-10-16T08:40:47.78865327Z",
+                "type": "build"
+              }
+            ]
+          },
+          "deploy": {
+            "commitId": "71ce7fa28df475ea23fc2a5b0fbb591fc847edb1",
+            "createdAt": "2026-10-16T08:40:03.919146Z",
+            "failureReason": "build failed in the docker build step:\njsgY2hhcnNldD11dGYtOFxyXG5Db250ZW50LUxlbmd0aDogI3tieXRlX3NpemUocGF5bG9hZCl9XHJcbkNvbm5lY3Rpb246IGNsb3NlXHJcblxyXG4iIDw+IHBheWxvYWQpCiAgICAgIF8gLT4gOm9rCiAgICBlbmQKICAgIDpnZW5fdGNwLmNsb3NlKHNvY2tldCkKICAgIHNlcnZlKGxpc3RlbmVyKQogIGVuZAplbmQKcG9ydCA9IFN5c3RlbS5nZXRfZW52KCJQT1JUIiwgIjgwODAiKSB8PiBTdHJpbmcudG9faW50ZWdlcigpCns6b2ssIGxpc3RlbmVyfSA9IDpnZW5fdGNwLmxpc3Rlbihwb3J0LCBbOmJpbmFyeSwgYWN0aXZlOiBmYWxzZSwgcmV1c2VhZGRyOiB0cnVlLCBwYWNrZXQ6IDpyYXddKQpJTy5wdXRzKCJRQV9BNjkzX0VMSVhJUiByZWFkeSIpClFhQTY5My5zZXJ2ZShsaXN0ZW5lcikK' | base64 -d > qa-a693-probe.exs && elixir --erl \"+S 2:2\" --version && node --version && npm --version && yarn --version && pnpm --version && elixir --erl \"+S 2:2\" -e 'Code.string_to_quoted!(File.read!(\"qa-a693-probe.exs\")); IO.puts(\"QA_A693_SYNTAX_OK\")'' exited with code 127",
+            "finishedAt": "2026-10-16T08:41:02.37863Z",
+            "id": "dep-db8u5ovdbg8c73dghf40",
+            "startedAt": "2026-10-16T08:40:13.119103Z",
+            "status": "build_failed",
+            "trigger": "api"
+          },
+          "missing": {
+            "hasMore": false,
+            "logs": [
+              {
+                "instance": "srv-db8u4endbg8c73dghf1g-5kmkqovp6k1and0llv42",
+                "message": "#12 0.479 /bin/bash: line 2: node: command not found",
+                "timestamp": "2026-10-16T08:40:47.788608055Z",
+                "type": "build"
+              },
+              {
+                "instance": "srv-db8u4endbg8c73dghf1g-5kmkqovp6k1and0llv42",
+                "message": "0.479 /bin/bash: line 2: node: command not found",
+                "timestamp": "2026-10-16T08:40:47.788659361Z",
+                "type": "build"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "a693NativeRetryError": {
+      "at": "2026-10-16T08:41:08.830Z",
+      "url": "https://dashboard.bex.co/services/srv-db8u4endbg8c73dghf1g/deploys/dep-db8u5ovdbg8c73dghf40",
+      "lines": [
+        "#12 0.479 /bin/bash: line 2: node: command not found",
+        "0.479 /bin/bash: line 2: node: command not found"
+      ],
+      "tail": "\n·\nCreated\n3m\nDeploy status\nBuild Failed\nManual Deploy\ndep-db8u5ovdbg8c73dghf40\n\nbuild failed in the docker build step: jsgY2hhcnNldD11dGYtOFxyXG5Db250ZW50LUxlbmd0aDogI3tieXRlX3NpemUocGF5bG9hZCl9XHJcbkNvbm5lY3Rpb246IGNsb3NlXHJcblxyXG4iIDw+IHBheWxvYWQpCiAgICAgIF8gLT4gOm9rCiAgICBlbmQKICAgIDpnZW5fdGNwLmNsb3NlKHNvY2tldCkKICAgIHNlcnZlKGxpc3RlbmVyKQogIGVuZAplbmQKcG9ydCA9IFN5c3RlbS5nZXRfZW52KCJQT1JUIiwgIjgwODAiKSB8PiBTdHJpbmcudG9faW50ZWdlcigpCns6b2ssIGxpc3RlbmVyfSA9IDpnZW5fdGNwLmxpc3Rlbihwb3J0LCBbOmJpbmFyeSwgYWN0aXZlOiBmYWxzZSwgcmV1c2VhZGRyOiB0cnVlLCBwYWNrZXQ6IDpyYXddKQpJTy5wdXRzKCJRQV9BNjkzX0VMSVhJUiByZWFkeSIpClFhQTY5My5zZXJ2ZShsaXN0ZW5lcikK' | base64 -d > qa-a693-probe.exs && elixir --erl \"+S 2:2\" --version && node --version && npm --version && yarn --version && pnpm --version && elixir --erl \"+S 2:2\" -e 'Code.string_to_quoted!(File.read!(\"qa-a693-probe.exs\")); IO.puts(\"QA_A693_SYNTAX_OK\")'' exited with code 127\n\n71ce7fa docs(pm): extend native JavaScript tooling finding to Rust · October 16, 2026 at 1:35 AM\n\nCreated: October 16, 2026 at 1:40 AM\nUpdated: October 16, 2026 at 1:41 AM\nStarted: October 16, 2026 at 1:40 AM\nFinished: October 16, 2026 at 1:41 AM\nDuration: 49s\nStatus timeline\n\nDeploy created\n\nOctober 16, 2026 at 1:40 AM\n\nDeploy started\n\nOctober 16, 2026 at 1:40 AM\n\nBuild Failed\n\nOctober 16, 2026 at 1:41 AM\nAll logs\nOnly part of this time range is loaded. Load older to search earlier lines.\nLoading older logs…\n\nLoading older logs…\n\n01:40:47 AM\n[5kmkq]\n#12 0.479 /bin/bash: line 2: node: command not found\n01:40:47 AM\n[5kmkq]\n0.479 /bin/bash: line 2: node: command not found"
+    },
+    "a693SetElixirOnlyControl": {
+      "at": "2026-10-16T08:41:59.117Z",
+      "request": {
+        "operationName": "SetBuildCommand",
+        "variables": {
+          "id": "srv-db8u4endbg8c73dghf1g",
+          "command": "printf '%s' 'ZGVmbW9kdWxlIFFhQTY5MyBkbwogIGRlZiB0b29sKG5hbWUpIGRvCiAgICB0cnkgZG8KICAgICAge291dCwgY29kZX0gPSBTeXN0ZW0uY21kKG5hbWUsIFsiLS12ZXJzaW9uIl0sIHN0ZGVycl90b19zdGRvdXQ6IHRydWUpCiAgICAgICJleGl0PSN7Y29kZX0gI3tTdHJpbmcudHJpbShvdXQpfSIKICAgIHJlc2N1ZQogICAgICBFcmxhbmdFcnJvciAtPiAidW5hdmFpbGFibGUiCiAgICBlbmQKICBlbmQKICBkZWYgYm9keSBkbwogICAgIlFBX0E2OTNfRUxJWElSXG5lbGl4aXI9I3tTeXN0ZW0udmVyc2lvbigpfVxub3RwPSN7U3lzdGVtLm90cF9yZWxlYXNlKCl9XG4iIDw+CiAgICAgIEVudW0ubWFwX2pvaW4oWyJub2RlIiwgIm5wbSIsICJ5YXJuIiwgInBucG0iXSwgIlxuIiwgZm4gbmFtZSAtPiAiI3tuYW1lfT0je3Rvb2wobmFtZSl9IiBlbmQpIDw+ICJcbiIKICBlbmQKICBkZWYgc2VydmUobGlzdGVuZXIpIGRvCiAgICB7Om9rLCBzb2NrZXR9ID0gOmdlbl90Y3AuYWNjZXB0KGxpc3RlbmVyKQogICAgY2FzZSA6Z2VuX3RjcC5yZWN2KHNvY2tldCwgMCwgNTAwMCkgZG8KICAgICAgezpvaywgX3JlcXVlc3R9IC0+CiAgICAgICAgcGF5bG9hZCA9IGJvZHkoKQogICAgICAgIDpnZW5fdGNwLnNlbmQoc29ja2V0LCAiSFRUUC8xLjEgMjAwIE9LXHJcbkNvbnRlbnQtVHlwZTogdGV4dC9wbGFpbjsgY2hhcnNldD11dGYtOFxyXG5Db250ZW50LUxlbmd0aDogI3tieXRlX3NpemUocGF5bG9hZCl9XHJcbkNvbm5lY3Rpb246IGNsb3NlXHJcblxyXG4iIDw+IHBheWxvYWQpCiAgICAgIF8gLT4gOm9rCiAgICBlbmQKICAgIDpnZW5fdGNwLmNsb3NlKHNvY2tldCkKICAgIHNlcnZlKGxpc3RlbmVyKQogIGVuZAplbmQKcG9ydCA9IFN5c3RlbS5nZXRfZW52KCJQT1JUIiwgIjgwODAiKSB8PiBTdHJpbmcudG9faW50ZWdlcigpCns6b2ssIGxpc3RlbmVyfSA9IDpnZW5fdGNwLmxpc3Rlbihwb3J0LCBbOmJpbmFyeSwgYWN0aXZlOiBmYWxzZSwgcmV1c2VhZGRyOiB0cnVlLCBwYWNrZXQ6IDpyYXddKQpJTy5wdXRzKCJRQV9BNjkzX0VMSVhJUiByZWFkeSIpClFhQTY5My5zZXJ2ZShsaXN0ZW5lcikK' | base64 -d > qa-a693-probe.exs && elixir --erl \"+S 2:2\" --version && elixir --erl \"+S 2:2\" -e 'Code.string_to_quoted!(File.read!(\"qa-a693-probe.exs\")); IO.puts(\"QA_A693_SYNTAX_OK\")'"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetBuildCommand($id: String!, $command: String!, $confirm: String) {\n  setBuildCommand(id: $id, command: $command, confirm: $confirm) {\n    id\n    buildCommand\n    phase\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setBuildCommand": {
+            "__typename": "Service",
+            "buildCommand": "printf '%s' 'ZGVmbW9kdWxlIFFhQTY5MyBkbwogIGRlZiB0b29sKG5hbWUpIGRvCiAgICB0cnkgZG8KICAgICAge291dCwgY29kZX0gPSBTeXN0ZW0uY21kKG5hbWUsIFsiLS12ZXJzaW9uIl0sIHN0ZGVycl90b19zdGRvdXQ6IHRydWUpCiAgICAgICJleGl0PSN7Y29kZX0gI3tTdHJpbmcudHJpbShvdXQpfSIKICAgIHJlc2N1ZQogICAgICBFcmxhbmdFcnJvciAtPiAidW5hdmFpbGFibGUiCiAgICBlbmQKICBlbmQKICBkZWYgYm9keSBkbwogICAgIlFBX0E2OTNfRUxJWElSXG5lbGl4aXI9I3tTeXN0ZW0udmVyc2lvbigpfVxub3RwPSN7U3lzdGVtLm90cF9yZWxlYXNlKCl9XG4iIDw+CiAgICAgIEVudW0ubWFwX2pvaW4oWyJub2RlIiwgIm5wbSIsICJ5YXJuIiwgInBucG0iXSwgIlxuIiwgZm4gbmFtZSAtPiAiI3tuYW1lfT0je3Rvb2wobmFtZSl9IiBlbmQpIDw+ICJcbiIKICBlbmQKICBkZWYgc2VydmUobGlzdGVuZXIpIGRvCiAgICB7Om9rLCBzb2NrZXR9ID0gOmdlbl90Y3AuYWNjZXB0KGxpc3RlbmVyKQogICAgY2FzZSA6Z2VuX3RjcC5yZWN2KHNvY2tldCwgMCwgNTAwMCkgZG8KICAgICAgezpvaywgX3JlcXVlc3R9IC0+CiAgICAgICAgcGF5bG9hZCA9IGJvZHkoKQogICAgICAgIDpnZW5fdGNwLnNlbmQoc29ja2V0LCAiSFRUUC8xLjEgMjAwIE9LXHJcbkNvbnRlbnQtVHlwZTogdGV4dC9wbGFpbjsgY2hhcnNldD11dGYtOFxyXG5Db250ZW50LUxlbmd0aDogI3tieXRlX3NpemUocGF5bG9hZCl9XHJcbkNvbm5lY3Rpb246IGNsb3NlXHJcblxyXG4iIDw+IHBheWxvYWQpCiAgICAgIF8gLT4gOm9rCiAgICBlbmQKICAgIDpnZW5fdGNwLmNsb3NlKHNvY2tldCkKICAgIHNlcnZlKGxpc3RlbmVyKQogIGVuZAplbmQKcG9ydCA9IFN5c3RlbS5nZXRfZW52KCJQT1JUIiwgIjgwODAiKSB8PiBTdHJpbmcudG9faW50ZWdlcigpCns6b2ssIGxpc3RlbmVyfSA9IDpnZW5fdGNwLmxpc3Rlbihwb3J0LCBbOmJpbmFyeSwgYWN0aXZlOiBmYWxzZSwgcmV1c2VhZGRyOiB0cnVlLCBwYWNrZXQ6IDpyYXddKQpJTy5wdXRzKCJRQV9BNjkzX0VMSVhJUiByZWFkeSIpClFhQTY5My5zZXJ2ZShsaXN0ZW5lcikK' | base64 -d > qa-a693-probe.exs && elixir --erl \"+S 2:2\" --version && elixir --erl \"+S 2:2\" -e 'Code.string_to_quoted!(File.read!(\"qa-a693-probe.exs\")); IO.puts(\"QA_A693_SYNTAX_OK\")'",
+            "id": "srv-db8u4endbg8c73dghf1g",
+            "phase": "Failed"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792140118144.749,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.122,
+        "responseStart": 263.594,
+        "responseEnd": 264.026
+      },
+      "url": "https://dashboard.bex.co/services/srv-db8u4endbg8c73dghf1g/settings"
+    },
+    "a693ControlManualDeploy": {
+      "at": "2026-10-16T08:42:03.388Z",
+      "request": {
+        "operationName": "TriggerDeploy",
+        "variables": {
+          "serviceId": "srv-db8u4endbg8c73dghf1g"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation TriggerDeploy($serviceId: String!, $commitId: String, $deployMode: String, $clearCache: String, $confirm: String) {\n  triggerDeploy(\n    serviceId: $serviceId\n    commitId: $commitId\n    deployMode: $deployMode\n    clearCache: $clearCache\n    confirm: $confirm\n  ) {\n    id\n    status\n    createdAt\n    trigger\n    rollbackOf\n    image\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "triggerDeploy": {
+            "__typename": "Deploy",
+            "createdAt": "2026-10-16T08:42:02.584098Z",
+            "id": "dep-db8u6mi9cl7s73ae4d6g",
+            "image": "",
+            "rollbackOf": "",
+            "status": "queued",
+            "trigger": "api"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792140121177.9329,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.12,
+        "responseStart": 1506.989,
+        "responseEnd": 1507.395
+      },
+      "url": "https://dashboard.bex.co/services/srv-db8u4endbg8c73dghf1g/deploys/dep-db8u6mi9cl7s73ae4d6g"
+    },
+    "a693ControlRuntimeWait3": {
+      "at": "2026-10-16T08:44:43.460Z",
+      "settled": true,
+      "rows": [
+        {
+          "at": "2026-10-16T08:44:43.460Z",
+          "status": 200,
+          "body": {
+            "text": "QA_A693_ELIXIR\nelixir=1.18.4\notp=28\nnode=unavailable\nnpm=unavailable\nyarn=unavailable\npnpm=unavailable\n"
+          }
+        }
+      ]
+    },
+    "a693FinalState": {
+      "at": "2026-10-16T08:45:12.136Z",
+      "request": {
+        "operationName": "QaA693State",
+        "variables": {
+          "id": "srv-db8u4endbg8c73dghf1g"
+        },
+        "query": "query QaA693State($id:String!){server(id:$id){id name runtime builder plan autoDeploy phase revision undeployedChanges undeployedChangesApplying} deploys(serviceId:$id,limit:10){id status trigger createdAt startedAt finishedAt commitId failureReason stallReason}}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "commitId": "71ce7fa28df475ea23fc2a5b0fbb591fc847edb1",
+              "createdAt": "2026-10-16T08:42:02.584098Z",
+              "failureReason": "",
+              "finishedAt": "2026-10-16T08:44:43.077985Z",
+              "id": "dep-db8u6mi9cl7s73ae4d6g",
+              "stallReason": "",
+              "startedAt": "2026-10-16T08:43:32.666193Z",
+              "status": "live",
+              "trigger": "api"
+            },
+            {
+              "commitId": "71ce7fa28df475ea23fc2a5b0fbb591fc847edb1",
+              "createdAt": "2026-10-16T08:41:58.301965Z",
+              "failureReason": "",
+              "finishedAt": "2026-10-16T08:43:32.618984Z",
+              "id": "dep-db8u6lndbg8c73dghf4g",
+              "stallReason": "",
+              "startedAt": "2026-10-16T08:42:13.108631Z",
+              "status": "canceled",
+              "trigger": "config_change"
+            },
+            {
+              "commitId": "71ce7fa28df475ea23fc2a5b0fbb591fc847edb1",
+              "createdAt": "2026-10-16T08:40:03.919146Z",
+              "failureReason": "build failed in the docker build step:\njsgY2hhcnNldD11dGYtOFxyXG5Db250ZW50LUxlbmd0aDogI3tieXRlX3NpemUocGF5bG9hZCl9XHJcbkNvbm5lY3Rpb246IGNsb3NlXHJcblxyXG4iIDw+IHBheWxvYWQpCiAgICAgIF8gLT4gOm9rCiAgICBlbmQKICAgIDpnZW5fdGNwLmNsb3NlKHNvY2tldCkKICAgIHNlcnZlKGxpc3RlbmVyKQogIGVuZAplbmQKcG9ydCA9IFN5c3RlbS5nZXRfZW52KCJQT1JUIiwgIjgwODAiKSB8PiBTdHJpbmcudG9faW50ZWdlcigpCns6b2ssIGxpc3RlbmVyfSA9IDpnZW5fdGNwLmxpc3Rlbihwb3J0LCBbOmJpbmFyeSwgYWN0aXZlOiBmYWxzZSwgcmV1c2VhZGRyOiB0cnVlLCBwYWNrZXQ6IDpyYXddKQpJTy5wdXRzKCJRQV9BNjkzX0VMSVhJUiByZWFkeSIpClFhQTY5My5zZXJ2ZShsaXN0ZW5lcikK' | base64 -d > qa-a693-probe.exs && elixir --erl \"+S 2:2\" --version && node --version && npm --version && yarn --version && pnpm --version && elixir --erl \"+S 2:2\" -e 'Code.string_to_quoted!(File.read!(\"qa-a693-probe.exs\")); IO.puts(\"QA_A693_SYNTAX_OK\")'' exited with code 127",
+              "finishedAt": "2026-10-16T08:41:02.37863Z",
+              "id": "dep-db8u5ovdbg8c73dghf40",
+              "stallReason": "",
+              "startedAt": "2026-10-16T08:40:13.119103Z",
+              "status": "build_failed",
+              "trigger": "api"
+            },
+            {
+              "commitId": "71ce7fa28df475ea23fc2a5b0fbb591fc847edb1",
+              "createdAt": "2026-10-16T08:37:14.514859Z",
+              "failureReason": "build failed in the docker build step:\njsgY2hhcnNldD11dGYtOFxyXG5Db250ZW50LUxlbmd0aDogI3tieXRlX3NpemUocGF5bG9hZCl9XHJcbkNvbm5lY3Rpb246IGNsb3NlXHJcblxyXG4iIDw+IHBheWxvYWQpCiAgICAgIF8gLT4gOm9rCiAgICBlbmQKICAgIDpnZW5fdGNwLmNsb3NlKHNvY2tldCkKICAgIHNlcnZlKGxpc3RlbmVyKQogIGVuZAplbmQKcG9ydCA9IFN5c3RlbS5nZXRfZW52KCJQT1JUIiwgIjgwODAiKSB8PiBTdHJpbmcudG9faW50ZWdlcigpCns6b2ssIGxpc3RlbmVyfSA9IDpnZW5fdGNwLmxpc3Rlbihwb3J0LCBbOmJpbmFyeSwgYWN0aXZlOiBmYWxzZSwgcmV1c2VhZGRyOiB0cnVlLCBwYWNrZXQ6IDpyYXddKQpJTy5wdXRzKCJRQV9BNjkzX0VMSVhJUiByZWFkeSIpClFhQTY5My5zZXJ2ZShsaXN0ZW5lcikK' | base64 -d > qa-a693-probe.exs && elixir --erl \"+S 2:2\" --version && node --version && npm --version && yarn --version && pnpm --version && elixir --erl \"+S 2:2\" -e 'Code.string_to_quoted!(File.read!(\"qa-a693-probe.exs\")); IO.puts(\"QA_A693_SYNTAX_OK\")'' exited with code 127",
+              "finishedAt": "2026-10-16T08:39:33.399356Z",
+              "id": "dep-db8u4endbg8c73dghf20",
+              "stallReason": "",
+              "startedAt": "2026-10-16T08:38:32.39001Z",
+              "status": "build_failed",
+              "trigger": "create"
+            }
+          ],
+          "server": {
+            "autoDeploy": false,
+            "builder": "native",
+            "id": "srv-db8u4endbg8c73dghf1g",
+            "name": "qa-20261016-a693-elixir-js",
+            "phase": "Running",
+            "plan": "free",
+            "revision": "rev-5",
+            "runtime": "elixir",
+            "undeployedChanges": false,
+            "undeployedChangesApplying": false
+          }
+        }
+      }
+    },
+    "a693CensusDeleteDialog": {
+      "at": "2026-10-16T08:45:15.585Z",
+      "bad": [
+        {
+          "url": "https://api.bex.co/v1/logs/subscribe",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
+      "pending": 0,
+      "errors": [],
+      "dialog": "Delete qa-20261016-a693-elixir-js?\n\nThis action cannot be undone. Are you sure you want to delete this web service?\n\nType sudo delete web service qa-20261016-a693-elixir-js below to confirm.\n\nSudo Command\nCancel\nDelete Service"
+    },
+    "a693DeleteService": {
+      "at": "2026-10-16T08:45:31.084Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db8u4endbg8c73dghf1g"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "timing": {
+        "startTime": 1792140329953.3848,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.138,
+        "responseStart": 412.686,
+        "responseEnd": 413.102
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "a693CleanupRecords": {
+      "at": "2026-10-16T08:45:41.976Z",
+      "request": {
+        "operationName": "Qaa467Inventory",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "query": "query Qaa467Inventory($ownerId:String!){ services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name}}"
+      },
+      "owned": {
+        "status": 404,
+        "body": {
+          "code": "NOT_FOUND",
+          "error": "not found",
+          "id": "not_found",
+          "message": "not found",
+          "params": null
+        }
+      },
+      "deploys": [
+        {
+          "id": "dep-db8u4endbg8c73dghf20",
+          "status": 404
+        },
+        {
+          "id": "dep-db8u5ovdbg8c73dghf40",
+          "status": 404
+        },
+        {
+          "id": "dep-db8u6lndbg8c73dghf4g",
+          "status": 404
+        },
+        {
+          "id": "dep-db8u6mi9cl7s73ae4d6g",
+          "status": 404
+        }
+      ],
+      "status": 200,
+      "inventory": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      },
+      "restored": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      }
+    },
+    "a693BrowserCleared": {
+      "at": "2026-10-16T08:45:57.379Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  },
+  "primaryImage": {
+    "image": "elixir:1.18@sha256:f3cc81b7f0f897763f7c74e8f526ddaf18b68f0cdbea6dd65b58f2c5c5629fbd",
+    "platform": "linux/arm64",
+    "exitCode": 0,
+    "stdout": "PRETTY_NAME=\"Debian GNU/Linux 13 (trixie)\"\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"13\"\nVERSION=\"13 (trixie)\"\nVERSION_CODENAME=trixie\nDEBIAN_VERSION_FULL=13.7\nID=debian\nHOME_URL=\"https://www.debian.org/\"\nSUPPORT_URL=\"https://www.debian.org/support\"\nBUG_REPORT_URL=\"https://bugs.debian.org/\"\nErlang/OTP 28 [erts-16.4.0.6] [source] [64-bit] [smp:2:2] [ds:2:2:10] [async-threads:1] [jit]\n\nElixir 1.18.4 (compiled with Erlang/OTP 28)\nnode=unavailable\nnpm=unavailable\nyarn=unavailable\npnpm=unavailable\n",
+    "command": "docker run --rm --network none --read-only --entrypoint /bin/sh <exact image> -c cat-os-release/elixir-version/four-command-discovery"
+  },
+  "nodeCompatibility": {
+    "at": "2026-10-16T08:43:36.140800+00:00",
+    "nodeImage": "node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0",
+    "elixirImage": "elixir:1.18@sha256:f3cc81b7f0f897763f7c74e8f526ddaf18b68f0cdbea6dd65b58f2c5c5629fbd",
+    "platform": "linux/arm64",
+    "network": "none",
+    "rootFilesystem": "read-only",
+    "scope": "Exact pinned Node24 binary execution in pinned Elixir1.18 image; no product fix",
+    "command": [
+      "docker",
+      "run",
+      "--rm",
+      "--network",
+      "none",
+      "--read-only",
+      "--entrypoint",
+      "/bin/sh",
+      "-v",
+      "/Volumes/nvme4tbfish/projects/bex4/.playwright-mcp/qa-a693-node24-binary:/qa/node:ro",
+      "elixir:1.18@sha256:f3cc81b7f0f897763f7c74e8f526ddaf18b68f0cdbea6dd65b58f2c5c5629fbd",
+      "-c",
+      "/qa/node --version && elixir --erl \"+S 2:2\" --version"
+    ],
+    "exitCode": 0,
+    "stdout": "v24.21.0\nErlang/OTP 28 [erts-16.4.0.6] [source] [64-bit] [smp:2:2] [ds:2:2:10] [async-threads:1] [jit]\n\nElixir 1.18.4 (compiled with Erlang/OTP 28)\n",
+    "stderr": "",
+    "ownedSourceContainerRemoved": true,
+    "exitSemantics": "&& requires both Node and Elixir success"
+  },
+  "outsideBrowserControl": {
+    "at": "2026-10-16T08:45:12.729774+00:00",
+    "completedAt": "2026-10-16T08:45:13.320271+00:00",
+    "command": [
+      "curl",
+      "--connect-timeout",
+      "5",
+      "--max-time",
+      "10",
+      "-sS",
+      "-D",
+      ".playwright-mcp/qa-a693-public.headers",
+      "-o",
+      ".playwright-mcp/qa-a693-public.body",
+      "-w",
+      "%{http_code}",
+      "https://qa-20261016-a693-elixir-js.onbex.co"
+    ],
+    "method": "GET",
+    "url": "https://qa-20261016-a693-elixir-js.onbex.co",
+    "exitCode": 0,
+    "status": 200,
+    "headers": "HTTP/2 200 \ncontent-type: text/plain; charset=utf-8\ncontent-length: 103\ndate: Fri, 16 Oct 2026 08:45:13 GMT\n\n",
+    "body": "QA_A693_ELIXIR\nelixir=1.18.4\notp=28\nnode=unavailable\nnpm=unavailable\nyarn=unavailable\npnpm=unavailable\n",
+    "stderr": ""
+  },
+  "dedupe": {
+    "matches": [
+      {
+        "path": ".pm/w4/320.md",
+        "line": 33,
+        "text": "Scope the repair globally to native primary Node, retaining22/24's present Yarn behavior while supplying26. Native Node web/private/worker/cron builds and Node static builds converge on this path. Postgres and Key Value do not use it; image/Dockerfile sources and non-Node primary Go/Rust/Elixir are outside the repair. Ruby and Python already use the canonical supplier and need regression coverage if it is extracted. Earlier a665's hosted Python3.12 + companion Node26 control executes Yarn1.22.22 because this companion path explicitly supplies it; that passing control and its separately cleaned fixture are included in the evidence."
+      },
+      {
+        "path": ".pm/w4/321.md",
+        "line": 45,
+        "text": "The current regression guard explicitly forbids the needed repair: `nativeversion_test.go:510–522` asserts Go/Rust/Elixir do not gain `/usr/local/bin/node`. Replace the Go/Rust expectations with companion execution/selection coverage and retain the untouched Elixir control. Extend the existing real-image gate `native_test.go:1056` (`TestNativeImageRunsJSToolsBesideRubyAndPython`) to cover Go and Rust and retain its Ruby/Python controls."
+      },
+      {
+        "path": ".pm/w4/321.md",
+        "line": 49,
+        "text": "Production census: one nativeNodeTools call in nativeDockerfile; one nativeDockerfile call in nativeBuildPreparer; one preparer call at `build.go:1126`; one ResolveNativeBuild call at `cmd/native-resolve/main.go:46`. Add Go/Rust globally at that image-assembly seam, with Ruby/Python regressions on the reused helper and Elixir left unchanged. Primary Node's separate Yarn26 issue remains w4/320; do not duplicate its fix."
+      },
+      {
+        "path": ".pm/w4/321.md",
+        "line": 59,
+        "text": "**Dedupe:** open/blocked/done board searches, active milestone titles, DO_NOT_DO, refreshed origin/main, last 40 product commits and targeted resolver history originally found no Go-tool owner. a692 repeats the check across 79 active/blocked milestones and 40 matching lines in 36 files: this note already owns the exact predicate repair, so the newly exercised Rust delta extends it. w8/blocked/m77 fixes Ruby/Python; its done/t002–t003 explicitly retain Go/Rust/Elixir unchanged and its live closeout remains Ruby/Python. The earlier w8/m61 Rust/Elixir PATH/file probes use no runtime commands and make no companion-tool claim. w4/320 owns primary Node26 Yarn. No generic utility expansion, primary-version redesign or anti-goal is requested."
+      },
+      {
+        "path": ".pm/w4/321.md",
+        "line": 65,
+        "text": "**Unverified:** repaired Go/Rust tool execution; live secondary Node selectors, npm/Yarn/pnpm build execution after the first failing node check, static/worker/private/cron variants, Elixir, authenticated Render comparison, remaining architecture/cache/PATH variants. Rust's existing rustup signals were not replayed in a692. No product fix was implemented by this QA filing."
+      },
+      {
+        "path": ".pm/w1/README.md",
+        "line": 229,
+        "text": "- [x] **108** — [Nine build-toolchain pins](done/108.md) — **DONE 2026-10-02**. Shipped in `a47413092` and validated on production builds: Skopeo push helper, native rust/node/python/ruby/elixir, and a CNB build all pass with the new digests; none reverted; issue #60 closed. The old Skopeo digest `64ac45c5…` had been deleted upstream (quay 404), so Dockerfile builds on uncached nodes were failing in `ImagePullBackOff` until this deployed. Follow-ups: **120** (buildpack Node 26 needs libatomic), **121** (`BP_*` env never reaches kpack builds)."
+      },
+      {
+        "path": ".pm/w8/blocked/m77/finding.md",
+        "line": 26,
+        "text": "Keep the selected Ruby/Gem/Bundler paths, Gemfile/.ruby-version precedence, authored PATH, env and secret-file handoff, workdir, command quoting, ENTRYPOINT clearing and deterministic cache identity. Audit default and all three supported Ruby lines plus shared native job/preparer/resolver/runtime and static extraction callers; a changed tool identity must not reuse a stale layer. If a common helper is introduced, verify primary Node/Python/Go/Rust/Elixir and static artifacts remain valid. Shared callers are a separate task. No paid or cron live fixtures are needed."
+      },
+      {
+        "path": ".pm/w8/blocked/m77/done/t003.md",
+        "line": 46,
+        "text": "Done 2026-10-15: Render's native-runtime tools contract lists Node/npm/Yarn/pnpm for native runtimes at build and runtime; bex now matches for Ruby and Python (ADR018 runtime row, ADR060 D7 table + bullet). The tools ride the generated Dockerfile, so REST/GraphQL/MCP/Blueprint/dashboard need no wire or CLI change. Render's exact Node/Yarn versions for Ruby/Python services are not measured; Go/Rust/Elixir intentionally unchanged."
+      },
+      {
+        "path": ".pm/w8/blocked/m77/done/t002.md",
+        "line": 45,
+        "text": "Done 2026-10-15: one production ResolveNativeBuild caller; only ruby/python gain the companion (go/rust/elixir asserted unchanged; primary Node keeps m73's path); placement asserted on every Ruby (3.3/3.4/4.0) and Python (3.10–3.14) line; NODE_VERSION selects the copied line; a refused Node request leaves the Dockerfile alone. All images are already in the reviewed table, so the freshness inventory is unchanged; --link layers stay cached across primary-line changes and a changed Node line/pin is a changed instruction. Behavior change recorded: a Ruby/Python service with an unsupported NODE_VERSION (e.g. 18) that never used node now fails by name instead of ignoring it."
+      },
+      {
+        "path": ".pm/w8/done/m71/finding.md",
+        "line": 31,
+        "text": "- `lego/operator/internal/build/nativeversion.go:68–93` selects only primary Python/Node/Ruby/Elixir version signals (Go/Rust retain their policies). It never reads BUN_VERSION, .bun-version or Bun lockfiles. `nativeresolve.go:48–69` decodes the complete build-env bundle, calls that selector, and only rewrites the primary FROM image. Actual six-runtime resolver exports show the harmless Bun setting is decoded but adds no toolchain."
+      },
+      {
+        "path": ".pm/w8/done/m61/finding.md",
+        "line": 98,
+        "text": "Source census: **one production `nativeDockerfile` caller**, **one `nativeBuildPreparer` caller**, **one `projectNativeBuildInputs` caller**, **one `nativeBuildLiterals` caller**, and **two `buildEnv` callers**, including artifact identity. [Exact sites and family](../../evidence/m61/callers.json). The shared native strategy covers elixir/go/node/python/ruby/rust, web/private/worker/cron, and static's native Node build. Dockerfile and kpack builders are separate. Postgres and Key Value do not use this App builder. This is a global native preparation fix. Mutable input was exercised on hosted Python and Node; generated literal preparation was exercised locally on BusyBox. The remaining runtime images and App kinds are still unverified."
+      },
+      {
+        "path": ".pm/w8/done/m51/README.md",
+        "line": 32,
+        "text": "- **Render contract** (fetched 2026-10-04): render.com/docs/python-version uses precedence `PYTHON_VERSION` (fully qualified) → `.python-version` (minor allowed) → creation-date default (currently 3.14.3), minimum 3.7.3. render.com/docs/node-version uses `NODE_VERSION` → `.node-version` → `.nvmrc` → `package.json` `engines`, semver ranges and aliases (`lts`) via `node-version-alias`, and a creation-date default (currently 24.21.0). Confirm the Go/Ruby/Rust/Elixir rules from their Render docs pages in t001 before implementing t004."
+      },
+      {
+        "path": ".pm/w8/done/m51/done/t001.md",
+        "line": 18,
+        "text": "- Render docs: render.com/docs/python-version, /node-version (precedence in the milestone README); read the Go, Ruby, Rust and Elixir pages for their mechanisms (e.g. `go.mod` `go`/`toolchain`, `.ruby-version`/`Gemfile` `ruby`, `rust-toolchain(.toml)`, `.tool-versions`)."
+      },
+      {
+        "path": ".pm/w8/done/m51/done/t001.md",
+        "line": 40,
+        "text": "Decision recorded in ADR060 \"D7 addendum — native runtime version lines\" and ADR018 (runtime row), from Render's language-support page fetched 2026-10-05. Lines: Python 3.10–3.14 (default 3.13), Node 22/24/26 (default 24; Node 20 is EOL and not offered), Ruby 3.3/3.4/4.0 (default 3.4), Elixir 1.17/1.18/1.19 with OTP checking, Go 1.24 only (Render offers no Go selection), Rust stable plus rustup. A patch maps onto its line (a divergence from Render); a range resolves to the highest satisfying line; unsupported means a named build failure."
+      },
+      {
+        "path": ".pm/w8/done/m71/done/t003.md",
+        "line": 26,
+        "text": "- **Applicability:** static builds default to node, so they opt in the same way. Every primary base is Debian glibc (bookworm, plus trixie for Elixir 1.18/1.19); the copied binary needs only glibc 2.17, and both digests carry amd64 and arm64."
+      },
+      {
+        "path": ".pm/w8/evidence/native-elixir-sweep240/README.md",
+        "line": 9,
+        "text": "This adds partial live Elixir-runtime/file acceptance to [w8/m61](../../done/m61/README.md), alongside its Node/Python/static/Go/Ruby/Rust evidence. Native POSTs were not intercepted; no exact mutation-wire capture, deployed OCI/Elixir version inspection, browser/shared-surface parity, other language/predeploy behavior or full suite is claimed. The source table selects Elixir1.18/OTP28 by default; native build-log FROM lines corroborate the pinned Elixir1.18 build input. Running artifact/interpreter versions are not independently inspected. One Bex image-push attempt reported a transient registry connection refusal, then progressed without a manual retry; this is recorded without claiming a new registry defect or an observed cause for the restart. [Metadata](metadata.json), [finite driver](native-elixir-driver.py.txt). The registry outage cause was not inspected. The [existing registry decision](../../../w9/done/m43/README.md) accepts brief restart interruptions. No new defect is confirmed and m61 stays open."
+      },
+      {
+        "path": ".pm/w1/done/108.md",
+        "line": 6,
+        "text": "- **Drifted entries (per the issue):** `cnb-builder`, `cnb-stack-build`, `cnb-stack-run`, `helper-skopeo`, `native-elixir`, `native-node`, `native-python`, `native-ruby`, `native-rust`."
+      },
+      {
+        "path": ".pm/w6/done/m45/done/t001.md",
+        "line": 24,
+        "text": "- `nativeRuntimeImages` (`native.go:46-53`): `elixir`, `go`, `node`, `python`, `ruby`, `rust` all share the one `shellJSON` wrapper."
+      },
+      {
+        "path": ".pm/w6/done/m45/done/t001.md",
+        "line": 32,
+        "text": "4. Deploy or re-verify Elixir, Node, Python, Ruby native builds still succeed after the change (regression — they must not have been relying on login-shell-only behavior)."
+      },
+      {
+        "path": ".pm/w6/done/m45/done/t001.md",
+        "line": 43,
+        "text": "- [x] Elixir, Node, Python, Ruby unaffected: the unit test iterates **every** runtime in `nativeRuntimeImages`, and none of them ever needed login-shell semantics (nothing in the generated Dockerfile sources a profile)."
+      },
+      {
+        "path": ".pm/w6/done/m45/done/t001.md",
+        "line": 44,
+        "text": "- [x] `TestNativeDockerfileKeepsToolchainPATH` asserts the RUN and CMD wrappers are non-login for every runtime; proven red on the pre-fix code (fails for go, rust, elixir, node, python, ruby)."
+      },
+      {
+        "path": ".pm/w6/done/m45/done/t007.md",
+        "line": 37,
+        "text": "| t001 | `native_test.go` `TestNativeDockerfileKeepsToolchainPATH` — every runtime in `nativeRuntimeImages`, RUN **and** CMD | `rust/go/elixir/node/python/ruby: login shell resets PATH to /usr/local/sbin:…, dropping the toolchain PATH` |"
+      },
+      {
+        "path": ".pm/w9/done/m93/done/t001.md",
+        "line": 30,
+        "text": "  go/node/python/ruby/rust/elixir, `builder:native`), buildpack"
+      },
+      {
+        "path": ".pm/w9/done/m93/done/t002.md",
+        "line": 24,
+        "text": "  `Runtime` ∈ {docker,elixir,go,image,node,python,ruby,rust} ∪ {\"\"},"
+      },
+      {
+        "path": ".pm/w2/done/m87/done/t002.md",
+        "line": 16,
+        "text": "- Mapping: `Dockerfile` → docker; `go.mod` → go; `package.json` → node; `requirements.txt`/`pyproject.toml` → python; `Gemfile` → ruby; `mix.exs` → elixir; `Cargo.toml` → rust."
+      },
+      {
+        "path": ".pm/w4/done/114.md",
+        "line": 53,
+        "text": "Runtime      string `json:\"runtime\"      jsonschema:\"Render runtime: node, python, go, rust, ruby, elixir, or docker\"`"
+      },
+      {
+        "path": ".pm/w4/done/m92/t002.md",
+        "line": 16,
+        "text": "Exhaustive production-call search: one `nativeDockerfile` caller (native.go:141), one `nativeBuildPreparer` caller (build.go:1010). The generator selects six pinned toolchains: elixir, go, node, python, ruby, rust (native.go:47-54). This is a global codec fix for the native strategy, not a Go allowlist. App-kind family: web/private/worker/cron can use native runtimes; static uses Node by default and shares the generated RUN; Postgres and Key Value do not use this builder. Dockerfile and kpack strategies remain outside this codec."
+      }
+    ],
+    "activeMilestones": [
+      {
+        "path": ".pm/w8/blocked/m62/README.md",
+        "title": "# w8 · m62 — Reject unlaunchable environment values"
+      },
+      {
+        "path": ".pm/w8/blocked/m65/README.md",
+        "title": "# w8 · m65 — Retain PostgreSQL process logs during bursts"
+      },
+      {
+        "path": ".pm/w8/blocked/m64/README.md",
+        "title": "# w8 · m64 — Keep Blueprint environment copies consistent across applies"
+      },
+      {
+        "path": ".pm/w8/blocked/m63/README.md",
+        "title": "# w8 · m63 — Keep completed initial hooks out of later deploys"
+      },
+      {
+        "path": ".pm/w8/blocked/m79/README.md",
+        "title": "# w8 · m79 — Supply automatic Brotli for static sites"
+      },
+      {
+        "path": ".pm/w8/blocked/m77/README.md",
+        "title": "# w8 · m77 — Supply JavaScript tools in native Ruby and Python builds and runtime"
+      },
+      {
+        "path": ".pm/w8/blocked/m76/README.md",
+        "title": "# w8 · m76 — Honor a GitHub repository's default branch on create"
+      },
+      {
+        "path": ".pm/w8/blocked/m78/README.md",
+        "title": "# w8 · m78 — Respect per-service Git sources in persistent Blueprints"
+      },
+      {
+        "path": ".pm/w8/blocked/m59/README.md",
+        "title": "# w8 · m59 — Return static sites to direct publication after clearing their build command"
+      },
+      {
+        "path": ".pm/w8/blocked/m68/README.md",
+        "title": "# w8 · m68 — Preserve executable command text"
+      },
+      {
+        "path": ".pm/w8/blocked/m57/README.md",
+        "title": "# w8 · m57 — Preserve literal string lists in interactive CLI forms"
+      },
+      {
+        "path": ".pm/w8/blocked/m69/README.md",
+        "title": "# w8 · m69 — Preserve native cron startup semantics"
+      },
+      {
+        "path": ".pm/w8/blocked/m60/README.md",
+        "title": "# w8 · m60 — Preserve accepted arguments when copying CLI commands"
+      },
+      {
+        "path": ".pm/w8/blocked/m67/README.md",
+        "title": "# w8 · m67 — Keep native live logs running after a transient disconnect"
+      },
+      {
+        "path": ".pm/w8/blocked/m74/README.md",
+        "title": "# w8 · m74 — Preserve Blueprint host-reference origins and target checks"
+      },
+      {
+        "path": ".pm/w8/blocked/m73/README.md",
+        "title": "# w8 · m73 — Supply pnpm in native Node builds and runtime"
+      },
+      {
+        "path": ".pm/w8/blocked/m72/README.md",
+        "title": "# w8 · m72 — Provide Poetry in native Python builds and runtime"
+      },
+      {
+        "path": ".pm/w8/blocked/m75/README.md",
+        "title": "# w8 · m75 — Validate Blueprints with an implicit repository"
+      },
+      {
+        "path": ".pm/w1/blocked/m171/README.md",
+        "title": "# w1 · m171 — Warn when an inbound IP allowlist sits behind a Cloudflare-proxied custom domain"
+      },
+      {
+        "path": ".pm/w1/blocked/m174/README.md",
+        "title": "# w1 · m174 — Get main's red checks passing again: x/net CVEs, lint OOM, flaky tests, Dependabot, schema re-pin"
+      },
+      {
+        "path": ".pm/w6/blocked/m146/README.md",
+        "title": "# w6 · m146 — Keep service action permissions current through confirmation"
+      },
+      {
+        "path": ".pm/w7/blocked/m156/README.md",
+        "title": "# w7 · m156 — Repair CNPG replica WAL metric collection"
+      },
+      {
+        "path": ".pm/w7/blocked/m158/README.md",
+        "title": "# w7 · m158 — Repair recurring registry garbage-collection failures"
+      },
+      {
+        "path": ".pm/w9/m166/README.md",
+        "title": "# w9 · m166 — Reject invalid service patches before applying any settings"
+      },
+      {
+        "path": ".pm/w9/blocked/m164/README.md",
+        "title": "# w9 · m164 — Dual-stack IP allow-list trap: a datastore denies the client's IPv6 with an opaque TLS EOF"
+      },
+      {
+        "path": ".pm/w5/blocked/m114/README.md",
+        "title": "# w5 · m114 — Suspend ends the release it interrupts, not just its deploy row"
+      },
+      {
+        "path": ".pm/w5/blocked/m105/README.md",
+        "title": "# w5 · m105 — Settings command edits take effect in the deployed artifact"
+      },
+      {
+        "path": ".pm/w5/blocked/m118/README.md",
+        "title": "# w5 · m118 — One source of truth for naming and config-key rules across Go, TypeScript, Kubernetes and CNPG"
+      },
+      {
+        "path": ".pm/w5/blocked/m111/README.md",
+        "title": "# w5 · m111 — `instance_seconds` stops metering terminated pods through Prometheus's 5-minute lookback"
+      },
+      {
+        "path": ".pm/w2/blocked/m162/README.md",
+        "title": "# w2 · m162 — One GitHub account, many workspaces: the N:N connection model"
+      },
+      {
+        "path": ".pm/w2/blocked/m96/README.md",
+        "title": "# w2 · m96 — Charges and webhook deliveries name their resource, even after deletion"
+      },
+      {
+        "path": ".pm/w3/blocked/m79/README.md",
+        "title": "# w3 · m79 — Run the full agent-session stack locally on `dev-N`"
+      },
+      {
+        "path": ".pm/w4/m212/README.md",
+        "title": "# w4 · m212 — Keep webhook disable intervals consistent"
+      },
+      {
+        "path": ".pm/w4/blocked/m162/README.md",
+        "title": "# w4 · m162 — Keep platform health checks off tenant HTTP paths"
+      },
+      {
+        "path": ".pm/w4/blocked/m165/README.md",
+        "title": "# w4 · m165 — Loop1: workspace-switch navigation + identical-cancel undeployed flag"
+      },
+      {
+        "path": ".pm/w4/blocked/m164/README.md",
+        "title": "# w4 · m164 — Count initial and newly scraped traffic before free web auto-sleep"
+      },
+      {
+        "path": ".pm/w4/blocked/m163/README.md",
+        "title": "# w4 · m163 — Make saved secret files available to native builds"
+      },
+      {
+        "path": ".pm/w4/blocked/m130/README.md",
+        "title": "# w4 · m130 — `patchServiceEnvironment` applies the write and then reports a conflict"
+      },
+      {
+        "path": ".pm/w4/blocked/m139/README.md",
+        "title": "# w4 · m139 — Billing's Charges card: a subscription-period total labelled \"month to date\" over a calendar-month tree, and a coverage watermark that never leaves the 1st"
+      },
+      {
+        "path": ".pm/w4/blocked/m179/README.md",
+        "title": "# w4 · m179 — Revoke deleted Postgres logins even when objects reference the role"
+      },
+      {
+        "path": ".pm/w4/blocked/m184/README.md",
+        "title": "# w4 · m184 — Say \"applying\" while the carrying deploy runs, not \"deploy to apply\""
+      },
+      {
+        "path": ".pm/w4/blocked/m170/README.md",
+        "title": "# w4 · m170 — Refuse reserved Postgres identifiers so a database name or user can't break or wedge a database"
+      },
+      {
+        "path": ".pm/w4/blocked/m177/README.md",
+        "title": "# w4 · m177 — Report container startup failures as startup failures"
+      },
+      {
+        "path": ".pm/w4/blocked/m183/README.md",
+        "title": "# w4 · m183 — Make SSH remedies truthful and usable"
+      },
+      {
+        "path": ".pm/w4/blocked/m182/README.md",
+        "title": "# w4 · m182 — Keep configured port changes available"
+      },
+      {
+        "path": ".pm/w4/blocked/m176/README.md",
+        "title": "# w4 · m176 — Protected environments: a deploy with `imageUrl`/`commitId` or a rollback swaps the running code without the \"repoint\" confirmation"
+      },
+      {
+        "path": ".pm/w4/blocked/m171/README.md",
+        "title": "# w4 · m171 — A deploy cut off by a user suspend closes canceled, not as a false health-gate failure"
+      },
+      {
+        "path": ".pm/w4/blocked/m200/README.md",
+        "title": "# w4 · m200 — Preserve logical records in mixed stdout/stderr pod logs"
+      },
+      {
+        "path": ".pm/w4/blocked/m207/README.md",
+        "title": "# w4 · m207 — Make card-radio pickers work with the keyboard"
+      },
+      {
+        "path": ".pm/w4/blocked/m209/README.md",
+        "title": "# w4 · m209 — Keep metrics geometry stable and labels readable"
+      },
+      {
+        "path": ".pm/w4/blocked/m208/README.md",
+        "title": "# w4 · m208 — Datastore plan previews match their ready cards"
+      },
+      {
+        "path": ".pm/w4/blocked/m206/README.md",
+        "title": "# w4 · m206 — Make environment-group creation and moves recoverable"
+      },
+      {
+        "path": ".pm/w4/blocked/m211/README.md",
+        "title": "# w4 · m211 — Keep batched hosting changes inside one response budget"
+      },
+      {
+        "path": ".pm/w4/blocked/m210/README.md",
+        "title": "# w4 · m210 — Keep capped cron history chronological"
+      },
+      {
+        "path": ".pm/w4/blocked/m166/README.md",
+        "title": "# w4 · m166 — Loop2: Docker Command for image-source services"
+      },
+      {
+        "path": ".pm/w4/blocked/m159/README.md",
+        "title": "# w4 · m159 — Keep confirmations open through permission refresh"
+      },
+      {
+        "path": ".pm/w4/blocked/m161/README.md",
+        "title": "# w4 · m161 — Bind environment-group revisions to editing drafts"
+      },
+      {
+        "path": ".pm/w4/blocked/m157/README.md",
+        "title": "# w4 · m157 — Preserve typed Postgres query values"
+      },
+      {
+        "path": ".pm/w4/blocked/m168/README.md",
+        "title": "# w4 · m168 — Loop6: bound env/secret-file key length so a long name can't wedge a service's environment"
+      },
+      {
+        "path": ".pm/w4/blocked/m156/README.md",
+        "title": "# w4 · m156 — Report honest start times for successful deploys"
+      },
+      {
+        "path": ".pm/w4/blocked/m169/README.md",
+        "title": "# w4 · m169 — Blueprint by-id verbs resolve the Blueprint's own workspace"
+      },
+      {
+        "path": ".pm/w4/blocked/m160/README.md",
+        "title": "# w4 · m160 — Revalidate static files across deployments"
+      },
+      {
+        "path": ".pm/w4/blocked/m167/README.md",
+        "title": "# w4 · m167 — Loop5: redact secrets from Postgres Insights query text"
+      },
+      {
+        "path": ".pm/w4/blocked/m158/README.md",
+        "title": "# w4 · m158 — Preserve exact SQL numbers in MCP responses"
+      },
+      {
+        "path": ".pm/w4/blocked/m174/README.md",
+        "title": "# w4 · m174 — Fast-exiting App containers intermittently lose stderr lines from their logs"
+      },
+      {
+        "path": ".pm/w4/blocked/m180/README.md",
+        "title": "# w4 · m180 — Save and deploy reuses the serving artifact"
+      },
+      {
+        "path": ".pm/w4/blocked/m173/README.md",
+        "title": "# w4 · m173 — `instance_seconds` meters how many container series appeared in an hour, not how long instances ran"
+      },
+      {
+        "path": ".pm/w4/blocked/m116/README.md",
+        "title": "# w4 · m116 — CLI hunt sweep 1: psql trust, KV publish, one-off jobs, resume path"
+      },
+      {
+        "path": ".pm/w4/blocked/m172/README.md",
+        "title": "# w4 · m172 — By-id REST verbs resolve the resource's own workspace, not the caller's default"
+      },
+      {
+        "path": ".pm/w4/blocked/m181/README.md",
+        "title": "# w4 · m181 — Keep pre-deploy jobs out of serving endpoints"
+      },
+      {
+        "path": ".pm/w4/blocked/m175/README.md",
+        "title": "# w4 · m175 — Include newest request buckets and clip them to the selected window"
+      },
+      {
+        "path": ".pm/w4/blocked/m204/README.md",
+        "title": "# w4 · m204 — Keep service Logs filters aligned with navigation"
+      },
+      {
+        "path": ".pm/w4/blocked/m203/README.md",
+        "title": "# w4 · m203 — Anchor a newly selected relative range at the current time"
+      },
+      {
+        "path": ".pm/w4/blocked/m202/README.md",
+        "title": "# w4 · m202 — Honor image commands after switching from native Git"
+      },
+      {
+        "path": ".pm/w4/blocked/m205/README.md",
+        "title": "# w4 · m205 — Keep overlapping file uploads unique"
+      },
+      {
+        "path": ".pm/w11/blocked/m8/README.md",
+        "title": "# w11 · m8 — Tier-2 mobile quick actions"
+      },
+      {
+        "path": ".pm/w11/blocked/m6/README.md",
+        "title": "# w11 · m6 — Phase-1 agent mission control"
+      },
+      {
+        "path": ".pm/w11/blocked/m7/README.md",
+        "title": "# w11 · m7 — Live agent attach and needs-decision steering"
+      },
+      {
+        "path": ".pm/w11/blocked/m5/README.md",
+        "title": "# w11 · m5 — Push channel + notification hygiene"
+      }
+    ],
+    "recentProductHistory": [
+      "45d809f99 chore(deploy): pin platform images to 5a39b80ff05a [skip ci]",
+      "5a39b80ff feat(staticserver): serve automatic Brotli for eligible static assets (w8/m79)",
+      "fef60e605 fix(blueprints): a persistent Blueprint keeps each service's declared Git source (w8/m78)",
+      "69b74a192 fix(build): native Ruby and Python builds carry Node, npm, Yarn and pnpm (w8/m77)",
+      "5f2ce270d chore(deploy): pin platform images to a1adb0cdf138 [skip ci]",
+      "a1adb0cdf ci(operator): retry transient envtest bootstrap failures",
+      "27d516be8 chore(deploy): pin platform images to 28948cadeb74 [skip ci]",
+      "4ae5ae08e fix(apps): resolve an omitted create branch to the GitHub repository default (w8/m76)",
+      "a1f1d7288 fix(blueprints): validate Blueprints with an implicit repository (w8/m75)",
+      "a83eb72ad fix(blueprints): locate host references and check existing targets (w8/m74)",
+      "f5b6c6e29 fix(build): native Node builds and runtime supply pnpm (w8/m73)",
+      "314d7276d fix(operator): native Python builds carry Poetry at build and runtime (w8/m72)",
+      "82ed0717b chore(deploy): pin platform images to c1e83ee783af [skip ci]",
+      "28948cade fix(ci): move TanStack Start past the critical server-function XSS advisory",
+      "c1e83ee78 fix(ci): patch TanStack Start's reflected XSS in server-function responses",
+      "760502dad feat(build): native builds provide an opted-in Bun (w8/m71)",
+      "b07ebd54b chore(deploy): pin platform images to 2f6451567705 [skip ci]",
+      "b26ba7309 chore(deploy): pin platform images to 451eab0c13f7 [skip ci]",
+      "2f6451567 fix(api): env-group bulk replace reaches its handler past the Render validator (w8/109)",
+      "eebd8ce27 fix(blueprints): a source switch deploys the declared source, not the former image (w8/m70)",
+      "e3b23bcea chore(deploy): pin platform images to 7f596cbb3bfc [skip ci]",
+      "451eab0c1 fix(dashboard): a deploy-hook URL stays with the service it belongs to (w1/130)",
+      "0d31aa743 build(dashboard): take the lint-tooling majors and refactor what React Compiler flags (w1/m177)",
+      "c79cb52fe feat(blueprints): names are unique per kind, as on Render (w1/126)",
+      "0cc059c22 fix(dashboard): System theme follows later preference changes (w4/315)",
+      "d8dfa7d97 fix(dashboard): Generate Blueprint Copy reports a denied clipboard (w4/314)",
+      "aa1a3df58 fix(api): one execution deadline per GraphQL batch, unstarted members say so (w4/m211)",
+      "c7d43b480 fix(dashboard): translate picker empty guidance, custom hint and clear name (w4/313)",
+      "235af05d8 fix(dashboard): name search and picker result lists in the selected language (w4/312)",
+      "bed5e2c32 feat(apps,dashboard): cron jobs are paid-only, as on Render (w8/048)",
+      "a0148bd03 build(dashboard): take #92's minor updates, lucide 1.x, jsdom 29 and @types/node 26 (w1/m176)",
+      "fc4ff2b66 test(dashboard): load the router before mounting deploy-history filter tests",
+      "b01d92b5d fix(dashboard): translate sidebar toggle, drawer and resize labels (w4/311)",
+      "4666f1d4f fix(dashboard): translate the shared dialog close button name (w4/310)",
+      "906d439b3 fix(staticserver): resolve static-site hosts case-insensitively (w4/309)",
+      "e7ae49c17 fix(postgres): refuse upgrade targets below 16 before writing intent (w4/308)",
+      "a97dc9114 feat(plans): a service created without a plan defaults to starter, as on Render (w1/122)",
+      "538058566 fix(staticserver): resuming site answers retryable 503, not unknown-host 404 (w4/307)",
+      "562cbfd25 fix(dashboard): search committed while paused reads up to the commit (w4/306)",
+      "0354ac842 feat(blueprints): copy a sibling's generated secret with fromService.envVarKey (w1/m175)"
+    ],
+    "targetHistory": [
+      "69b74a192 fix(build): native Ruby and Python builds carry Node, npm, Yarn and pnpm (w8/m77)",
+      "f5b6c6e29 fix(build): native Node builds and runtime supply pnpm (w8/m73)",
+      "314d7276d fix(operator): native Python builds carry Poetry at build and runtime (w8/m72)",
+      "760502dad feat(build): native builds provide an opted-in Bun (w8/m71)",
+      "02a4d4f07 fix(build): native service images clear the toolchain entrypoint (w8/m61)",
+      "137820b94 fix(build): native builds hand the command the exact configured PATH (w8/m61)",
+      "0058357fb chore(toolchain): resolve pinned build-toolchain image digest drift (#88)",
+      "dfb81512d feat(operator): native builds honor the requested runtime version (w8/m51)",
+      "8f58b933d fix(operator): a failed native build names the user's command and exit code (w8/052)",
+      "c8c6207cb fix(build): mount saved secret files into native build commands",
+      "a47413092 chore(build): bump nine drifted build-toolchain digests (w1/108, #60)",
+      "1343b7f17 fix(operator): bust native BuildKit cache when build env changes"
+    ],
+    "remoteHead": "71ce7fa28df475ea23fc2a5b0fbb591fc847edb1",
+    "disposition": "Same companion predicate as w4/321; consolidate Elixir rather than file a duplicate. New distro/three-line execution work requires sizing review."
+  },
+  "cleanupLedger": {
+    "pass": "a693",
+    "status": "complete-new-scope-ready-to-file",
+    "baselineReceipt": "qa-recovered-a693Baseline.json",
+    "scope": "Own Free native Elixir JavaScript companion tools; remaining runtime excluded from w4/321",
+    "resources": {
+      "service": {
+        "id": "srv-db8u4endbg8c73dghf1g",
+        "name": "qa-20261016-a693-elixir-js",
+        "firstDeploy": "dep-db8u4endbg8c73dghf20",
+        "retryDeploy": "dep-db8u5ovdbg8c73dghf40",
+        "configControlDeploy": "dep-db8u6lndbg8c73dghf4g",
+        "manualControlDeploy": "dep-db8u6mi9cl7s73ae4d6g"
+      }
+    },
+    "currentPhase": "Cleaned; promote existing321 with Elixir scope",
+    "checks": [
+      "In-action Free guard/nativeElixir/publicrepo/rootexampleshello-go/customcommands/port8080",
+      "OwnstdTCPprobe plus scheduler2limit; no Mix packages or external app dependencies",
+      "SetAutoDeployfalsebefore any repo push",
+      "Two exact-settings terminalbuildfaileds: Elixir1.18.4 succeeds thennodecommandnotfound/exit127",
+      "Retrynativefilteredpane screenshotviewed; directcompiler/nodelogs captured",
+      "PinnedElixir1.18 localarm64 Debian13Trixie/OTP28 hasno4JStools",
+      "ExactreviewedNode24binaryv24.21.0 executesbesideElixir1.18.4 in pinned image withnetworknone/readonly; bothcommands0 using&&; owned source containerremoved",
+      "Primary-onlysaveconfigdeployautomaticallysuperseded by explicitmanualcontrol; not counted Live",
+      "Explicitprimary-onlycontrol Live08:44:43.077985Z; public20008:44:43.460Z; outsidebrowser20008:45:13Z",
+      "ActualruntimeElixir1.18.4/OTP28 andnode/npm/yarn/pnpm unavailable",
+      "Final Running/free/nativeElixir/autoDeployfalse/rev5/no unappliedchanges",
+      "Consoleerrors0; one aborted live log subscription onnavigation retained"
+    ],
+    "finding": {
+      "existingOwner": "w4/321",
+      "newRuntime": "Elixir",
+      "severity": "major",
+      "plannedMilestone": "w4/m213"
+    },
+    "cleanup": {
+      "service": 404,
+      "deploys": "all4recorded404",
+      "baseline": "all7 sorted ID sets restored",
+      "pods": {
+        "items": [],
+        "at": "2026-10-16T08:45:57Z"
+      },
+      "public": 404,
+      "logout": "exit0",
+      "browser": {
+        "at": "2026-10-16T08:45:57.379Z",
+        "whoami": 401,
+        "cookies": 0,
+        "pages": 1,
+        "url": "about:blank"
+      },
+      "handles": "removed; shared only exact stamp",
+      "buildJobs": "not separately inventoried",
+      "local": "Node source containerremoved; executioncontainers--rm"
+    }
+  },
+  "visualArtifactsViewed": ["qa-a693-elixir-retry-node-error.png"],
+  "limits": [
+    "Production defaultElixir1.18 only; other Elixir and Node lines not repaired or replayed",
+    "Local Node24/Elixir1.18 binary execution is arm64 only, not full npm/Yarn/pnpm or amd64 verification",
+    "npm/Yarn/pnpm assertions not reached in failed builds; runtime separately reports unavailable",
+    "Only Free web; no other service kinds live-replayed",
+    "Build Jobs not separately inventoried"
+  ]
+}
