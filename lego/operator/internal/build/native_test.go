@@ -851,6 +851,30 @@ func TestNativeDockerfileSuppliesPnpmToNodeOnly(t *testing.T) {
 	}
 }
 
+// Primary Node gets Yarn 1 from the named reviewed source (w4/320): Node 26's
+// official image ships none, and the source is not "whatever the default line
+// is", so a 26 default could not silently drop it. The layer sits after FROM,
+// before the source and authored build, for services and static builds alike,
+// and does not depend on the env revision.
+func TestNativeDockerfileSuppliesYarnToNode(t *testing.T) {
+	source, ok := nativeToolchains[nativeNodeRuntime].find(nativeYarnSourceLine)
+	if !ok || source.image == "" {
+		t.Fatalf("Yarn source line %q is not a reviewed Node line", nativeYarnSourceLine)
+	}
+	copyYarn := "COPY --link --from=" + source.image + " " + nativeYarnDir + " " + nativeYarnDir + "\n"
+	static := nativeOptions()
+	static.StaticSite, static.Runtime, static.StartCommand = true, "", ""
+	revised := nativeOptions()
+	revised.NativeEnvRevision = "changed"
+	for name, o := range map[string]Options{"service": nativeOptions(), "static": static, "revised": revised} {
+		df := nativeDockerfile(o)
+		from, yarn, src := strings.Index(df, "\nFROM "), strings.Index(df, "\n"+copyYarn), strings.Index(df, "\nCOPY . .\n")
+		if from < 0 || yarn < from || src < yarn || !strings.Contains(df, "/bin/yarnpkg /usr/local/bin/yarnpkg\n") {
+			t.Errorf("%s: Yarn must come from %s after FROM and before the source:\n%s", name, source.image, df)
+		}
+	}
+}
+
 // The pnpm pin is a generated-Dockerfile cache input: unchanged it is stable
 // (and independent of the env revision, so the pnpm layers stay warm across
 // env edits); a changed version or checksum changes the Dockerfile, so BuildKit
@@ -992,9 +1016,10 @@ func TestNativeImageRunsPnpm(t *testing.T) {
 	}
 	pkg := map[string]string{"package.json": `{"name":"bex-pnpm-fixture","version":"1.0.0","private":true,` +
 		`"scripts":{"marker":"node -e \"console.log('pnpm-script-ran')\""}}`}
-	const build = `pnpm --version > pnpm.txt && pnpm run --silent marker > marker.txt && npm --version > npm.txt && node --version > node.txt`
+	const build = `pnpm --version > pnpm.txt && pnpm run --silent marker > marker.txt && npm --version > npm.txt && node --version > node.txt` +
+		` && yarn --version > yarn.txt && yarn --silent run marker > yarn-marker.txt`
 	const report = `echo "pnpm=$(pnpm --version) built=$(cat pnpm.txt) script=$(cat marker.txt) node=$(cat node.txt) npm=$(cat npm.txt)` +
-		` yarn=$(yarn --version 2>/dev/null || echo absent)"`
+		` yarn-built=$(cat yarn.txt) yarn-script=$(cat yarn-marker.txt) yarn=$(yarn --version) yarnpkg=$(yarnpkg --version)"`
 	dockerBuild := func(t *testing.T, o Options, line string) string {
 		t.Helper()
 		return buildResolvedImage(t, o, map[string]string{"NODE_VERSION": line}, pkg, fmt.Sprintf("bex-native-pnpm-it-%s-%t:%d", line, o.StaticSite, os.Getpid()))
@@ -1014,10 +1039,10 @@ func TestNativeImageRunsPnpm(t *testing.T) {
 				if err != nil || !strings.Contains(string(out), want) {
 					t.Fatalf("run PATH=%q = %v\n%s; want %q", path, err, out, want)
 				}
-				// Yarn is whatever the official image carries (1.22 through
-				// Node 24; Node 26's image ships none): pnpm must not replace it.
-				if l.line != "26" && !strings.Contains(string(out), " yarn=1.22.") {
-					t.Fatalf("yarn control lost:\n%s", out)
+				// Yarn 1 runs at build and runtime on every line, Node 26
+				// included, whose official image ships none (w4/320).
+				if !strings.Contains(string(out), " yarn-built=1.22.22 yarn-script=pnpm-script-ran yarn=1.22.22 yarnpkg=1.22.22") {
+					t.Fatalf("yarn missing or wrong:\n%s", out)
 				}
 				t.Logf("PATH=%q: %s", path, out)
 			}
@@ -1026,10 +1051,10 @@ func TestNativeImageRunsPnpm(t *testing.T) {
 	t.Run("static", func(t *testing.T) {
 		o := nativeOptions()
 		o.StaticSite, o.Runtime, o.StartCommand = true, "", ""
-		o.BuildCommand = build + " && mkdir -p public && cp pnpm.txt marker.txt public/"
-		out, err := exec.Command("docker", "run", "--rm", "--entrypoint", "/bin/cat", dockerBuild(t, o, "24"),
-			"/opt/render/project/src/public/pnpm.txt", "/opt/render/project/src/public/marker.txt").CombinedOutput()
-		if want := nativePnpm.version + "\npnpm-script-ran\n"; err != nil || string(out) != want {
+		o.BuildCommand = build + " && mkdir -p public && cp pnpm.txt marker.txt yarn.txt public/"
+		out, err := exec.Command("docker", "run", "--rm", "--entrypoint", "/bin/cat", dockerBuild(t, o, "26"),
+			"/opt/render/project/src/public/pnpm.txt", "/opt/render/project/src/public/marker.txt", "/opt/render/project/src/public/yarn.txt").CombinedOutput()
+		if want := nativePnpm.version + "\npnpm-script-ran\n1.22.22\n"; err != nil || string(out) != want {
 			t.Fatalf("static publish dir = %v %q, want %q", err, out, want)
 		}
 	})
