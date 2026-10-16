@@ -237,7 +237,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **113** — [Native Python omits Gunicorn application access logging](113.md) (55m, minor) ← functional CLI sweep362; six original HTTP200 requests lack app access lines, both native controls restore them at the existing port; own fixtures cleaned.
 
-- [ ] **112** — [Native Elixir omits production build/runtime MIX_ENV](112.md) (55m, major) ← functional CLI sweep361; both default builds fail in dev, build-only/runtime-prefix controls isolate both phases; own fixtures cleaned.
+- [ ] **112** — [Native Elixir omits production build/runtime MIX_ENV](blocked/112.md) (55m, major) — **BLOCKED (2026-10-16: implemented — primary Elixir images default MIX_ENV=prod before the build RUN for build and runtime, the service's own value (incl. empty) winning in each phase; Mix-level BuildKit gate + fail-before verified; needs the operator deployed plus the hosted both-client Phoenix replay, runnable with the QA login)**
 
 - [ ] **111** — [Native Node services omit runtime NODE_ENV=production](blocked/111.md) (55m, major) — **BLOCKED (2026-10-16: implemented — primary Node serving images default NODE_ENV=production after the build RUN, every configured value (incl. empty) overriding it, build unset; BuildKit gate + fail-before verified; needs the operator deployed plus the hosted both-client Express replay, runnable with the QA login)**
 

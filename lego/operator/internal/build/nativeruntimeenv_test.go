@@ -32,15 +32,7 @@ func TestNativeNodeServingImageDefaultsProduction(t *testing.T) {
 	const want = "ENV NODE_ENV=production\n"
 	o := nativeOptions()
 	for _, line := range nativeToolchains[nativeNodeRuntime].lines {
-		bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"NODE_VERSION": line.line}, nil)
-		if _, err := ResolveNativeBuild(nativeNodeRuntime, bundle, dockerfile, src); err != nil {
-			t.Fatal(err)
-		}
-		raw, err := os.ReadFile(dockerfile)
-		if err != nil {
-			t.Fatal(err)
-		}
-		df := string(raw)
+		df := resolvedDockerfile(t, o, map[string]string{"NODE_VERSION": line.line})
 		at, run, cmd := strings.Index(df, "\n"+want), strings.Index(df, "\nRUN --mount=type=secret,id=render-env"), strings.Index(df, "\nCMD ")
 		if strings.Count(df, want) != 1 || at < run || at > cmd {
 			t.Fatalf("node %s: NODE_ENV default is not once between the build RUN and CMD:\n%s", line.line, df)
@@ -56,15 +48,8 @@ func TestNativeNodeServingImageDefaultsProduction(t *testing.T) {
 	for _, runtime := range []string{"python", "ruby"} {
 		other := nativeOptions()
 		other.Runtime = runtime
-		bundle, dockerfile, src := writeResolveFixture(t, other, nil, nil)
-		if _, err := ResolveNativeBuild(runtime, bundle, dockerfile, src); err != nil {
-			t.Fatal(err)
-		}
-		raw, err := os.ReadFile(dockerfile)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if df := string(raw); !strings.Contains(df, "/usr/local/bin/node") || strings.Contains(df, "NODE_ENV=production") {
+		df := resolvedDockerfile(t, other, nil)
+		if !strings.Contains(df, "/usr/local/bin/node") || strings.Contains(df, "NODE_ENV=production") {
 			t.Errorf("%s: want the Node companion and no Node default:\n%s", runtime, df)
 		}
 	}
@@ -103,6 +88,79 @@ func TestNativeNodeImageRuntimeEnvironment(t *testing.T) {
 			want := `build {"present":false,"value":null} runtime ` + tc.runtime
 			if err != nil || !strings.Contains(string(out), want) {
 				t.Fatalf("run = %v\n%s; want %q", err, out, want)
+			}
+		})
+	}
+}
+
+// An Elixir image builds and runs with MIX_ENV=prod (w8/112): the default
+// precedes the build RUN on every reviewed line, and no other runtime gets it.
+func TestNativeElixirImageDefaultsMixProd(t *testing.T) {
+	const want = "ENV MIX_ENV=prod\n"
+	o := nativeOptions()
+	o.Runtime = "elixir"
+	for _, line := range nativeToolchains["elixir"].lines {
+		df := resolvedDockerfile(t, o, map[string]string{"ELIXIR_VERSION": line.line})
+		if at, run := strings.Index(df, "\n"+want), strings.Index(df, "\nRUN --mount=type=secret,id=render-env"); strings.Count(df, want) != 1 || at < 0 || at > run {
+			t.Fatalf("elixir %s: MIX_ENV default is not once before the build RUN:\n%s", line.line, df)
+		}
+	}
+	static := nativeOptions()
+	static.StaticSite, static.Runtime, static.StartCommand = true, "elixir", ""
+	if df := nativeDockerfile(static); strings.Count(df, want) != 1 || strings.Index(df, want) > strings.Index(df, "\nRUN --mount=type=secret,id=render-env") {
+		t.Errorf("explicit Elixir static build lacks the build default:\n%s", df)
+	}
+	for _, runtime := range []string{nativeNodeRuntime, "python", "ruby", "go", "rust"} {
+		other := nativeOptions()
+		other.Runtime = runtime
+		if df := nativeDockerfile(other); strings.Contains(df, "MIX_ENV") {
+			t.Errorf("%s gained MIX_ENV:\n%s", runtime, df)
+		}
+	}
+}
+
+// TestNativeElixirImageMixEnvironment is w8/112's execution gate, on Mix
+// itself: the generated Elixir image builds with Mix.env() prod and starts
+// with it by default, while the service's own value wins in each phase —
+// dev or an explicit empty value through the build's env bundle, and a
+// configured literal or env-file value at runtime. Opt-in: needs Docker.
+func TestNativeElixirImageMixEnvironment(t *testing.T) {
+	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
+		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the generated image")
+	}
+	probe := `(cd /tmp && mix run --no-mix-exs -e 'IO.puts(inspect({System.get_env("MIX_ENV"), Mix.env()}))')`
+	envFile := filepath.Join(t.TempDir(), "secret.env")
+	must(t, os.WriteFile(envFile, []byte("MIX_ENV=\n"), 0o600))
+	for i, tc := range []struct {
+		name     string
+		buildEnv map[string]string
+		build    string
+		runs     map[string][]string // runtime result → docker run args
+	}{
+		{name: "defaults", build: `{"prod", :prod}`, runs: map[string][]string{
+			`runtime {"prod", :prod}`: nil,
+			`runtime {"dev", :dev}`:   {"-e", "MIX_ENV=dev"},
+			`runtime {"", `:           {"--env-file", envFile},
+		}},
+		{name: "service dev at build", buildEnv: map[string]string{"MIX_ENV": "dev"}, build: `{"dev", :dev}`},
+		{name: "service empty at build", buildEnv: map[string]string{"MIX_ENV": ""}, build: `{"", `},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			o := nativeOptions()
+			o.Runtime, o.BuildEnv = "elixir", nil
+			o.NativeEnvRevision = fmt.Sprintf("mix-%d-%d", i, os.Getpid())
+			o.BuildCommand = probe + ` > build.txt`
+			o.StartCommand = `echo "build $(cat build.txt) runtime $( ` + probe + `)"`
+			tag := buildResolvedImage(t, o, tc.buildEnv, nil, fmt.Sprintf("bex-native-mix-env-it-%d:%d", i, os.Getpid()))
+			runs := tc.runs
+			if runs == nil {
+				runs = map[string][]string{"": nil}
+			}
+			for want, args := range runs {
+				out, err := exec.Command("docker", append(append([]string{"run", "--rm", "--network", "none"}, args...), tag)...).CombinedOutput()
+				if err != nil || !strings.Contains(string(out), "build "+tc.build) || !strings.Contains(string(out), want) {
+					t.Fatalf("run %v = %v\n%s; want build %q and %q", args, err, out, tc.build, want)
+				}
 			}
 		})
 	}
