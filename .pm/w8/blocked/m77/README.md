@@ -1,16 +1,16 @@
 # w8 · m77 — Supply JavaScript tools in native Ruby and Python builds and runtime
 
-**Worker:** worker8 **Goal:** native Ruby and Python services can run the documented JavaScript asset tools during build and runtime while preserving their primary toolchains. **Status:** todo
+**Worker:** worker8 **Goal:** native Ruby and Python services can run the documented JavaScript asset tools during build and runtime while preserving their primary toolchains. **Status:** blocked
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Supply JavaScript tools in native Ruby and Python images](t001.md) | 60m | — |
-| t002 | [Audit shared image consumers and cache transitions](t002.md) | 45m | t001 |
-| t003 | [Render parity](t003.md) | 30m | t001, t002 |
-| t004 | [Simplify](t004.md) | 15m | t003 |
-| t005 | [Test coverage](t005.md) | 55m | t003 |
+| [t001](done/t001.md) | [Supply JavaScript tools in native Ruby and Python images](done/t001.md) | 60m | — — **DONE 2026-10-15** |
+| [t002](done/t002.md) | [Audit shared image consumers and cache transitions](done/t002.md) | 45m | t001 — **DONE 2026-10-15** |
+| [t003](done/t003.md) | [Render parity](done/t003.md) | 30m | t001, t002 — **DONE 2026-10-15** |
+| [t004](done/t004.md) | [Simplify](done/t004.md) | 15m | t003 — **DONE 2026-10-15** |
+| [t005](done/t005.md) | [Test coverage](done/t005.md) | 55m | t003 — **DONE 2026-10-15** |
 | t006 | [Closeout](t006.md) | 25m | t004, t005 |
 
 ## Definition of done
