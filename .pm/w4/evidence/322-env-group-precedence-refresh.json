@@ -1,0 +1,2278 @@
+{
+  "pass": "a678",
+  "sourceHead": "bd0ffac525f2ff1dfb4d7c7add9f81000fed8036",
+  "finding": "Post-link group membership refresh leaves cached Server link order stale; transient wrong env/file shadow markers",
+  "resources": {
+    "groupA": {
+      "id": "evg-db8rrrfdbg8c73dghca0",
+      "name": "qa-20261016-a678-a-old",
+      "createdFirst": true
+    },
+    "groupZ": {
+      "id": "evg-db8rs9q9cl7s73ae4ang",
+      "name": "qa-20261016-a678-z-new",
+      "createdSecond": true
+    },
+    "service": {
+      "id": "srv-db8rssndbg8c73dghcc0",
+      "name": "qa-20261016-a678-precedence",
+      "firstDeploy": "dep-db8rssndbg8c73dghccg"
+    }
+  },
+  "records": {
+    "CreateGroupA": {
+      "at": "2026-10-16T06:02:33.554Z",
+      "request": {
+        "operationName": "CreateEnvGroup",
+        "variables": {
+          "name": "qa-20261016-a678-a-old",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "envVars": [
+            {
+              "key": "SHARED",
+              "value": "A_SHARED"
+            },
+            {
+              "key": "ONLY_A",
+              "value": "A_UNIQUE"
+            }
+          ],
+          "secretFiles": [
+            {
+              "name": "shared.txt",
+              "content": "A_FILE\n雪"
+            },
+            {
+              "name": "a-only.txt",
+              "content": "A_ONLY_FILE"
+            }
+          ],
+          "serviceIds": [],
+          "environmentId": null
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateEnvGroup($name: String!, $ownerId: String, $envVars: [EnvGroupVarInput!], $secretFiles: [EnvGroupSecretFileInput!], $serviceIds: [String!], $environmentId: String) {\n  createEnvGroup(\n    name: $name\n    ownerId: $ownerId\n    envVars: $envVars\n    secretFiles: $secretFiles\n    serviceIds: $serviceIds\n    environmentId: $environmentId\n  ) {\n    id\n    name\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createEnvGroup": {
+            "__typename": "EnvGroup",
+            "id": "evg-db8rrrfdbg8c73dghca0",
+            "name": "qa-20261016-a678-a-old"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792130530685.525,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.143,
+        "responseStart": 22164.501,
+        "responseEnd": 22164.997
+      },
+      "url": "https://dashboard.bex.co/env-groups"
+    },
+    "CreateGroupZ": {
+      "at": "2026-10-16T06:03:29.611Z",
+      "request": {
+        "operationName": "CreateEnvGroup",
+        "variables": {
+          "name": "qa-20261016-a678-z-new",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "envVars": [
+            {
+              "key": "SHARED",
+              "value": "Z_SHARED"
+            },
+            {
+              "key": "ONLY_Z",
+              "value": "Z_UNIQUE"
+            }
+          ],
+          "secretFiles": [
+            {
+              "name": "shared.txt",
+              "content": "Z_FILE\ncafé"
+            },
+            {
+              "name": "z-only.txt",
+              "content": "Z_ONLY_FILE"
+            }
+          ],
+          "serviceIds": [],
+          "environmentId": null
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateEnvGroup($name: String!, $ownerId: String, $envVars: [EnvGroupVarInput!], $secretFiles: [EnvGroupSecretFileInput!], $serviceIds: [String!], $environmentId: String) {\n  createEnvGroup(\n    name: $name\n    ownerId: $ownerId\n    envVars: $envVars\n    secretFiles: $secretFiles\n    serviceIds: $serviceIds\n    environmentId: $environmentId\n  ) {\n    id\n    name\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createEnvGroup": {
+            "__typename": "EnvGroup",
+            "id": "evg-db8rs9q9cl7s73ae4ang",
+            "name": "qa-20261016-a678-z-new"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792130591851.605,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.127,
+        "responseStart": 17056.272,
+        "responseEnd": 17056.697
+      },
+      "url": "https://dashboard.bex.co/env-groups"
+    },
+    "CreateService": {
+      "at": "2026-10-16T06:04:36.067Z",
+      "request": {
+        "operationName": "CreateService",
+        "variables": {
+          "image": "node:24-bookworm-slim",
+          "name": "qa-20261016-a678-precedence",
+          "type": "web_service",
+          "registryCredentialId": "",
+          "runtime": "image",
+          "startCommand": "node -e 'const http=require('\\''http'\\''),fs=require('\\''fs'\\'');const boot=new Date().toISOString();const read=n=>{try{return fs.readFileSync('\\''/etc/secrets/'\\''+n,'\\''utf8'\\'')}catch(e){return{error:e.code}}};http.createServer((q,r)=>{r.setHeader('\\''Content-Type'\\'','\\''application/json'\\'');r.end(JSON.stringify({marker:'\\''QA_A678'\\'',boot,env:{SHARED:process.env.SHARED??null,ONLY_A:process.env.ONLY_A??null,ONLY_Z:process.env.ONLY_Z??null,LOCAL:process.env.LOCAL??null},files:{shared:read('\\''shared.txt'\\''),a:read('\\''a-only.txt'\\''),z:read('\\''z-only.txt'\\'')}}));}).listen(Number(process.env.PORT),'\\''0.0.0.0'\\'');'",
+          "plan": "free",
+          "port": 8080,
+          "envVars": [
+            {
+              "key": "SHARED",
+              "value": "OWN_SHARED"
+            },
+            {
+              "key": "LOCAL",
+              "value": "OWN_LOCAL"
+            }
+          ],
+          "secretFiles": [
+            {
+              "name": "shared.txt",
+              "content": "OWN_FILE\nservice"
+            }
+          ],
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db8rssndbg8c73dghcc0",
+            "latestDeployId": "dep-db8rssndbg8c73dghccg",
+            "name": "qa-20261016-a678-precedence",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": "",
+            "type": "web_service"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792130674265.137,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.152,
+        "responseStart": 1093.255,
+        "responseEnd": 1093.663
+      },
+      "url": "https://dashboard.bex.co/services/srv-db8rssndbg8c73dghcc0/deploys/dep-db8rssndbg8c73dghccg"
+    },
+    "LinkZFirst": {
+      "at": "2026-10-16T06:05:35.947Z",
+      "request": {
+        "operationName": "LinkEnvGroup",
+        "variables": {
+          "id": "evg-db8rs9q9cl7s73ae4ang",
+          "serviceId": "srv-db8rssndbg8c73dghcc0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation LinkEnvGroup($id: String!, $serviceId: String!) {\n  linkEnvGroup(id: $id, serviceId: $serviceId)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "linkEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792130734198.049,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.141,
+        "responseStart": 1045.764,
+        "responseEnd": 1046.199
+      },
+      "url": "https://dashboard.bex.co/services/srv-db8rssndbg8c73dghcc0/env"
+    },
+    "LinkALast": {
+      "at": "2026-10-16T06:05:59.705Z",
+      "request": {
+        "operationName": "LinkEnvGroup",
+        "variables": {
+          "id": "evg-db8rrrfdbg8c73dghca0",
+          "serviceId": "srv-db8rssndbg8c73dghcc0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation LinkEnvGroup($id: String!, $serviceId: String!) {\n  linkEnvGroup(id: $id, serviceId: $serviceId)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "linkEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792130758514.155,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.119,
+        "responseStart": 486.632,
+        "responseEnd": 487.089
+      },
+      "url": "https://dashboard.bex.co/services/srv-db8rssndbg8c73dghcc0/env"
+    },
+    "InitialRuntime": {
+      "at": "2026-10-16T06:05:02.726Z",
+      "public": {
+        "status": 200,
+        "body": {
+          "marker": "QA_A678",
+          "boot": "2026-10-16T06:04:40.641Z",
+          "env": {
+            "SHARED": "OWN_SHARED",
+            "ONLY_A": null,
+            "ONLY_Z": null,
+            "LOCAL": "OWN_LOCAL"
+          },
+          "files": {
+            "shared": "OWN_FILE\nservice",
+            "a": {
+              "error": "ENOENT"
+            },
+            "z": {
+              "error": "ENOENT"
+            }
+          }
+        }
+      },
+      "snapshot": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261016-a678-precedence\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261016-a678-precedence\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: In Progress\"':\n    - /url: /services/srv-db8rssndbg8c73dghcc0/deploys/dep-db8rssndbg8c73dghccg\n    - text: Latest deploy In Progress\n  - link \"Free\":\n    - /url: /services/srv-db8rssndbg8c73dghcc0/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db8rssndbg8c73dghcc0\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261016-a678-precedence.onbex.co\":\n    - /url: https://qa-20261016-a678-precedence.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261016-a678-precedence\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: now\n  - heading \"Environment\" [level=1]\n  - paragraph: Manage service-specific variables, secret files, and linked environment groups.\n  - button \"Create group\"\n  - text: Environment Variables Set environment-specific config and secrets, then read those values from your code.\n  - button \"Export\"\n  - button \"Edit\"\n  - code: LOCAL\n  - code: ••••••••••••\n  - button \"Reveal\"\n  - button \"Copy LOCAL\"\n  - code: SHARED\n  - code: ••••••••••••\n  - button \"Reveal\"\n  - button \"Copy SHARED\"\n  - text: Secret Files Store files with secret contents (certificates, credentials) mounted into this service at deploy time.\n  - code: shared.txt\n  - code: ••••••••••••\n  - button \"Reveal\"\n  - button \"Copy shared.txt\"\n  - text: Linked Environment Groups Reusable bundles of environment variables and secret files you can link to this and other services.\n  - button \"Create group\"\n  - heading \"Linked (0)\" [level=3]\n  - paragraph: No environment groups are linked to this service.\n  - heading \"Available to link (3)\" [level=3]\n  - list:\n    - listitem:\n      - link \"qa-20261003-keys-r85\":\n        - /url: /env-groups/evg-db0s94c48ccs739jikr0\n      - text: QA_R85_NORMAL __proto__ constructor toString\n      - button \"Link\"\n    - listitem:\n      - link \"qa-20261016-a678-a-old\":\n        - /url: /env-groups/evg-db8rrrfdbg8c73dghca0\n      - text: ONLY_A SHARED a-only.txt shared.txt\n      - button \"Link\"\n    - listitem:\n      - link \"qa-20261016-a678-z-new\":\n        - /url: /env-groups/evg-db8rs9q9cl7s73ae4ang\n      - text: ONLY_Z SHARED shared.txt z-only.txt\n      - button \"Link\""
+    },
+    "ZFirstRuntime": {
+      "at": "2026-10-16T06:05:48.278Z",
+      "settled": true,
+      "rows": [
+        {
+          "at": "2026-10-16T06:05:42.293Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:04:40.641Z",
+            "env": {
+              "SHARED": "OWN_SHARED",
+              "ONLY_A": null,
+              "ONLY_Z": null,
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "OWN_FILE\nservice",
+              "a": {
+                "error": "ENOENT"
+              },
+              "z": {
+                "error": "ENOENT"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:05:44.318Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:04:40.641Z",
+            "env": {
+              "SHARED": "OWN_SHARED",
+              "ONLY_A": null,
+              "ONLY_Z": null,
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "OWN_FILE\nservice",
+              "a": {
+                "error": "ENOENT"
+              },
+              "z": {
+                "error": "ENOENT"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:05:46.291Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:04:40.641Z",
+            "env": {
+              "SHARED": "OWN_SHARED",
+              "ONLY_A": null,
+              "ONLY_Z": null,
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "OWN_FILE\nservice",
+              "a": {
+                "error": "ENOENT"
+              },
+              "z": {
+                "error": "ENOENT"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:05:48.278Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:05:38.977Z",
+            "env": {
+              "SHARED": "OWN_SHARED",
+              "ONLY_A": null,
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "OWN_FILE\nservice",
+              "a": {
+                "error": "ENOENT"
+              },
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        }
+      ]
+    },
+    "BothOwnOverrideRuntime": {
+      "at": "2026-10-16T06:06:12.107Z",
+      "settled": true,
+      "rows": [
+        {
+          "at": "2026-10-16T06:06:06.032Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:05:38.977Z",
+            "env": {
+              "SHARED": "OWN_SHARED",
+              "ONLY_A": null,
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "OWN_FILE\nservice",
+              "a": {
+                "error": "ENOENT"
+              },
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:06:08.079Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:05:38.977Z",
+            "env": {
+              "SHARED": "OWN_SHARED",
+              "ONLY_A": null,
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "OWN_FILE\nservice",
+              "a": {
+                "error": "ENOENT"
+              },
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:06:10.056Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:05:38.977Z",
+            "env": {
+              "SHARED": "OWN_SHARED",
+              "ONLY_A": null,
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "OWN_FILE\nservice",
+              "a": {
+                "error": "ENOENT"
+              },
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:06:12.107Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:06:03.969Z",
+            "env": {
+              "SHARED": "OWN_SHARED",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "OWN_FILE\nservice",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        }
+      ]
+    },
+    "BothGroupsUiOrder": {
+      "at": "2026-10-16T06:06:13.468Z",
+      "request": {
+        "query": "query($id:String!){service(id:$id){id phase linkedEnvGroupIds}}",
+        "variables": {
+          "id": "srv-db8rssndbg8c73dghcc0"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "service": {
+            "id": "srv-db8rssndbg8c73dghcc0",
+            "linkedEnvGroupIds": [
+              "evg-db8rs9q9cl7s73ae4ang",
+              "evg-db8rrrfdbg8c73dghca0"
+            ],
+            "phase": "Running"
+          }
+        }
+      },
+      "snapshot": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261016-a678-precedence\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261016-a678-precedence\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db8rssndbg8c73dghcc0/deploys/dep-db8rthi9cl7s73ae4aq0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db8rssndbg8c73dghcc0/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db8rssndbg8c73dghcc0\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261016-a678-precedence.onbex.co\":\n    - /url: https://qa-20261016-a678-precedence.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261016-a678-precedence\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-2\n  - term: Created\n  - definition:\n    - time: 1m\n  - heading \"Environment\" [level=1]\n  - paragraph: Manage service-specific variables, secret files, and linked environment groups.\n  - button \"Create group\"\n  - text: Environment Variables Set environment-specific config and secrets, then read those values from your code.\n  - button \"Export\"\n  - button \"Edit\"\n  - code: LOCAL\n  - code: ••••••••••••\n  - button \"Reveal\"\n  - button \"Copy LOCAL\"\n  - code: SHARED\n  - code: ••••••••••••\n  - button \"Reveal\"\n  - button \"Copy SHARED\"\n  - text: Secret Files Store files with secret contents (certificates, credentials) mounted into this service at deploy time.\n  - code: shared.txt\n  - code: ••••••••••••\n  - button \"Reveal\"\n  - button \"Copy shared.txt\"\n  - text: Linked Environment Groups Reusable bundles of environment variables and secret files you can link to this and other services.\n  - button \"Create group\"\n  - heading \"Linked (2)\" [level=3]\n  - list:\n    - listitem:\n      - link \"qa-20261016-a678-z-new\":\n        - /url: /env-groups/evg-db8rs9q9cl7s73ae4ang\n      - text: Linked ONLY_Z SHARED shared.txt z-only.txt\n      - paragraph: Struck-through keys are overridden by this service's own environment variables.\n      - button \"Unlink\"\n    - listitem:\n      - link \"qa-20261016-a678-a-old\":\n        - /url: /env-groups/evg-db8rrrfdbg8c73dghca0\n      - text: Linked ONLY_A SHARED a-only.txt shared.txt\n      - paragraph: Struck-through keys are overridden by this service's own environment variables.\n      - button \"Unlink\"\n  - heading \"Available to link (1)\" [level=3]\n  - list:\n    - listitem:\n      - link \"qa-20261003-keys-r85\":\n        - /url: /env-groups/evg-db0s94c48ccs739jikr0\n      - text: QA_R85_NORMAL __proto__ constructor toString\n      - button \"Link\""
+    },
+    "RemoveOwnOverrides": {
+      "at": "2026-10-16T06:07:42.714Z",
+      "request": {
+        "operationName": "PatchServiceEnvironment",
+        "variables": {
+          "serviceId": "srv-db8rssndbg8c73dghcc0",
+          "envVars": [
+            {
+              "key": "SHARED",
+              "delete": true
+            }
+          ],
+          "secretFiles": [
+            {
+              "name": "shared.txt",
+              "delete": true
+            }
+          ],
+          "saveMode": "deploy"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation PatchServiceEnvironment($serviceId: String!, $envVars: [EnvironmentEnvVarPatchInput!], $secretFiles: [EnvironmentSecretFilePatchInput!], $saveMode: String!) {\n  patchServiceEnvironment(\n    serviceId: $serviceId\n    envVars: $envVars\n    secretFiles: $secretFiles\n    saveMode: $saveMode\n  ) {\n    envVarKeys\n    secretFileNames\n    rolledOut\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "patchServiceEnvironment": {
+            "__typename": "EnvironmentPatchResult",
+            "envVarKeys": ["LOCAL"],
+            "rolledOut": true,
+            "secretFileNames": []
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792130861527.72,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.137,
+        "responseStart": 482.673,
+        "responseEnd": 483.091
+      },
+      "url": "https://dashboard.bex.co/services/srv-db8rssndbg8c73dghcc0/env"
+    },
+    "LastLinkedAWinsRuntime": {
+      "at": "2026-10-16T06:07:53.995Z",
+      "settled": true,
+      "rows": [
+        {
+          "at": "2026-10-16T06:07:44.022Z",
+          "errorType": "public-read"
+        },
+        {
+          "at": "2026-10-16T06:07:46.035Z",
+          "status": 503,
+          "body": {
+            "error": "service not ready",
+            "retryAfter": 5
+          }
+        },
+        {
+          "at": "2026-10-16T06:07:48.055Z",
+          "status": 503,
+          "body": {
+            "error": "service not ready",
+            "retryAfter": 5
+          }
+        },
+        {
+          "at": "2026-10-16T06:07:50.039Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:06:03.969Z",
+            "env": {
+              "SHARED": "OWN_SHARED",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "OWN_FILE\nservice",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:07:52.014Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:06:03.969Z",
+            "env": {
+              "SHARED": "OWN_SHARED",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "OWN_FILE\nservice",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:07:53.995Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:07:44.962Z",
+            "env": {
+              "SHARED": "A_SHARED",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "A_FILE\n雪",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        }
+      ]
+    },
+    "UnlinkA": {
+      "at": "2026-10-16T06:09:05.303Z",
+      "request": {
+        "operationName": "UnlinkEnvGroup",
+        "variables": {
+          "id": "evg-db8rrrfdbg8c73dghca0",
+          "serviceId": "srv-db8rssndbg8c73dghcc0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation UnlinkEnvGroup($id: String!, $serviceId: String!) {\n  unlinkEnvGroup(id: $id, serviceId: $serviceId)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "unlinkEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792130943893.8542,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.14,
+        "responseStart": 706.018,
+        "responseEnd": 706.448
+      },
+      "url": "https://dashboard.bex.co/services/srv-db8rssndbg8c73dghcc0/env"
+    },
+    "UnlinkAFallsBackZ": {
+      "at": "2026-10-16T06:09:17.981Z",
+      "settled": true,
+      "rows": [
+        {
+          "at": "2026-10-16T06:09:11.622Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:07:44.962Z",
+            "env": {
+              "SHARED": "A_SHARED",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "A_FILE\n雪",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:09:13.681Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:07:44.962Z",
+            "env": {
+              "SHARED": "A_SHARED",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "A_FILE\n雪",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:09:15.657Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:07:44.962Z",
+            "env": {
+              "SHARED": "A_SHARED",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "A_FILE\n雪",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:09:17.981Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:09:09.241Z",
+            "env": {
+              "SHARED": "Z_SHARED",
+              "ONLY_A": null,
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "Z_FILE\ncafé",
+              "a": {
+                "error": "ENOENT"
+              },
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        }
+      ]
+    },
+    "FreshBeforeRelink": {
+      "at": "2026-10-16T06:10:34.378Z",
+      "before": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261016-a678-precedence\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261016-a678-precedence\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db8rssndbg8c73dghcc0/deploys/dep-db8rv029cl7s73ae4as0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db8rssndbg8c73dghcc0/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db8rssndbg8c73dghcc0\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261016-a678-precedence.onbex.co\":\n    - /url: https://qa-20261016-a678-precedence.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261016-a678-precedence\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-5\n  - term: Created\n  - definition:\n    - time: 5m\n  - heading \"Environment\" [level=1]\n  - paragraph: Manage service-specific variables, secret files, and linked environment groups.\n  - button \"Create group\"\n  - text: Environment Variables Set environment-specific config and secrets, then read those values from your code.\n  - button \"Export\"\n  - button \"Edit\"\n  - code: LOCAL\n  - code: ••••••••••••\n  - button \"Reveal\"\n  - button \"Copy LOCAL\"\n  - text: Secret Files Store files with secret contents (certificates, credentials) mounted into this service at deploy time.\n  - paragraph: No secret files\n  - paragraph: Add a file to mount secret contents into this service.\n  - button \"Add secret file\"\n  - text: Linked Environment Groups Reusable bundles of environment variables and secret files you can link to this and other services.\n  - button \"Create group\"\n  - heading \"Linked (1)\" [level=3]\n  - list:\n    - listitem:\n      - link \"qa-20261016-a678-z-new\":\n        - /url: /env-groups/evg-db8rs9q9cl7s73ae4ang\n      - text: Linked ONLY_Z SHARED shared.txt z-only.txt\n      - button \"Unlink\"\n  - heading \"Available to link (2)\" [level=3]\n  - list:\n    - listitem:\n      - link \"qa-20261003-keys-r85\":\n        - /url: /env-groups/evg-db0s94c48ccs739jikr0\n      - text: QA_R85_NORMAL __proto__ constructor toString\n      - button \"Link\"\n    - listitem:\n      - link \"qa-20261016-a678-a-old\":\n        - /url: /env-groups/evg-db8rrrfdbg8c73dghca0\n      - text: ONLY_A SHARED a-only.txt shared.txt\n      - button \"Link\""
+    },
+    "FreshRelinkA": {
+      "at": "2026-10-16T06:10:36.537Z",
+      "request": {
+        "operationName": "LinkEnvGroup",
+        "variables": {
+          "id": "evg-db8rrrfdbg8c73dghca0",
+          "serviceId": "srv-db8rssndbg8c73dghcc0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation LinkEnvGroup($id: String!, $serviceId: String!) {\n  linkEnvGroup(id: $id, serviceId: $serviceId)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "linkEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792131035176.02,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.141,
+        "responseStart": 656.378,
+        "responseEnd": 656.985
+      },
+      "url": "https://dashboard.bex.co/services/srv-db8rssndbg8c73dghcc0/env"
+    },
+    "RelinkAActualRuntime": {
+      "at": "2026-10-16T06:10:46.924Z",
+      "settled": true,
+      "rows": [
+        {
+          "at": "2026-10-16T06:10:42.892Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:09:09.241Z",
+            "env": {
+              "SHARED": "Z_SHARED",
+              "ONLY_A": null,
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "Z_FILE\ncafé",
+              "a": {
+                "error": "ENOENT"
+              },
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:10:44.910Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:09:09.241Z",
+            "env": {
+              "SHARED": "Z_SHARED",
+              "ONLY_A": null,
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "Z_FILE\ncafé",
+              "a": {
+                "error": "ENOENT"
+              },
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:10:46.924Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:10:38.596Z",
+            "env": {
+              "SHARED": "A_SHARED",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "A_FILE\n雪",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        }
+      ]
+    },
+    "RelinkAUiVsApi": {
+      "at": "2026-10-16T06:10:47.891Z",
+      "request": {
+        "query": "query($id:String!){server(id:$id){id linkedEnvGroupIds phase}}",
+        "variables": {
+          "id": "srv-db8rssndbg8c73dghcc0"
+        }
+      },
+      "api": {
+        "status": 200,
+        "body": {
+          "data": {
+            "server": {
+              "id": "srv-db8rssndbg8c73dghcc0",
+              "linkedEnvGroupIds": [
+                "evg-db8rs9q9cl7s73ae4ang",
+                "evg-db8rrrfdbg8c73dghca0"
+              ],
+              "phase": "Running"
+            }
+          }
+        }
+      },
+      "snapshot": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261016-a678-precedence\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261016-a678-precedence\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db8rssndbg8c73dghcc0/deploys/dep-db8rv029cl7s73ae4as0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db8rssndbg8c73dghcc0/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db8rssndbg8c73dghcc0\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261016-a678-precedence.onbex.co\":\n    - /url: https://qa-20261016-a678-precedence.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261016-a678-precedence\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-5\n  - term: Created\n  - definition:\n    - time: 5m\n  - heading \"Environment\" [level=1]\n  - paragraph: Manage service-specific variables, secret files, and linked environment groups.\n  - button \"Create group\"\n  - text: Environment Variables Set environment-specific config and secrets, then read those values from your code.\n  - button \"Export\"\n  - button \"Edit\"\n  - code: LOCAL\n  - code: ••••••••••••\n  - button \"Reveal\"\n  - button \"Copy LOCAL\"\n  - text: Secret Files Store files with secret contents (certificates, credentials) mounted into this service at deploy time.\n  - paragraph: No secret files\n  - paragraph: Add a file to mount secret contents into this service.\n  - button \"Add secret file\"\n  - text: Linked Environment Groups Reusable bundles of environment variables and secret files you can link to this and other services.\n  - button \"Create group\"\n  - heading \"Linked (2)\" [level=3]\n  - list:\n    - listitem:\n      - link \"qa-20261016-a678-z-new\":\n        - /url: /env-groups/evg-db8rs9q9cl7s73ae4ang\n      - text: Linked ONLY_Z SHARED shared.txt z-only.txt\n      - button \"Unlink\"\n    - listitem:\n      - link \"qa-20261016-a678-a-old\":\n        - /url: /env-groups/evg-db8rrrfdbg8c73dghca0\n      - text: Linked ONLY_A SHARED a-only.txt shared.txt\n      - button \"Unlink\"\n  - heading \"Available to link (1)\" [level=3]\n  - list:\n    - listitem:\n      - link \"qa-20261003-keys-r85\":\n        - /url: /env-groups/evg-db0s94c48ccs739jikr0\n      - text: QA_R85_NORMAL __proto__ constructor toString\n      - button \"Link\""
+    },
+    "RestoreOverrides": {
+      "at": "2026-10-16T06:13:31.447Z",
+      "request": {
+        "operationName": "PatchServiceEnvironment",
+        "variables": {
+          "serviceId": "srv-db8rssndbg8c73dghcc0",
+          "envVars": [
+            {
+              "key": "SHARED",
+              "value": "OWN_SHARED_2"
+            }
+          ],
+          "secretFiles": [
+            {
+              "name": "shared.txt",
+              "content": "OWN_FILE_2\nservice"
+            }
+          ],
+          "saveMode": "deploy"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation PatchServiceEnvironment($serviceId: String!, $envVars: [EnvironmentEnvVarPatchInput!], $secretFiles: [EnvironmentSecretFilePatchInput!], $saveMode: String!) {\n  patchServiceEnvironment(\n    serviceId: $serviceId\n    envVars: $envVars\n    secretFiles: $secretFiles\n    saveMode: $saveMode\n  ) {\n    envVarKeys\n    secretFileNames\n    rolledOut\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "patchServiceEnvironment": {
+            "__typename": "EnvironmentPatchResult",
+            "envVarKeys": ["LOCAL", "SHARED"],
+            "rolledOut": true,
+            "secretFileNames": ["shared.txt"]
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792131209921.4622,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.141,
+        "responseStart": 820.142,
+        "responseEnd": 820.582
+      },
+      "url": "https://dashboard.bex.co/services/srv-db8rssndbg8c73dghcc0/env"
+    },
+    "RestoreOwnRuntime": {
+      "at": "2026-10-16T06:13:44.818Z",
+      "settled": true,
+      "rows": [
+        {
+          "at": "2026-10-16T06:13:32.735Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:10:38.596Z",
+            "env": {
+              "SHARED": "A_SHARED",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "A_FILE\n雪",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:13:34.809Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:10:38.596Z",
+            "env": {
+              "SHARED": "A_SHARED",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "A_FILE\n雪",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:13:36.784Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:10:38.596Z",
+            "env": {
+              "SHARED": "A_SHARED",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "A_FILE\n雪",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:13:38.809Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:10:38.596Z",
+            "env": {
+              "SHARED": "A_SHARED",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "A_FILE\n雪",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:13:40.783Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:10:38.596Z",
+            "env": {
+              "SHARED": "A_SHARED",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "A_FILE\n雪",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:13:42.843Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:10:38.596Z",
+            "env": {
+              "SHARED": "A_SHARED",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "A_FILE\n雪",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:13:44.818Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:13:35.059Z",
+            "env": {
+              "SHARED": "OWN_SHARED_2",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "OWN_FILE_2\nservice",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        }
+      ]
+    },
+    "RemoveAgain": {
+      "at": "2026-10-16T06:14:00.158Z",
+      "request": {
+        "operationName": "PatchServiceEnvironment",
+        "variables": {
+          "serviceId": "srv-db8rssndbg8c73dghcc0",
+          "envVars": [
+            {
+              "key": "SHARED",
+              "delete": true
+            }
+          ],
+          "secretFiles": [
+            {
+              "name": "shared.txt",
+              "delete": true
+            }
+          ],
+          "saveMode": "deploy"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation PatchServiceEnvironment($serviceId: String!, $envVars: [EnvironmentEnvVarPatchInput!], $secretFiles: [EnvironmentSecretFilePatchInput!], $saveMode: String!) {\n  patchServiceEnvironment(\n    serviceId: $serviceId\n    envVars: $envVars\n    secretFiles: $secretFiles\n    saveMode: $saveMode\n  ) {\n    envVarKeys\n    secretFileNames\n    rolledOut\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "patchServiceEnvironment": {
+            "__typename": "EnvironmentPatchResult",
+            "envVarKeys": ["LOCAL"],
+            "rolledOut": true,
+            "secretFileNames": []
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792131238804.072,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.123,
+        "responseStart": 648.646,
+        "responseEnd": 649.042
+      },
+      "url": "https://dashboard.bex.co/services/srv-db8rssndbg8c73dghcc0/env"
+    },
+    "RemoveAgainRuntime": {
+      "at": "2026-10-16T06:14:13.607Z",
+      "settled": true,
+      "rows": [
+        {
+          "at": "2026-10-16T06:14:01.548Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:13:35.059Z",
+            "env": {
+              "SHARED": "OWN_SHARED_2",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "OWN_FILE_2\nservice",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:14:03.521Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:13:35.059Z",
+            "env": {
+              "SHARED": "OWN_SHARED_2",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "OWN_FILE_2\nservice",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:14:05.551Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:13:35.059Z",
+            "env": {
+              "SHARED": "OWN_SHARED_2",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "OWN_FILE_2\nservice",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:14:07.525Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:13:35.059Z",
+            "env": {
+              "SHARED": "OWN_SHARED_2",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "OWN_FILE_2\nservice",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:14:09.582Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:13:35.059Z",
+            "env": {
+              "SHARED": "OWN_SHARED_2",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "OWN_FILE_2\nservice",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:14:11.556Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:13:35.059Z",
+            "env": {
+              "SHARED": "OWN_SHARED_2",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "OWN_FILE_2\nservice",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:14:13.607Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:14:03.567Z",
+            "env": {
+              "SHARED": "A_SHARED",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "A_FILE\n雪",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        }
+      ]
+    },
+    "SettledCorrectOrderControl": {
+      "at": "2026-10-16T06:15:20.434Z",
+      "rows": [
+        {
+          "name": "qa-20261016-a678-a-old",
+          "id": "evg-db8rrrfdbg8c73dghca0",
+          "linked": true,
+          "collisions": [
+            {
+              "text": "SHARED",
+              "shadowed": false,
+              "reason": null
+            },
+            {
+              "text": "shared.txt",
+              "shadowed": false,
+              "reason": null
+            }
+          ]
+        },
+        {
+          "name": "qa-20261016-a678-z-new",
+          "id": "evg-db8rs9q9cl7s73ae4ang",
+          "linked": true,
+          "collisions": [
+            {
+              "text": "SHARED",
+              "shadowed": true,
+              "reason": "Overridden by qa-20261016-a678-a-old, which is linked later"
+            },
+            {
+              "text": "shared.txt",
+              "shadowed": true,
+              "reason": "Overridden by qa-20261016-a678-a-old, which is linked later"
+            }
+          ]
+        }
+      ]
+    },
+    "MobileSetupUnlinkA": {
+      "at": "2026-10-16T06:16:03.738Z",
+      "request": {
+        "operationName": "UnlinkEnvGroup",
+        "variables": {
+          "id": "evg-db8rrrfdbg8c73dghca0",
+          "serviceId": "srv-db8rssndbg8c73dghcc0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation UnlinkEnvGroup($id: String!, $serviceId: String!) {\n  unlinkEnvGroup(id: $id, serviceId: $serviceId)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "unlinkEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792131362617.435,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.138,
+        "responseStart": 417.403,
+        "responseEnd": 417.809
+      },
+      "url": "https://dashboard.bex.co/services/srv-db8rssndbg8c73dghcc0/env"
+    },
+    "MobileSetupZRuntime": {
+      "at": "2026-10-16T06:16:18.075Z",
+      "settled": true,
+      "rows": [
+        {
+          "at": "2026-10-16T06:16:10.030Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:14:03.567Z",
+            "env": {
+              "SHARED": "A_SHARED",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "A_FILE\n雪",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:16:12.086Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:14:03.567Z",
+            "env": {
+              "SHARED": "A_SHARED",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "A_FILE\n雪",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:16:14.060Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:14:03.567Z",
+            "env": {
+              "SHARED": "A_SHARED",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "A_FILE\n雪",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:16:16.098Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:14:03.567Z",
+            "env": {
+              "SHARED": "A_SHARED",
+              "ONLY_A": "A_UNIQUE",
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "A_FILE\n雪",
+              "a": "A_ONLY_FILE",
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T06:16:18.075Z",
+          "status": 200,
+          "body": {
+            "marker": "QA_A678",
+            "boot": "2026-10-16T06:16:09.316Z",
+            "env": {
+              "SHARED": "Z_SHARED",
+              "ONLY_A": null,
+              "ONLY_Z": "Z_UNIQUE",
+              "LOCAL": "OWN_LOCAL"
+            },
+            "files": {
+              "shared": "Z_FILE\ncafé",
+              "a": {
+                "error": "ENOENT"
+              },
+              "z": "Z_ONLY_FILE"
+            }
+          }
+        }
+      ]
+    },
+    "FreshMobileStalePrecedence": {
+      "at": "2026-10-16T06:16:44.212Z",
+      "before": {
+        "at": "2026-10-16T06:16:32.347Z",
+        "rows": [
+          {
+            "name": "qa-20261016-a678-z-new",
+            "id": "evg-db8rs9q9cl7s73ae4ang",
+            "linked": true,
+            "collisions": [
+              {
+                "text": "SHARED",
+                "shadowed": false,
+                "reason": null
+              },
+              {
+                "text": "shared.txt",
+                "shadowed": false,
+                "reason": null
+              }
+            ]
+          },
+          {
+            "name": "qa-20261016-a678-a-old",
+            "id": "evg-db8rrrfdbg8c73dghca0",
+            "linked": false,
+            "collisions": [
+              {
+                "text": "SHARED",
+                "shadowed": false,
+                "reason": null
+              },
+              {
+                "text": "shared.txt",
+                "shadowed": false,
+                "reason": null
+              }
+            ]
+          }
+        ]
+      },
+      "mutation": {
+        "at": "2026-10-16T06:16:33.597Z",
+        "request": {
+          "operationName": "LinkEnvGroup",
+          "variables": {
+            "id": "evg-db8rrrfdbg8c73dghca0",
+            "serviceId": "srv-db8rssndbg8c73dghcc0"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation LinkEnvGroup($id: String!, $serviceId: String!) {\n  linkEnvGroup(id: $id, serviceId: $serviceId)\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "linkEnvGroup": true
+          }
+        },
+        "timing": {
+          "startTime": 1792131392424.0852,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.128,
+          "responseStart": 468.714,
+          "responseEnd": 469.092
+        },
+        "url": "https://dashboard.bex.co/services/srv-db8rssndbg8c73dghcc0/env"
+      },
+      "runtime": {
+        "at": "2026-10-16T06:16:43.766Z",
+        "settled": true,
+        "rows": [
+          {
+            "at": "2026-10-16T06:16:33.773Z",
+            "status": 200,
+            "body": {
+              "marker": "QA_A678",
+              "boot": "2026-10-16T06:16:09.316Z",
+              "env": {
+                "SHARED": "Z_SHARED",
+                "ONLY_A": null,
+                "ONLY_Z": "Z_UNIQUE",
+                "LOCAL": "OWN_LOCAL"
+              },
+              "files": {
+                "shared": "Z_FILE\ncafé",
+                "a": {
+                  "error": "ENOENT"
+                },
+                "z": "Z_ONLY_FILE"
+              }
+            }
+          },
+          {
+            "at": "2026-10-16T06:16:35.757Z",
+            "status": 200,
+            "body": {
+              "marker": "QA_A678",
+              "boot": "2026-10-16T06:16:09.316Z",
+              "env": {
+                "SHARED": "Z_SHARED",
+                "ONLY_A": null,
+                "ONLY_Z": "Z_UNIQUE",
+                "LOCAL": "OWN_LOCAL"
+              },
+              "files": {
+                "shared": "Z_FILE\ncafé",
+                "a": {
+                  "error": "ENOENT"
+                },
+                "z": "Z_ONLY_FILE"
+              }
+            }
+          },
+          {
+            "at": "2026-10-16T06:16:37.757Z",
+            "status": 200,
+            "body": {
+              "marker": "QA_A678",
+              "boot": "2026-10-16T06:16:09.316Z",
+              "env": {
+                "SHARED": "Z_SHARED",
+                "ONLY_A": null,
+                "ONLY_Z": "Z_UNIQUE",
+                "LOCAL": "OWN_LOCAL"
+              },
+              "files": {
+                "shared": "Z_FILE\ncafé",
+                "a": {
+                  "error": "ENOENT"
+                },
+                "z": "Z_ONLY_FILE"
+              }
+            }
+          },
+          {
+            "at": "2026-10-16T06:16:39.738Z",
+            "status": 200,
+            "body": {
+              "marker": "QA_A678",
+              "boot": "2026-10-16T06:16:09.316Z",
+              "env": {
+                "SHARED": "Z_SHARED",
+                "ONLY_A": null,
+                "ONLY_Z": "Z_UNIQUE",
+                "LOCAL": "OWN_LOCAL"
+              },
+              "files": {
+                "shared": "Z_FILE\ncafé",
+                "a": {
+                  "error": "ENOENT"
+                },
+                "z": "Z_ONLY_FILE"
+              }
+            }
+          },
+          {
+            "at": "2026-10-16T06:16:41.791Z",
+            "status": 200,
+            "body": {
+              "marker": "QA_A678",
+              "boot": "2026-10-16T06:16:09.316Z",
+              "env": {
+                "SHARED": "Z_SHARED",
+                "ONLY_A": null,
+                "ONLY_Z": "Z_UNIQUE",
+                "LOCAL": "OWN_LOCAL"
+              },
+              "files": {
+                "shared": "Z_FILE\ncafé",
+                "a": {
+                  "error": "ENOENT"
+                },
+                "z": "Z_ONLY_FILE"
+              }
+            }
+          },
+          {
+            "at": "2026-10-16T06:16:43.766Z",
+            "status": 200,
+            "body": {
+              "marker": "QA_A678",
+              "boot": "2026-10-16T06:16:35.579Z",
+              "env": {
+                "SHARED": "A_SHARED",
+                "ONLY_A": "A_UNIQUE",
+                "ONLY_Z": "Z_UNIQUE",
+                "LOCAL": "OWN_LOCAL"
+              },
+              "files": {
+                "shared": "A_FILE\n雪",
+                "a": "A_ONLY_FILE",
+                "z": "Z_ONLY_FILE"
+              }
+            }
+          }
+        ]
+      },
+      "ui": {
+        "at": "2026-10-16T06:16:43.770Z",
+        "rows": [
+          {
+            "name": "qa-20261016-a678-z-new",
+            "id": "evg-db8rs9q9cl7s73ae4ang",
+            "linked": true,
+            "collisions": [
+              {
+                "text": "SHARED",
+                "shadowed": false,
+                "reason": null
+              },
+              {
+                "text": "shared.txt",
+                "shadowed": false,
+                "reason": null
+              }
+            ]
+          },
+          {
+            "name": "qa-20261016-a678-a-old",
+            "id": "evg-db8rrrfdbg8c73dghca0",
+            "linked": true,
+            "collisions": [
+              {
+                "text": "SHARED",
+                "shadowed": true,
+                "reason": "Overridden by qa-20261016-a678-z-new, which is linked later"
+              },
+              {
+                "text": "shared.txt",
+                "shadowed": true,
+                "reason": "Overridden by qa-20261016-a678-z-new, which is linked later"
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "query": "query($id:String!){server(id:$id){id linkedEnvGroupIds phase}}",
+        "variables": {
+          "id": "srv-db8rssndbg8c73dghcc0"
+        }
+      },
+      "api": {
+        "status": 200,
+        "body": {
+          "data": {
+            "server": {
+              "id": "srv-db8rssndbg8c73dghcc0",
+              "linkedEnvGroupIds": [
+                "evg-db8rs9q9cl7s73ae4ang",
+                "evg-db8rrrfdbg8c73dghca0"
+              ],
+              "phase": "Running"
+            }
+          }
+        }
+      },
+      "width": {
+        "viewport": 390,
+        "document": 390
+      }
+    },
+    "MobileSettledCorrectControl": {
+      "at": "2026-10-16T06:18:04.756Z",
+      "rows": [
+        {
+          "name": "qa-20261016-a678-a-old",
+          "id": "evg-db8rrrfdbg8c73dghca0",
+          "linked": true,
+          "collisions": [
+            {
+              "text": "SHARED",
+              "shadowed": false,
+              "reason": null
+            },
+            {
+              "text": "shared.txt",
+              "shadowed": false,
+              "reason": null
+            }
+          ]
+        },
+        {
+          "name": "qa-20261016-a678-z-new",
+          "id": "evg-db8rs9q9cl7s73ae4ang",
+          "linked": true,
+          "collisions": [
+            {
+              "text": "SHARED",
+              "shadowed": true,
+              "reason": "Overridden by qa-20261016-a678-a-old, which is linked later"
+            },
+            {
+              "text": "shared.txt",
+              "shadowed": true,
+              "reason": "Overridden by qa-20261016-a678-a-old, which is linked later"
+            }
+          ]
+        }
+      ]
+    },
+    "DeleteService": {
+      "at": "2026-10-16T06:25:50.008Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db8rssndbg8c73dghcc0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "timing": {
+        "startTime": 1792131948339.8489,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.15,
+        "responseStart": 949.497,
+        "responseEnd": 949.965
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "DeleteGroupA": {
+      "at": "2026-10-16T06:27:01.942Z",
+      "request": {
+        "operationName": "DeleteEnvGroup",
+        "variables": {
+          "id": "evg-db8rrrfdbg8c73dghca0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteEnvGroup($id: String!) {\n  deleteEnvGroup(id: $id)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792132019607.1648,
+        "domainLookupStart": 0.084,
+        "domainLookupEnd": 17.774,
+        "connectStart": 17.903,
+        "secureConnectionStart": 17.903,
+        "connectEnd": 38.477,
+        "requestStart": 38.593,
+        "responseStart": 1626.074,
+        "responseEnd": 1626.515
+      },
+      "url": "https://dashboard.bex.co/env-groups"
+    },
+    "DeleteGroupZ": {
+      "at": "2026-10-16T06:27:22.691Z",
+      "request": {
+        "operationName": "DeleteEnvGroup",
+        "variables": {
+          "id": "evg-db8rs9q9cl7s73ae4ang"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteEnvGroup($id: String!) {\n  deleteEnvGroup(id: $id)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792132041270.9072,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.149,
+        "responseStart": 713.951,
+        "responseEnd": 714.388
+      },
+      "url": "https://dashboard.bex.co/env-groups"
+    },
+    "CleanupRecords": {
+      "at": "2026-10-16T06:28:07.070Z",
+      "request": {
+        "operationName": "Qaa467Inventory",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "query": "query Qaa467Inventory($ownerId:String!){ services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name}}"
+      },
+      "owned": {
+        "service": {
+          "status": 404,
+          "body": {
+            "code": "NOT_FOUND",
+            "error": "not found",
+            "id": "not_found",
+            "message": "not found",
+            "params": null
+          }
+        },
+        "A": {
+          "status": 404,
+          "body": {
+            "code": "NOT_FOUND",
+            "error": "not found",
+            "id": "not_found",
+            "message": "not found",
+            "params": null
+          }
+        },
+        "Z": {
+          "status": 404,
+          "body": {
+            "code": "NOT_FOUND",
+            "error": "not found",
+            "id": "not_found",
+            "message": "not found",
+            "params": null
+          }
+        }
+      },
+      "status": 200,
+      "inventory": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      },
+      "restored": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "errors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 ()"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 ()"
+        },
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 404 ()"
+        }
+      ],
+      "network": {
+        "bad": [
+          {
+            "url": "https://api.bex.co/v1/services/srv-db8rssndbg8c73dghcc0",
+            "status": 404
+          },
+          {
+            "url": "https://api.bex.co/v1/env-groups/evg-db8rrrfdbg8c73dghca0",
+            "status": 404
+          },
+          {
+            "url": "https://api.bex.co/v1/env-groups/evg-db8rs9q9cl7s73ae4ang",
+            "status": 404
+          }
+        ],
+        "pending": 2
+      }
+    },
+    "CleanupPendingDetail": {
+      "at": "2026-10-16T06:28:24.206Z",
+      "pending": [
+        {
+          "url": "https://api.bex.co/graphql",
+          "method": "POST",
+          "operation": null
+        }
+      ]
+    },
+    "ClearBrowser": {
+      "at": "2026-10-16T06:28:35.509Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  },
+  "sourceResearch": [
+    {
+      "path": "dashboard/src/features/services/components/env-groups-panel.tsx",
+      "sha256": "7bf31d18faebd5979ab31e0015f7ddb1183df52be7e76dabf40c523d0dc634ba",
+      "excerpts": [
+        {
+          "startLine": 54,
+          "endLine": 65,
+          "text": "  const { groups, loading, error, refetch } = useEnvGroups();\n  const { linkGroup, unlinkGroup, busy } = useEnvGroupMutations(refetch);\n  const {\n    service,\n    loading: serviceLoading,\n    error: serviceError,\n    refetch: refetchService,\n  } = useServer(serviceId, { poll: false });\n  // The service's own env-var keys, to flag linked-group keys the service\n  // overrides at runtime (w6/067; last envFrom source wins — the service's).\n  // Same query the environment editor on this page runs, so Apollo shares it.\n  // Display-only: fail-open to \"no markers\" while loading or on error."
+        },
+        {
+          "startLine": 128,
+          "endLine": 181,
+          "text": "\n  const errorKind = classifySecretStoreError(error);\n  const initialLoading = loading && groups.length === 0 && !error;\n  const gated = errorKind === \"unavailable\" || errorKind === \"forbidden\";\n  // Precedence order, not list order. spec.envFromSecrets records the order\n  // links were ADDED, and Kubernetes lets the LAST envFrom source win, so the\n  // most recently linked group is the one whose value the service runs. Show\n  // the winner first. null means the API did not report link order (older\n  // backend) — then we keep the server's order and claim no precedence at all\n  // rather than inventing one, which is what the page did before w2/m94 when it\n  // listed the LOSING group first purely by accident (w1/091).\n  const linkOrder = service?.linkedEnvGroupIds ?? null;\n  const linked = useMemo(() => {\n    const items = groups.filter((group) =>\n      group.serviceLinks.includes(currentServiceId),\n    );\n    if (!linkOrder) return items;\n    const rank = new Map(linkOrder.map((id, index) => [id, index]));\n    return [...items].sort(\n      (a, b) => (rank.get(b.id) ?? -1) - (rank.get(a.id) ?? -1),\n    );\n  }, [groups, currentServiceId, linkOrder]);\n\n  // Walking the list in precedence order, the first group to claim a name wins\n  // it; every later (lower-precedence) group's copy is shadowed and records the\n  // winner for the tooltip. Skipped entirely when link order is unknown.\n  const shadowed = useMemo(() => {\n    const byGroup = new Map<\n      string,\n      { keys: Map<string, string>; files: Map<string, string> }\n    >();\n    if (!linkOrder) return byGroup;\n    const winningKey = new Map<string, string>();\n    const winningFile = new Map<string, string>();\n    for (const group of linked) {\n      const keys = new Map<string, string>();\n      const files = new Map<string, string>();\n      for (const key of group.envVarKeys) {\n        const winner = winningKey.get(key);\n        if (winner) keys.set(key, winner);\n        else winningKey.set(key, group.name);\n      }\n      for (const name of group.secretFileNames) {\n        const winner = winningFile.get(name);\n        if (winner) files.set(name, winner);\n        else winningFile.set(name, group.name);\n      }\n      byGroup.set(group.id, { keys, files });\n    }\n    return byGroup;\n  }, [linked, linkOrder]);\n  // bex-api links a group only to services in its own Environment scope, so\n  // only those are offered (w4/217: a group from another environment showed\n  // an enabled Link that always failed). Until the service's relationship and"
+        },
+        {
+          "startLine": 318,
+          "endLine": 329,
+          "text": "      </CardContent>\n      <NewEnvGroupDialog\n        key={`${scope.ownerId}:${serviceId}`}\n        open={createOpen}\n        onOpenChange={setCreateOpen}\n        onCreated={() => void refetch()}\n        refetch={refetch}\n        services={service ? [service] : []}\n        servicesLoading={serviceLoading}\n        servicesError={serviceError}\n        initialServiceIds={[currentServiceId]}\n        environments={scope.environments}"
+        },
+        {
+          "startLine": 388,
+          "endLine": 408,
+          "text": "  // (checked first — it beats every group), otherwise a later-linked group may.\n  const keyShadow = (key: string): string | null => {\n    if (!linked) return null;\n    if (serviceKeys.has(key))\n      return t(\"services.envGroupKeyOverridden\", { key });\n    const winner = shadowedKeys?.get(key);\n    return winner\n      ? t(\"services.envGroupKeyShadowedByGroup\", { key, group: winner })\n      : null;\n  };\n  const fileShadow = (name: string): string | null => {\n    if (!linked) return null;\n    if (serviceFiles.has(name))\n      return t(\"services.envGroupFileOverridden\", { name });\n    const winner = shadowedFiles?.get(name);\n    return winner\n      ? t(\"services.envGroupFileShadowedByGroup\", { name, group: winner })\n      : null;\n  };\n\n  return ("
+        },
+        {
+          "startLine": 432,
+          "endLine": 472,
+          "text": "              {group.envVarKeys.map((key) => {\n                const reason = keyShadow(key);\n                return reason ? (\n                  <Badge\n                    key={`k-${key}`}\n                    variant=\"outline\"\n                    className=\"text-muted-foreground font-mono\"\n                    title={reason}\n                  >\n                    <s>{key}</s>\n                  </Badge>\n                ) : (\n                  <Badge\n                    key={`k-${key}`}\n                    variant=\"secondary\"\n                    className=\"font-mono\"\n                  >\n                    {key}\n                  </Badge>\n                );\n              })}\n              {group.secretFileNames.map((name) => {\n                const reason = fileShadow(name);\n                return reason ? (\n                  <Badge\n                    key={`f-${name}`}\n                    variant=\"outline\"\n                    className=\"text-muted-foreground font-mono\"\n                    title={reason}\n                  >\n                    <s>{name}</s>\n                  </Badge>\n                ) : (\n                  <Badge\n                    key={`f-${name}`}\n                    variant=\"outline\"\n                    className=\"font-mono\"\n                  >\n                    {name}\n                  </Badge>\n                );"
+        }
+      ]
+    },
+    {
+      "path": "dashboard/src/features/env-groups/hooks/use-env-groups.ts",
+      "sha256": "880af145aef4a8bd09a18cc8f5d7a631d59bb64a701865ec2122556ee8a392a8",
+      "excerpts": [
+        {
+          "startLine": 159,
+          "endLine": 169,
+          "text": "async function bestEffortRefetch(refetch: Refetch | undefined) {\n  try {\n    await refetch?.();\n  } catch {\n    // The write already succeeded. A cache refresh failure must not report the\n    // mutation itself as failed; cache-and-network queries retry on next mount.\n  }\n}\n\nexport interface UseEnvGroupMutationsResult {\n  createGroup: (input: CreateEnvGroupInput) => Promise<string | null>;"
+        },
+        {
+          "startLine": 186,
+          "endLine": 199,
+          "text": "  refetch?: Refetch,\n  options: { skipRenameRefetch?: boolean } = {},\n): UseEnvGroupMutationsResult {\n  const { t } = useTranslations();\n  const { currentWorkspaceId } = useWorkspace();\n  const [createEnvGroup] = useMutation(CreateEnvGroupDocument);\n  const [renameEnvGroup] = useMutation(RenameEnvGroupDocument);\n  const [deleteEnvGroup] = useMutation(DeleteEnvGroupDocument);\n  const [linkEnvGroup] = useMutation(LinkEnvGroupDocument);\n  const [unlinkEnvGroup] = useMutation(UnlinkEnvGroupDocument);\n  const [moveEnvGroup] = useMutation(MoveEnvGroupDocument);\n  const [cloneEnvGroup] = useMutation(CloneEnvGroupDocument);\n  const client = useApolloClient();\n  const [busy, setBusy] = useState(false);"
+        },
+        {
+          "startLine": 300,
+          "endLine": 338,
+          "text": "  const linkGroup = useCallback(\n    async (id: string, serviceId: string) => {\n      setBusy(true);\n      try {\n        await linkEnvGroup({ variables: { id, serviceId } });\n        await bestEffortRefetch(refetch);\n        toast.success(t(\"envGroups.linkSuccess\"), {\n          description: t(\"envGroups.linkChangeNote\"),\n        });\n        return true;\n      } catch (err) {\n        toast.error(mutationErrorMessage(err, t(\"envGroups.linkError\")));\n        return false;\n      } finally {\n        setBusy(false);\n      }\n    },\n    [linkEnvGroup, refetch, t],\n  );\n\n  const unlinkGroup = useCallback(\n    async (id: string, serviceId: string) => {\n      setBusy(true);\n      try {\n        await unlinkEnvGroup({ variables: { id, serviceId } });\n        await bestEffortRefetch(refetch);\n        toast.success(t(\"envGroups.unlinkSuccess\"), {\n          description: t(\"envGroups.linkChangeNote\"),\n        });\n        return true;\n      } catch (err) {\n        toast.error(mutationErrorMessage(err, t(\"envGroups.unlinkError\")));\n        return false;\n      } finally {\n        setBusy(false);\n      }\n    },\n    [refetch, t, unlinkEnvGroup],\n  );"
+        }
+      ]
+    },
+    {
+      "path": "dashboard/src/features/services/hooks/use-server.ts",
+      "sha256": "41cc3c2513a6aebf4d406cd5b6618bb2e4996fd000406f2a1ccd4c4ba66b1931",
+      "excerpts": [
+        {
+          "startLine": 45,
+          "endLine": 79,
+          "text": "export function useServer(\n  id: string,\n  { poll = true }: UseServerOptions = {},\n): UseServerResult {\n  const { data, loading, error, refetch, startPolling, stopPolling } = useQuery(\n    ServerDocument,\n    {\n      variables: { id },\n      fetchPolicy: \"cache-first\",\n      errorPolicy: \"all\",\n      skipPollAttempt: skipPollWhenHidden,\n    },\n  );\n\n  const service = useMemo(\n    () => (data?.server ? toServiceView(data.server) : null),\n    [data],\n  );\n\n  // Not yet loaded counts as converging, matching useDatabase: an App whose\n  // first read is still in flight is exactly the one whose phase is about to\n  // move.\n  useConvergingPoll(\n    startPolling,\n    stopPolling,\n    service ? isConvergingPhase(service) : true,\n    poll,\n  );\n\n  const refetchViews = useCallback(async () => {\n    const res = await refetch();\n    return res.data?.server ? [toServiceView(res.data.server)] : [];\n  }, [refetch]);\n\n  return { service, loading, error, refetch: refetchViews };"
+        }
+      ]
+    },
+    {
+      "path": "dashboard/src/common/lib/polling.ts",
+      "sha256": "bc8233607629493a60455fa1689b28b8a45f7abfceecedeff273ba016f2ebf27",
+      "excerpts": [
+        {
+          "startLine": 11,
+          "endLine": 18,
+          "text": "export const RESOURCE_POLL_INTERVAL_MS = 30_000;\n\n/**\n * Fast cadence for a resource that is still converging (a provisioning\n * database, an upgrading key-value store): poll at this interval until the\n * status settles, then fall back to `RESOURCE_POLL_INTERVAL_MS`.\n */\nexport const CONVERGING_POLL_INTERVAL_MS = 3_000;"
+        },
+        {
+          "startLine": 47,
+          "endLine": 59,
+          "text": "export function useConvergingPoll(\n  startPolling: (intervalMs: number) => void,\n  stopPolling: () => void,\n  converging: boolean,\n  enabled = true,\n): void {\n  useEffect(() => {\n    if (!enabled) return;\n    startPolling(\n      converging ? CONVERGING_POLL_INTERVAL_MS : RESOURCE_POLL_INTERVAL_MS,\n    );\n    return () => stopPolling();\n  }, [enabled, converging, startPolling, stopPolling]);"
+        }
+      ]
+    },
+    {
+      "path": "dashboard/src/features/services/components/service-detail-layout.tsx",
+      "sha256": "0c516a0bfeecdcd73cdbe224c005c90d20e5e647e6e26ced9cad3cbbf9d6ce43",
+      "excerpts": [
+        {
+          "startLine": 31,
+          "endLine": 46,
+          "text": " * `<Outlet/>` for the active tab. Rendered by both service-detail route trees —\n * `/services/$serviceId` (compute types) and `/static/$serviceId` (static_site,\n * Render parity w5/m57). The parent route's network-only loader fills Apollo's\n * normalized cache for the title; this layout's cache-first `useServer` read\n * consumes that same result for the header without a second title-only request.\n */\nexport function ServiceDetailLayout({\n  serviceId,\n  base = \"/services\",\n}: {\n  serviceId: string;\n  base?: ServiceBase;\n}) {\n  const { service, loading, error, refetch } = useServer(serviceId);\n  const { deploy: latestDeploy } = useLatestDeploy(serviceId);\n  const { pending } = useServiceLifecycle({ refetch });"
+        }
+      ]
+    },
+    {
+      "path": "dashboard/yarn.lock",
+      "sha256": "e3eb7681438c9cc6027a030f6c30cbdec02bd18319547ffac9cd662b5c02ca73",
+      "excerpts": [
+        {
+          "startLine": 65,
+          "endLine": 68,
+          "text": "\"@apollo/client@npm:^4.3.0\":\n  version: 4.3.3\n  resolution: \"@apollo/client@npm:4.3.3\"\n  dependencies:"
+        }
+      ]
+    },
+    {
+      "path": "dashboard/src/features/services/types.ts",
+      "sha256": "317068efee47cfb648032e38f5316f463467642c86f3a54f4eb594f96db4603d",
+      "excerpts": [
+        {
+          "startLine": 165,
+          "endLine": 177,
+          "text": "  /**\n   * The linked environment groups in PRECEDENCE order (w2/m94/t003): the order\n   * the links were added, which is `spec.envFromSecrets` order. The operator\n   * emits those Secrets as `envFrom` sources in this order and Kubernetes lets\n   * the LAST source win a key collision, so the LAST id here is the group whose\n   * value the service actually runs. Secret files follow the same rule.\n   *\n   * The workspace group list records links as an unordered set, so this is the\n   * only thing that can order the Linked Environment Groups panel or say which\n   * of two colliding groups wins. null on the list query, which does not\n   * select it, and on an older API — both mean \"unknown\", never \"none\".\n   */\n  linkedEnvGroupIds?: string[] | null;"
+        }
+      ]
+    },
+    {
+      "path": "lego/backend/internal/apps/graphql.go",
+      "sha256": "1b21bc75f16b963767298070b9fc2afcdd24337aedce427c052dbefcc769b231",
+      "excerpts": [
+        {
+          "startLine": 436,
+          "endLine": 443,
+          "text": "\t\t// linkedEnvGroupIds is the linked groups in PRECEDENCE order (last wins\n\t\t// a key or secret-file collision). The Environment page's Linked\n\t\t// Environment Groups panel orders and shadow-marks from it (w2/m94/t003).\n\t\t\"linkedEnvGroupIds\": &graphql.Field{\n\t\t\tType:    graphql.NewList(graphql.String),\n\t\t\tResolve: gqlutil.Field(func(a AppView) any { return a.LinkedEnvGroupIDs }),\n\t\t},\n\t\t\"autoDeploy\": gqlutil.BoolField(func(a AppView) any { return a.AutoDeploy }),"
+        }
+      ]
+    },
+    {
+      "path": "dashboard/src/features/services/api/server.graphql",
+      "sha256": "7a95a8c937c04c6083e8ee11af07f003bf2ae59e48839bd6507edc8ec171bdd0",
+      "excerpts": [
+        {
+          "startLine": 87,
+          "endLine": 92,
+          "text": "    # linkedEnvGroupIds is the linked environment groups in PRECEDENCE order\n    # (w2/m94/t003): spec.envFromSecrets order, where the LAST entry wins a key\n    # or secret-file collision. The workspace group list carries links as an\n    # unordered set, so this is the only thing that can tell the Environment\n    # page which of two colliding groups the service actually runs.\n    linkedEnvGroupIds"
+        }
+      ]
+    }
+  ],
+  "dependencyResearch": {
+    "lockAndHostedVersion": "4.3.3",
+    "localInstalledVersion": "4.1.3; deliberately not used as hosted implementation evidence",
+    "exactNpmTarballSha256": "8ae35190f6a316dab925c110929d789957f663eff07ec3359a2883a44a1f295f",
+    "excerpts": [
+      {
+        "path": ".playwright-mcp/qa-a678-apollo/QueryManager.js",
+        "sha256": "7a9bee7aacb71e3c6a64bfa100af89751670e7515fb09638293267e86543484b",
+        "excerpts": [
+          {
+            "startLine": 108,
+            "endLine": 109,
+            "text": "    async mutate({ mutation, variables, optimisticResponse, updateQueries, refetchQueries = [], awaitRefetchQueries = false, update: updateWithProxyFn, onQueryUpdated, fetchPolicy, errorPolicy, keepRootFields, context, }) {\n        const queryInfo = new QueryInfo(this);"
+          },
+          {
+            "startLine": 153,
+            "endLine": 167,
+            "text": "                return from(queryInfo.markMutationResult(storeResult, {\n                    document: mutation,\n                    variables,\n                    cacheWriteBehavior: fetchPolicy === \"no-cache\" ?\n                        0 /* CacheWriteBehavior.FORBID */\n                        : 2 /* CacheWriteBehavior.MERGE */,\n                    errorPolicy,\n                    context,\n                    update: updateWithProxyFn,\n                    updateQueries,\n                    awaitRefetchQueries,\n                    refetchQueries,\n                    removeOptimistic: isOptimistic ? queryInfo.id : void 0,\n                    onQueryUpdated,\n                    keepRootFields,"
+          }
+        ]
+      },
+      {
+        "path": ".playwright-mcp/qa-a678-apollo/QueryInfo.js",
+        "sha256": "f3363a788fa8b55c478bde5fb0c7229919e3b7fa672def2a599d7812a716c87f",
+        "excerpts": [
+          {
+            "startLine": 170,
+            "endLine": 200,
+            "text": "    markMutationResult(incoming, mutation, cache = this.cache) {\n        const cacheWrites = [];\n        const skipCache = mutation.cacheWriteBehavior === 0 /* CacheWriteBehavior.FORBID */;\n        let result = this.maybeHandleIncrementalResult(skipCache ? undefined : (cache.diff({\n            id: \"ROOT_MUTATION\",\n            // The cache complains if passed a mutation where it expects a\n            // query, so we transform mutations and subscriptions to queries\n            // (only once, thanks to this.transformCache).\n            query: this.queryManager.getDocumentInfo(mutation.document).asQuery,\n            variables: mutation.variables,\n            optimistic: false,\n            returnPartialData: true,\n        }).result), incoming, mutation.document);\n        if (mutation.errorPolicy === \"ignore\") {\n            result = { ...result, errors: [] };\n        }\n        if (graphQLResultHasError(result) && mutation.errorPolicy === \"none\") {\n            return Promise.resolve(result);\n        }\n        const getResultWithDataState = () => ({\n            ...result,\n            dataState: this.hasNext ? \"streaming\" : \"complete\",\n        });\n        if (!skipCache && shouldWriteResult(result, mutation.errorPolicy)) {\n            cacheWrites.push({\n                result: result.data,\n                dataId: \"ROOT_MUTATION\",\n                query: mutation.document,\n                variables: mutation.variables,\n                extensions: result.extensions,\n            });"
+          },
+          {
+            "startLine": 234,
+            "endLine": 250,
+            "text": "        }\n        let refetchQueries = mutation.refetchQueries;\n        if (typeof refetchQueries === \"function\") {\n            refetchQueries = refetchQueries(getResultWithDataState());\n        }\n        if (cacheWrites.length > 0 ||\n            (refetchQueries || \"\").length > 0 ||\n            mutation.update ||\n            mutation.onQueryUpdated ||\n            mutation.removeOptimistic) {\n            const results = [];\n            this.queryManager\n                .refetchQueries({\n                updateCache: (cache) => {\n                    if (!skipCache) {\n                        cacheWrites.forEach((write) => cache.write(write));\n                    }"
+          },
+          {
+            "startLine": 294,
+            "endLine": 313,
+            "text": "                    }\n                },\n                include: refetchQueries,\n                // Write the final mutation.result to the root layer of the cache.\n                optimistic: false,\n                // Remove the corresponding optimistic layer at the same time as we\n                // write the final non-optimistic result.\n                removeOptimistic: mutation.removeOptimistic,\n                // Let the caller of client.mutate optionally determine the refetching\n                // behavior for watched queries after the mutation.update function runs.\n                // If no onQueryUpdated function was provided for this mutation, pass\n                // null instead of undefined to disable the default refetching behavior.\n                onQueryUpdated: mutation.onQueryUpdated || null,\n            })\n                .forEach((result) => results.push(result));\n            if (mutation.awaitRefetchQueries || mutation.onQueryUpdated) {\n                // Returning a promise here makes the mutation await that promise, so we\n                // include results in that promise's work if awaitRefetchQueries or an\n                // onQueryUpdated function was specified.\n                return Promise.all(results).then(() => result);"
+          }
+        ]
+      },
+      {
+        "path": ".playwright-mcp/qa-a678-apollo/ObservableQuery.js",
+        "sha256": "965e1e8164e75a972b59e8953e332ddd3f9071e34f54572efcc9392b86ba7b24",
+        "excerpts": [
+          {
+            "startLine": 870,
+            "endLine": 878,
+            "text": "    updatePolling() {\n        // Avoid polling in SSR mode\n        if (this.queryManager.ssrMode) {\n            return;\n        }\n        const { pollingInfo, options: { fetchPolicy, pollInterval }, } = this;\n        const shouldCancelPolling = () => {\n            const { options } = this;\n            return (!options.pollInterval ||"
+          },
+          {
+            "startLine": 901,
+            "endLine": 934,
+            "text": "            // defense against options changing after the setTimeout changes in case\n            // the call site forgets to call cancelPolling\n            if (shouldCancelPolling()) {\n                return this.cancelPolling();\n            }\n            if (this.pollingInfo) {\n                if (!isNetworkRequestInFlight(this.networkStatus) &&\n                    !this.options.skipPollAttempt?.()) {\n                    this._reobserve({\n                        // Most fetchPolicy options don't make sense to use in a polling context, as\n                        // users wouldn't want to be polling the cache directly. However, network-only and\n                        // no-cache are both useful for when the user wants to control whether or not the\n                        // polled results are written to the cache.\n                        fetchPolicy: this.options.initialFetchPolicy === \"no-cache\" ?\n                            \"no-cache\"\n                            : \"network-only\",\n                    }, {\n                        newNetworkStatus: NetworkStatus.poll,\n                    }).then(poll, poll);\n                }\n                else {\n                    poll();\n                }\n            }\n        };\n        const poll = () => {\n            const info = this.pollingInfo;\n            if (info) {\n                clearTimeout(info.timeout);\n                info.timeout = setTimeout(maybeFetch, info.interval);\n            }\n        };\n        poll();\n    }"
+          }
+        ]
+      }
+    ]
+  },
+  "runtimeCleanup": {
+    "at": "2026-10-16T06:28:12.775805+00:00",
+    "publicStatus": 404,
+    "appAbsent": true,
+    "pods": []
+  },
+  "sessionCleanup": {
+    "logoutExit": 0,
+    "browser": {
+      "at": "2026-10-16T06:28:35.509Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "handles": "owned jar/handle removed; shared jar removed only after exact mtime_ns+size match"
+  },
+  "limits": [
+    "Initial brief public error/503 observation did not recur; not filed. Repeated removal browser samples all200; raw120-sample control ended before repeated removal mutation.",
+    "Three console404s are expected exact-owned cleanup reads. A retained in-flight GraphQL batch remained during cleanup; not treated as a hang.",
+    "Fresh mobile width390/document390; stale and settled screenshots viewed but ignored local images are not durable proof.",
+    "No repaired UI, live sibling resource kinds, repo-autoDeploy gate, quota seeding, or authenticated Render UI tested."
+  ]
+}
