@@ -32,7 +32,7 @@ Target an accessible, localized catalog-specific message and Retry **within each
 
 ## Shared-code census, aliases and controls
 
-Exhaustive production call-site search (excluding tests and hook definitions): **13** consumers, four service, six Postgres and three Key Value. Make error presentation allowlisted to the three create producers. Audit compatibility across the remaining ten; do not globally change empty-grid behavior or force unrelated metadata/detail cards to adopt create-form UI.
+Exhaustive production call-site search (excluding tests and hook definitions): **13** consumers, four service, six Postgres and three Key Value. The a796 [detail extension](detail-finding-a796.md) separately reproduces both datastore detail plan editors. The final error-rendering allowlist is five producers: three create forms and those two detail plan cards. Audit compatibility across the remaining eight; do not globally change empty-grid behavior or force unrelated metadata/detail cards to adopt create-form UI.
 
 | Hook | Production consumers |
 | --- | --- |

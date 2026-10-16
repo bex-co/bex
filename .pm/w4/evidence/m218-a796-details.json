@@ -1,0 +1,897 @@
+{
+  "pass": "a796",
+  "observed": "2026-10-16 UTC",
+  "researchHead": "925cc2010",
+  "purpose": "Extend w4/m218 with Postgres and Key Value detail plan-editor terminal catalog errors",
+  "synthetic": true,
+  "receiptBoundary": "Each fault retains exact selected native operation and complete corresponding native200 response entry, plus complete browser-local synthetic replacement. Unrelated sibling response bodies are omitted and were preserved unchanged. A fault handler stayed active through a5s mounted-page observation and was removed before return; each recorded fresh page made exactly one intercepted catalog request. Healthy controls retain complete corresponding native operations/entries. DOM/ARIA fields are projections.",
+  "replayFactory": "function(operation,url,width){return `async(page)=>{\nawait page.setViewportSize({width:${width},height:1000});await page.goto(\"about:blank\",{waitUntil:\"commit\"});\nconst faults=[];\nconst handler=async route=>{let ops;try{const b=route.request().postDataJSON();ops=Array.isArray(b)?b:[b]}catch{await route.continue();return}\nconst index=ops.findIndex(e=>e?.operationName===${JSON.stringify(operation)});\nif(index<0){await route.continue();return}\nconst response=await route.fetch(),body=await response.json(),entry=Array.isArray(body)?body[index]:body;\nconst field=Object.keys(entry.data??{})[0]??\"catalog\";\nconst replacement={data:null,errors:[{message:\"QA injected detail catalog failure\",path:[field],extensions:{code:\"INTERNAL_SERVER_ERROR\"}}]};\nfaults.push({at:new Date().toISOString(),request:ops[index],nativeStatus:response.status(),nativeBody:entry,injectedStatus:200,injectedBody:replacement,batchNames:ops.map(e=>e.operationName),unchangedSiblings:ops.length-1,onlySelectedEntryChanged:true});\nconst updated=Array.isArray(body)?body.map((v,i)=>i===index?replacement:v):replacement;\nconst headers={...response.headers()};for(const h of[\"content-length\",\"content-encoding\",\"transfer-encoding\"])delete headers[h];headers[\"content-type\"]=\"application/json\";\nawait route.fulfill({status:200,headers,body:JSON.stringify(updated)})\n};\nawait page.route(\"https://api.bex.co/graphql\",handler);\ntry{await page.goto(${JSON.stringify(url)});await page.locator(\"#plan\").scrollIntoViewIfNeeded();await page.waitForTimeout(5000)}finally{await page.unroute(\"https://api.bex.co/graphql\",handler)}\nconst p=page.locator(\"#plan\");return{at:new Date().toISOString(),url:page.url(),width,faults,region:await p.ariaSnapshot(),radios:await p.getByRole(\"radio\").count(),retryButtons:await p.getByRole(\"button\",{name:/retry|try again/i}).count(),alertTexts:await p.getByRole(\"alert\").allTextContents(),skeletons:await p.locator(\"[data-slot=skeleton]\").count(),bodyStatus:await page.locator(\"main\").getByText(\"Available\",{exact:true}).count()}\n}`.replace(\"width,faults\",\"width:\"+width+\",faults\")}",
+  "replayInstructions": "Create new owned private Free Postgres and Key Value fixtures, wait until Available, substitute their detail URLs ending #plan into the replay factory, and run at1440 and390. The recorded fixture IDs below were deleted. No Save/plan update is required; remove routing before healthy reload. Revoke only your own QA session.",
+  "probes": {
+    "a796CreateDatabase": {
+      "at": "2026-10-16T22:58:04.082Z",
+      "request": {
+        "operationName": "CreateDatabase",
+        "variables": {
+          "name": "qa-20261016-a796-plan",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "plan": "free",
+          "public": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateDatabase($name: String!, $databaseName: String, $databaseUser: String, $ownerId: String, $environmentId: String, $plan: String, $version: String, $diskSizeGB: Int, $public: Boolean) {\n  createDatabase(\n    name: $name\n    databaseName: $databaseName\n    databaseUser: $databaseUser\n    ownerId: $ownerId\n    environmentId: $environmentId\n    plan: $plan\n    version: $version\n    diskSizeGB: $diskSizeGB\n    public: $public\n  ) {\n    id\n    name\n    databaseName\n    databaseUser\n    plan\n    status\n    projectId\n    environmentId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createDatabase": {
+            "__typename": "Database",
+            "databaseName": "dpg_db9anus50quc73dl5j5g",
+            "databaseUser": "dpg_db9anus50quc73dl5j5g_user",
+            "environmentId": null,
+            "id": "dpg-db9anus50quc73dl5j5g",
+            "name": "qa-20261016-a796-plan",
+            "plan": "free",
+            "projectId": null,
+            "status": "creating"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792191482992.6848,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.159,
+        "responseStart": 376.046,
+        "responseEnd": 376.477
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9anus50quc73dl5j5g"
+    },
+    "a796CreateKeyValue": {
+      "at": "2026-10-16T22:59:41.512Z",
+      "request": {
+        "operationName": "CreateKeyValue",
+        "variables": {
+          "name": "qa-20261016-a796-cache",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "plan": "free",
+          "public": false,
+          "maxmemoryPolicy": "allkeys-lru",
+          "persistenceMode": "journal-snapshot"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateKeyValue($name: String!, $ownerId: String, $environmentId: String, $plan: String, $version: String, $storageGB: Int, $public: Boolean, $maxmemoryPolicy: String, $persistenceMode: String) {\n  createKeyValue(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    plan: $plan\n    version: $version\n    storageGB: $storageGB\n    public: $public\n    maxmemoryPolicy: $maxmemoryPolicy\n    persistenceMode: $persistenceMode\n  ) {\n    id\n    name\n    plan\n    status\n    projectId\n    environmentId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createKeyValue": {
+            "__typename": "KeyValue",
+            "environmentId": null,
+            "id": "red-db9aon4fcf2c73c2mkdg",
+            "name": "qa-20261016-a796-cache",
+            "plan": "free",
+            "projectId": null,
+            "status": "creating"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792191580388.8098,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.142,
+        "responseStart": 409.771,
+        "responseEnd": 410.326
+      },
+      "url": "https://dashboard.bex.co/keyvalue/red-db9aon4fcf2c73c2mkdg"
+    },
+    "a796DatastoresReady": {
+      "samples": [
+        [
+          {
+            "at": "2026-10-16T22:59:50.997Z",
+            "path": "/v1/postgres/dpg-db9anus50quc73dl5j5g",
+            "status": 200,
+            "id": "dpg-db9anus50quc73dl5j5g",
+            "state": "available",
+            "plan": "free"
+          },
+          {
+            "at": "2026-10-16T22:59:51.030Z",
+            "path": "/v1/key-value/red-db9aon4fcf2c73c2mkdg",
+            "status": 200,
+            "id": "red-db9aon4fcf2c73c2mkdg",
+            "state": "creating",
+            "plan": "free"
+          }
+        ],
+        [
+          {
+            "at": "2026-10-16T22:59:53.794Z",
+            "path": "/v1/postgres/dpg-db9anus50quc73dl5j5g",
+            "status": 200,
+            "id": "dpg-db9anus50quc73dl5j5g",
+            "state": "available",
+            "plan": "free"
+          },
+          {
+            "at": "2026-10-16T22:59:53.891Z",
+            "path": "/v1/key-value/red-db9aon4fcf2c73c2mkdg",
+            "status": 200,
+            "id": "red-db9aon4fcf2c73c2mkdg",
+            "state": "creating",
+            "plan": "free"
+          }
+        ],
+        [
+          {
+            "at": "2026-10-16T22:59:56.661Z",
+            "path": "/v1/postgres/dpg-db9anus50quc73dl5j5g",
+            "status": 200,
+            "id": "dpg-db9anus50quc73dl5j5g",
+            "state": "available",
+            "plan": "free"
+          },
+          {
+            "at": "2026-10-16T22:59:56.616Z",
+            "path": "/v1/key-value/red-db9aon4fcf2c73c2mkdg",
+            "status": 200,
+            "id": "red-db9aon4fcf2c73c2mkdg",
+            "state": "creating",
+            "plan": "free"
+          }
+        ],
+        [
+          {
+            "at": "2026-10-16T22:59:59.419Z",
+            "path": "/v1/postgres/dpg-db9anus50quc73dl5j5g",
+            "status": 200,
+            "id": "dpg-db9anus50quc73dl5j5g",
+            "state": "available",
+            "plan": "free"
+          },
+          {
+            "at": "2026-10-16T22:59:59.388Z",
+            "path": "/v1/key-value/red-db9aon4fcf2c73c2mkdg",
+            "status": 200,
+            "id": "red-db9aon4fcf2c73c2mkdg",
+            "state": "creating",
+            "plan": "free"
+          }
+        ],
+        [
+          {
+            "at": "2026-10-16T23:00:02.296Z",
+            "path": "/v1/postgres/dpg-db9anus50quc73dl5j5g",
+            "status": 200,
+            "id": "dpg-db9anus50quc73dl5j5g",
+            "state": "available",
+            "plan": "free"
+          },
+          {
+            "at": "2026-10-16T23:00:02.164Z",
+            "path": "/v1/key-value/red-db9aon4fcf2c73c2mkdg",
+            "status": 200,
+            "id": "red-db9aon4fcf2c73c2mkdg",
+            "state": "creating",
+            "plan": "free"
+          }
+        ],
+        [
+          {
+            "at": "2026-10-16T23:00:05.048Z",
+            "path": "/v1/postgres/dpg-db9anus50quc73dl5j5g",
+            "status": 200,
+            "id": "dpg-db9anus50quc73dl5j5g",
+            "state": "available",
+            "plan": "free"
+          },
+          {
+            "at": "2026-10-16T23:00:05.036Z",
+            "path": "/v1/key-value/red-db9aon4fcf2c73c2mkdg",
+            "status": 200,
+            "id": "red-db9aon4fcf2c73c2mkdg",
+            "state": "creating",
+            "plan": "free"
+          }
+        ],
+        [
+          {
+            "at": "2026-10-16T23:00:07.782Z",
+            "path": "/v1/postgres/dpg-db9anus50quc73dl5j5g",
+            "status": 200,
+            "id": "dpg-db9anus50quc73dl5j5g",
+            "state": "available",
+            "plan": "free"
+          },
+          {
+            "at": "2026-10-16T23:00:07.796Z",
+            "path": "/v1/key-value/red-db9aon4fcf2c73c2mkdg",
+            "status": 200,
+            "id": "red-db9aon4fcf2c73c2mkdg",
+            "state": "creating",
+            "plan": "free"
+          }
+        ]
+      ]
+    },
+    "a796PostgresDesktopFault": {
+      "at": "2026-10-16T23:00:46.939Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db9anus50quc73dl5j5g#plan",
+      "width": 1440,
+      "faults": [
+        {
+          "at": "2026-10-16T23:00:42.655Z",
+          "request": {
+            "operationName": "DatabaseInstanceTypes",
+            "variables": {},
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query DatabaseInstanceTypes {\n  databaseInstanceTypes {\n    id\n    name\n    cpu\n    memory\n    storageGB\n    maxStorageGB\n    supportsDiskAutoscaling\n    supportsConnectionPooling\n    maxReadReplicas\n    supportsHighAvailability\n    monthlyUsd\n    __typename\n  }\n}"
+          },
+          "nativeStatus": 200,
+          "nativeBody": {
+            "data": {
+              "databaseInstanceTypes": [
+                {
+                  "__typename": "DatabaseInstanceType",
+                  "cpu": "100m",
+                  "id": "free",
+                  "maxReadReplicas": 0,
+                  "maxStorageGB": 1,
+                  "memory": "256Mi",
+                  "monthlyUsd": "0.00",
+                  "name": "Free",
+                  "storageGB": 1,
+                  "supportsConnectionPooling": false,
+                  "supportsDiskAutoscaling": false,
+                  "supportsHighAvailability": false
+                },
+                {
+                  "__typename": "DatabaseInstanceType",
+                  "cpu": "100m",
+                  "id": "basic-256mb",
+                  "maxReadReplicas": 0,
+                  "maxStorageGB": 16384,
+                  "memory": "256Mi",
+                  "monthlyUsd": "4.90",
+                  "name": "Basic 256MB",
+                  "storageGB": 1,
+                  "supportsConnectionPooling": true,
+                  "supportsDiskAutoscaling": true,
+                  "supportsHighAvailability": false
+                },
+                {
+                  "__typename": "DatabaseInstanceType",
+                  "cpu": "500m",
+                  "id": "basic-1gb",
+                  "maxReadReplicas": 5,
+                  "maxStorageGB": 16384,
+                  "memory": "1Gi",
+                  "monthlyUsd": "14.00",
+                  "name": "Basic 1GB",
+                  "storageGB": 5,
+                  "supportsConnectionPooling": true,
+                  "supportsDiskAutoscaling": true,
+                  "supportsHighAvailability": false
+                }
+              ]
+            }
+          },
+          "injectedStatus": 200,
+          "injectedBody": {
+            "data": null,
+            "errors": [
+              {
+                "message": "QA injected detail catalog failure",
+                "path": ["databaseInstanceTypes"],
+                "extensions": {
+                  "code": "INTERNAL_SERVER_ERROR"
+                }
+              }
+            ]
+          },
+          "batchNames": [
+            "RouterAvailable",
+            "Projects",
+            "BillingReadiness",
+            "Workspaces",
+            "DatabaseInstanceTypes"
+          ],
+          "unchangedSiblings": 4,
+          "onlySelectedEntryChanged": true
+        }
+      ],
+      "region": "- text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n- radiogroup \"Instance type\"\n- button \"Cancel\" [disabled]\n- button \"Save\" [disabled]",
+      "radios": 0,
+      "retryButtons": 0,
+      "alertTexts": [],
+      "skeletons": 0,
+      "bodyStatus": 2
+    },
+    "a796PostgresMobileFault": {
+      "at": "2026-10-16T23:01:10.390Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db9anus50quc73dl5j5g#plan",
+      "width": 390,
+      "faults": [
+        {
+          "at": "2026-10-16T23:01:06.038Z",
+          "request": {
+            "operationName": "DatabaseInstanceTypes",
+            "variables": {},
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query DatabaseInstanceTypes {\n  databaseInstanceTypes {\n    id\n    name\n    cpu\n    memory\n    storageGB\n    maxStorageGB\n    supportsDiskAutoscaling\n    supportsConnectionPooling\n    maxReadReplicas\n    supportsHighAvailability\n    monthlyUsd\n    __typename\n  }\n}"
+          },
+          "nativeStatus": 200,
+          "nativeBody": {
+            "data": {
+              "databaseInstanceTypes": [
+                {
+                  "__typename": "DatabaseInstanceType",
+                  "cpu": "100m",
+                  "id": "free",
+                  "maxReadReplicas": 0,
+                  "maxStorageGB": 1,
+                  "memory": "256Mi",
+                  "monthlyUsd": "0.00",
+                  "name": "Free",
+                  "storageGB": 1,
+                  "supportsConnectionPooling": false,
+                  "supportsDiskAutoscaling": false,
+                  "supportsHighAvailability": false
+                },
+                {
+                  "__typename": "DatabaseInstanceType",
+                  "cpu": "100m",
+                  "id": "basic-256mb",
+                  "maxReadReplicas": 0,
+                  "maxStorageGB": 16384,
+                  "memory": "256Mi",
+                  "monthlyUsd": "4.90",
+                  "name": "Basic 256MB",
+                  "storageGB": 1,
+                  "supportsConnectionPooling": true,
+                  "supportsDiskAutoscaling": true,
+                  "supportsHighAvailability": false
+                },
+                {
+                  "__typename": "DatabaseInstanceType",
+                  "cpu": "500m",
+                  "id": "basic-1gb",
+                  "maxReadReplicas": 5,
+                  "maxStorageGB": 16384,
+                  "memory": "1Gi",
+                  "monthlyUsd": "14.00",
+                  "name": "Basic 1GB",
+                  "storageGB": 5,
+                  "supportsConnectionPooling": true,
+                  "supportsDiskAutoscaling": true,
+                  "supportsHighAvailability": false
+                }
+              ]
+            }
+          },
+          "injectedStatus": 200,
+          "injectedBody": {
+            "data": null,
+            "errors": [
+              {
+                "message": "QA injected detail catalog failure",
+                "path": ["databaseInstanceTypes"],
+                "extensions": {
+                  "code": "INTERNAL_SERVER_ERROR"
+                }
+              }
+            ]
+          },
+          "batchNames": [
+            "Projects",
+            "BillingReadiness",
+            "Workspaces",
+            "DatabaseInstanceTypes"
+          ],
+          "unchangedSiblings": 3,
+          "onlySelectedEntryChanged": true
+        }
+      ],
+      "region": "- text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n- radiogroup \"Instance type\"\n- button \"Cancel\" [disabled]\n- button \"Save\" [disabled]",
+      "radios": 0,
+      "retryButtons": 0,
+      "alertTexts": [],
+      "skeletons": 0,
+      "bodyStatus": 2
+    },
+    "a796KeyValueDesktopFault": {
+      "at": "2026-10-16T23:01:17.319Z",
+      "url": "https://dashboard.bex.co/keyvalue/red-db9aon4fcf2c73c2mkdg#plan",
+      "width": 1440,
+      "faults": [
+        {
+          "at": "2026-10-16T23:01:13.059Z",
+          "request": {
+            "operationName": "KeyValueInstanceTypes",
+            "variables": {},
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query KeyValueInstanceTypes {\n  keyValueInstanceTypes {\n    id\n    name\n    cpu\n    memory\n    storageGB\n    monthlyUsd\n    __typename\n  }\n}"
+          },
+          "nativeStatus": 200,
+          "nativeBody": {
+            "data": {
+              "keyValueInstanceTypes": [
+                {
+                  "__typename": "KeyValueInstanceType",
+                  "cpu": "100m",
+                  "id": "free",
+                  "memory": "128Mi",
+                  "monthlyUsd": "0.00",
+                  "name": "Free",
+                  "storageGB": 1
+                },
+                {
+                  "__typename": "KeyValueInstanceType",
+                  "cpu": "100m",
+                  "id": "starter",
+                  "memory": "256Mi",
+                  "monthlyUsd": "7.00",
+                  "name": "Starter",
+                  "storageGB": 1
+                },
+                {
+                  "__typename": "KeyValueInstanceType",
+                  "cpu": "500m",
+                  "id": "standard",
+                  "memory": "1Gi",
+                  "monthlyUsd": "21.00",
+                  "name": "Standard",
+                  "storageGB": 5
+                }
+              ]
+            }
+          },
+          "injectedStatus": 200,
+          "injectedBody": {
+            "data": null,
+            "errors": [
+              {
+                "message": "QA injected detail catalog failure",
+                "path": ["keyValueInstanceTypes"],
+                "extensions": {
+                  "code": "INTERNAL_SERVER_ERROR"
+                }
+              }
+            ]
+          },
+          "batchNames": [
+            "RouterAvailable",
+            "Projects",
+            "BillingReadiness",
+            "Workspaces",
+            "KeyValueInstanceTypes",
+            "KeyValueIpAllowList",
+            "KeyValueMaxmemoryPolicy",
+            "KeyValuePersistenceMode"
+          ],
+          "unchangedSiblings": 7,
+          "onlySelectedEntryChanged": true
+        }
+      ],
+      "region": "- text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n- radiogroup \"Instance type\"\n- button \"Cancel\" [disabled]\n- button \"Save\" [disabled]",
+      "radios": 0,
+      "retryButtons": 0,
+      "alertTexts": [],
+      "skeletons": 0,
+      "bodyStatus": 2
+    },
+    "a796KeyValueMobileFault": {
+      "at": "2026-10-16T23:02:05.485Z",
+      "url": "https://dashboard.bex.co/keyvalue/red-db9aon4fcf2c73c2mkdg#plan",
+      "width": 390,
+      "faults": [
+        {
+          "at": "2026-10-16T23:02:01.302Z",
+          "request": {
+            "operationName": "KeyValueInstanceTypes",
+            "variables": {},
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query KeyValueInstanceTypes {\n  keyValueInstanceTypes {\n    id\n    name\n    cpu\n    memory\n    storageGB\n    monthlyUsd\n    __typename\n  }\n}"
+          },
+          "nativeStatus": 200,
+          "nativeBody": {
+            "data": {
+              "keyValueInstanceTypes": [
+                {
+                  "__typename": "KeyValueInstanceType",
+                  "cpu": "100m",
+                  "id": "free",
+                  "memory": "128Mi",
+                  "monthlyUsd": "0.00",
+                  "name": "Free",
+                  "storageGB": 1
+                },
+                {
+                  "__typename": "KeyValueInstanceType",
+                  "cpu": "100m",
+                  "id": "starter",
+                  "memory": "256Mi",
+                  "monthlyUsd": "7.00",
+                  "name": "Starter",
+                  "storageGB": 1
+                },
+                {
+                  "__typename": "KeyValueInstanceType",
+                  "cpu": "500m",
+                  "id": "standard",
+                  "memory": "1Gi",
+                  "monthlyUsd": "21.00",
+                  "name": "Standard",
+                  "storageGB": 5
+                }
+              ]
+            }
+          },
+          "injectedStatus": 200,
+          "injectedBody": {
+            "data": null,
+            "errors": [
+              {
+                "message": "QA injected detail catalog failure",
+                "path": ["keyValueInstanceTypes"],
+                "extensions": {
+                  "code": "INTERNAL_SERVER_ERROR"
+                }
+              }
+            ]
+          },
+          "batchNames": [
+            "Projects",
+            "BillingReadiness",
+            "Workspaces",
+            "KeyValueInstanceTypes",
+            "KeyValueIpAllowList",
+            "KeyValueMaxmemoryPolicy",
+            "KeyValuePersistenceMode"
+          ],
+          "unchangedSiblings": 6,
+          "onlySelectedEntryChanged": true
+        }
+      ],
+      "region": "- text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n- radiogroup \"Instance type\"\n- button \"Cancel\" [disabled]\n- button \"Save\" [disabled]",
+      "radios": 0,
+      "retryButtons": 0,
+      "alertTexts": [],
+      "skeletons": 0,
+      "bodyStatus": 2
+    },
+    "a796PostgresDesktopErrorRegion": {
+      "at": "2026-10-16T23:01:03.375Z",
+      "region": "- text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n- radiogroup \"Instance type\"\n- button \"Cancel\" [disabled]\n- button \"Save\" [disabled]"
+    },
+    "a796KeyValueDesktopErrorRegion": {
+      "at": "2026-10-16T23:01:57.140Z",
+      "region": "- text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n- radiogroup \"Instance type\"\n- button \"Cancel\" [disabled]\n- button \"Save\" [disabled]"
+    },
+    "a796HealthyPostgresCatalog": {
+      "at": "2026-10-16T23:02:22.819Z",
+      "request": {
+        "operationName": "DatabaseInstanceTypes",
+        "variables": {},
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query DatabaseInstanceTypes {\n  databaseInstanceTypes {\n    id\n    name\n    cpu\n    memory\n    storageGB\n    maxStorageGB\n    supportsDiskAutoscaling\n    supportsConnectionPooling\n    maxReadReplicas\n    supportsHighAvailability\n    monthlyUsd\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "databaseInstanceTypes": [
+            {
+              "__typename": "DatabaseInstanceType",
+              "cpu": "100m",
+              "id": "free",
+              "maxReadReplicas": 0,
+              "maxStorageGB": 1,
+              "memory": "256Mi",
+              "monthlyUsd": "0.00",
+              "name": "Free",
+              "storageGB": 1,
+              "supportsConnectionPooling": false,
+              "supportsDiskAutoscaling": false,
+              "supportsHighAvailability": false
+            },
+            {
+              "__typename": "DatabaseInstanceType",
+              "cpu": "100m",
+              "id": "basic-256mb",
+              "maxReadReplicas": 0,
+              "maxStorageGB": 16384,
+              "memory": "256Mi",
+              "monthlyUsd": "4.90",
+              "name": "Basic 256MB",
+              "storageGB": 1,
+              "supportsConnectionPooling": true,
+              "supportsDiskAutoscaling": true,
+              "supportsHighAvailability": false
+            },
+            {
+              "__typename": "DatabaseInstanceType",
+              "cpu": "500m",
+              "id": "basic-1gb",
+              "maxReadReplicas": 5,
+              "maxStorageGB": 16384,
+              "memory": "1Gi",
+              "monthlyUsd": "14.00",
+              "name": "Basic 1GB",
+              "storageGB": 5,
+              "supportsConnectionPooling": true,
+              "supportsDiskAutoscaling": true,
+              "supportsHighAvailability": false
+            }
+          ]
+        }
+      },
+      "timing": {
+        "startTime": 1792191741475.358,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.107,
+        "responseStart": 637.778,
+        "responseEnd": 638.573
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9anus50quc73dl5j5g#plan"
+    },
+    "a796HealthyPostgresRegion": {
+      "at": "2026-10-16T23:02:23.564Z",
+      "radios": 3,
+      "free": true,
+      "saveDisabled": true,
+      "region": "- text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n- radiogroup \"Instance type\":\n  - radio \"Free $0.00/month 256 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Basic 256MB $4.90/month 256 MB RAM · 0.1 CPU\"\n  - radio \"Basic 1GB $14.00/month 1 GB RAM · 0.5 CPU\"\n- button \"Cancel\" [disabled]\n- button \"Save\" [disabled]"
+    },
+    "a796HealthyKeyValueCatalog": {
+      "at": "2026-10-16T23:02:09.067Z",
+      "request": {
+        "operationName": "KeyValueInstanceTypes",
+        "variables": {},
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query KeyValueInstanceTypes {\n  keyValueInstanceTypes {\n    id\n    name\n    cpu\n    memory\n    storageGB\n    monthlyUsd\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "keyValueInstanceTypes": [
+            {
+              "__typename": "KeyValueInstanceType",
+              "cpu": "100m",
+              "id": "free",
+              "memory": "128Mi",
+              "monthlyUsd": "0.00",
+              "name": "Free",
+              "storageGB": 1
+            },
+            {
+              "__typename": "KeyValueInstanceType",
+              "cpu": "100m",
+              "id": "starter",
+              "memory": "256Mi",
+              "monthlyUsd": "7.00",
+              "name": "Starter",
+              "storageGB": 1
+            },
+            {
+              "__typename": "KeyValueInstanceType",
+              "cpu": "500m",
+              "id": "standard",
+              "memory": "1Gi",
+              "monthlyUsd": "21.00",
+              "name": "Standard",
+              "storageGB": 5
+            }
+          ]
+        }
+      },
+      "timing": {
+        "startTime": 1792191727589.7542,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.155,
+        "responseStart": 769.547,
+        "responseEnd": 1052.415
+      },
+      "url": "https://dashboard.bex.co/keyvalue/red-db9aon4fcf2c73c2mkdg#plan"
+    },
+    "a796HealthyKeyValueRegion": {
+      "at": "2026-10-16T23:02:09.806Z",
+      "radios": 3,
+      "free": true,
+      "saveDisabled": true,
+      "region": "- text: Instance type Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.\n- radiogroup \"Instance type\":\n  - radio \"Free $0.00/month 128 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $7.00/month 256 MB RAM · 0.1 CPU\"\n  - radio \"Standard $21.00/month 1 GB RAM · 0.5 CPU\"\n- button \"Cancel\" [disabled]\n- button \"Save\" [disabled]"
+    },
+    "a796DeletePostgres": {
+      "at": "2026-10-16T23:02:41.983Z",
+      "request": {
+        "operationName": "DeleteDatabase",
+        "variables": {
+          "id": "dpg-db9anus50quc73dl5j5g"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteDatabase($id: String!, $confirm: String) {\n  deleteDatabase(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteDatabase": true
+        }
+      },
+      "timing": {
+        "startTime": 1792191760982.785,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.127,
+        "responseStart": 291.902,
+        "responseEnd": 292.367
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "a796DeleteKeyValue": {
+      "at": "2026-10-16T23:02:55.238Z",
+      "request": {
+        "operationName": "DeleteKeyValue",
+        "variables": {
+          "id": "red-db9aon4fcf2c73c2mkdg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteKeyValue($id: String!, $confirm: String) {\n  deleteKeyValue(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteKeyValue": true
+        }
+      },
+      "timing": {
+        "startTime": 1792191774235.961,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.135,
+        "responseStart": 294.739,
+        "responseEnd": 295.206
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "a796InventoryCleanup": {
+      "at": "2026-10-16T23:03:08.979Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [
+        {
+          "path": "/v1/postgres/dpg-db9anus50quc73dl5j5g",
+          "status": 404
+        },
+        {
+          "path": "/v1/key-value/red-db9aon4fcf2c73c2mkdg",
+          "status": 404
+        }
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "httpFailures": [
+        {
+          "method": "GET",
+          "url": "https://api.bex.co/v1/postgres/dpg-db9anus50quc73dl5j5g",
+          "status": 404
+        },
+        {
+          "method": "GET",
+          "url": "https://api.bex.co/v1/key-value/red-db9aon4fcf2c73c2mkdg",
+          "status": 404
+        }
+      ]
+    },
+    "a796SessionCleared": {
+      "at": "2026-10-16T23:03:20.773Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  }
+}

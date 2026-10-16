@@ -1,0 +1,38 @@
+# Datastore detail plan editors turn catalog errors into empty choices
+
+**Severity:** minor for these detail editors; the running resource remains Available and no paid plan update was attempted. Functional QA a796,2026-10-16 UTC, research main `925cc2010`. This extends the existing m218 recovery work. It is a frontend finding under deliberately injected browser-local GraphQL execution errors, **not a production catalog outage**.
+
+## Reproduce and controls
+
+Create owned private Free Postgres and Key Value fixtures and wait until Available. Cold-open `/databases/<owned-id>#plan` or `/keyvalue/<owned-id>#plan`. The [durable evidence](../evidence/m218-a796-details.json) contains the replay factory and17 receipts. Before navigation it intercepts the native DatabaseInstanceTypes or KeyValueInstanceTypes operation, fetches the real upstream response (HTTP200, three tiers), and replaces only its corresponding entry with `data:null` and `QA injected detail catalog failure` (`INTERNAL_SERVER_ERROR`, the matching catalog field path). Sibling entries stay unchanged. The handler remains installed through a5s mounted observation and is removed before return; **each of these four runs intercepted exactly one catalog request**.
+
+| Fresh page | UTC | Settled plan region |
+| --- | --- | --- |
+| Postgres,1440px | 23:00:46.939 | empty Instance type radiogroup; no alert, Retry or skeleton; unchanged Cancel/Save disabled |
+| Postgres,390px | 23:01:10.390 | same |
+| Key Value,1440px | 23:01:17.319 | same |
+| Key Value,390px | 23:02:05.485 | same |
+
+The parent page still shows Available. After removing routing, healthy reload controls returned the native three-tier catalogs: Key Value at23:02:09 and Postgres at23:02:22. Each mounted card then showed three real choices with current Free checked and unchanged Save disabled. No plan card selection, Save, confirmation or update mutation was submitted. The disabled unchanged Save is correct in the controls; the defect is the unexplained unavailable choices and missing read recovery.
+
+**Target:** retain the resource page and Instance type card frame, explain the settled catalog failure in localized accessible copy, and retry the catalog **in place**. A successful real response restores eligible choices/current selection and normal unchanged Save gating. Retry must not save a plan, change the stored tier, reset a current selection, replace the whole resource with a not-found/error page, or invent a Free tier. Pending retry stays visibly bounded without unmounting state. Preserve loaded choices/selection during a failed later refresh; that cached-refresh case is verification work, not an observed failure here.
+
+Viewed local supporting screenshots: `.playwright-mcp/qa-a796-postgres-desktop-empty.png` and `qa-a796-keyvalue-desktop-empty.png`. Their identical empty-card geometry is expected from the shared ready-grid component; the JSON separately proves each route, distinct native operation and complete corresponding catalog data. Screenshots are ignored; the durable replay and accessibility receipts survive the handoff.
+
+## Separate producer traces and shared contract
+
+- `dashboard/src/features/databases/components/database-plan-section.tsx:35` consumes only `instanceTypes/loading` from useDatabaseInstanceTypes. At105–120 it renders PlanTierSlots only while loading with no tiers; after an error settles, it renders PlanCardGrid with an empty list. `planError` is a selected-tier compatibility message (HA/storage/replicas/autoscaling/pooling), **not** the query error. Preserve those checks and current plan seeding at37.
+- `dashboard/src/features/keyvalue/components/key-value-plan-section.tsx:35` similarly drops the hook's query error. At64–75 the settled failure goes into the empty PlanCardGrid branch. Preserve current plan seeding, Cancel/Save gating and the existing update confirmation; this finding supplies no evidence that those mutation paths failed.
+- The hooks and actual pinned Apollo4.3.3 mechanism are already traced in [finding.md](finding.md): cold GraphQL execution errors settle with no usable catalog plus error/loading false. The hooks expose error but not refetch, and these two callers discard the error. The existing t001 retry contract can serve them; do not add another client or alter REST/GraphQL/MCP.
+- Production mount census: DatabasePlanSection has **one** lazy production mount, `routes/databases.$databaseId.tsx:316`; KeyValuePlanSection has **one**, `routes/keyvalue.$keyValueId.tsx:244`. Both sit at `#plan`. The `/d/<id>` and `/r/<id>` alias families in `common/lib/render-alias.ts:18–19,57–70` redirect to these canonical detail routes, preserving suffix/query/hash. Alias-by-alias faults were source-traced, not live-replayed.
+- The shared hook census remains **13** (4 service,6 Postgres,3 Key Value). The final error-rendering allowlist is **five** producers: the three a785 create forms plus these two plan editors. Audit and preserve the remaining **eight** consumers, including the service detail picker that already renders honest catalog-error copy. Do not globally change PlanCardGrid empty behavior or metadata fallbacks.
+
+## Dedupe, parity and limits
+
+Fresh active/blocked/done term and component searches, all **85 actual open milestone titles**, DO_NOT_DO, last40 product commits and targeted producer history found no landed detail recovery fix. Existing m218 owns the same three hooks, so add t009/t010 before its standing closings and extend t004's allowlist/dependencies. **m208** explicitly preserves settled error/empty behavior; `2449e9e40` only changes pending geometry. **m196** preserves service detail error copy; **m207** owns radio interaction. They are not regression owners for an implemented datastore catalog retry. Older w5/m7 tests concern the service picker, and w5/m8 create-failure tests do not establish this detail recovery contract. No evidence of a previously implemented datastore catalog Retry was found; this is an uncovered caller gap, not a claimed regression of their entire DoDs.
+
+Primary Render docs checked2026-10-16: [Postgres compute-plan changes](https://render.com/docs/postgresql-creating-connecting#changing-your-compute-plan) and [Key Value compute-plan changes](https://render.com/docs/key-value#changing-compute-plans) describe selecting a plan in an existing resource's dashboard editor and saving the change. They do not specify internal catalog-error UI. These catalogs are bex extensions; this fix adds read recovery while retaining existing plan-update semantics. t005 audits the unchanged adapters and deliberate bex differences; no authenticated Render fault replay is claimed. No anti-goal applies.
+
+**Unverified:** warm-cache failed refetch; a changed selected tier during refetch; empty-success catalog; other locale variants; denied/expired sessions, transport429/5xx/timeout; unknown stored tier; every Postgres compatibility refusal; lazy-module/resource-read delay branches; aliases; service detail error/retry. Keep the existing classifications and permission reasons, and distinguish a settled error from empty success or a missing resource. This run used English and intentionally submitted no paid update. The separate early Key Value create-name reset is unverified and is **not** part of this finding.
+
+Both owned Free resources were deleted. Their two API records returned404, all seven inventory ID sets matched baseline, Postgres parent/Cluster/CNPG child/pods/PVC and Key Value parent/pods/PVC were absent. Only the own session was revoked; whoami401, zero cookies and one blank page confirmed, exact handles removed.
