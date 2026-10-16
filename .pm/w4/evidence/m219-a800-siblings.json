@@ -1,0 +1,710 @@
+{
+  "schemaVersion": 1,
+  "pass": "a800",
+  "sourceHead": "9b68b35765693cd0f3de5278a6f2ef4d9891b4db",
+  "kind": "Supplement to w4/m219; no separate bug family",
+  "scope": "Read-only, four additional service type entrypoints and a Postgres dialog comparison. No create/deploy actions clicked.",
+  "replay": {
+    "serviceFactory": "Use replay.factoryV2 in m219-a797-input-startup.json with each receipt URL, label Name, width, marker.",
+    "postgresDialogCode": "async(page)=>{\nawait page.setViewportSize({width:390,height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});\nlet release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];\nconst pattern=\"https://dashboard.bex.co/assets/index-D60ymwlM.js\";\nconst handler=async route=>{const task=(async()=>{const response=await route.fetch();scripts.push({url:route.request().url(),status:response.status(),bytes:(await response.body()).length,delayApplied:!released});await gate;await route.fulfill({response})})();tasks.push(task);await task};\nawait page.route(pattern,handler);\ntry{\n await page.goto(\"https://dashboard.bex.co/?new=database\",{waitUntil:\"commit\"});\n for(let i=0;i<60&&scripts.length===0;i++)await page.waitForTimeout(100);\n if(!scripts.length)throw Error(\"Startup script was not intercepted\");\n await page.waitForTimeout(1200);\n const before={nameInputs:await page.getByRole(\"textbox\",{name:\"Name\",exact:true}).count(),dialogs:await page.getByRole(\"dialog\").count(),main:await page.locator(\"main\").ariaSnapshot()};\n released=true;release();await Promise.allSettled(tasks);\n const n=page.getByRole(\"dialog\",{name:\"New Postgres\",exact:true}).getByRole(\"textbox\",{name:\"Name\",exact:true});await n.waitFor({timeout:15000});\n const ready=await n.evaluate(e=>({enabled:!e.disabled,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));\n await n.click();await page.keyboard.insertText(\"qa-a800-dialog-ready\");await page.waitForTimeout(1500);\n return {at:new Date().toISOString(),url:page.url(),width:390,scripts,before,ready,after:await n.inputValue(),noCreateClicked:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);}\n}"
+  },
+  "counterexampleSource": {
+    "wrapper": "dashboard/src/common/components/ui/dialog.tsx imports @radix-ui/react-dialog and wraps DialogContent in DialogPortal.",
+    "versions": {
+      "@radix-ui/react-dialog": "1.1.15",
+      "@radix-ui/react-portal": "1.1.9"
+    },
+    "dependencyPath": "dashboard/node_modules/@radix-ui/react-portal/dist/index.mjs:12-15",
+    "actualCodeMechanism": "Mounted starts false; useLayoutEffect sets it true; default container is mounted && globalThis.document.body; no container returns null.",
+    "limitation": "Only the deep-linked Postgres dialog was live-probed; project/env-group/webhook dialogs remain unverified."
+  },
+  "receipts": {
+    "a800PrivateHeld": {
+      "at": "2026-10-16T23:40:04.368Z",
+      "url": "https://dashboard.bex.co/services/new?type=private_service",
+      "width": 1440,
+      "marker": "qa-a800-private",
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-D60ymwlM.js",
+          "status": 200,
+          "bytes": 1952882,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "at": 1458.1000000238419,
+        "id": "svc-name",
+        "enabled": true,
+        "reactProps": false
+      },
+      "typed": "qa-a800-private",
+      "events": [
+        {
+          "at": 1488.6000000238419,
+          "trusted": true,
+          "value": "qa-a800-private",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 1520.8000000715256,
+          "value": "qa-a800-private",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 1676.6000000238419,
+          "value": "qa-a800-private",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 1830.3000000715256,
+          "value": "qa-a800-private",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 1984.1000000238419,
+          "value": "qa-a800-private",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2138.9000000953674,
+          "value": "qa-a800-private",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2294.4000000953674,
+          "value": "qa-a800-private",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2449,
+          "value": "qa-a800-private",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2603,
+          "value": "qa-a800-private",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2758.600000023842,
+          "value": "qa-a800-private",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2912.600000023842,
+          "value": "qa-a800-private",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3069,
+          "value": "qa-a800-private",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3224.4000000953674,
+          "value": "qa-a800-private",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3379.3000000715256,
+          "value": "qa-a800-private",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3533.5,
+          "value": "qa-a800-private",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3687.600000023842,
+          "value": "qa-a800-private",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3841.4000000953674,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3997.8000000715256,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4152.600000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4308.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4464.600000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "after": "",
+      "readyControl": "qa-a800-private-ready",
+      "noResponseRewriting": true
+    },
+    "a800WorkerHeld": {
+      "at": "2026-10-16T23:40:10.516Z",
+      "url": "https://dashboard.bex.co/services/new?type=background_worker",
+      "width": 390,
+      "marker": "qa-a800-worker",
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-D60ymwlM.js",
+          "status": 200,
+          "bytes": 1952882,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "at": 1516.3000000715256,
+        "id": "svc-name",
+        "enabled": true,
+        "reactProps": false
+      },
+      "typed": "qa-a800-worker",
+      "events": [
+        {
+          "at": 1553.3000000715256,
+          "trusted": true,
+          "value": "qa-a800-worker",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 1583.8000000715256,
+          "value": "qa-a800-worker",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 1739,
+          "value": "qa-a800-worker",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 1895.1000000238419,
+          "value": "qa-a800-worker",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2051.2000000476837,
+          "value": "qa-a800-worker",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2205.100000023842,
+          "value": "qa-a800-worker",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2359.8000000715256,
+          "value": "qa-a800-worker",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2515,
+          "value": "qa-a800-worker",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2669.600000023842,
+          "value": "qa-a800-worker",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2823.5,
+          "value": "qa-a800-worker",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2976.5,
+          "value": "qa-a800-worker",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3131.2000000476837,
+          "value": "qa-a800-worker",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3284.9000000953674,
+          "value": "qa-a800-worker",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3439,
+          "value": "qa-a800-worker",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3595.7000000476837,
+          "value": "qa-a800-worker",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3751.2000000476837,
+          "value": "qa-a800-worker",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3905.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4059.9000000953674,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4214.200000047684,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4368.900000095367,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4524.100000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "after": "",
+      "readyControl": "qa-a800-worker-ready",
+      "noResponseRewriting": true
+    },
+    "a800CronHeld": {
+      "at": "2026-10-16T23:40:21.215Z",
+      "url": "https://dashboard.bex.co/services/new?type=cron_job",
+      "width": 1440,
+      "marker": "qa-a800-cron",
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-D60ymwlM.js",
+          "status": 200,
+          "bytes": 1952882,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "at": 1519.7000000476837,
+        "id": "svc-name",
+        "enabled": true,
+        "reactProps": false
+      },
+      "typed": "qa-a800-cron",
+      "events": [
+        {
+          "at": 1547.1000000238419,
+          "trusted": true,
+          "value": "qa-a800-cron",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 1578.2000000476837,
+          "value": "qa-a800-cron",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 1733.1000000238419,
+          "value": "qa-a800-cron",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 1886.8999999761581,
+          "value": "qa-a800-cron",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2041.7000000476837,
+          "value": "qa-a800-cron",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2198.2000000476837,
+          "value": "qa-a800-cron",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2353.3000000715256,
+          "value": "qa-a800-cron",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2508.5,
+          "value": "qa-a800-cron",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2662.8000000715256,
+          "value": "qa-a800-cron",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2817.5,
+          "value": "qa-a800-cron",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2972,
+          "value": "qa-a800-cron",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3126.2000000476837,
+          "value": "qa-a800-cron",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3281,
+          "value": "qa-a800-cron",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3434.7000000476837,
+          "value": "qa-a800-cron",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3589,
+          "value": "qa-a800-cron",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3743.7000000476837,
+          "value": "qa-a800-cron",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3898,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4052.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4207.600000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4363.899999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4521.399999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "after": "",
+      "readyControl": "qa-a800-cron-ready",
+      "noResponseRewriting": true
+    },
+    "a800StaticHeld": {
+      "at": "2026-10-16T23:40:27.432Z",
+      "url": "https://dashboard.bex.co/services/new?type=static_site",
+      "width": 390,
+      "marker": "qa-a800-static",
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-D60ymwlM.js",
+          "status": 200,
+          "bytes": 1952882,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "at": 1599.8000000715256,
+        "id": "svc-name",
+        "enabled": true,
+        "reactProps": false
+      },
+      "typed": "qa-a800-static",
+      "events": [
+        {
+          "at": 1623.3000000715256,
+          "trusted": true,
+          "value": "qa-a800-static",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 1652.1000000238419,
+          "value": "qa-a800-static",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 1805.5,
+          "value": "qa-a800-static",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 1960.3000000715256,
+          "value": "qa-a800-static",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2115.7000000476837,
+          "value": "qa-a800-static",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2270.600000023842,
+          "value": "qa-a800-static",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2426.9000000953674,
+          "value": "qa-a800-static",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2583.5,
+          "value": "qa-a800-static",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2738.7000000476837,
+          "value": "qa-a800-static",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2892.9000000953674,
+          "value": "qa-a800-static",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3048.8000000715256,
+          "value": "qa-a800-static",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3202.9000000953674,
+          "value": "qa-a800-static",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3357.100000023842,
+          "value": "qa-a800-static",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3511.7000000476837,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3666.7000000476837,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3822.100000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3979,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4134.300000071526,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4291,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4446.800000071526,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4603,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "after": "",
+      "readyControl": "qa-a800-static-ready",
+      "noResponseRewriting": true
+    },
+    "a800PostgresDialogControl": {
+      "at": "2026-10-16T23:40:46.675Z",
+      "url": "https://dashboard.bex.co/?new=database",
+      "width": 390,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-D60ymwlM.js",
+          "status": 200,
+          "bytes": 1952882,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "nameInputs": 0,
+        "dialogs": 0,
+        "main": "- main:\n  - navigation \"Breadcrumbs\": Projects\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - heading \"Overview\" [level=1]\n  - button \"New\"\n  - heading \"Projects\" [level=2]\n  - link \"bex.co All resources running\":\n    - /url: /project/prj-d9dgeo0bd9nc73a0vh1g\n  - link \"beancount.io All resources running\":\n    - /url: /project/prj-d9e5qct5qe4s73b1mjn0\n  - link \"forums All resources running\":\n    - /url: /project/prj-d9sgfnbjghus73cg6hg0\n  - button \"Create new project\"\n  - heading \"Ungrouped Resources\" [level=2]\n  - table:\n    - rowgroup:\n      - row \"Name Status Actions\":\n        - columnheader \"Name\"\n        - columnheader \"Status\"\n        - columnheader \"Actions\"\n    - rowgroup:\n      - row \"eden-dash-v3 Web Service Running Open actions menu\":\n        - cell \"eden-dash-v3 Web Service\":\n          - link \"eden-dash-v3\":\n            - /url: /services/srv-d9ndt8hmcglc739fkp50\n          - text: Web Service\n        - cell \"Running\"\n        - cell \"Open actions menu\":\n          - button \"Open actions menu\"\n      - row \"beancount-forum-db Database Available Open actions menu\":\n        - cell \"beancount-forum-db Database\":\n          - link \"beancount-forum-db\":\n            - /url: /databases/dpg-d9nqg95cavls73fp8m20\n          - text: Database\n        - cell \"Available\"\n        - cell \"Open actions menu\":\n          - button \"Open actions menu\"\n      - row \"tianpan-forum-db Database Available Open actions menu\":\n        - cell \"tianpan-forum-db Database\":\n          - link \"tianpan-forum-db\":\n            - /url: /databases/dpg-d9rrkoc4h4mc73edurp0\n          - text: Database\n        - cell \"Available\"\n        - cell \"Open actions menu\":\n          - button \"Open actions menu\"\n      - row \"blockeden-forum-db Database Available Open actions menu\":\n        - cell \"blockeden-forum-db Database\":\n          - link \"blockeden-forum-db\":\n            - /url: /databases/dpg-d9rs3ee0ccis738kc7c0\n          - text: Database\n        - cell \"Available\"\n        - cell \"Open actions menu\":\n          - button \"Open actions menu\"\n      - row \"qa-20261007-r16-owner-f208ab Database Available Open actions menu\":\n        - cell \"qa-20261007-r16-owner-f208ab Database\":\n          - link \"qa-20261007-r16-owner-f208ab\":\n            - /url: /databases/dpg-db34l9bor55s73cqpq9g\n          - text: Database\n        - cell \"Available\"\n        - cell \"Open actions menu\":\n          - button \"Open actions menu\"\n      - row \"beancount-forum-redis Key Value Available Open actions menu\":\n        - cell \"beancount-forum-redis Key Value\":\n          - link \"beancount-forum-redis\":\n            - /url: /keyvalue/red-d9p49kdrtmes73c34ovg\n          - text: Key Value\n        - cell \"Available\"\n        - cell \"Open actions menu\":\n          - button \"Open actions menu\"\n      - row \"blockeden-forum-redis Key Value Available Open actions menu\":\n        - cell \"blockeden-forum-redis Key Value\":\n          - link \"blockeden-forum-redis\":\n            - /url: /keyvalue/red-da4086iii7bs73drbqh0\n          - text: Key Value\n        - cell \"Available\"\n        - cell \"Open actions menu\":\n          - button \"Open actions menu\""
+      },
+      "ready": {
+        "enabled": true,
+        "reactProps": true
+      },
+      "after": "qa-a800-dialog-ready",
+      "noCreateClicked": true
+    },
+    "a800InventoryCleanup": {
+      "at": "2026-10-16T23:41:12.162Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [],
+      "consoleErrors": [],
+      "httpFailures": []
+    },
+    "a800SessionCleared": {
+      "at": "2026-10-16T23:41:16.870Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  }
+}
