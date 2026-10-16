@@ -1,0 +1,640 @@
+{
+  "pass": "a676",
+  "date": "2026-10-16 UTC",
+  "sourceHead": "753bb8b986799ff14dd8bf4d3df542f9dbd21b66",
+  "scope": "Native Go only; one Free owned web service",
+  "probeSource": "package main\nimport(\"context\";\"encoding/json\";\"net/http\";\"os\";\"os/exec\";\"runtime\";\"strings\";\"time\")\nfunc main(){boot:=time.Now().UTC().Format(time.RFC3339Nano);http.HandleFunc(\"/\",func(w http.ResponseWriter,r *http.Request){tools:=map[string]any{};for _,n:=range []string{\"node\",\"npm\",\"yarn\",\"pnpm\"}{if _,e:=exec.LookPath(n);e!=nil{tools[n]=map[string]any{\"available\":false};continue};ctx,cancel:=context.WithTimeout(r.Context(),2*time.Second);out,e:=exec.CommandContext(ctx,n,\"--version\").CombinedOutput();cancel();tools[n]=map[string]any{\"available\":true,\"version\":strings.TrimSpace(string(out)),\"success\":e==nil}};w.Header().Set(\"Content-Type\",\"application/json\");json.NewEncoder(w).Encode(map[string]any{\"marker\":\"QA_A676_GO\",\"boot\":boot,\"go\":runtime.Version(),\"tools\":tools})});p:=os.Getenv(\"PORT\");if p==\"\"{p=\"8080\"};http.ListenAndServe(\":\"+p,nil)}\n",
+  "authoredCommands": {
+    "failingBuild": "printf %s cGFja2FnZSBtYWluCmltcG9ydCgiY29udGV4dCI7ImVuY29kaW5nL2pzb24iOyJuZXQvaHR0cCI7Im9zIjsib3MvZXhlYyI7InJ1bnRpbWUiOyJzdHJpbmdzIjsidGltZSIpCmZ1bmMgbWFpbigpe2Jvb3Q6PXRpbWUuTm93KCkuVVRDKCkuRm9ybWF0KHRpbWUuUkZDMzMzOU5hbm8pO2h0dHAuSGFuZGxlRnVuYygiLyIsZnVuYyh3IGh0dHAuUmVzcG9uc2VXcml0ZXIsciAqaHR0cC5SZXF1ZXN0KXt0b29sczo9bWFwW3N0cmluZ11hbnl7fTtmb3IgXyxuOj1yYW5nZSBbXXN0cmluZ3sibm9kZSIsIm5wbSIsInlhcm4iLCJwbnBtIn17aWYgXyxlOj1leGVjLkxvb2tQYXRoKG4pO2UhPW5pbHt0b29sc1tuXT1tYXBbc3RyaW5nXWFueXsiYXZhaWxhYmxlIjpmYWxzZX07Y29udGludWV9O2N0eCxjYW5jZWw6PWNvbnRleHQuV2l0aFRpbWVvdXQoci5Db250ZXh0KCksMip0aW1lLlNlY29uZCk7b3V0LGU6PWV4ZWMuQ29tbWFuZENvbnRleHQoY3R4LG4sIi0tdmVyc2lvbiIpLkNvbWJpbmVkT3V0cHV0KCk7Y2FuY2VsKCk7dG9vbHNbbl09bWFwW3N0cmluZ11hbnl7ImF2YWlsYWJsZSI6dHJ1ZSwidmVyc2lvbiI6c3RyaW5ncy5UcmltU3BhY2Uoc3RyaW5nKG91dCkpLCJzdWNjZXNzIjplPT1uaWx9fTt3LkhlYWRlcigpLlNldCgiQ29udGVudC1UeXBlIiwiYXBwbGljYXRpb24vanNvbiIpO2pzb24uTmV3RW5jb2Rlcih3KS5FbmNvZGUobWFwW3N0cmluZ11hbnl7Im1hcmtlciI6IlFBX0E2NzZfR08iLCJib290Ijpib290LCJnbyI6cnVudGltZS5WZXJzaW9uKCksInRvb2xzIjp0b29sc30pfSk7cDo9b3MuR2V0ZW52KCJQT1JUIik7aWYgcD09IiJ7cD0iODA4MCJ9O2h0dHAuTGlzdGVuQW5kU2VydmUoIjoiK3AsbmlsKX0K | base64 -d > qa-a676-main.go && go version && node --version && npm --version && yarn --version && pnpm --version && go build -o qa-a676-probe qa-a676-main.go",
+    "controlBuild": "printf %s cGFja2FnZSBtYWluCmltcG9ydCgiY29udGV4dCI7ImVuY29kaW5nL2pzb24iOyJuZXQvaHR0cCI7Im9zIjsib3MvZXhlYyI7InJ1bnRpbWUiOyJzdHJpbmdzIjsidGltZSIpCmZ1bmMgbWFpbigpe2Jvb3Q6PXRpbWUuTm93KCkuVVRDKCkuRm9ybWF0KHRpbWUuUkZDMzMzOU5hbm8pO2h0dHAuSGFuZGxlRnVuYygiLyIsZnVuYyh3IGh0dHAuUmVzcG9uc2VXcml0ZXIsciAqaHR0cC5SZXF1ZXN0KXt0b29sczo9bWFwW3N0cmluZ11hbnl7fTtmb3IgXyxuOj1yYW5nZSBbXXN0cmluZ3sibm9kZSIsIm5wbSIsInlhcm4iLCJwbnBtIn17aWYgXyxlOj1leGVjLkxvb2tQYXRoKG4pO2UhPW5pbHt0b29sc1tuXT1tYXBbc3RyaW5nXWFueXsiYXZhaWxhYmxlIjpmYWxzZX07Y29udGludWV9O2N0eCxjYW5jZWw6PWNvbnRleHQuV2l0aFRpbWVvdXQoci5Db250ZXh0KCksMip0aW1lLlNlY29uZCk7b3V0LGU6PWV4ZWMuQ29tbWFuZENvbnRleHQoY3R4LG4sIi0tdmVyc2lvbiIpLkNvbWJpbmVkT3V0cHV0KCk7Y2FuY2VsKCk7dG9vbHNbbl09bWFwW3N0cmluZ11hbnl7ImF2YWlsYWJsZSI6dHJ1ZSwidmVyc2lvbiI6c3RyaW5ncy5UcmltU3BhY2Uoc3RyaW5nKG91dCkpLCJzdWNjZXNzIjplPT1uaWx9fTt3LkhlYWRlcigpLlNldCgiQ29udGVudC1UeXBlIiwiYXBwbGljYXRpb24vanNvbiIpO2pzb24uTmV3RW5jb2Rlcih3KS5FbmNvZGUobWFwW3N0cmluZ11hbnl7Im1hcmtlciI6IlFBX0E2NzZfR08iLCJib290Ijpib290LCJnbyI6cnVudGltZS5WZXJzaW9uKCksInRvb2xzIjp0b29sc30pfSk7cDo9b3MuR2V0ZW52KCJQT1JUIik7aWYgcD09IiJ7cD0iODA4MCJ9O2h0dHAuTGlzdGVuQW5kU2VydmUoIjoiK3AsbmlsKX0K | base64 -d > qa-a676-main.go && go version && go build -o qa-a676-probe qa-a676-main.go",
+    "start": "./qa-a676-probe"
+  },
+  "probes": [
+    {
+      "receipt": "qa-recovered-a676Create.json",
+      "sha256": "6a29e1de97acd56069cfcd956dc34a839d19418f4ac78e89a4e4bd7028f3e035",
+      "capture": {
+        "at": "2026-10-16T05:34:01.435Z",
+        "request": {
+          "operationName": "CreateService",
+          "variables": {
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "name": "qa-20261016-a676-go-tools",
+            "type": "web_service",
+            "rootDir": "examples/hello-go",
+            "runtime": "go",
+            "buildCommand": "printf %s cGFja2FnZSBtYWluCmltcG9ydCgiY29udGV4dCI7ImVuY29kaW5nL2pzb24iOyJuZXQvaHR0cCI7Im9zIjsib3MvZXhlYyI7InJ1bnRpbWUiOyJzdHJpbmdzIjsidGltZSIpCmZ1bmMgbWFpbigpe2Jvb3Q6PXRpbWUuTm93KCkuVVRDKCkuRm9ybWF0KHRpbWUuUkZDMzMzOU5hbm8pO2h0dHAuSGFuZGxlRnVuYygiLyIsZnVuYyh3IGh0dHAuUmVzcG9uc2VXcml0ZXIsciAqaHR0cC5SZXF1ZXN0KXt0b29sczo9bWFwW3N0cmluZ11hbnl7fTtmb3IgXyxuOj1yYW5nZSBbXXN0cmluZ3sibm9kZSIsIm5wbSIsInlhcm4iLCJwbnBtIn17aWYgXyxlOj1leGVjLkxvb2tQYXRoKG4pO2UhPW5pbHt0b29sc1tuXT1tYXBbc3RyaW5nXWFueXsiYXZhaWxhYmxlIjpmYWxzZX07Y29udGludWV9O2N0eCxjYW5jZWw6PWNvbnRleHQuV2l0aFRpbWVvdXQoci5Db250ZXh0KCksMip0aW1lLlNlY29uZCk7b3V0LGU6PWV4ZWMuQ29tbWFuZENvbnRleHQoY3R4LG4sIi0tdmVyc2lvbiIpLkNvbWJpbmVkT3V0cHV0KCk7Y2FuY2VsKCk7dG9vbHNbbl09bWFwW3N0cmluZ11hbnl7ImF2YWlsYWJsZSI6dHJ1ZSwidmVyc2lvbiI6c3RyaW5ncy5UcmltU3BhY2Uoc3RyaW5nKG91dCkpLCJzdWNjZXNzIjplPT1uaWx9fTt3LkhlYWRlcigpLlNldCgiQ29udGVudC1UeXBlIiwiYXBwbGljYXRpb24vanNvbiIpO2pzb24uTmV3RW5jb2Rlcih3KS5FbmNvZGUobWFwW3N0cmluZ11hbnl7Im1hcmtlciI6IlFBX0E2NzZfR08iLCJib290Ijpib290LCJnbyI6cnVudGltZS5WZXJzaW9uKCksInRvb2xzIjp0b29sc30pfSk7cDo9b3MuR2V0ZW52KCJQT1JUIik7aWYgcD09IiJ7cD0iODA4MCJ9O2h0dHAuTGlzdGVuQW5kU2VydmUoIjoiK3AsbmlsKX0K | base64 -d > qa-a676-main.go && go version && node --version && npm --version && yarn --version && pnpm --version && go build -o qa-a676-probe qa-a676-main.go",
+            "startCommand": "./qa-a676-probe",
+            "plan": "free",
+            "autoDeploy": false,
+            "port": 8080,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "createService": {
+              "__typename": "Service",
+              "environmentId": null,
+              "id": "srv-db8rei29cl7s73ae4ac0",
+              "latestDeployId": "dep-db8rei29cl7s73ae4acg",
+              "name": "qa-20261016-a676-go-tools",
+              "phase": "",
+              "projectId": null,
+              "registryCredentialId": null,
+              "type": "web_service"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792128837756.6897,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.163,
+          "responseStart": 2970.147,
+          "responseEnd": 2970.561
+        },
+        "url": "https://dashboard.bex.co/services/srv-db8rei29cl7s73ae4ac0/deploys/dep-db8rei29cl7s73ae4acg"
+      }
+    },
+    {
+      "receipt": "qa-recovered-a676FirstToolFailure.json",
+      "sha256": "5a0d7b2cb4ee4bc327abe37cc50932c72eefe97a4240ee8ddd08a9cf36e9c0d4",
+      "capture": {
+        "at": "2026-10-16T05:36:28.334Z",
+        "logTail": "  - button \"Log type\": All logs\n  - textbox \"Search logs…\"\n  - button \"Log options\"\n  - button \"Maximize\"\n  - status:\n    - text: Only part of this time range is loaded. Load older to search earlier lines.\n    - button \"Load older\"\n  - text: 10:36:14 PM\n  - button \"Filter logs by instance srv-db8rei29cl7s73ae4ac0-te1nujptud6so7fdhmbf\": \"[te1nu]\"\n  - text: \"#9 DONE 0.0s 10:36:14 PM\"\n  - button \"Filter logs by instance srv-db8rei29cl7s73ae4ac0-te1nujptud6so7fdhmbf\": \"[te1nu]\"\n  - text: 10:36:14 PM\n  - button \"Filter logs by instance srv-db8rei29cl7s73ae4ac0-te1nujptud6so7fdhmbf\": \"[te1nu]\"\n  - text: \"#10 [stage-0 3/5] COPY . . 10:36:14 PM\"\n  - button \"Filter logs by instance srv-db8rei29cl7s73ae4ac0-te1nujptud6so7fdhmbf\": \"[te1nu]\"\n  - text: \"#10 DONE 0.1s 10:36:14 PM\"\n  - button \"Filter logs by instance srv-db8rei29cl7s73ae4ac0-te1nujptud6so7fdhmbf\": \"[te1nu]\"\n  - text: \"#11 [stage-0 4/5] COPY <<BEX_LOAD_ENV /opt/bex/load-env 10:36:14 PM\"\n  - button \"Filter logs by instance srv-db8rei29cl7s73ae4ac0-te1nujptud6so7fdhmbf\": \"[te1nu]\"\n  - text: \"#11 DONE 0.0s 10:36:14 PM\"\n  - button \"Filter logs by instance srv-db8rei29cl7s73ae4ac0-te1nujptud6so7fdhmbf\": \"[te1nu]\"\n  - text: 10:36:14 PM\n  - button \"Filter logs by instance srv-db8rei29cl7s73ae4ac0-te1nujptud6so7fdhmbf\": \"[te1nu]\"\n  - text: \"#12 [stage-0 5/5] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\\\"/bin/bash\\\",\\\"-c\\\",\\\". /opt/bex/load-env\\\\nprintf %s cGFja2FnZSBtYWluCmltcG9ydCgiY29udGV4dCI7ImVuY29kaW5nL2pzb24iOyJuZXQvaHR0cCI7Im9zIjsib3MvZXhlYyI7InJ1bnRpbWUiOyJzdHJpbmdzIjsidGltZSIpCmZ1bmMgbWFpbigpe2Jvb3Q6PXRpbWUuTm93KCkuVVRDKCkuRm9ybWF0KHRpbWUuUkZDMzMzOU5hbm8pO2h0dHAuSGFuZGxlRnVuYygiLyIsZnVuYyh3IGh0dHAuUmVzcG9uc2VXcml0ZXIsciAqaHR0cC5SZXF1ZXN0KXt0b29sczo9bWFwW3N0cmluZ11hbnl7fTtmb3IgXyxuOj1yYW5nZSBbXXN0cmluZ3sibm9kZSIsIm5wbSIsInlhcm4iLCJwbnBtIn17aWYgXyxlOj1leGVjLkxvb2tQYXRoKG4pO2UhPW5pbHt0b29sc1tuXT1tYXBbc3RyaW5nXWFueXsiYXZhaWxhYmxlIjpmYWxzZX07Y29udGludWV9O2N0eCxjYW5jZWw6PWNvbnRleHQuV2l0aFRpbWVvdXQoci5Db250ZXh0KCksMip0aW1lLlNlY29uZCk7b3V0LGU6PWV4ZWMuQ29tbWFuZENvbnRleHQoY3R4LG4sIi0tdmVyc2lvbiIpLkNvbWJpbmVkT3V0cHV0KCk7Y2FuY2VsKCk7dG9vbHNbbl09bWFwW3N0cmluZ11hbnl7ImF2YWlsYWJsZSI6dHJ1ZSwidmVyc2lvbiI6c3RyaW5ncy5UcmltU3BhY2Uoc3RyaW5nKG91dCkpLCJzdWNjZXNzIjplPT1uaWx9fTt3LkhlYWRlcigpLlNldCgiQ29udGVudC1UeXBlIiwiYXBwbGljYXRpb24vanNvbiIpO2pzb24uTmV3RW5jb2Rlcih3KS5FbmNvZGUobWFwW3N0cmluZ11hbnl7Im1hcmtlciI6IlFBX0E2NzZfR08iLCJib290Ijpib290LCJnbyI6cnVudGltZS5WZXJzaW9uKCksInRvb2xzIjp0b29sc30pfSk7cDo9b3MuR2V0ZW52KCJQT1JUIik7aWYgcD09IiJ7cD0iODA4MCJ9O2h0dHAuTGlzdGVuQW5kU2VydmUoIjoiK3AsbmlsKX0K | base64 -d > qa-a676-main.go && go version && node --version && npm --version && yarn --version && pnpm --version && go build -o qa-a676-probe qa-a676-main.go\\\"] 10:36:14 PM\"\n  - button \"Filter logs by instance srv-db8rei29cl7s73ae4ac0-te1nujptud6so7fdhmbf\": \"[te1nu]\"\n  - text: \"#12 0.115 go version go1.24.13 linux/amd64 10:36:14 PM\"\n  - button \"Filter logs by instance srv-db8rei29cl7s73ae4ac0-te1nujptud6so7fdhmbf\": \"[te1nu]\"\n  - text: \"#12 0.116 /bin/bash: line 2: node: command not found 10:36:14 PM\"\n  - button \"Filter logs by instance srv-db8rei29cl7s73ae4ac0-te1nujptud6so7fdhmbf\": \"[te1nu]\"\n  - text: \"#12 ERROR: process \\\"/bin/bash -c . /opt/bex/load-env\\\\nprintf %s cGFja2FnZSBtYWluCmltcG9ydCgiY29udGV4dCI7ImVuY29kaW5nL2pzb24iOyJuZXQvaHR0cCI7Im9zIjsib3MvZXhlYyI7InJ1bnRpbWUiOyJzdHJpbmdzIjsidGltZSIpCmZ1bmMgbWFpbigpe2Jvb3Q6PXRpbWUuTm93KCkuVVRDKCkuRm9ybWF0KHRpbWUuUkZDMzMzOU5hbm8pO2h0dHAuSGFuZGxlRnVuYygiLyIsZnVuYyh3IGh0dHAuUmVzcG9uc2VXcml0ZXIsciAqaHR0cC5SZXF1ZXN0KXt0b29sczo9bWFwW3N0cmluZ11hbnl7fTtmb3IgXyxuOj1yYW5nZSBbXXN0cmluZ3sibm9kZSIsIm5wbSIsInlhcm4iLCJwbnBtIn17aWYgXyxlOj1leGVjLkxvb2tQYXRoKG4pO2UhPW5pbHt0b29sc1tuXT1tYXBbc3RyaW5nXWFueXsiYXZhaWxhYmxlIjpmYWxzZX07Y29udGludWV9O2N0eCxjYW5jZWw6PWNvbnRleHQuV2l0aFRpbWVvdXQoci5Db250ZXh0KCksMip0aW1lLlNlY29uZCk7b3V0LGU6PWV4ZWMuQ29tbWFuZENvbnRleHQoY3R4LG4sIi0tdmVyc2lvbiIpLkNvbWJpbmVkT3V0cHV0KCk7Y2FuY2VsKCk7dG9vbHNbbl09bWFwW3N0cmluZ11hbnl7ImF2YWlsYWJsZSI6dHJ1ZSwidmVyc2lvbiI6c3RyaW5ncy5UcmltU3BhY2Uoc3RyaW5nKG91dCkpLCJzdWNjZXNzIjplPT1uaWx9fTt3LkhlYWRlcigpLlNldCgiQ29udGVudC1UeXBlIiwiYXBwbGljYXRpb24vanNvbiIpO2pzb24uTmV3RW5jb2Rlcih3KS5FbmNvZGUobWFwW3N0cmluZ11hbnl7Im1hcmtlciI6IlFBX0E2NzZfR08iLCJib290Ijpib290LCJnbyI6cnVudGltZS5WZXJzaW9uKCksInRvb2xzIjp0b29sc30pfSk7cDo9b3MuR2V0ZW52KCJQT1JUIik7aWYgcD09IiJ7cD0iODA4MCJ9O2h0dHAuTGlzdGVuQW5kU2VydmUoIjoiK3AsbmlsKX0K | base64 -d > qa-a676-main.go && go version && node --version && npm --version && yarn --version && pnpm --version && go build -o qa-a676-probe qa-a676-main.go\\\" did not complete successfully: exit code: 127 10:36:14 PM\"\n  - button \"Filter logs by instance srv-db8rei29cl7s73ae4ac0-te1nujptud6so7fdhmbf\": \"[te1nu]\"\n  - text: \"------ 10:36:14 PM\"\n  - button \"Filter logs by instance srv-db8rei29cl7s73ae4ac0-te1nujptud6so7fdhmbf\": \"[te1nu]\"\n  - text: \"> [stage-0 5/5] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\\\"/bin/bash\\\",\\\"-c\\\",\\\". /opt/bex/load-env\\\\nprintf %s cGFja2FnZSBtYWluCmltcG9ydCgiY29udGV4dCI7ImVuY29kaW5nL2pzb24iOyJuZXQvaHR0cCI7Im9zIjsib3MvZXhlYyI7InJ1bnRpbWUiOyJzdHJpbmdzIjsidGltZSIpCmZ1bmMgbWFpbigpe2Jvb3Q6PXRpbWUuTm93KCkuVVRDKCkuRm9ybWF0KHRpbWUuUkZDMzMzOU5hbm8pO2h0dHAuSGFuZGxlRnVuYygiLyIsZnVuYyh3IGh0dHAuUmVzcG9uc2VXcml0ZXIsciAqaHR0cC5SZXF1ZXN0KXt0b29sczo9bWFwW3N0cmluZ11hbnl7fTtmb3IgXyxuOj1yYW5nZSBbXXN0cmluZ3sibm9kZSIsIm5wbSIsInlhcm4iLCJwbnBtIn17aWYgXyxlOj1leGVjLkxvb2tQYXRoKG4pO2UhPW5pbHt0b29sc1tuXT1tYXBbc3RyaW5nXWFueXsiYXZhaWxhYmxlIjpmYWxzZX07Y29udGludWV9O2N0eCxjYW5jZWw6PWNvbnRleHQuV2l0aFRpbWVvdXQoci5Db250ZXh0KCksMip0aW1lLlNlY29uZCk7b3V0LGU6PWV4ZWMuQ29tbWFuZENvbnRleHQoY3R4LG4sIi0tdmVyc2lvbiIpLkNvbWJpbmVkT3V0cHV0KCk7Y2FuY2VsKCk7dG9vbHNbbl09bWFwW3N0cmluZ11hbnl7ImF2YWlsYWJsZSI6dHJ1ZSwidmVyc2lvbiI6c3RyaW5ncy5UcmltU3BhY2Uoc3RyaW5nKG91dCkpLCJzdWNjZXNzIjplPT1uaWx9fTt3LkhlYWRlcigpLlNldCgiQ29udGVudC1UeXBlIiwiYXBwbGljYXRpb24vanNvbiIpO2pzb24uTmV3RW5jb2Rlcih3KS5FbmNvZGUobWFwW3N0cmluZ11hbnl7Im1hcmtlciI6IlFBX0E2NzZfR08iLCJib290Ijpib290LCJnbyI6cnVudGltZS5WZXJzaW9uKCksInRvb2xzIjp0b29sc30pfSk7cDo9b3MuR2V0ZW52KCJQT1JUIik7aWYgcD09IiJ7cD0iODA4MCJ9O2h0dHAuTGlzdGVuQW5kU2VydmUoIjoiK3AsbmlsKX0K | base64 -d > qa-a676-main.go && go version && node --version && npm --version && yarn --version && pnpm --version && go build -o qa-a676-probe qa-a676-main.go\\\"]: 10:36:14 PM\"\n  - button \"Filter logs by instance srv-db8rei29cl7s73ae4ac0-te1nujptud6so7fdhmbf\": \"[te1nu]\"\n  - text: 0.115 go version go1.24.13 linux/amd64 10:36:14 PM\n  - button \"Filter logs by instance srv-db8rei29cl7s73ae4ac0-te1nujptud6so7fdhmbf\": \"[te1nu]\"\n  - text: \"0.116 /bin/bash: line 2: node: command not found 10:36:14 PM\"\n  - button \"Filter logs by instance srv-db8rei29cl7s73ae4ac0-te1nujptud6so7fdhmbf\": \"[te1nu]\"\n  - text: \"error: failed to solve: process \\\"/bin/bash -c . /opt/bex/load-env\\\\nprintf %s cGFja2FnZSBtYWluCmltcG9ydCgiY29udGV4dCI7ImVuY29kaW5nL2pzb24iOyJuZXQvaHR0cCI7Im9zIjsib3MvZXhlYyI7InJ1bnRpbWUiOyJzdHJpbmdzIjsidGltZSIpCmZ1bmMgbWFpbigpe2Jvb3Q6PXRpbWUuTm93KCkuVVRDKCkuRm9ybWF0KHRpbWUuUkZDMzMzOU5hbm8pO2h0dHAuSGFuZGxlRnVuYygiLyIsZnVuYyh3IGh0dHAuUmVzcG9uc2VXcml0ZXIsciAqaHR0cC5SZXF1ZXN0KXt0b29sczo9bWFwW3N0cmluZ11hbnl7fTtmb3IgXyxuOj1yYW5nZSBbXXN0cmluZ3sibm9kZSIsIm5wbSIsInlhcm4iLCJwbnBtIn17aWYgXyxlOj1leGVjLkxvb2tQYXRoKG4pO2UhPW5pbHt0b29sc1tuXT1tYXBbc3RyaW5nXWFueXsiYXZhaWxhYmxlIjpmYWxzZX07Y29udGludWV9O2N0eCxjYW5jZWw6PWNvbnRleHQuV2l0aFRpbWVvdXQoci5Db250ZXh0KCksMip0aW1lLlNlY29uZCk7b3V0LGU6PWV4ZWMuQ29tbWFuZENvbnRleHQoY3R4LG4sIi0tdmVyc2lvbiIpLkNvbWJpbmVkT3V0cHV0KCk7Y2FuY2VsKCk7dG9vbHNbbl09bWFwW3N0cmluZ11hbnl7ImF2YWlsYWJsZSI6dHJ1ZSwidmVyc2lvbiI6c3RyaW5ncy5UcmltU3BhY2Uoc3RyaW5nKG91dCkpLCJzdWNjZXNzIjplPT1uaWx9fTt3LkhlYWRlcigpLlNldCgiQ29udGVudC1UeXBlIiwiYXBwbGljYXRpb24vanNvbiIpO2pzb24uTmV3RW5jb2Rlcih3KS5FbmNvZGUobWFwW3N0cmluZ11hbnl7Im1hcmtlciI6IlFBX0E2NzZfR08iLCJib290Ijpib290LCJnbyI6cnVudGltZS5WZXJzaW9uKCksInRvb2xzIjp0b29sc30pfSk7cDo9b3MuR2V0ZW52KCJQT1JUIik7aWYgcD09IiJ7cD0iODA4MCJ9O2h0dHAuTGlzdGVuQW5kU2VydmUoIjoiK3AsbmlsKX0K | base64 -d > qa-a676-main.go && go version && node --version && npm --version && yarn --version && pnpm --version && go build -o qa-a676-probe qa-a676-main.go\\\" did not complete successfully: exit code: 127\"",
+        "deploy": {
+          "status": 200,
+          "body": {
+            "id": "dep-db8rei29cl7s73ae4acg",
+            "serviceId": "srv-db8rei29cl7s73ae4ac0",
+            "status": "build_in_progress",
+            "trigger": "other",
+            "bexTrigger": "create",
+            "commit": {
+              "id": "753bb8b986799ff14dd8bf4d3df542f9dbd21b66",
+              "message": "docs(pm): file inconsistent webhook disable intervals"
+            },
+            "createdAt": "2026-10-16T05:34:00.031903Z",
+            "updatedAt": "2026-10-16T05:35:43.0393Z",
+            "startedAt": "2026-10-16T05:35:43.039299Z"
+          }
+        }
+      }
+    },
+    {
+      "receipt": "qa-recovered-a676FreshFailureAndRetryMenu.json",
+      "sha256": "72c3950c2628966cef5607ee37932297bc12d4b5edf89ccba4e19733ceeeca00",
+      "capture": {
+        "at": "2026-10-16T05:36:49.778Z",
+        "deploy": {
+          "status": 200,
+          "body": {
+            "id": "dep-db8rei29cl7s73ae4acg",
+            "serviceId": "srv-db8rei29cl7s73ae4ac0",
+            "status": "build_failed",
+            "trigger": "other",
+            "bexTrigger": "create",
+            "commit": {
+              "id": "753bb8b986799ff14dd8bf4d3df542f9dbd21b66",
+              "message": "docs(pm): file inconsistent webhook disable intervals"
+            },
+            "createdAt": "2026-10-16T05:34:00.031903Z",
+            "updatedAt": "2026-10-16T05:36:32.466666Z",
+            "startedAt": "2026-10-16T05:35:43.039299Z",
+            "finishedAt": "2026-10-16T05:36:32.466664Z",
+            "failureReason": "build failed in the docker build step:\n5jZWw6PWNvbnRleHQuV2l0aFRpbWVvdXQoci5Db250ZXh0KCksMip0aW1lLlNlY29uZCk7b3V0LGU6PWV4ZWMuQ29tbWFuZENvbnRleHQoY3R4LG4sIi0tdmVyc2lvbiIpLkNvbWJpbmVkT3V0cHV0KCk7Y2FuY2VsKCk7dG9vbHNbbl09bWFwW3N0cmluZ11hbnl7ImF2YWlsYWJsZSI6dHJ1ZSwidmVyc2lvbiI6c3RyaW5ncy5UcmltU3BhY2Uoc3RyaW5nKG91dCkpLCJzdWNjZXNzIjplPT1uaWx9fTt3LkhlYWRlcigpLlNldCgiQ29udGVudC1UeXBlIiwiYXBwbGljYXRpb24vanNvbiIpO2pzb24uTmV3RW5jb2Rlcih3KS5FbmNvZGUobWFwW3N0cmluZ11hbnl7Im1hcmtlciI6IlFBX0E2NzZfR08iLCJib290Ijpib290LCJnbyI6cnVudGltZS5WZXJzaW9uKCksInRvb2xzIjp0b29sc30pfSk7cDo9b3MuR2V0ZW52KCJQT1JUIik7aWYgcD09IiJ7cD0iODA4MCJ9O2h0dHAuTGlzdGVuQW5kU2VydmUoIjoiK3AsbmlsKX0K | base64 -d > qa-a676-main.go && go version && node --version && npm --version && yarn --version && pnpm --version && go build -o qa-a676-probe qa-a676-main.go' exited with code 127"
+          }
+        },
+        "menu": "- menu \"Manual Deploy\":\n  - menuitem \"Deploy latest commit\" [disabled]\n  - menuitem \"Deploy a specific commit\" [disabled]\n  - menuitem \"Clear build cache & deploy\" [disabled]\n  - separator\n  - menuitem \"Restart service\" [disabled]"
+      }
+    },
+    {
+      "receipt": "qa-recovered-a676FreshRetry.json",
+      "sha256": "76982e86e39f6d52c75501ac3e701f2f7595ed88d06535a7eef6cd0076b4cca7",
+      "capture": {
+        "at": "2026-10-16T05:36:52.984Z",
+        "request": {
+          "operationName": "TriggerDeploy",
+          "variables": {
+            "serviceId": "srv-db8rei29cl7s73ae4ac0"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation TriggerDeploy($serviceId: String!, $commitId: String, $deployMode: String, $clearCache: String, $confirm: String) {\n  triggerDeploy(\n    serviceId: $serviceId\n    commitId: $commitId\n    deployMode: $deployMode\n    clearCache: $clearCache\n    confirm: $confirm\n  ) {\n    id\n    status\n    createdAt\n    trigger\n    rollbackOf\n    image\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "triggerDeploy": {
+              "__typename": "Deploy",
+              "createdAt": "2026-10-16T05:36:52.294661Z",
+              "id": "dep-db8rft29cl7s73ae4adg",
+              "image": "",
+              "rollbackOf": "",
+              "status": "created",
+              "trigger": "api"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792129010657,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.132,
+          "responseStart": 1622.354,
+          "responseEnd": 1622.759
+        },
+        "url": "https://dashboard.bex.co/services/srv-db8rei29cl7s73ae4ac0/deploys/dep-db8rei29cl7s73ae4acg"
+      }
+    },
+    {
+      "receipt": "qa-recovered-a676FreshToolFailure.json",
+      "sha256": "fd2ee744d31a8c08138c478ee62f4980664e98db859f23c90c45ab3ff4ecf8a1",
+      "capture": {
+        "at": "2026-10-16T05:37:44.911Z",
+        "deploy": {
+          "status": 200,
+          "body": {
+            "id": "dep-db8rft29cl7s73ae4adg",
+            "serviceId": "srv-db8rei29cl7s73ae4ac0",
+            "status": "build_failed",
+            "trigger": "api",
+            "bexTrigger": "api",
+            "commit": {
+              "id": "753bb8b986799ff14dd8bf4d3df542f9dbd21b66",
+              "message": "docs(pm): file inconsistent webhook disable intervals",
+              "createdAt": "2026-10-16T05:31:53Z"
+            },
+            "createdAt": "2026-10-16T05:36:52.294661Z",
+            "updatedAt": "2026-10-16T05:37:43.116407Z",
+            "startedAt": "2026-10-16T05:37:02.44272Z",
+            "finishedAt": "2026-10-16T05:37:43.116406Z",
+            "failureReason": "build failed in the docker build step:\n5jZWw6PWNvbnRleHQuV2l0aFRpbWVvdXQoci5Db250ZXh0KCksMip0aW1lLlNlY29uZCk7b3V0LGU6PWV4ZWMuQ29tbWFuZENvbnRleHQoY3R4LG4sIi0tdmVyc2lvbiIpLkNvbWJpbmVkT3V0cHV0KCk7Y2FuY2VsKCk7dG9vbHNbbl09bWFwW3N0cmluZ11hbnl7ImF2YWlsYWJsZSI6dHJ1ZSwidmVyc2lvbiI6c3RyaW5ncy5UcmltU3BhY2Uoc3RyaW5nKG91dCkpLCJzdWNjZXNzIjplPT1uaWx9fTt3LkhlYWRlcigpLlNldCgiQ29udGVudC1UeXBlIiwiYXBwbGljYXRpb24vanNvbiIpO2pzb24uTmV3RW5jb2Rlcih3KS5FbmNvZGUobWFwW3N0cmluZ11hbnl7Im1hcmtlciI6IlFBX0E2NzZfR08iLCJib290Ijpib290LCJnbyI6cnVudGltZS5WZXJzaW9uKCksInRvb2xzIjp0b29sc30pfSk7cDo9b3MuR2V0ZW52KCJQT1JUIik7aWYgcD09IiJ7cD0iODA4MCJ9O2h0dHAuTGlzdGVuQW5kU2VydmUoIjoiK3AsbmlsKX0K | base64 -d > qa-a676-main.go && go version && node --version && npm --version && yarn --version && pnpm --version && go build -o qa-a676-probe qa-a676-main.go' exited with code 127"
+          }
+        },
+        "url": "https://dashboard.bex.co/services/srv-db8rei29cl7s73ae4ac0/deploys/dep-db8rft29cl7s73ae4adg",
+        "logExcerpt": []
+      }
+    },
+    {
+      "receipt": "qa-recovered-a676FreshRetryLogSearch.json",
+      "sha256": "58e845deb2323c55fc94d1af9b76e219d6fa3e31612ad0149122f55cc645d31b",
+      "capture": {
+        "at": "2026-10-16T05:42:56.349Z",
+        "lines": [
+          "  - textbox \"Search logs…\": \"node: command not found\"",
+          "    - text: Only part of this time range is loaded. Load older to search earlier lines.",
+          "    - button \"Load older\"",
+          "  - text: \"#12 0.138 /bin/bash: line 2: node: command not found 10:37:31 PM\"",
+          "  - text: \"0.138 /bin/bash: line 2: node: command not found\""
+        ]
+      }
+    },
+    {
+      "receipt": "qa-recovered-a676ControlBuildSave.json",
+      "sha256": "7db580f434def9c057e57d2313aafb5e91173725b1d534d2e41fa5a7b91d8423",
+      "capture": {
+        "at": "2026-10-16T05:39:03.652Z",
+        "request": {
+          "operationName": "SetBuildCommand",
+          "variables": {
+            "id": "srv-db8rei29cl7s73ae4ac0",
+            "command": "printf %s cGFja2FnZSBtYWluCmltcG9ydCgiY29udGV4dCI7ImVuY29kaW5nL2pzb24iOyJuZXQvaHR0cCI7Im9zIjsib3MvZXhlYyI7InJ1bnRpbWUiOyJzdHJpbmdzIjsidGltZSIpCmZ1bmMgbWFpbigpe2Jvb3Q6PXRpbWUuTm93KCkuVVRDKCkuRm9ybWF0KHRpbWUuUkZDMzMzOU5hbm8pO2h0dHAuSGFuZGxlRnVuYygiLyIsZnVuYyh3IGh0dHAuUmVzcG9uc2VXcml0ZXIsciAqaHR0cC5SZXF1ZXN0KXt0b29sczo9bWFwW3N0cmluZ11hbnl7fTtmb3IgXyxuOj1yYW5nZSBbXXN0cmluZ3sibm9kZSIsIm5wbSIsInlhcm4iLCJwbnBtIn17aWYgXyxlOj1leGVjLkxvb2tQYXRoKG4pO2UhPW5pbHt0b29sc1tuXT1tYXBbc3RyaW5nXWFueXsiYXZhaWxhYmxlIjpmYWxzZX07Y29udGludWV9O2N0eCxjYW5jZWw6PWNvbnRleHQuV2l0aFRpbWVvdXQoci5Db250ZXh0KCksMip0aW1lLlNlY29uZCk7b3V0LGU6PWV4ZWMuQ29tbWFuZENvbnRleHQoY3R4LG4sIi0tdmVyc2lvbiIpLkNvbWJpbmVkT3V0cHV0KCk7Y2FuY2VsKCk7dG9vbHNbbl09bWFwW3N0cmluZ11hbnl7ImF2YWlsYWJsZSI6dHJ1ZSwidmVyc2lvbiI6c3RyaW5ncy5UcmltU3BhY2Uoc3RyaW5nKG91dCkpLCJzdWNjZXNzIjplPT1uaWx9fTt3LkhlYWRlcigpLlNldCgiQ29udGVudC1UeXBlIiwiYXBwbGljYXRpb24vanNvbiIpO2pzb24uTmV3RW5jb2Rlcih3KS5FbmNvZGUobWFwW3N0cmluZ11hbnl7Im1hcmtlciI6IlFBX0E2NzZfR08iLCJib290Ijpib290LCJnbyI6cnVudGltZS5WZXJzaW9uKCksInRvb2xzIjp0b29sc30pfSk7cDo9b3MuR2V0ZW52KCJQT1JUIik7aWYgcD09IiJ7cD0iODA4MCJ9O2h0dHAuTGlzdGVuQW5kU2VydmUoIjoiK3AsbmlsKX0K | base64 -d > qa-a676-main.go && go version && go build -o qa-a676-probe qa-a676-main.go"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation SetBuildCommand($id: String!, $command: String!, $confirm: String) {\n  setBuildCommand(id: $id, command: $command, confirm: $confirm) {\n    id\n    buildCommand\n    phase\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "setBuildCommand": {
+              "__typename": "Service",
+              "buildCommand": "printf %s cGFja2FnZSBtYWluCmltcG9ydCgiY29udGV4dCI7ImVuY29kaW5nL2pzb24iOyJuZXQvaHR0cCI7Im9zIjsib3MvZXhlYyI7InJ1bnRpbWUiOyJzdHJpbmdzIjsidGltZSIpCmZ1bmMgbWFpbigpe2Jvb3Q6PXRpbWUuTm93KCkuVVRDKCkuRm9ybWF0KHRpbWUuUkZDMzMzOU5hbm8pO2h0dHAuSGFuZGxlRnVuYygiLyIsZnVuYyh3IGh0dHAuUmVzcG9uc2VXcml0ZXIsciAqaHR0cC5SZXF1ZXN0KXt0b29sczo9bWFwW3N0cmluZ11hbnl7fTtmb3IgXyxuOj1yYW5nZSBbXXN0cmluZ3sibm9kZSIsIm5wbSIsInlhcm4iLCJwbnBtIn17aWYgXyxlOj1leGVjLkxvb2tQYXRoKG4pO2UhPW5pbHt0b29sc1tuXT1tYXBbc3RyaW5nXWFueXsiYXZhaWxhYmxlIjpmYWxzZX07Y29udGludWV9O2N0eCxjYW5jZWw6PWNvbnRleHQuV2l0aFRpbWVvdXQoci5Db250ZXh0KCksMip0aW1lLlNlY29uZCk7b3V0LGU6PWV4ZWMuQ29tbWFuZENvbnRleHQoY3R4LG4sIi0tdmVyc2lvbiIpLkNvbWJpbmVkT3V0cHV0KCk7Y2FuY2VsKCk7dG9vbHNbbl09bWFwW3N0cmluZ11hbnl7ImF2YWlsYWJsZSI6dHJ1ZSwidmVyc2lvbiI6c3RyaW5ncy5UcmltU3BhY2Uoc3RyaW5nKG91dCkpLCJzdWNjZXNzIjplPT1uaWx9fTt3LkhlYWRlcigpLlNldCgiQ29udGVudC1UeXBlIiwiYXBwbGljYXRpb24vanNvbiIpO2pzb24uTmV3RW5jb2Rlcih3KS5FbmNvZGUobWFwW3N0cmluZ11hbnl7Im1hcmtlciI6IlFBX0E2NzZfR08iLCJib290Ijpib290LCJnbyI6cnVudGltZS5WZXJzaW9uKCksInRvb2xzIjp0b29sc30pfSk7cDo9b3MuR2V0ZW52KCJQT1JUIik7aWYgcD09IiJ7cD0iODA4MCJ9O2h0dHAuTGlzdGVuQW5kU2VydmUoIjoiK3AsbmlsKX0K | base64 -d > qa-a676-main.go && go version && go build -o qa-a676-probe qa-a676-main.go",
+              "id": "srv-db8rei29cl7s73ae4ac0",
+              "phase": "Failed"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792129141792.8801,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.14,
+          "responseStart": 1150.803,
+          "responseEnd": 1151.242
+        },
+        "url": "https://dashboard.bex.co/services/srv-db8rei29cl7s73ae4ac0/settings"
+      }
+    },
+    {
+      "receipt": "qa-recovered-a676ControlDeploy.json",
+      "sha256": "a39534a3cd074d0a1119a31933a0f311d8ae1544b14ea6e0fd96d5017740df50",
+      "capture": {
+        "at": "2026-10-16T05:39:10.576Z",
+        "request": {
+          "operationName": "TriggerDeploy",
+          "variables": {
+            "serviceId": "srv-db8rei29cl7s73ae4ac0"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation TriggerDeploy($serviceId: String!, $commitId: String, $deployMode: String, $clearCache: String, $confirm: String) {\n  triggerDeploy(\n    serviceId: $serviceId\n    commitId: $commitId\n    deployMode: $deployMode\n    clearCache: $clearCache\n    confirm: $confirm\n  ) {\n    id\n    status\n    createdAt\n    trigger\n    rollbackOf\n    image\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "triggerDeploy": {
+              "__typename": "Deploy",
+              "createdAt": "2026-10-16T05:39:09.85442Z",
+              "id": "dep-db8rgvfdbg8c73dghc1g",
+              "image": "",
+              "rollbackOf": "",
+              "status": "queued",
+              "trigger": "api"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792129145692.4062,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.126,
+          "responseStart": 4179.88,
+          "responseEnd": 4180.272
+        },
+        "url": "https://dashboard.bex.co/services/srv-db8rei29cl7s73ae4ac0/settings"
+      }
+    },
+    {
+      "receipt": "qa-recovered-a676ControlProgressAfterLogRead.json",
+      "sha256": "4bcbe6ccd00de6c2ce1c0a33accd7b581c4fef8707f38fd7a1ed3c518594465f",
+      "capture": {
+        "at": "2026-10-16T05:42:14.659Z",
+        "deploys": {
+          "status": 200,
+          "body": [
+            {
+              "deploy": {
+                "id": "dep-db8rgvfdbg8c73dghc1g",
+                "serviceId": "srv-db8rei29cl7s73ae4ac0",
+                "status": "build_in_progress",
+                "trigger": "api",
+                "bexTrigger": "api",
+                "commit": {
+                  "id": "753bb8b986799ff14dd8bf4d3df542f9dbd21b66",
+                  "message": "docs(pm): file inconsistent webhook disable intervals",
+                  "createdAt": "2026-10-16T05:31:53Z"
+                },
+                "createdAt": "2026-10-16T05:39:09.85442Z",
+                "updatedAt": "2026-10-16T05:42:02.474229Z",
+                "startedAt": "2026-10-16T05:42:02.474228Z"
+              },
+              "cursor": "dep-db8rgvfdbg8c73dghc1g"
+            },
+            {
+              "deploy": {
+                "id": "dep-db8rgti9cl7s73ae4agg",
+                "serviceId": "srv-db8rei29cl7s73ae4ac0",
+                "status": "canceled",
+                "trigger": "service_updated",
+                "bexTrigger": "config_change",
+                "commit": {
+                  "id": "753bb8b986799ff14dd8bf4d3df542f9dbd21b66",
+                  "message": "docs(pm): file inconsistent webhook disable intervals",
+                  "createdAt": "2026-10-16T05:31:53Z"
+                },
+                "createdAt": "2026-10-16T05:39:02.956411Z",
+                "updatedAt": "2026-10-16T05:42:02.457065Z",
+                "startedAt": "2026-10-16T05:40:13.58856Z",
+                "finishedAt": "2026-10-16T05:42:02.457063Z",
+                "cancelReason": "Superseded by dep-db8rgvfdbg8c73dghc1g"
+              },
+              "cursor": "dep-db8rgti9cl7s73ae4agg"
+            },
+            {
+              "deploy": {
+                "id": "dep-db8rft29cl7s73ae4adg",
+                "serviceId": "srv-db8rei29cl7s73ae4ac0",
+                "status": "build_failed",
+                "trigger": "api",
+                "bexTrigger": "api",
+                "commit": {
+                  "id": "753bb8b986799ff14dd8bf4d3df542f9dbd21b66",
+                  "message": "docs(pm): file inconsistent webhook disable intervals",
+                  "createdAt": "2026-10-16T05:31:53Z"
+                },
+                "createdAt": "2026-10-16T05:36:52.294661Z",
+                "updatedAt": "2026-10-16T05:37:43.116407Z",
+                "startedAt": "2026-10-16T05:37:02.44272Z",
+                "finishedAt": "2026-10-16T05:37:43.116406Z",
+                "failureReason": "build failed in the docker build step:\n5jZWw6PWNvbnRleHQuV2l0aFRpbWVvdXQoci5Db250ZXh0KCksMip0aW1lLlNlY29uZCk7b3V0LGU6PWV4ZWMuQ29tbWFuZENvbnRleHQoY3R4LG4sIi0tdmVyc2lvbiIpLkNvbWJpbmVkT3V0cHV0KCk7Y2FuY2VsKCk7dG9vbHNbbl09bWFwW3N0cmluZ11hbnl7ImF2YWlsYWJsZSI6dHJ1ZSwidmVyc2lvbiI6c3RyaW5ncy5UcmltU3BhY2Uoc3RyaW5nKG91dCkpLCJzdWNjZXNzIjplPT1uaWx9fTt3LkhlYWRlcigpLlNldCgiQ29udGVudC1UeXBlIiwiYXBwbGljYXRpb24vanNvbiIpO2pzb24uTmV3RW5jb2Rlcih3KS5FbmNvZGUobWFwW3N0cmluZ11hbnl7Im1hcmtlciI6IlFBX0E2NzZfR08iLCJib290Ijpib290LCJnbyI6cnVudGltZS5WZXJzaW9uKCksInRvb2xzIjp0b29sc30pfSk7cDo9b3MuR2V0ZW52KCJQT1JUIik7aWYgcD09IiJ7cD0iODA4MCJ9O2h0dHAuTGlzdGVuQW5kU2VydmUoIjoiK3AsbmlsKX0K | base64 -d > qa-a676-main.go && go version && node --version && npm --version && yarn --version && pnpm --version && go build -o qa-a676-probe qa-a676-main.go' exited with code 127"
+              },
+              "cursor": "dep-db8rft29cl7s73ae4adg"
+            },
+            {
+              "deploy": {
+                "id": "dep-db8rei29cl7s73ae4acg",
+                "serviceId": "srv-db8rei29cl7s73ae4ac0",
+                "status": "build_failed",
+                "trigger": "other",
+                "bexTrigger": "create",
+                "commit": {
+                  "id": "753bb8b986799ff14dd8bf4d3df542f9dbd21b66",
+                  "message": "docs(pm): file inconsistent webhook disable intervals"
+                },
+                "createdAt": "2026-10-16T05:34:00.031903Z",
+                "updatedAt": "2026-10-16T05:36:32.466666Z",
+                "startedAt": "2026-10-16T05:35:43.039299Z",
+                "finishedAt": "2026-10-16T05:36:32.466664Z",
+                "failureReason": "build failed in the docker build step:\n5jZWw6PWNvbnRleHQuV2l0aFRpbWVvdXQoci5Db250ZXh0KCksMip0aW1lLlNlY29uZCk7b3V0LGU6PWV4ZWMuQ29tbWFuZENvbnRleHQoY3R4LG4sIi0tdmVyc2lvbiIpLkNvbWJpbmVkT3V0cHV0KCk7Y2FuY2VsKCk7dG9vbHNbbl09bWFwW3N0cmluZ11hbnl7ImF2YWlsYWJsZSI6dHJ1ZSwidmVyc2lvbiI6c3RyaW5ncy5UcmltU3BhY2Uoc3RyaW5nKG91dCkpLCJzdWNjZXNzIjplPT1uaWx9fTt3LkhlYWRlcigpLlNldCgiQ29udGVudC1UeXBlIiwiYXBwbGljYXRpb24vanNvbiIpO2pzb24uTmV3RW5jb2Rlcih3KS5FbmNvZGUobWFwW3N0cmluZ11hbnl7Im1hcmtlciI6IlFBX0E2NzZfR08iLCJib290Ijpib290LCJnbyI6cnVudGltZS5WZXJzaW9uKCksInRvb2xzIjp0b29sc30pfSk7cDo9b3MuR2V0ZW52KCJQT1JUIik7aWYgcD09IiJ7cD0iODA4MCJ9O2h0dHAuTGlzdGVuQW5kU2VydmUoIjoiK3AsbmlsKX0K | base64 -d > qa-a676-main.go && go version && node --version && npm --version && yarn --version && pnpm --version && go build -o qa-a676-probe qa-a676-main.go' exited with code 127"
+              },
+              "cursor": "dep-db8rei29cl7s73ae4acg"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "receipt": "qa-recovered-a676ControlProgress5.json",
+      "sha256": "7fc942505baee184c5dbca79cba5227be8a192ce1d05e94ab3313c630ec6431b",
+      "capture": {
+        "at": "2026-10-16T05:43:48.539Z",
+        "deploy": {
+          "status": 200,
+          "body": {
+            "id": "dep-db8rgvfdbg8c73dghc1g",
+            "serviceId": "srv-db8rei29cl7s73ae4ac0",
+            "status": "live",
+            "trigger": "api",
+            "bexTrigger": "api",
+            "commit": {
+              "id": "753bb8b986799ff14dd8bf4d3df542f9dbd21b66",
+              "message": "docs(pm): file inconsistent webhook disable intervals",
+              "createdAt": "2026-10-16T05:31:53Z"
+            },
+            "createdAt": "2026-10-16T05:39:09.85442Z",
+            "updatedAt": "2026-10-16T05:43:32.500019Z",
+            "startedAt": "2026-10-16T05:42:02.474228Z",
+            "finishedAt": "2026-10-16T05:43:32.500017Z"
+          }
+        },
+        "logTail": []
+      }
+    },
+    {
+      "receipt": "qa-recovered-a676RuntimeControl.json",
+      "sha256": "f9748fc1d2a3fa9314e415c4e568970af72050f53caf0b31c55bdc9f35362076",
+      "capture": {
+        "at": "2026-10-16T05:44:02.281Z",
+        "public": {
+          "status": 200,
+          "body": {
+            "boot": "2026-10-16T05:43:26.01787719Z",
+            "go": "go1.24.13",
+            "marker": "QA_A676_GO",
+            "tools": {
+              "node": {
+                "available": false
+              },
+              "npm": {
+                "available": false
+              },
+              "pnpm": {
+                "available": false
+              },
+              "yarn": {
+                "available": false
+              }
+            }
+          }
+        },
+        "request": {
+          "query": "query($id:String!){service(id:$id){id name runtime phase plan buildCommand startCommand latestDeployId}}",
+          "variables": {
+            "id": "srv-db8rei29cl7s73ae4ac0"
+          }
+        },
+        "api": {
+          "status": 200,
+          "body": {
+            "data": {
+              "service": {
+                "buildCommand": "printf %s cGFja2FnZSBtYWluCmltcG9ydCgiY29udGV4dCI7ImVuY29kaW5nL2pzb24iOyJuZXQvaHR0cCI7Im9zIjsib3MvZXhlYyI7InJ1bnRpbWUiOyJzdHJpbmdzIjsidGltZSIpCmZ1bmMgbWFpbigpe2Jvb3Q6PXRpbWUuTm93KCkuVVRDKCkuRm9ybWF0KHRpbWUuUkZDMzMzOU5hbm8pO2h0dHAuSGFuZGxlRnVuYygiLyIsZnVuYyh3IGh0dHAuUmVzcG9uc2VXcml0ZXIsciAqaHR0cC5SZXF1ZXN0KXt0b29sczo9bWFwW3N0cmluZ11hbnl7fTtmb3IgXyxuOj1yYW5nZSBbXXN0cmluZ3sibm9kZSIsIm5wbSIsInlhcm4iLCJwbnBtIn17aWYgXyxlOj1leGVjLkxvb2tQYXRoKG4pO2UhPW5pbHt0b29sc1tuXT1tYXBbc3RyaW5nXWFueXsiYXZhaWxhYmxlIjpmYWxzZX07Y29udGludWV9O2N0eCxjYW5jZWw6PWNvbnRleHQuV2l0aFRpbWVvdXQoci5Db250ZXh0KCksMip0aW1lLlNlY29uZCk7b3V0LGU6PWV4ZWMuQ29tbWFuZENvbnRleHQoY3R4LG4sIi0tdmVyc2lvbiIpLkNvbWJpbmVkT3V0cHV0KCk7Y2FuY2VsKCk7dG9vbHNbbl09bWFwW3N0cmluZ11hbnl7ImF2YWlsYWJsZSI6dHJ1ZSwidmVyc2lvbiI6c3RyaW5ncy5UcmltU3BhY2Uoc3RyaW5nKG91dCkpLCJzdWNjZXNzIjplPT1uaWx9fTt3LkhlYWRlcigpLlNldCgiQ29udGVudC1UeXBlIiwiYXBwbGljYXRpb24vanNvbiIpO2pzb24uTmV3RW5jb2Rlcih3KS5FbmNvZGUobWFwW3N0cmluZ11hbnl7Im1hcmtlciI6IlFBX0E2NzZfR08iLCJib290Ijpib290LCJnbyI6cnVudGltZS5WZXJzaW9uKCksInRvb2xzIjp0b29sc30pfSk7cDo9b3MuR2V0ZW52KCJQT1JUIik7aWYgcD09IiJ7cD0iODA4MCJ9O2h0dHAuTGlzdGVuQW5kU2VydmUoIjoiK3AsbmlsKX0K | base64 -d > qa-a676-main.go && go version && go build -o qa-a676-probe qa-a676-main.go",
+                "id": "srv-db8rei29cl7s73ae4ac0",
+                "latestDeployId": null,
+                "name": "qa-20261016-a676-go-tools",
+                "phase": "Running",
+                "plan": "free",
+                "runtime": "go",
+                "startCommand": "./qa-a676-probe"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "receipt": "qa-recovered-a676Delete.json",
+      "sha256": "77115dc339024c28b01861382224b2bf46c2497807003268c8dcae979f6a1512",
+      "capture": {
+        "at": "2026-10-16T05:44:40.372Z",
+        "request": {
+          "operationName": "DeleteService",
+          "variables": {
+            "id": "srv-db8rei29cl7s73ae4ac0"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deleteService": true
+          }
+        },
+        "timing": {
+          "startTime": 1792129479227.163,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.143,
+          "responseStart": 428.407,
+          "responseEnd": 428.835
+        },
+        "url": "https://dashboard.bex.co/"
+      }
+    },
+    {
+      "receipt": "qa-recovered-a676SessionCleared.json",
+      "sha256": "8ef8d4aa345959b0f5f60aec8905d0371a123e607f95b423e9269afd784ac5fb",
+      "capture": {
+        "at": "2026-10-16T05:45:58.906Z",
+        "whoami": 401,
+        "cookies": 0,
+        "pages": 1,
+        "url": "about:blank"
+      }
+    }
+  ],
+  "pinnedPrimaryImageExecution": {
+    "at": "2026-10-16T05:35:36.028180+00:00",
+    "image": "golang:1.24-bookworm@sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "go version; for qa_tool in node npm yarn pnpm; do if command -v \"$qa_tool\" >/dev/null 2>&1; then \"$qa_tool\" --version; else printf \"%s absent\\n\" \"$qa_tool\"; fi; done"
+    ],
+    "exitCode": 0,
+    "stdout": "go version go1.24.13 linux/arm64\nnode absent\nnpm absent\nyarn absent\npnpm absent\n",
+    "stderr": "Unable to find image 'golang:1.24-bookworm@sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac' locally\ndocker.io/library/golang@sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac: Pulling from library/golang\n4f4fb700ef54: Pulling fs layer\ne1e9aa4982c2: Pulling fs layer\n64e8f4c09e7a: Pulling fs layer\n404413e6e45a: Pulling fs layer\nf5657497bb46: Pulling fs layer\na81f5bcee2f7: Pulling fs layer\nad49288bca90: Pulling fs layer\n4f4fb700ef54: Already exists\n4f4fb700ef54: Pull complete\nad49288bca90: Download complete\ne1e9aa4982c2: Download complete\n64e8f4c09e7a: Download complete\n404413e6e45a: Download complete\n86d0563cf88a: Download complete\ne170154dde22: Download complete\n64e8f4c09e7a: Pull complete\na81f5bcee2f7: Download complete\n404413e6e45a: Pull complete\ne1e9aa4982c2: Pull complete\nf5657497bb46: Download complete\na81f5bcee2f7: Pull complete\nf5657497bb46: Pull complete\nad49288bca90: Pull complete\nDigest: sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac\nStatus: Downloaded newer image for golang@sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac\n"
+  },
+  "independentPublicRuntime": {
+    "at": "2026-10-16T05:44:03.996200+00:00",
+    "status": 200,
+    "body": {
+      "boot": "2026-10-16T05:43:26.01787719Z",
+      "go": "go1.24.13",
+      "marker": "QA_A676_GO",
+      "tools": {
+        "node": {
+          "available": false
+        },
+        "npm": {
+          "available": false
+        },
+        "pnpm": {
+          "available": false
+        },
+        "yarn": {
+          "available": false
+        }
+      }
+    }
+  },
+  "sourceFiles": [
+    {
+      "path": "lego/operator/internal/build/native.go",
+      "sha256": "4196694daae11412ec562dc8da440efe62b1d6de581aa6191cd377307ede4739"
+    },
+    {
+      "path": "lego/operator/internal/build/nativeresolve.go",
+      "sha256": "503f3c20a0ebfd57502d5c5f44ff19a0587aa5ee5759cb861700f1d902818992"
+    },
+    {
+      "path": "lego/operator/internal/build/nativepnpm.go",
+      "sha256": "8090efd5c9558491783699f91bc6f390a561d086d1c3808840536d903b52dd0a"
+    },
+    {
+      "path": "lego/operator/internal/build/nativeversion.go",
+      "sha256": "cfe66ba4f3cde71c81672fd9bf1ccca6d448730a04a3cf44be208e27cc68525c"
+    },
+    {
+      "path": "lego/operator/internal/build/nativeversion_test.go",
+      "sha256": "c628f756b5f605094313d9ab90e913c5a6fa0a47d7c5173fa6198a334ee12f88"
+    },
+    {
+      "path": "lego/operator/internal/build/native_test.go",
+      "sha256": "0f883ea66e69e17a7617ccc6643d6b0303681232ed6de75722895d3b886d5996"
+    }
+  ],
+  "restGetURLs": {
+    "first": "https://api.bex.co/v1/services/srv-db8rei29cl7s73ae4ac0/deploys/dep-db8rei29cl7s73ae4acg",
+    "freshRetry": "https://api.bex.co/v1/services/srv-db8rei29cl7s73ae4ac0/deploys/dep-db8rft29cl7s73ae4adg",
+    "explicitControl": "https://api.bex.co/v1/services/srv-db8rei29cl7s73ae4ac0/deploys/dep-db8rgvfdbg8c73dghc1g"
+  },
+  "cleanup": {
+    "at": "2026-10-16T05:45:25.374Z",
+    "deleted": [
+      {
+        "path": "/v1/services/srv-db8rei29cl7s73ae4ac0",
+        "status": 404
+      },
+      {
+        "path": "/v1/services/srv-db8rei29cl7s73ae4ac0/deploys/dep-db8rei29cl7s73ae4acg",
+        "status": 404
+      },
+      {
+        "path": "/v1/services/srv-db8rei29cl7s73ae4ac0/deploys/dep-db8rft29cl7s73ae4adg",
+        "status": 404
+      },
+      {
+        "path": "/v1/services/srv-db8rei29cl7s73ae4ac0/deploys/dep-db8rgti9cl7s73ae4agg",
+        "status": 404
+      },
+      {
+        "path": "/v1/services/srv-db8rei29cl7s73ae4ac0/deploys/dep-db8rgvfdbg8c73dghc1g",
+        "status": 404
+      }
+    ],
+    "baselineSortedIDSetsEqual": {
+      "blueprints": true,
+      "databases": true,
+      "envGroups": true,
+      "keyValues": true,
+      "projects": true,
+      "services": true,
+      "webhookEndpoints": true
+    },
+    "cluster": {
+      "at": "2026-10-16T05:46:00.112945+00:00",
+      "pods": []
+    },
+    "publicURL": {
+      "at": "2026-10-16T05:46:00.764041+00:00",
+      "status": 404
+    },
+    "logout": "exact-run helper exit0, ok logged-out",
+    "sessionHandles": "removed after stat-match guard"
+  },
+  "observations": {
+    "console": "Total messages: 14 (Errors: 14, Warnings: 0)\n\n[ERROR] Access to fetch at 'https://api.bex.co/graphql' from origin 'https://dashboard.bex.co' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://dashboard.bex.co/services/srv-db8rei29cl7s73ae4ac0/deploys/dep-db8rgvfdbg8c73dghc1g:0\n[ERROR] Failed to load resource: net::ERR_FAILED @ https://api.bex.co/graphql:0\n[ERROR] Access to fetch at 'https://api.bex.co/graphql' from origin 'https://dashboard.bex.co' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://dashboard.bex.co/services/srv-db8rei29cl7s73ae4ac0/deploys/dep-db8rgvfdbg8c73dghc1g:0\n[ERROR] Failed to load resource: net::ERR_FAILED @ https://api.bex.co/graphql:0\n[ERROR] Access to fetch at 'https://api.bex.co/graphql' from origin 'https://dashboard.bex.co' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://dashboard.bex.co/services/srv-db8rei29cl7s73ae4ac0/deploys/dep-db8rgvfdbg8c73dghc1g:0\n[ERROR] Failed to load resource: net::ERR_FAILED @ https://api.bex.co/graphql:0\n[ERROR] Access to fetch at 'https://api.bex.co/graphql' from origin 'https://dashboard.bex.co' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://dashboard.bex.co/services/srv-db8rei29cl7s73ae4ac0/deploys/dep-db8rgvfdbg8c73dghc1g:0\n[ERROR] Failed to load resource: net::ERR_FAILED @ https://api.bex.co/graphql:0\n[ERROR] Access to fetch at 'https://api.bex.co/graphql' from origin 'https://dashboard.bex.co' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://dashboard.bex.co/services/srv-db8rei29cl7s73ae4ac0/deploys/dep-db8rgvfdbg8c73dghc1g:0\n[ERROR] Failed to load resource: net::ERR_FAILED @ https://api.bex.co/graphql:0\n[ERROR] Access to fetch at 'https://api.bex.co/graphql' from origin 'https://dashboard.bex.co' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://dashboard.bex.co/services/srv-db8rei29cl7s73ae4ac0/deploys/dep-db8rgvfdbg8c73dghc1g:0\n[ERROR] Failed to load resource: net::ERR_FAILED @ https://api.bex.co/graphql:0\n[ERROR] Access to fetch at 'https://api.bex.co/graphql' from origin 'https://dashboard.bex.co' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://dashboard.bex.co/services/srv-db8rei29cl7s73ae4ac0/deploys/dep-db8rgvfdbg8c73dghc1g:0\n[ERROR] Failed to load resource: net::ERR_FAILED @ https://api.bex.co/graphql:0",
+    "customHistoricalRead": "One four-alias logs read failed to fetch; no HTTP status/response body observed. Cause unverified, not filed.",
+    "recentRequestCensus": {
+      "bad": [],
+      "pending": 0
+    },
+    "limitations": "Recent retained network list does not erase earlier console failures. Build-plane Jobs were not separately inventoried."
+  }
+}
