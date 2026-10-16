@@ -1,0 +1,22 @@
+from pathlib import Path
+import sys,json,os,subprocess,time,collections
+f=Path(__file__).with_name('sweep369-common.py');exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==369 and v.get('client')==client);own(x);sid=x['id'];url=x['create_view']['serviceDetails']['url']
+def http():
+ r=subprocess.run(['curl','--disable','-sS','--max-time','10','-w','\n%{http_code}',url],capture_output=True,text=True,timeout=15);raw,_,status=r.stdout.rpartition('\n');return {'HTTP':status,'curl_exit':r.returncode,'body':json.loads(raw) if status=='200' else raw}
+if mode=='run':
+ assert any(v['first_live_pass'] for v in x.get('runtime_receipts',[])) and not x.get('websocket_receipts');before=http();assert before['HTTP']=='200' and before['body']['marker']==x['marker'];e={'at':now(),'intent':'finite normal WebSocket client on exact own live fixture; all traffic is valid standard client API','before_HTTP':before,'transport':'wss','request_subprotocol':'qa-echo','client_module':'official ws8.18.3 checkout','server_module':'actual public ws8.22.0 checkout'};x.setdefault('websocket_receipts',[]).append(e);save();args=['node',str(P/'sweep369-client.cjs'),str(P/'sweep369-ws-source'),url.replace('https://','wss://'),x['marker']];env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_','PG')) and k not in ('NODE_OPTIONS','NODE_PATH')};start=time.monotonic()
+ try:r=subprocess.run(args,env=env,capture_output=True,text=True,timeout=50);e.update(runtime_client_exit=r.returncode,elapsed=round(time.monotonic()-start,3),stdout=r.stdout,stderr=r.stderr,decoded=json.loads(r.stdout));save();assert r.returncode==0 and e['decoded']['pass'] and e['decoded']['missing_path_HTTP']==404
+ except BaseException as err:e['error']=type(err).__name__;save();raise
+ after=http();e['after_HTTP']=after;before_stats=before['body']['stats'];after_stats=after['body']['stats'];expected={'connections':3,'messages':10,'closed':3,'pings':5};e['stats_delta']={k:after_stats[k]-before_stats[k] for k in before_stats};e['pass']=all(e['stats_delta'][k]==v for k,v in expected.items()) and after['HTTP']=='200' and after['body']['marker']==x['marker'];save();print(json.dumps({'client_fixture':client,'runtime_client_exit':r.returncode,'socket_sessions':len(e['decoded']['sessions']),'echoes':sum(len(v['echoes']) for v in e['decoded']['sessions']),'pongs':sum(len(v['pongs']) for v in e['decoded']['sessions']),'stats_delta':e['stats_delta'],'pass':e['pass']}));assert e['pass']
+elif mode=='logs':
+ assert x['websocket_receipts'][-1]['pass'];r=cli(['logs','--resources',sid,'--type','app','--text','QA369_WS_','--direction','forward','--limit','100','--confirm','-o','json']);e={'at':now(),'native':r};x.setdefault('websocket_log_receipts',[]).append(e);save();assert r['native_exit']==0;raw=r['stdout'];decoder=json.JSONDecoder();values=[]
+ while raw.strip():raw=raw.lstrip();v,end=decoder.raw_decode(raw);values.append(v);raw=raw[end:]
+ rows=values[0] if len(values)==1 and isinstance(values[0],list) else values;events=[]
+ for v in rows:
+  message=v.get('message','');at=message.find('{')
+  if at<0:continue
+  try:event=json.loads(message[at:])
+  except ValueError:continue
+  if event.get('marker')==x['marker'] and event.get('event','').startswith('QA369_WS_'):events.append(event)
+ counts=collections.Counter(v['event'] for v in events);expected={'QA369_WS_OPEN':3,'QA369_WS_ECHO':10,'QA369_WS_PING':5,'QA369_WS_CLOSE':3};e.update(events=events,event_counts=dict(counts));e['pass']=all(counts[k]==v for k,v in expected.items()) and not counts['QA369_WS_ERROR'] and all(v['code']==1000 and v['reason']=='qa369 complete' for v in events if v['event']=='QA369_WS_CLOSE');save();print(json.dumps({'client_fixture':client,'native_logs_exit':r['native_exit'],'counts':dict(counts),'pass':e['pass']}))
+else:raise ValueError(mode)

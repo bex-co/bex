@@ -1,0 +1,8 @@
+{
+  "qualification": "authored diagnostic packaging under declared4096-byte build limit; original conversion remains literal and unchanged",
+  "compressed_helper_exact_roundtrip": true,
+  "probe_source_sha256": "f268f3a92f1511c3e11ab505314fc02bfa41d0cca136dd8c9493c502eab0eab9",
+  "representative_build_bytes": 3476,
+  "declared_limit": 4096,
+  "actual_Python3_12_unpack_exact_file_and_scratch_removed": true
+}

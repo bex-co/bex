@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-16T19:49:59.518982+00:00",
+  "first_window": "eight15-second-spaced native/HTTP observations ended with Bex Live and Render still build_in_progress after queueing",
+  "qualification": "bounded harness readiness window exhausted; not a terminal deployment failure or product bug",
+  "repair": "exercise already-Live Bex fixture, then continue bounded read-only observation of same exact Render deployment; no create/update/deploy replay",
+  "states": {
+    "bex": "live",
+    "render": "build_in_progress"
+  },
+  "first_runtime_runner": "Python wrapper had a reserved-keyword SyntaxError; stopped at compilation before imports, checkpoint writes or WebSocket traffic",
+  "repair_runtime_runner": "assign the pass field through dict indexing; all private sweep369 Python helpers compile before first hosted probe"
+}

@@ -1,0 +1,37 @@
+from pathlib import Path
+import json,os,subprocess,shutil,time,secrets,re
+P=Path(__file__).resolve().parent;R=Path('/Volumes/nvme4tbfish/projects/bex8');os.umask(0o077);ns={'__file__':str(P/'sweep383-command-factory.py')};exec(compile((P/'sweep383-command-factory.py').read_text(),str(P/'sweep383-command-factory.py'),'exec'),ns);ref=ns['reference'];source=P/'sweep383-public-references/discourse-discourse';catalog=(R/'lego/operator/internal/build/native.go').read_text();base=re.search(r'line: "3\.4", version: "[^"]+", image: "([^"]+)"',catalog)[1];node=re.search(r'line: "24", version: "[^"]+", image: "([^"]+)"',catalog)[1];nonce=secrets.token_hex(5);D=P/('sweep383-local-container-'+nonce);D.mkdir(mode=0o700);recipe=D/'recipe';recipe.mkdir();project=D/'project';project.mkdir();tag='bex-qa383-ruby-prereq:'+nonce;name='bex-qa383-ruby-'+nonce;container=None;result={'qualification':'own local pinned Ruby3.4/Node24 prerequisite, exact freshly fetched public version files and original require-lock assertion; source selector is not run by this forced-base recipe; no native CLI or hosting claim','base':base,'node_supplier':node,'nonce':nonce,'own_image_tag':tag,'own_container_name':name,'network':'none','host_ports':[],'marker':'QA383_LOCAL_'+nonce,'steps':[]};ledger=P/'sweep383-local-container-preflight.json'
+def save():ledger.write_text(json.dumps(result,indent=2))
+def run(args,bound=30,check=True):
+ proc=subprocess.Popen(args,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,start_new_session=True)
+ try:out,err=proc.communicate(timeout=bound)
+ except subprocess.TimeoutExpired:
+  os.killpg(proc.pid,15)
+  try:out,err=proc.communicate(timeout=3)
+  except subprocess.TimeoutExpired:os.killpg(proc.pid,9);out,err=proc.communicate(timeout=3)
+  result['steps'].append({'command':args,'timeout':True,'stdout':out,'stderr':err});save();raise
+ r=subprocess.CompletedProcess(args,proc.returncode,out,err);result['steps'].append({'command':args,'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr});save()
+ if check:assert r.returncode==0,'own Ruby prerequisite command failed; inspect private ledger'
+ return r
+save()
+try:
+ assert run(['docker','image','inspect',tag],check=False).returncode!=0 and run(['docker','container','inspect',name],check=False).returncode!=0
+ (recipe/'Dockerfile').write_text('FROM '+node+' AS js\nFROM '+base+'\nCOPY --from=js /usr/local/bin/node /usr/local/bin/node\nLABEL bex.qa.sweep="383" bex.qa.nonce="'+nonce+'"\nWORKDIR /case\n');run(['docker','build','--progress','plain','-t',tag,str(recipe)],bound=240);result['owned_image_id']=json.loads(run(['docker','image','inspect',tag]).stdout)[0]['Id'];save()
+ for file in ref['files']:shutil.copyfile(source/file,project/file)
+ cmd=ns['commands'](result['marker'],True);result['authored_build_bytes']=len(cmd['build'].encode());script=cmd['build']+'\nexec '+cmd['start'];r=run(['docker','create','--name',name,'--label','bex.qa.nonce='+nonce,'--network','none','--volume',str(project)+':/case','--workdir','/case','--env','NODE_VERSION=24','--env','PORT=3000','--entrypoint','/bin/bash',tag,'-c',script]);container=r.stdout.strip();assert re.fullmatch('[a-f0-9]{64}',container);result['owned_container_id']=container;save();run(['docker','start',container]);started=time.monotonic()
+ for attempt in range(40):
+  r=run(['docker','exec',container,'ruby','-rnet/http','-e',"puts Net::HTTP.get(URI('http://127.0.0.1:3000/'))"],bound=10,check=False)
+  if r.returncode==0:v=json.loads(r.stdout);break
+  state=json.loads(run(['docker','container','inspect',container]).stdout)[0]['State'];assert state['Running'],'own Ruby prerequisite exited; inspect retained logs';assert time.monotonic()-started<65;time.sleep(.25)
+ else:raise RuntimeError('own Ruby HTTP readiness absent')
+ assert v['marker']==v['built']['marker']==result['marker']
+ for snapshot in (v,v['built']):assert snapshot['ruby'].startswith('3.4.') and snapshot['ruby_engine']=='ruby' and snapshot['files']==ref['files'] and snapshot['lock_ruby']==ref['lock_ruby'] and all(b is False for b in snapshot['other_ruby_sources'].values()) and snapshot['node']['exit']==0 and snapshot['node']['stdout'].startswith('v24.') and snapshot['requested_node']=='24'
+ result.update(info=v,pass_=True);save()
+finally:
+ if container:
+  result['container_logs']=run(['docker','logs',container],check=False).stdout;run(['docker','rm','--force',container]);result['own_container_absent']=run(['docker','container','inspect',container],check=False).returncode!=0
+ r=run(['docker','image','inspect',tag],check=False)
+ if r.returncode==0:
+  image=json.loads(r.stdout)[0];assert image['Config']['Labels'].get('bex.qa.nonce')==nonce;run(['docker','image','rm',tag])
+ result['own_tag_absent']=run(['docker','image','inspect',tag],check=False).returncode!=0;shutil.rmtree(D);result['own_scratch_removed']=not D.exists();save()
+print(json.dumps({'local_pinned_Ruby3_4_required_assertion_and_HTTP':result.get('pass_'),'actual_Ruby':result.get('info',{}).get('ruby'),'exact_public_version_files_and_Node24':result.get('pass_'),'own_container_absent':result.get('own_container_absent'),'own_tag_absent':result['own_tag_absent'],'scratch_removed':result['own_scratch_removed']}))

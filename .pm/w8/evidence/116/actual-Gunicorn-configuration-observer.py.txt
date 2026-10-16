@@ -1,0 +1,9 @@
+import hashlib,json,os,platform,sys
+from pathlib import Path
+from importlib.metadata import version
+from gunicorn.app.wsgiapp import WSGIApplication
+reference=json.loads(Path('qa380-reference.json').read_text());marker=json.loads(Path('qa380-marker.json').read_text())
+files={n:{'bytes':len((b:=Path(n).read_bytes())),'sha256':hashlib.sha256(b).hexdigest()} for n in reference['files']};assert files==reference['files']
+phase=sys.argv[1];sys.argv=['gunicorn','qa380_app:app'];g=WSGIApplication()
+v={'marker':marker,'phase':phase,'python':platform.python_version(),'gunicorn':version('Gunicorn'),'flask':version('Flask'),'files':files,'forwarded_allow_ips_present':'FORWARDED_ALLOW_IPS' in os.environ,'forwarded_allow_ips_env':os.environ.get('FORWARDED_ALLOW_IPS'),'forwarded_allow_ips_config':g.cfg.forwarded_allow_ips,'gunicorn_cmd_args':os.environ.get('GUNICORN_CMD_ARGS'),'preload_app':g.cfg.preload_app,'accesslog':g.cfg.accesslog,'bind':g.cfg.bind,'port':os.environ.get('PORT')}
+Path('qa380-'+phase+'.json').write_text(json.dumps(v));print('QA380_OBSERVER '+json.dumps(v,separators=(',',':')),flush=True)

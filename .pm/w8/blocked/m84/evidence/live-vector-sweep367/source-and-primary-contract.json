@@ -1,0 +1,24 @@
+{
+  "reviewed_head": "387720472565058fa5cc28fbed717ae010bef9ec",
+  "fix_commit": "24f738603",
+  "attribution": "fresh custom-name PG18 ordinary application SQL acceptance; exact serving SHA unknown",
+  "source_implementation": {
+    "path": "lego/operator/internal/controller/database_extensions.go",
+    "entry": "reconcileApplicationDatabase",
+    "projection": "applicationDatabaseSpec ensures vector present in recorded application database, retain, no pinned version"
+  },
+  "source_unchanged_since_review": [],
+  "primary_references": [
+    "https://github.com/pgvector/pgvector/tree/v0.8.6",
+    "https://render.com/docs/postgresql-extensions"
+  ],
+  "unverified": [
+    "default physical identity",
+    "existing parent hosted backfill",
+    "other PG majors",
+    "restore/import/upgrade production",
+    "CNPG child status/version from production",
+    "zero-delay endpoint-ready extension race",
+    "actual query planner choosing HNSW"
+  ]
+}

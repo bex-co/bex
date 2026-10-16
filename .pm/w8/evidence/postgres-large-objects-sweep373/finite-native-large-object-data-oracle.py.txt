@@ -1,0 +1,66 @@
+from pathlib import Path
+import hashlib,json,sys,re
+P=Path(__file__).resolve().parent
+
+def literal(s):return "'"+str(s).replace("'","''")+"'"
+def digest(data):return {'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'md5':hashlib.md5(data).hexdigest()}
+def journey(run,persist,e,D,nonce):
+ e.update(owned_objects=[],checks=[],files=[],qualification='ordinary client-side psql large-object import/export, application-owned SQL byte patches and rollback; no server filesystem operation');persist()
+ paths=[]
+ def check(name,observed,expected):
+  v={'name':name,'observed':observed,'expected':expected,'pass':observed==expected};e['checks'].append(v);persist();assert v['pass'],name
+ def command(actor,label,sql,exit=0):
+  r=run(actor,label,sql);check(label+' exit',r['native_exit'],exit);assert not r.get('harness_timeout');return r['SQL_output']
+ def query(actor,label,sql,expected):
+  raw=command(actor,label,sql);v=json.loads(raw.strip());check(label+' values',v,expected);return v
+ def snapshot(actor,label,oid,data):
+  return query(actor,label,"SELECT jsonb_build_object('oid',"+str(oid)+",'bytes',octet_length(lo_get("+str(oid)+")),'md5',md5(lo_get("+str(oid)+")))::text;",{'oid':oid,'bytes':len(data),'md5':hashlib.md5(data).hexdigest()})
+ def export(actor,label,oid,data):
+  path=D/(label+' λ.bin');assert not path.exists();paths.append(path)
+  result=command(actor,label,'\\lo_export '+str(oid)+' '+literal(path));assert path.exists();actual=path.read_bytes();metadata={'role':'native local export','path':str(path),'actor':actor,**digest(actual)};e['files'].append(metadata);persist();check(label+' exact byte equality',actual==data,True);check(label+' hash',digest(actual),digest(data));return metadata
+ try:
+  query('bex','initial large-object catalog',"SELECT jsonb_build_object('count',(SELECT count(*) FROM pg_largeobject_metadata))::text;",{'count':0})
+  missing=D/'never-created λ.bin';assert not missing.exists();text=command('render','missing local file','\\lo_import '+literal(missing),exit=1);check('missing file diagnostic',bool(re.search('No such file|could not open|does not exist',text,re.I)),True)
+  query('bex','failed import allocated no object',"SELECT jsonb_build_object('count',(SELECT count(*) FROM pg_largeobject_metadata))::text;",{'count':0})
+  for actor,seed in [('bex',7),('render',91)]:
+   other='render' if actor=='bex' else 'bex';size=2*1024*1024+257;data=bytes((i*31+seed)%256 for i in range(size));path=D/(actor+' upload λ.bin');assert not path.exists();path.write_bytes(data);paths.append(path);e['files'].append({'role':'deterministic own input','path':str(path),'actor':actor,'formula':'(i*31+'+str(seed)+')%256',**digest(data)});persist()
+   text=command(actor,actor+' import','\\lo_import '+literal(path)+' '+literal('qa373_'+nonce+'_'+actor));match=re.search(r'lo_import\s+([0-9]+)',text);assert match,'native LO import receipt missing';oid=int(match.group(1));assert oid>0 and oid not in [z['oid'] for z in e['owned_objects']];obj={'actor':actor,'oid':oid,'import_receipt':text,'input':digest(data),'state':'own import OID recorded before further writes'};e['owned_objects'].append(obj);persist()
+   snapshot(other,other+' independently reads '+actor,oid,data);export(other,other+' initial '+actor,oid,data)
+   offset=65530;patch=b'qa373 committed '+nonce.encode()+b'\x00\xff'+bytes(range(32));patched=data[:offset]+patch+data[offset+len(patch):]
+   query(actor,actor+' commit page-boundary patch',"BEGIN; SELECT lo_put("+str(oid)+','+str(offset)+",decode('"+patch.hex()+"','hex')); COMMIT; SELECT jsonb_build_object('bytes',octet_length(lo_get("+str(oid)+")),'md5',md5(lo_get("+str(oid)+")))::text;",{'bytes':len(patched),'md5':hashlib.md5(patched).hexdigest()});obj.update(committed_patch={'offset':offset,'hex':patch.hex(),'expected':digest(patched)},state='own committed patch');persist()
+   snapshot(other,other+' cross-client patched read '+actor,oid,patched)
+   bad=b'qa373 rollback must disappear';text=command(actor,actor+' invalid transaction rolls patch back',"BEGIN; SELECT lo_put("+str(oid)+",2040,decode('"+bad.hex()+"','hex')); SELECT 1/0; COMMIT;",exit=1);check(actor+' division error',bool(re.search('division by zero',text,re.I)),True)
+   snapshot(other,other+' verifies rollback '+actor,oid,patched);export(other,other+' final '+actor,oid,patched);obj['state']='both full exports and atomic rollback independently accepted';persist()
+  raw=command('render','empty object create',"SELECT jsonb_build_object('oid',lo_from_bytea(0,''::bytea))::text;");raw_oid=json.loads(raw.strip())['oid'];assert isinstance(raw_oid,(int,str)) and str(raw_oid).isdigit();oid=int(raw_oid);assert oid>0 and oid not in [z['oid'] for z in e['owned_objects']];e['owned_objects'].append({'actor':'render','oid':oid,'import_receipt':raw,'input':digest(b''),'state':'own empty object created and recorded'});persist();snapshot('bex','empty object cross read',oid,b'');export('bex','empty object export',oid,b'')
+  ids=[v['oid'] for v in e['owned_objects']];assert len(ids)==3 and len(set(ids))==3
+  for index,obj in enumerate(e['owned_objects']):
+   oid=obj['oid'];actor='bex' if index%2==0 else 'render';query(actor,'unlink own '+str(oid),"SELECT jsonb_build_object('unlinked',lo_unlink("+str(oid)+"))::text;",{'unlinked':1});obj['state']='unlinked by exact recorded own OID';persist()
+  query('render','all own large objects absent',"SELECT jsonb_build_object('remaining',(SELECT count(*) FROM pg_largeobject_metadata WHERE oid IN ("+','.join(str(v) for v in ids)+")))::text;",{'remaining':0})
+  text=command('bex','deleted own object expected error','SELECT lo_get('+str(ids[0])+');',exit=1);check('deleted own object diagnostic','large object '+str(ids[0])+' does not exist' in text,True)
+  query('render','ordinary final query after error',"SELECT jsonb_build_object('one',1,'large_objects',(SELECT count(*) FROM pg_largeobject_metadata))::text;",{'one':1,'large_objects':0})
+  e['pass']=True;persist()
+ except BaseException as error:e['pass']=False;e['error']=type(error).__name__+': '+str(error);persist();raise
+ finally:
+  for path in paths:path.unlink(missing_ok=True)
+  e['own_synthetic_file_cleanup']={'files_removed':len(paths),'all_absent':all(not q.exists() for q in paths)};persist()
+ print(json.dumps({'large_object_journey_pass':e['pass'],'objects':len(e['owned_objects']),'checks':len(e['checks']),'files_removed':e['own_synthetic_file_cleanup']['files_removed']}),flush=True)
+
+if __name__=='__main__':
+ requested_mode=sys.argv[1];assert requested_mode in ('live','replay-reconciled');f=P/'sweep373-common.py';sys.argv=[str(f),'large-objects','bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==373 and v.get('id'))
+ if requested_mode=='replay-reconciled':
+  assert x['large_object_initial_reconciliation']['reconciled'] and x['large_object_initial_reconciliation']['objects_after']==0 and not x.get('large_object_replay_intent');x['large_object_replay_intent']={'at':now(),'new_meta_transfer_bound_seconds':180,'prior_attempt_reconciled_empty':True,'single_replay':True};x.pop('large_object_journey');save()
+ assert x['workspace']==WS and x['create_result']['native_exit']==0 and not x['state'].startswith('deleted:') and not x.get('large_object_journey');D=P/'sweep373 native files λ';assert not D.exists();D.mkdir(mode=0o700);e={'at':now(),'input_size_each':2*1024*1024+257,'state':'finite native LO journey intent'};x['large_object_journey']=e;save()
+ def persist():save()
+ def run(actor,label,statement):
+  global client
+  previous=client;client=actor
+  try:
+   if statement.startswith('\\lo_'):
+    event={'at':now(),'label':label,'intent':'own client-side large-object file transfer','command':statement};x.setdefault('sql_events',[]).append(event);save();r=cli(['psql',x['id'],'--command',statement,'--confirm','-o','json','--','-X','-q','-t','-A','-v','ON_ERROR_STOP=1','-v','QUIET=off'],bound=180);event['result']=r;save();print(json.dumps({'native_meta_command':label,'native_exit':r['native_exit'],'harness_timeout':r['harness_timeout']}),flush=True)
+   else:event=sql(label,statement);r=event['result']
+   out=json.loads(r['stdout'])['output'] if r['native_exit']==0 else r['stdout']+'\n'+r['stderr'];return {'native_exit':r['native_exit'],'harness_timeout':r['harness_timeout'],'SQL_output':out}
+  finally:client=previous
+ try:journey(run,persist,e,D,x['nonce'])
+ finally:
+  if not any(D.iterdir()):D.rmdir()
+  e['owned_transfer_directory_removed']=not D.exists();save()

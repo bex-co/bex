@@ -1,0 +1,14 @@
+{
+  "qualification": "exact two NamedTemporaryFile paths from own failed local Pydub conversion; complete filename/argv, owner/time and WAV/empty-output checks before removal; no prefix scan",
+  "checks": [
+    {
+      "path": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/tmpzpyxvs8g",
+      "already_absent": true
+    },
+    {
+      "path": "/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/tmpnx_7mf62",
+      "already_absent": true
+    }
+  ],
+  "all_exact_paths_absent": true
+}

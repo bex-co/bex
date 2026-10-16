@@ -1,0 +1,560 @@
+{
+  "qualification": "isolated own local Python3.12 + exact pinned Bex static media supplier prerequisite; original real Pydub source/conversion and runtime re-encode/ffprobe/PCM checks; no native generator or hosting claim",
+  "public_ref": "103e339d3bc7a9a58a9f1de65f7d8074659b5f5a\trefs/heads/master\n",
+  "base": "python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b",
+  "supplier": "mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822",
+  "nonce": "51ad1a2557",
+  "own_image_tag": "bex-qa382-media-prereq:51ad1a2557",
+  "own_container_name": "bex-qa382-media-51ad1a2557",
+  "network": "none",
+  "host_ports": [],
+  "marker": "QA382_LOCAL_CONTAINER_51ad1a2557",
+  "steps": [
+    {
+      "command": [
+        "docker",
+        "image",
+        "inspect",
+        "bex-qa382-media-prereq:51ad1a2557"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such image: bex-qa382-media-prereq:51ad1a2557\n"
+    },
+    {
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "bex-qa382-media-51ad1a2557"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: bex-qa382-media-51ad1a2557\n"
+    },
+    {
+      "command": [
+        "docker",
+        "build",
+        "--progress",
+        "plain",
+        "-t",
+        "bex-qa382-media-prereq:51ad1a2557",
+        "<owned-temp>/sweep382-local-container-51ad1a2557/recipe"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": "#0 building with \"desktop-linux\" instance using docker driver\n\n#1 [internal] load build definition from Dockerfile\n#1 transferring dockerfile:\n#1 transferring dockerfile: 348B done\n#1 DONE 0.2s\n\n#2 [internal] load metadata for docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b\n#2 ...\n\n#3 [internal] load metadata for docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822\n#3 DONE 1.0s\n\n#2 [internal] load metadata for docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b\n#2 DONE 1.0s\n\n#4 [internal] load .dockerignore\n#4 transferring context: 2B done\n#4 DONE 0.0s\n\n#5 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822\n#5 resolve docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 0.0s done\n#5 CACHED\n\n#6 [stage-0 1/3] FROM docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b\n#6 resolve docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b 0.0s done\n#6 CACHED\n\n#7 [stage-0 2/3] COPY --from=mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 /ffmpeg /ffprobe /usr/local/bin/\n#7 DONE 1.0s\n\n#8 [stage-0 3/3] WORKDIR /case\n#8 DONE 0.3s\n\n#9 exporting to image\n#9 exporting layers\n#9 exporting layers 4.8s done\n#9 exporting manifest sha256:66e2bbbf006af8622183094346752d7880468d42d97d72e44185c8a8a7e667d9 done\n#9 exporting config sha256:464d0558516bf2afe21b18957ac5c42c1f368d31805716f91ce15e022c51ca9a done\n#9 exporting attestation manifest sha256:8730dcd83af3296d07e0cce3383c5b8dd67ba81963d8c69e01fb96bc4f093874 done\n#9 exporting manifest list sha256:5808e175269fe1215898e3a928d5e0603009e7118fffa3bbaa5e94158f4235fb done\n#9 naming to docker.io/library/bex-qa382-media-prereq:51ad1a2557 done\n#9 unpacking to docker.io/library/bex-qa382-media-prereq:51ad1a2557\n#9 unpacking to docker.io/library/bex-qa382-media-prereq:51ad1a2557 0.9s done\n#9 DONE 5.7s\n\nView build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/3xh5qb0fdf6fp93zo5jvh28ns\n"
+    },
+    {
+      "command": [
+        "docker",
+        "image",
+        "inspect",
+        "bex-qa382-media-prereq:51ad1a2557"
+      ],
+      "exit": 0,
+      "stdout": "[\n    {\n        \"Id\": \"sha256:5808e175269fe1215898e3a928d5e0603009e7118fffa3bbaa5e94158f4235fb\",\n        \"RepoTags\": [\n            \"bex-qa382-media-prereq:51ad1a2557\"\n        ],\n        \"RepoDigests\": [\n            \"bex-qa382-media-prereq@sha256:5808e175269fe1215898e3a928d5e0603009e7118fffa3bbaa5e94158f4235fb\"\n        ],\n        \"Comment\": \"buildkit.dockerfile.v0\",\n        \"Created\": \"2026-10-16T23:08:47.099934923Z\",\n        \"Config\": {\n            \"Env\": [\n                \"PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\n                \"LANG=C.UTF-8\",\n                \"GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305\",\n                \"PYTHON_VERSION=3.12.15\",\n                \"PYTHON_SHA256=c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a\"\n            ],\n            \"Cmd\": [\n                \"python3\"\n            ],\n            \"WorkingDir\": \"/case\",\n            \"Labels\": {\n                \"bex.qa.nonce\": \"51ad1a2557\",\n                \"bex.qa.sweep\": \"382\"\n            }\n        },\n        \"Architecture\": \"arm64\",\n        \"Os\": \"linux\",\n        \"Size\": 483751799,\n        \"RootFS\": {\n            \"Type\": \"layers\",\n            \"Layers\": [\n                \"sha256:dc51344534bbef928c25f87c724daca6fd7a58522a0f2bc4d0de42899b94bd42\",\n                \"sha256:06b20ab917ae7fb7d9ad62f1495d6e69f44462215df657bd5f8aa34228f3ba84\",\n                \"sha256:f3ea0fdbfef7e10eceded81946e8d6a7d853a730fc4debc2313de180c5789c54\",\n                \"sha256:424eda943bfc22b4ca641896a614763d5dabe8b0112c9eb2376a43db74114305\",\n                \"sha256:639dc4e735a0350048edbb61cd4f6b73a875bec6b626b4239971d4f2b28277a3\",\n                \"sha256:37d8d09224f51159b11bc43b4c28e7d0e43d9463bc6651ebb5aeb97c17bbf786\",\n                \"sha256:2174c397137b51a69150d75da46a4ea1c0e3743e4ded9d2cea222431099b0ab3\",\n                \"sha256:88c972d09012f747683b35d6a4b7f39ab2bd378f4fdb2e41f3052bb8fcd622e2\",\n                \"sha256:30cf8f3ed5c73b2baa770fc0d9bd75ffd557351a2f4452055e5e61c52de34303\"\n            ]\n        },\n        \"Metadata\": {\n            \"LastTagTime\": \"2026-10-16T23:08:52.080670259Z\"\n        },\n        \"Descriptor\": {\n            \"mediaType\": \"application/vnd.oci.image.index.v1+json\",\n            \"digest\": \"sha256:5808e175269fe1215898e3a928d5e0603009e7118fffa3bbaa5e94158f4235fb\",\n            \"size\": 856\n        },\n        \"Identity\": {\n            \"Build\": [\n                {\n                    \"Ref\": \"3xh5qb0fdf6fp93zo5jvh28ns\",\n                    \"CreatedAt\": \"2026-10-16T23:08:52.981328176Z\"\n                }\n            ]\n        }\n    }\n]\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "create",
+        "--name",
+        "bex-qa382-media-51ad1a2557",
+        "--label",
+        "bex.qa.nonce=51ad1a2557",
+        "--network",
+        "none",
+        "--volume",
+        "<owned-temp>/sweep382-local-container-51ad1a2557/project:/case",
+        "--workdir",
+        "/case",
+        "--env",
+        "PYTHON_VERSION=3.12",
+        "--env",
+        "PORT=3000",
+        "--entrypoint",
+        "/bin/bash",
+        "bex-qa382-media-prereq:51ad1a2557",
+        "-c",
+        "set -e\npython qa382-probe.py --prepare\npython -c \"from pydub import AudioSegment; audio=AudioSegment.from_wav('qa382-input.wav'); assert len(audio)==100; audio.export('qa382-output.mp3',format='mp3')\"\npython qa382-probe.py --build\nexec python qa382-probe.py"
+      ],
+      "exit": 0,
+      "stdout": "be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "start",
+        "be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d"
+      ],
+      "exit": 0,
+      "stdout": "be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d",
+        "python",
+        "-c",
+        "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:3000/',timeout=1).read().decode())"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/usr/local/lib/python3.12/urllib/request.py\", line 1357, in do_open\n    h.request(req.get_method(), req.selector, req.data, headers,\n  File \"/usr/local/lib/python3.12/http/client.py\", line 1386, in request\n    self._send_request(method, url, body, headers, encode_chunked)\n  File \"/usr/local/lib/python3.12/http/client.py\", line 1432, in _send_request\n    self.endheaders(body, encode_chunked=encode_chunked)\n  File \"/usr/local/lib/python3.12/http/client.py\", line 1381, in endheaders\n    self._send_output(message_body, encode_chunked=encode_chunked)\n  File \"/usr/local/lib/python3.12/http/client.py\", line 1141, in _send_output\n    self.send(msg)\n  File \"/usr/local/lib/python3.12/http/client.py\", line 1085, in send\n    self.connect()\n  File \"/usr/local/lib/python3.12/http/client.py\", line 1051, in connect\n    self.sock = self._create_connection(\n                ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/socket.py\", line 865, in create_connection\n    raise exceptions[0]\n  File \"/usr/local/lib/python3.12/socket.py\", line 850, in create_connection\n    sock.connect(sa)\nConnectionRefusedError: [Errno 111] Connection refused\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"/usr/local/lib/python3.12/urllib/request.py\", line 215, in urlopen\n    return opener.open(url, data, timeout)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/urllib/request.py\", line 515, in open\n    response = self._open(req, data)\n               ^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/urllib/request.py\", line 532, in _open\n    result = self._call_chain(self.handle_open, protocol, protocol +\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/urllib/request.py\", line 492, in _call_chain\n    result = func(*args)\n             ^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/urllib/request.py\", line 1386, in http_open\n    return self.do_open(http.client.HTTPConnection, req)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/urllib/request.py\", line 1360, in do_open\n    raise URLError(err)\nurllib.error.URLError: <urlopen error [Errno 111] Connection refused>\n"
+    },
+    {
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d"
+      ],
+      "exit": 0,
+      "stdout": "[\n    {\n        \"Id\": \"be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d\",\n        \"Created\": \"2026-10-16T23:08:53.29160951Z\",\n        \"Path\": \"/bin/bash\",\n        \"Args\": [\n            \"-c\",\n            \"set -e\\npython qa382-probe.py --prepare\\npython -c \\\"from pydub import AudioSegment; audio=AudioSegment.from_wav('qa382-input.wav'); assert len(audio)==100; audio.export('qa382-output.mp3',format='mp3')\\\"\\npython qa382-probe.py --build\\nexec python qa382-probe.py\"\n        ],\n        \"State\": {\n            \"Status\": \"running\",\n            \"Running\": true,\n            \"Paused\": false,\n            \"Restarting\": false,\n            \"OOMKilled\": false,\n            \"Dead\": false,\n            \"Pid\": 58335,\n            \"ExitCode\": 0,\n            \"Error\": \"\",\n            \"StartedAt\": \"2026-10-16T23:08:53.821734885Z\",\n            \"FinishedAt\": \"0001-01-01T00:00:00Z\"\n        },\n        \"Image\": \"sha256:5808e175269fe1215898e3a928d5e0603009e7118fffa3bbaa5e94158f4235fb\",\n        \"ResolvConfPath\": \"/var/lib/docker/containers/be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d/resolv.conf\",\n        \"HostnamePath\": \"/var/lib/docker/containers/be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d/hostname\",\n        \"HostsPath\": \"/var/lib/docker/containers/be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d/hosts\",\n        \"LogPath\": \"/var/lib/docker/containers/be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d/be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d-json.log\",\n        \"Name\": \"/bex-qa382-media-51ad1a2557\",\n        \"RestartCount\": 0,\n        \"Driver\": \"overlayfs\",\n        \"Platform\": \"linux\",\n        \"MountLabel\": \"\",\n        \"ProcessLabel\": \"\",\n        \"AppArmorProfile\": \"\",\n        \"ExecIDs\": null,\n        \"HostConfig\": {\n            \"Binds\": [\n                \"<owned-temp>/sweep382-local-container-51ad1a2557/project:/case\"\n            ],\n            \"ContainerIDFile\": \"\",\n            \"LogConfig\": {\n                \"Type\": \"json-file\",\n                \"Config\": {}\n            },\n            \"NetworkMode\": \"none\",\n            \"PortBindings\": {},\n            \"RestartPolicy\": {\n                \"Name\": \"no\",\n                \"MaximumRetryCount\": 0\n            },\n            \"AutoRemove\": false,\n            \"VolumeDriver\": \"\",\n            \"VolumesFrom\": null,\n            \"ConsoleSize\": [\n                0,\n                0\n            ],\n            \"CapAdd\": null,\n            \"CapDrop\": null,\n            \"CgroupnsMode\": \"private\",\n            \"Dns\": null,\n            \"DnsOptions\": [],\n            \"DnsSearch\": [],\n            \"ExtraHosts\": null,\n            \"GroupAdd\": null,\n            \"IpcMode\": \"private\",\n            \"Cgroup\": \"\",\n            \"Links\": null,\n            \"OomScoreAdj\": 0,\n            \"PidMode\": \"\",\n            \"Privileged\": false,\n            \"PublishAllPorts\": false,\n            \"ReadonlyRootfs\": false,\n            \"SecurityOpt\": null,\n            \"UTSMode\": \"\",\n            \"UsernsMode\": \"\",\n            \"ShmSize\": 67108864,\n            \"Runtime\": \"runc\",\n            \"Isolation\": \"\",\n            \"CpuShares\": 0,\n            \"Memory\": 0,\n            \"NanoCpus\": 0,\n            \"CgroupParent\": \"\",\n            \"BlkioWeight\": 0,\n            \"BlkioWeightDevice\": [],\n            \"BlkioDeviceReadBps\": [],\n            \"BlkioDeviceWriteBps\": [],\n            \"BlkioDeviceReadIOps\": [],\n            \"BlkioDeviceWriteIOps\": [],\n            \"CpuPeriod\": 0,\n            \"CpuQuota\": 0,\n            \"CpuRealtimePeriod\": 0,\n            \"CpuRealtimeRuntime\": 0,\n            \"CpusetCpus\": \"\",\n            \"CpusetMems\": \"\",\n            \"Devices\": [],\n            \"DeviceCgroupRules\": null,\n            \"DeviceRequests\": null,\n            \"MemoryReservation\": 0,\n            \"MemorySwap\": 0,\n            \"MemorySwappiness\": null,\n            \"OomKillDisable\": null,\n            \"PidsLimit\": null,\n            \"Ulimits\": [],\n            \"CpuCount\": 0,\n            \"CpuPercent\": 0,\n            \"IOMaximumIOps\": 0,\n            \"IOMaximumBandwidth\": 0,\n            \"MaskedPaths\": [\n                \"/proc/acpi\",\n                \"/proc/asound\",\n                \"/proc/interrupts\",\n                \"/proc/kcore\",\n                \"/proc/keys\",\n                \"/proc/latency_stats\",\n                \"/proc/sched_debug\",\n                \"/proc/scsi\",\n                \"/proc/timer_list\",\n                \"/proc/timer_stats\",\n                \"/sys/devices/virtual/powercap\",\n                \"/sys/firmware\"\n            ],\n            \"ReadonlyPaths\": [\n                \"/proc/bus\",\n                \"/proc/fs\",\n                \"/proc/irq\",\n                \"/proc/sys\",\n                \"/proc/sysrq-trigger\"\n            ]\n        },\n        \"Storage\": {\n            \"RootFS\": {\n                \"Snapshot\": {\n                    \"Name\": \"overlayfs\"\n                }\n            }\n        },\n        \"Mounts\": [\n            {\n                \"Type\": \"bind\",\n                \"Source\": \"<owned-temp>/sweep382-local-container-51ad1a2557/project\",\n                \"Destination\": \"/case\",\n                \"Mode\": \"\",\n                \"RW\": true,\n                \"Propagation\": \"rprivate\"\n            }\n        ],\n        \"Config\": {\n            \"Hostname\": \"be6329ac9f8d\",\n            \"Domainname\": \"\",\n            \"User\": \"\",\n            \"AttachStdin\": false,\n            \"AttachStdout\": true,\n            \"AttachStderr\": true,\n            \"Tty\": false,\n            \"OpenStdin\": false,\n            \"StdinOnce\": false,\n            \"Env\": [\n                \"PYTHON_VERSION=3.12\",\n                \"PORT=3000\",\n                \"PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\n                \"LANG=C.UTF-8\",\n                \"GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305\",\n                \"PYTHON_SHA256=c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a\"\n            ],\n            \"Cmd\": [\n                \"-c\",\n                \"set -e\\npython qa382-probe.py --prepare\\npython -c \\\"from pydub import AudioSegment; audio=AudioSegment.from_wav('qa382-input.wav'); assert len(audio)==100; audio.export('qa382-output.mp3',format='mp3')\\\"\\npython qa382-probe.py --build\\nexec python qa382-probe.py\"\n            ],\n            \"Image\": \"bex-qa382-media-prereq:51ad1a2557\",\n            \"Volumes\": null,\n            \"WorkingDir\": \"/case\",\n            \"Entrypoint\": [\n                \"/bin/bash\"\n            ],\n            \"Labels\": {\n                \"bex.qa.nonce\": \"51ad1a2557\",\n                \"bex.qa.sweep\": \"382\"\n            }\n        },\n        \"NetworkSettings\": {\n            \"SandboxID\": \"6618e943ec9e499c5d5bac22f819bf90d094a82c1dae92ae119d9a31b3e2a514\",\n            \"SandboxKey\": \"/var/run/docker/netns/6618e943ec9e\",\n            \"Ports\": {},\n            \"Networks\": {\n                \"none\": {\n                    \"IPAMConfig\": null,\n                    \"Links\": null,\n                    \"Aliases\": null,\n                    \"DriverOpts\": null,\n                    \"GwPriority\": 0,\n                    \"NetworkID\": \"86090866ed42a3e7c8135660b1b59a5f3d6963cc6b757ab7c487348acd44f0bb\",\n                    \"EndpointID\": \"8ad5e202b57a45be5670a4832fefcd97d0e033873916cca01d434445f41c2aa9\",\n                    \"Gateway\": \"\",\n                    \"IPAddress\": \"\",\n                    \"MacAddress\": \"\",\n                    \"IPPrefixLen\": 0,\n                    \"IPv6Gateway\": \"\",\n                    \"GlobalIPv6Address\": \"\",\n                    \"GlobalIPv6PrefixLen\": 0,\n                    \"DNSNames\": null\n                }\n            }\n        },\n        \"ImageManifestDescriptor\": {\n            \"mediaType\": \"application/vnd.oci.image.manifest.v1+json\",\n            \"digest\": \"sha256:66e2bbbf006af8622183094346752d7880468d42d97d72e44185c8a8a7e667d9\",\n            \"size\": 2016,\n            \"platform\": {\n                \"architecture\": \"arm64\",\n                \"os\": \"linux\"\n            }\n        }\n    }\n]\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d",
+        "python",
+        "-c",
+        "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:3000/',timeout=1).read().decode())"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/usr/local/lib/python3.12/urllib/request.py\", line 1357, in do_open\n    h.request(req.get_method(), req.selector, req.data, headers,\n  File \"/usr/local/lib/python3.12/http/client.py\", line 1386, in request\n    self._send_request(method, url, body, headers, encode_chunked)\n  File \"/usr/local/lib/python3.12/http/client.py\", line 1432, in _send_request\n    self.endheaders(body, encode_chunked=encode_chunked)\n  File \"/usr/local/lib/python3.12/http/client.py\", line 1381, in endheaders\n    self._send_output(message_body, encode_chunked=encode_chunked)\n  File \"/usr/local/lib/python3.12/http/client.py\", line 1141, in _send_output\n    self.send(msg)\n  File \"/usr/local/lib/python3.12/http/client.py\", line 1085, in send\n    self.connect()\n  File \"/usr/local/lib/python3.12/http/client.py\", line 1051, in connect\n    self.sock = self._create_connection(\n                ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/socket.py\", line 865, in create_connection\n    raise exceptions[0]\n  File \"/usr/local/lib/python3.12/socket.py\", line 850, in create_connection\n    sock.connect(sa)\nConnectionRefusedError: [Errno 111] Connection refused\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"/usr/local/lib/python3.12/urllib/request.py\", line 215, in urlopen\n    return opener.open(url, data, timeout)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/urllib/request.py\", line 515, in open\n    response = self._open(req, data)\n               ^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/urllib/request.py\", line 532, in _open\n    result = self._call_chain(self.handle_open, protocol, protocol +\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/urllib/request.py\", line 492, in _call_chain\n    result = func(*args)\n             ^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/urllib/request.py\", line 1386, in http_open\n    return self.do_open(http.client.HTTPConnection, req)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/urllib/request.py\", line 1360, in do_open\n    raise URLError(err)\nurllib.error.URLError: <urlopen error [Errno 111] Connection refused>\n"
+    },
+    {
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d"
+      ],
+      "exit": 0,
+      "stdout": "[\n    {\n        \"Id\": \"be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d\",\n        \"Created\": \"2026-10-16T23:08:53.29160951Z\",\n        \"Path\": \"/bin/bash\",\n        \"Args\": [\n            \"-c\",\n            \"set -e\\npython qa382-probe.py --prepare\\npython -c \\\"from pydub import AudioSegment; audio=AudioSegment.from_wav('qa382-input.wav'); assert len(audio)==100; audio.export('qa382-output.mp3',format='mp3')\\\"\\npython qa382-probe.py --build\\nexec python qa382-probe.py\"\n        ],\n        \"State\": {\n            \"Status\": \"running\",\n            \"Running\": true,\n            \"Paused\": false,\n            \"Restarting\": false,\n            \"OOMKilled\": false,\n            \"Dead\": false,\n            \"Pid\": 58335,\n            \"ExitCode\": 0,\n            \"Error\": \"\",\n            \"StartedAt\": \"2026-10-16T23:08:53.821734885Z\",\n            \"FinishedAt\": \"0001-01-01T00:00:00Z\"\n        },\n        \"Image\": \"sha256:5808e175269fe1215898e3a928d5e0603009e7118fffa3bbaa5e94158f4235fb\",\n        \"ResolvConfPath\": \"/var/lib/docker/containers/be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d/resolv.conf\",\n        \"HostnamePath\": \"/var/lib/docker/containers/be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d/hostname\",\n        \"HostsPath\": \"/var/lib/docker/containers/be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d/hosts\",\n        \"LogPath\": \"/var/lib/docker/containers/be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d/be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d-json.log\",\n        \"Name\": \"/bex-qa382-media-51ad1a2557\",\n        \"RestartCount\": 0,\n        \"Driver\": \"overlayfs\",\n        \"Platform\": \"linux\",\n        \"MountLabel\": \"\",\n        \"ProcessLabel\": \"\",\n        \"AppArmorProfile\": \"\",\n        \"ExecIDs\": null,\n        \"HostConfig\": {\n            \"Binds\": [\n                \"<owned-temp>/sweep382-local-container-51ad1a2557/project:/case\"\n            ],\n            \"ContainerIDFile\": \"\",\n            \"LogConfig\": {\n                \"Type\": \"json-file\",\n                \"Config\": {}\n            },\n            \"NetworkMode\": \"none\",\n            \"PortBindings\": {},\n            \"RestartPolicy\": {\n                \"Name\": \"no\",\n                \"MaximumRetryCount\": 0\n            },\n            \"AutoRemove\": false,\n            \"VolumeDriver\": \"\",\n            \"VolumesFrom\": null,\n            \"ConsoleSize\": [\n                0,\n                0\n            ],\n            \"CapAdd\": null,\n            \"CapDrop\": null,\n            \"CgroupnsMode\": \"private\",\n            \"Dns\": null,\n            \"DnsOptions\": [],\n            \"DnsSearch\": [],\n            \"ExtraHosts\": null,\n            \"GroupAdd\": null,\n            \"IpcMode\": \"private\",\n            \"Cgroup\": \"\",\n            \"Links\": null,\n            \"OomScoreAdj\": 0,\n            \"PidMode\": \"\",\n            \"Privileged\": false,\n            \"PublishAllPorts\": false,\n            \"ReadonlyRootfs\": false,\n            \"SecurityOpt\": null,\n            \"UTSMode\": \"\",\n            \"UsernsMode\": \"\",\n            \"ShmSize\": 67108864,\n            \"Runtime\": \"runc\",\n            \"Isolation\": \"\",\n            \"CpuShares\": 0,\n            \"Memory\": 0,\n            \"NanoCpus\": 0,\n            \"CgroupParent\": \"\",\n            \"BlkioWeight\": 0,\n            \"BlkioWeightDevice\": [],\n            \"BlkioDeviceReadBps\": [],\n            \"BlkioDeviceWriteBps\": [],\n            \"BlkioDeviceReadIOps\": [],\n            \"BlkioDeviceWriteIOps\": [],\n            \"CpuPeriod\": 0,\n            \"CpuQuota\": 0,\n            \"CpuRealtimePeriod\": 0,\n            \"CpuRealtimeRuntime\": 0,\n            \"CpusetCpus\": \"\",\n            \"CpusetMems\": \"\",\n            \"Devices\": [],\n            \"DeviceCgroupRules\": null,\n            \"DeviceRequests\": null,\n            \"MemoryReservation\": 0,\n            \"MemorySwap\": 0,\n            \"MemorySwappiness\": null,\n            \"OomKillDisable\": null,\n            \"PidsLimit\": null,\n            \"Ulimits\": [],\n            \"CpuCount\": 0,\n            \"CpuPercent\": 0,\n            \"IOMaximumIOps\": 0,\n            \"IOMaximumBandwidth\": 0,\n            \"MaskedPaths\": [\n                \"/proc/acpi\",\n                \"/proc/asound\",\n                \"/proc/interrupts\",\n                \"/proc/kcore\",\n                \"/proc/keys\",\n                \"/proc/latency_stats\",\n                \"/proc/sched_debug\",\n                \"/proc/scsi\",\n                \"/proc/timer_list\",\n                \"/proc/timer_stats\",\n                \"/sys/devices/virtual/powercap\",\n                \"/sys/firmware\"\n            ],\n            \"ReadonlyPaths\": [\n                \"/proc/bus\",\n                \"/proc/fs\",\n                \"/proc/irq\",\n                \"/proc/sys\",\n                \"/proc/sysrq-trigger\"\n            ]\n        },\n        \"Storage\": {\n            \"RootFS\": {\n                \"Snapshot\": {\n                    \"Name\": \"overlayfs\"\n                }\n            }\n        },\n        \"Mounts\": [\n            {\n                \"Type\": \"bind\",\n                \"Source\": \"<owned-temp>/sweep382-local-container-51ad1a2557/project\",\n                \"Destination\": \"/case\",\n                \"Mode\": \"\",\n                \"RW\": true,\n                \"Propagation\": \"rprivate\"\n            }\n        ],\n        \"Config\": {\n            \"Hostname\": \"be6329ac9f8d\",\n            \"Domainname\": \"\",\n            \"User\": \"\",\n            \"AttachStdin\": false,\n            \"AttachStdout\": true,\n            \"AttachStderr\": true,\n            \"Tty\": false,\n            \"OpenStdin\": false,\n            \"StdinOnce\": false,\n            \"Env\": [\n                \"PYTHON_VERSION=3.12\",\n                \"PORT=3000\",\n                \"PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\n                \"LANG=C.UTF-8\",\n                \"GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305\",\n                \"PYTHON_SHA256=c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a\"\n            ],\n            \"Cmd\": [\n                \"-c\",\n                \"set -e\\npython qa382-probe.py --prepare\\npython -c \\\"from pydub import AudioSegment; audio=AudioSegment.from_wav('qa382-input.wav'); assert len(audio)==100; audio.export('qa382-output.mp3',format='mp3')\\\"\\npython qa382-probe.py --build\\nexec python qa382-probe.py\"\n            ],\n            \"Image\": \"bex-qa382-media-prereq:51ad1a2557\",\n            \"Volumes\": null,\n            \"WorkingDir\": \"/case\",\n            \"Entrypoint\": [\n                \"/bin/bash\"\n            ],\n            \"Labels\": {\n                \"bex.qa.nonce\": \"51ad1a2557\",\n                \"bex.qa.sweep\": \"382\"\n            }\n        },\n        \"NetworkSettings\": {\n            \"SandboxID\": \"6618e943ec9e499c5d5bac22f819bf90d094a82c1dae92ae119d9a31b3e2a514\",\n            \"SandboxKey\": \"/var/run/docker/netns/6618e943ec9e\",\n            \"Ports\": {},\n            \"Networks\": {\n                \"none\": {\n                    \"IPAMConfig\": null,\n                    \"Links\": null,\n                    \"Aliases\": null,\n                    \"DriverOpts\": null,\n                    \"GwPriority\": 0,\n                    \"NetworkID\": \"86090866ed42a3e7c8135660b1b59a5f3d6963cc6b757ab7c487348acd44f0bb\",\n                    \"EndpointID\": \"8ad5e202b57a45be5670a4832fefcd97d0e033873916cca01d434445f41c2aa9\",\n                    \"Gateway\": \"\",\n                    \"IPAddress\": \"\",\n                    \"MacAddress\": \"\",\n                    \"IPPrefixLen\": 0,\n                    \"IPv6Gateway\": \"\",\n                    \"GlobalIPv6Address\": \"\",\n                    \"GlobalIPv6PrefixLen\": 0,\n                    \"DNSNames\": null\n                }\n            }\n        },\n        \"ImageManifestDescriptor\": {\n            \"mediaType\": \"application/vnd.oci.image.manifest.v1+json\",\n            \"digest\": \"sha256:66e2bbbf006af8622183094346752d7880468d42d97d72e44185c8a8a7e667d9\",\n            \"size\": 2016,\n            \"platform\": {\n                \"architecture\": \"arm64\",\n                \"os\": \"linux\"\n            }\n        }\n    }\n]\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d",
+        "python",
+        "-c",
+        "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:3000/',timeout=1).read().decode())"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"/usr/local/lib/python3.12/urllib/request.py\", line 1357, in do_open\n    h.request(req.get_method(), req.selector, req.data, headers,\n  File \"/usr/local/lib/python3.12/http/client.py\", line 1386, in request\n    self._send_request(method, url, body, headers, encode_chunked)\n  File \"/usr/local/lib/python3.12/http/client.py\", line 1432, in _send_request\n    self.endheaders(body, encode_chunked=encode_chunked)\n  File \"/usr/local/lib/python3.12/http/client.py\", line 1381, in endheaders\n    self._send_output(message_body, encode_chunked=encode_chunked)\n  File \"/usr/local/lib/python3.12/http/client.py\", line 1141, in _send_output\n    self.send(msg)\n  File \"/usr/local/lib/python3.12/http/client.py\", line 1085, in send\n    self.connect()\n  File \"/usr/local/lib/python3.12/http/client.py\", line 1051, in connect\n    self.sock = self._create_connection(\n                ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/socket.py\", line 865, in create_connection\n    raise exceptions[0]\n  File \"/usr/local/lib/python3.12/socket.py\", line 850, in create_connection\n    sock.connect(sa)\nConnectionRefusedError: [Errno 111] Connection refused\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"/usr/local/lib/python3.12/urllib/request.py\", line 215, in urlopen\n    return opener.open(url, data, timeout)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/urllib/request.py\", line 515, in open\n    response = self._open(req, data)\n               ^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/urllib/request.py\", line 532, in _open\n    result = self._call_chain(self.handle_open, protocol, protocol +\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/urllib/request.py\", line 492, in _call_chain\n    result = func(*args)\n             ^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/urllib/request.py\", line 1386, in http_open\n    return self.do_open(http.client.HTTPConnection, req)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/urllib/request.py\", line 1360, in do_open\n    raise URLError(err)\nurllib.error.URLError: <urlopen error [Errno 111] Connection refused>\n"
+    },
+    {
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d"
+      ],
+      "exit": 0,
+      "stdout": "[\n    {\n        \"Id\": \"be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d\",\n        \"Created\": \"2026-10-16T23:08:53.29160951Z\",\n        \"Path\": \"/bin/bash\",\n        \"Args\": [\n            \"-c\",\n            \"set -e\\npython qa382-probe.py --prepare\\npython -c \\\"from pydub import AudioSegment; audio=AudioSegment.from_wav('qa382-input.wav'); assert len(audio)==100; audio.export('qa382-output.mp3',format='mp3')\\\"\\npython qa382-probe.py --build\\nexec python qa382-probe.py\"\n        ],\n        \"State\": {\n            \"Status\": \"running\",\n            \"Running\": true,\n            \"Paused\": false,\n            \"Restarting\": false,\n            \"OOMKilled\": false,\n            \"Dead\": false,\n            \"Pid\": 58335,\n            \"ExitCode\": 0,\n            \"Error\": \"\",\n            \"StartedAt\": \"2026-10-16T23:08:53.821734885Z\",\n            \"FinishedAt\": \"0001-01-01T00:00:00Z\"\n        },\n        \"Image\": \"sha256:5808e175269fe1215898e3a928d5e0603009e7118fffa3bbaa5e94158f4235fb\",\n        \"ResolvConfPath\": \"/var/lib/docker/containers/be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d/resolv.conf\",\n        \"HostnamePath\": \"/var/lib/docker/containers/be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d/hostname\",\n        \"HostsPath\": \"/var/lib/docker/containers/be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d/hosts\",\n        \"LogPath\": \"/var/lib/docker/containers/be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d/be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d-json.log\",\n        \"Name\": \"/bex-qa382-media-51ad1a2557\",\n        \"RestartCount\": 0,\n        \"Driver\": \"overlayfs\",\n        \"Platform\": \"linux\",\n        \"MountLabel\": \"\",\n        \"ProcessLabel\": \"\",\n        \"AppArmorProfile\": \"\",\n        \"ExecIDs\": null,\n        \"HostConfig\": {\n            \"Binds\": [\n                \"<owned-temp>/sweep382-local-container-51ad1a2557/project:/case\"\n            ],\n            \"ContainerIDFile\": \"\",\n            \"LogConfig\": {\n                \"Type\": \"json-file\",\n                \"Config\": {}\n            },\n            \"NetworkMode\": \"none\",\n            \"PortBindings\": {},\n            \"RestartPolicy\": {\n                \"Name\": \"no\",\n                \"MaximumRetryCount\": 0\n            },\n            \"AutoRemove\": false,\n            \"VolumeDriver\": \"\",\n            \"VolumesFrom\": null,\n            \"ConsoleSize\": [\n                0,\n                0\n            ],\n            \"CapAdd\": null,\n            \"CapDrop\": null,\n            \"CgroupnsMode\": \"private\",\n            \"Dns\": null,\n            \"DnsOptions\": [],\n            \"DnsSearch\": [],\n            \"ExtraHosts\": null,\n            \"GroupAdd\": null,\n            \"IpcMode\": \"private\",\n            \"Cgroup\": \"\",\n            \"Links\": null,\n            \"OomScoreAdj\": 0,\n            \"PidMode\": \"\",\n            \"Privileged\": false,\n            \"PublishAllPorts\": false,\n            \"ReadonlyRootfs\": false,\n            \"SecurityOpt\": null,\n            \"UTSMode\": \"\",\n            \"UsernsMode\": \"\",\n            \"ShmSize\": 67108864,\n            \"Runtime\": \"runc\",\n            \"Isolation\": \"\",\n            \"CpuShares\": 0,\n            \"Memory\": 0,\n            \"NanoCpus\": 0,\n            \"CgroupParent\": \"\",\n            \"BlkioWeight\": 0,\n            \"BlkioWeightDevice\": [],\n            \"BlkioDeviceReadBps\": [],\n            \"BlkioDeviceWriteBps\": [],\n            \"BlkioDeviceReadIOps\": [],\n            \"BlkioDeviceWriteIOps\": [],\n            \"CpuPeriod\": 0,\n            \"CpuQuota\": 0,\n            \"CpuRealtimePeriod\": 0,\n            \"CpuRealtimeRuntime\": 0,\n            \"CpusetCpus\": \"\",\n            \"CpusetMems\": \"\",\n            \"Devices\": [],\n            \"DeviceCgroupRules\": null,\n            \"DeviceRequests\": null,\n            \"MemoryReservation\": 0,\n            \"MemorySwap\": 0,\n            \"MemorySwappiness\": null,\n            \"OomKillDisable\": null,\n            \"PidsLimit\": null,\n            \"Ulimits\": [],\n            \"CpuCount\": 0,\n            \"CpuPercent\": 0,\n            \"IOMaximumIOps\": 0,\n            \"IOMaximumBandwidth\": 0,\n            \"MaskedPaths\": [\n                \"/proc/acpi\",\n                \"/proc/asound\",\n                \"/proc/interrupts\",\n                \"/proc/kcore\",\n                \"/proc/keys\",\n                \"/proc/latency_stats\",\n                \"/proc/sched_debug\",\n                \"/proc/scsi\",\n                \"/proc/timer_list\",\n                \"/proc/timer_stats\",\n                \"/sys/devices/virtual/powercap\",\n                \"/sys/firmware\"\n            ],\n            \"ReadonlyPaths\": [\n                \"/proc/bus\",\n                \"/proc/fs\",\n                \"/proc/irq\",\n                \"/proc/sys\",\n                \"/proc/sysrq-trigger\"\n            ]\n        },\n        \"Storage\": {\n            \"RootFS\": {\n                \"Snapshot\": {\n                    \"Name\": \"overlayfs\"\n                }\n            }\n        },\n        \"Mounts\": [\n            {\n                \"Type\": \"bind\",\n                \"Source\": \"<owned-temp>/sweep382-local-container-51ad1a2557/project\",\n                \"Destination\": \"/case\",\n                \"Mode\": \"\",\n                \"RW\": true,\n                \"Propagation\": \"rprivate\"\n            }\n        ],\n        \"Config\": {\n            \"Hostname\": \"be6329ac9f8d\",\n            \"Domainname\": \"\",\n            \"User\": \"\",\n            \"AttachStdin\": false,\n            \"AttachStdout\": true,\n            \"AttachStderr\": true,\n            \"Tty\": false,\n            \"OpenStdin\": false,\n            \"StdinOnce\": false,\n            \"Env\": [\n                \"PYTHON_VERSION=3.12\",\n                \"PORT=3000\",\n                \"PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\n                \"LANG=C.UTF-8\",\n                \"GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305\",\n                \"PYTHON_SHA256=c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a\"\n            ],\n            \"Cmd\": [\n                \"-c\",\n                \"set -e\\npython qa382-probe.py --prepare\\npython -c \\\"from pydub import AudioSegment; audio=AudioSegment.from_wav('qa382-input.wav'); assert len(audio)==100; audio.export('qa382-output.mp3',format='mp3')\\\"\\npython qa382-probe.py --build\\nexec python qa382-probe.py\"\n            ],\n            \"Image\": \"bex-qa382-media-prereq:51ad1a2557\",\n            \"Volumes\": null,\n            \"WorkingDir\": \"/case\",\n            \"Entrypoint\": [\n                \"/bin/bash\"\n            ],\n            \"Labels\": {\n                \"bex.qa.nonce\": \"51ad1a2557\",\n                \"bex.qa.sweep\": \"382\"\n            }\n        },\n        \"NetworkSettings\": {\n            \"SandboxID\": \"6618e943ec9e499c5d5bac22f819bf90d094a82c1dae92ae119d9a31b3e2a514\",\n            \"SandboxKey\": \"/var/run/docker/netns/6618e943ec9e\",\n            \"Ports\": {},\n            \"Networks\": {\n                \"none\": {\n                    \"IPAMConfig\": null,\n                    \"Links\": null,\n                    \"Aliases\": null,\n                    \"DriverOpts\": null,\n                    \"GwPriority\": 0,\n                    \"NetworkID\": \"86090866ed42a3e7c8135660b1b59a5f3d6963cc6b757ab7c487348acd44f0bb\",\n                    \"EndpointID\": \"8ad5e202b57a45be5670a4832fefcd97d0e033873916cca01d434445f41c2aa9\",\n                    \"Gateway\": \"\",\n                    \"IPAddress\": \"\",\n                    \"MacAddress\": \"\",\n                    \"IPPrefixLen\": 0,\n                    \"IPv6Gateway\": \"\",\n                    \"GlobalIPv6Address\": \"\",\n                    \"GlobalIPv6PrefixLen\": 0,\n                    \"DNSNames\": null\n                }\n            }\n        },\n        \"ImageManifestDescriptor\": {\n            \"mediaType\": \"application/vnd.oci.image.manifest.v1+json\",\n            \"digest\": \"sha256:66e2bbbf006af8622183094346752d7880468d42d97d72e44185c8a8a7e667d9\",\n            \"size\": 2016,\n            \"platform\": {\n                \"architecture\": \"arm64\",\n                \"os\": \"linux\"\n            }\n        }\n    }\n]\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d",
+        "python",
+        "-c",
+        "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:3000/',timeout=1).read().decode())"
+      ],
+      "exit": 0,
+      "stdout": "{\"marker\": \"QA382_LOCAL_CONTAINER_51ad1a2557\", \"phase\": \"runtime\", \"python\": \"3.12.15\", \"architecture\": \"aarch64\", \"requested_python\": \"3.12\", \"files\": {\"pydub/__init__.py\": {\"bytes\": 39, \"sha256\": \"c355efd5ac1b691ddf3214cd135fa0ae77ecc200114cd42b2a90737d9fbe5410\"}, \"pydub/audio_segment.py\": {\"bytes\": 49233, \"sha256\": \"9f418d5215743ca48cfd2d77ba4a8e355ac9b04ae3dccba4baa5fa917deee1b4\"}}, \"wav\": {\"bytes\": 1644, \"sha256\": \"c726d333dd159a31423f3480dbb1c5c4a9dfcd30efe1f7e12ade390dc92e8908\", \"PCM_bytes\": 1600, \"PCM_sha256\": \"e61f41d57db208c5f92a35c4ce7198570924a3fc87eeba83441fceee5d6a2865\", \"shape\": {\"channels\": 1, \"sample_width\": 2, \"rate\": 8000, \"frames\": 800, \"silence\": true}}, \"converted_at_runtime\": true, \"media\": {\"file\": \"qa382-runtime.mp3\", \"bytes\": 548, \"sha256\": \"de428646adf93e76bcc193f344f2651099394f51b79962c59ad98da5dbc197e8\", \"ffprobe_command\": [\"ffprobe\", \"-v\", \"error\", \"-show_entries\", \"stream=codec_name,codec_type,sample_rate,channels:format=size,duration\", \"-of\", \"json\", \"qa382-runtime.mp3\"], \"ffprobe_exit\": 0, \"ffprobe_raw\": \"{\\n    \\\"programs\\\": [\\n\\n    ],\\n    \\\"stream_groups\\\": [\\n\\n    ],\\n    \\\"streams\\\": [\\n        {\\n            \\\"codec_name\\\": \\\"mp3\\\",\\n            \\\"codec_type\\\": \\\"audio\\\",\\n            \\\"sample_rate\\\": \\\"8000\\\",\\n            \\\"channels\\\": 1\\n        }\\n    ],\\n    \\\"format\\\": {\\n        \\\"duration\\\": \\\"0.100000\\\",\\n        \\\"size\\\": \\\"548\\\"\\n    }\\n}\\n\", \"ffprobe\": {\"programs\": [], \"stream_groups\": [], \"streams\": [{\"codec_name\": \"mp3\", \"codec_type\": \"audio\", \"sample_rate\": \"8000\", \"channels\": 1}], \"format\": {\"duration\": \"0.100000\", \"size\": \"548\"}}, \"CLI_decode_command\": [\"ffmpeg\", \"-nostdin\", \"-v\", \"error\", \"-i\", \"qa382-runtime.mp3\", \"-f\", \"s16le\", \"-acodec\", \"pcm_s16le\", \"pipe:1\"], \"CLI_decode_exit\": 0, \"CLI_decoded_PCM_bytes\": 1600, \"CLI_decoded_PCM_sha256\": \"e61f41d57db208c5f92a35c4ce7198570924a3fc87eeba83441fceee5d6a2865\", \"CLI_PCM_matches_input\": true, \"Pydub_decoded\": {\"milliseconds\": 100, \"channels\": 1, \"rate\": 8000, \"sample_width\": 2, \"PCM_bytes\": 1600, \"PCM_sha256\": \"e61f41d57db208c5f92a35c4ce7198570924a3fc87eeba83441fceee5d6a2865\", \"PCM_matches_input\": true}}, \"retained_build_media\": {\"file\": \"qa382-output.mp3\", \"bytes\": 548, \"sha256\": \"de428646adf93e76bcc193f344f2651099394f51b79962c59ad98da5dbc197e8\", \"ffprobe_command\": [\"ffprobe\", \"-v\", \"error\", \"-show_entries\", \"stream=codec_name,codec_type,sample_rate,channels:format=size,duration\", \"-of\", \"json\", \"qa382-output.mp3\"], \"ffprobe_exit\": 0, \"ffprobe_raw\": \"{\\n    \\\"programs\\\": [\\n\\n    ],\\n    \\\"stream_groups\\\": [\\n\\n    ],\\n    \\\"streams\\\": [\\n        {\\n            \\\"codec_name\\\": \\\"mp3\\\",\\n            \\\"codec_type\\\": \\\"audio\\\",\\n            \\\"sample_rate\\\": \\\"8000\\\",\\n            \\\"channels\\\": 1\\n        }\\n    ],\\n    \\\"format\\\": {\\n        \\\"duration\\\": \\\"0.100000\\\",\\n        \\\"size\\\": \\\"548\\\"\\n    }\\n}\\n\", \"ffprobe\": {\"programs\": [], \"stream_groups\": [], \"streams\": [{\"codec_name\": \"mp3\", \"codec_type\": \"audio\", \"sample_rate\": \"8000\", \"channels\": 1}], \"format\": {\"duration\": \"0.100000\", \"size\": \"548\"}}, \"CLI_decode_command\": [\"ffmpeg\", \"-nostdin\", \"-v\", \"error\", \"-i\", \"qa382-output.mp3\", \"-f\", \"s16le\", \"-acodec\", \"pcm_s16le\", \"pipe:1\"], \"CLI_decode_exit\": 0, \"CLI_decoded_PCM_bytes\": 1600, \"CLI_decoded_PCM_sha256\": \"e61f41d57db208c5f92a35c4ce7198570924a3fc87eeba83441fceee5d6a2865\", \"CLI_PCM_matches_input\": true, \"Pydub_decoded\": {\"milliseconds\": 100, \"channels\": 1, \"rate\": 8000, \"sample_width\": 2, \"PCM_bytes\": 1600, \"PCM_sha256\": \"e61f41d57db208c5f92a35c4ce7198570924a3fc87eeba83441fceee5d6a2865\", \"PCM_matches_input\": true}}, \"tools\": {\"ffmpeg\": {\"status\": 0, \"stdout\": \"ffmpeg version 9.0.2 Copyright (c) 2000-2026 the FFmpeg developers\\nbuilt with gcc 15.2.0 (Alpine 15.2.0)\\nconfiguration: --pkg-config-flags=--static --extra-cflags=-fopenmp --extra-ldflags='-fopenmp -Wl,-z,stack-size=2097152' --toolchain=hardened --disable-debug --disable-shared --disable-ffplay --enable-static --enable-gpl --enable-version3 --enable-fontconfig --enable-gray --enable-iconv --enable-lcms2 --enable-libaom --enable-libaribb24 --enable-libass --enable-libbluray --enable-libdav1d --enable-libdavs2 --enable-libfreetype --enable-libfribidi --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libjxl --enable-libkvazaar --enable-libmodplug --enable-libmp3lame --enable-libmysofa --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenjpeg --enable-libopus --enable-librabbitmq --enable-librav1e --enable-librsvg --enable-librtmp --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libtheora --enable-libtwolame --enable-libuavs3d --enable-libvidstab --enable-libvmaf --enable-libvo-amrwbenc --enable-libvorbis --enable-libvpl --enable-libvpx --enable-libvvenc --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxevd --enable-libxeve --enable-libxml2 --enable-libxvid --enable-libzimg --enable-libzmq --enable-openssl\\nlibavutil      61.  1.102 / 61.  1.102\\nlibavcodec     63.  1.102 / 63.  1.102\\nlibavformat    63.  1.102 / 63.  1.102\\nlibavdevice    63.  1.102 / 63.  1.102\\nlibavfilter    12.  1.102 / 12.  1.102\\nlibswscale     10.  1.102 / 10.  1.102\\nlibswresample   7.  1.102 /  7.  1.102\\n\\nExiting with exit code 0\\n\", \"stderr\": \"\", \"error\": null}, \"ffprobe\": {\"status\": 0, \"stdout\": \"ffprobe version 9.0.2 Copyright (c) 2007-2026 the FFmpeg developers\\nbuilt with gcc 15.2.0 (Alpine 15.2.0)\\nconfiguration: --pkg-config-flags=--static --extra-cflags=-fopenmp --extra-ldflags='-fopenmp -Wl,-z,stack-size=2097152' --toolchain=hardened --disable-debug --disable-shared --disable-ffplay --enable-static --enable-gpl --enable-version3 --enable-fontconfig --enable-gray --enable-iconv --enable-lcms2 --enable-libaom --enable-libaribb24 --enable-libass --enable-libbluray --enable-libdav1d --enable-libdavs2 --enable-libfreetype --enable-libfribidi --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libjxl --enable-libkvazaar --enable-libmodplug --enable-libmp3lame --enable-libmysofa --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenjpeg --enable-libopus --enable-librabbitmq --enable-librav1e --enable-librsvg --enable-librtmp --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libtheora --enable-libtwolame --enable-libuavs3d --enable-libvidstab --enable-libvmaf --enable-libvo-amrwbenc --enable-libvorbis --enable-libvpl --enable-libvpx --enable-libvvenc --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxevd --enable-libxeve --enable-libxml2 --enable-libxvid --enable-libzimg --enable-libzmq --enable-openssl\\nlibavutil      61.  1.102 / 61.  1.102\\nlibavcodec     63.  1.102 / 63.  1.102\\nlibavformat    63.  1.102 / 63.  1.102\\nlibavdevice    63.  1.102 / 63.  1.102\\nlibavfilter    12.  1.102 / 12.  1.102\\nlibswscale     10.  1.102 / 10.  1.102\\nlibswresample   7.  1.102 /  7.  1.102\\n\", \"stderr\": \"\", \"error\": null}, \"python\": {\"status\": 0, \"stdout\": \"Python 3.12.15\\n\", \"stderr\": \"\", \"error\": null}, \"pip\": {\"status\": 0, \"stdout\": \"pip 25.0.1 from /usr/local/lib/python3.12/site-packages/pip (python 3.12)\\n\", \"stderr\": \"\", \"error\": null}, \"poetry\": {\"status\": null, \"stdout\": \"\", \"stderr\": \"\", \"error\": \"ENOENT\"}}, \"built\": {\"marker\": \"QA382_LOCAL_CONTAINER_51ad1a2557\", \"phase\": \"build\", \"python\": \"3.12.15\", \"architecture\": \"aarch64\", \"requested_python\": \"3.12\", \"files\": {\"pydub/__init__.py\": {\"bytes\": 39, \"sha256\": \"c355efd5ac1b691ddf3214cd135fa0ae77ecc200114cd42b2a90737d9fbe5410\"}, \"pydub/audio_segment.py\": {\"bytes\": 49233, \"sha256\": \"9f418d5215743ca48cfd2d77ba4a8e355ac9b04ae3dccba4baa5fa917deee1b4\"}}, \"wav\": {\"bytes\": 1644, \"sha256\": \"c726d333dd159a31423f3480dbb1c5c4a9dfcd30efe1f7e12ade390dc92e8908\", \"PCM_bytes\": 1600, \"PCM_sha256\": \"e61f41d57db208c5f92a35c4ce7198570924a3fc87eeba83441fceee5d6a2865\", \"shape\": {\"channels\": 1, \"sample_width\": 2, \"rate\": 8000, \"frames\": 800, \"silence\": true}}, \"converted_at_runtime\": false, \"media\": {\"file\": \"qa382-output.mp3\", \"bytes\": 548, \"sha256\": \"de428646adf93e76bcc193f344f2651099394f51b79962c59ad98da5dbc197e8\", \"ffprobe_command\": [\"ffprobe\", \"-v\", \"error\", \"-show_entries\", \"stream=codec_name,codec_type,sample_rate,channels:format=size,duration\", \"-of\", \"json\", \"qa382-output.mp3\"], \"ffprobe_exit\": 0, \"ffprobe_raw\": \"{\\n    \\\"programs\\\": [\\n\\n    ],\\n    \\\"stream_groups\\\": [\\n\\n    ],\\n    \\\"streams\\\": [\\n        {\\n            \\\"codec_name\\\": \\\"mp3\\\",\\n            \\\"codec_type\\\": \\\"audio\\\",\\n            \\\"sample_rate\\\": \\\"8000\\\",\\n            \\\"channels\\\": 1\\n        }\\n    ],\\n    \\\"format\\\": {\\n        \\\"duration\\\": \\\"0.100000\\\",\\n        \\\"size\\\": \\\"548\\\"\\n    }\\n}\\n\", \"ffprobe\": {\"programs\": [], \"stream_groups\": [], \"streams\": [{\"codec_name\": \"mp3\", \"codec_type\": \"audio\", \"sample_rate\": \"8000\", \"channels\": 1}], \"format\": {\"duration\": \"0.100000\", \"size\": \"548\"}}, \"CLI_decode_command\": [\"ffmpeg\", \"-nostdin\", \"-v\", \"error\", \"-i\", \"qa382-output.mp3\", \"-f\", \"s16le\", \"-acodec\", \"pcm_s16le\", \"pipe:1\"], \"CLI_decode_exit\": 0, \"CLI_decoded_PCM_bytes\": 1600, \"CLI_decoded_PCM_sha256\": \"e61f41d57db208c5f92a35c4ce7198570924a3fc87eeba83441fceee5d6a2865\", \"CLI_PCM_matches_input\": true, \"Pydub_decoded\": {\"milliseconds\": 100, \"channels\": 1, \"rate\": 8000, \"sample_width\": 2, \"PCM_bytes\": 1600, \"PCM_sha256\": \"e61f41d57db208c5f92a35c4ce7198570924a3fc87eeba83441fceee5d6a2865\", \"PCM_matches_input\": true}}, \"retained_build_media\": null, \"tools\": {\"ffmpeg\": {\"status\": 0, \"stdout\": \"ffmpeg version 9.0.2 Copyright (c) 2000-2026 the FFmpeg developers\\nbuilt with gcc 15.2.0 (Alpine 15.2.0)\\nconfiguration: --pkg-config-flags=--static --extra-cflags=-fopenmp --extra-ldflags='-fopenmp -Wl,-z,stack-size=2097152' --toolchain=hardened --disable-debug --disable-shared --disable-ffplay --enable-static --enable-gpl --enable-version3 --enable-fontconfig --enable-gray --enable-iconv --enable-lcms2 --enable-libaom --enable-libaribb24 --enable-libass --enable-libbluray --enable-libdav1d --enable-libdavs2 --enable-libfreetype --enable-libfribidi --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libjxl --enable-libkvazaar --enable-libmodplug --enable-libmp3lame --enable-libmysofa --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenjpeg --enable-libopus --enable-librabbitmq --enable-librav1e --enable-librsvg --enable-librtmp --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libtheora --enable-libtwolame --enable-libuavs3d --enable-libvidstab --enable-libvmaf --enable-libvo-amrwbenc --enable-libvorbis --enable-libvpl --enable-libvpx --enable-libvvenc --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxevd --enable-libxeve --enable-libxml2 --enable-libxvid --enable-libzimg --enable-libzmq --enable-openssl\\nlibavutil      61.  1.102 / 61.  1.102\\nlibavcodec     63.  1.102 / 63.  1.102\\nlibavformat    63.  1.102 / 63.  1.102\\nlibavdevice    63.  1.102 / 63.  1.102\\nlibavfilter    12.  1.102 / 12.  1.102\\nlibswscale     10.  1.102 / 10.  1.102\\nlibswresample   7.  1.102 /  7.  1.102\\n\\nExiting with exit code 0\\n\", \"stderr\": \"\", \"error\": null}, \"ffprobe\": {\"status\": 0, \"stdout\": \"ffprobe version 9.0.2 Copyright (c) 2007-2026 the FFmpeg developers\\nbuilt with gcc 15.2.0 (Alpine 15.2.0)\\nconfiguration: --pkg-config-flags=--static --extra-cflags=-fopenmp --extra-ldflags='-fopenmp -Wl,-z,stack-size=2097152' --toolchain=hardened --disable-debug --disable-shared --disable-ffplay --enable-static --enable-gpl --enable-version3 --enable-fontconfig --enable-gray --enable-iconv --enable-lcms2 --enable-libaom --enable-libaribb24 --enable-libass --enable-libbluray --enable-libdav1d --enable-libdavs2 --enable-libfreetype --enable-libfribidi --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libjxl --enable-libkvazaar --enable-libmodplug --enable-libmp3lame --enable-libmysofa --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenjpeg --enable-libopus --enable-librabbitmq --enable-librav1e --enable-librsvg --enable-librtmp --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libtheora --enable-libtwolame --enable-libuavs3d --enable-libvidstab --enable-libvmaf --enable-libvo-amrwbenc --enable-libvorbis --enable-libvpl --enable-libvpx --enable-libvvenc --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxevd --enable-libxeve --enable-libxml2 --enable-libxvid --enable-libzimg --enable-libzmq --enable-openssl\\nlibavutil      61.  1.102 / 61.  1.102\\nlibavcodec     63.  1.102 / 63.  1.102\\nlibavformat    63.  1.102 / 63.  1.102\\nlibavdevice    63.  1.102 / 63.  1.102\\nlibavfilter    12.  1.102 / 12.  1.102\\nlibswscale     10.  1.102 / 10.  1.102\\nlibswresample   7.  1.102 /  7.  1.102\\n\", \"stderr\": \"\", \"error\": null}, \"python\": {\"status\": 0, \"stdout\": \"Python 3.12.15\\n\", \"stderr\": \"\", \"error\": null}, \"pip\": {\"status\": 0, \"stdout\": \"pip 25.0.1 from /usr/local/lib/python3.12/site-packages/pip (python 3.12)\\n\", \"stderr\": \"\", \"error\": null}, \"poetry\": {\"status\": null, \"stdout\": \"\", \"stderr\": \"\", \"error\": \"ENOENT\"}}}}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "logs",
+        "be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d"
+      ],
+      "exit": 0,
+      "stdout": "QA382_LOCAL_CONTAINER_51ad1a2557_SOURCE_AND_WAV_CONFIRMED\nQA382_BUILD {\"marker\": \"QA382_LOCAL_CONTAINER_51ad1a2557\", \"phase\": \"build\", \"python\": \"3.12.15\", \"architecture\": \"aarch64\", \"requested_python\": \"3.12\", \"files\": {\"pydub/__init__.py\": {\"bytes\": 39, \"sha256\": \"c355efd5ac1b691ddf3214cd135fa0ae77ecc200114cd42b2a90737d9fbe5410\"}, \"pydub/audio_segment.py\": {\"bytes\": 49233, \"sha256\": \"9f418d5215743ca48cfd2d77ba4a8e355ac9b04ae3dccba4baa5fa917deee1b4\"}}, \"wav\": {\"bytes\": 1644, \"sha256\": \"c726d333dd159a31423f3480dbb1c5c4a9dfcd30efe1f7e12ade390dc92e8908\", \"PCM_bytes\": 1600, \"PCM_sha256\": \"e61f41d57db208c5f92a35c4ce7198570924a3fc87eeba83441fceee5d6a2865\", \"shape\": {\"channels\": 1, \"sample_width\": 2, \"rate\": 8000, \"frames\": 800, \"silence\": true}}, \"converted_at_runtime\": false, \"media\": {\"file\": \"qa382-output.mp3\", \"bytes\": 548, \"sha256\": \"de428646adf93e76bcc193f344f2651099394f51b79962c59ad98da5dbc197e8\", \"ffprobe_command\": [\"ffprobe\", \"-v\", \"error\", \"-show_entries\", \"stream=codec_name,codec_type,sample_rate,channels:format=size,duration\", \"-of\", \"json\", \"qa382-output.mp3\"], \"ffprobe_exit\": 0, \"ffprobe_raw\": \"{\\n    \\\"programs\\\": [\\n\\n    ],\\n    \\\"stream_groups\\\": [\\n\\n    ],\\n    \\\"streams\\\": [\\n        {\\n            \\\"codec_name\\\": \\\"mp3\\\",\\n            \\\"codec_type\\\": \\\"audio\\\",\\n            \\\"sample_rate\\\": \\\"8000\\\",\\n            \\\"channels\\\": 1\\n        }\\n    ],\\n    \\\"format\\\": {\\n        \\\"duration\\\": \\\"0.100000\\\",\\n        \\\"size\\\": \\\"548\\\"\\n    }\\n}\\n\", \"ffprobe\": {\"programs\": [], \"stream_groups\": [], \"streams\": [{\"codec_name\": \"mp3\", \"codec_type\": \"audio\", \"sample_rate\": \"8000\", \"channels\": 1}], \"format\": {\"duration\": \"0.100000\", \"size\": \"548\"}}, \"CLI_decode_command\": [\"ffmpeg\", \"-nostdin\", \"-v\", \"error\", \"-i\", \"qa382-output.mp3\", \"-f\", \"s16le\", \"-acodec\", \"pcm_s16le\", \"pipe:1\"], \"CLI_decode_exit\": 0, \"CLI_decoded_PCM_bytes\": 1600, \"CLI_decoded_PCM_sha256\": \"e61f41d57db208c5f92a35c4ce7198570924a3fc87eeba83441fceee5d6a2865\", \"CLI_PCM_matches_input\": true, \"Pydub_decoded\": {\"milliseconds\": 100, \"channels\": 1, \"rate\": 8000, \"sample_width\": 2, \"PCM_bytes\": 1600, \"PCM_sha256\": \"e61f41d57db208c5f92a35c4ce7198570924a3fc87eeba83441fceee5d6a2865\", \"PCM_matches_input\": true}}, \"retained_build_media\": null, \"tools\": {\"ffmpeg\": {\"status\": 0, \"stdout\": \"ffmpeg version 9.0.2 Copyright (c) 2000-2026 the FFmpeg developers\\nbuilt with gcc 15.2.0 (Alpine 15.2.0)\\nconfiguration: --pkg-config-flags=--static --extra-cflags=-fopenmp --extra-ldflags='-fopenmp -Wl,-z,stack-size=2097152' --toolchain=hardened --disable-debug --disable-shared --disable-ffplay --enable-static --enable-gpl --enable-version3 --enable-fontconfig --enable-gray --enable-iconv --enable-lcms2 --enable-libaom --enable-libaribb24 --enable-libass --enable-libbluray --enable-libdav1d --enable-libdavs2 --enable-libfreetype --enable-libfribidi --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libjxl --enable-libkvazaar --enable-libmodplug --enable-libmp3lame --enable-libmysofa --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenjpeg --enable-libopus --enable-librabbitmq --enable-librav1e --enable-librsvg --enable-librtmp --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libtheora --enable-libtwolame --enable-libuavs3d --enable-libvidstab --enable-libvmaf --enable-libvo-amrwbenc --enable-libvorbis --enable-libvpl --enable-libvpx --enable-libvvenc --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxevd --enable-libxeve --enable-libxml2 --enable-libxvid --enable-libzimg --enable-libzmq --enable-openssl\\nlibavutil      61.  1.102 / 61.  1.102\\nlibavcodec     63.  1.102 / 63.  1.102\\nlibavformat    63.  1.102 / 63.  1.102\\nlibavdevice    63.  1.102 / 63.  1.102\\nlibavfilter    12.  1.102 / 12.  1.102\\nlibswscale     10.  1.102 / 10.  1.102\\nlibswresample   7.  1.102 /  7.  1.102\\n\\nExiting with exit code 0\\n\", \"stderr\": \"\", \"error\": null}, \"ffprobe\": {\"status\": 0, \"stdout\": \"ffprobe version 9.0.2 Copyright (c) 2007-2026 the FFmpeg developers\\nbuilt with gcc 15.2.0 (Alpine 15.2.0)\\nconfiguration: --pkg-config-flags=--static --extra-cflags=-fopenmp --extra-ldflags='-fopenmp -Wl,-z,stack-size=2097152' --toolchain=hardened --disable-debug --disable-shared --disable-ffplay --enable-static --enable-gpl --enable-version3 --enable-fontconfig --enable-gray --enable-iconv --enable-lcms2 --enable-libaom --enable-libaribb24 --enable-libass --enable-libbluray --enable-libdav1d --enable-libdavs2 --enable-libfreetype --enable-libfribidi --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libjxl --enable-libkvazaar --enable-libmodplug --enable-libmp3lame --enable-libmysofa --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenjpeg --enable-libopus --enable-librabbitmq --enable-librav1e --enable-librsvg --enable-librtmp --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libtheora --enable-libtwolame --enable-libuavs3d --enable-libvidstab --enable-libvmaf --enable-libvo-amrwbenc --enable-libvorbis --enable-libvpl --enable-libvpx --enable-libvvenc --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxevd --enable-libxeve --enable-libxml2 --enable-libxvid --enable-libzimg --enable-libzmq --enable-openssl\\nlibavutil      61.  1.102 / 61.  1.102\\nlibavcodec     63.  1.102 / 63.  1.102\\nlibavformat    63.  1.102 / 63.  1.102\\nlibavdevice    63.  1.102 / 63.  1.102\\nlibavfilter    12.  1.102 / 12.  1.102\\nlibswscale     10.  1.102 / 10.  1.102\\nlibswresample   7.  1.102 /  7.  1.102\\n\", \"stderr\": \"\", \"error\": null}, \"python\": {\"status\": 0, \"stdout\": \"Python 3.12.15\\n\", \"stderr\": \"\", \"error\": null}, \"pip\": {\"status\": 0, \"stdout\": \"pip 25.0.1 from /usr/local/lib/python3.12/site-packages/pip (python 3.12)\\n\", \"stderr\": \"\", \"error\": null}, \"poetry\": {\"status\": null, \"stdout\": \"\", \"stderr\": \"\", \"error\": \"ENOENT\"}}}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "rm",
+        "--force",
+        "be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d"
+      ],
+      "exit": 0,
+      "stdout": "be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d\n"
+    },
+    {
+      "command": [
+        "docker",
+        "image",
+        "inspect",
+        "bex-qa382-media-prereq:51ad1a2557"
+      ],
+      "exit": 0,
+      "stdout": "[\n    {\n        \"Id\": \"sha256:5808e175269fe1215898e3a928d5e0603009e7118fffa3bbaa5e94158f4235fb\",\n        \"RepoTags\": [\n            \"bex-qa382-media-prereq:51ad1a2557\"\n        ],\n        \"RepoDigests\": [\n            \"bex-qa382-media-prereq@sha256:5808e175269fe1215898e3a928d5e0603009e7118fffa3bbaa5e94158f4235fb\"\n        ],\n        \"Comment\": \"buildkit.dockerfile.v0\",\n        \"Created\": \"2026-10-16T23:08:47.099934923Z\",\n        \"Config\": {\n            \"Env\": [\n                \"PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\n                \"LANG=C.UTF-8\",\n                \"GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305\",\n                \"PYTHON_VERSION=3.12.15\",\n                \"PYTHON_SHA256=c2c4321961fab0fb999d66e0cecf521c2ab3994c7992873ea99e306c1094fd5a\"\n            ],\n            \"Cmd\": [\n                \"python3\"\n            ],\n            \"WorkingDir\": \"/case\",\n            \"Labels\": {\n                \"bex.qa.nonce\": \"51ad1a2557\",\n                \"bex.qa.sweep\": \"382\"\n            }\n        },\n        \"Architecture\": \"arm64\",\n        \"Os\": \"linux\",\n        \"Size\": 483751799,\n        \"RootFS\": {\n            \"Type\": \"layers\",\n            \"Layers\": [\n                \"sha256:dc51344534bbef928c25f87c724daca6fd7a58522a0f2bc4d0de42899b94bd42\",\n                \"sha256:06b20ab917ae7fb7d9ad62f1495d6e69f44462215df657bd5f8aa34228f3ba84\",\n                \"sha256:f3ea0fdbfef7e10eceded81946e8d6a7d853a730fc4debc2313de180c5789c54\",\n                \"sha256:424eda943bfc22b4ca641896a614763d5dabe8b0112c9eb2376a43db74114305\",\n                \"sha256:639dc4e735a0350048edbb61cd4f6b73a875bec6b626b4239971d4f2b28277a3\",\n                \"sha256:37d8d09224f51159b11bc43b4c28e7d0e43d9463bc6651ebb5aeb97c17bbf786\",\n                \"sha256:2174c397137b51a69150d75da46a4ea1c0e3743e4ded9d2cea222431099b0ab3\",\n                \"sha256:88c972d09012f747683b35d6a4b7f39ab2bd378f4fdb2e41f3052bb8fcd622e2\",\n                \"sha256:30cf8f3ed5c73b2baa770fc0d9bd75ffd557351a2f4452055e5e61c52de34303\"\n            ]\n        },\n        \"Metadata\": {\n            \"LastTagTime\": \"2026-10-16T23:08:52.080670259Z\"\n        },\n        \"Descriptor\": {\n            \"mediaType\": \"application/vnd.oci.image.index.v1+json\",\n            \"digest\": \"sha256:5808e175269fe1215898e3a928d5e0603009e7118fffa3bbaa5e94158f4235fb\",\n            \"size\": 856\n        },\n        \"Identity\": {\n            \"Build\": [\n                {\n                    \"Ref\": \"3xh5qb0fdf6fp93zo5jvh28ns\",\n                    \"CreatedAt\": \"2026-10-16T23:08:52.981328176Z\"\n                }\n            ]\n        }\n    }\n]\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "image",
+        "rm",
+        "bex-qa382-media-prereq:51ad1a2557"
+      ],
+      "exit": 0,
+      "stdout": "Untagged: bex-qa382-media-prereq:51ad1a2557\nDeleted: sha256:5808e175269fe1215898e3a928d5e0603009e7118fffa3bbaa5e94158f4235fb\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "image",
+        "inspect",
+        "bex-qa382-media-prereq:51ad1a2557"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such image: bex-qa382-media-prereq:51ad1a2557\n"
+    }
+  ],
+  "owned_image_id": "sha256:5808e175269fe1215898e3a928d5e0603009e7118fffa3bbaa5e94158f4235fb",
+  "owned_container_id": "be6329ac9f8d03b16b63426dc5504f368ebb6dbfd776ca871ff8c918b1fddb1d",
+  "info": {
+    "marker": "QA382_LOCAL_CONTAINER_51ad1a2557",
+    "phase": "runtime",
+    "python": "3.12.15",
+    "architecture": "aarch64",
+    "requested_python": "3.12",
+    "files": {
+      "pydub/__init__.py": {
+        "bytes": 39,
+        "sha256": "c355efd5ac1b691ddf3214cd135fa0ae77ecc200114cd42b2a90737d9fbe5410"
+      },
+      "pydub/audio_segment.py": {
+        "bytes": 49233,
+        "sha256": "9f418d5215743ca48cfd2d77ba4a8e355ac9b04ae3dccba4baa5fa917deee1b4"
+      }
+    },
+    "wav": {
+      "bytes": 1644,
+      "sha256": "c726d333dd159a31423f3480dbb1c5c4a9dfcd30efe1f7e12ade390dc92e8908",
+      "PCM_bytes": 1600,
+      "PCM_sha256": "e61f41d57db208c5f92a35c4ce7198570924a3fc87eeba83441fceee5d6a2865",
+      "shape": {
+        "channels": 1,
+        "sample_width": 2,
+        "rate": 8000,
+        "frames": 800,
+        "silence": true
+      }
+    },
+    "converted_at_runtime": true,
+    "media": {
+      "file": "qa382-runtime.mp3",
+      "bytes": 548,
+      "sha256": "de428646adf93e76bcc193f344f2651099394f51b79962c59ad98da5dbc197e8",
+      "ffprobe_command": [
+        "ffprobe",
+        "-v",
+        "error",
+        "-show_entries",
+        "stream=codec_name,codec_type,sample_rate,channels:format=size,duration",
+        "-of",
+        "json",
+        "qa382-runtime.mp3"
+      ],
+      "ffprobe_exit": 0,
+      "ffprobe_raw": "{\n    \"programs\": [\n\n    ],\n    \"stream_groups\": [\n\n    ],\n    \"streams\": [\n        {\n            \"codec_name\": \"mp3\",\n            \"codec_type\": \"audio\",\n            \"sample_rate\": \"8000\",\n            \"channels\": 1\n        }\n    ],\n    \"format\": {\n        \"duration\": \"0.100000\",\n        \"size\": \"548\"\n    }\n}\n",
+      "ffprobe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "mp3",
+            "codec_type": "audio",
+            "sample_rate": "8000",
+            "channels": 1
+          }
+        ],
+        "format": {
+          "duration": "0.100000",
+          "size": "548"
+        }
+      },
+      "CLI_decode_command": [
+        "ffmpeg",
+        "-nostdin",
+        "-v",
+        "error",
+        "-i",
+        "qa382-runtime.mp3",
+        "-f",
+        "s16le",
+        "-acodec",
+        "pcm_s16le",
+        "pipe:1"
+      ],
+      "CLI_decode_exit": 0,
+      "CLI_decoded_PCM_bytes": 1600,
+      "CLI_decoded_PCM_sha256": "e61f41d57db208c5f92a35c4ce7198570924a3fc87eeba83441fceee5d6a2865",
+      "CLI_PCM_matches_input": true,
+      "Pydub_decoded": {
+        "milliseconds": 100,
+        "channels": 1,
+        "rate": 8000,
+        "sample_width": 2,
+        "PCM_bytes": 1600,
+        "PCM_sha256": "e61f41d57db208c5f92a35c4ce7198570924a3fc87eeba83441fceee5d6a2865",
+        "PCM_matches_input": true
+      }
+    },
+    "retained_build_media": {
+      "file": "qa382-output.mp3",
+      "bytes": 548,
+      "sha256": "de428646adf93e76bcc193f344f2651099394f51b79962c59ad98da5dbc197e8",
+      "ffprobe_command": [
+        "ffprobe",
+        "-v",
+        "error",
+        "-show_entries",
+        "stream=codec_name,codec_type,sample_rate,channels:format=size,duration",
+        "-of",
+        "json",
+        "qa382-output.mp3"
+      ],
+      "ffprobe_exit": 0,
+      "ffprobe_raw": "{\n    \"programs\": [\n\n    ],\n    \"stream_groups\": [\n\n    ],\n    \"streams\": [\n        {\n            \"codec_name\": \"mp3\",\n            \"codec_type\": \"audio\",\n            \"sample_rate\": \"8000\",\n            \"channels\": 1\n        }\n    ],\n    \"format\": {\n        \"duration\": \"0.100000\",\n        \"size\": \"548\"\n    }\n}\n",
+      "ffprobe": {
+        "programs": [],
+        "stream_groups": [],
+        "streams": [
+          {
+            "codec_name": "mp3",
+            "codec_type": "audio",
+            "sample_rate": "8000",
+            "channels": 1
+          }
+        ],
+        "format": {
+          "duration": "0.100000",
+          "size": "548"
+        }
+      },
+      "CLI_decode_command": [
+        "ffmpeg",
+        "-nostdin",
+        "-v",
+        "error",
+        "-i",
+        "qa382-output.mp3",
+        "-f",
+        "s16le",
+        "-acodec",
+        "pcm_s16le",
+        "pipe:1"
+      ],
+      "CLI_decode_exit": 0,
+      "CLI_decoded_PCM_bytes": 1600,
+      "CLI_decoded_PCM_sha256": "e61f41d57db208c5f92a35c4ce7198570924a3fc87eeba83441fceee5d6a2865",
+      "CLI_PCM_matches_input": true,
+      "Pydub_decoded": {
+        "milliseconds": 100,
+        "channels": 1,
+        "rate": 8000,
+        "sample_width": 2,
+        "PCM_bytes": 1600,
+        "PCM_sha256": "e61f41d57db208c5f92a35c4ce7198570924a3fc87eeba83441fceee5d6a2865",
+        "PCM_matches_input": true
+      }
+    },
+    "tools": {
+      "ffmpeg": {
+        "status": 0,
+        "stdout": "ffmpeg version 9.0.2 Copyright (c) 2000-2026 the FFmpeg developers\nbuilt with gcc 15.2.0 (Alpine 15.2.0)\nconfiguration: --pkg-config-flags=--static --extra-cflags=-fopenmp --extra-ldflags='-fopenmp -Wl,-z,stack-size=2097152' --toolchain=hardened --disable-debug --disable-shared --disable-ffplay --enable-static --enable-gpl --enable-version3 --enable-fontconfig --enable-gray --enable-iconv --enable-lcms2 --enable-libaom --enable-libaribb24 --enable-libass --enable-libbluray --enable-libdav1d --enable-libdavs2 --enable-libfreetype --enable-libfribidi --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libjxl --enable-libkvazaar --enable-libmodplug --enable-libmp3lame --enable-libmysofa --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenjpeg --enable-libopus --enable-librabbitmq --enable-librav1e --enable-librsvg --enable-librtmp --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libtheora --enable-libtwolame --enable-libuavs3d --enable-libvidstab --enable-libvmaf --enable-libvo-amrwbenc --enable-libvorbis --enable-libvpl --enable-libvpx --enable-libvvenc --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxevd --enable-libxeve --enable-libxml2 --enable-libxvid --enable-libzimg --enable-libzmq --enable-openssl\nlibavutil      61.  1.102 / 61.  1.102\nlibavcodec     63.  1.102 / 63.  1.102\nlibavformat    63.  1.102 / 63.  1.102\nlibavdevice    63.  1.102 / 63.  1.102\nlibavfilter    12.  1.102 / 12.  1.102\nlibswscale     10.  1.102 / 10.  1.102\nlibswresample   7.  1.102 /  7.  1.102\n\nExiting with exit code 0\n",
+        "stderr": "",
+        "error": null
+      },
+      "ffprobe": {
+        "status": 0,
+        "stdout": "ffprobe version 9.0.2 Copyright (c) 2007-2026 the FFmpeg developers\nbuilt with gcc 15.2.0 (Alpine 15.2.0)\nconfiguration: --pkg-config-flags=--static --extra-cflags=-fopenmp --extra-ldflags='-fopenmp -Wl,-z,stack-size=2097152' --toolchain=hardened --disable-debug --disable-shared --disable-ffplay --enable-static --enable-gpl --enable-version3 --enable-fontconfig --enable-gray --enable-iconv --enable-lcms2 --enable-libaom --enable-libaribb24 --enable-libass --enable-libbluray --enable-libdav1d --enable-libdavs2 --enable-libfreetype --enable-libfribidi --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libjxl --enable-libkvazaar --enable-libmodplug --enable-libmp3lame --enable-libmysofa --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenjpeg --enable-libopus --enable-librabbitmq --enable-librav1e --enable-librsvg --enable-librtmp --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libtheora --enable-libtwolame --enable-libuavs3d --enable-libvidstab --enable-libvmaf --enable-libvo-amrwbenc --enable-libvorbis --enable-libvpl --enable-libvpx --enable-libvvenc --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxevd --enable-libxeve --enable-libxml2 --enable-libxvid --enable-libzimg --enable-libzmq --enable-openssl\nlibavutil      61.  1.102 / 61.  1.102\nlibavcodec     63.  1.102 / 63.  1.102\nlibavformat    63.  1.102 / 63.  1.102\nlibavdevice    63.  1.102 / 63.  1.102\nlibavfilter    12.  1.102 / 12.  1.102\nlibswscale     10.  1.102 / 10.  1.102\nlibswresample   7.  1.102 /  7.  1.102\n",
+        "stderr": "",
+        "error": null
+      },
+      "python": {
+        "status": 0,
+        "stdout": "Python 3.12.15\n",
+        "stderr": "",
+        "error": null
+      },
+      "pip": {
+        "status": 0,
+        "stdout": "pip 25.0.1 from /usr/local/lib/python3.12/site-packages/pip (python 3.12)\n",
+        "stderr": "",
+        "error": null
+      },
+      "poetry": {
+        "status": null,
+        "stdout": "",
+        "stderr": "",
+        "error": "ENOENT"
+      }
+    },
+    "built": {
+      "marker": "QA382_LOCAL_CONTAINER_51ad1a2557",
+      "phase": "build",
+      "python": "3.12.15",
+      "architecture": "aarch64",
+      "requested_python": "3.12",
+      "files": {
+        "pydub/__init__.py": {
+          "bytes": 39,
+          "sha256": "c355efd5ac1b691ddf3214cd135fa0ae77ecc200114cd42b2a90737d9fbe5410"
+        },
+        "pydub/audio_segment.py": {
+          "bytes": 49233,
+          "sha256": "9f418d5215743ca48cfd2d77ba4a8e355ac9b04ae3dccba4baa5fa917deee1b4"
+        }
+      },
+      "wav": {
+        "bytes": 1644,
+        "sha256": "c726d333dd159a31423f3480dbb1c5c4a9dfcd30efe1f7e12ade390dc92e8908",
+        "PCM_bytes": 1600,
+        "PCM_sha256": "e61f41d57db208c5f92a35c4ce7198570924a3fc87eeba83441fceee5d6a2865",
+        "shape": {
+          "channels": 1,
+          "sample_width": 2,
+          "rate": 8000,
+          "frames": 800,
+          "silence": true
+        }
+      },
+      "converted_at_runtime": false,
+      "media": {
+        "file": "qa382-output.mp3",
+        "bytes": 548,
+        "sha256": "de428646adf93e76bcc193f344f2651099394f51b79962c59ad98da5dbc197e8",
+        "ffprobe_command": [
+          "ffprobe",
+          "-v",
+          "error",
+          "-show_entries",
+          "stream=codec_name,codec_type,sample_rate,channels:format=size,duration",
+          "-of",
+          "json",
+          "qa382-output.mp3"
+        ],
+        "ffprobe_exit": 0,
+        "ffprobe_raw": "{\n    \"programs\": [\n\n    ],\n    \"stream_groups\": [\n\n    ],\n    \"streams\": [\n        {\n            \"codec_name\": \"mp3\",\n            \"codec_type\": \"audio\",\n            \"sample_rate\": \"8000\",\n            \"channels\": 1\n        }\n    ],\n    \"format\": {\n        \"duration\": \"0.100000\",\n        \"size\": \"548\"\n    }\n}\n",
+        "ffprobe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "codec_name": "mp3",
+              "codec_type": "audio",
+              "sample_rate": "8000",
+              "channels": 1
+            }
+          ],
+          "format": {
+            "duration": "0.100000",
+            "size": "548"
+          }
+        },
+        "CLI_decode_command": [
+          "ffmpeg",
+          "-nostdin",
+          "-v",
+          "error",
+          "-i",
+          "qa382-output.mp3",
+          "-f",
+          "s16le",
+          "-acodec",
+          "pcm_s16le",
+          "pipe:1"
+        ],
+        "CLI_decode_exit": 0,
+        "CLI_decoded_PCM_bytes": 1600,
+        "CLI_decoded_PCM_sha256": "e61f41d57db208c5f92a35c4ce7198570924a3fc87eeba83441fceee5d6a2865",
+        "CLI_PCM_matches_input": true,
+        "Pydub_decoded": {
+          "milliseconds": 100,
+          "channels": 1,
+          "rate": 8000,
+          "sample_width": 2,
+          "PCM_bytes": 1600,
+          "PCM_sha256": "e61f41d57db208c5f92a35c4ce7198570924a3fc87eeba83441fceee5d6a2865",
+          "PCM_matches_input": true
+        }
+      },
+      "retained_build_media": null,
+      "tools": {
+        "ffmpeg": {
+          "status": 0,
+          "stdout": "ffmpeg version 9.0.2 Copyright (c) 2000-2026 the FFmpeg developers\nbuilt with gcc 15.2.0 (Alpine 15.2.0)\nconfiguration: --pkg-config-flags=--static --extra-cflags=-fopenmp --extra-ldflags='-fopenmp -Wl,-z,stack-size=2097152' --toolchain=hardened --disable-debug --disable-shared --disable-ffplay --enable-static --enable-gpl --enable-version3 --enable-fontconfig --enable-gray --enable-iconv --enable-lcms2 --enable-libaom --enable-libaribb24 --enable-libass --enable-libbluray --enable-libdav1d --enable-libdavs2 --enable-libfreetype --enable-libfribidi --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libjxl --enable-libkvazaar --enable-libmodplug --enable-libmp3lame --enable-libmysofa --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenjpeg --enable-libopus --enable-librabbitmq --enable-librav1e --enable-librsvg --enable-librtmp --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libtheora --enable-libtwolame --enable-libuavs3d --enable-libvidstab --enable-libvmaf --enable-libvo-amrwbenc --enable-libvorbis --enable-libvpl --enable-libvpx --enable-libvvenc --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxevd --enable-libxeve --enable-libxml2 --enable-libxvid --enable-libzimg --enable-libzmq --enable-openssl\nlibavutil      61.  1.102 / 61.  1.102\nlibavcodec     63.  1.102 / 63.  1.102\nlibavformat    63.  1.102 / 63.  1.102\nlibavdevice    63.  1.102 / 63.  1.102\nlibavfilter    12.  1.102 / 12.  1.102\nlibswscale     10.  1.102 / 10.  1.102\nlibswresample   7.  1.102 /  7.  1.102\n\nExiting with exit code 0\n",
+          "stderr": "",
+          "error": null
+        },
+        "ffprobe": {
+          "status": 0,
+          "stdout": "ffprobe version 9.0.2 Copyright (c) 2007-2026 the FFmpeg developers\nbuilt with gcc 15.2.0 (Alpine 15.2.0)\nconfiguration: --pkg-config-flags=--static --extra-cflags=-fopenmp --extra-ldflags='-fopenmp -Wl,-z,stack-size=2097152' --toolchain=hardened --disable-debug --disable-shared --disable-ffplay --enable-static --enable-gpl --enable-version3 --enable-fontconfig --enable-gray --enable-iconv --enable-lcms2 --enable-libaom --enable-libaribb24 --enable-libass --enable-libbluray --enable-libdav1d --enable-libdavs2 --enable-libfreetype --enable-libfribidi --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libjxl --enable-libkvazaar --enable-libmodplug --enable-libmp3lame --enable-libmysofa --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenjpeg --enable-libopus --enable-librabbitmq --enable-librav1e --enable-librsvg --enable-librtmp --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libtheora --enable-libtwolame --enable-libuavs3d --enable-libvidstab --enable-libvmaf --enable-libvo-amrwbenc --enable-libvorbis --enable-libvpl --enable-libvpx --enable-libvvenc --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxevd --enable-libxeve --enable-libxml2 --enable-libxvid --enable-libzimg --enable-libzmq --enable-openssl\nlibavutil      61.  1.102 / 61.  1.102\nlibavcodec     63.  1.102 / 63.  1.102\nlibavformat    63.  1.102 / 63.  1.102\nlibavdevice    63.  1.102 / 63.  1.102\nlibavfilter    12.  1.102 / 12.  1.102\nlibswscale     10.  1.102 / 10.  1.102\nlibswresample   7.  1.102 /  7.  1.102\n",
+          "stderr": "",
+          "error": null
+        },
+        "python": {
+          "status": 0,
+          "stdout": "Python 3.12.15\n",
+          "stderr": "",
+          "error": null
+        },
+        "pip": {
+          "status": 0,
+          "stdout": "pip 25.0.1 from /usr/local/lib/python3.12/site-packages/pip (python 3.12)\n",
+          "stderr": "",
+          "error": null
+        },
+        "poetry": {
+          "status": null,
+          "stdout": "",
+          "stderr": "",
+          "error": "ENOENT"
+        }
+      }
+    }
+  },
+  "pass_": true,
+  "container_logs": "QA382_LOCAL_CONTAINER_51ad1a2557_SOURCE_AND_WAV_CONFIRMED\nQA382_BUILD {\"marker\": \"QA382_LOCAL_CONTAINER_51ad1a2557\", \"phase\": \"build\", \"python\": \"3.12.15\", \"architecture\": \"aarch64\", \"requested_python\": \"3.12\", \"files\": {\"pydub/__init__.py\": {\"bytes\": 39, \"sha256\": \"c355efd5ac1b691ddf3214cd135fa0ae77ecc200114cd42b2a90737d9fbe5410\"}, \"pydub/audio_segment.py\": {\"bytes\": 49233, \"sha256\": \"9f418d5215743ca48cfd2d77ba4a8e355ac9b04ae3dccba4baa5fa917deee1b4\"}}, \"wav\": {\"bytes\": 1644, \"sha256\": \"c726d333dd159a31423f3480dbb1c5c4a9dfcd30efe1f7e12ade390dc92e8908\", \"PCM_bytes\": 1600, \"PCM_sha256\": \"e61f41d57db208c5f92a35c4ce7198570924a3fc87eeba83441fceee5d6a2865\", \"shape\": {\"channels\": 1, \"sample_width\": 2, \"rate\": 8000, \"frames\": 800, \"silence\": true}}, \"converted_at_runtime\": false, \"media\": {\"file\": \"qa382-output.mp3\", \"bytes\": 548, \"sha256\": \"de428646adf93e76bcc193f344f2651099394f51b79962c59ad98da5dbc197e8\", \"ffprobe_command\": [\"ffprobe\", \"-v\", \"error\", \"-show_entries\", \"stream=codec_name,codec_type,sample_rate,channels:format=size,duration\", \"-of\", \"json\", \"qa382-output.mp3\"], \"ffprobe_exit\": 0, \"ffprobe_raw\": \"{\\n    \\\"programs\\\": [\\n\\n    ],\\n    \\\"stream_groups\\\": [\\n\\n    ],\\n    \\\"streams\\\": [\\n        {\\n            \\\"codec_name\\\": \\\"mp3\\\",\\n            \\\"codec_type\\\": \\\"audio\\\",\\n            \\\"sample_rate\\\": \\\"8000\\\",\\n            \\\"channels\\\": 1\\n        }\\n    ],\\n    \\\"format\\\": {\\n        \\\"duration\\\": \\\"0.100000\\\",\\n        \\\"size\\\": \\\"548\\\"\\n    }\\n}\\n\", \"ffprobe\": {\"programs\": [], \"stream_groups\": [], \"streams\": [{\"codec_name\": \"mp3\", \"codec_type\": \"audio\", \"sample_rate\": \"8000\", \"channels\": 1}], \"format\": {\"duration\": \"0.100000\", \"size\": \"548\"}}, \"CLI_decode_command\": [\"ffmpeg\", \"-nostdin\", \"-v\", \"error\", \"-i\", \"qa382-output.mp3\", \"-f\", \"s16le\", \"-acodec\", \"pcm_s16le\", \"pipe:1\"], \"CLI_decode_exit\": 0, \"CLI_decoded_PCM_bytes\": 1600, \"CLI_decoded_PCM_sha256\": \"e61f41d57db208c5f92a35c4ce7198570924a3fc87eeba83441fceee5d6a2865\", \"CLI_PCM_matches_input\": true, \"Pydub_decoded\": {\"milliseconds\": 100, \"channels\": 1, \"rate\": 8000, \"sample_width\": 2, \"PCM_bytes\": 1600, \"PCM_sha256\": \"e61f41d57db208c5f92a35c4ce7198570924a3fc87eeba83441fceee5d6a2865\", \"PCM_matches_input\": true}}, \"retained_build_media\": null, \"tools\": {\"ffmpeg\": {\"status\": 0, \"stdout\": \"ffmpeg version 9.0.2 Copyright (c) 2000-2026 the FFmpeg developers\\nbuilt with gcc 15.2.0 (Alpine 15.2.0)\\nconfiguration: --pkg-config-flags=--static --extra-cflags=-fopenmp --extra-ldflags='-fopenmp -Wl,-z,stack-size=2097152' --toolchain=hardened --disable-debug --disable-shared --disable-ffplay --enable-static --enable-gpl --enable-version3 --enable-fontconfig --enable-gray --enable-iconv --enable-lcms2 --enable-libaom --enable-libaribb24 --enable-libass --enable-libbluray --enable-libdav1d --enable-libdavs2 --enable-libfreetype --enable-libfribidi --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libjxl --enable-libkvazaar --enable-libmodplug --enable-libmp3lame --enable-libmysofa --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenjpeg --enable-libopus --enable-librabbitmq --enable-librav1e --enable-librsvg --enable-librtmp --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libtheora --enable-libtwolame --enable-libuavs3d --enable-libvidstab --enable-libvmaf --enable-libvo-amrwbenc --enable-libvorbis --enable-libvpl --enable-libvpx --enable-libvvenc --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxevd --enable-libxeve --enable-libxml2 --enable-libxvid --enable-libzimg --enable-libzmq --enable-openssl\\nlibavutil      61.  1.102 / 61.  1.102\\nlibavcodec     63.  1.102 / 63.  1.102\\nlibavformat    63.  1.102 / 63.  1.102\\nlibavdevice    63.  1.102 / 63.  1.102\\nlibavfilter    12.  1.102 / 12.  1.102\\nlibswscale     10.  1.102 / 10.  1.102\\nlibswresample   7.  1.102 /  7.  1.102\\n\\nExiting with exit code 0\\n\", \"stderr\": \"\", \"error\": null}, \"ffprobe\": {\"status\": 0, \"stdout\": \"ffprobe version 9.0.2 Copyright (c) 2007-2026 the FFmpeg developers\\nbuilt with gcc 15.2.0 (Alpine 15.2.0)\\nconfiguration: --pkg-config-flags=--static --extra-cflags=-fopenmp --extra-ldflags='-fopenmp -Wl,-z,stack-size=2097152' --toolchain=hardened --disable-debug --disable-shared --disable-ffplay --enable-static --enable-gpl --enable-version3 --enable-fontconfig --enable-gray --enable-iconv --enable-lcms2 --enable-libaom --enable-libaribb24 --enable-libass --enable-libbluray --enable-libdav1d --enable-libdavs2 --enable-libfreetype --enable-libfribidi --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libjxl --enable-libkvazaar --enable-libmodplug --enable-libmp3lame --enable-libmysofa --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenjpeg --enable-libopus --enable-librabbitmq --enable-librav1e --enable-librsvg --enable-librtmp --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libtheora --enable-libtwolame --enable-libuavs3d --enable-libvidstab --enable-libvmaf --enable-libvo-amrwbenc --enable-libvorbis --enable-libvpl --enable-libvpx --enable-libvvenc --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxevd --enable-libxeve --enable-libxml2 --enable-libxvid --enable-libzimg --enable-libzmq --enable-openssl\\nlibavutil      61.  1.102 / 61.  1.102\\nlibavcodec     63.  1.102 / 63.  1.102\\nlibavformat    63.  1.102 / 63.  1.102\\nlibavdevice    63.  1.102 / 63.  1.102\\nlibavfilter    12.  1.102 / 12.  1.102\\nlibswscale     10.  1.102 / 10.  1.102\\nlibswresample   7.  1.102 /  7.  1.102\\n\", \"stderr\": \"\", \"error\": null}, \"python\": {\"status\": 0, \"stdout\": \"Python 3.12.15\\n\", \"stderr\": \"\", \"error\": null}, \"pip\": {\"status\": 0, \"stdout\": \"pip 25.0.1 from /usr/local/lib/python3.12/site-packages/pip (python 3.12)\\n\", \"stderr\": \"\", \"error\": null}, \"poetry\": {\"status\": null, \"stdout\": \"\", \"stderr\": \"\", \"error\": \"ENOENT\"}}}\n",
+  "own_container_absent": true,
+  "own_tag_absent": true,
+  "own_scratch_removed": true
+}

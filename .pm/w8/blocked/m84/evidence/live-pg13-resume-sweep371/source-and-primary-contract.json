@@ -1,0 +1,26 @@
+{
+  "source_head": "5b1f186982f244727912cff70a6cdc4c0b43bbe8",
+  "serving_revision": "unknown",
+  "physical_PG_major": 13,
+  "vector_version": "0.8.1",
+  "psql": "18.6",
+  "native_create": "Bex0.3.2",
+  "native_resume": "unchanged Render2.27.0/a764810a7682 by unique own resource name",
+  "native_upgrade": "not exposed by this help tree/update flags; no upgrade mutation attempted",
+  "source_contracts": [
+    "lego/backend/internal/postgres/service.go:48 supported create majors13\u201318",
+    "lego/backend/internal/postgres/service.go:483 spec suspension outranks readiness in public status",
+    "lego/backend/internal/postgres/rest.go:277 suspend/resume verbs",
+    "pinned cmd/pgsuspend.go confirms preview GET-only unless confirm",
+    "pinned pkg/postgres/output.go:49 Meta.Suspended always serializes"
+  ],
+  "primary_reference": "https://github.com/pgvector/pgvector/tree/v0.8.1",
+  "limits": [
+    "one Free PG13 custom-identity database",
+    "PG14\u201317 live untested",
+    "no actual major upgrade",
+    "no hosted pre-fix parent backfill",
+    "no physical pod/PVC inspection",
+    "no query planner HNSW-use assertion"
+  ]
+}

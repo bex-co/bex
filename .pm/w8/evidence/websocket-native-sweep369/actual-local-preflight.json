@@ -1,0 +1,165 @@
+{
+  "qualification": "local Node/official ws module protocol and fixture prerequisite; not hosted Bex or generated-image acceptance",
+  "build": {
+    "event": "QA369_BUILD",
+    "marker": "QA369_LOCAL",
+    "node": "v22.17.1",
+    "node_env": null,
+    "package_sha256": "c1ef91ca04eb4754c011c5f0e7638b5078ff71104fada400c44ac761cf93e0b1",
+    "ws": "8.22.0"
+  },
+  "client": {
+    "client_node": "v22.17.1",
+    "client_ws": "8.18.3",
+    "url": "ws://127.0.0.1:51103",
+    "marker": "QA369_LOCAL",
+    "sessions": [
+      {
+        "name": "plain",
+        "compressed": false,
+        "echoes": [
+          {
+            "bytes": 0,
+            "binary": false,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "fragments": 1
+          },
+          {
+            "bytes": 38,
+            "binary": false,
+            "sha256": "3dd5081e78ec81cf7f4c29c3dc2dcbbd984c405eaa34bf768ced65d88ebb7dcc",
+            "fragments": 1
+          },
+          {
+            "bytes": 4200,
+            "binary": false,
+            "sha256": "baec3e1a36dc90064989bcfd70c334136e08587f52bbcd4bafacbeedc5e77636",
+            "fragments": 1
+          },
+          {
+            "bytes": 0,
+            "binary": true,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "fragments": 1
+          },
+          {
+            "bytes": 16384,
+            "binary": true,
+            "sha256": "a1f259d4365ed4320c377ce26f5c8c56dcdc9a89e7b641bfd8eabfbbeac86654",
+            "fragments": 1
+          }
+        ],
+        "pongs": [
+          {
+            "bytes": 11,
+            "sha256": "cb9649c55cedce41d19c64f1887065eb43d1022fda2c2b01af57d01223e7da8e"
+          }
+        ],
+        "pass": true,
+        "protocol": "qa-echo",
+        "extensions": "",
+        "close_code": 1000,
+        "close_reason": "qa369 complete"
+      },
+      {
+        "name": "deflate",
+        "compressed": true,
+        "echoes": [
+          {
+            "bytes": 55800,
+            "binary": false,
+            "sha256": "53e9785b68e7628fa90be2aeba46ac244700986dd2a0c9ec535fef6e6a31d8c0",
+            "fragments": 1
+          },
+          {
+            "bytes": 32768,
+            "binary": true,
+            "sha256": "ff196bc2ab4fa0bf3798f998267afb0b3f60895d694e6c5db3c2ec026a348996",
+            "fragments": 1
+          },
+          {
+            "bytes": 0,
+            "binary": false,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "fragments": 1
+          }
+        ],
+        "pongs": [
+          {
+            "bytes": 13,
+            "sha256": "d583a8bc8901944558470ccaa927077456f9410b40d9042dff9f167783c286f9"
+          }
+        ],
+        "pass": true,
+        "protocol": "qa-echo",
+        "extensions": "permessage-deflate",
+        "close_code": 1000,
+        "close_reason": "qa369 complete"
+      },
+      {
+        "name": "fragmented",
+        "compressed": false,
+        "echoes": [
+          {
+            "bytes": 5411,
+            "binary": false,
+            "sha256": "f2277cec5ac0c6753493f567952178c3352e00c7fcd19a3ac6ae07eb73be170a",
+            "fragments": 3
+          },
+          {
+            "bytes": 16384,
+            "binary": true,
+            "sha256": "224846b607b20c482d65e499270be325eecdf343356cd79b60de988859e152a5",
+            "fragments": 2
+          }
+        ],
+        "pongs": [
+          {
+            "bytes": 16,
+            "sha256": "cf9fe19501ba8db664f33cb99a450ac78e99970986d573ddc7cf5493aa49b1f3"
+          },
+          {
+            "bytes": 17,
+            "sha256": "3577af70675d3f320445962dfbe1af36af988dc5e1bda0e53b83fce372e441d5"
+          },
+          {
+            "bytes": 17,
+            "sha256": "3577af70675d3f320445962dfbe1af36af988dc5e1bda0e53b83fce372e441d5"
+          }
+        ],
+        "pass": true,
+        "protocol": "qa-echo",
+        "extensions": "",
+        "close_code": 1000,
+        "close_reason": "qa369 complete"
+      }
+    ],
+    "pass": true,
+    "missing_path_HTTP": 404
+  },
+  "client_exit": 0,
+  "stderr": "",
+  "after_HTTP": {
+    "marker": "QA369_LOCAL",
+    "node": "v22.17.1",
+    "node_env": null,
+    "package_sha256": "c1ef91ca04eb4754c011c5f0e7638b5078ff71104fada400c44ac761cf93e0b1",
+    "ws": "8.22.0",
+    "built": {
+      "marker": "QA369_LOCAL",
+      "node": "v22.17.1",
+      "node_env": null,
+      "package_sha256": "c1ef91ca04eb4754c011c5f0e7638b5078ff71104fada400c44ac761cf93e0b1",
+      "ws": "8.22.0"
+    },
+    "stats": {
+      "connections": 3,
+      "messages": 10,
+      "bytes": 130985,
+      "closed": 3,
+      "pings": 5
+    }
+  },
+  "own_server_stopped": true,
+  "own_ready_authored_build_files_removed": true
+}

@@ -1,0 +1,2957 @@
+{
+  "sweep": 376,
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "type": "postgres",
+  "name": "qa-20261016-92a056-pg15",
+  "nonce": "92a056",
+  "time": "2026-10-16T21:38:23.117042+00:00",
+  "source_head": "f05787b14e3ccfcf430966294fc55a85502e3daf",
+  "capacity": {
+    "at": "2026-10-16T21:38:21.175002+00:00",
+    "API_only": true,
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "status": "200",
+    "curl_exit": 0,
+    "elapsed": 0.804,
+    "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+    "stderr": ""
+  },
+  "pre_inventory": {
+    "at": "2026-10-16T21:38:22.334536+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "postgres",
+      "list",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "client_setup": null,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 1.159,
+    "stdout": "{\"data\": []}",
+    "stderr": ""
+  },
+  "pre_service_inventory": {
+    "at": "2026-10-16T21:38:23.116756+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "client_setup": null,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.782,
+    "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}]",
+    "stderr": ""
+  },
+  "pre_ids": [],
+  "dependency_ids": [],
+  "recorded_child_ids": [],
+  "database_name": "qa376_db_92a056",
+  "database_user": "qa376_user_92a056",
+  "create_command": [
+    "bex",
+    "postgres",
+    "create",
+    "--name",
+    "qa-20261016-92a056-pg15",
+    "--plan",
+    "free",
+    "--version",
+    "15",
+    "--region",
+    "frankfurt",
+    "--connection-pool",
+    "none",
+    "--database-name",
+    "qa376_db_92a056",
+    "--database-user",
+    "qa376_user_92a056",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "state": "deleted: native0/detail404/listempty/baseline6/PGquota0 terminating0",
+  "create_result": {
+    "at": "2026-10-16T21:38:23.759939+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "postgres",
+      "create",
+      "--name",
+      "qa-20261016-92a056-pg15",
+      "--plan",
+      "free",
+      "--version",
+      "15",
+      "--region",
+      "frankfurt",
+      "--connection-pool",
+      "none",
+      "--database-name",
+      "qa376_db_92a056",
+      "--database-user",
+      "qa376_user_92a056",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "client_setup": null,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.396,
+    "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261016-92a056-pg15\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-16T21:38:23.624701841Z\", \"version\": \"15\", \"projectId\": null}}",
+    "stderr": ""
+  },
+  "id": "dpg-db99ijq11h4c73ffkn6g",
+  "create_response": {
+    "connectionPool": "none",
+    "createdAt": "2026-10-16T21:38:23Z",
+    "dashboardUrl": "https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g",
+    "databaseName": "qa376_db_92a056",
+    "databaseUser": "qa376_user_92a056",
+    "diskAutoscalingEnabled": false,
+    "diskSizeGB": 1,
+    "highAvailabilityEnabled": false,
+    "id": "dpg-db99ijq11h4c73ffkn6g",
+    "ipAllowList": [
+      {
+        "cidrBlock": "0.0.0.0/0",
+        "description": ""
+      },
+      {
+        "cidrBlock": "::/0",
+        "description": ""
+      }
+    ],
+    "name": "qa-20261016-92a056-pg15",
+    "owner": {
+      "email": "QA_PRIVATE_REDACTED",
+      "id": "tea-daif693dqjvc73e7as3g",
+      "name": "bex-canary",
+      "type": "team"
+    },
+    "plan": "free",
+    "readReplicas": [],
+    "region": "fsn1",
+    "role": "",
+    "status": "creating",
+    "suspended": "not_suspended",
+    "suspenders": null,
+    "updatedAt": "2026-10-16T21:38:23.624701841Z",
+    "version": "15",
+    "projectId": null
+  },
+  "details": [
+    {
+      "at": "2026-10-16T21:38:50.106229+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.824,
+      "response": "{\"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"name\": \"qa-20261016-92a056-pg15\", \"plan\": \"free\", \"version\": \"15\", \"status\": \"creating\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"updatedAt\": \"2026-10-16T21:38:23.624701841Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"externalHost\": \"dpg-db99ijq11h4c73ffkn6g.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T21:39:01.909626+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.368,
+      "response": "{\"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"name\": \"qa-20261016-92a056-pg15\", \"plan\": \"free\", \"version\": \"15\", \"status\": \"creating\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"updatedAt\": \"2026-10-16T21:38:23.624701841Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"externalHost\": \"dpg-db99ijq11h4c73ffkn6g.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T21:39:13.536496+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.329,
+      "response": "{\"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"name\": \"qa-20261016-92a056-pg15\", \"plan\": \"free\", \"version\": \"15\", \"status\": \"creating\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"updatedAt\": \"2026-10-16T21:38:23.624701841Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"externalHost\": \"dpg-db99ijq11h4c73ffkn6g.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T21:39:24.839419+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.295,
+      "response": "{\"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"name\": \"qa-20261016-92a056-pg15\", \"plan\": \"free\", \"version\": \"15\", \"status\": \"creating\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"updatedAt\": \"2026-10-16T21:39:18Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"externalHost\": \"dpg-db99ijq11h4c73ffkn6g.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T21:40:07.260859+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.307,
+      "response": "{\"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"name\": \"qa-20261016-92a056-pg15\", \"plan\": \"free\", \"version\": \"15\", \"status\": \"available\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"updatedAt\": \"2026-10-16T21:39:49Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"externalHost\": \"dpg-db99ijq11h4c73ffkn6g.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T21:41:03.353495+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.422,
+      "response": "{\"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"name\": \"qa-20261016-92a056-pg15\", \"plan\": \"free\", \"version\": \"15\", \"status\": \"available\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"updatedAt\": \"2026-10-16T21:39:49Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"externalHost\": \"dpg-db99ijq11h4c73ffkn6g.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T21:41:08.122970+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.396,
+      "response": "{\"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"name\": \"qa-20261016-92a056-pg15\", \"plan\": \"free\", \"version\": \"15\", \"status\": \"available\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"updatedAt\": \"2026-10-16T21:39:49Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"externalHost\": \"dpg-db99ijq11h4c73ffkn6g.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T21:41:22.859528+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.319,
+      "response": "{\"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"name\": \"qa-20261016-92a056-pg15\", \"plan\": \"free\", \"version\": \"15\", \"status\": \"available\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"updatedAt\": \"2026-10-16T21:39:49Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"externalHost\": \"dpg-db99ijq11h4c73ffkn6g.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T21:41:26.945645+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.397,
+      "response": "{\"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"name\": \"qa-20261016-92a056-pg15\", \"plan\": \"free\", \"version\": \"15\", \"status\": \"available\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"updatedAt\": \"2026-10-16T21:39:49Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"externalHost\": \"dpg-db99ijq11h4c73ffkn6g.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T21:44:35.499281+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.546,
+      "response": "{\"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"name\": \"qa-20261016-92a056-pg15\", \"plan\": \"free\", \"version\": \"15\", \"status\": \"available\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"updatedAt\": \"2026-10-16T21:39:49Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"externalHost\": \"dpg-db99ijq11h4c73ffkn6g.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    }
+  ],
+  "native_readiness": [
+    {
+      "at": "2026-10-16T21:38:50.365616+00:00",
+      "native": {
+        "at": "2026-10-16T21:38:49.260837+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db99ijq11h4c73ffkn6g",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.583,
+        "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261016-92a056-pg15\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-16T21:38:23.624701841Z\", \"version\": \"15\", \"projectId\": null}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-16T21:38:50.106229+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.824,
+        "response": "{\"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"name\": \"qa-20261016-92a056-pg15\", \"plan\": \"free\", \"version\": \"15\", \"status\": \"creating\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"updatedAt\": \"2026-10-16T21:38:23.624701841Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"externalHost\": \"dpg-db99ijq11h4c73ffkn6g.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T21:39:02.141319+00:00",
+      "native": {
+        "at": "2026-10-16T21:39:01.529557+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db99ijq11h4c73ffkn6g",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.821,
+        "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261016-92a056-pg15\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-16T21:38:23.624701841Z\", \"version\": \"15\", \"projectId\": null}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-16T21:39:01.909626+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.368,
+        "response": "{\"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"name\": \"qa-20261016-92a056-pg15\", \"plan\": \"free\", \"version\": \"15\", \"status\": \"creating\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"updatedAt\": \"2026-10-16T21:38:23.624701841Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"externalHost\": \"dpg-db99ijq11h4c73ffkn6g.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T21:39:13.766861+00:00",
+      "native": {
+        "at": "2026-10-16T21:39:13.193653+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db99ijq11h4c73ffkn6g",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.813,
+        "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261016-92a056-pg15\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-16T21:38:23.624701841Z\", \"version\": \"15\", \"projectId\": null}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-16T21:39:13.536496+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.329,
+        "response": "{\"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"name\": \"qa-20261016-92a056-pg15\", \"plan\": \"free\", \"version\": \"15\", \"status\": \"creating\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"updatedAt\": \"2026-10-16T21:38:23.624701841Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"externalHost\": \"dpg-db99ijq11h4c73ffkn6g.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T21:39:25.105197+00:00",
+      "native": {
+        "at": "2026-10-16T21:39:24.532499+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db99ijq11h4c73ffkn6g",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.545,
+        "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261016-92a056-pg15\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-16T21:39:18Z\", \"version\": \"15\", \"projectId\": null}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-16T21:39:24.839419+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.295,
+        "response": "{\"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"name\": \"qa-20261016-92a056-pg15\", \"plan\": \"free\", \"version\": \"15\", \"status\": \"creating\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"updatedAt\": \"2026-10-16T21:39:18Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"externalHost\": \"dpg-db99ijq11h4c73ffkn6g.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T21:40:07.498522+00:00",
+      "native": {
+        "at": "2026-10-16T21:40:06.942154+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db99ijq11h4c73ffkn6g",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.433,
+        "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261016-92a056-pg15\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-16T21:39:49Z\", \"version\": \"15\", \"projectId\": null}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-16T21:40:07.260859+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.307,
+        "response": "{\"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"name\": \"qa-20261016-92a056-pg15\", \"plan\": \"free\", \"version\": \"15\", \"status\": \"available\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"updatedAt\": \"2026-10-16T21:39:49Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"externalHost\": \"dpg-db99ijq11h4c73ffkn6g.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      }
+    }
+  ],
+  "native_SQL_readiness": [
+    {
+      "at": "2026-10-16T21:41:03.600861+00:00",
+      "client": "bex",
+      "before": {
+        "at": "2026-10-16T21:41:03.353495+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.422,
+        "response": "{\"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"name\": \"qa-20261016-92a056-pg15\", \"plan\": \"free\", \"version\": \"15\", \"status\": \"available\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"updatedAt\": \"2026-10-16T21:39:49Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"externalHost\": \"dpg-db99ijq11h4c73ffkn6g.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      },
+      "intent": "read-only own SELECT1 readiness control",
+      "result": {
+        "at": "2026-10-16T21:41:06.848843+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db99ijq11h4c73ffkn6g",
+          "--command",
+          "SELECT jsonb_build_object('one',1,'database',current_database(),'user',current_user,'version',current_setting('server_version_num')::int/10000,'encoding',current_setting('server_encoding'))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 3.021,
+        "stdout": "{\"output\": \"{\\\"one\\\": 1, \\\"user\\\": \\\"qa376_user_92a056\\\", \\\"version\\\": 15, \\\"database\\\": \\\"qa376_db_92a056\\\", \\\"encoding\\\": \\\"UTF8\\\"}\"}",
+        "stderr": ""
+      },
+      "observed": {
+        "one": 1,
+        "user": "qa376_user_92a056",
+        "version": 15,
+        "database": "qa376_db_92a056",
+        "encoding": "UTF8"
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T21:41:08.373079+00:00",
+      "client": "render",
+      "before": {
+        "at": "2026-10-16T21:41:08.122970+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.396,
+        "response": "{\"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"name\": \"qa-20261016-92a056-pg15\", \"plan\": \"free\", \"version\": \"15\", \"status\": \"available\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"updatedAt\": \"2026-10-16T21:39:49Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"externalHost\": \"dpg-db99ijq11h4c73ffkn6g.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      },
+      "intent": "read-only own SELECT1 readiness control",
+      "result": {
+        "at": "2026-10-16T21:41:21.414480+00:00",
+        "binary": "unchanged Render2.27.0/a764810a7682",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db99ijq11h4c73ffkn6g",
+          "--command",
+          "SELECT jsonb_build_object('one',1,'database',current_database(),'user',current_user,'version',current_setting('server_version_num')::int/10000,'encoding',current_setting('server_encoding'))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": {
+          "API_only_CA_preparation": true,
+          "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g/connection-info",
+          "HTTP": "200",
+          "elapsed": 0.348,
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "certificate_sha256": "e2727fd1ec7d4ee706ed6411ebae59b1f08fe4d44f7c2359b92d5079f28303b9",
+          "PGSSLROOTCERT": "<owned-temp>/sweep376-owned-pg-ca.pem",
+          "connection_info_payload_not_retained": true
+        },
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 12.449,
+        "stdout": "{\"output\": \"{\\\"one\\\": 1, \\\"user\\\": \\\"qa376_user_92a056\\\", \\\"version\\\": 15, \\\"database\\\": \\\"qa376_db_92a056\\\", \\\"encoding\\\": \\\"UTF8\\\"}\"}",
+        "stderr": ""
+      },
+      "observed": {
+        "one": 1,
+        "user": "qa376_user_92a056",
+        "version": 15,
+        "database": "qa376_db_92a056",
+        "encoding": "UTF8"
+      },
+      "pass": true
+    }
+  ],
+  "vector_connection_preparation": {
+    "at": "2026-10-16T21:41:23.442835+00:00",
+    "API_only": true,
+    "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g/connection-info",
+    "HTTP": "200",
+    "certificate_sha256": "e2727fd1ec7d4ee706ed6411ebae59b1f08fe4d44f7c2359b92d5079f28303b9",
+    "private_payload_retained_only_until_post_delete_check": true,
+    "Render_PGSSLROOTCERT": "<owned-temp>/sweep376-session-ca.pem"
+  },
+  "cached_connection_checks": [
+    {
+      "at": "2026-10-16T21:41:25.899522+00:00",
+      "phase": "before",
+      "API_only_external_psql": true,
+      "cached_route_and_credentials": true,
+      "credentials_supplied_only_in_child_environment": true,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 1.489,
+      "stdout": "1\n",
+      "stderr": "",
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T21:44:41.338115+00:00",
+      "phase": "after",
+      "API_only_external_psql": true,
+      "cached_route_and_credentials": true,
+      "credentials_supplied_only_in_child_environment": true,
+      "native_exit": 2,
+      "harness_timeout": false,
+      "elapsed": 0.629,
+      "stdout": "",
+      "stderr": "psql: error: connection to server at \"dpg-db99ijq11h4c73ffkn6g.db.bex.co\" (2a01:4f8:c01e:3d1f::1), port 5432 failed: SSL error: unexpected eof while reading\n",
+      "pass": true
+    }
+  ],
+  "isolation_journey": {
+    "at": "2026-10-16T21:41:27.189312+00:00",
+    "state": "finite two-native-client SQL isolation/error recovery intent",
+    "schema": "qa376_92a056",
+    "steps": [
+      {
+        "at_monotonic_seconds": 8.121,
+        "actor": "bex",
+        "label": "native physical identity and per-session safety limits",
+        "stdin": "SET statement_timeout='10s';SET idle_in_transaction_session_timeout='30s';SET lock_timeout='500ms';\nSELECT jsonb_build_object('frame','QA376_92a056_1','pid',pg_backend_pid(),'payload',jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'encoding',current_setting('server_encoding'),'statement_timeout',current_setting('statement_timeout'),'idle_in_transaction_session_timeout',current_setting('idle_in_transaction_session_timeout'),'lock_timeout',current_setting('lock_timeout')))::text;\n\\echo QA376_92a056_1_END\n",
+        "expected_payload": {
+          "database": "qa376_db_92a056",
+          "user": "qa376_user_92a056",
+          "major": 15,
+          "encoding": "UTF8",
+          "statement_timeout": "10s",
+          "idle_in_transaction_session_timeout": "30s",
+          "lock_timeout": "500ms"
+        },
+        "expected_SQLSTATE": null,
+        "frame": {
+          "pid": 224,
+          "frame": "QA376_92a056_1",
+          "payload": {
+            "user": "qa376_user_92a056",
+            "major": 15,
+            "database": "qa376_db_92a056",
+            "encoding": "UTF8",
+            "lock_timeout": "500ms",
+            "statement_timeout": "10s",
+            "idle_in_transaction_session_timeout": "30s"
+          }
+        },
+        "native_output": "QA376_92a056_bex> {\"pid\": 224, \"frame\": \"QA376_92a056_1\", \"payload\": {\"user\": \"qa376_user_92a056\", \"major\": 15, \"database\": \"qa376_db_92a056\", \"encoding\": \"UTF8\", \"lock_timeout\": \"500ms\", \"statement_timeout\": \"10s\", \"idle_in_transaction_session_timeout\": \"30s\"}}\nQA376_92a056_bex> QA376_92a056_1_END\nQA376_92a056_bex> ",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 17.177,
+        "actor": "render",
+        "label": "native physical identity and per-session safety limits",
+        "stdin": "SET statement_timeout='10s';SET idle_in_transaction_session_timeout='30s';SET lock_timeout='500ms';\nSELECT jsonb_build_object('frame','QA376_92a056_2','pid',pg_backend_pid(),'payload',jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'encoding',current_setting('server_encoding'),'statement_timeout',current_setting('statement_timeout'),'idle_in_transaction_session_timeout',current_setting('idle_in_transaction_session_timeout'),'lock_timeout',current_setting('lock_timeout')))::text;\n\\echo QA376_92a056_2_END\n",
+        "expected_payload": {
+          "database": "qa376_db_92a056",
+          "user": "qa376_user_92a056",
+          "major": 15,
+          "encoding": "UTF8",
+          "statement_timeout": "10s",
+          "idle_in_transaction_session_timeout": "30s",
+          "lock_timeout": "500ms"
+        },
+        "expected_SQLSTATE": null,
+        "frame": {
+          "pid": 227,
+          "frame": "QA376_92a056_2",
+          "payload": {
+            "user": "qa376_user_92a056",
+            "major": 15,
+            "database": "qa376_db_92a056",
+            "encoding": "UTF8",
+            "lock_timeout": "500ms",
+            "statement_timeout": "10s",
+            "idle_in_transaction_session_timeout": "30s"
+          }
+        },
+        "native_output": "QA376_92a056_render> {\"pid\": 227, \"frame\": \"QA376_92a056_2\", \"payload\": {\"user\": \"qa376_user_92a056\", \"major\": 15, \"database\": \"qa376_db_92a056\", \"encoding\": \"UTF8\", \"lock_timeout\": \"500ms\", \"statement_timeout\": \"10s\", \"idle_in_transaction_session_timeout\": \"30s\"}}\nQA376_92a056_render> QA376_92a056_2_END\nQA376_92a056_render> ",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 18.556,
+        "actor": "render",
+        "label": "fresh schema absence",
+        "stdin": "SELECT jsonb_build_object('frame','QA376_92a056_3','pid',pg_backend_pid(),'payload',to_regnamespace('qa376_92a056') IS NULL)::text;\n\\echo QA376_92a056_3_END\n",
+        "expected_payload": true,
+        "expected_SQLSTATE": null,
+        "frame": {
+          "pid": 227,
+          "frame": "QA376_92a056_3",
+          "payload": true
+        },
+        "native_output": "{\"pid\": 227, \"frame\": \"QA376_92a056_3\", \"payload\": true}\nQA376_92a056_render> QA376_92a056_3_END\nQA376_92a056_render> ",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 19.385,
+        "actor": "bex",
+        "label": "commit own baseline",
+        "stdin": "BEGIN;CREATE SCHEMA qa376_92a056;CREATE TABLE qa376_92a056.items(id int PRIMARY KEY,value int NOT NULL);INSERT INTO qa376_92a056.items VALUES(1,0);COMMIT;\nSELECT jsonb_build_object('frame','QA376_92a056_4','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_92a056.items))::text;\n\\echo QA376_92a056_4_END\n",
+        "expected_payload": [
+          [
+            1,
+            0
+          ]
+        ],
+        "expected_SQLSTATE": null,
+        "frame": {
+          "pid": 224,
+          "frame": "QA376_92a056_4",
+          "payload": [
+            [
+              1,
+              0
+            ]
+          ]
+        },
+        "native_output": "QA376_92a056_bex> {\"pid\": 224, \"frame\": \"QA376_92a056_4\", \"payload\": [[1, 0]]}\nQA376_92a056_bex> QA376_92a056_4_END\nQA376_92a056_bex> ",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 20.934,
+        "actor": "bex",
+        "label": "repeatable read establishes original snapshot",
+        "stdin": "BEGIN ISOLATION LEVEL REPEATABLE READ;\nSELECT jsonb_build_object('frame','QA376_92a056_5','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_92a056.items))::text;\n\\echo QA376_92a056_5_END\n",
+        "expected_payload": [
+          [
+            1,
+            0
+          ]
+        ],
+        "expected_SQLSTATE": null,
+        "frame": {
+          "pid": 224,
+          "frame": "QA376_92a056_5",
+          "payload": [
+            [
+              1,
+              0
+            ]
+          ]
+        },
+        "native_output": "QA376_92a056_bex> {\"pid\": 224, \"frame\": \"QA376_92a056_5\", \"payload\": [[1, 0]]}\nQA376_92a056_bex> QA376_92a056_5_END\nQA376_92a056_bex> ",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 21.817,
+        "actor": "render",
+        "label": "other connection commits value one",
+        "stdin": "UPDATE qa376_92a056.items SET value=1 WHERE id=1;\nSELECT jsonb_build_object('frame','QA376_92a056_6','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_92a056.items))::text;\n\\echo QA376_92a056_6_END\n",
+        "expected_payload": [
+          [
+            1,
+            1
+          ]
+        ],
+        "expected_SQLSTATE": null,
+        "frame": {
+          "pid": 227,
+          "frame": "QA376_92a056_6",
+          "payload": [
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        "native_output": "QA376_92a056_render> {\"pid\": 227, \"frame\": \"QA376_92a056_6\", \"payload\": [[1, 1]]}\nQA376_92a056_render> QA376_92a056_6_END\nQA376_92a056_render> ",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 22.725,
+        "actor": "bex",
+        "label": "repeatable read preserves earlier snapshot",
+        "stdin": "SELECT jsonb_build_object('frame','QA376_92a056_7','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_92a056.items))::text;\n\\echo QA376_92a056_7_END\n",
+        "expected_payload": [
+          [
+            1,
+            0
+          ]
+        ],
+        "expected_SQLSTATE": null,
+        "frame": {
+          "pid": 224,
+          "frame": "QA376_92a056_7",
+          "payload": [
+            [
+              1,
+              0
+            ]
+          ]
+        },
+        "native_output": "{\"pid\": 224, \"frame\": \"QA376_92a056_7\", \"payload\": [[1, 0]]}\nQA376_92a056_bex> QA376_92a056_7_END\nQA376_92a056_bex> ",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 23.427,
+        "actor": "bex",
+        "label": "new transaction sees committed value",
+        "stdin": "COMMIT;\nSELECT jsonb_build_object('frame','QA376_92a056_8','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_92a056.items))::text;\n\\echo QA376_92a056_8_END\n",
+        "expected_payload": [
+          [
+            1,
+            1
+          ]
+        ],
+        "expected_SQLSTATE": null,
+        "frame": {
+          "pid": 224,
+          "frame": "QA376_92a056_8",
+          "payload": [
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        "native_output": "QA376_92a056_bex> {\"pid\": 224, \"frame\": \"QA376_92a056_8\", \"payload\": [[1, 1]]}\nQA376_92a056_bex> QA376_92a056_8_END\nQA376_92a056_bex> ",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 24.466,
+        "actor": "bex",
+        "label": "read committed establishes first snapshot",
+        "stdin": "BEGIN ISOLATION LEVEL READ COMMITTED;\nSELECT jsonb_build_object('frame','QA376_92a056_9','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_92a056.items))::text;\n\\echo QA376_92a056_9_END\n",
+        "expected_payload": [
+          [
+            1,
+            1
+          ]
+        ],
+        "expected_SQLSTATE": null,
+        "frame": {
+          "pid": 224,
+          "frame": "QA376_92a056_9",
+          "payload": [
+            [
+              1,
+              1
+            ]
+          ]
+        },
+        "native_output": "QA376_92a056_bex> {\"pid\": 224, \"frame\": \"QA376_92a056_9\", \"payload\": [[1, 1]]}\nQA376_92a056_bex> QA376_92a056_9_END\n",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 25.365,
+        "actor": "render",
+        "label": "other connection commits value two",
+        "stdin": "UPDATE qa376_92a056.items SET value=2 WHERE id=1;\nSELECT jsonb_build_object('frame','QA376_92a056_10','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_92a056.items))::text;\n\\echo QA376_92a056_10_END\n",
+        "expected_payload": [
+          [
+            1,
+            2
+          ]
+        ],
+        "expected_SQLSTATE": null,
+        "frame": {
+          "pid": 227,
+          "frame": "QA376_92a056_10",
+          "payload": [
+            [
+              1,
+              2
+            ]
+          ]
+        },
+        "native_output": "QA376_92a056_render> {\"pid\": 227, \"frame\": \"QA376_92a056_10\", \"payload\": [[1, 2]]}\nQA376_92a056_render> QA376_92a056_10_END\nQA376_92a056_render> ",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 26.229,
+        "actor": "bex",
+        "label": "read committed refreshes statement snapshot",
+        "stdin": "SELECT jsonb_build_object('frame','QA376_92a056_11','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_92a056.items))::text;\n\\echo QA376_92a056_11_END\n",
+        "expected_payload": [
+          [
+            1,
+            2
+          ]
+        ],
+        "expected_SQLSTATE": null,
+        "frame": {
+          "pid": 224,
+          "frame": "QA376_92a056_11",
+          "payload": [
+            [
+              1,
+              2
+            ]
+          ]
+        },
+        "native_output": "QA376_92a056_bex> {\"pid\": 224, \"frame\": \"QA376_92a056_11\", \"payload\": [[1, 2]]}\nQA376_92a056_bex> QA376_92a056_11_END\nQA376_92a056_bex> ",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 26.959,
+        "actor": "bex",
+        "label": "finish read committed transaction",
+        "stdin": "COMMIT;\nSELECT jsonb_build_object('frame','QA376_92a056_12','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_92a056.items))::text;\n\\echo QA376_92a056_12_END\n",
+        "expected_payload": [
+          [
+            1,
+            2
+          ]
+        ],
+        "expected_SQLSTATE": null,
+        "frame": {
+          "pid": 224,
+          "frame": "QA376_92a056_12",
+          "payload": [
+            [
+              1,
+              2
+            ]
+          ]
+        },
+        "native_output": "QA376_92a056_bex> {\"pid\": 224, \"frame\": \"QA376_92a056_12\", \"payload\": [[1, 2]]}\nQA376_92a056_bex> QA376_92a056_12_END\nQA376_92a056_bex> ",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 27.922,
+        "actor": "bex",
+        "label": "hold own uncommitted row lock",
+        "stdin": "BEGIN;UPDATE qa376_92a056.items SET value=value+100 WHERE id=1;\nSELECT jsonb_build_object('frame','QA376_92a056_13','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_92a056.items))::text;\n\\echo QA376_92a056_13_END\n",
+        "expected_payload": [
+          [
+            1,
+            102
+          ]
+        ],
+        "expected_SQLSTATE": null,
+        "frame": {
+          "pid": 224,
+          "frame": "QA376_92a056_13",
+          "payload": [
+            [
+              1,
+              102
+            ]
+          ]
+        },
+        "native_output": "QA376_92a056_bex> {\"pid\": 224, \"frame\": \"QA376_92a056_13\", \"payload\": [[1, 102]]}\nQA376_92a056_bex> QA376_92a056_13_END\nQA376_92a056_bex> ",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 29.199,
+        "actor": "render",
+        "label": "independent read excludes uncommitted value",
+        "stdin": "SELECT jsonb_build_object('frame','QA376_92a056_14','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_92a056.items))::text;\n\\echo QA376_92a056_14_END\n",
+        "expected_payload": [
+          [
+            1,
+            2
+          ]
+        ],
+        "expected_SQLSTATE": null,
+        "frame": {
+          "pid": 227,
+          "frame": "QA376_92a056_14",
+          "payload": [
+            [
+              1,
+              2
+            ]
+          ]
+        },
+        "native_output": "{\"pid\": 227, \"frame\": \"QA376_92a056_14\", \"payload\": [[1, 2]]}\nQA376_92a056_render> QA376_92a056_14_END\nQA376_92a056_render> ",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 29.971,
+        "actor": "render",
+        "label": "server lock timeout aborts attempted update",
+        "stdin": "BEGIN;UPDATE qa376_92a056.items SET value=value+10 WHERE id=1;\n\\echo QA376_92a056_15_STATE :SQLSTATE\nROLLBACK;\nSELECT jsonb_build_object('frame','QA376_92a056_15','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_92a056.items))::text;\n\\echo QA376_92a056_15_END\n",
+        "expected_payload": [
+          [
+            1,
+            2
+          ]
+        ],
+        "expected_SQLSTATE": "55P03",
+        "frame": {
+          "pid": 227,
+          "frame": "QA376_92a056_15",
+          "payload": [
+            [
+              1,
+              2
+            ]
+          ]
+        },
+        "native_output": "ERROR:  canceling statement due to lock timeout\nCONTEXT:  while updating tuple (0,3) in relation \"items\"\nQA376_92a056_render> QA376_92a056_15_STATE 55P03\nQA376_92a056_render> QA376_92a056_render> {\"pid\": 227, \"frame\": \"QA376_92a056_15\", \"payload\": [[1, 2]]}\nQA376_92a056_render> QA376_92a056_15_END\nQA376_92a056_render> ",
+        "observed_SQLSTATE": "55P03",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 31.794,
+        "actor": "bex",
+        "label": "rollback lock holder releases uncommitted value",
+        "stdin": "ROLLBACK;\nSELECT jsonb_build_object('frame','QA376_92a056_16','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_92a056.items))::text;\n\\echo QA376_92a056_16_END\n",
+        "expected_payload": [
+          [
+            1,
+            2
+          ]
+        ],
+        "expected_SQLSTATE": null,
+        "frame": {
+          "pid": 224,
+          "frame": "QA376_92a056_16",
+          "payload": [
+            [
+              1,
+              2
+            ]
+          ]
+        },
+        "native_output": "QA376_92a056_bex> {\"pid\": 224, \"frame\": \"QA376_92a056_16\", \"payload\": [[1, 2]]}\nQA376_92a056_bex> QA376_92a056_16_END\nQA376_92a056_bex> ",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 32.666,
+        "actor": "bex",
+        "label": "unique failure recovered to savepoint preserves prior staged insert",
+        "stdin": "BEGIN;INSERT INTO qa376_92a056.items VALUES(2,20);SAVEPOINT before_bad;INSERT INTO qa376_92a056.items VALUES(1,999);\n\\echo QA376_92a056_17_STATE :SQLSTATE\nROLLBACK TO SAVEPOINT before_bad;\nSELECT jsonb_build_object('frame','QA376_92a056_17','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_92a056.items))::text;\n\\echo QA376_92a056_17_END\n",
+        "expected_payload": [
+          [
+            1,
+            2
+          ],
+          [
+            2,
+            20
+          ]
+        ],
+        "expected_SQLSTATE": "23505",
+        "frame": {
+          "pid": 224,
+          "frame": "QA376_92a056_17",
+          "payload": [
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              20
+            ]
+          ]
+        },
+        "native_output": "ERROR:  duplicate key value violates unique constraint \"items_pkey\"\nDETAIL:  Key (id)=(1) already exists.\nQA376_92a056_bex> QA376_92a056_17_STATE 23505\nQA376_92a056_bex> QA376_92a056_bex> {\"pid\": 224, \"frame\": \"QA376_92a056_17\", \"payload\": [[1, 2], [2, 20]]}\nQA376_92a056_bex> QA376_92a056_17_END\nQA376_92a056_bex> ",
+        "observed_SQLSTATE": "23505",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 34.178,
+        "actor": "bex",
+        "label": "commit valid work after savepoint recovery",
+        "stdin": "UPDATE qa376_92a056.items SET value=21 WHERE id=2;COMMIT;\nSELECT jsonb_build_object('frame','QA376_92a056_18','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_92a056.items))::text;\n\\echo QA376_92a056_18_END\n",
+        "expected_payload": [
+          [
+            1,
+            2
+          ],
+          [
+            2,
+            21
+          ]
+        ],
+        "expected_SQLSTATE": null,
+        "frame": {
+          "pid": 224,
+          "frame": "QA376_92a056_18",
+          "payload": [
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              21
+            ]
+          ]
+        },
+        "native_output": "QA376_92a056_bex> {\"pid\": 224, \"frame\": \"QA376_92a056_18\", \"payload\": [[1, 2], [2, 21]]}\nQA376_92a056_bex> QA376_92a056_18_END\n",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 35.238,
+        "actor": "render",
+        "label": "independent committed savepoint result",
+        "stdin": "SELECT jsonb_build_object('frame','QA376_92a056_19','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_92a056.items))::text;\n\\echo QA376_92a056_19_END\n",
+        "expected_payload": [
+          [
+            1,
+            2
+          ],
+          [
+            2,
+            21
+          ]
+        ],
+        "expected_SQLSTATE": null,
+        "frame": {
+          "pid": 227,
+          "frame": "QA376_92a056_19",
+          "payload": [
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              21
+            ]
+          ]
+        },
+        "native_output": "{\"pid\": 227, \"frame\": \"QA376_92a056_19\", \"payload\": [[1, 2], [2, 21]]}\nQA376_92a056_render> QA376_92a056_19_END\nQA376_92a056_render> ",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 35.947,
+        "actor": "bex",
+        "label": "serializable establishes old snapshot",
+        "stdin": "BEGIN ISOLATION LEVEL SERIALIZABLE;\nSELECT jsonb_build_object('frame','QA376_92a056_20','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_92a056.items))::text;\n\\echo QA376_92a056_20_END\n",
+        "expected_payload": [
+          [
+            1,
+            2
+          ],
+          [
+            2,
+            21
+          ]
+        ],
+        "expected_SQLSTATE": null,
+        "frame": {
+          "pid": 224,
+          "frame": "QA376_92a056_20",
+          "payload": [
+            [
+              1,
+              2
+            ],
+            [
+              2,
+              21
+            ]
+          ]
+        },
+        "native_output": "QA376_92a056_bex> QA376_92a056_bex> {\"pid\": 224, \"frame\": \"QA376_92a056_20\", \"payload\": [[1, 2], [2, 21]]}\nQA376_92a056_bex> QA376_92a056_20_END\nQA376_92a056_bex> ",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 36.802,
+        "actor": "render",
+        "label": "competing serializable update commits",
+        "stdin": "BEGIN ISOLATION LEVEL SERIALIZABLE;UPDATE qa376_92a056.items SET value=3 WHERE id=1;COMMIT;\nSELECT jsonb_build_object('frame','QA376_92a056_21','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_92a056.items))::text;\n\\echo QA376_92a056_21_END\n",
+        "expected_payload": [
+          [
+            1,
+            3
+          ],
+          [
+            2,
+            21
+          ]
+        ],
+        "expected_SQLSTATE": null,
+        "frame": {
+          "pid": 227,
+          "frame": "QA376_92a056_21",
+          "payload": [
+            [
+              1,
+              3
+            ],
+            [
+              2,
+              21
+            ]
+          ]
+        },
+        "native_output": "QA376_92a056_render> {\"pid\": 227, \"frame\": \"QA376_92a056_21\", \"payload\": [[1, 3], [2, 21]]}\nQA376_92a056_render> QA376_92a056_21_END\n",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 38.056,
+        "actor": "bex",
+        "label": "serialization error rolls back original attempt",
+        "stdin": "UPDATE qa376_92a056.items SET value=4 WHERE id=1;\n\\echo QA376_92a056_22_STATE :SQLSTATE\nROLLBACK;\nSELECT jsonb_build_object('frame','QA376_92a056_22','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_92a056.items))::text;\n\\echo QA376_92a056_22_END\n",
+        "expected_payload": [
+          [
+            1,
+            3
+          ],
+          [
+            2,
+            21
+          ]
+        ],
+        "expected_SQLSTATE": "40001",
+        "frame": {
+          "pid": 224,
+          "frame": "QA376_92a056_22",
+          "payload": [
+            [
+              1,
+              3
+            ],
+            [
+              2,
+              21
+            ]
+          ]
+        },
+        "native_output": "ERROR:  could not serialize access due to concurrent update\nQA376_92a056_bex> QA376_92a056_22_STATE 40001\nQA376_92a056_bex> QA376_92a056_bex> {\"pid\": 224, \"frame\": \"QA376_92a056_22\", \"payload\": [[1, 3], [2, 21]]}\nQA376_92a056_bex> QA376_92a056_22_END\nQA376_92a056_bex> ",
+        "observed_SQLSTATE": "40001",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 39.105,
+        "actor": "render",
+        "label": "independent read confirms aborted update absent",
+        "stdin": "SELECT jsonb_build_object('frame','QA376_92a056_23','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_92a056.items))::text;\n\\echo QA376_92a056_23_END\n",
+        "expected_payload": [
+          [
+            1,
+            3
+          ],
+          [
+            2,
+            21
+          ]
+        ],
+        "expected_SQLSTATE": null,
+        "frame": {
+          "pid": 227,
+          "frame": "QA376_92a056_23",
+          "payload": [
+            [
+              1,
+              3
+            ],
+            [
+              2,
+              21
+            ]
+          ]
+        },
+        "native_output": "QA376_92a056_render> {\"pid\": 227, \"frame\": \"QA376_92a056_23\", \"payload\": [[1, 3], [2, 21]]}\nQA376_92a056_render> QA376_92a056_23_END\n",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 39.867,
+        "actor": "bex",
+        "label": "fresh serializable retry commits after proven rollback",
+        "stdin": "BEGIN ISOLATION LEVEL SERIALIZABLE;UPDATE qa376_92a056.items SET value=4 WHERE id=1;COMMIT;\nSELECT jsonb_build_object('frame','QA376_92a056_24','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_92a056.items))::text;\n\\echo QA376_92a056_24_END\n",
+        "expected_payload": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            21
+          ]
+        ],
+        "expected_SQLSTATE": null,
+        "frame": {
+          "pid": 224,
+          "frame": "QA376_92a056_24",
+          "payload": [
+            [
+              1,
+              4
+            ],
+            [
+              2,
+              21
+            ]
+          ]
+        },
+        "native_output": "QA376_92a056_bex> {\"pid\": 224, \"frame\": \"QA376_92a056_24\", \"payload\": [[1, 4], [2, 21]]}\nQA376_92a056_bex> QA376_92a056_24_END\nQA376_92a056_bex> ",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 41.07,
+        "actor": "render",
+        "label": "independent read confirms one fresh retry",
+        "stdin": "SELECT jsonb_build_object('frame','QA376_92a056_25','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_92a056.items))::text;\n\\echo QA376_92a056_25_END\n",
+        "expected_payload": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            21
+          ]
+        ],
+        "expected_SQLSTATE": null,
+        "frame": {
+          "pid": 227,
+          "frame": "QA376_92a056_25",
+          "payload": [
+            [
+              1,
+              4
+            ],
+            [
+              2,
+              21
+            ]
+          ]
+        },
+        "native_output": "QA376_92a056_render> {\"pid\": 227, \"frame\": \"QA376_92a056_25\", \"payload\": [[1, 4], [2, 21]]}\nQA376_92a056_render> QA376_92a056_25_END\n",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 41.762,
+        "actor": "bex",
+        "label": "drop exact own schema",
+        "stdin": "DROP SCHEMA qa376_92a056 CASCADE;\nSELECT jsonb_build_object('frame','QA376_92a056_26','pid',pg_backend_pid(),'payload',to_regnamespace('qa376_92a056') IS NULL)::text;\n\\echo QA376_92a056_26_END\n",
+        "expected_payload": true,
+        "expected_SQLSTATE": null,
+        "frame": {
+          "pid": 224,
+          "frame": "QA376_92a056_26",
+          "payload": true
+        },
+        "native_output": "NOTICE:  drop cascades to table qa376_92a056.items\nQA376_92a056_bex> {\"pid\": 224, \"frame\": \"QA376_92a056_26\", \"payload\": true}\nQA376_92a056_bex> QA376_92a056_26_END\nQA376_92a056_bex> ",
+        "pass": true
+      },
+      {
+        "at_monotonic_seconds": 42.635,
+        "actor": "render",
+        "label": "independent own schema absence",
+        "stdin": "SELECT jsonb_build_object('frame','QA376_92a056_27','pid',pg_backend_pid(),'payload',to_regnamespace('qa376_92a056') IS NULL)::text;\n\\echo QA376_92a056_27_END\n",
+        "expected_payload": true,
+        "expected_SQLSTATE": null,
+        "frame": {
+          "pid": 227,
+          "frame": "QA376_92a056_27",
+          "payload": true
+        },
+        "native_output": "QA376_92a056_render> {\"pid\": 227, \"frame\": \"QA376_92a056_27\", \"payload\": true}\nQA376_92a056_render> QA376_92a056_27_END\nQA376_92a056_render> ",
+        "pass": true
+      }
+    ],
+    "sessions": {
+      "bex": {
+        "intent": "finite native persistent psql client with private config/history",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db99ijq11h4c73ffkn6g",
+          "--confirm",
+          "-o",
+          "interactive",
+          "--",
+          "-X",
+          "-n",
+          "-q",
+          "-t",
+          "-A",
+          "-P",
+          "pager=off",
+          "-v",
+          "ON_ERROR_STOP=off",
+          "-v",
+          "PROMPT1=QA376_92a056_bex> ",
+          "-v",
+          "PROMPT2=QA376_CONT> "
+        ],
+        "PID": 18809,
+        "PGID": 18809,
+        "backend_pid": 224,
+        "natural_exit": 0,
+        "PTY": {
+          "stdin_stdout_TTY": true,
+          "controlling_terminal": true,
+          "terminal_ISIG_enabled": true,
+          "terminal_echo_disabled": true,
+          "rows": 40,
+          "columns": 140,
+          "elapsed": 53.631,
+          "native_exit": 0,
+          "output": "                                                                                             \n  The Render CLI collects usage data on commands and performance to help us keep improving.  \n  Telemetry is currently disabled, so no data is being sent to Render.                       \n                                                                                             \n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \n                                                                                             \n\n",
+          "own_process_group_cleaned": true,
+          "events": []
+        }
+      },
+      "render": {
+        "intent": "finite native persistent psql client with private config/history",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db99ijq11h4c73ffkn6g",
+          "--confirm",
+          "-o",
+          "interactive",
+          "--",
+          "-X",
+          "-n",
+          "-q",
+          "-t",
+          "-A",
+          "-P",
+          "pager=off",
+          "-v",
+          "ON_ERROR_STOP=off",
+          "-v",
+          "PROMPT1=QA376_92a056_render> ",
+          "-v",
+          "PROMPT2=QA376_CONT> "
+        ],
+        "PID": 18840,
+        "PGID": 18840,
+        "backend_pid": 227,
+        "natural_exit": 0,
+        "PTY": {
+          "stdin_stdout_TTY": true,
+          "controlling_terminal": true,
+          "terminal_ISIG_enabled": true,
+          "terminal_echo_disabled": true,
+          "rows": 40,
+          "columns": 140,
+          "elapsed": 44.512,
+          "native_exit": 0,
+          "output": "                                                                                             \n  The Render CLI collects usage data on commands and performance to help us keep improving.  \n  Telemetry is currently disabled, so no data is being sent to Render.                       \n                                                                                             \n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \n                                                                                             \n\n",
+          "own_process_group_cleaned": true,
+          "events": []
+        }
+      }
+    },
+    "owned_schema_intent": {
+      "name": "qa376_92a056",
+      "before_absent": true
+    },
+    "pass": true,
+    "schema_removed": true,
+    "owned_actor_config_history_tmp_removed": true
+  },
+  "sql_events": [
+    {
+      "at": "2026-10-16T21:42:54.735676+00:00",
+      "label": "own vector extension catalog bex",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db99ijq11h4c73ffkn6g",
+      "command": "SELECT jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'),'vector_version',(SELECT extversion FROM pg_extension WHERE extname='vector'),'available_vector',(SELECT default_version FROM pg_available_extensions WHERE name='vector'),'pg_stat_statements_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='pg_stat_statements'),'hstore_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='hstore'))::text;",
+      "result": {
+        "at": "2026-10-16T21:42:58.816716+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db99ijq11h4c73ffkn6g",
+          "--command",
+          "SELECT jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'),'vector_version',(SELECT extversion FROM pg_extension WHERE extname='vector'),'available_vector',(SELECT default_version FROM pg_available_extensions WHERE name='vector'),'pg_stat_statements_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='pg_stat_statements'),'hstore_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='hstore'))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 3.831,
+        "stdout": "{\"output\": \"{\\\"user\\\": \\\"qa376_user_92a056\\\", \\\"major\\\": 15, \\\"database\\\": \\\"qa376_db_92a056\\\", \\\"vector_version\\\": \\\"0.8.6\\\", \\\"available_vector\\\": \\\"0.8.6\\\", \\\"hstore_installed\\\": false, \\\"vector_installed\\\": true, \\\"pg_stat_statements_installed\\\": true}\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T21:42:59.647331+00:00",
+      "label": "ordinary original IF NOT EXISTS vector migration bex",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db99ijq11h4c73ffkn6g",
+      "command": "CREATE EXTENSION IF NOT EXISTS vector; SELECT jsonb_build_object('vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'))::text;",
+      "result": {
+        "at": "2026-10-16T21:43:03.267556+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db99ijq11h4c73ffkn6g",
+          "--command",
+          "CREATE EXTENSION IF NOT EXISTS vector; SELECT jsonb_build_object('vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 3.391,
+        "stdout": "{\"output\": \"{\\\"vector_installed\\\": true}\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T21:43:04.356297+00:00",
+      "label": "own real vector rows distance and HNSW bex",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db99ijq11h4c73ffkn6g",
+      "command": "BEGIN; CREATE SCHEMA qa376_92a056_bex; CREATE TABLE qa376_92a056_bex.items(id int PRIMARY KEY, embedding public.vector(3)); INSERT INTO qa376_92a056_bex.items VALUES(1,'[1,2,3]'),(2,'[4,5,6]'),(3,'[1,1,1]'); CREATE INDEX items_embedding_hnsw ON qa376_92a056_bex.items USING hnsw(embedding public.vector_l2_ops); COMMIT; SELECT jsonb_build_object('rows',(SELECT count(*) FROM qa376_92a056_bex.items),'nearest',(SELECT id FROM qa376_92a056_bex.items ORDER BY embedding <-> '[1,1,2]' LIMIT 1),'cosine',(SELECT round((embedding <=> '[2,4,6]')::numeric,6) FROM qa376_92a056_bex.items WHERE id=1),'index_method',(SELECT am.amname FROM pg_class i JOIN pg_namespace n ON n.oid=i.relnamespace JOIN pg_am am ON am.oid=i.relam WHERE n.nspname='qa376_92a056_bex' AND i.relname='items_embedding_hnsw'))::text;",
+      "result": {
+        "at": "2026-10-16T21:43:07.529559+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db99ijq11h4c73ffkn6g",
+          "--command",
+          "BEGIN; CREATE SCHEMA qa376_92a056_bex; CREATE TABLE qa376_92a056_bex.items(id int PRIMARY KEY, embedding public.vector(3)); INSERT INTO qa376_92a056_bex.items VALUES(1,'[1,2,3]'),(2,'[4,5,6]'),(3,'[1,1,1]'); CREATE INDEX items_embedding_hnsw ON qa376_92a056_bex.items USING hnsw(embedding public.vector_l2_ops); COMMIT; SELECT jsonb_build_object('rows',(SELECT count(*) FROM qa376_92a056_bex.items),'nearest',(SELECT id FROM qa376_92a056_bex.items ORDER BY embedding <-> '[1,1,2]' LIMIT 1),'cosine',(SELECT round((embedding <=> '[2,4,6]')::numeric,6) FROM qa376_92a056_bex.items WHERE id=1),'index_method',(SELECT am.amname FROM pg_class i JOIN pg_namespace n ON n.oid=i.relnamespace JOIN pg_am am ON am.oid=i.relam WHERE n.nspname='qa376_92a056_bex' AND i.relname='items_embedding_hnsw'))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.961,
+        "stdout": "{\"output\": \"{\\\"rows\\\": 3, \\\"cosine\\\": 0.0, \\\"nearest\\\": 3, \\\"index_method\\\": \\\"hnsw\\\"}\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T21:43:08.467269+00:00",
+      "label": "own invalid vector dimension rolls back entire new transaction bex",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db99ijq11h4c73ffkn6g",
+      "command": "BEGIN; INSERT INTO qa376_92a056_bex.items VALUES(4,'[2,2,2]'); INSERT INTO qa376_92a056_bex.items VALUES(5,'[1,2]'); COMMIT;",
+      "result": {
+        "at": "2026-10-16T21:43:11.324235+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db99ijq11h4c73ffkn6g",
+          "--command",
+          "BEGIN; INSERT INTO qa376_92a056_bex.items VALUES(4,'[2,2,2]'); INSERT INTO qa376_92a056_bex.items VALUES(5,'[1,2]'); COMMIT;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": null,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 2.621,
+        "stdout": "",
+        "stderr": "Error: exit status 1: ERROR:  expected 3 dimensions, not 2\n"
+      }
+    },
+    {
+      "at": "2026-10-16T21:43:12.203981+00:00",
+      "label": "own vector extension catalog render",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db99ijq11h4c73ffkn6g",
+      "command": "SELECT jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'),'vector_version',(SELECT extversion FROM pg_extension WHERE extname='vector'),'available_vector',(SELECT default_version FROM pg_available_extensions WHERE name='vector'),'pg_stat_statements_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='pg_stat_statements'),'hstore_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='hstore'))::text;",
+      "result": {
+        "at": "2026-10-16T21:43:15.303142+00:00",
+        "binary": "unchanged Render2.27.0/a764810a7682",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db99ijq11h4c73ffkn6g",
+          "--command",
+          "SELECT jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'),'vector_version',(SELECT extversion FROM pg_extension WHERE extname='vector'),'available_vector',(SELECT default_version FROM pg_available_extensions WHERE name='vector'),'pg_stat_statements_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='pg_stat_statements'),'hstore_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='hstore'))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": {
+          "API_only_CA_preparation": true,
+          "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g/connection-info",
+          "HTTP": "200",
+          "elapsed": 0.404,
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "certificate_sha256": "e2727fd1ec7d4ee706ed6411ebae59b1f08fe4d44f7c2359b92d5079f28303b9",
+          "PGSSLROOTCERT": "<owned-temp>/sweep376-owned-pg-ca.pem",
+          "connection_info_payload_not_retained": true
+        },
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.441,
+        "stdout": "{\"output\": \"{\\\"user\\\": \\\"qa376_user_92a056\\\", \\\"major\\\": 15, \\\"database\\\": \\\"qa376_db_92a056\\\", \\\"vector_version\\\": \\\"0.8.6\\\", \\\"available_vector\\\": \\\"0.8.6\\\", \\\"hstore_installed\\\": false, \\\"vector_installed\\\": true, \\\"pg_stat_statements_installed\\\": true}\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T21:43:16.206276+00:00",
+      "label": "ordinary original IF NOT EXISTS vector migration render",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db99ijq11h4c73ffkn6g",
+      "command": "CREATE EXTENSION IF NOT EXISTS vector; SELECT jsonb_build_object('vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'))::text;",
+      "result": {
+        "at": "2026-10-16T21:43:19.486155+00:00",
+        "binary": "unchanged Render2.27.0/a764810a7682",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db99ijq11h4c73ffkn6g",
+          "--command",
+          "CREATE EXTENSION IF NOT EXISTS vector; SELECT jsonb_build_object('vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": {
+          "API_only_CA_preparation": true,
+          "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g/connection-info",
+          "HTTP": "200",
+          "elapsed": 0.368,
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "certificate_sha256": "e2727fd1ec7d4ee706ed6411ebae59b1f08fe4d44f7c2359b92d5079f28303b9",
+          "PGSSLROOTCERT": "<owned-temp>/sweep376-owned-pg-ca.pem",
+          "connection_info_payload_not_retained": true
+        },
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.658,
+        "stdout": "{\"output\": \"{\\\"vector_installed\\\": true}\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T21:43:21.110797+00:00",
+      "label": "own real vector rows distance and HNSW render",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db99ijq11h4c73ffkn6g",
+      "command": "BEGIN; CREATE SCHEMA qa376_92a056_render; CREATE TABLE qa376_92a056_render.items(id int PRIMARY KEY, embedding public.vector(3)); INSERT INTO qa376_92a056_render.items VALUES(1,'[1,2,3]'),(2,'[4,5,6]'),(3,'[1,1,1]'); CREATE INDEX items_embedding_hnsw ON qa376_92a056_render.items USING hnsw(embedding public.vector_l2_ops); COMMIT; SELECT jsonb_build_object('rows',(SELECT count(*) FROM qa376_92a056_render.items),'nearest',(SELECT id FROM qa376_92a056_render.items ORDER BY embedding <-> '[1,1,2]' LIMIT 1),'cosine',(SELECT round((embedding <=> '[2,4,6]')::numeric,6) FROM qa376_92a056_render.items WHERE id=1),'index_method',(SELECT am.amname FROM pg_class i JOIN pg_namespace n ON n.oid=i.relnamespace JOIN pg_am am ON am.oid=i.relam WHERE n.nspname='qa376_92a056_render' AND i.relname='items_embedding_hnsw'))::text;",
+      "result": {
+        "at": "2026-10-16T21:43:24.307293+00:00",
+        "binary": "unchanged Render2.27.0/a764810a7682",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db99ijq11h4c73ffkn6g",
+          "--command",
+          "BEGIN; CREATE SCHEMA qa376_92a056_render; CREATE TABLE qa376_92a056_render.items(id int PRIMARY KEY, embedding public.vector(3)); INSERT INTO qa376_92a056_render.items VALUES(1,'[1,2,3]'),(2,'[4,5,6]'),(3,'[1,1,1]'); CREATE INDEX items_embedding_hnsw ON qa376_92a056_render.items USING hnsw(embedding public.vector_l2_ops); COMMIT; SELECT jsonb_build_object('rows',(SELECT count(*) FROM qa376_92a056_render.items),'nearest',(SELECT id FROM qa376_92a056_render.items ORDER BY embedding <-> '[1,1,2]' LIMIT 1),'cosine',(SELECT round((embedding <=> '[2,4,6]')::numeric,6) FROM qa376_92a056_render.items WHERE id=1),'index_method',(SELECT am.amname FROM pg_class i JOIN pg_namespace n ON n.oid=i.relnamespace JOIN pg_am am ON am.oid=i.relam WHERE n.nspname='qa376_92a056_render' AND i.relname='items_embedding_hnsw'))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": {
+          "API_only_CA_preparation": true,
+          "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g/connection-info",
+          "HTTP": "200",
+          "elapsed": 0.442,
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "certificate_sha256": "e2727fd1ec7d4ee706ed6411ebae59b1f08fe4d44f7c2359b92d5079f28303b9",
+          "PGSSLROOTCERT": "<owned-temp>/sweep376-owned-pg-ca.pem",
+          "connection_info_payload_not_retained": true
+        },
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.5,
+        "stdout": "{\"output\": \"{\\\"rows\\\": 3, \\\"cosine\\\": 0.0, \\\"nearest\\\": 3, \\\"index_method\\\": \\\"hnsw\\\"}\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T21:43:25.189278+00:00",
+      "label": "own invalid vector dimension rolls back entire new transaction render",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db99ijq11h4c73ffkn6g",
+      "command": "BEGIN; INSERT INTO qa376_92a056_render.items VALUES(4,'[2,2,2]'); INSERT INTO qa376_92a056_render.items VALUES(5,'[1,2]'); COMMIT;",
+      "result": {
+        "at": "2026-10-16T21:43:28.825662+00:00",
+        "binary": "unchanged Render2.27.0/a764810a7682",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db99ijq11h4c73ffkn6g",
+          "--command",
+          "BEGIN; INSERT INTO qa376_92a056_render.items VALUES(4,'[2,2,2]'); INSERT INTO qa376_92a056_render.items VALUES(5,'[1,2]'); COMMIT;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": {
+          "API_only_CA_preparation": true,
+          "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g/connection-info",
+          "HTTP": "200",
+          "elapsed": 0.391,
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "certificate_sha256": "e2727fd1ec7d4ee706ed6411ebae59b1f08fe4d44f7c2359b92d5079f28303b9",
+          "PGSSLROOTCERT": "<owned-temp>/sweep376-owned-pg-ca.pem",
+          "connection_info_payload_not_retained": true
+        },
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 2.998,
+        "stdout": "",
+        "stderr": "Error: exit status 1: ERROR:  expected 3 dimensions, not 2\n"
+      }
+    },
+    {
+      "at": "2026-10-16T21:43:29.674783+00:00",
+      "label": "independent opposite client checks vector data and invalid transaction rollback bex",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db99ijq11h4c73ffkn6g",
+      "command": "SELECT jsonb_build_object('rows',(SELECT count(*) FROM qa376_92a056_render.items),'rejected_transaction_rows',(SELECT count(*) FROM qa376_92a056_render.items WHERE id>=4),'nearest',(SELECT id FROM qa376_92a056_render.items ORDER BY embedding <-> '[1,1,2]' LIMIT 1))::text;",
+      "result": {
+        "at": "2026-10-16T21:43:33.002022+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db99ijq11h4c73ffkn6g",
+          "--command",
+          "SELECT jsonb_build_object('rows',(SELECT count(*) FROM qa376_92a056_render.items),'rejected_transaction_rows',(SELECT count(*) FROM qa376_92a056_render.items WHERE id>=4),'nearest',(SELECT id FROM qa376_92a056_render.items ORDER BY embedding <-> '[1,1,2]' LIMIT 1))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 3.108,
+        "stdout": "{\"output\": \"{\\\"rows\\\": 3, \\\"nearest\\\": 3, \\\"rejected_transaction_rows\\\": 0}\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T21:43:33.813442+00:00",
+      "label": "independent opposite client checks vector data and invalid transaction rollback render",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db99ijq11h4c73ffkn6g",
+      "command": "SELECT jsonb_build_object('rows',(SELECT count(*) FROM qa376_92a056_bex.items),'rejected_transaction_rows',(SELECT count(*) FROM qa376_92a056_bex.items WHERE id>=4),'nearest',(SELECT id FROM qa376_92a056_bex.items ORDER BY embedding <-> '[1,1,2]' LIMIT 1))::text;",
+      "result": {
+        "at": "2026-10-16T21:43:37.098602+00:00",
+        "binary": "unchanged Render2.27.0/a764810a7682",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db99ijq11h4c73ffkn6g",
+          "--command",
+          "SELECT jsonb_build_object('rows',(SELECT count(*) FROM qa376_92a056_bex.items),'rejected_transaction_rows',(SELECT count(*) FROM qa376_92a056_bex.items WHERE id>=4),'nearest',(SELECT id FROM qa376_92a056_bex.items ORDER BY embedding <-> '[1,1,2]' LIMIT 1))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": {
+          "API_only_CA_preparation": true,
+          "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g/connection-info",
+          "HTTP": "200",
+          "elapsed": 0.363,
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "certificate_sha256": "e2727fd1ec7d4ee706ed6411ebae59b1f08fe4d44f7c2359b92d5079f28303b9",
+          "PGSSLROOTCERT": "<owned-temp>/sweep376-owned-pg-ca.pem",
+          "connection_info_payload_not_retained": true
+        },
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.684,
+        "stdout": "{\"output\": \"{\\\"rows\\\": 3, \\\"nearest\\\": 3, \\\"rejected_transaction_rows\\\": 0}\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T21:43:37.969882+00:00",
+      "label": "ordinary hstore neighbor transaction bex",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db99ijq11h4c73ffkn6g",
+      "command": "BEGIN; CREATE EXTENSION IF NOT EXISTS hstore; SELECT jsonb_build_object('hstore',('a=>1'::hstore)->'a')::text; ROLLBACK;",
+      "result": {
+        "at": "2026-10-16T21:43:41.174682+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db99ijq11h4c73ffkn6g",
+          "--command",
+          "BEGIN; CREATE EXTENSION IF NOT EXISTS hstore; SELECT jsonb_build_object('hstore',('a=>1'::hstore)->'a')::text; ROLLBACK;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.986,
+        "stdout": "{\"output\": \"{\\\"hstore\\\": \\\"1\\\"}\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T21:43:42.206271+00:00",
+      "label": "own vector extension catalog bex",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db99ijq11h4c73ffkn6g",
+      "command": "SELECT jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'),'vector_version',(SELECT extversion FROM pg_extension WHERE extname='vector'),'available_vector',(SELECT default_version FROM pg_available_extensions WHERE name='vector'),'pg_stat_statements_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='pg_stat_statements'),'hstore_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='hstore'))::text;",
+      "result": {
+        "at": "2026-10-16T21:43:45.384764+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db99ijq11h4c73ffkn6g",
+          "--command",
+          "SELECT jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'),'vector_version',(SELECT extversion FROM pg_extension WHERE extname='vector'),'available_vector',(SELECT default_version FROM pg_available_extensions WHERE name='vector'),'pg_stat_statements_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='pg_stat_statements'),'hstore_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='hstore'))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.913,
+        "stdout": "{\"output\": \"{\\\"user\\\": \\\"qa376_user_92a056\\\", \\\"major\\\": 15, \\\"database\\\": \\\"qa376_db_92a056\\\", \\\"vector_version\\\": \\\"0.8.6\\\", \\\"available_vector\\\": \\\"0.8.6\\\", \\\"hstore_installed\\\": false, \\\"vector_installed\\\": true, \\\"pg_stat_statements_installed\\\": true}\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T21:43:46.252884+00:00",
+      "label": "ordinary hstore neighbor transaction render",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db99ijq11h4c73ffkn6g",
+      "command": "BEGIN; CREATE EXTENSION IF NOT EXISTS hstore; SELECT jsonb_build_object('hstore',('a=>1'::hstore)->'a')::text; ROLLBACK;",
+      "result": {
+        "at": "2026-10-16T21:43:49.556079+00:00",
+        "binary": "unchanged Render2.27.0/a764810a7682",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db99ijq11h4c73ffkn6g",
+          "--command",
+          "BEGIN; CREATE EXTENSION IF NOT EXISTS hstore; SELECT jsonb_build_object('hstore',('a=>1'::hstore)->'a')::text; ROLLBACK;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": {
+          "API_only_CA_preparation": true,
+          "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g/connection-info",
+          "HTTP": "200",
+          "elapsed": 0.353,
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "certificate_sha256": "e2727fd1ec7d4ee706ed6411ebae59b1f08fe4d44f7c2359b92d5079f28303b9",
+          "PGSSLROOTCERT": "<owned-temp>/sweep376-owned-pg-ca.pem",
+          "connection_info_payload_not_retained": true
+        },
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.59,
+        "stdout": "{\"output\": \"{\\\"hstore\\\": \\\"1\\\"}\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T21:43:50.473814+00:00",
+      "label": "own vector extension catalog render",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db99ijq11h4c73ffkn6g",
+      "command": "SELECT jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'),'vector_version',(SELECT extversion FROM pg_extension WHERE extname='vector'),'available_vector',(SELECT default_version FROM pg_available_extensions WHERE name='vector'),'pg_stat_statements_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='pg_stat_statements'),'hstore_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='hstore'))::text;",
+      "result": {
+        "at": "2026-10-16T21:43:53.797381+00:00",
+        "binary": "unchanged Render2.27.0/a764810a7682",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db99ijq11h4c73ffkn6g",
+          "--command",
+          "SELECT jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'),'vector_version',(SELECT extversion FROM pg_extension WHERE extname='vector'),'available_vector',(SELECT default_version FROM pg_available_extensions WHERE name='vector'),'pg_stat_statements_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='pg_stat_statements'),'hstore_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='hstore'))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": {
+          "API_only_CA_preparation": true,
+          "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g/connection-info",
+          "HTTP": "200",
+          "elapsed": 0.427,
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "certificate_sha256": "e2727fd1ec7d4ee706ed6411ebae59b1f08fe4d44f7c2359b92d5079f28303b9",
+          "PGSSLROOTCERT": "<owned-temp>/sweep376-owned-pg-ca.pem",
+          "connection_info_payload_not_retained": true
+        },
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.658,
+        "stdout": "{\"output\": \"{\\\"user\\\": \\\"qa376_user_92a056\\\", \\\"major\\\": 15, \\\"database\\\": \\\"qa376_db_92a056\\\", \\\"vector_version\\\": \\\"0.8.6\\\", \\\"available_vector\\\": \\\"0.8.6\\\", \\\"hstore_installed\\\": false, \\\"vector_installed\\\": true, \\\"pg_stat_statements_installed\\\": true}\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T21:43:54.651835+00:00",
+      "label": "remove exact own vector test schemas",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db99ijq11h4c73ffkn6g",
+      "command": "BEGIN; DROP SCHEMA qa376_92a056_bex CASCADE; DROP SCHEMA qa376_92a056_render CASCADE; COMMIT; SELECT jsonb_build_object('remaining_own_schemas',(SELECT count(*) FROM pg_namespace WHERE nspname LIKE 'qa376_92a056_%'),'vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'))::text;",
+      "result": {
+        "at": "2026-10-16T21:43:58.607275+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db99ijq11h4c73ffkn6g",
+          "--command",
+          "BEGIN; DROP SCHEMA qa376_92a056_bex CASCADE; DROP SCHEMA qa376_92a056_render CASCADE; COMMIT; SELECT jsonb_build_object('remaining_own_schemas',(SELECT count(*) FROM pg_namespace WHERE nspname LIKE 'qa376_92a056_%'),'vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 3.731,
+        "stdout": "{\"output\": \"{\\\"vector_installed\\\": true, \\\"remaining_own_schemas\\\": 0}\"}",
+        "stderr": ""
+      }
+    }
+  ],
+  "vector_checks": [
+    {
+      "at": "2026-10-16T21:42:59.049158+00:00",
+      "kind": "catalog",
+      "client": "bex",
+      "event": {
+        "at": "2026-10-16T21:42:54.735676+00:00",
+        "label": "own vector extension catalog bex",
+        "intent": "SQL on own fresh Free database",
+        "selector": "dpg-db99ijq11h4c73ffkn6g",
+        "command": "SELECT jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'),'vector_version',(SELECT extversion FROM pg_extension WHERE extname='vector'),'available_vector',(SELECT default_version FROM pg_available_extensions WHERE name='vector'),'pg_stat_statements_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='pg_stat_statements'),'hstore_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='hstore'))::text;",
+        "result": {
+          "at": "2026-10-16T21:42:58.816716+00:00",
+          "binary": "released Bex0.3.2",
+          "command": [
+            "bex",
+            "psql",
+            "dpg-db99ijq11h4c73ffkn6g",
+            "--command",
+            "SELECT jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'),'vector_version',(SELECT extversion FROM pg_extension WHERE extname='vector'),'available_vector',(SELECT default_version FROM pg_available_extensions WHERE name='vector'),'pg_stat_statements_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='pg_stat_statements'),'hstore_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='hstore'))::text;",
+            "--confirm",
+            "-o",
+            "json",
+            "--",
+            "-X",
+            "-q",
+            "-t",
+            "-A",
+            "-v",
+            "ON_ERROR_STOP=1"
+          ],
+          "client_setup": null,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 3.831,
+          "stdout": "{\"output\": \"{\\\"user\\\": \\\"qa376_user_92a056\\\", \\\"major\\\": 15, \\\"database\\\": \\\"qa376_db_92a056\\\", \\\"vector_version\\\": \\\"0.8.6\\\", \\\"available_vector\\\": \\\"0.8.6\\\", \\\"hstore_installed\\\": false, \\\"vector_installed\\\": true, \\\"pg_stat_statements_installed\\\": true}\"}",
+          "stderr": ""
+        }
+      },
+      "observed": {
+        "user": "qa376_user_92a056",
+        "major": 15,
+        "database": "qa376_db_92a056",
+        "vector_version": "0.8.6",
+        "available_vector": "0.8.6",
+        "hstore_installed": false,
+        "vector_installed": true,
+        "pg_stat_statements_installed": true
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T21:43:03.527490+00:00",
+      "kind": "migration",
+      "client": "bex",
+      "event": {
+        "at": "2026-10-16T21:42:59.647331+00:00",
+        "label": "ordinary original IF NOT EXISTS vector migration bex",
+        "intent": "SQL on own fresh Free database",
+        "selector": "dpg-db99ijq11h4c73ffkn6g",
+        "command": "CREATE EXTENSION IF NOT EXISTS vector; SELECT jsonb_build_object('vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'))::text;",
+        "result": {
+          "at": "2026-10-16T21:43:03.267556+00:00",
+          "binary": "released Bex0.3.2",
+          "command": [
+            "bex",
+            "psql",
+            "dpg-db99ijq11h4c73ffkn6g",
+            "--command",
+            "CREATE EXTENSION IF NOT EXISTS vector; SELECT jsonb_build_object('vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'))::text;",
+            "--confirm",
+            "-o",
+            "json",
+            "--",
+            "-X",
+            "-q",
+            "-t",
+            "-A",
+            "-v",
+            "ON_ERROR_STOP=1"
+          ],
+          "client_setup": null,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 3.391,
+          "stdout": "{\"output\": \"{\\\"vector_installed\\\": true}\"}",
+          "stderr": ""
+        }
+      },
+      "observed": {
+        "vector_installed": true
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T21:43:07.788575+00:00",
+      "kind": "use",
+      "client": "bex",
+      "event": {
+        "at": "2026-10-16T21:43:04.356297+00:00",
+        "label": "own real vector rows distance and HNSW bex",
+        "intent": "SQL on own fresh Free database",
+        "selector": "dpg-db99ijq11h4c73ffkn6g",
+        "command": "BEGIN; CREATE SCHEMA qa376_92a056_bex; CREATE TABLE qa376_92a056_bex.items(id int PRIMARY KEY, embedding public.vector(3)); INSERT INTO qa376_92a056_bex.items VALUES(1,'[1,2,3]'),(2,'[4,5,6]'),(3,'[1,1,1]'); CREATE INDEX items_embedding_hnsw ON qa376_92a056_bex.items USING hnsw(embedding public.vector_l2_ops); COMMIT; SELECT jsonb_build_object('rows',(SELECT count(*) FROM qa376_92a056_bex.items),'nearest',(SELECT id FROM qa376_92a056_bex.items ORDER BY embedding <-> '[1,1,2]' LIMIT 1),'cosine',(SELECT round((embedding <=> '[2,4,6]')::numeric,6) FROM qa376_92a056_bex.items WHERE id=1),'index_method',(SELECT am.amname FROM pg_class i JOIN pg_namespace n ON n.oid=i.relnamespace JOIN pg_am am ON am.oid=i.relam WHERE n.nspname='qa376_92a056_bex' AND i.relname='items_embedding_hnsw'))::text;",
+        "result": {
+          "at": "2026-10-16T21:43:07.529559+00:00",
+          "binary": "released Bex0.3.2",
+          "command": [
+            "bex",
+            "psql",
+            "dpg-db99ijq11h4c73ffkn6g",
+            "--command",
+            "BEGIN; CREATE SCHEMA qa376_92a056_bex; CREATE TABLE qa376_92a056_bex.items(id int PRIMARY KEY, embedding public.vector(3)); INSERT INTO qa376_92a056_bex.items VALUES(1,'[1,2,3]'),(2,'[4,5,6]'),(3,'[1,1,1]'); CREATE INDEX items_embedding_hnsw ON qa376_92a056_bex.items USING hnsw(embedding public.vector_l2_ops); COMMIT; SELECT jsonb_build_object('rows',(SELECT count(*) FROM qa376_92a056_bex.items),'nearest',(SELECT id FROM qa376_92a056_bex.items ORDER BY embedding <-> '[1,1,2]' LIMIT 1),'cosine',(SELECT round((embedding <=> '[2,4,6]')::numeric,6) FROM qa376_92a056_bex.items WHERE id=1),'index_method',(SELECT am.amname FROM pg_class i JOIN pg_namespace n ON n.oid=i.relnamespace JOIN pg_am am ON am.oid=i.relam WHERE n.nspname='qa376_92a056_bex' AND i.relname='items_embedding_hnsw'))::text;",
+            "--confirm",
+            "-o",
+            "json",
+            "--",
+            "-X",
+            "-q",
+            "-t",
+            "-A",
+            "-v",
+            "ON_ERROR_STOP=1"
+          ],
+          "client_setup": null,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 2.961,
+          "stdout": "{\"output\": \"{\\\"rows\\\": 3, \\\"cosine\\\": 0.0, \\\"nearest\\\": 3, \\\"index_method\\\": \\\"hnsw\\\"}\"}",
+          "stderr": ""
+        }
+      },
+      "observed": {
+        "rows": 3,
+        "cosine": 0.0,
+        "nearest": 3,
+        "index_method": "hnsw"
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T21:43:11.562943+00:00",
+      "kind": "negative",
+      "client": "bex",
+      "event": {
+        "at": "2026-10-16T21:43:08.467269+00:00",
+        "label": "own invalid vector dimension rolls back entire new transaction bex",
+        "intent": "SQL on own fresh Free database",
+        "selector": "dpg-db99ijq11h4c73ffkn6g",
+        "command": "BEGIN; INSERT INTO qa376_92a056_bex.items VALUES(4,'[2,2,2]'); INSERT INTO qa376_92a056_bex.items VALUES(5,'[1,2]'); COMMIT;",
+        "result": {
+          "at": "2026-10-16T21:43:11.324235+00:00",
+          "binary": "released Bex0.3.2",
+          "command": [
+            "bex",
+            "psql",
+            "dpg-db99ijq11h4c73ffkn6g",
+            "--command",
+            "BEGIN; INSERT INTO qa376_92a056_bex.items VALUES(4,'[2,2,2]'); INSERT INTO qa376_92a056_bex.items VALUES(5,'[1,2]'); COMMIT;",
+            "--confirm",
+            "-o",
+            "json",
+            "--",
+            "-X",
+            "-q",
+            "-t",
+            "-A",
+            "-v",
+            "ON_ERROR_STOP=1"
+          ],
+          "client_setup": null,
+          "native_exit": 1,
+          "harness_timeout": false,
+          "elapsed": 2.621,
+          "stdout": "",
+          "stderr": "Error: exit status 1: ERROR:  expected 3 dimensions, not 2\n"
+        }
+      },
+      "expected_native_exit": 1,
+      "expected_error": "expected 3 dimensions, not 2",
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T21:43:15.592544+00:00",
+      "kind": "catalog",
+      "client": "render",
+      "event": {
+        "at": "2026-10-16T21:43:12.203981+00:00",
+        "label": "own vector extension catalog render",
+        "intent": "SQL on own fresh Free database",
+        "selector": "dpg-db99ijq11h4c73ffkn6g",
+        "command": "SELECT jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'),'vector_version',(SELECT extversion FROM pg_extension WHERE extname='vector'),'available_vector',(SELECT default_version FROM pg_available_extensions WHERE name='vector'),'pg_stat_statements_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='pg_stat_statements'),'hstore_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='hstore'))::text;",
+        "result": {
+          "at": "2026-10-16T21:43:15.303142+00:00",
+          "binary": "unchanged Render2.27.0/a764810a7682",
+          "command": [
+            "render",
+            "psql",
+            "dpg-db99ijq11h4c73ffkn6g",
+            "--command",
+            "SELECT jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'),'vector_version',(SELECT extversion FROM pg_extension WHERE extname='vector'),'available_vector',(SELECT default_version FROM pg_available_extensions WHERE name='vector'),'pg_stat_statements_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='pg_stat_statements'),'hstore_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='hstore'))::text;",
+            "--confirm",
+            "-o",
+            "json",
+            "--",
+            "-X",
+            "-q",
+            "-t",
+            "-A",
+            "-v",
+            "ON_ERROR_STOP=1"
+          ],
+          "client_setup": {
+            "API_only_CA_preparation": true,
+            "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g/connection-info",
+            "HTTP": "200",
+            "elapsed": 0.404,
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "certificate_sha256": "e2727fd1ec7d4ee706ed6411ebae59b1f08fe4d44f7c2359b92d5079f28303b9",
+            "PGSSLROOTCERT": "<owned-temp>/sweep376-owned-pg-ca.pem",
+            "connection_info_payload_not_retained": true
+          },
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 2.441,
+          "stdout": "{\"output\": \"{\\\"user\\\": \\\"qa376_user_92a056\\\", \\\"major\\\": 15, \\\"database\\\": \\\"qa376_db_92a056\\\", \\\"vector_version\\\": \\\"0.8.6\\\", \\\"available_vector\\\": \\\"0.8.6\\\", \\\"hstore_installed\\\": false, \\\"vector_installed\\\": true, \\\"pg_stat_statements_installed\\\": true}\"}",
+          "stderr": ""
+        }
+      },
+      "observed": {
+        "user": "qa376_user_92a056",
+        "major": 15,
+        "database": "qa376_db_92a056",
+        "vector_version": "0.8.6",
+        "available_vector": "0.8.6",
+        "hstore_installed": false,
+        "vector_installed": true,
+        "pg_stat_statements_installed": true
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T21:43:19.774991+00:00",
+      "kind": "migration",
+      "client": "render",
+      "event": {
+        "at": "2026-10-16T21:43:16.206276+00:00",
+        "label": "ordinary original IF NOT EXISTS vector migration render",
+        "intent": "SQL on own fresh Free database",
+        "selector": "dpg-db99ijq11h4c73ffkn6g",
+        "command": "CREATE EXTENSION IF NOT EXISTS vector; SELECT jsonb_build_object('vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'))::text;",
+        "result": {
+          "at": "2026-10-16T21:43:19.486155+00:00",
+          "binary": "unchanged Render2.27.0/a764810a7682",
+          "command": [
+            "render",
+            "psql",
+            "dpg-db99ijq11h4c73ffkn6g",
+            "--command",
+            "CREATE EXTENSION IF NOT EXISTS vector; SELECT jsonb_build_object('vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'))::text;",
+            "--confirm",
+            "-o",
+            "json",
+            "--",
+            "-X",
+            "-q",
+            "-t",
+            "-A",
+            "-v",
+            "ON_ERROR_STOP=1"
+          ],
+          "client_setup": {
+            "API_only_CA_preparation": true,
+            "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g/connection-info",
+            "HTTP": "200",
+            "elapsed": 0.368,
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "certificate_sha256": "e2727fd1ec7d4ee706ed6411ebae59b1f08fe4d44f7c2359b92d5079f28303b9",
+            "PGSSLROOTCERT": "<owned-temp>/sweep376-owned-pg-ca.pem",
+            "connection_info_payload_not_retained": true
+          },
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 2.658,
+          "stdout": "{\"output\": \"{\\\"vector_installed\\\": true}\"}",
+          "stderr": ""
+        }
+      },
+      "observed": {
+        "vector_installed": true
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T21:43:24.548470+00:00",
+      "kind": "use",
+      "client": "render",
+      "event": {
+        "at": "2026-10-16T21:43:21.110797+00:00",
+        "label": "own real vector rows distance and HNSW render",
+        "intent": "SQL on own fresh Free database",
+        "selector": "dpg-db99ijq11h4c73ffkn6g",
+        "command": "BEGIN; CREATE SCHEMA qa376_92a056_render; CREATE TABLE qa376_92a056_render.items(id int PRIMARY KEY, embedding public.vector(3)); INSERT INTO qa376_92a056_render.items VALUES(1,'[1,2,3]'),(2,'[4,5,6]'),(3,'[1,1,1]'); CREATE INDEX items_embedding_hnsw ON qa376_92a056_render.items USING hnsw(embedding public.vector_l2_ops); COMMIT; SELECT jsonb_build_object('rows',(SELECT count(*) FROM qa376_92a056_render.items),'nearest',(SELECT id FROM qa376_92a056_render.items ORDER BY embedding <-> '[1,1,2]' LIMIT 1),'cosine',(SELECT round((embedding <=> '[2,4,6]')::numeric,6) FROM qa376_92a056_render.items WHERE id=1),'index_method',(SELECT am.amname FROM pg_class i JOIN pg_namespace n ON n.oid=i.relnamespace JOIN pg_am am ON am.oid=i.relam WHERE n.nspname='qa376_92a056_render' AND i.relname='items_embedding_hnsw'))::text;",
+        "result": {
+          "at": "2026-10-16T21:43:24.307293+00:00",
+          "binary": "unchanged Render2.27.0/a764810a7682",
+          "command": [
+            "render",
+            "psql",
+            "dpg-db99ijq11h4c73ffkn6g",
+            "--command",
+            "BEGIN; CREATE SCHEMA qa376_92a056_render; CREATE TABLE qa376_92a056_render.items(id int PRIMARY KEY, embedding public.vector(3)); INSERT INTO qa376_92a056_render.items VALUES(1,'[1,2,3]'),(2,'[4,5,6]'),(3,'[1,1,1]'); CREATE INDEX items_embedding_hnsw ON qa376_92a056_render.items USING hnsw(embedding public.vector_l2_ops); COMMIT; SELECT jsonb_build_object('rows',(SELECT count(*) FROM qa376_92a056_render.items),'nearest',(SELECT id FROM qa376_92a056_render.items ORDER BY embedding <-> '[1,1,2]' LIMIT 1),'cosine',(SELECT round((embedding <=> '[2,4,6]')::numeric,6) FROM qa376_92a056_render.items WHERE id=1),'index_method',(SELECT am.amname FROM pg_class i JOIN pg_namespace n ON n.oid=i.relnamespace JOIN pg_am am ON am.oid=i.relam WHERE n.nspname='qa376_92a056_render' AND i.relname='items_embedding_hnsw'))::text;",
+            "--confirm",
+            "-o",
+            "json",
+            "--",
+            "-X",
+            "-q",
+            "-t",
+            "-A",
+            "-v",
+            "ON_ERROR_STOP=1"
+          ],
+          "client_setup": {
+            "API_only_CA_preparation": true,
+            "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g/connection-info",
+            "HTTP": "200",
+            "elapsed": 0.442,
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "certificate_sha256": "e2727fd1ec7d4ee706ed6411ebae59b1f08fe4d44f7c2359b92d5079f28303b9",
+            "PGSSLROOTCERT": "<owned-temp>/sweep376-owned-pg-ca.pem",
+            "connection_info_payload_not_retained": true
+          },
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 2.5,
+          "stdout": "{\"output\": \"{\\\"rows\\\": 3, \\\"cosine\\\": 0.0, \\\"nearest\\\": 3, \\\"index_method\\\": \\\"hnsw\\\"}\"}",
+          "stderr": ""
+        }
+      },
+      "observed": {
+        "rows": 3,
+        "cosine": 0.0,
+        "nearest": 3,
+        "index_method": "hnsw"
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T21:43:29.073758+00:00",
+      "kind": "negative",
+      "client": "render",
+      "event": {
+        "at": "2026-10-16T21:43:25.189278+00:00",
+        "label": "own invalid vector dimension rolls back entire new transaction render",
+        "intent": "SQL on own fresh Free database",
+        "selector": "dpg-db99ijq11h4c73ffkn6g",
+        "command": "BEGIN; INSERT INTO qa376_92a056_render.items VALUES(4,'[2,2,2]'); INSERT INTO qa376_92a056_render.items VALUES(5,'[1,2]'); COMMIT;",
+        "result": {
+          "at": "2026-10-16T21:43:28.825662+00:00",
+          "binary": "unchanged Render2.27.0/a764810a7682",
+          "command": [
+            "render",
+            "psql",
+            "dpg-db99ijq11h4c73ffkn6g",
+            "--command",
+            "BEGIN; INSERT INTO qa376_92a056_render.items VALUES(4,'[2,2,2]'); INSERT INTO qa376_92a056_render.items VALUES(5,'[1,2]'); COMMIT;",
+            "--confirm",
+            "-o",
+            "json",
+            "--",
+            "-X",
+            "-q",
+            "-t",
+            "-A",
+            "-v",
+            "ON_ERROR_STOP=1"
+          ],
+          "client_setup": {
+            "API_only_CA_preparation": true,
+            "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g/connection-info",
+            "HTTP": "200",
+            "elapsed": 0.391,
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "certificate_sha256": "e2727fd1ec7d4ee706ed6411ebae59b1f08fe4d44f7c2359b92d5079f28303b9",
+            "PGSSLROOTCERT": "<owned-temp>/sweep376-owned-pg-ca.pem",
+            "connection_info_payload_not_retained": true
+          },
+          "native_exit": 1,
+          "harness_timeout": false,
+          "elapsed": 2.998,
+          "stdout": "",
+          "stderr": "Error: exit status 1: ERROR:  expected 3 dimensions, not 2\n"
+        }
+      },
+      "expected_native_exit": 1,
+      "expected_error": "expected 3 dimensions, not 2",
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T21:43:33.237584+00:00",
+      "kind": "cross-read",
+      "client": "bex",
+      "event": {
+        "at": "2026-10-16T21:43:29.674783+00:00",
+        "label": "independent opposite client checks vector data and invalid transaction rollback bex",
+        "intent": "SQL on own fresh Free database",
+        "selector": "dpg-db99ijq11h4c73ffkn6g",
+        "command": "SELECT jsonb_build_object('rows',(SELECT count(*) FROM qa376_92a056_render.items),'rejected_transaction_rows',(SELECT count(*) FROM qa376_92a056_render.items WHERE id>=4),'nearest',(SELECT id FROM qa376_92a056_render.items ORDER BY embedding <-> '[1,1,2]' LIMIT 1))::text;",
+        "result": {
+          "at": "2026-10-16T21:43:33.002022+00:00",
+          "binary": "released Bex0.3.2",
+          "command": [
+            "bex",
+            "psql",
+            "dpg-db99ijq11h4c73ffkn6g",
+            "--command",
+            "SELECT jsonb_build_object('rows',(SELECT count(*) FROM qa376_92a056_render.items),'rejected_transaction_rows',(SELECT count(*) FROM qa376_92a056_render.items WHERE id>=4),'nearest',(SELECT id FROM qa376_92a056_render.items ORDER BY embedding <-> '[1,1,2]' LIMIT 1))::text;",
+            "--confirm",
+            "-o",
+            "json",
+            "--",
+            "-X",
+            "-q",
+            "-t",
+            "-A",
+            "-v",
+            "ON_ERROR_STOP=1"
+          ],
+          "client_setup": null,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 3.108,
+          "stdout": "{\"output\": \"{\\\"rows\\\": 3, \\\"nearest\\\": 3, \\\"rejected_transaction_rows\\\": 0}\"}",
+          "stderr": ""
+        }
+      },
+      "observed": {
+        "rows": 3,
+        "nearest": 3,
+        "rejected_transaction_rows": 0
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T21:43:37.346110+00:00",
+      "kind": "cross-read",
+      "client": "render",
+      "event": {
+        "at": "2026-10-16T21:43:33.813442+00:00",
+        "label": "independent opposite client checks vector data and invalid transaction rollback render",
+        "intent": "SQL on own fresh Free database",
+        "selector": "dpg-db99ijq11h4c73ffkn6g",
+        "command": "SELECT jsonb_build_object('rows',(SELECT count(*) FROM qa376_92a056_bex.items),'rejected_transaction_rows',(SELECT count(*) FROM qa376_92a056_bex.items WHERE id>=4),'nearest',(SELECT id FROM qa376_92a056_bex.items ORDER BY embedding <-> '[1,1,2]' LIMIT 1))::text;",
+        "result": {
+          "at": "2026-10-16T21:43:37.098602+00:00",
+          "binary": "unchanged Render2.27.0/a764810a7682",
+          "command": [
+            "render",
+            "psql",
+            "dpg-db99ijq11h4c73ffkn6g",
+            "--command",
+            "SELECT jsonb_build_object('rows',(SELECT count(*) FROM qa376_92a056_bex.items),'rejected_transaction_rows',(SELECT count(*) FROM qa376_92a056_bex.items WHERE id>=4),'nearest',(SELECT id FROM qa376_92a056_bex.items ORDER BY embedding <-> '[1,1,2]' LIMIT 1))::text;",
+            "--confirm",
+            "-o",
+            "json",
+            "--",
+            "-X",
+            "-q",
+            "-t",
+            "-A",
+            "-v",
+            "ON_ERROR_STOP=1"
+          ],
+          "client_setup": {
+            "API_only_CA_preparation": true,
+            "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g/connection-info",
+            "HTTP": "200",
+            "elapsed": 0.363,
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "certificate_sha256": "e2727fd1ec7d4ee706ed6411ebae59b1f08fe4d44f7c2359b92d5079f28303b9",
+            "PGSSLROOTCERT": "<owned-temp>/sweep376-owned-pg-ca.pem",
+            "connection_info_payload_not_retained": true
+          },
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 2.684,
+          "stdout": "{\"output\": \"{\\\"rows\\\": 3, \\\"nearest\\\": 3, \\\"rejected_transaction_rows\\\": 0}\"}",
+          "stderr": ""
+        }
+      },
+      "observed": {
+        "rows": 3,
+        "nearest": 3,
+        "rejected_transaction_rows": 0
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T21:43:41.430267+00:00",
+      "kind": "hstore",
+      "client": "bex",
+      "event": {
+        "at": "2026-10-16T21:43:37.969882+00:00",
+        "label": "ordinary hstore neighbor transaction bex",
+        "intent": "SQL on own fresh Free database",
+        "selector": "dpg-db99ijq11h4c73ffkn6g",
+        "command": "BEGIN; CREATE EXTENSION IF NOT EXISTS hstore; SELECT jsonb_build_object('hstore',('a=>1'::hstore)->'a')::text; ROLLBACK;",
+        "result": {
+          "at": "2026-10-16T21:43:41.174682+00:00",
+          "binary": "released Bex0.3.2",
+          "command": [
+            "bex",
+            "psql",
+            "dpg-db99ijq11h4c73ffkn6g",
+            "--command",
+            "BEGIN; CREATE EXTENSION IF NOT EXISTS hstore; SELECT jsonb_build_object('hstore',('a=>1'::hstore)->'a')::text; ROLLBACK;",
+            "--confirm",
+            "-o",
+            "json",
+            "--",
+            "-X",
+            "-q",
+            "-t",
+            "-A",
+            "-v",
+            "ON_ERROR_STOP=1"
+          ],
+          "client_setup": null,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 2.986,
+          "stdout": "{\"output\": \"{\\\"hstore\\\": \\\"1\\\"}\"}",
+          "stderr": ""
+        }
+      },
+      "observed": {
+        "hstore": "1"
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T21:43:45.628083+00:00",
+      "kind": "catalog",
+      "client": "bex",
+      "event": {
+        "at": "2026-10-16T21:43:42.206271+00:00",
+        "label": "own vector extension catalog bex",
+        "intent": "SQL on own fresh Free database",
+        "selector": "dpg-db99ijq11h4c73ffkn6g",
+        "command": "SELECT jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'),'vector_version',(SELECT extversion FROM pg_extension WHERE extname='vector'),'available_vector',(SELECT default_version FROM pg_available_extensions WHERE name='vector'),'pg_stat_statements_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='pg_stat_statements'),'hstore_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='hstore'))::text;",
+        "result": {
+          "at": "2026-10-16T21:43:45.384764+00:00",
+          "binary": "released Bex0.3.2",
+          "command": [
+            "bex",
+            "psql",
+            "dpg-db99ijq11h4c73ffkn6g",
+            "--command",
+            "SELECT jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'),'vector_version',(SELECT extversion FROM pg_extension WHERE extname='vector'),'available_vector',(SELECT default_version FROM pg_available_extensions WHERE name='vector'),'pg_stat_statements_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='pg_stat_statements'),'hstore_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='hstore'))::text;",
+            "--confirm",
+            "-o",
+            "json",
+            "--",
+            "-X",
+            "-q",
+            "-t",
+            "-A",
+            "-v",
+            "ON_ERROR_STOP=1"
+          ],
+          "client_setup": null,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 2.913,
+          "stdout": "{\"output\": \"{\\\"user\\\": \\\"qa376_user_92a056\\\", \\\"major\\\": 15, \\\"database\\\": \\\"qa376_db_92a056\\\", \\\"vector_version\\\": \\\"0.8.6\\\", \\\"available_vector\\\": \\\"0.8.6\\\", \\\"hstore_installed\\\": false, \\\"vector_installed\\\": true, \\\"pg_stat_statements_installed\\\": true}\"}",
+          "stderr": ""
+        }
+      },
+      "observed": {
+        "user": "qa376_user_92a056",
+        "major": 15,
+        "database": "qa376_db_92a056",
+        "vector_version": "0.8.6",
+        "available_vector": "0.8.6",
+        "hstore_installed": false,
+        "vector_installed": true,
+        "pg_stat_statements_installed": true
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T21:43:49.802400+00:00",
+      "kind": "hstore",
+      "client": "render",
+      "event": {
+        "at": "2026-10-16T21:43:46.252884+00:00",
+        "label": "ordinary hstore neighbor transaction render",
+        "intent": "SQL on own fresh Free database",
+        "selector": "dpg-db99ijq11h4c73ffkn6g",
+        "command": "BEGIN; CREATE EXTENSION IF NOT EXISTS hstore; SELECT jsonb_build_object('hstore',('a=>1'::hstore)->'a')::text; ROLLBACK;",
+        "result": {
+          "at": "2026-10-16T21:43:49.556079+00:00",
+          "binary": "unchanged Render2.27.0/a764810a7682",
+          "command": [
+            "render",
+            "psql",
+            "dpg-db99ijq11h4c73ffkn6g",
+            "--command",
+            "BEGIN; CREATE EXTENSION IF NOT EXISTS hstore; SELECT jsonb_build_object('hstore',('a=>1'::hstore)->'a')::text; ROLLBACK;",
+            "--confirm",
+            "-o",
+            "json",
+            "--",
+            "-X",
+            "-q",
+            "-t",
+            "-A",
+            "-v",
+            "ON_ERROR_STOP=1"
+          ],
+          "client_setup": {
+            "API_only_CA_preparation": true,
+            "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g/connection-info",
+            "HTTP": "200",
+            "elapsed": 0.353,
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "certificate_sha256": "e2727fd1ec7d4ee706ed6411ebae59b1f08fe4d44f7c2359b92d5079f28303b9",
+            "PGSSLROOTCERT": "<owned-temp>/sweep376-owned-pg-ca.pem",
+            "connection_info_payload_not_retained": true
+          },
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 2.59,
+          "stdout": "{\"output\": \"{\\\"hstore\\\": \\\"1\\\"}\"}",
+          "stderr": ""
+        }
+      },
+      "observed": {
+        "hstore": "1"
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T21:43:54.033918+00:00",
+      "kind": "catalog",
+      "client": "render",
+      "event": {
+        "at": "2026-10-16T21:43:50.473814+00:00",
+        "label": "own vector extension catalog render",
+        "intent": "SQL on own fresh Free database",
+        "selector": "dpg-db99ijq11h4c73ffkn6g",
+        "command": "SELECT jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'),'vector_version',(SELECT extversion FROM pg_extension WHERE extname='vector'),'available_vector',(SELECT default_version FROM pg_available_extensions WHERE name='vector'),'pg_stat_statements_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='pg_stat_statements'),'hstore_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='hstore'))::text;",
+        "result": {
+          "at": "2026-10-16T21:43:53.797381+00:00",
+          "binary": "unchanged Render2.27.0/a764810a7682",
+          "command": [
+            "render",
+            "psql",
+            "dpg-db99ijq11h4c73ffkn6g",
+            "--command",
+            "SELECT jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'),'vector_version',(SELECT extversion FROM pg_extension WHERE extname='vector'),'available_vector',(SELECT default_version FROM pg_available_extensions WHERE name='vector'),'pg_stat_statements_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='pg_stat_statements'),'hstore_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='hstore'))::text;",
+            "--confirm",
+            "-o",
+            "json",
+            "--",
+            "-X",
+            "-q",
+            "-t",
+            "-A",
+            "-v",
+            "ON_ERROR_STOP=1"
+          ],
+          "client_setup": {
+            "API_only_CA_preparation": true,
+            "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g/connection-info",
+            "HTTP": "200",
+            "elapsed": 0.427,
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "certificate_sha256": "e2727fd1ec7d4ee706ed6411ebae59b1f08fe4d44f7c2359b92d5079f28303b9",
+            "PGSSLROOTCERT": "<owned-temp>/sweep376-owned-pg-ca.pem",
+            "connection_info_payload_not_retained": true
+          },
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 2.658,
+          "stdout": "{\"output\": \"{\\\"user\\\": \\\"qa376_user_92a056\\\", \\\"major\\\": 15, \\\"database\\\": \\\"qa376_db_92a056\\\", \\\"vector_version\\\": \\\"0.8.6\\\", \\\"available_vector\\\": \\\"0.8.6\\\", \\\"hstore_installed\\\": false, \\\"vector_installed\\\": true, \\\"pg_stat_statements_installed\\\": true}\"}",
+          "stderr": ""
+        }
+      },
+      "observed": {
+        "user": "qa376_user_92a056",
+        "major": 15,
+        "database": "qa376_db_92a056",
+        "vector_version": "0.8.6",
+        "available_vector": "0.8.6",
+        "hstore_installed": false,
+        "vector_installed": true,
+        "pg_stat_statements_installed": true
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T21:43:58.851259+00:00",
+      "kind": "drop-own",
+      "client": "bex",
+      "event": {
+        "at": "2026-10-16T21:43:54.651835+00:00",
+        "label": "remove exact own vector test schemas",
+        "intent": "SQL on own fresh Free database",
+        "selector": "dpg-db99ijq11h4c73ffkn6g",
+        "command": "BEGIN; DROP SCHEMA qa376_92a056_bex CASCADE; DROP SCHEMA qa376_92a056_render CASCADE; COMMIT; SELECT jsonb_build_object('remaining_own_schemas',(SELECT count(*) FROM pg_namespace WHERE nspname LIKE 'qa376_92a056_%'),'vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'))::text;",
+        "result": {
+          "at": "2026-10-16T21:43:58.607275+00:00",
+          "binary": "released Bex0.3.2",
+          "command": [
+            "bex",
+            "psql",
+            "dpg-db99ijq11h4c73ffkn6g",
+            "--command",
+            "BEGIN; DROP SCHEMA qa376_92a056_bex CASCADE; DROP SCHEMA qa376_92a056_render CASCADE; COMMIT; SELECT jsonb_build_object('remaining_own_schemas',(SELECT count(*) FROM pg_namespace WHERE nspname LIKE 'qa376_92a056_%'),'vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'))::text;",
+            "--confirm",
+            "-o",
+            "json",
+            "--",
+            "-X",
+            "-q",
+            "-t",
+            "-A",
+            "-v",
+            "ON_ERROR_STOP=1"
+          ],
+          "client_setup": null,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 3.731,
+          "stdout": "{\"output\": \"{\\\"vector_installed\\\": true, \\\"remaining_own_schemas\\\": 0}\"}",
+          "stderr": ""
+        }
+      },
+      "observed": {
+        "vector_installed": true,
+        "remaining_own_schemas": 0
+      },
+      "pass": true
+    }
+  ],
+  "owned_vector_schemas": [
+    {
+      "at": "2026-10-16T21:43:04.143346+00:00",
+      "client": "bex",
+      "name": "qa376_92a056_bex",
+      "intent": "ordinary own application table/index and three vector rows"
+    },
+    {
+      "at": "2026-10-16T21:43:20.873388+00:00",
+      "client": "render",
+      "name": "qa376_92a056_render",
+      "intent": "ordinary own application table/index and three vector rows"
+    }
+  ],
+  "delete_intent": {
+    "at": "2026-10-16T21:44:35.938625+00:00",
+    "detail": {
+      "at": "2026-10-16T21:44:35.499281+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.546,
+      "response": "{\"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"name\": \"qa-20261016-92a056-pg15\", \"plan\": \"free\", \"version\": \"15\", \"status\": \"available\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"updatedAt\": \"2026-10-16T21:39:49Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"externalHost\": \"dpg-db99ijq11h4c73ffkn6g.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    }
+  },
+  "delete_result": {
+    "at": "2026-10-16T21:44:37.274764+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "postgres",
+      "delete",
+      "dpg-db99ijq11h4c73ffkn6g",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "client_setup": null,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.987,
+    "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-16T21:38:23Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db99ijq11h4c73ffkn6g\", \"databaseName\": \"qa376_db_92a056\", \"databaseUser\": \"qa376_user_92a056\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db99ijq11h4c73ffkn6g\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261016-92a056-pg15\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-16T21:39:49Z\", \"version\": \"15\", \"projectId\": null}, \"meta\": {\"deleted\": true}}",
+    "stderr": ""
+  },
+  "cleanup_receipts": [
+    {
+      "at": "2026-10-16T21:44:40.060709+00:00",
+      "detail": {
+        "at": "2026-10-16T21:44:38.365497+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db99ijq11h4c73ffkn6g",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "404",
+        "curl_exit": 0,
+        "elapsed": 0.331,
+        "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+        "stderr": ""
+      },
+      "inventory": {
+        "at": "2026-10-16T21:44:38.929183+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "list",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.563,
+        "stdout": "{\"data\": []}",
+        "stderr": ""
+      },
+      "services": {
+        "at": "2026-10-16T21:44:39.623185+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.694,
+        "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}]",
+        "stderr": ""
+      },
+      "quota": {
+        "at": "2026-10-16T21:44:40.060466+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.422,
+        "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+        "stderr": ""
+      },
+      "pass": true
+    }
+  ],
+  "cached_connection_private_files_removed": {
+    "at": "2026-10-16T21:44:41.948430+00:00",
+    "credential_file_removed": true,
+    "CA_file_removed": true
+  }
+}

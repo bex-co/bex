@@ -1,0 +1,46 @@
+{
+  "sweep": 382,
+  "existing_finding": "w8/m82",
+  "source_head": "925cc2010dcaa8ac3ccd23c4ca58a3517e942287",
+  "source_fix": "fa91e4e975131ba0ad83706a51f943594c34492e",
+  "serving_revision": "unknown",
+  "public_commit": "103e339d3bc7a9a58a9f1de65f7d8074659b5f5a",
+  "native_clients": [
+    "published Bex0.3.2/a6350da0",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "accepted_native_create_POST201_exit0": 2,
+  "first_original_MP3_requiring_deploys_live_HTTP200": 2,
+  "original_Pydub_build_exports": 2,
+  "new_Pydub_runtime_exports": 2,
+  "ffprobe_media_proofs": 6,
+  "exact_CLI_and_Pydub_PCM_decode_checks": 12,
+  "original_build_MP3_retained_and_rechecked": true,
+  "same_exact_source_and_100ms_mono_8k_WAV": true,
+  "ffmpeg_observed": [
+    "ffmpeg version 9.0.2 Copyright (c) 2000-2026 the FFmpeg developers"
+  ],
+  "hosted_build_runtime_architecture": "x86_64",
+  "local_pinned_supplier_architecture": "aarch64",
+  "native_Python_pip_Poetry_controls_both_phases": true,
+  "shared_readbacks_pass": 6,
+  "native_log_queries_exit0": 6,
+  "accepted_build_command_bytes": {
+    "bex": 3476,
+    "render": 3479
+  },
+  "excluded_native_setup": "5686-byte diagnostic exceeded declared4096; native400/no allocation independently proved; accepted packaging3476 bytes exact reconstructed helper",
+  "excluded_local_prerequisite": "Homebrew ffmpeg cannot load libx265; own pinned container prerequisite passes and is cleaned",
+  "readback_qualification": "one retained REST200 master receipt re-evaluated after correcting inherited main guard; no HTTP replay or product mutation",
+  "owned_native_deletes_exit0": 2,
+  "owned_parents_children_URLs_absent": [
+    2,
+    2,
+    2
+  ],
+  "original_baselines_preserved": true,
+  "all_terminating_zero": true,
+  "local_container_tag_scratch_absent": true,
+  "new_issue": null,
+  "uncommitted": true
+}

@@ -1,0 +1,11 @@
+{
+  "repo": "https://github.com/mscdex/busboy",
+  "branch": "master",
+  "commit": "6b3dcf69d38c1a8d53a0b3e4c88ba296f6c91525",
+  "package_sha256": "4faefdc1fc73a2c8a87dfa0cc6ca3dc3d9e518abf9b92d84aa495c59b3e20c92",
+  "package_version": "1.6.0",
+  "primary_source": "https://github.com/mscdex/busboy/tree/6b3dcf69d38c1a8d53a0b3e4c88ba296f6c91525",
+  "dependencies": {
+    "streamsearch": "^1.1.0"
+  }
+}

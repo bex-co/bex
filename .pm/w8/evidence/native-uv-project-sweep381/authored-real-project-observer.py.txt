@@ -1,0 +1,21 @@
+import os,sys,json,platform,hashlib,subprocess,time
+from pathlib import Path
+from importlib.metadata import version
+MARKER=json.loads(Path('qa381-marker.json').read_text())
+REFERENCE=json.loads(Path('qa381-reference.json').read_text())
+def command(args):
+ start=time.monotonic()
+ try:
+  r=subprocess.run(args,text=True,capture_output=True,timeout=15);return {'status':r.returncode,'stdout':r.stdout,'stderr':r.stderr,'error':None,'elapsed_ms':round((time.monotonic()-start)*1000)}
+ except FileNotFoundError:return {'status':None,'stdout':'','stderr':'','error':'ENOENT'}
+ except subprocess.TimeoutExpired:return {'status':None,'stdout':'','stderr':'','error':'ETIMEDOUT'}
+def snapshot():
+ files={n:{'bytes':len((b:=Path(n).read_bytes())),'sha256':hashlib.sha256(b).hexdigest()} for n in REFERENCE['files']};assert files==REFERENCE['files']
+ return {'marker':MARKER,'python':platform.python_version(),'requested_python':os.environ.get('PYTHON_VERSION'),'requested_uv':os.environ.get('UV_VERSION'),'files':files,'executable':sys.executable,'venv_prefix':sys.prefix,'project_venv':Path(sys.prefix).name=='.venv','dependencies':{n:version(n) for n in ('fastapi','uvicorn','uv-docker-example')},'project_console_hello':command(['hello']),'tools':{n:command([n,'--version']) for n in ('uv','uvx','python','pip','poetry')}}
+if '--build' in sys.argv:
+ value=snapshot();Path('qa381-built.json').write_text(json.dumps(value,ensure_ascii=False));print('QA381_BUILD '+json.dumps(value,ensure_ascii=False),flush=True)
+else:
+ from uv_docker_example import app
+ value=snapshot();value['built']=json.loads(Path('qa381-built.json').read_text())
+ @app.get('/qa381')
+ async def qa381_evidence():return value

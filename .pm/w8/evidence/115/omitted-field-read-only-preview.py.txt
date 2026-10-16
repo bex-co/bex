@@ -1,0 +1,17 @@
+from pathlib import Path
+import sys,json
+f=Path(__file__).with_name('sweep372-common.py');sys.argv=[str(f),'MCP-preview','bex'];exec(compile(f.read_text(),str(f),'exec'))
+x=next(v for v in c['resources'] if v.get('sweep')==372 and v.get('client')=='bex');own(x);sid=x['id'];assert x.get('idle_set_receipt')
+r=api('POST','/mcp',{'jsonrpc':'2.0','id':3721,'method':'tools/call','params':{'name':'update_service','arguments':{'serviceId':sid,'workspaceId':ws,'dryRun':True}}});e={'receipt':r,'idle_argument_omitted':True,'API_only_dry_run':True};x.setdefault('MCP_omit_preview_receipts',[]).append(e);save();assert r['status']=='200';v=decode(r);assert not v.get('error') and not v['result'].get('isError');e['decoded']=v
+found=[]
+def visit(z):
+ if isinstance(z,dict):
+  for k,val in z.items():
+   if k=='idleTTLSeconds':found.append(val)
+   else:visit(val)
+ elif isinstance(z,list):
+  for a in z:visit(a)
+ elif isinstance(z,str) and z.lstrip().startswith(('{','[')):
+  try:visit(json.loads(z))
+  except ValueError:pass
+visit(v);assert found and all(z==60 for z in found),found;e.update(observed_idle_values=found,pass_=True);save();print(json.dumps({'dryRun_API_only':True,'idle_omitted_preview_values':found,'pass':True}))

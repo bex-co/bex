@@ -1,0 +1,16 @@
+const fs = require('node:fs');
+const http = require('node:http');
+const crypto = require('node:crypto');
+const { WebSocketServer } = require('./index.js');
+const pkg = JSON.parse(fs.readFileSync('package.json'));
+const base = {marker: MARKER,node: process.version,package_sha256: crypto.createHash('sha256').update(fs.readFileSync('package.json')).digest('hex'),ws:pkg.version};
+if(base.package_sha256 !== EXPECTED_PACKAGE_SHA)throw new Error('public package source changed');
+if(process.argv.includes('--build')){fs.writeFileSync('qa372-built.json',JSON.stringify(base));console.log(JSON.stringify({event:'QA372_BUILD',...base}));process.exit(0);}
+const built=JSON.parse(fs.readFileSync('qa372-built.json'));
+const stats={connections:0,messages:0,bytes:0,closed:0,pings:0,http:0};
+const log=o=>console.log(JSON.stringify({at:new Date().toISOString(),marker:MARKER,...o}));
+const server=http.createServer((req,res)=>{stats.http++;log({event:'QA372_HTTP',method:req.method,url:req.url});res.writeHead(req.url==='/'?200:404,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({...base,built,stats}));});
+const wss=new WebSocketServer({noServer:true,perMessageDeflate:false,maxPayload:8192});
+server.on('upgrade',(req,socket,head)=>{if(new URL(req.url,'http://localhost').pathname!=='/ingest'){socket.end('HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n');return;}wss.handleUpgrade(req,socket,head,ws=>wss.emit('connection',ws,req));});
+wss.on('connection',(ws,req)=>{const id=new URL(req.url,'http://localhost').searchParams.get('id');stats.connections++;log({event:'QA372_WS_OPEN',id});ws.on('message',(data,binary)=>{stats.messages++;stats.bytes+=data.length;let seq=null;try{seq=JSON.parse(data.toString()).seq;}catch{}log({event:'QA372_WS_RECEIVE',id,seq,binary,bytes:data.length,sha256:crypto.createHash('sha256').update(data).digest('hex')});});ws.on('ping',data=>{stats.pings++;log({event:'QA372_WS_PING',id,bytes:data.length});});ws.on('close',(code,reason)=>{stats.closed++;log({event:'QA372_WS_CLOSE',id,code,reason:reason.toString()});});ws.on('error',err=>log({event:'QA372_WS_ERROR',id,message:err.message}));});
+server.listen(Number(process.env.PORT ?? '3000'),process.env.QA372_BIND || '0.0.0.0',()=>{const e={event:'QA372_LISTEN',port:server.address().port};log(e);if(process.env.QA372_READY_FILE)fs.writeFileSync(process.env.QA372_READY_FILE,JSON.stringify(e));});

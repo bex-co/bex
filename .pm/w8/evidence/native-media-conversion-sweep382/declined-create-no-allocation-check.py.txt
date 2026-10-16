@@ -1,0 +1,6 @@
+from pathlib import Path
+import json,sys
+f=Path(__file__).with_name('sweep382-common.py');sys.argv=[str(f),'reconcile-rejected','bex'];exec(compile(f.read_text(),str(f),'exec'))
+x=next(v for v in c['resources'] if v.get('sweep')==382 and not v.get('id') and not v.get('excluded_setup'));r=x['create_result'];assert r['native_exit']==1 and len(r['captures'])==1 and r['captures'][0]['status']==400 and 'may not be more than 4096 bytes' in r['captures'][0]['response']
+inv,ss=inventory();q=api('GET','/v1/owners/'+ws+'/limits');assert q['status']=='200';limit=decode(q);assert not any(v['name']==x['name'] for v in ss) and {v['id'] for v in ss}==set(x['pre_ids']) and limit['services']['used']==6 and limit['services']['terminating']==0
+x.update(excluded_setup=True,state='excluded setup: authored diagnostic build exceeds4096; native400, exact nonce absent, unchanged baseline6/quota6 terminating0',rejection_reconciliation={'at':now(),'native_inventory':inv,'quota':q,'exact_intent_name_absent':True,'no_allocation_proved':True});save();print(json.dumps({'declined_native_exit':1,'HTTP':400,'declared_build_limit':4096,'exact_nonce_absent':True,'baseline_and_quota_unchanged':True,'production_resource_created':False}))

@@ -1,0 +1,6 @@
+from pathlib import Path
+import sys,json,hashlib
+f=Path(__file__).with_name('sweep373-common.py');sys.argv=[str(f),'connection-metadata-readiness','bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==373);assert x['create_result']['native_exit']==0
+r=api('GET','/v1/postgres/'+x['id']+'/connection-info');e={k:r[k] for k in ('at','API_only','request','status','curl_exit','elapsed','stderr')};e.update(payload_bytes=len(r['response']),payload_sha256=hashlib.sha256(r['response'].encode()).hexdigest(),credential_payload_not_retained=True)
+if r['status']=='200':v=json.loads(r['response']);e['expected_CA_and_route_present']=bool(v.get('serverCaCertificate','').startswith('-----BEGIN CERTIFICATE-----') and v.get('externalConnectionString'));del v
+x.setdefault('connection_metadata_readiness',[]).append(e);save();print(json.dumps(e));del r

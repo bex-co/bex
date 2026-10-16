@@ -1,0 +1,18 @@
+from pathlib import Path
+import json,sys,os,shutil
+from importlib.machinery import SourceFileLoader
+P=Path(__file__).resolve().parent;m=SourceFileLoader('qa366_stream_helpers',str(P/'sweep366-streams.py')).load_module();f=P/'sweep366-common.py';sys.argv=[str(f),'finish-stream-control','bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==366);sid=x['id'];assert not x.get('stream_summary');e=x['stream_events'][-1];assert e['label']=='supported-command-type-error' and not e['pass'] and e['native']['native_exit']==0
+lines=[v.strip() for v in m.ANSI.sub('',e['native']['output']).splitlines()];errors=[json.loads(v[6:]) for v in lines if v.startswith('error:')];assert len(errors)==1 and errors[0].startswith('WRONGTYPE ');e.update(parser_first_result={'pass':False,'observed_JSON':e['observed_JSON']},observed_JSON=[{'error':errors[0]}],pass_after_explicit_terminal_error_parser=True);e['pass']=True;e['parser_qualification']='Full terminal included native CLI chrome before the error-prefixed JSON line; extract that actual line without rerunning the command or changing its natural0 exit';x['stream_negative_harness_qualification']={'at':now(),'no_command_replay':True,'recorded_native_WRONGTYPE_classified_as_expected':True};save()
+key='qa366_'+x['nonce']+':stream';wrong='qa366_'+x['nonce']+':ordinary-string';cfg=P/'render-config/cli.yaml'
+def call(label,actor,args,expected):
+ assert not cfg.exists();config=P/('config/cli.yaml' if actor=='bex' else 'render-config/cli.yaml');prefix='BEX' if actor=='bex' else 'RENDER';e={'at':now(),'label':label,'actor':actor,'intent':'finish own queue control and remove only nonce data','expected':expected};x['stream_events'].append(e);save();s=None
+ try:
+  if actor=='render':shutil.copyfile(P/'config/cli.yaml',config);config.chmod(0o600)
+  env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_','REDIS'))};env.update({prefix+'_HOST':'https://api.bex.co/v1/',prefix+'_CLI_CONFIG_PATH':str(config),prefix+'_CLI_CONFIG_DIR':str(config.parent),prefix+'_WORKSPACE':WS,prefix+'_NO_UPDATE_NOTIFIER':'1','BEX_CLI_DISABLE_ANALYTICS':'1','DO_NOT_TRACK':'1','BROWSER':'/usr/bin/true'});argv=['kv-cli',sid,'-o','interactive','--','--json','-2','--quoted-input',*(m.quoted(v) for v in args)];s=m.Session([str(P/('release/bex' if actor=='bex' else 'render-pin')),*argv],env);code=s.finish();e['observed_JSON']=m.decoded(s.raw);e['pass']=code==0 and e['observed_JSON']==[expected]
+ finally:
+  if s:s.close();e['native']=s.record([actor,*argv])
+  if actor=='render':config.unlink(missing_ok=True)
+  save()
+ assert e['pass'];print(json.dumps({'label':label,'actor':actor,'pass':True}),flush=True)
+call('wrongtype-preserves-value','bex',['GET',wrong],'ordinary-string');call('delete-own-stream-and-string','render',['DEL',key,wrong],2);call('own-keys-absent','bex',['EXISTS',key,wrong],0)
+assert all(e['pass'] for e in x['stream_events']);assert x['stream_events'][2]['blocked_XREADGROUP_observed'];x['stream_summary']={'pass':True,'events':len(x['stream_events']),'earlier_qualified_native_events':len(x['stream_initial_attempt']),'binary_UTF8_and_empty_payloads_exact':True,'blocked_reader_proved_before_publish':True,'pending_entries_transferred':2,'first_ack':2,'repeat_ack':0,'later_new_delivery':1,'empty_250ms_block_returns_null':True,'wrongtype_preserves_original_string':True,'own_keys_deleted':True,'qualification':'one group, three messages, three sequential consumers; no crash/restart/durability or high-concurrency claim'};x['stream_copied_Render_config_removed']=not cfg.exists();save();print(json.dumps(x['stream_summary']))

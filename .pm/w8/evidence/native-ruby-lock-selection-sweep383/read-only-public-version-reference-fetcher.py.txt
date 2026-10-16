@@ -1,0 +1,19 @@
+from pathlib import Path
+import subprocess,os,json,re,concurrent.futures
+P=Path(__file__).resolve().parent;dest=P/'sweep383-public-references';dest.mkdir(mode=0o700,exist_ok=True)
+repos=['discourse/discourse']
+def inspect(repo):
+ d=dest/repo.replace('/','-');d.mkdir(mode=0o700,exist_ok=True);env={**os.environ,'GIT_TERMINAL_PROMPT':'0'};r=subprocess.run(['git','-c','credential.helper=','-c','core.askpass=','ls-remote','--symref','https://github.com/'+repo+'.git','HEAD'],text=True,capture_output=True,timeout=12);assert r.returncode==0;r=r.stdout.splitlines();commit=next(s.split()[0] for s in r if not s.startswith('ref:'));branch=next(s.split()[1].removeprefix('refs/heads/') for s in r if s.startswith('ref:'));out={'repo':repo,'branch':branch,'commit':commit,'files':{}}
+ for name in ('.ruby-version','.tool-versions','Gemfile','Gemfile.lock','gems.locked'):
+  url='https://raw.githubusercontent.com/'+repo+'/'+commit+'/'+name;file=d/name;r=subprocess.run(['curl','--disable','-LsS','--connect-timeout','4','--max-time','8','--max-filesize','1048576','-o',str(file),'-w','%{http_code}',url],text=True,capture_output=True,timeout=10);meta={'HTTP':r.stdout,'exit':r.returncode}
+  if r.returncode==0 and r.stdout=='200':
+   text=file.read_text();meta['bytes']=file.stat().st_size
+   if name=='.ruby-version':meta['Ruby_signal']=text.strip()[:120]
+   elif name=='.tool-versions':meta['Ruby_signal']=re.findall(r'(?m)^ruby\s+[^\n]+',text)
+   elif name=='Gemfile':meta['Ruby_signal']=re.findall(r'(?m)^\s*ruby[^\n]+',text)
+   else:meta['Ruby_signal']=re.findall(r'(?m)^RUBY VERSION\n\s+[^\n]+',text)
+  else:file.unlink(missing_ok=True)
+  out['files'][name]=meta
+ (d/'reference.json').write_text(json.dumps(out,indent=2));return out
+with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+ for out in pool.map(inspect,repos):print(json.dumps(out),flush=True)

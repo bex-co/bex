@@ -1,0 +1,40 @@
+{
+  "sweep": 377,
+  "source_head": "4052136f34445debd5391828d99995a790552d1c",
+  "serving_revision": "unknown",
+  "fixture": "dpg-db99qr9c8a2c73cevtl0",
+  "native_create": "published Bex0.3.2/native0 explicit Free PG16 custom database/user/no pool/no replicas",
+  "physical_major_observed": 16,
+  "external_psql": "18.6",
+  "native_SQL_readiness": 2,
+  "native_data_commands": 15,
+  "native_data_exit0": 14,
+  "expected_native1": 1,
+  "checks": 27,
+  "all_checks_pass": true,
+  "rows_per_table": 64,
+  "tables": 3,
+  "well_formed_duplicate_last_row_SQLSTATE": "23505",
+  "failed_COPY_has_no_committed_prefix": true,
+  "binary_input_bytes": 25315,
+  "binary_input_SHA256": "8cc5f35497566044bf40340f9a1465ac7d5d5c6654c4e43bdff3b8466735a498",
+  "ordered_exports": 2,
+  "both_exports_equal_original_input_bytes": true,
+  "independent_full_data_reads": true,
+  "binary_fields": "int4/int8/text/bytea/nullable text; exact bigint strings beyond2^53, UTF8/CRLF/backslash/quote, NULL versus empty",
+  "synthetic_files_removed": 4,
+  "own_binary_schema_removed": true,
+  "PG16_vector_checks": 15,
+  "vector_versions_observed": [
+    "0.8.6"
+  ],
+  "cached_original_SELECT1_before_after_exit": [
+    0,
+    2
+  ],
+  "cached_credentials_CA_removed": true,
+  "cleanup_pass": true,
+  "existing_m84_gate": "hosted pre-fix existing-parent backfill; fresh PG17 still unverified",
+  "new_issue": null,
+  "uncommitted": true
+}

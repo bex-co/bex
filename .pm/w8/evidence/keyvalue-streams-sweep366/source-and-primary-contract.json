@@ -1,0 +1,13 @@
+{
+  "head": "b20935cf6b13b594ad02f7cac892e694b90bb786",
+  "external_redis_cli": "redis-cli 8.10.1",
+  "local_redis_server": "Redis server v=8.10.1 sha=00000000:1 malloc=libc bits=64 build=81870544b30d700a",
+  "primary_references": [
+    "https://valkey.io/commands/xreadgroup/",
+    "https://valkey.io/commands/xautoclaim/",
+    "https://valkey.io/commands/xack/"
+  ],
+  "wire_contract": "unchanged pinned native kv-cli invokes external Redis client; test commands are normal data operations",
+  "recent_relevant_paths": [],
+  "server_serving_revision": "unknown"
+}

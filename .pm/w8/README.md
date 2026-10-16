@@ -17,17 +17,17 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m87** — [Make psql Ctrl+C stop external PostgreSQL queries](m87/README.md) (8 tasks,435m) ← major functional CLI sweep365; both native queries ignore Ctrl+C, modern control cancels in0.7s; original fixture fully cleaned.
 
-- [ ] **m86** — [Install automatic npm dependencies for static builds](blocked/m86/README.md) (6 tasks) — **BLOCKED (2026-10-16: t001–t005 done — native Node static builds now install an npm project's dependencies (devDependencies included) before the unchanged build command unless SKIP_INSTALL_DEPS=true, leaving other managers' projects and root-publishing sites alone and never failing a build on a failed automatic install; 11-case BuildKit gate, fail-before verified; needs the operator deployed plus a hosted fresh-fixture replay through both native clients with cleanup (t006), runnable with the QA login)**
+- [x] **m86** — [Install automatic npm dependencies for static builds](done/m86/README.md) (6 tasks) — **DONE 2026-10-16:** sweep379 accepts both original native first default deployments plus an explicit-skip/manual control; exact source/dependency/page hashes, nine shared readbacks and complete three-parent/child cleanup pass.
 
-- [ ] **m85** — [Honor committed Ruby lockfile and tool-version pins](blocked/m85/README.md) (6 tasks) — **BLOCKED (2026-10-16: t001–t005 done — native Ruby now resolves in Render's order (lockfile RUBY VERSION → .ruby-version → .tool-versions → Gemfile → default), so the Discourse shape builds and runs 3.4 not 4.0; a stale unsupported lock defers rather than failing existing services (recorded in ADR060); fail-before verified; needs the operator deployed plus a hosted fresh-fixture replay with cleanup (t006), runnable with the QA login)**
+- [x] **m85** — [Honor committed Ruby lockfile and tool-version pins](done/m85/README.md) (6 tasks) — **DONE 2026-10-16:** sweep383 accepts both first original lock assertions on reviewed Ruby3.4.11 with refreshed Discourse source/lock hashes, Node24, six shared reads and exact two-parent/child cleanup.
 
-- [ ] **m84** — [Make packaged pgvector usable in managed Postgres](blocked/m84/README.md) (6 tasks) — **BLOCKED (2026-10-16: t001–t005 done — every managed Postgres now gets an owned CNPG Database child installing `vector` as superuser in its application database (adopting the recorded name/owner, retain, no version pin), with an `ExtensionsReady` condition and no way to wedge the Database; verified on CNPG 1.30 for PG13–18 (refused before, no-op migration + real vector/HNSW after, data retained) plus a PG17→18 upgrade; needs the operator deployed plus a hosted fresh-fixture replay through both native clients with cleanup (t006), runnable with the QA login)**
+- [ ] **m84** — [Make packaged pgvector usable in managed Postgres](blocked/m84/README.md) (6 tasks) — **BLOCKED:** t001–t005 done; fresh PG13/14/15/16/17/18 paths pass with both native migrations and real vector/HNSW/data controls, most recently [sweep378](evidence/postgres-native-cursors-sweep378/README.md). Exact fixture/credential cleanup passes. t006 still needs hosted pre-fix existing-parent backfill; actual serving revision is unverified.
 
 - [ ] **m83** — [Supply automatic compression for web responses](blocked/m83/README.md) (6 tasks) — **BLOCKED (2026-10-16: needs the user to choose — (1) ship Traefik `compress` alone (streaming-safe, but `no-transform` responses get compressed and strong ETags stay strong, which this milestone rejects), (2) authorize an upstream traefik/yaegi `Flusher` wrapper (or Traefik `compress` option) PR first, or (3) keep identity; the guard-plugin design is correct on headers but Yaegi v0.16.1 drops `Flush`, buffering every stream on the route (0 s → 3 s first event). Implementation patch, neighbor matrix, flush timing and Brotli cost in [evidence](blocked/m83/evidence/edge-compression-attempt/README.md); nothing shipped, no task done)**
 
-- [ ] **m82** — [Supply FFmpeg in native Python builds and runtime](blocked/m82/README.md) (6 tasks) — **BLOCKED (2026-10-16: t001–t005 done — every native build (all runtimes/lines, static sites) now carries static ffmpeg/ffprobe 9.0.2 from a digest-pinned multi-arch image on PATH at build, pre-deploy and runtime, as one byte-reproducible shared layer; BuildKit gates encode MP3 (CLI + Pydub) at build and decode/probe offline at runtime, fail-before verified; needs the operator deployed plus a hosted fresh-fixture first-deployment replay with cleanup (t006), runnable with the QA login)**
+- [x] **m82** — [Supply FFmpeg in native Python builds and runtime](done/m82/README.md) (6 tasks) — **DONE 2026-10-16:** sweep382 accepts both first original MP3 builds and real runtime/probe/exact decode, live x86_64 plus local pinned aarch64, six shared reads and exact two-parent/child cleanup.
 
-- [ ] **m81** — [Provide uv for native Python lockfile projects](blocked/m81/README.md) (6 tasks) — **BLOCKED (2026-10-16: t001–t005 done — a native Python service with `uv.lock` in its root directory now gets uv/uvx (exact PyPI release, `UV_VERSION` or default 0.12.10) at build, pre-deploy and runtime, isolated from the app beside Poetry/Node/Bun; no lockfile changes nothing; BuildKit gate runs `uv sync --locked`/`uv run` offline at runtime, fail-before exit 127; needs the operator deployed plus a hosted fresh-fixture first-deployment replay with cleanup (t006), runnable with the QA login)**
+- [x] **m81** — [Provide uv for native Python lockfile projects](done/m81/README.md) (6 tasks) — **DONE 2026-10-16:** sweep381 accepts both first uv-requiring native deployments, default0.12.10/explicit0.11.3, real locked sync/run/project console/FastAPI HTTP200, six shared reads and exact two-parent/child cleanup.
 
 - [ ] **m80** — [Resolve omitted Git branches in Blueprint services](blocked/m80/README.md) (6 tasks) — **BLOCKED (2026-10-16: t001–t005 done — a Blueprint service with no branch of its own now builds its repository's GitHub default on create and on a switch to another repo (image→Git or Git→Git), through validate, preview, create and every sync, with direct-create refusal rules; same-repo re-syncs keep their branch and read nothing; source-tested root/nested fail-before/pass-after; needs the API deployed plus a hosted fresh-fixture first-deployment replay with cleanup (t006), runnable with the QA login)**
 
@@ -147,6 +147,36 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## QA evidence for existing work
 
+- [Native Ruby committed-lock first deployments](evidence/native-ruby-lock-selection-sweep383/README.md) — sweep383:both first original assertions select reviewed Ruby3.4.11 over the broader Gemfile range; exact source/markers/Node24,6 shared reads and cleanup pass. Closes m85; no new issue.
+
+- [Native Pydub MP3 build/runtime conversion](evidence/native-media-conversion-sweep382/README.md) — sweep382:both first native builds and runtime conversions pass six ffprobe/twelve exact PCM checks, source/artifact retention and6 shared reads; live x86_64/local aarch64 and all cleanup pass. Closes m82; setup qualifications retained.
+
+- [Native uv locked-project first deployments](evidence/native-uv-project-sweep381/README.md) — sweep381:both native first default/explicit versions pass actual locked sync, installed project console, project .venv and upstream FastAPI HTTP200;6 shared reads and exact cleanup pass. Closes m81; no new issue.
+
+- [Static npm automatic dependencies](evidence/static-auto-deps-sweep379/README.md) — sweep379:both native original first builds and an explicit-skip/manual control reach Live/HTTP200 with exact source/dependency/page hashes;9 shared reads and complete cleanup pass. Closes m86; no new issue.
+
+- [Native PostgreSQL17 cursors and prepared statements](evidence/postgres-native-cursors-sweep378/README.md) — sweep378:32 stages pass across two stable native backend PIDs, held snapshots/positions, portal lifecycle, expected errors and prepared execution;15 vector controls and exact cleanup pass. Fresh m84 majors13–18 accepted; existing-parent backfill stays blocked.
+
+- [Native PostgreSQL16 binary COPY](evidence/postgres-native-binary-copy-sweep377/README.md) — sweep377:fifteen data commands/27 controls pass for64 exact typed rows, duplicate-key atomicity and two byte-identical binary exports;15 vector neighbor controls and exact cleanup also pass. No new issue; m84 backfill gate remains blocked.
+
+- [Native PostgreSQL15 isolation and error recovery](evidence/postgres-native-isolation-sweep376/README.md) — sweep376:27 stages pass across stable native backend PIDs, real snapshot/lock/savepoint/serialization outcomes and independent data reads;15 vector neighbor controls and exact endpoint/credential cleanup also pass. No new issue; m84 backfill gate remains blocked.
+
+- [Native two-client Key Value WATCH transactions](evidence/native-keyvalue-watch-sweep375/README.md) — sweep375:30 native stages pass with distinct stable client IDs, conflict/expiry aborts, ordered commit, UNWATCH/DISCARD, exact key deletion and native exits; full resource/credential cleanup, no new issue. Local history setup mistake is corrected and documented.
+
+- [Native static encoded asset names](evidence/static-encoded-assets-sweep374/README.md) — sweep374:twelve exact named files and30 HTTP2/HTTP1.1 data, HEAD, conditional/range/negative controls pass; own first deployment/parent/public route cleanup verified. No new issue.
+
+- [Native PostgreSQL14 large-object files](evidence/postgres-large-objects-sweep373/README.md) — sweep373:both native imports, five exact exports including empty, committed byte patches, atomic rollback and four expected errors pass;28 native commands/58 controls, exact object/file/database/credential cleanup. Earlier harness deadlines and read-only prelaunch recovery are retained, no new issue.
+
+- [Incoming-only WebSocket activity, idle and wake](evidence/115/README.md) — sweep372:18 exact messages over180seconds with no received application data/pings, native log match, eventual quiet hibernation and normal HTTP wake; exact cleanup. Minor descriptor drift is115, no new idle algorithm defect.
+
+- [Native web-service uploads](evidence/native-request-uploads-sweep370/README.md) — sweep370:nine HTTP1/HTTP2 data/method checks and eight matching native Render log events pass for multipart UTF8/empty/binary data, valid chunked and gzip requests; exact parent/child/runtime cleanup, no new issue.
+
+- [Native hosted WebSocket traffic](evidence/websocket-native-sweep369/README.md) — sweep369:two native Free creates/first deployments, six wss sessions,20 exact echoes,10 pongs, fragmentation/compression/normal closes and42 matching native log events pass; both former routes404, full exact cleanup, no new issue.
+
+- [Native PostgreSQL notifications](evidence/postgres-native-notifications-sweep368/README.md) — sweep368:both listener directions pass ordered UTF8/empty payloads, sender-PID correlation, duplicate handling, rollback/unsubscribe suppression and natural exits; default-name vector replay also passes, full exact cleanup, no new issue.
+
+- [Native queue consumer handoff](evidence/keyvalue-streams-sweep366/README.md) — sweep366:20 completed native checks pass for blocked delivery, exact payloads, pending ownership transfer, acknowledgment, empty timeout and type-error preservation; full own cleanup, no new issue.
+
 - [Native PostgreSQL CSV files — sweep360](evidence/postgres-native-csv-sweep360/README.md):both clients preserve37 rows through three tables, NULL/empty/literal-marker values and identical ordered exports; invalid final row leaves0 rows.14 native SQL checks behave as expected; own database/files cleaned. No new issue.
 
 - [Key Value logical databases and conditional writes — sweep359](evidence/keyvalue-database-selection-sweep359/README.md):18 native checks pass across both clients;40 values stay separate in databases1/2, matched/stale writes and default-db0/scan controls pass; own cache/endpoint cleaned. No new issue.
@@ -236,6 +266,10 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [Static byte-range acceptance and scoped rollout recheck](evidence/static-ranges-sweep317/README.md) — sweep317:62 text/binary/multipart/conditional/HEAD HTTP checks and three source controls pass; all three clients now refuse Free cron and accept the shared service/database name (six validations). Two sites/two deploys cleaned; no new issue.
 
 ## Inbox
+
+- [ ] **116** — [Native Python generates HTTP URLs for HTTPS requests](116.md) (55m, major) ← functional CLI sweep380; both defaults produce wrong absolute URLs/repeated HTTPS redirects, both one-setting controls pass; exact own fixtures cleaned.
+
+- [ ] **115** — [Correct MCP idle field omission and WebSocket-direction instructions](115.md) (30m, minor) ← functional CLI sweep372; live preview preserves60 and incoming-only activity stays awake, while the field description says unset selects default and names only sent frames; exact fixture cleanup verified.
 
 - [ ] **114** — [Native Ruby starts Rails in development on loopback](114.md) (55m, major) ← functional CLI sweep364; both ordinary servers return503 with loopback listeners, production-only prefixes restore Live/HTTP200; own fixtures cleaned.
 

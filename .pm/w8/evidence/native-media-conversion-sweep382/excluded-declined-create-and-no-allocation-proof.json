@@ -1,0 +1,234 @@
+[
+  {
+    "sweep": 382,
+    "client": "bex",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "web_service",
+    "name": "qa-20261016-350b1e-ffmpeg",
+    "nonce": "350b1e",
+    "marker": "QA382_350b1e_bex",
+    "time": "2026-10-16T23:10:34.490321+00:00",
+    "source_head": "925cc2010dcaa8ac3ccd23c4ca58a3517e942287",
+    "primary_reference": {
+      "repo": "https://github.com/jiaaro/pydub",
+      "branch": "master",
+      "commit": "103e339d3bc7a9a58a9f1de65f7d8074659b5f5a",
+      "files": {
+        "pydub/__init__.py": {
+          "bytes": 39,
+          "sha256": "c355efd5ac1b691ddf3214cd135fa0ae77ecc200114cd42b2a90737d9fbe5410"
+        },
+        "pydub/audio_segment.py": {
+          "bytes": 49233,
+          "sha256": "9f418d5215743ca48cfd2d77ba4a8e355ac9b04ae3dccba4baa5fa917deee1b4"
+        }
+      },
+      "qualification": "anonymous exact primary checkout; stdlib WAV control; ordinary pydub MP3 conversion requires external ffmpeg"
+    },
+    "commands": {
+      "initial": {
+        "build": "set -e\ncat > qa382-probe.py <<'QA382_PROBE'\nimport os,sys,json,platform,hashlib,subprocess,wave\nfrom pathlib import Path\nMARKER=json.loads(Path('qa382-marker.json').read_text());REFERENCE=json.loads(Path('qa382-reference.json').read_text())['files']\ndef sha(b):return hashlib.sha256(b).hexdigest()\ndef tool(name):\n try:\n  r=subprocess.run([name,'-version'] if name in ('ffmpeg','ffprobe') else [name,'--version'],text=True,capture_output=True,timeout=20);return {'status':r.returncode,'stdout':r.stdout,'stderr':r.stderr,'error':None}\n except FileNotFoundError:return {'status':None,'stdout':'','stderr':'','error':'ENOENT'}\n except subprocess.TimeoutExpired:return {'status':None,'stdout':'','stderr':'','error':'ETIMEDOUT'}\ndef input_info():\n b=Path('qa382-input.wav').read_bytes()\n with wave.open('qa382-input.wav','rb') as w:pcm=w.readframes(w.getnframes());shape={'channels':w.getnchannels(),'sample_width':w.getsampwidth(),'rate':w.getframerate(),'frames':w.getnframes(),'silence':pcm==b'\\0\\0'*800}\n assert shape=={'channels':1,'sample_width':2,'rate':8000,'frames':800,'silence':True}\n return {'bytes':len(b),'sha256':sha(b),'PCM_bytes':len(pcm),'PCM_sha256':sha(pcm),'shape':shape},pcm\ndef media_info(path):\n from pydub import AudioSegment\n b=Path(path).read_bytes();wav,expected=input_info();decoded=AudioSegment.from_mp3(path);probe_args=['ffprobe','-v','error','-show_entries','stream=codec_name,codec_type,sample_rate,channels:format=size,duration','-of','json',path];p=subprocess.run(probe_args,capture_output=True,text=True,stdin=subprocess.DEVNULL,timeout=20);assert p.returncode==0;info=json.loads(p.stdout);streams=info['streams'];assert len(streams)==1 and {k:streams[0].get(k) for k in ('codec_name','codec_type','sample_rate','channels')}=={'codec_name':'mp3','codec_type':'audio','sample_rate':'8000','channels':1}\n args=['ffmpeg','-nostdin','-v','error','-i',path,'-f','s16le','-acodec','pcm_s16le','pipe:1'];r=subprocess.run(args,capture_output=True,stdin=subprocess.DEVNULL,timeout=20);assert r.returncode==0 and r.stdout==expected\n assert len(decoded)==100 and decoded.channels==1 and decoded.frame_rate==8000 and decoded.sample_width==2 and decoded.raw_data==expected\n return {'file':path,'bytes':len(b),'sha256':sha(b),'ffprobe_command':probe_args,'ffprobe_exit':p.returncode,'ffprobe_raw':p.stdout,'ffprobe':info,'CLI_decode_command':args,'CLI_decode_exit':r.returncode,'CLI_decoded_PCM_bytes':len(r.stdout),'CLI_decoded_PCM_sha256':sha(r.stdout),'CLI_PCM_matches_input':r.stdout==expected,'Pydub_decoded':{'milliseconds':len(decoded),'channels':decoded.channels,'rate':decoded.frame_rate,'sample_width':decoded.sample_width,'PCM_bytes':len(decoded.raw_data),'PCM_sha256':sha(decoded.raw_data),'PCM_matches_input':decoded.raw_data==expected}}\ndef snapshot(stage):\n wav,_=input_info();files={n:{'bytes':len((b:=Path(n).read_bytes())),'sha256':sha(b)} for n in REFERENCE};assert files==REFERENCE\n if stage=='runtime':\n  from pydub import AudioSegment\n  audio=AudioSegment.from_wav('qa382-input.wav');assert len(audio)==100;audio.export('qa382-runtime.mp3',format='mp3')\n output='qa382-output.mp3' if stage=='build' else 'qa382-runtime.mp3'\n return {'marker':MARKER,'phase':stage,'python':platform.python_version(),'architecture':platform.machine(),'requested_python':os.environ.get('PYTHON_VERSION'),'files':files,'wav':wav,'converted_at_runtime':stage=='runtime','media':media_info(output),'retained_build_media':media_info('qa382-output.mp3') if stage=='runtime' else None,'tools':{n:tool(n) for n in ('ffmpeg','ffprobe','python','pip','poetry')}}\nif '--prepare' in sys.argv:\n assert all({'bytes':len((b:=Path(n).read_bytes())),'sha256':sha(b)}==v for n,v in REFERENCE.items())\n with wave.open('qa382-input.wav','wb') as wav:wav.setnchannels(1);wav.setsampwidth(2);wav.setframerate(8000);wav.writeframes(b'\\0\\0'*800)\n from pydub import AudioSegment\n assert len(AudioSegment.from_wav('qa382-input.wav'))==100;print(MARKER+'_SOURCE_AND_WAV_CONFIRMED',flush=True)\nelif '--build' in sys.argv:\n value=snapshot('build');Path('qa382-built.json').write_text(json.dumps(value,ensure_ascii=False));print('QA382_BUILD '+json.dumps(value,ensure_ascii=False),flush=True)\nelse:\n from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer\n value=snapshot('runtime');value['built']=json.loads(Path('qa382-built.json').read_text());body=json.dumps(value,ensure_ascii=False).encode()\n class Handler(BaseHTTPRequestHandler):\n  def log_message(self,*a):pass\n  def do_GET(self):self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)\n ThreadingHTTPServer(('127.0.0.1' if '--local' in sys.argv else '0.0.0.0',int(os.environ.get('PORT','3000'))),Handler).serve_forever()\n\nQA382_PROBE\ncat > qa382-reference.json <<'QA382_REFERENCE'\n{\"repo\": \"https://github.com/jiaaro/pydub\", \"branch\": \"master\", \"commit\": \"103e339d3bc7a9a58a9f1de65f7d8074659b5f5a\", \"files\": {\"pydub/__init__.py\": {\"bytes\": 39, \"sha256\": \"c355efd5ac1b691ddf3214cd135fa0ae77ecc200114cd42b2a90737d9fbe5410\"}, \"pydub/audio_segment.py\": {\"bytes\": 49233, \"sha256\": \"9f418d5215743ca48cfd2d77ba4a8e355ac9b04ae3dccba4baa5fa917deee1b4\"}}, \"qualification\": \"anonymous exact primary checkout; stdlib WAV control; ordinary pydub MP3 conversion requires external ffmpeg\"}\nQA382_REFERENCE\ncat > qa382-marker.json <<'QA382_MARKER'\n\"QA382_350b1e_bex\"\nQA382_MARKER\npython qa382-probe.py --prepare\npython -c 'from pydub import AudioSegment; audio=AudioSegment.from_wav('\"'\"'qa382-input.wav'\"'\"'); assert len(audio)==100; audio.export('\"'\"'qa382-output.mp3'\"'\"',format='\"'\"'mp3'\"'\"')'\npython qa382-probe.py --build",
+        "start": "python qa382-probe.py",
+        "program": "import os,sys,json,platform,hashlib,subprocess,wave\nfrom pathlib import Path\nMARKER=json.loads(Path('qa382-marker.json').read_text());REFERENCE=json.loads(Path('qa382-reference.json').read_text())['files']\ndef sha(b):return hashlib.sha256(b).hexdigest()\ndef tool(name):\n try:\n  r=subprocess.run([name,'-version'] if name in ('ffmpeg','ffprobe') else [name,'--version'],text=True,capture_output=True,timeout=20);return {'status':r.returncode,'stdout':r.stdout,'stderr':r.stderr,'error':None}\n except FileNotFoundError:return {'status':None,'stdout':'','stderr':'','error':'ENOENT'}\n except subprocess.TimeoutExpired:return {'status':None,'stdout':'','stderr':'','error':'ETIMEDOUT'}\ndef input_info():\n b=Path('qa382-input.wav').read_bytes()\n with wave.open('qa382-input.wav','rb') as w:pcm=w.readframes(w.getnframes());shape={'channels':w.getnchannels(),'sample_width':w.getsampwidth(),'rate':w.getframerate(),'frames':w.getnframes(),'silence':pcm==b'\\0\\0'*800}\n assert shape=={'channels':1,'sample_width':2,'rate':8000,'frames':800,'silence':True}\n return {'bytes':len(b),'sha256':sha(b),'PCM_bytes':len(pcm),'PCM_sha256':sha(pcm),'shape':shape},pcm\ndef media_info(path):\n from pydub import AudioSegment\n b=Path(path).read_bytes();wav,expected=input_info();decoded=AudioSegment.from_mp3(path);probe_args=['ffprobe','-v','error','-show_entries','stream=codec_name,codec_type,sample_rate,channels:format=size,duration','-of','json',path];p=subprocess.run(probe_args,capture_output=True,text=True,stdin=subprocess.DEVNULL,timeout=20);assert p.returncode==0;info=json.loads(p.stdout);streams=info['streams'];assert len(streams)==1 and {k:streams[0].get(k) for k in ('codec_name','codec_type','sample_rate','channels')}=={'codec_name':'mp3','codec_type':'audio','sample_rate':'8000','channels':1}\n args=['ffmpeg','-nostdin','-v','error','-i',path,'-f','s16le','-acodec','pcm_s16le','pipe:1'];r=subprocess.run(args,capture_output=True,stdin=subprocess.DEVNULL,timeout=20);assert r.returncode==0 and r.stdout==expected\n assert len(decoded)==100 and decoded.channels==1 and decoded.frame_rate==8000 and decoded.sample_width==2 and decoded.raw_data==expected\n return {'file':path,'bytes':len(b),'sha256':sha(b),'ffprobe_command':probe_args,'ffprobe_exit':p.returncode,'ffprobe_raw':p.stdout,'ffprobe':info,'CLI_decode_command':args,'CLI_decode_exit':r.returncode,'CLI_decoded_PCM_bytes':len(r.stdout),'CLI_decoded_PCM_sha256':sha(r.stdout),'CLI_PCM_matches_input':r.stdout==expected,'Pydub_decoded':{'milliseconds':len(decoded),'channels':decoded.channels,'rate':decoded.frame_rate,'sample_width':decoded.sample_width,'PCM_bytes':len(decoded.raw_data),'PCM_sha256':sha(decoded.raw_data),'PCM_matches_input':decoded.raw_data==expected}}\ndef snapshot(stage):\n wav,_=input_info();files={n:{'bytes':len((b:=Path(n).read_bytes())),'sha256':sha(b)} for n in REFERENCE};assert files==REFERENCE\n if stage=='runtime':\n  from pydub import AudioSegment\n  audio=AudioSegment.from_wav('qa382-input.wav');assert len(audio)==100;audio.export('qa382-runtime.mp3',format='mp3')\n output='qa382-output.mp3' if stage=='build' else 'qa382-runtime.mp3'\n return {'marker':MARKER,'phase':stage,'python':platform.python_version(),'architecture':platform.machine(),'requested_python':os.environ.get('PYTHON_VERSION'),'files':files,'wav':wav,'converted_at_runtime':stage=='runtime','media':media_info(output),'retained_build_media':media_info('qa382-output.mp3') if stage=='runtime' else None,'tools':{n:tool(n) for n in ('ffmpeg','ffprobe','python','pip','poetry')}}\nif '--prepare' in sys.argv:\n assert all({'bytes':len((b:=Path(n).read_bytes())),'sha256':sha(b)}==v for n,v in REFERENCE.items())\n with wave.open('qa382-input.wav','wb') as wav:wav.setnchannels(1);wav.setsampwidth(2);wav.setframerate(8000);wav.writeframes(b'\\0\\0'*800)\n from pydub import AudioSegment\n assert len(AudioSegment.from_wav('qa382-input.wav'))==100;print(MARKER+'_SOURCE_AND_WAV_CONFIRMED',flush=True)\nelif '--build' in sys.argv:\n value=snapshot('build');Path('qa382-built.json').write_text(json.dumps(value,ensure_ascii=False));print('QA382_BUILD '+json.dumps(value,ensure_ascii=False),flush=True)\nelse:\n from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer\n value=snapshot('runtime');value['built']=json.loads(Path('qa382-built.json').read_text());body=json.dumps(value,ensure_ascii=False).encode()\n class Handler(BaseHTTPRequestHandler):\n  def log_message(self,*a):pass\n  def do_GET(self):self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)\n ThreadingHTTPServer(('127.0.0.1' if '--local' in sys.argv else '0.0.0.0',int(os.environ.get('PORT','3000'))),Handler).serve_forever()\n",
+        "original_required_conversion": "python -c 'from pydub import AudioSegment; audio=AudioSegment.from_wav('\"'\"'qa382-input.wav'\"'\"'); assert len(audio)==100; audio.export('\"'\"'qa382-output.mp3'\"'\"',format='\"'\"'mp3'\"'\"')'\n"
+      }
+    },
+    "pre_ids": [
+      "srv-dap3v694dm7c7390q930",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-db09vbgehcmc739j12i0",
+      "srv-db09u90ehcmc739j12cg"
+    ],
+    "pre_inventory": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.752,
+      "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}]",
+      "stderr": "",
+      "native_exit": 0
+    },
+    "capacity": {
+      "at": "2026-10-16T23:10:33.686436+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 1.098,
+      "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+      "stderr": ""
+    },
+    "dependency_ids": [],
+    "recorded_child_ids": [],
+    "create_command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261016-350b1e-ffmpeg",
+      "--type",
+      "web_service",
+      "--runtime",
+      "python",
+      "--repo",
+      "https://github.com/jiaaro/pydub",
+      "--branch",
+      "master",
+      "--build-command",
+      "set -e\ncat > qa382-probe.py <<'QA382_PROBE'\nimport os,sys,json,platform,hashlib,subprocess,wave\nfrom pathlib import Path\nMARKER=json.loads(Path('qa382-marker.json').read_text());REFERENCE=json.loads(Path('qa382-reference.json').read_text())['files']\ndef sha(b):return hashlib.sha256(b).hexdigest()\ndef tool(name):\n try:\n  r=subprocess.run([name,'-version'] if name in ('ffmpeg','ffprobe') else [name,'--version'],text=True,capture_output=True,timeout=20);return {'status':r.returncode,'stdout':r.stdout,'stderr':r.stderr,'error':None}\n except FileNotFoundError:return {'status':None,'stdout':'','stderr':'','error':'ENOENT'}\n except subprocess.TimeoutExpired:return {'status':None,'stdout':'','stderr':'','error':'ETIMEDOUT'}\ndef input_info():\n b=Path('qa382-input.wav').read_bytes()\n with wave.open('qa382-input.wav','rb') as w:pcm=w.readframes(w.getnframes());shape={'channels':w.getnchannels(),'sample_width':w.getsampwidth(),'rate':w.getframerate(),'frames':w.getnframes(),'silence':pcm==b'\\0\\0'*800}\n assert shape=={'channels':1,'sample_width':2,'rate':8000,'frames':800,'silence':True}\n return {'bytes':len(b),'sha256':sha(b),'PCM_bytes':len(pcm),'PCM_sha256':sha(pcm),'shape':shape},pcm\ndef media_info(path):\n from pydub import AudioSegment\n b=Path(path).read_bytes();wav,expected=input_info();decoded=AudioSegment.from_mp3(path);probe_args=['ffprobe','-v','error','-show_entries','stream=codec_name,codec_type,sample_rate,channels:format=size,duration','-of','json',path];p=subprocess.run(probe_args,capture_output=True,text=True,stdin=subprocess.DEVNULL,timeout=20);assert p.returncode==0;info=json.loads(p.stdout);streams=info['streams'];assert len(streams)==1 and {k:streams[0].get(k) for k in ('codec_name','codec_type','sample_rate','channels')}=={'codec_name':'mp3','codec_type':'audio','sample_rate':'8000','channels':1}\n args=['ffmpeg','-nostdin','-v','error','-i',path,'-f','s16le','-acodec','pcm_s16le','pipe:1'];r=subprocess.run(args,capture_output=True,stdin=subprocess.DEVNULL,timeout=20);assert r.returncode==0 and r.stdout==expected\n assert len(decoded)==100 and decoded.channels==1 and decoded.frame_rate==8000 and decoded.sample_width==2 and decoded.raw_data==expected\n return {'file':path,'bytes':len(b),'sha256':sha(b),'ffprobe_command':probe_args,'ffprobe_exit':p.returncode,'ffprobe_raw':p.stdout,'ffprobe':info,'CLI_decode_command':args,'CLI_decode_exit':r.returncode,'CLI_decoded_PCM_bytes':len(r.stdout),'CLI_decoded_PCM_sha256':sha(r.stdout),'CLI_PCM_matches_input':r.stdout==expected,'Pydub_decoded':{'milliseconds':len(decoded),'channels':decoded.channels,'rate':decoded.frame_rate,'sample_width':decoded.sample_width,'PCM_bytes':len(decoded.raw_data),'PCM_sha256':sha(decoded.raw_data),'PCM_matches_input':decoded.raw_data==expected}}\ndef snapshot(stage):\n wav,_=input_info();files={n:{'bytes':len((b:=Path(n).read_bytes())),'sha256':sha(b)} for n in REFERENCE};assert files==REFERENCE\n if stage=='runtime':\n  from pydub import AudioSegment\n  audio=AudioSegment.from_wav('qa382-input.wav');assert len(audio)==100;audio.export('qa382-runtime.mp3',format='mp3')\n output='qa382-output.mp3' if stage=='build' else 'qa382-runtime.mp3'\n return {'marker':MARKER,'phase':stage,'python':platform.python_version(),'architecture':platform.machine(),'requested_python':os.environ.get('PYTHON_VERSION'),'files':files,'wav':wav,'converted_at_runtime':stage=='runtime','media':media_info(output),'retained_build_media':media_info('qa382-output.mp3') if stage=='runtime' else None,'tools':{n:tool(n) for n in ('ffmpeg','ffprobe','python','pip','poetry')}}\nif '--prepare' in sys.argv:\n assert all({'bytes':len((b:=Path(n).read_bytes())),'sha256':sha(b)}==v for n,v in REFERENCE.items())\n with wave.open('qa382-input.wav','wb') as wav:wav.setnchannels(1);wav.setsampwidth(2);wav.setframerate(8000);wav.writeframes(b'\\0\\0'*800)\n from pydub import AudioSegment\n assert len(AudioSegment.from_wav('qa382-input.wav'))==100;print(MARKER+'_SOURCE_AND_WAV_CONFIRMED',flush=True)\nelif '--build' in sys.argv:\n value=snapshot('build');Path('qa382-built.json').write_text(json.dumps(value,ensure_ascii=False));print('QA382_BUILD '+json.dumps(value,ensure_ascii=False),flush=True)\nelse:\n from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer\n value=snapshot('runtime');value['built']=json.loads(Path('qa382-built.json').read_text());body=json.dumps(value,ensure_ascii=False).encode()\n class Handler(BaseHTTPRequestHandler):\n  def log_message(self,*a):pass\n  def do_GET(self):self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)\n ThreadingHTTPServer(('127.0.0.1' if '--local' in sys.argv else '0.0.0.0',int(os.environ.get('PORT','3000'))),Handler).serve_forever()\n\nQA382_PROBE\ncat > qa382-reference.json <<'QA382_REFERENCE'\n{\"repo\": \"https://github.com/jiaaro/pydub\", \"branch\": \"master\", \"commit\": \"103e339d3bc7a9a58a9f1de65f7d8074659b5f5a\", \"files\": {\"pydub/__init__.py\": {\"bytes\": 39, \"sha256\": \"c355efd5ac1b691ddf3214cd135fa0ae77ecc200114cd42b2a90737d9fbe5410\"}, \"pydub/audio_segment.py\": {\"bytes\": 49233, \"sha256\": \"9f418d5215743ca48cfd2d77ba4a8e355ac9b04ae3dccba4baa5fa917deee1b4\"}}, \"qualification\": \"anonymous exact primary checkout; stdlib WAV control; ordinary pydub MP3 conversion requires external ffmpeg\"}\nQA382_REFERENCE\ncat > qa382-marker.json <<'QA382_MARKER'\n\"QA382_350b1e_bex\"\nQA382_MARKER\npython qa382-probe.py --prepare\npython -c 'from pydub import AudioSegment; audio=AudioSegment.from_wav('\"'\"'qa382-input.wav'\"'\"'); assert len(audio)==100; audio.export('\"'\"'qa382-output.mp3'\"'\"',format='\"'\"'mp3'\"'\"')'\npython qa382-probe.py --build",
+      "--start-command",
+      "python qa382-probe.py",
+      "--env-var",
+      "PYTHON_VERSION=3.12",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--health-check-path",
+      "/",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "state": "excluded setup: authored diagnostic build exceeds4096; native400, exact nonce absent, unchanged baseline6/quota6 terminating0",
+    "create_result": {
+      "binary": "published Bex 0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--name",
+        "qa-20261016-350b1e-ffmpeg",
+        "--type",
+        "web_service",
+        "--runtime",
+        "python",
+        "--repo",
+        "https://github.com/jiaaro/pydub",
+        "--branch",
+        "master",
+        "--build-command",
+        "set -e\ncat > qa382-probe.py <<'QA382_PROBE'\nimport os,sys,json,platform,hashlib,subprocess,wave\nfrom pathlib import Path\nMARKER=json.loads(Path('qa382-marker.json').read_text());REFERENCE=json.loads(Path('qa382-reference.json').read_text())['files']\ndef sha(b):return hashlib.sha256(b).hexdigest()\ndef tool(name):\n try:\n  r=subprocess.run([name,'-version'] if name in ('ffmpeg','ffprobe') else [name,'--version'],text=True,capture_output=True,timeout=20);return {'status':r.returncode,'stdout':r.stdout,'stderr':r.stderr,'error':None}\n except FileNotFoundError:return {'status':None,'stdout':'','stderr':'','error':'ENOENT'}\n except subprocess.TimeoutExpired:return {'status':None,'stdout':'','stderr':'','error':'ETIMEDOUT'}\ndef input_info():\n b=Path('qa382-input.wav').read_bytes()\n with wave.open('qa382-input.wav','rb') as w:pcm=w.readframes(w.getnframes());shape={'channels':w.getnchannels(),'sample_width':w.getsampwidth(),'rate':w.getframerate(),'frames':w.getnframes(),'silence':pcm==b'\\0\\0'*800}\n assert shape=={'channels':1,'sample_width':2,'rate':8000,'frames':800,'silence':True}\n return {'bytes':len(b),'sha256':sha(b),'PCM_bytes':len(pcm),'PCM_sha256':sha(pcm),'shape':shape},pcm\ndef media_info(path):\n from pydub import AudioSegment\n b=Path(path).read_bytes();wav,expected=input_info();decoded=AudioSegment.from_mp3(path);probe_args=['ffprobe','-v','error','-show_entries','stream=codec_name,codec_type,sample_rate,channels:format=size,duration','-of','json',path];p=subprocess.run(probe_args,capture_output=True,text=True,stdin=subprocess.DEVNULL,timeout=20);assert p.returncode==0;info=json.loads(p.stdout);streams=info['streams'];assert len(streams)==1 and {k:streams[0].get(k) for k in ('codec_name','codec_type','sample_rate','channels')}=={'codec_name':'mp3','codec_type':'audio','sample_rate':'8000','channels':1}\n args=['ffmpeg','-nostdin','-v','error','-i',path,'-f','s16le','-acodec','pcm_s16le','pipe:1'];r=subprocess.run(args,capture_output=True,stdin=subprocess.DEVNULL,timeout=20);assert r.returncode==0 and r.stdout==expected\n assert len(decoded)==100 and decoded.channels==1 and decoded.frame_rate==8000 and decoded.sample_width==2 and decoded.raw_data==expected\n return {'file':path,'bytes':len(b),'sha256':sha(b),'ffprobe_command':probe_args,'ffprobe_exit':p.returncode,'ffprobe_raw':p.stdout,'ffprobe':info,'CLI_decode_command':args,'CLI_decode_exit':r.returncode,'CLI_decoded_PCM_bytes':len(r.stdout),'CLI_decoded_PCM_sha256':sha(r.stdout),'CLI_PCM_matches_input':r.stdout==expected,'Pydub_decoded':{'milliseconds':len(decoded),'channels':decoded.channels,'rate':decoded.frame_rate,'sample_width':decoded.sample_width,'PCM_bytes':len(decoded.raw_data),'PCM_sha256':sha(decoded.raw_data),'PCM_matches_input':decoded.raw_data==expected}}\ndef snapshot(stage):\n wav,_=input_info();files={n:{'bytes':len((b:=Path(n).read_bytes())),'sha256':sha(b)} for n in REFERENCE};assert files==REFERENCE\n if stage=='runtime':\n  from pydub import AudioSegment\n  audio=AudioSegment.from_wav('qa382-input.wav');assert len(audio)==100;audio.export('qa382-runtime.mp3',format='mp3')\n output='qa382-output.mp3' if stage=='build' else 'qa382-runtime.mp3'\n return {'marker':MARKER,'phase':stage,'python':platform.python_version(),'architecture':platform.machine(),'requested_python':os.environ.get('PYTHON_VERSION'),'files':files,'wav':wav,'converted_at_runtime':stage=='runtime','media':media_info(output),'retained_build_media':media_info('qa382-output.mp3') if stage=='runtime' else None,'tools':{n:tool(n) for n in ('ffmpeg','ffprobe','python','pip','poetry')}}\nif '--prepare' in sys.argv:\n assert all({'bytes':len((b:=Path(n).read_bytes())),'sha256':sha(b)}==v for n,v in REFERENCE.items())\n with wave.open('qa382-input.wav','wb') as wav:wav.setnchannels(1);wav.setsampwidth(2);wav.setframerate(8000);wav.writeframes(b'\\0\\0'*800)\n from pydub import AudioSegment\n assert len(AudioSegment.from_wav('qa382-input.wav'))==100;print(MARKER+'_SOURCE_AND_WAV_CONFIRMED',flush=True)\nelif '--build' in sys.argv:\n value=snapshot('build');Path('qa382-built.json').write_text(json.dumps(value,ensure_ascii=False));print('QA382_BUILD '+json.dumps(value,ensure_ascii=False),flush=True)\nelse:\n from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer\n value=snapshot('runtime');value['built']=json.loads(Path('qa382-built.json').read_text());body=json.dumps(value,ensure_ascii=False).encode()\n class Handler(BaseHTTPRequestHandler):\n  def log_message(self,*a):pass\n  def do_GET(self):self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)\n ThreadingHTTPServer(('127.0.0.1' if '--local' in sys.argv else '0.0.0.0',int(os.environ.get('PORT','3000'))),Handler).serve_forever()\n\nQA382_PROBE\ncat > qa382-reference.json <<'QA382_REFERENCE'\n{\"repo\": \"https://github.com/jiaaro/pydub\", \"branch\": \"master\", \"commit\": \"103e339d3bc7a9a58a9f1de65f7d8074659b5f5a\", \"files\": {\"pydub/__init__.py\": {\"bytes\": 39, \"sha256\": \"c355efd5ac1b691ddf3214cd135fa0ae77ecc200114cd42b2a90737d9fbe5410\"}, \"pydub/audio_segment.py\": {\"bytes\": 49233, \"sha256\": \"9f418d5215743ca48cfd2d77ba4a8e355ac9b04ae3dccba4baa5fa917deee1b4\"}}, \"qualification\": \"anonymous exact primary checkout; stdlib WAV control; ordinary pydub MP3 conversion requires external ffmpeg\"}\nQA382_REFERENCE\ncat > qa382-marker.json <<'QA382_MARKER'\n\"QA382_350b1e_bex\"\nQA382_MARKER\npython qa382-probe.py --prepare\npython -c 'from pydub import AudioSegment; audio=AudioSegment.from_wav('\"'\"'qa382-input.wav'\"'\"'); assert len(audio)==100; audio.export('\"'\"'qa382-output.mp3'\"'\"',format='\"'\"'mp3'\"'\"')'\npython qa382-probe.py --build",
+        "--start-command",
+        "python qa382-probe.py",
+        "--env-var",
+        "PYTHON_VERSION=3.12",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--health-check-path",
+        "/",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 1.023,
+      "stdout": "",
+      "stderr": "Error: received response code 400: bad request: spec.buildCommand: Too long: may not be more than 4096 bytes\n",
+      "captures": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/v1/services",
+            "body": {
+              "autoDeploy": "no",
+              "branch": "master",
+              "envVars": [
+                {
+                  "key": "PYTHON_VERSION",
+                  "value": "3.12"
+                }
+              ],
+              "name": "qa-20261016-350b1e-ffmpeg",
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "repo": "https://github.com/jiaaro/pydub",
+              "serviceDetails": {
+                "envSpecificDetails": {
+                  "buildCommand": "set -e\ncat > qa382-probe.py <<'QA382_PROBE'\nimport os,sys,json,platform,hashlib,subprocess,wave\nfrom pathlib import Path\nMARKER=json.loads(Path('qa382-marker.json').read_text());REFERENCE=json.loads(Path('qa382-reference.json').read_text())['files']\ndef sha(b):return hashlib.sha256(b).hexdigest()\ndef tool(name):\n try:\n  r=subprocess.run([name,'-version'] if name in ('ffmpeg','ffprobe') else [name,'--version'],text=True,capture_output=True,timeout=20);return {'status':r.returncode,'stdout':r.stdout,'stderr':r.stderr,'error':None}\n except FileNotFoundError:return {'status':None,'stdout':'','stderr':'','error':'ENOENT'}\n except subprocess.TimeoutExpired:return {'status':None,'stdout':'','stderr':'','error':'ETIMEDOUT'}\ndef input_info():\n b=Path('qa382-input.wav').read_bytes()\n with wave.open('qa382-input.wav','rb') as w:pcm=w.readframes(w.getnframes());shape={'channels':w.getnchannels(),'sample_width':w.getsampwidth(),'rate':w.getframerate(),'frames':w.getnframes(),'silence':pcm==b'\\0\\0'*800}\n assert shape=={'channels':1,'sample_width':2,'rate':8000,'frames':800,'silence':True}\n return {'bytes':len(b),'sha256':sha(b),'PCM_bytes':len(pcm),'PCM_sha256':sha(pcm),'shape':shape},pcm\ndef media_info(path):\n from pydub import AudioSegment\n b=Path(path).read_bytes();wav,expected=input_info();decoded=AudioSegment.from_mp3(path);probe_args=['ffprobe','-v','error','-show_entries','stream=codec_name,codec_type,sample_rate,channels:format=size,duration','-of','json',path];p=subprocess.run(probe_args,capture_output=True,text=True,stdin=subprocess.DEVNULL,timeout=20);assert p.returncode==0;info=json.loads(p.stdout);streams=info['streams'];assert len(streams)==1 and {k:streams[0].get(k) for k in ('codec_name','codec_type','sample_rate','channels')}=={'codec_name':'mp3','codec_type':'audio','sample_rate':'8000','channels':1}\n args=['ffmpeg','-nostdin','-v','error','-i',path,'-f','s16le','-acodec','pcm_s16le','pipe:1'];r=subprocess.run(args,capture_output=True,stdin=subprocess.DEVNULL,timeout=20);assert r.returncode==0 and r.stdout==expected\n assert len(decoded)==100 and decoded.channels==1 and decoded.frame_rate==8000 and decoded.sample_width==2 and decoded.raw_data==expected\n return {'file':path,'bytes':len(b),'sha256':sha(b),'ffprobe_command':probe_args,'ffprobe_exit':p.returncode,'ffprobe_raw':p.stdout,'ffprobe':info,'CLI_decode_command':args,'CLI_decode_exit':r.returncode,'CLI_decoded_PCM_bytes':len(r.stdout),'CLI_decoded_PCM_sha256':sha(r.stdout),'CLI_PCM_matches_input':r.stdout==expected,'Pydub_decoded':{'milliseconds':len(decoded),'channels':decoded.channels,'rate':decoded.frame_rate,'sample_width':decoded.sample_width,'PCM_bytes':len(decoded.raw_data),'PCM_sha256':sha(decoded.raw_data),'PCM_matches_input':decoded.raw_data==expected}}\ndef snapshot(stage):\n wav,_=input_info();files={n:{'bytes':len((b:=Path(n).read_bytes())),'sha256':sha(b)} for n in REFERENCE};assert files==REFERENCE\n if stage=='runtime':\n  from pydub import AudioSegment\n  audio=AudioSegment.from_wav('qa382-input.wav');assert len(audio)==100;audio.export('qa382-runtime.mp3',format='mp3')\n output='qa382-output.mp3' if stage=='build' else 'qa382-runtime.mp3'\n return {'marker':MARKER,'phase':stage,'python':platform.python_version(),'architecture':platform.machine(),'requested_python':os.environ.get('PYTHON_VERSION'),'files':files,'wav':wav,'converted_at_runtime':stage=='runtime','media':media_info(output),'retained_build_media':media_info('qa382-output.mp3') if stage=='runtime' else None,'tools':{n:tool(n) for n in ('ffmpeg','ffprobe','python','pip','poetry')}}\nif '--prepare' in sys.argv:\n assert all({'bytes':len((b:=Path(n).read_bytes())),'sha256':sha(b)}==v for n,v in REFERENCE.items())\n with wave.open('qa382-input.wav','wb') as wav:wav.setnchannels(1);wav.setsampwidth(2);wav.setframerate(8000);wav.writeframes(b'\\0\\0'*800)\n from pydub import AudioSegment\n assert len(AudioSegment.from_wav('qa382-input.wav'))==100;print(MARKER+'_SOURCE_AND_WAV_CONFIRMED',flush=True)\nelif '--build' in sys.argv:\n value=snapshot('build');Path('qa382-built.json').write_text(json.dumps(value,ensure_ascii=False));print('QA382_BUILD '+json.dumps(value,ensure_ascii=False),flush=True)\nelse:\n from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer\n value=snapshot('runtime');value['built']=json.loads(Path('qa382-built.json').read_text());body=json.dumps(value,ensure_ascii=False).encode()\n class Handler(BaseHTTPRequestHandler):\n  def log_message(self,*a):pass\n  def do_GET(self):self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)\n ThreadingHTTPServer(('127.0.0.1' if '--local' in sys.argv else '0.0.0.0',int(os.environ.get('PORT','3000'))),Handler).serve_forever()\n\nQA382_PROBE\ncat > qa382-reference.json <<'QA382_REFERENCE'\n{\"repo\": \"https://github.com/jiaaro/pydub\", \"branch\": \"master\", \"commit\": \"103e339d3bc7a9a58a9f1de65f7d8074659b5f5a\", \"files\": {\"pydub/__init__.py\": {\"bytes\": 39, \"sha256\": \"c355efd5ac1b691ddf3214cd135fa0ae77ecc200114cd42b2a90737d9fbe5410\"}, \"pydub/audio_segment.py\": {\"bytes\": 49233, \"sha256\": \"9f418d5215743ca48cfd2d77ba4a8e355ac9b04ae3dccba4baa5fa917deee1b4\"}}, \"qualification\": \"anonymous exact primary checkout; stdlib WAV control; ordinary pydub MP3 conversion requires external ffmpeg\"}\nQA382_REFERENCE\ncat > qa382-marker.json <<'QA382_MARKER'\n\"QA382_350b1e_bex\"\nQA382_MARKER\npython qa382-probe.py --prepare\npython -c 'from pydub import AudioSegment; audio=AudioSegment.from_wav('\"'\"'qa382-input.wav'\"'\"'); assert len(audio)==100; audio.export('\"'\"'qa382-output.mp3'\"'\"',format='\"'\"'mp3'\"'\"')'\npython qa382-probe.py --build",
+                  "startCommand": "python qa382-probe.py"
+                },
+                "healthCheckPath": "/",
+                "plan": "free",
+                "region": "frankfurt",
+                "runtime": "python"
+              },
+              "type": "web_service"
+            },
+            "raw_body": "{\"autoDeploy\": \"no\", \"branch\": \"master\", \"envVars\": [{\"key\": \"PYTHON_VERSION\", \"value\": \"3.12\"}], \"name\": \"qa-20261016-350b1e-ffmpeg\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/jiaaro/pydub\", \"serviceDetails\": {\"envSpecificDetails\": {\"buildCommand\": \"set -e\\ncat > qa382-probe.py <<'QA382_PROBE'\\nimport os,sys,json,platform,hashlib,subprocess,wave\\nfrom pathlib import Path\\nMARKER=json.loads(Path('qa382-marker.json').read_text());REFERENCE=json.loads(Path('qa382-reference.json').read_text())['files']\\ndef sha(b):return hashlib.sha256(b).hexdigest()\\ndef tool(name):\\n try:\\n  r=subprocess.run([name,'-version'] if name in ('ffmpeg','ffprobe') else [name,'--version'],text=True,capture_output=True,timeout=20);return {'status':r.returncode,'stdout':r.stdout,'stderr':r.stderr,'error':None}\\n except FileNotFoundError:return {'status':None,'stdout':'','stderr':'','error':'ENOENT'}\\n except subprocess.TimeoutExpired:return {'status':None,'stdout':'','stderr':'','error':'ETIMEDOUT'}\\ndef input_info():\\n b=Path('qa382-input.wav').read_bytes()\\n with wave.open('qa382-input.wav','rb') as w:pcm=w.readframes(w.getnframes());shape={'channels':w.getnchannels(),'sample_width':w.getsampwidth(),'rate':w.getframerate(),'frames':w.getnframes(),'silence':pcm==b'\\\\0\\\\0'*800}\\n assert shape=={'channels':1,'sample_width':2,'rate':8000,'frames':800,'silence':True}\\n return {'bytes':len(b),'sha256':sha(b),'PCM_bytes':len(pcm),'PCM_sha256':sha(pcm),'shape':shape},pcm\\ndef media_info(path):\\n from pydub import AudioSegment\\n b=Path(path).read_bytes();wav,expected=input_info();decoded=AudioSegment.from_mp3(path);probe_args=['ffprobe','-v','error','-show_entries','stream=codec_name,codec_type,sample_rate,channels:format=size,duration','-of','json',path];p=subprocess.run(probe_args,capture_output=True,text=True,stdin=subprocess.DEVNULL,timeout=20);assert p.returncode==0;info=json.loads(p.stdout);streams=info['streams'];assert len(streams)==1 and {k:streams[0].get(k) for k in ('codec_name','codec_type','sample_rate','channels')}=={'codec_name':'mp3','codec_type':'audio','sample_rate':'8000','channels':1}\\n args=['ffmpeg','-nostdin','-v','error','-i',path,'-f','s16le','-acodec','pcm_s16le','pipe:1'];r=subprocess.run(args,capture_output=True,stdin=subprocess.DEVNULL,timeout=20);assert r.returncode==0 and r.stdout==expected\\n assert len(decoded)==100 and decoded.channels==1 and decoded.frame_rate==8000 and decoded.sample_width==2 and decoded.raw_data==expected\\n return {'file':path,'bytes':len(b),'sha256':sha(b),'ffprobe_command':probe_args,'ffprobe_exit':p.returncode,'ffprobe_raw':p.stdout,'ffprobe':info,'CLI_decode_command':args,'CLI_decode_exit':r.returncode,'CLI_decoded_PCM_bytes':len(r.stdout),'CLI_decoded_PCM_sha256':sha(r.stdout),'CLI_PCM_matches_input':r.stdout==expected,'Pydub_decoded':{'milliseconds':len(decoded),'channels':decoded.channels,'rate':decoded.frame_rate,'sample_width':decoded.sample_width,'PCM_bytes':len(decoded.raw_data),'PCM_sha256':sha(decoded.raw_data),'PCM_matches_input':decoded.raw_data==expected}}\\ndef snapshot(stage):\\n wav,_=input_info();files={n:{'bytes':len((b:=Path(n).read_bytes())),'sha256':sha(b)} for n in REFERENCE};assert files==REFERENCE\\n if stage=='runtime':\\n  from pydub import AudioSegment\\n  audio=AudioSegment.from_wav('qa382-input.wav');assert len(audio)==100;audio.export('qa382-runtime.mp3',format='mp3')\\n output='qa382-output.mp3' if stage=='build' else 'qa382-runtime.mp3'\\n return {'marker':MARKER,'phase':stage,'python':platform.python_version(),'architecture':platform.machine(),'requested_python':os.environ.get('PYTHON_VERSION'),'files':files,'wav':wav,'converted_at_runtime':stage=='runtime','media':media_info(output),'retained_build_media':media_info('qa382-output.mp3') if stage=='runtime' else None,'tools':{n:tool(n) for n in ('ffmpeg','ffprobe','python','pip','poetry')}}\\nif '--prepare' in sys.argv:\\n assert all({'bytes':len((b:=Path(n).read_bytes())),'sha256':sha(b)}==v for n,v in REFERENCE.items())\\n with wave.open('qa382-input.wav','wb') as wav:wav.setnchannels(1);wav.setsampwidth(2);wav.setframerate(8000);wav.writeframes(b'\\\\0\\\\0'*800)\\n from pydub import AudioSegment\\n assert len(AudioSegment.from_wav('qa382-input.wav'))==100;print(MARKER+'_SOURCE_AND_WAV_CONFIRMED',flush=True)\\nelif '--build' in sys.argv:\\n value=snapshot('build');Path('qa382-built.json').write_text(json.dumps(value,ensure_ascii=False));print('QA382_BUILD '+json.dumps(value,ensure_ascii=False),flush=True)\\nelse:\\n from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer\\n value=snapshot('runtime');value['built']=json.loads(Path('qa382-built.json').read_text());body=json.dumps(value,ensure_ascii=False).encode()\\n class Handler(BaseHTTPRequestHandler):\\n  def log_message(self,*a):pass\\n  def do_GET(self):self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)\\n ThreadingHTTPServer(('127.0.0.1' if '--local' in sys.argv else '0.0.0.0',int(os.environ.get('PORT','3000'))),Handler).serve_forever()\\n\\nQA382_PROBE\\ncat > qa382-reference.json <<'QA382_REFERENCE'\\n{\\\"repo\\\": \\\"https://github.com/jiaaro/pydub\\\", \\\"branch\\\": \\\"master\\\", \\\"commit\\\": \\\"103e339d3bc7a9a58a9f1de65f7d8074659b5f5a\\\", \\\"files\\\": {\\\"pydub/__init__.py\\\": {\\\"bytes\\\": 39, \\\"sha256\\\": \\\"c355efd5ac1b691ddf3214cd135fa0ae77ecc200114cd42b2a90737d9fbe5410\\\"}, \\\"pydub/audio_segment.py\\\": {\\\"bytes\\\": 49233, \\\"sha256\\\": \\\"9f418d5215743ca48cfd2d77ba4a8e355ac9b04ae3dccba4baa5fa917deee1b4\\\"}}, \\\"qualification\\\": \\\"anonymous exact primary checkout; stdlib WAV control; ordinary pydub MP3 conversion requires external ffmpeg\\\"}\\nQA382_REFERENCE\\ncat > qa382-marker.json <<'QA382_MARKER'\\n\\\"QA382_350b1e_bex\\\"\\nQA382_MARKER\\npython qa382-probe.py --prepare\\npython -c 'from pydub import AudioSegment; audio=AudioSegment.from_wav('\\\"'\\\"'qa382-input.wav'\\\"'\\\"'); assert len(audio)==100; audio.export('\\\"'\\\"'qa382-output.mp3'\\\"'\\\"',format='\\\"'\\\"'mp3'\\\"'\\\"')'\\npython qa382-probe.py --build\", \"startCommand\": \"python qa382-probe.py\"}, \"healthCheckPath\": \"/\", \"plan\": \"free\", \"region\": \"frankfurt\", \"runtime\": \"python\"}, \"type\": \"web_service\"}",
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "Content-Type": "application/json",
+              "X-Bex-Cli-Version": "0.3.2"
+            },
+            "authorization": "[REDACTED]"
+          },
+          "status": 400,
+          "response": "{\"error\": \"bad request: spec.buildCommand: Too long: may not be more than 4096 bytes\", \"id\": \"bad_request\", \"message\": \"bad request: spec.buildCommand: Too long: may not be more than 4096 bytes\"}",
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a4babcdd4a448462-SJC"
+          }
+        }
+      ],
+      "qualification": "actual native POST forwarded unchanged to production; owned local relay and copied config cleaned",
+      "native_exit": 1
+    },
+    "excluded_setup": true,
+    "rejection_reconciliation": {
+      "at": "2026-10-16T23:12:55.266327+00:00",
+      "native_inventory": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.842,
+        "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}]",
+        "stderr": "",
+        "native_exit": 0
+      },
+      "quota": {
+        "at": "2026-10-16T23:12:55.266015+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 1.033,
+        "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+        "stderr": ""
+      },
+      "exact_intent_name_absent": true,
+      "no_allocation_proved": true
+    }
+  }
+]

@@ -1,0 +1,8 @@
+from pathlib import Path
+import json
+P=Path(__file__).resolve().parent;reference=json.loads((P/'sweep383-primary-reference.json').read_text())
+def commands(marker, require_lock):
+    program = "require 'json'\nMARKER = " + json.dumps(marker) + '\nEXPECTED_FILES = JSON.parse(' + json.dumps(json.dumps(reference['files'])) + ')\nABSENT_FILES = JSON.parse(' + json.dumps(json.dumps(reference['absent_files'])) + ')\n' + (P / 'sweep383-probe.rb').read_text()
+    build = "set -e\ncat > qa383-probe.rb <<'QA383_RUBY_PROBE'\n" + program + '\nQA383_RUBY_PROBE\nruby qa383-probe.rb --build' + (' --require-lock' if require_lock else '')
+    assert len(build.encode()) <= 4096
+    return {'build': build, 'start': 'ruby qa383-probe.rb', 'program': program, 'require_lock': require_lock}

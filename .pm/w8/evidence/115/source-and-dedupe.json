@@ -1,0 +1,20 @@
+{
+  "source_head": "7a5a225df294de49d53765d7c3001ba1ca34bf3e",
+  "sites_with_sent_only_wording": 3,
+  "source_files": [
+    "lego/backend/internal/apps/mcp.go",
+    "lego/types/v1alpha1/app_types.go",
+    "lego/operator/config/crd/bases/app.bex.co_apps.yaml",
+    "lego/operator/internal/controller/activity.go",
+    "lego/backend/internal/apps/settings.go",
+    "lego/backend/internal/apps/graphql.go"
+  ],
+  "dedupe": [
+    "w1/done/m151: original idle activity, completed",
+    "w1/done/m161: ingress functional fix, completed",
+    "w6/done/m116/t003: default-window wording, completed",
+    "w4/blocked/m164: first HTTP/current-step/SSE request-start timing, not stale frame-direction or omitted-patch description",
+    "w4/done/252: public-vs-internal dashboard copy, not MCP field schema"
+  ],
+  "unverified": "actual serving revision, physical counter samples, default900s window"
+}

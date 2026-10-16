@@ -1,0 +1,43 @@
+{
+  "sweep": 373,
+  "source_head": "0d24e58c619b8ce9dca1f14dc63bc4ec7d8b2e87",
+  "serving_revision": "unknown",
+  "fixture": "dpg-db98socmmj2c73ahoi10",
+  "native_create": "Bex0.3.2 explicit Free PG14/native0",
+  "physical_major_observed": 14,
+  "external_psql": "18.6",
+  "native_SQL_readiness": 2,
+  "native_commands_in_accepted_data_journey": 28,
+  "natural_native0": 24,
+  "expected_native1": 4,
+  "assertions": 58,
+  "all_assertions_pass": true,
+  "native_imports": 2,
+  "native_exports": 5,
+  "full_synthetic_input_bytes_each": 2097409,
+  "large_objects": 3,
+  "empty_object_exact_zero_byte_export": true,
+  "independent_exact_full_export_checks": 5,
+  "committed_page_boundary_patches": 2,
+  "failed_transaction_patches_rolled_back": 2,
+  "expected_missing_file_created_no_LO": true,
+  "expected_deleted_own_LO_error": true,
+  "all_own_objects_unlinked_exact_OID": true,
+  "synthetic_files_removed": 7,
+  "initial40s_import": "reconciled exact marker/size/MD5, owned object removed, processes absent, empty catalog before replay; excluded from natural native results",
+  "read_only_preparation_failure": "native command not launched; fresh actual-UA metadata read200 before continuation; original failure status/cause unknown",
+  "accepted_replay_timeout_count": 0,
+  "cached_connection_before_after_exit": [
+    0,
+    2
+  ],
+  "cached_credentials_CA_removed": true,
+  "cleanup_pass": true,
+  "PG14_vector_checks": 15,
+  "vector_versions_observed": [
+    "0.8.6"
+  ],
+  "existing_m84_gate": "pre-fix existing-parent hosted backfill remains open",
+  "new_issue": null,
+  "uncommitted": true
+}

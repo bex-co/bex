@@ -1,0 +1,27 @@
+from pathlib import Path
+import sys,json,subprocess
+P=Path(__file__).resolve().parent;CP=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json')
+def resource():return next(v for v in json.loads(CP.read_text())['resources'] if v.get('sweep')==368 and v.get('id'))
+def run(name,*args):
+ r=subprocess.run([sys.executable,str(P/name),*args],text=True,capture_output=True,timeout=80);(P/('sweep368-sequence-'+name+'-'+('-'.join(args) or 'run')+'.log')).write_text(r.stdout+r.stderr);print(json.dumps({'step':name,'args':args,'exit':r.returncode}),flush=True);assert r.returncode==0
+for attempt in range(2):
+ run('sweep368-native-pg.py','wait-ready','bex')
+ if json.loads(resource()['native_readiness'][-1]['detail']['response'])['status']=='available':break
+assert json.loads(resource()['native_readiness'][-1]['detail']['response'])['status']=='available'
+for actor in ['bex','render']:run('sweep368-native-pg.py','ping',actor)
+assert all(v['pass'] for v in resource()['native_SQL_readiness'])
+run('sweep368-prepare.py');run('sweep368-cached-connection.py','before')
+for actor in ['bex','render']:run('sweep368-vector.py','catalog',actor)
+for actor in ['bex','render']:run('sweep368-vector.py','migration',actor)
+checks=[v for v in resource()['vector_checks'] if v['kind']=='migration'];assert len(checks)==2
+if all(v['pass'] for v in checks):
+ for actor in ['bex','render']:
+  run('sweep368-vector.py','use',actor);run('sweep368-vector.py','negative',actor)
+ for actor in ['bex','render']:run('sweep368-vector.py','cross-read',actor)
+ print('Both original migrations, real vectors/HNSW and independent rollback reads pass',flush=True)
+else:print('Original known vector migration remains unavailable; recorded for existing m84, no duplicate or fallback role',flush=True)
+for actor in ['bex','render']:run('sweep368-vector.py','hstore',actor)
+for actor in ['bex','render']:run('sweep368-vector.py','catalog',actor)
+if resource().get('owned_vector_schemas'):run('sweep368-vector.py','drop-own','bex')
+run('sweep368-notifications.py','live')
+print('Bounded default-identity vector and notification journeys finished; exact owned cleanup next',flush=True)

@@ -1,0 +1,43 @@
+{
+  "completed_sweep": 378,
+  "source_head": "4052136f34445debd5391828d99995a790552d1c",
+  "serving_revision": "unknown",
+  "journey": "native two persistent psql clients on fresh explicit Free PG17; held scroll cursors and original snapshot after other commit; positions including end/zero/relative; CLOSE/COMMIT/ROLLBACK lifecycles; NO SCROLL error and SQL PREPARE/EXECUTE/DEALLOCATE; stable distinct backend PIDs and exact schema removal",
+  "local_result": "same32 stages pass on own PG18.6/psql18.6, stopped and removed; prerequisite only, not hosted or native launcher evidence",
+  "dedupe": {
+    "query": "DECLARE.{0,80}CURSOR|WITH HOLD|pg_cursors|FETCH (FORWARD|ABSOLUTE|BACKWARD)",
+    "scope": "all .pm markdown, open and done",
+    "matches": 0,
+    "separate_knowns": "348 file transaction forwarding;376 isolation/savepoint;377 COPY BINARY;365m87 CtrlC cancellation; m84 extension provisioning gets only existing acceptance update"
+  },
+  "primary_contracts": [
+    "https://www.postgresql.org/docs/17/sql-declare.html",
+    "https://www.postgresql.org/docs/17/sql-fetch.html",
+    "https://www.postgresql.org/docs/17/sql-prepare.html"
+  ],
+  "source_boundaries": [
+    "lego/cli/go.mod Render a764810a7682 unchanged",
+    "pinned cmd/psql.go forwards psql arguments",
+    "native own psql connections through postgres connection-info and owned CA; no request repair",
+    "m84 source24f738603 fresh provisioning accepted, hosted old-parent backfill remains untested"
+  ],
+  "reproduction_sequence": [
+    "Bex native Free17 create; readiness",
+    "Bex and unchanged Render native physical17/identity pings",
+    "private cached endpoint/CA and positive before SELECT1",
+    "sweep378-cursors.py live;32 finite stages",
+    "15 native vector neighbor controls",
+    "native delete, detail/list/quota, cached after failure with CA present, remove credentials/CA, final inventory"
+  ],
+  "unverified": [
+    "serving SHA",
+    "extended protocol prepared messages",
+    "BINARY cursors",
+    "paid pools",
+    "long-lived connections",
+    "failover",
+    "Render production",
+    "physical teardown",
+    "hosted pre-fix parent vector backfill"
+  ]
+}

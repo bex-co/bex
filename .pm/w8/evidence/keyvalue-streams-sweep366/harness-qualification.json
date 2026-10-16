@@ -1,0 +1,22 @@
+{
+  "first_preflight": "local CLIENT LIST has command-specific raw output despite --json; generic JSON observer guard failed",
+  "correction": "parse raw native CLIENT LIST explicitly; no production fixture allocated, no product defect",
+  "first_local_server_and_socket_removed": true,
+  "second_preflight": "redis-cli represents WRONGTYPE as error: followed by a quoted JSON string; generic JSON guard failed",
+  "second_correction": "parse this native error prefix explicitly and preserve exit0 semantics",
+  "second_local_server_and_socket_removed": true,
+  "first_live_publish_setup": "own helper was started before wait-ready writer completed; its atomic-checkpoint save failed before any PATCH",
+  "repair": "wait-ready finished; create ID/proof and available state retained; serialize full helpers with a private writer lock and per-process atomic temporary path",
+  "product_failure": false,
+  "second_live_prepare": "copied optional publish helper assumed a private initial endpoint; current created fixture was already public, so guard stopped before any PATCH",
+  "second_live_repair": "record actual ready/public endpoint and skip unnecessary mutation",
+  "external_setup_PATCH_calls": 0,
+  "first_queue_attempt": {
+    "at": "2026-10-16T19:21:24.977768+00:00",
+    "first_attempt": "async consumer PTY was not drained while other native commands rendered40x140 TUIs; first reader had no observed output and no blocked data connection",
+    "bounds": "own reader/process group killed after observer guard, no message producer ran; original own group create is the only data mutation",
+    "repair": "drain original PTY to actual external-client start before independent blocked reader observation; resume only after XLEN0/wrong-key absent/pending0, without replaying create",
+    "product_failure": false
+  },
+  "owned_empty_lock_removed_from_repo": "an inline qualification call resolved its __file__ as stdin and created an empty private-writer lock at repository root; exact owned zero-byte file removed after all helpers exited"
+}

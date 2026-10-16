@@ -1,0 +1,79 @@
+func nativeDockerfile(o Options) string {
+	var fileMounts strings.Builder
+	for i, name := range o.NativeFiles {
+		fmt.Fprintf(&fileMounts, " --mount=type=secret,id=%s,target=%s/%s,required=true",
+			nativeFileSecretID(i), nativeSecretFilesDir, name)
+	}
+	// The decoder is resolved once, under the image's PATH, into a function a
+	// decoded variable cannot overwrite: a decoded PATH is exported mid-loop
+	// and must reach the command exactly, not stop the next decode (w8/m61).
+	loader := fmt.Sprintf(": bex-native-env-rev=%s\n", nativeEnvRevision(o)) + `decoder="$(command -v base64)" || exit 1
+eval "bex_decode() { '$decoder' -d; }"
+while IFS= read -r record; do
+  [ -n "$record" ] || continue
+  key=${record%%=*}
+  encoded=${record#*=}
+  value="$(printf '%s' "$encoded" | bex_decode 2>/dev/null && printf '.')" || exit 1
+  export "$key=${value%.}"
+done < ` + nativeEnvSecretPath + "\n"
+	installLines, installStep := nativeStaticInstall(o)
+	run := shellJSON(nativeEnvLoaderPrefix + installStep + o.BuildCommand)
+	base := fmt.Sprintf(`# syntax=docker/dockerfile:1.7
+FROM %s
+%sWORKDIR /opt/render/project/src
+COPY . .
+COPY <<'%s' %s
+%s%s
+%sRUN --mount=type=secret,id=render-env,target=%s%s %s
+`, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeNodeTools(o)+nativeMediaTools+nativeBuildDefaults(o), nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
+		installLines, nativeEnvSecretPath, fileMounts.String(), run)
+	if o.StaticSite {
+		// No PORT/CMD: the image only carries the built site for the publish
+		// Job's extract initContainer (ADR029) and never runs as a workload.
+		return base
+	}
+	// The toolchain image's own ENTRYPOINT (node's docker-entrypoint.sh) is
+	// looked up on the user's PATH, which may be empty or narrow; the absolute
+	// bash CMD needs none of it, so the generated image runs that alone (w8/m61).
+	start := shellJSON(o.StartCommand)
+	return base + fmt.Sprintf(`%sENV PORT=10000
+ENTRYPOINT []
+CMD %s
+`, nativeRuntimeDefaults(o), start)
+}
+
+// nativeBuildDefaults is the environment Render gives a native runtime at
+// build and runtime alike, as image ENV before the build RUN: the env loader
+// exports the service's own values over it for the build, and the container's
+// configured values override it at runtime, an explicit empty one included in
+// either phase. An explicit Elixir or Python static build gets it for its
+// build.
+//
+// Elixir builds and runs with MIX_ENV=prod (w8/112), so a Phoenix app's
+// production dependencies and config are the ones compiled and started.
+// Python gets Render's Gunicorn flags, preloading the app and writing access
+// lines to stdout (w8/113). Render's --bind is left out: Gunicorn binds the
+// platform's PORT by default, which a bind in gunicorn.conf.py or on the
+// command line still replaces, as it would without these flags.
+func nativeBuildDefaults(o Options) string {
+	switch nativeRuntime(o) {
+	case "elixir":
+		return "ENV MIX_ENV=prod\n"
+	case nativePythonRuntime:
+		return `ENV GUNICORN_CMD_ARGS="--preload --access-logfile -"` + "\n"
+	}
+	return ""
+}
+
+// nativeRuntimeDefaults is the environment Render gives a native runtime's
+// running service by default, as image ENV after the build RUN: the build does
+// not see it, and as image configuration it yields to every value the service
+// configures — a literal, a linked group, an explicit empty one. Node runs
+// with NODE_ENV=production at runtime only (w8/111), so Express and its peers
+// leave development mode.
+func nativeRuntimeDefaults(o Options) string {
+	if nativeRuntime(o) == nativeNodeRuntime {
+		return "ENV NODE_ENV=production\n"
+	}
+	return ""
+}

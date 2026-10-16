@@ -1,0 +1,6 @@
+from pathlib import Path
+import subprocess,json
+P=Path(__file__).resolve().parent
+steps=[(mode,client) for client in ('bex','render') for mode in ('catalog','migration','use','negative')]+[('cross-read',v) for v in ('bex','render')]+[(mode,client) for client in ('bex','render') for mode in ('hstore','catalog')]+[('drop-own','bex')]
+for index,(mode,client) in enumerate(steps):
+ r=subprocess.run(['python3',str(P/'sweep373-vector.py'),mode,client],capture_output=True,text=True,timeout=100);(P/('sweep373-vector-step-'+str(index)+'-'+mode+'-'+client+'.log')).write_text(r.stdout+r.stderr);r.check_returncode();last=json.loads(r.stdout.strip().splitlines()[-1]);print(json.dumps({'vector_step':index+1,'kind':mode,'client':client,'pass':last.get('pass')}),flush=True);assert last['pass']

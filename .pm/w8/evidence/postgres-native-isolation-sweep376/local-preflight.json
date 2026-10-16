@@ -1,0 +1,796 @@
+{
+  "qualification": "own local PostgreSQL18.6/psql18.6 prerequisite, not hosted PG15 or native wrappers",
+  "schema": "qa376_local376",
+  "steps": [
+    {
+      "at_monotonic_seconds": 0.019,
+      "actor": "bex",
+      "label": "native physical identity and per-session safety limits",
+      "stdin": "SET statement_timeout='10s';SET idle_in_transaction_session_timeout='30s';SET lock_timeout='500ms';\nSELECT jsonb_build_object('frame','QA376_local376_1','pid',pg_backend_pid(),'payload',jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'encoding',current_setting('server_encoding'),'statement_timeout',current_setting('statement_timeout'),'idle_in_transaction_session_timeout',current_setting('idle_in_transaction_session_timeout'),'lock_timeout',current_setting('lock_timeout')))::text;\n\\echo QA376_local376_1_END\n",
+      "expected_payload": {
+        "database": "postgres",
+        "user": "qa376",
+        "major": 18,
+        "encoding": "UTF8",
+        "statement_timeout": "10s",
+        "idle_in_transaction_session_timeout": "30s",
+        "lock_timeout": "500ms"
+      },
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 18750,
+        "frame": "QA376_local376_1",
+        "payload": {
+          "user": "qa376",
+          "major": 18,
+          "database": "postgres",
+          "encoding": "UTF8",
+          "lock_timeout": "500ms",
+          "statement_timeout": "10s",
+          "idle_in_transaction_session_timeout": "30s"
+        }
+      },
+      "native_output": "LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_1\", \"payload\": {\"user\": \"qa376\", \"major\": 18, \"database\": \"postgres\", \"encoding\": \"UTF8\", \"lock_timeout\": \"500ms\", \"statement_timeout\": \"10s\", \"idle_in_transaction_session_timeout\": \"30s\"}}\nLOCAL376_bex> QA376_local376_1_END\nLOCAL376_bex> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.033,
+      "actor": "render",
+      "label": "native physical identity and per-session safety limits",
+      "stdin": "SET statement_timeout='10s';SET idle_in_transaction_session_timeout='30s';SET lock_timeout='500ms';\nSELECT jsonb_build_object('frame','QA376_local376_2','pid',pg_backend_pid(),'payload',jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'encoding',current_setting('server_encoding'),'statement_timeout',current_setting('statement_timeout'),'idle_in_transaction_session_timeout',current_setting('idle_in_transaction_session_timeout'),'lock_timeout',current_setting('lock_timeout')))::text;\n\\echo QA376_local376_2_END\n",
+      "expected_payload": {
+        "database": "postgres",
+        "user": "qa376",
+        "major": 18,
+        "encoding": "UTF8",
+        "statement_timeout": "10s",
+        "idle_in_transaction_session_timeout": "30s",
+        "lock_timeout": "500ms"
+      },
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 18752,
+        "frame": "QA376_local376_2",
+        "payload": {
+          "user": "qa376",
+          "major": 18,
+          "database": "postgres",
+          "encoding": "UTF8",
+          "lock_timeout": "500ms",
+          "statement_timeout": "10s",
+          "idle_in_transaction_session_timeout": "30s"
+        }
+      },
+      "native_output": "LOCAL376_render> {\"pid\": 18752, \"frame\": \"QA376_local376_2\", \"payload\": {\"user\": \"qa376\", \"major\": 18, \"database\": \"postgres\", \"encoding\": \"UTF8\", \"lock_timeout\": \"500ms\", \"statement_timeout\": \"10s\", \"idle_in_transaction_session_timeout\": \"30s\"}}\nLOCAL376_render> QA376_local376_2_END\n",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.034,
+      "actor": "render",
+      "label": "fresh schema absence",
+      "stdin": "SELECT jsonb_build_object('frame','QA376_local376_3','pid',pg_backend_pid(),'payload',to_regnamespace('qa376_local376') IS NULL)::text;\n\\echo QA376_local376_3_END\n",
+      "expected_payload": true,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 18752,
+        "frame": "QA376_local376_3",
+        "payload": true
+      },
+      "native_output": "LOCAL376_render> {\"pid\": 18752, \"frame\": \"QA376_local376_3\", \"payload\": true}\nLOCAL376_render> QA376_local376_3_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.035,
+      "actor": "bex",
+      "label": "commit own baseline",
+      "stdin": "BEGIN;CREATE SCHEMA qa376_local376;CREATE TABLE qa376_local376.items(id int PRIMARY KEY,value int NOT NULL);INSERT INTO qa376_local376.items VALUES(1,0);COMMIT;\nSELECT jsonb_build_object('frame','QA376_local376_4','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_local376.items))::text;\n\\echo QA376_local376_4_END\n",
+      "expected_payload": [
+        [
+          1,
+          0
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 18750,
+        "frame": "QA376_local376_4",
+        "payload": [
+          [
+            1,
+            0
+          ]
+        ]
+      },
+      "native_output": "LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_4\", \"payload\": [[1, 0]]}\nLOCAL376_bex> QA376_local376_4_END\nLOCAL376_bex> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.039,
+      "actor": "bex",
+      "label": "repeatable read establishes original snapshot",
+      "stdin": "BEGIN ISOLATION LEVEL REPEATABLE READ;\nSELECT jsonb_build_object('frame','QA376_local376_5','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_local376.items))::text;\n\\echo QA376_local376_5_END\n",
+      "expected_payload": [
+        [
+          1,
+          0
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 18750,
+        "frame": "QA376_local376_5",
+        "payload": [
+          [
+            1,
+            0
+          ]
+        ]
+      },
+      "native_output": "LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_5\", \"payload\": [[1, 0]]}\nLOCAL376_bex> QA376_local376_5_END\n",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.039,
+      "actor": "render",
+      "label": "other connection commits value one",
+      "stdin": "UPDATE qa376_local376.items SET value=1 WHERE id=1;\nSELECT jsonb_build_object('frame','QA376_local376_6','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_local376.items))::text;\n\\echo QA376_local376_6_END\n",
+      "expected_payload": [
+        [
+          1,
+          1
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 18752,
+        "frame": "QA376_local376_6",
+        "payload": [
+          [
+            1,
+            1
+          ]
+        ]
+      },
+      "native_output": "LOCAL376_render> {\"pid\": 18752, \"frame\": \"QA376_local376_6\", \"payload\": [[1, 1]]}\nLOCAL376_render> QA376_local376_6_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.041,
+      "actor": "bex",
+      "label": "repeatable read preserves earlier snapshot",
+      "stdin": "SELECT jsonb_build_object('frame','QA376_local376_7','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_local376.items))::text;\n\\echo QA376_local376_7_END\n",
+      "expected_payload": [
+        [
+          1,
+          0
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 18750,
+        "frame": "QA376_local376_7",
+        "payload": [
+          [
+            1,
+            0
+          ]
+        ]
+      },
+      "native_output": "LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_7\", \"payload\": [[1, 0]]}\nLOCAL376_bex> QA376_local376_7_END\n",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.041,
+      "actor": "bex",
+      "label": "new transaction sees committed value",
+      "stdin": "COMMIT;\nSELECT jsonb_build_object('frame','QA376_local376_8','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_local376.items))::text;\n\\echo QA376_local376_8_END\n",
+      "expected_payload": [
+        [
+          1,
+          1
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 18750,
+        "frame": "QA376_local376_8",
+        "payload": [
+          [
+            1,
+            1
+          ]
+        ]
+      },
+      "native_output": "LOCAL376_bex> LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_8\", \"payload\": [[1, 1]]}\nLOCAL376_bex> QA376_local376_8_END\nLOCAL376_bex> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.042,
+      "actor": "bex",
+      "label": "read committed establishes first snapshot",
+      "stdin": "BEGIN ISOLATION LEVEL READ COMMITTED;\nSELECT jsonb_build_object('frame','QA376_local376_9','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_local376.items))::text;\n\\echo QA376_local376_9_END\n",
+      "expected_payload": [
+        [
+          1,
+          1
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 18750,
+        "frame": "QA376_local376_9",
+        "payload": [
+          [
+            1,
+            1
+          ]
+        ]
+      },
+      "native_output": "LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_9\", \"payload\": [[1, 1]]}\nLOCAL376_bex> QA376_local376_9_END\n",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.042,
+      "actor": "render",
+      "label": "other connection commits value two",
+      "stdin": "UPDATE qa376_local376.items SET value=2 WHERE id=1;\nSELECT jsonb_build_object('frame','QA376_local376_10','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_local376.items))::text;\n\\echo QA376_local376_10_END\n",
+      "expected_payload": [
+        [
+          1,
+          2
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 18752,
+        "frame": "QA376_local376_10",
+        "payload": [
+          [
+            1,
+            2
+          ]
+        ]
+      },
+      "native_output": "LOCAL376_render> {\"pid\": 18752, \"frame\": \"QA376_local376_10\", \"payload\": [[1, 2]]}\nLOCAL376_render> QA376_local376_10_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.043,
+      "actor": "bex",
+      "label": "read committed refreshes statement snapshot",
+      "stdin": "SELECT jsonb_build_object('frame','QA376_local376_11','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_local376.items))::text;\n\\echo QA376_local376_11_END\n",
+      "expected_payload": [
+        [
+          1,
+          2
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 18750,
+        "frame": "QA376_local376_11",
+        "payload": [
+          [
+            1,
+            2
+          ]
+        ]
+      },
+      "native_output": "LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_11\", \"payload\": [[1, 2]]}\nLOCAL376_bex> QA376_local376_11_END\nLOCAL376_bex> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.043,
+      "actor": "bex",
+      "label": "finish read committed transaction",
+      "stdin": "COMMIT;\nSELECT jsonb_build_object('frame','QA376_local376_12','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_local376.items))::text;\n\\echo QA376_local376_12_END\n",
+      "expected_payload": [
+        [
+          1,
+          2
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 18750,
+        "frame": "QA376_local376_12",
+        "payload": [
+          [
+            1,
+            2
+          ]
+        ]
+      },
+      "native_output": "LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_12\", \"payload\": [[1, 2]]}\nLOCAL376_bex> QA376_local376_12_END\n",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.044,
+      "actor": "bex",
+      "label": "hold own uncommitted row lock",
+      "stdin": "BEGIN;UPDATE qa376_local376.items SET value=value+100 WHERE id=1;\nSELECT jsonb_build_object('frame','QA376_local376_13','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_local376.items))::text;\n\\echo QA376_local376_13_END\n",
+      "expected_payload": [
+        [
+          1,
+          102
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 18750,
+        "frame": "QA376_local376_13",
+        "payload": [
+          [
+            1,
+            102
+          ]
+        ]
+      },
+      "native_output": "LOCAL376_bex> LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_13\", \"payload\": [[1, 102]]}\nLOCAL376_bex> QA376_local376_13_END\nLOCAL376_bex> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.045,
+      "actor": "render",
+      "label": "independent read excludes uncommitted value",
+      "stdin": "SELECT jsonb_build_object('frame','QA376_local376_14','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_local376.items))::text;\n\\echo QA376_local376_14_END\n",
+      "expected_payload": [
+        [
+          1,
+          2
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 18752,
+        "frame": "QA376_local376_14",
+        "payload": [
+          [
+            1,
+            2
+          ]
+        ]
+      },
+      "native_output": "{\"pid\": 18752, \"frame\": \"QA376_local376_14\", \"payload\": [[1, 2]]}\nLOCAL376_render> QA376_local376_14_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.046,
+      "actor": "render",
+      "label": "server lock timeout aborts attempted update",
+      "stdin": "BEGIN;UPDATE qa376_local376.items SET value=value+10 WHERE id=1;\n\\echo QA376_local376_15_STATE :SQLSTATE\nROLLBACK;\nSELECT jsonb_build_object('frame','QA376_local376_15','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_local376.items))::text;\n\\echo QA376_local376_15_END\n",
+      "expected_payload": [
+        [
+          1,
+          2
+        ]
+      ],
+      "expected_SQLSTATE": "55P03",
+      "frame": {
+        "pid": 18752,
+        "frame": "QA376_local376_15",
+        "payload": [
+          [
+            1,
+            2
+          ]
+        ]
+      },
+      "native_output": "ERROR:  canceling statement due to lock timeout\nCONTEXT:  while updating tuple (0,3) in relation \"items\"\nLOCAL376_render> QA376_local376_15_STATE 55P03\nLOCAL376_render> LOCAL376_render> {\"pid\": 18752, \"frame\": \"QA376_local376_15\", \"payload\": [[1, 2]]}\nLOCAL376_render> QA376_local376_15_END\n",
+      "observed_SQLSTATE": "55P03",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.55,
+      "actor": "bex",
+      "label": "rollback lock holder releases uncommitted value",
+      "stdin": "ROLLBACK;\nSELECT jsonb_build_object('frame','QA376_local376_16','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_local376.items))::text;\n\\echo QA376_local376_16_END\n",
+      "expected_payload": [
+        [
+          1,
+          2
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 18750,
+        "frame": "QA376_local376_16",
+        "payload": [
+          [
+            1,
+            2
+          ]
+        ]
+      },
+      "native_output": "LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_16\", \"payload\": [[1, 2]]}\nLOCAL376_bex> QA376_local376_16_END\n",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.551,
+      "actor": "bex",
+      "label": "unique failure recovered to savepoint preserves prior staged insert",
+      "stdin": "BEGIN;INSERT INTO qa376_local376.items VALUES(2,20);SAVEPOINT before_bad;INSERT INTO qa376_local376.items VALUES(1,999);\n\\echo QA376_local376_17_STATE :SQLSTATE\nROLLBACK TO SAVEPOINT before_bad;\nSELECT jsonb_build_object('frame','QA376_local376_17','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_local376.items))::text;\n\\echo QA376_local376_17_END\n",
+      "expected_payload": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          20
+        ]
+      ],
+      "expected_SQLSTATE": "23505",
+      "frame": {
+        "pid": 18750,
+        "frame": "QA376_local376_17",
+        "payload": [
+          [
+            1,
+            2
+          ],
+          [
+            2,
+            20
+          ]
+        ]
+      },
+      "native_output": "LOCAL376_bex> ERROR:  duplicate key value violates unique constraint \"items_pkey\"\nDETAIL:  Key (id)=(1) already exists.\nLOCAL376_bex> QA376_local376_17_STATE 23505\nLOCAL376_bex> LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_17\", \"payload\": [[1, 2], [2, 20]]}\nLOCAL376_bex> QA376_local376_17_END\nLOCAL376_bex> ",
+      "observed_SQLSTATE": "23505",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.552,
+      "actor": "bex",
+      "label": "commit valid work after savepoint recovery",
+      "stdin": "UPDATE qa376_local376.items SET value=21 WHERE id=2;COMMIT;\nSELECT jsonb_build_object('frame','QA376_local376_18','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_local376.items))::text;\n\\echo QA376_local376_18_END\n",
+      "expected_payload": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          21
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 18750,
+        "frame": "QA376_local376_18",
+        "payload": [
+          [
+            1,
+            2
+          ],
+          [
+            2,
+            21
+          ]
+        ]
+      },
+      "native_output": "LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_18\", \"payload\": [[1, 2], [2, 21]]}\nLOCAL376_bex> QA376_local376_18_END\n",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.553,
+      "actor": "render",
+      "label": "independent committed savepoint result",
+      "stdin": "SELECT jsonb_build_object('frame','QA376_local376_19','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_local376.items))::text;\n\\echo QA376_local376_19_END\n",
+      "expected_payload": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          21
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 18752,
+        "frame": "QA376_local376_19",
+        "payload": [
+          [
+            1,
+            2
+          ],
+          [
+            2,
+            21
+          ]
+        ]
+      },
+      "native_output": "LOCAL376_render> {\"pid\": 18752, \"frame\": \"QA376_local376_19\", \"payload\": [[1, 2], [2, 21]]}\nLOCAL376_render> QA376_local376_19_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.553,
+      "actor": "bex",
+      "label": "serializable establishes old snapshot",
+      "stdin": "BEGIN ISOLATION LEVEL SERIALIZABLE;\nSELECT jsonb_build_object('frame','QA376_local376_20','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_local376.items))::text;\n\\echo QA376_local376_20_END\n",
+      "expected_payload": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          21
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 18750,
+        "frame": "QA376_local376_20",
+        "payload": [
+          [
+            1,
+            2
+          ],
+          [
+            2,
+            21
+          ]
+        ]
+      },
+      "native_output": "LOCAL376_bex> LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_20\", \"payload\": [[1, 2], [2, 21]]}\nLOCAL376_bex> QA376_local376_20_END\nLOCAL376_bex> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.554,
+      "actor": "render",
+      "label": "competing serializable update commits",
+      "stdin": "BEGIN ISOLATION LEVEL SERIALIZABLE;UPDATE qa376_local376.items SET value=3 WHERE id=1;COMMIT;\nSELECT jsonb_build_object('frame','QA376_local376_21','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_local376.items))::text;\n\\echo QA376_local376_21_END\n",
+      "expected_payload": [
+        [
+          1,
+          3
+        ],
+        [
+          2,
+          21
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 18752,
+        "frame": "QA376_local376_21",
+        "payload": [
+          [
+            1,
+            3
+          ],
+          [
+            2,
+            21
+          ]
+        ]
+      },
+      "native_output": "LOCAL376_render> {\"pid\": 18752, \"frame\": \"QA376_local376_21\", \"payload\": [[1, 3], [2, 21]]}\nLOCAL376_render> QA376_local376_21_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.555,
+      "actor": "bex",
+      "label": "serialization error rolls back original attempt",
+      "stdin": "UPDATE qa376_local376.items SET value=4 WHERE id=1;\n\\echo QA376_local376_22_STATE :SQLSTATE\nROLLBACK;\nSELECT jsonb_build_object('frame','QA376_local376_22','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_local376.items))::text;\n\\echo QA376_local376_22_END\n",
+      "expected_payload": [
+        [
+          1,
+          3
+        ],
+        [
+          2,
+          21
+        ]
+      ],
+      "expected_SQLSTATE": "40001",
+      "frame": {
+        "pid": 18750,
+        "frame": "QA376_local376_22",
+        "payload": [
+          [
+            1,
+            3
+          ],
+          [
+            2,
+            21
+          ]
+        ]
+      },
+      "native_output": "ERROR:  could not serialize access due to concurrent update\nLOCAL376_bex> QA376_local376_22_STATE 40001\nLOCAL376_bex> LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_22\", \"payload\": [[1, 3], [2, 21]]}\nLOCAL376_bex> QA376_local376_22_END\nLOCAL376_bex> ",
+      "observed_SQLSTATE": "40001",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.556,
+      "actor": "render",
+      "label": "independent read confirms aborted update absent",
+      "stdin": "SELECT jsonb_build_object('frame','QA376_local376_23','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_local376.items))::text;\n\\echo QA376_local376_23_END\n",
+      "expected_payload": [
+        [
+          1,
+          3
+        ],
+        [
+          2,
+          21
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 18752,
+        "frame": "QA376_local376_23",
+        "payload": [
+          [
+            1,
+            3
+          ],
+          [
+            2,
+            21
+          ]
+        ]
+      },
+      "native_output": "{\"pid\": 18752, \"frame\": \"QA376_local376_23\", \"payload\": [[1, 3], [2, 21]]}\nLOCAL376_render> QA376_local376_23_END\nLOCAL376_render> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.557,
+      "actor": "bex",
+      "label": "fresh serializable retry commits after proven rollback",
+      "stdin": "BEGIN ISOLATION LEVEL SERIALIZABLE;UPDATE qa376_local376.items SET value=4 WHERE id=1;COMMIT;\nSELECT jsonb_build_object('frame','QA376_local376_24','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_local376.items))::text;\n\\echo QA376_local376_24_END\n",
+      "expected_payload": [
+        [
+          1,
+          4
+        ],
+        [
+          2,
+          21
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 18750,
+        "frame": "QA376_local376_24",
+        "payload": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            21
+          ]
+        ]
+      },
+      "native_output": "LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_24\", \"payload\": [[1, 4], [2, 21]]}\nLOCAL376_bex> QA376_local376_24_END\nLOCAL376_bex> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.557,
+      "actor": "render",
+      "label": "independent read confirms one fresh retry",
+      "stdin": "SELECT jsonb_build_object('frame','QA376_local376_25','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_array(id,value) ORDER BY id),'[]'::jsonb) FROM qa376_local376.items))::text;\n\\echo QA376_local376_25_END\n",
+      "expected_payload": [
+        [
+          1,
+          4
+        ],
+        [
+          2,
+          21
+        ]
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 18752,
+        "frame": "QA376_local376_25",
+        "payload": [
+          [
+            1,
+            4
+          ],
+          [
+            2,
+            21
+          ]
+        ]
+      },
+      "native_output": "{\"pid\": 18752, \"frame\": \"QA376_local376_25\", \"payload\": [[1, 4], [2, 21]]}\nLOCAL376_render> QA376_local376_25_END\n",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.558,
+      "actor": "bex",
+      "label": "drop exact own schema",
+      "stdin": "DROP SCHEMA qa376_local376 CASCADE;\nSELECT jsonb_build_object('frame','QA376_local376_26','pid',pg_backend_pid(),'payload',to_regnamespace('qa376_local376') IS NULL)::text;\n\\echo QA376_local376_26_END\n",
+      "expected_payload": true,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 18750,
+        "frame": "QA376_local376_26",
+        "payload": true
+      },
+      "native_output": "NOTICE:  drop cascades to table qa376_local376.items\nLOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_26\", \"payload\": true}\nLOCAL376_bex> QA376_local376_26_END\nLOCAL376_bex> ",
+      "pass": true
+    },
+    {
+      "at_monotonic_seconds": 0.56,
+      "actor": "render",
+      "label": "independent own schema absence",
+      "stdin": "SELECT jsonb_build_object('frame','QA376_local376_27','pid',pg_backend_pid(),'payload',to_regnamespace('qa376_local376') IS NULL)::text;\n\\echo QA376_local376_27_END\n",
+      "expected_payload": true,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 18752,
+        "frame": "QA376_local376_27",
+        "payload": true
+      },
+      "native_output": "LOCAL376_render> {\"pid\": 18752, \"frame\": \"QA376_local376_27\", \"payload\": true}\nLOCAL376_render> QA376_local376_27_END\nLOCAL376_render> ",
+      "pass": true
+    }
+  ],
+  "sessions": {
+    "bex": {
+      "intent": "finite native persistent psql client with private config/history",
+      "command": [
+        "local-psql",
+        "<own-unix-socket>"
+      ],
+      "PID": 18749,
+      "PGID": 18749,
+      "backend_pid": 18750,
+      "natural_exit": 0,
+      "PTY": {
+        "stdin_stdout_TTY": true,
+        "controlling_terminal": true,
+        "terminal_ISIG_enabled": true,
+        "terminal_echo_disabled": true,
+        "rows": 40,
+        "columns": 140,
+        "elapsed": 0.562,
+        "native_exit": 0,
+        "output": "LOCAL376_bex> LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_1\", \"payload\": {\"user\": \"qa376\", \"major\": 18, \"database\": \"postgres\", \"encoding\": \"UTF8\", \"lock_timeout\": \"500ms\", \"statement_timeout\": \"10s\", \"idle_in_transaction_session_timeout\": \"30s\"}}\nLOCAL376_bex> QA376_local376_1_END\nLOCAL376_bex> LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_4\", \"payload\": [[1, 0]]}\nLOCAL376_bex> QA376_local376_4_END\nLOCAL376_bex> LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_5\", \"payload\": [[1, 0]]}\nLOCAL376_bex> QA376_local376_5_END\nLOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_7\", \"payload\": [[1, 0]]}\nLOCAL376_bex> QA376_local376_7_END\nLOCAL376_bex> LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_8\", \"payload\": [[1, 1]]}\nLOCAL376_bex> QA376_local376_8_END\nLOCAL376_bex> LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_9\", \"payload\": [[1, 1]]}\nLOCAL376_bex> QA376_local376_9_END\nLOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_11\", \"payload\": [[1, 2]]}\nLOCAL376_bex> QA376_local376_11_END\nLOCAL376_bex> LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_12\", \"payload\": [[1, 2]]}\nLOCAL376_bex> QA376_local376_12_END\nLOCAL376_bex> LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_13\", \"payload\": [[1, 102]]}\nLOCAL376_bex> QA376_local376_13_END\nLOCAL376_bex> LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_16\", \"payload\": [[1, 2]]}\nLOCAL376_bex> QA376_local376_16_END\nLOCAL376_bex> ERROR:  duplicate key value violates unique constraint \"items_pkey\"\nDETAIL:  Key (id)=(1) already exists.\nLOCAL376_bex> QA376_local376_17_STATE 23505\nLOCAL376_bex> LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_17\", \"payload\": [[1, 2], [2, 20]]}\nLOCAL376_bex> QA376_local376_17_END\nLOCAL376_bex> LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_18\", \"payload\": [[1, 2], [2, 21]]}\nLOCAL376_bex> QA376_local376_18_END\nLOCAL376_bex> LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_20\", \"payload\": [[1, 2], [2, 21]]}\nLOCAL376_bex> QA376_local376_20_END\nLOCAL376_bex> ERROR:  could not serialize access due to concurrent update\nLOCAL376_bex> QA376_local376_22_STATE 40001\nLOCAL376_bex> LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_22\", \"payload\": [[1, 3], [2, 21]]}\nLOCAL376_bex> QA376_local376_22_END\nLOCAL376_bex> LOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_24\", \"payload\": [[1, 4], [2, 21]]}\nLOCAL376_bex> QA376_local376_24_END\nLOCAL376_bex> NOTICE:  drop cascades to table qa376_local376.items\nLOCAL376_bex> {\"pid\": 18750, \"frame\": \"QA376_local376_26\", \"payload\": true}\nLOCAL376_bex> QA376_local376_26_END\nLOCAL376_bex> ",
+        "own_process_group_cleaned": true,
+        "events": []
+      }
+    },
+    "render": {
+      "intent": "finite native persistent psql client with private config/history",
+      "command": [
+        "local-psql",
+        "<own-unix-socket>"
+      ],
+      "PID": 18751,
+      "PGID": 18751,
+      "backend_pid": 18752,
+      "natural_exit": 0,
+      "PTY": {
+        "stdin_stdout_TTY": true,
+        "controlling_terminal": true,
+        "terminal_ISIG_enabled": true,
+        "terminal_echo_disabled": true,
+        "rows": 40,
+        "columns": 140,
+        "elapsed": 0.542,
+        "native_exit": 0,
+        "output": "LOCAL376_render> LOCAL376_render> {\"pid\": 18752, \"frame\": \"QA376_local376_2\", \"payload\": {\"user\": \"qa376\", \"major\": 18, \"database\": \"postgres\", \"encoding\": \"UTF8\", \"lock_timeout\": \"500ms\", \"statement_timeout\": \"10s\", \"idle_in_transaction_session_timeout\": \"30s\"}}\nLOCAL376_render> QA376_local376_2_END\nLOCAL376_render> {\"pid\": 18752, \"frame\": \"QA376_local376_3\", \"payload\": true}\nLOCAL376_render> QA376_local376_3_END\nLOCAL376_render> LOCAL376_render> {\"pid\": 18752, \"frame\": \"QA376_local376_6\", \"payload\": [[1, 1]]}\nLOCAL376_render> QA376_local376_6_END\nLOCAL376_render> LOCAL376_render> {\"pid\": 18752, \"frame\": \"QA376_local376_10\", \"payload\": [[1, 2]]}\nLOCAL376_render> QA376_local376_10_END\nLOCAL376_render> {\"pid\": 18752, \"frame\": \"QA376_local376_14\", \"payload\": [[1, 2]]}\nLOCAL376_render> QA376_local376_14_END\nLOCAL376_render> ERROR:  canceling statement due to lock timeout\nCONTEXT:  while updating tuple (0,3) in relation \"items\"\nLOCAL376_render> QA376_local376_15_STATE 55P03\nLOCAL376_render> LOCAL376_render> {\"pid\": 18752, \"frame\": \"QA376_local376_15\", \"payload\": [[1, 2]]}\nLOCAL376_render> QA376_local376_15_END\nLOCAL376_render> {\"pid\": 18752, \"frame\": \"QA376_local376_19\", \"payload\": [[1, 2], [2, 21]]}\nLOCAL376_render> QA376_local376_19_END\nLOCAL376_render> LOCAL376_render> {\"pid\": 18752, \"frame\": \"QA376_local376_21\", \"payload\": [[1, 3], [2, 21]]}\nLOCAL376_render> QA376_local376_21_END\nLOCAL376_render> {\"pid\": 18752, \"frame\": \"QA376_local376_23\", \"payload\": [[1, 3], [2, 21]]}\nLOCAL376_render> QA376_local376_23_END\nLOCAL376_render> {\"pid\": 18752, \"frame\": \"QA376_local376_25\", \"payload\": [[1, 4], [2, 21]]}\nLOCAL376_render> QA376_local376_25_END\nLOCAL376_render> {\"pid\": 18752, \"frame\": \"QA376_local376_27\", \"payload\": true}\nLOCAL376_render> QA376_local376_27_END\nLOCAL376_render> ",
+        "own_process_group_cleaned": true,
+        "events": []
+      }
+    }
+  },
+  "owned_schema_intent": {
+    "name": "qa376_local376",
+    "before_absent": true
+  },
+  "pass": true,
+  "schema_removed": true,
+  "local_server_stopped": true,
+  "local_data_socket_history_removed": true
+}

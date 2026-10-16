@@ -1,0 +1,7 @@
+from pathlib import Path
+import json,subprocess,sys,time
+P=Path(__file__).resolve().parent;actor=sys.argv[1]
+for attempt in range(4):
+ r=subprocess.run(['python3',str(P/'sweep382-native-media.py'),'observe',actor],text=True,capture_output=True,check=True,timeout=100);v=json.loads(r.stdout);print(json.dumps({'attempt':attempt+1,**v}),flush=True)
+ if v['status'] in ('live','build_failed','update_failed','pre_deploy_failed','canceled'):break
+ if attempt<3:time.sleep(12)

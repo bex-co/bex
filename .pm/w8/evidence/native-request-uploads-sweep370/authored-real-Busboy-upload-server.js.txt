@@ -1,0 +1,25 @@
+const fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');
+const busboy=require('./lib/index.js');
+const hash=b=>crypto.createHash('sha256').update(b).digest('hex');
+const pkg=JSON.parse(fs.readFileSync('package.json'));
+const base={marker:MARKER,node:process.version,node_env:process.env.NODE_ENV??null,package_sha256:hash(fs.readFileSync('package.json')),busboy:pkg.version,streamsearch:require('streamsearch/package.json').version};
+if(base.package_sha256!==EXPECTED_PACKAGE_SHA)throw new Error('public package source changed');
+if(process.argv.includes('--build')){fs.writeFileSync('qa370-built.json',JSON.stringify(base));console.log(JSON.stringify({event:'QA370_BUILD',...base}));process.exit(0);}
+const built=JSON.parse(fs.readFileSync('qa370-built.json'));let requests=0;
+const server=http.createServer((req,res)=>{
+ const path=new URL(req.url,'http://localhost').pathname,id=req.headers['x-qa-case'];
+ const answer=(status,obj)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({...base,built,...obj}));};
+ if(path==='/'){answer(200,{requests});return;}
+ if(!['/raw','/multipart'].includes(path)){answer(404,{error:'unknown authored route'});return;}
+ if(req.method!=='POST'){res.setHeader('Allow','POST');answer(405,{error:'POST required'});return;}
+ const rawHash=crypto.createHash('sha256');let rawBytes=0;req.on('data',b=>{rawBytes+=b.length;rawHash.update(b);});
+ const metadata=()=>({id,method:req.method,origin_http_version:req.httpVersion,content_encoding:req.headers['content-encoding']||null,content_length:req.headers['content-length']||null,transfer_encoding:req.headers['transfer-encoding']||null,raw_bytes:rawBytes,raw_sha256:rawHash.digest('hex')});
+ const done=obj=>{requests++;console.log(JSON.stringify({event:'QA370_UPLOAD',marker:MARKER,...obj}));answer(200,obj);};
+ if(path==='/raw'){
+  const bodyHash=crypto.createHash('sha256');let bytes=0;const stream=req.headers['content-encoding']==='gzip'?req.pipe(zlib.createGunzip()):req;stream.on('data',b=>{bytes+=b.length;bodyHash.update(b);});stream.on('error',e=>answer(400,{error:e.message,id}));stream.on('end',()=>done({...metadata(),kind:'raw',decoded_bytes:bytes,decoded_sha256:bodyHash.digest('hex')}));return;
+ }
+ const fields=[],files=[];const parser=busboy({headers:req.headers,defParamCharset:'utf8'});
+ parser.on('field',(name,value)=>fields.push({name,value}));parser.on('file',(name,file,info)=>{const out={name,filename:info.filename,mime:info.mimeType,bytes:0,sha256:null};files.push(out);const h=crypto.createHash('sha256');file.on('data',b=>{out.bytes+=b.length;h.update(b);});file.on('end',()=>{out.sha256=h.digest('hex');});});
+ parser.on('error',e=>answer(400,{error:e.message,id}));parser.on('close',()=>done({...metadata(),kind:'multipart',fields,files}));req.pipe(parser);
+});
+server.listen(Number(process.env.PORT??'3000'),process.env.QA370_BIND||'0.0.0.0',()=>{const v={event:'QA370_LISTEN',marker:MARKER,port:server.address().port};console.log(JSON.stringify(v));if(process.env.QA370_READY_FILE)fs.writeFileSync(process.env.QA370_READY_FILE,JSON.stringify(v));});

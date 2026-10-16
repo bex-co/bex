@@ -1,0 +1,43 @@
+{
+  "sweep": 372,
+  "source_head": "7a5a225df294de49d53765d7c3001ba1ca34bf3e",
+  "serving_revision": "unknown",
+  "fixture": "srv-db98mfcmmj2c73ahohp0",
+  "native_create": "Bex0.3.2 captured201/native0 explicit Free Node24; first deployment Live/HTTP200",
+  "API_only_setIdleTimeout": 60,
+  "API_only_MCP_omitted_idle_preview": [
+    60,
+    60
+  ],
+  "client_module": "public ws8.18.3",
+  "server_module": "public ws8.22.0 exact checked package hash",
+  "active_seconds": 180,
+  "sent_messages": 18,
+  "native_logs_exact_received_messages": 18,
+  "received_application_messages": 0,
+  "client_ping_pong_events": 0,
+  "active_final": {
+    "at": "2026-10-16T20:44:54.673Z",
+    "elapsed_ms": 180758,
+    "event": "FINAL",
+    "code": 0,
+    "reason": "socket closed",
+    "opened": true,
+    "sent": 18,
+    "received": 0,
+    "pings": 0,
+    "pongs": 0,
+    "active_ms": 180175
+  },
+  "sleep_observed_seconds_after_last_message": 146.637,
+  "sleep_observed_seconds_after_normal_close": 136.471,
+  "wake_HTTP": [
+    "503",
+    "200"
+  ],
+  "cleanup_pass": true,
+  "new_issue": "w8/115 minor agent-facing idle description drift, 30m",
+  "no_new_idle_algorithm_bug": true,
+  "unverified": "raw counters/physical replicas/loaded plugin/exact serving revision/default900s/SSE/browser/Render production; native CLI has no idle knob",
+  "uncommitted": true
+}

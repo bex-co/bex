@@ -1,0 +1,20 @@
+const path=require('node:path');
+const crypto=require('node:crypto');
+const {once}=require('node:events');
+const assert=require('node:assert/strict');
+const WS=require(process.argv[2]);
+const origin=process.argv[3],marker=process.argv[4];
+const result={client_node:process.version,client_ws:require(path.join(process.argv[2],'package.json')).version,url:origin,marker,sessions:[],pass:false};
+function hash(b){return crypto.createHash('sha256').update(b).digest('hex');}
+function bounded(promise,label,ms=10000){let t;return Promise.race([promise,new Promise((_,reject)=>{t=setTimeout(()=>reject(new Error(label+' timed out')),ms);})]).finally(()=>clearTimeout(t));}
+async function run(name,compressed){const e={name,compressed,echoes:[],pongs:[],pass:false};result.sessions.push(e);let ws;try{ws=new WS(origin+'/echo?id='+encodeURIComponent(marker+'_'+name),['qa-echo'],{perMessageDeflate:compressed,handshakeTimeout:8000});await bounded(once(ws,'open'),'WebSocket open');assert.equal(ws.protocol,'qa-echo');assert.equal(ws.extensions.includes('permessage-deflate'),compressed);e.protocol=ws.protocol;e.extensions=ws.extensions;
+ async function ping(value){const b=Buffer.from(value),reply=bounded(once(ws,'pong'),'pong');ws.ping(b);const [data]=await reply;assert.deepEqual(data,b);e.pongs.push({bytes:data.length,sha256:hash(data)});}
+ async function echo(parts,binary=false){const expected=Buffer.concat(parts.map(p=>Buffer.isBuffer(p)?p:Buffer.from(p)));const reply=bounded(once(ws,'message'),'echo');for(let i=0;i<parts.length;i++){ws.send(parts[i],{binary,fin:i===parts.length-1,compress:compressed});if(parts.length>1&&i===0)await ping('qa369-interleaved');}const [actual,isBinary]=await reply;assert.deepEqual(actual,expected);assert.equal(isBinary,binary);e.echoes.push({bytes:actual.length,binary,sha256:hash(actual),fragments:parts.length});}
+ await ping('qa369-'+name);
+ if(name==='plain'){await echo(['']);await echo(['café 日本 😀 Render / render.yaml']);await echo(['plain '.repeat(700)]);await echo([Buffer.alloc(0)],true);await echo([Buffer.from(Array.from({length:16384},(_,i)=>i%256))],true);}
+ else if(name==='deflate'){await echo(['compressible café 日本 😀 '.repeat(1800)]);await echo([Buffer.from(Array.from({length:32768},(_,i)=>(i*17+3)%256))],true);await echo(['']);}
+ else{await echo(['first ','café 日本 😀 '.repeat(300),' last']);await echo([Buffer.alloc(8192,0),Buffer.from(Array.from({length:8192},(_,i)=>i%256))],true);}
+ const closed=bounded(once(ws,'close'),'normal close');ws.close(1000,'qa369 complete');const [code,reason]=await closed;assert.equal(code,1000);assert.equal(reason.toString(),'qa369 complete');e.close_code=code;e.close_reason=reason.toString();e.pass=true;
+ }catch(err){e.error=err.message;throw err;}finally{if(ws&&ws.readyState!==WS.CLOSED)ws.terminate();}}
+async function rejectedPath(){let ws,expected=false;try{await bounded(new Promise((resolve,reject)=>{ws=new WS(origin+'/missing',{handshakeTimeout:8000,perMessageDeflate:false});ws.on('error',err=>{if(!expected)reject(err);});ws.once('open',()=>reject(new Error('missing WebSocket path unexpectedly opened')));ws.once('unexpected-response',(request,response)=>{try{assert.equal(response.statusCode,404);expected=true;result.missing_path_HTTP=404;response.resume();request.destroy();resolve();}catch(err){reject(err);}});}), 'missing-path response');}finally{if(ws&&ws.readyState!==WS.CLOSED)ws.terminate();}}
+(async()=>{try{await rejectedPath();await run('plain',false);await run('deflate',true);await run('fragmented',false);result.pass=true;}catch(err){result.error=err.message;}console.log(JSON.stringify(result));if(!result.pass)process.exitCode=1;})().catch(err=>{console.log(JSON.stringify({...result,error:err.message}));process.exitCode=1;});

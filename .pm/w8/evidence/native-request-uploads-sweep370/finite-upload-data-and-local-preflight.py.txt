@@ -1,0 +1,49 @@
+from pathlib import Path
+import os,sys,json,subprocess,time,signal,hashlib,gzip,tempfile,shutil,ast,urllib.request,collections
+P=Path(__file__).resolve().parent
+
+def journey(url,marker,D,events,persist,local=False):
+ assert D.is_dir();data=bytes((i*31+7)%256 for i in range(65536));binary=D/'generated-binary.bin';empty=D/'generated-empty.bin';packed=D/'generated-binary.gz';binary.write_bytes(data);empty.write_bytes(b'');packed.write_bytes(gzip.compress(data,mtime=0));expected_hash=hashlib.sha256(data).hexdigest();expected_fields=[{'name':'repeat','value':'one'},{'name':'repeat','value':"café 日本 😀 apostrophe's value"},{'name':'blank','value':''}];expected_files=[{'name':'uploads','filename':'empty.bin','mime':'application/octet-stream','bytes':0,'sha256':hashlib.sha256(b'').hexdigest()},{'name':'uploads','filename':'binary.bin','mime':'application/octet-stream','bytes':len(data),'sha256':expected_hash}]
+ def call(label,path,args,kind,preferred2=False):
+  header=D/(label+'.headers');flags=['--http1.1'] if local or not preferred2 else ['--http2'];cmd=['curl','--disable',*flags,'-sS','--max-time','15','-D',str(header),'-H','X-QA-Case: '+marker+'_'+label,*args,'-w','\n__QA370_META__%{http_code}|%{http_version}',url+path];e={'at':time.time(),'label':label,'preferred_client_HTTP':'2' if preferred2 else '1.1','local_prerequisite':local,'command':cmd,'expected_kind':kind};events.append(e);persist();start=time.monotonic()
+  try:
+   r=subprocess.run(cmd,capture_output=True,text=True,timeout=20);raw,sep,meta=r.stdout.rpartition('\n__QA370_META__');assert sep;status,protocol=meta.split('|');v=json.loads(raw);e.update(client_exit=r.returncode,elapsed=round(time.monotonic()-start,3),HTTP=status,actual_client_HTTP=protocol,raw=raw,decoded=v,stderr=r.stderr);headers={}
+   for line in header.read_text().splitlines():
+    key,sep,value=line.partition(':')
+    if sep and key.lower() in ('content-type','allow','content-encoding','content-length','server','cf-cache-status','vary'):headers[key.lower()]=value.strip()
+   e['response_headers']=headers;identity=v.get('marker')==marker and (kind=='405' or v.get('id')==marker+'_'+label)
+   if kind=='405':e['pass']=r.returncode==0 and status=='405' and identity and headers.get('allow')=='POST'
+   elif kind=='multipart':e['pass']=r.returncode==0 and status=='200' and identity and v.get('kind')=='multipart' and v.get('fields')==expected_fields and v.get('files')==expected_files
+   else:
+    expected=data if kind=='raw' else b'';e['pass']=r.returncode==0 and status=='200' and identity and v.get('kind')=='raw' and v.get('decoded_bytes')==len(expected) and v.get('decoded_sha256')==hashlib.sha256(expected).hexdigest()
+   persist();print(json.dumps({'label':label,'HTTP':status,'client_HTTP':protocol,'pass':e['pass']}),flush=True);assert e['pass'],'upload result differs'
+  finally:header.unlink(missing_ok=True)
+ call('raw-h1','/raw',['-H','Content-Type: application/octet-stream','--data-binary','@'+str(binary)],'raw')
+ call('raw-h2','/raw',['-H','Content-Type: application/octet-stream','--data-binary','@'+str(binary)],'raw',True)
+ call('raw-chunked-h1','/raw',['-H','Content-Type: application/octet-stream','-H','Transfer-Encoding: chunked','--data-binary','@'+str(binary)],'raw')
+ for two in [False,True]:call('gzip-h'+('2' if two else '1'),'/raw',['-H','Content-Type: application/octet-stream','-H','Content-Encoding: gzip','--data-binary','@'+str(packed)],'raw',two)
+ form=['-F','repeat=one','-F',"repeat=café 日本 😀 apostrophe's value",'-F','blank=','-F','uploads=@'+str(empty)+';filename=empty.bin;type=application/octet-stream','-F','uploads=@'+str(binary)+';filename=binary.bin;type=application/octet-stream']
+ for two in [False,True]:call('multipart-h'+('2' if two else '1'),'/multipart',form,'multipart',two)
+ call('empty-raw-h2','/raw',['-H','Content-Type: application/octet-stream','--data-binary','@'+str(empty)],'empty',True)
+ call('wrong-method','/multipart',[],'405')
+ return {'pass':True,'cases':len(events),'successful_POSTs':8,'expected_method405':1,'actual_client_HTTP_versions':dict(collections.Counter(e['actual_client_HTTP'] for e in events)),'binary_payload_bytes':len(data),'sha256':expected_hash,'multipart_repeated_UTF8_and_empty_fields':True,'multipart_two_files_zero_and_binary':True,'curl_valid_chunked_request':True,'gzip_decoded_bytes_match':True,'qualification':'small ordinary valid requests; semantic payload hashes compared, transport chunk/coding normalization recorded without assuming upstream HTTP2'}
+
+if __name__=='__main__':
+ os.umask(0o077);mode=sys.argv[1];assert mode in ('preflight','live')
+ if mode=='preflight':
+  D=P/'sweep370-server-source';ref=json.loads((P/'sweep370-primary-reference.json').read_text());assert subprocess.check_output(['git','rev-parse','HEAD'],cwd=D,text=True).strip()==ref['commit'];assert hashlib.sha256((D/'package.json').read_bytes()).hexdigest()==ref['package_sha256'];module=ast.parse((P/'sweep370-native-web.py').read_text());fn=next(n for n in module.body if isinstance(n,ast.FunctionDef) and n.name=='commands');namespace={'P':P,'json':json,'reference':ref};exec(compile(ast.Module(body=[fn],type_ignores=[]),'<exact-native-fixture-builder>','exec'),namespace);cmd=namespace['commands']('QA370_LOCAL');ready=P/'sweep370-local-ready.json';assert not ready.exists();upload=Path(tempfile.mkdtemp(prefix='qa370-upload-',dir=str(P)));npmrc=P/'sweep370-empty-npmrc';npmrc.write_text('');npmrc.chmod(0o600);env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_','NPM_','PG')) and k not in ['NODE_OPTIONS','NODE_PATH','NODE_AUTH_TOKEN','NPM_TOKEN']};env.update(PORT='0',QA370_BIND='127.0.0.1',QA370_READY_FILE=str(ready),NPM_CONFIG_USERCONFIG=str(npmrc),NPM_CONFIG_CACHE=str(P/'sweep370-npm-cache'),NPM_CONFIG_REGISTRY='https://registry.npmjs.org');log=(P/'sweep370-local-server.log').open('wb');server=None;v={'qualification':'actual authored build command and local Node/busboy/curl payload prerequisite; H2-labeled local cases deliberately use HTTP1; not hosted acceptance','events':[]}
+  def persist():(P/'sweep370-local-preflight.json').write_text(json.dumps(v,indent=2,ensure_ascii=False))
+  try:
+   build=subprocess.run(['bash','-c',cmd['build']],cwd=D,env=env,capture_output=True,text=True,timeout=80);(P/'sweep370-local-build.log').write_text(build.stdout+build.stderr);v['actual_authored_build_exit']=build.returncode;persist();assert build.returncode==0;server=subprocess.Popen(['node','qa370-server.js'],cwd=D,env=env,stdout=log,stderr=log,start_new_session=True)
+   for _ in range(100):
+    if ready.exists():break
+    time.sleep(.03)
+   assert ready.exists();port=json.loads(ready.read_text())['port'];url='http://127.0.0.1:'+str(port);v['summary']=journey(url,'QA370_LOCAL',upload,v['events'],persist,local=True);v['after_HTTP']=json.load(urllib.request.urlopen(url,timeout=3));assert v['after_HTTP']['requests']==8
+  finally:
+   if server:os.killpg(server.pid,signal.SIGTERM);server.wait(timeout=5)
+   log.close();ready.unlink(missing_ok=True);npmrc.unlink(missing_ok=True);(D/'qa370-server.js').unlink(missing_ok=True);(D/'qa370-built.json').unlink(missing_ok=True);shutil.rmtree(upload);v.update(own_server_stopped=True,own_generated_upload_files_removed=True);persist()
+  print(json.dumps({'local_summary':v.get('summary'),'own_server_stopped':True}))
+ else:
+  f=P/'sweep370-common.py';sys.argv=[str(f),'uploads','bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==370 and v.get('id'));own(x);assert any(v['first_live_pass'] for v in x.get('runtime_receipts',[])) and not x.get('upload_events');D=Path(tempfile.mkdtemp(prefix='qa370-live-uploads-',dir=str(P)));x['upload_events']=[];save()
+  try:x['upload_summary']=journey(x['create_view']['serviceDetails']['url'],x['marker'],D,x['upload_events'],save);save()
+  finally:shutil.rmtree(D);x['own_generated_upload_files_removed']=True;save()

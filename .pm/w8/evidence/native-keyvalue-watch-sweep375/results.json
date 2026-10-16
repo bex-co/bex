@@ -1,0 +1,39 @@
+{
+  "sweep": 375,
+  "source_head": "8769f199c1a06a80a6bfb02b65ea08e2154de02f",
+  "serving_revision": "unknown",
+  "fixture": "red-db99cta11h4c73ffkn40",
+  "native_create": "published Bex0.3.2/native0 explicit Free/off/noeviction",
+  "native_readiness_PINGs": 2,
+  "persistent_native_sessions": 2,
+  "stages": 30,
+  "all_stage_results_pass": true,
+  "native_session_natural_exit0": 2,
+  "native_process_groups_cleaned": true,
+  "distinct_stable_backend_CLIENT_IDs": {
+    "bex": 26,
+    "render": 28
+  },
+  "observed_server_versions": [
+    "8.1.9"
+  ],
+  "RESP": 2,
+  "conflicting_write_EXEC_null_no_side_effects": true,
+  "uncontended_EXEC_ordered_replies_and_data": true,
+  "UNWATCH_clears_watch": true,
+  "DISCARD_clears_queue_and_watch": true,
+  "watched_expiry_positive_TTL_before_expiry_ms": 2324,
+  "watched_expiry_EXEC_null_preserves_prior_value": true,
+  "own_final_DEL_count": 2,
+  "own_final_EXISTS": 0,
+  "private_actor_config_history_removed": true,
+  "local_history_setup_mistake": "61 exact owned entries removed and pre-existing entry preserved; private histories configured; repeated local control proved pre-existing history unchanged; no contents retained",
+  "cached_endpoint_PONG_before_after": [
+    true,
+    false
+  ],
+  "cached_credentials_removed": true,
+  "cleanup_pass": true,
+  "new_issue": null,
+  "uncommitted": true
+}

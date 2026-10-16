@@ -1,0 +1,4 @@
+from pathlib import Path
+import sys,json,subprocess
+f=Path(__file__).with_name('sweep372-common.py');exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==372);own(x);record=x['idle_collector'];assert record['final']['code']==0
+r=subprocess.run(['ps','-p',str(record['PID']),'-o','lstart=,comm='],capture_output=True,text=True,timeout=5);record['process_cleanup']={'at':now(),'PID':record['PID'],'returncode':r.returncode,'start_comm':r.stdout.strip(),'original_start_comm':record['process_start'],'pass':r.returncode==1 and not r.stdout.strip()};save();print(json.dumps({'owned_collector_process_absent':record['process_cleanup']['pass']}));assert record['process_cleanup']['pass']

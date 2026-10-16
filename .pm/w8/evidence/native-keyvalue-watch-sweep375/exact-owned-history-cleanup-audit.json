@@ -1,0 +1,24 @@
+{
+  "at": "2026-10-16T21:24:52.483042+00:00",
+  "cause": "local interactive client was initially missing REDISCLI_HISTFILE isolation",
+  "restored_only_proven_own_tail": true,
+  "owned_lines_removed": 61,
+  "preexisting_lines_preserved": 1,
+  "exact_preserved_prefix_verified_in_memory": true,
+  "proof": [
+    {
+      "owned_block": "complete local Render client",
+      "exact_tail_lines_removed": 57
+    },
+    {
+      "owned_block": "initial Bex identity in complete local run",
+      "exact_tail_lines_removed": 2
+    },
+    {
+      "owned_block": "initial identity in local prompt guard",
+      "exact_tail_lines_removed": 2
+    }
+  ],
+  "private_backup_removed": true,
+  "no_history_contents_retained": true
+}

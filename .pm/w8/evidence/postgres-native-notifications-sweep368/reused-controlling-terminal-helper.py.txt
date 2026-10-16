@@ -1,0 +1,54 @@
+from pathlib import Path
+import os,pty,termios,select,signal,time,re,json,sys,fcntl,struct
+P=Path(__file__).resolve().parent;sys.path.insert(0,str(P));from evidence258_sanitizer import safe
+ANSI=re.compile(r'\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1b\\))')
+class Session:
+ def __init__(self,args,env):
+  self.start=time.monotonic();self.raw=bytearray();self.status=None;self.closed=False;self.events=[];self.pid,self.fd=pty.fork()
+  if self.pid==0:
+   try:
+    fcntl.ioctl(0,termios.TIOCSWINSZ,struct.pack('HHHH',40,140,0,0));a=termios.tcgetattr(0);a[3]|=termios.ICANON|termios.ISIG;a[3]&=~termios.ECHO;a[6][termios.VINTR]=b'\x03';termios.tcsetattr(0,termios.TCSANOW,a);os.execvpe(args[0],args,env)
+   except BaseException:os._exit(125)
+  os.set_blocking(self.fd,False)
+ def poll(self):
+  if self.status is None:
+   pid,status=os.waitpid(self.pid,os.WNOHANG)
+   if pid:self.status=os.waitstatus_to_exitcode(status)
+  return self.status
+ def step(self):
+  if self.closed:return
+  if select.select([self.fd],[],[],.1)[0]:
+   try:b=os.read(self.fd,65536)
+   except OSError:b=b''
+   if b:self.raw.extend(b);assert len(self.raw)<2*1024*1024
+  self.poll()
+ def text(self):return ANSI.sub('',self.raw.decode(errors='replace')).replace('\r','')
+ def wait(self,needle,bound=12):
+  start=time.monotonic()
+  while time.monotonic()-start<bound:
+   self.step()
+   if needle in self.text():return True
+   if self.poll() is not None:return needle in self.text()
+  return False
+ def wait_since(self,needle,offset,bound=12):
+  start=time.monotonic()
+  while time.monotonic()-start<bound:
+   self.step()
+   if needle in self.text()[offset:]:return True
+   if self.poll() is not None:return needle in self.text()[offset:]
+  return False
+ def send(self,s):
+  assert self.poll() is None;os.write(self.fd,s.encode() if isinstance(s,str) else s)
+ def close(self):
+  if self.closed:return
+  if self.poll() is None:
+   for sig in [signal.SIGTERM,signal.SIGKILL]:
+    try:os.killpg(self.pid,sig)
+    except ProcessLookupError:pass
+    end=time.monotonic()+2
+    while self.poll() is None and time.monotonic()<end:self.step()
+    if self.poll() is not None:break
+  self.step();os.close(self.fd);self.closed=True
+ def record(self):
+  out=safe(self.text());out=re.sub(r'postgres(?:ql)?://[^\s"<>]+','[CONNECTION URI REDACTED]',out)
+  return {'stdin_stdout_TTY':True,'controlling_terminal':True,'terminal_ISIG_enabled':True,'terminal_echo_disabled':True,'rows':40,'columns':140,'elapsed':round(time.monotonic()-self.start,3),'native_exit':self.status,'output':out,'own_process_group_cleaned':self.closed,'events':self.events}

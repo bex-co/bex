@@ -1,0 +1,20 @@
+from pathlib import Path
+import sys,json,time,subprocess
+P=Path(__file__).resolve().parent;CP=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json')
+def resource():return next(v for v in json.loads(CP.read_text())['resources'] if v.get('sweep')==370 and v.get('id'))
+def run(file,*args,bound=65):
+ r=subprocess.run([sys.executable,str(P/file),*args],capture_output=True,text=True,timeout=bound);(P/('sweep370-sequence-'+file+'-'+('-'.join(args) or 'run')+'.log')).write_text(r.stdout+r.stderr);print(json.dumps({'file':file,'args':args,'exit':r.returncode,'progress':r.stdout.strip()[:1100]}),flush=True);assert r.returncode==0
+assert not resource().get('upload_events')
+for attempt in range(12):
+ run('sweep370-native-web.py','http','bex');r=resource()['runtime_receipts'][-1]
+ if r['first_live_pass']:break
+ assert r['history'][0]['status'] not in ['build_failed','update_failed','pre_deploy_failed','canceled'],'original first deployment failed; inspect before cleanup'
+ if attempt<11:time.sleep(15)
+assert resource()['runtime_receipts'][-1]['first_live_pass'],'bounded readiness window ended; retain exact own deployment'
+run('sweep370-uploads.py','live',bound=200)
+for attempt in range(3):
+ run('sweep370-native-upload-logs.py')
+ if resource()['upload_log_receipts'][-1]['pass']:break
+ if attempt<2:time.sleep(15)
+assert resource()['upload_log_receipts'][-1]['pass'],'native log correlation incomplete; retain complete runtime results'
+print('Nine hosted upload controls and eight independent native Render log events pass',flush=True)

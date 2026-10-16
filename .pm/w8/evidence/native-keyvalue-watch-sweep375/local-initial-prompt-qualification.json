@@ -1,0 +1,54 @@
+{
+  "qualification": "own local redis-server/redis-cli8.10.1; not native Bex or hosted behavior",
+  "steps": [
+    {
+      "actor": "bex",
+      "label": "initial stable client identity",
+      "stdin": "CLIENT \"\\x49\\x44\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\"\n",
+      "expected": null,
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        4
+      ]
+    }
+  ],
+  "sessions": {
+    "bex": {
+      "intent": "own bounded native interactive client",
+      "command": [
+        "local-redis-cli",
+        "<own-unix-socket>",
+        "--json",
+        "-2"
+      ],
+      "PID": 15740,
+      "PGID": 15740,
+      "terminal": {
+        "command": [
+          "local-redis-cli",
+          "<own-unix-socket>",
+          "--json",
+          "-2"
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": -15,
+        "intentional_stop": null,
+        "elapsed": 0.011,
+        "decoded_JSON": [],
+        "arrival_seconds": [],
+        "output": "redis <owned-temp>/sweep375-preflight.sock> 4\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_1\"\nredis <owned-temp>/sweep375-preflight.sock> ",
+        "own_process_group_cleaned": true
+      }
+    }
+  },
+  "keys": [
+    "qa375_local375:value",
+    "qa375_local375:counter",
+    "qa375_local375:expires"
+  ],
+  "pass": false,
+  "error": "AssertionError: JSON fence parse failed: initial stable client identity",
+  "server_stopped": true,
+  "socket_removed": true
+}

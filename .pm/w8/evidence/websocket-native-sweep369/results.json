@@ -1,0 +1,38 @@
+{
+  "sweep": 369,
+  "result": "pass; no new product bug",
+  "source_head": "5a3fc2bb2c03de23d172349297408f9a83b63f68",
+  "serving_revision": "unknown",
+  "native_Free_Node_creates_exit0_HTTP201": 2,
+  "first_deployments_Live_exact_source_HTTP200": 2,
+  "native_clients": [
+    "published Bex0.3.2",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "server_runtime": "Node24.22.0/ws8.22.0",
+  "runtime_NODE_ENV": "production",
+  "build_NODE_ENV": null,
+  "runtime_client": "local Node22.17.1/official ws8.18.3",
+  "valid_missing_path_HTTP404": 2,
+  "socket_sessions": 6,
+  "exact_echoes": 20,
+  "echo_payload_bytes_compared": 261970,
+  "exact_pongs": 10,
+  "fragmented_messages_with_interleaved_ping": 4,
+  "compression_negotiated_sessions": 2,
+  "normal_closes_code1000": 6,
+  "native_app_log_events": 42,
+  "local_preflight_sessions_pass": 3,
+  "owned_services_deleted": [
+    "srv-db97tv7fsf9s73epsjs0",
+    "srv-db97thvfsf9s73epsjng"
+  ],
+  "owned_deployments_deleted": 2,
+  "cached_original_WSS_after_delete_HTTP404": 2,
+  "baseline_services": 6,
+  "Blueprints": 1,
+  "groups_projects": 0,
+  "PG_KV_used_terminating": 0,
+  "new_issue": null,
+  "uncommitted": true
+}

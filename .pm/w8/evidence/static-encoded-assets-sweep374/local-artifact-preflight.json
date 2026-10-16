@@ -1,0 +1,63 @@
+{
+  "pass": true,
+  "files": 12,
+  "public_commit_verified": "85319a7297318e4c16dd1b0a3c4d8a69b1b55f17",
+  "local_node": "v22.17.1",
+  "manifest": {
+    "nonce": "a374ff",
+    "source_sha256": "c1ef91ca04eb4754c011c5f0e7638b5078ff71104fada400c44ac761cf93e0b1",
+    "node": "v22.17.1",
+    "files": {
+      "index.html": {
+        "bytes": 18,
+        "sha256": "540a0f32348dd3f634f9e36efa862108639ab2b68d1c8ed73c13da1615a3e823"
+      },
+      "plain.txt": {
+        "bytes": 23,
+        "sha256": "493722c15ab37a625da67cce7671109486f05e2ac7be980dcc547538591b82ec"
+      },
+      "space name.txt": {
+        "bytes": 28,
+        "sha256": "103e4c4cac81891544654912709ea6385da0897d75f7f53897f52890b15222dc"
+      },
+      "café 日本語.txt": {
+        "bytes": 33,
+        "sha256": "cfe4f0852bf7b2c760aad8bfb3802bb6274eecd6a070f49575326841da4eae99"
+      },
+      "literal#question?.txt": {
+        "bytes": 35,
+        "sha256": "b2bc4e5dbdbe3c221aedc0c09bccdafa277e02c2396170c0cf24ae87f3cd8d8a"
+      },
+      "percent%20literal.txt": {
+        "bytes": 35,
+        "sha256": "38da267148b880cc0b58a7389dfb17eed701e2d7b5c2dfcc047cffed28b97f94"
+      },
+      "plus+literal.txt": {
+        "bytes": 30,
+        "sha256": "587db822bde2e5adb7f816273e556428542fec82d9afcdae7695efa6351872ac"
+      },
+      "nested folder/π.json": {
+        "bytes": 92,
+        "sha256": "7d782593f3705914662c8fafe472f3f7755b5aa63ec4835d751df600995c76f8"
+      },
+      "empty space.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "binary space#.bin": {
+        "bytes": 65792,
+        "sha256": "880dc20a78827bd7a6392def44b8d3b916a6564143c8e9021c0c11880eb880b2"
+      },
+      "brackets[one].txt": {
+        "bytes": 31,
+        "sha256": "a89de6d661ab33ed7365817012925b30d126d82d2ac6e31079ba2f2c5720fcd2"
+      },
+      "dash—emoji😀.txt": {
+        "bytes": 34,
+        "sha256": "bfcc294a6f2c34f4331cd489f84957fa3dca3762026ba2c3bcc478b2ec110b2b"
+      }
+    }
+  },
+  "qualification": "local artifact creation/readback only, not hosted HTTP or filename normalization proof",
+  "local_scratch_removed": true
+}

@@ -1,0 +1,5 @@
+from pathlib import Path
+import sys,json
+f=Path(__file__).with_name('sweep369-common.py');sys.argv=[str(f),'qualify-readiness-window','bex'];exec(compile(f.read_text(),str(f),'exec'));xs=[v for v in c['resources'] if v.get('sweep')==369 and v.get('id')];assert len(xs)==2 and not any(v.get('websocket_receipts') for v in xs);v={'at':now(),'first_window':'eight15-second-spaced native/HTTP observations ended with Bex Live and Render still build_in_progress after queueing','qualification':'bounded harness readiness window exhausted; not a terminal deployment failure or product bug','repair':'exercise already-Live Bex fixture, then continue bounded read-only observation of same exact Render deployment; no create/update/deploy replay','states':{x['client']:x['runtime_receipts'][-1]['history'][0]['status'] for x in xs}}
+for x in xs:x['initial_readiness_window_qualification']=v
+save();(P/'sweep369-harness-qualification.json').write_text(json.dumps(v,indent=2));print('Preserved the original observation window; continue the same owned builds')

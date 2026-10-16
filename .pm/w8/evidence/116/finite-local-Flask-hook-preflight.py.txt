@@ -1,0 +1,27 @@
+from pathlib import Path
+import json,shutil,subprocess,os
+P=Path(__file__).resolve().parent;D=P/'sweep380-local-app';assert not D.exists();D.mkdir(mode=0o700)
+try:
+ ref=json.loads((P/'sweep362-primary-reference.json').read_text());(P/'sweep380-primary-reference.json').write_text(json.dumps(ref,indent=2))
+ for name in ref['files']:shutil.copyfile(P/'sweep362-public-source'/name,D/name)
+ for a,b in [('sweep380-app.py','qa380_app.py'),('sweep380-observer.py','qa380-observer.py')]:shutil.copyfile(P/a,D/b)
+ (D/'qa380-reference.json').write_text(json.dumps(ref));(D/'qa380-marker.json').write_text(json.dumps('QA380_LOCAL'))
+ env={k:v for k,v in os.environ.items() if k not in ('FORWARDED_ALLOW_IPS','GUNICORN_CMD_ARGS','PORT','PYTHONPATH')};env.update(PYTHONDONTWRITEBYTECODE='1',PORT='3000')
+ for phase in ('build','runtime'):subprocess.run([str(P/'sweep362-venv/bin/python'),'qa380-observer.py',phase],cwd=D,env=env,capture_output=True,text=True,check=True,timeout=15)
+ script='''import json
+from qa380_app import app
+client=app.test_client();checks=[]
+for scheme in ('http','https'):
+ root=scheme+'://qa380.local';info=client.get('/qa380/info',base_url=root).get_json();assert info['scheme']==scheme and info['done_url']==root+'/qa380/done' and info['marker']=='QA380_LOCAL';checks.append({'scheme':scheme,'case':'URL generation','pass':True})
+ r=client.get('/qa380/redirect',base_url=root);assert r.status_code==302 and r.headers['Location']==root+'/qa380/done';checks.append({'scheme':scheme,'case':'absolute redirect','pass':True})
+ r=client.get('/qa380/https',base_url=root);assert r.status_code==(302 if scheme=='http' else 200)
+ if scheme=='http':assert r.headers['Location']=='https://qa380.local/qa380/https'
+ else:assert r.get_json()['result']=='https-correct'
+ checks.append({'scheme':scheme,'case':'HTTPS redirect completion','pass':True})
+print(json.dumps(checks))
+'''
+ r=subprocess.run([str(P/'sweep362-venv/bin/python'),'-c',script],cwd=D,env=env,capture_output=True,text=True,check=True,timeout=15)
+ result={'qualification':'six actual Flask test-client observer/hook prerequisite cases with supplied WSGI schemes; no Gunicorn network server, proxy transport or Bex evidence','checks':json.loads(r.stdout),'actual_local_observer':json.loads((D/'qa380-runtime.json').read_text()),'pass':True}
+finally:
+ shutil.rmtree(D)
+result['own_scratch_removed']=not D.exists();(P/'sweep380-local-preflight.json').write_text(json.dumps(result,indent=2));print(json.dumps({'local_Flask_hook_cases':len(result['checks']),'pass':result['pass'],'scratch_removed':result['own_scratch_removed']}))

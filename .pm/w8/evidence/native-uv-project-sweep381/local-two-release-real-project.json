@@ -1,0 +1,349 @@
+{
+  "qualification": "own local Python3.12 prerequisite, private exact uv releases, locked real project sync/console and actual FastAPI uvicorn process; no native CLI, image supply or hosted claim; local UV_PYTHON selects existing Homebrew3.12",
+  "public_main": "3c23b2cd3a2baf090d52ba2a5699249ab9499808\trefs/heads/main\n",
+  "cases": [
+    {
+      "uv": "0.12.10",
+      "marker": "QA381_LOCAL_0.12.10",
+      "commands": [
+        [
+          "<owned-temp>/sweep381-tool-0.12.10/bin/uv",
+          "sync",
+          "--locked",
+          "--no-python-downloads"
+        ],
+        [
+          "<owned-temp>/sweep381-tool-0.12.10/bin/uv",
+          "run",
+          "--no-sync",
+          "python",
+          "qa381_probe.py",
+          "--build"
+        ],
+        [
+          "<owned-temp>/sweep381-tool-0.12.10/bin/uv",
+          "run",
+          "--no-sync",
+          "uvicorn",
+          "qa381_probe:app",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "58615"
+        ]
+      ],
+      "info": {
+        "marker": "QA381_LOCAL_0.12.10",
+        "python": "3.12.14",
+        "requested_python": "3.12",
+        "requested_uv": null,
+        "files": {
+          "uv.lock": {
+            "bytes": 158319,
+            "sha256": "43f07524f1b045e3377854cc2e1d6d1a919d5ba20ad3112f6ac3e74938f5b3fa"
+          },
+          "pyproject.toml": {
+            "bytes": 402,
+            "sha256": "92913b1e3c2e38d54d19941f47a878bd499ea6317a6fd8b8d83332247da9d461"
+          }
+        },
+        "executable": "/private/tmp/bex381-mx5ql1m8/.venv/bin/python",
+        "venv_prefix": "/private/tmp/bex381-mx5ql1m8/.venv",
+        "project_venv": true,
+        "dependencies": {
+          "fastapi": "0.118.0",
+          "uvicorn": "0.37.0",
+          "uv-docker-example": "0.1.0"
+        },
+        "project_console_hello": {
+          "status": 0,
+          "stdout": "Hello world\n",
+          "stderr": "",
+          "error": null,
+          "elapsed_ms": 359
+        },
+        "tools": {
+          "uv": {
+            "status": 0,
+            "stdout": "uv 0.12.10 (3c979abda 2026-09-04 aarch64-apple-darwin)\n",
+            "stderr": "",
+            "error": null,
+            "elapsed_ms": 10
+          },
+          "uvx": {
+            "status": 0,
+            "stdout": "uvx 0.12.10 (3c979abda 2026-09-04 aarch64-apple-darwin)\n",
+            "stderr": "",
+            "error": null,
+            "elapsed_ms": 12
+          },
+          "python": {
+            "status": 0,
+            "stdout": "Python 3.12.14\n",
+            "stderr": "",
+            "error": null,
+            "elapsed_ms": 11
+          },
+          "pip": {
+            "status": 0,
+            "stdout": "pip 26.2.1 from <owned-temp>/sweep381-tool-0.12.10/lib/python3.12/site-packages/pip (python 3.12)\n",
+            "stderr": "",
+            "error": null,
+            "elapsed_ms": 113
+          },
+          "poetry": {
+            "status": null,
+            "stdout": "",
+            "stderr": "",
+            "error": "ENOENT"
+          }
+        },
+        "built": {
+          "marker": "QA381_LOCAL_0.12.10",
+          "python": "3.12.14",
+          "requested_python": "3.12",
+          "requested_uv": null,
+          "files": {
+            "uv.lock": {
+              "bytes": 158319,
+              "sha256": "43f07524f1b045e3377854cc2e1d6d1a919d5ba20ad3112f6ac3e74938f5b3fa"
+            },
+            "pyproject.toml": {
+              "bytes": 402,
+              "sha256": "92913b1e3c2e38d54d19941f47a878bd499ea6317a6fd8b8d83332247da9d461"
+            }
+          },
+          "executable": "/private/tmp/bex381-mx5ql1m8/.venv/bin/python3",
+          "venv_prefix": "/private/tmp/bex381-mx5ql1m8/.venv",
+          "project_venv": true,
+          "dependencies": {
+            "fastapi": "0.118.0",
+            "uvicorn": "0.37.0",
+            "uv-docker-example": "0.1.0"
+          },
+          "project_console_hello": {
+            "status": 0,
+            "stdout": "Hello world\n",
+            "stderr": "",
+            "error": null,
+            "elapsed_ms": 830
+          },
+          "tools": {
+            "uv": {
+              "status": 0,
+              "stdout": "uv 0.12.10 (3c979abda 2026-09-04 aarch64-apple-darwin)\n",
+              "stderr": "",
+              "error": null,
+              "elapsed_ms": 8
+            },
+            "uvx": {
+              "status": 0,
+              "stdout": "uvx 0.12.10 (3c979abda 2026-09-04 aarch64-apple-darwin)\n",
+              "stderr": "",
+              "error": null,
+              "elapsed_ms": 404
+            },
+            "python": {
+              "status": 0,
+              "stdout": "Python 3.12.14\n",
+              "stderr": "",
+              "error": null,
+              "elapsed_ms": 12
+            },
+            "pip": {
+              "status": 0,
+              "stdout": "pip 26.2.1 from <owned-temp>/sweep381-tool-0.12.10/lib/python3.12/site-packages/pip (python 3.12)\n",
+              "stderr": "",
+              "error": null,
+              "elapsed_ms": 116
+            },
+            "poetry": {
+              "status": null,
+              "stdout": "",
+              "stderr": "",
+              "error": "ENOENT"
+            }
+          }
+        }
+      },
+      "pass_": true,
+      "root_HTTP200_actual_project": true,
+      "diagnostic_HTTP200_exact_marker": true,
+      "server_exit_after_owned_stop": 143,
+      "server_reaped": true,
+      "project_cache_and_tool_scratch_removed": true
+    },
+    {
+      "uv": "0.11.3",
+      "marker": "QA381_LOCAL_0.11.3",
+      "commands": [
+        [
+          "<owned-temp>/sweep381-tool-0.11.3/bin/uv",
+          "sync",
+          "--locked",
+          "--no-python-downloads"
+        ],
+        [
+          "<owned-temp>/sweep381-tool-0.11.3/bin/uv",
+          "run",
+          "--no-sync",
+          "python",
+          "qa381_probe.py",
+          "--build"
+        ],
+        [
+          "<owned-temp>/sweep381-tool-0.11.3/bin/uv",
+          "run",
+          "--no-sync",
+          "uvicorn",
+          "qa381_probe:app",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "60621"
+        ]
+      ],
+      "info": {
+        "marker": "QA381_LOCAL_0.11.3",
+        "python": "3.12.14",
+        "requested_python": "3.12",
+        "requested_uv": "0.11.3",
+        "files": {
+          "uv.lock": {
+            "bytes": 158319,
+            "sha256": "43f07524f1b045e3377854cc2e1d6d1a919d5ba20ad3112f6ac3e74938f5b3fa"
+          },
+          "pyproject.toml": {
+            "bytes": 402,
+            "sha256": "92913b1e3c2e38d54d19941f47a878bd499ea6317a6fd8b8d83332247da9d461"
+          }
+        },
+        "executable": "/private/tmp/bex381-e7_5rxcv/.venv/bin/python",
+        "venv_prefix": "/private/tmp/bex381-e7_5rxcv/.venv",
+        "project_venv": true,
+        "dependencies": {
+          "fastapi": "0.118.0",
+          "uvicorn": "0.37.0",
+          "uv-docker-example": "0.1.0"
+        },
+        "project_console_hello": {
+          "status": 0,
+          "stdout": "Hello world\n",
+          "stderr": "",
+          "error": null,
+          "elapsed_ms": 357
+        },
+        "tools": {
+          "uv": {
+            "status": 0,
+            "stdout": "uv 0.11.3 (45da18ac3 2026-04-01 aarch64-apple-darwin)\n",
+            "stderr": "",
+            "error": null,
+            "elapsed_ms": 10
+          },
+          "uvx": {
+            "status": 0,
+            "stdout": "uvx 0.11.3 (45da18ac3 2026-04-01 aarch64-apple-darwin)\n",
+            "stderr": "",
+            "error": null,
+            "elapsed_ms": 12
+          },
+          "python": {
+            "status": 0,
+            "stdout": "Python 3.12.14\n",
+            "stderr": "",
+            "error": null,
+            "elapsed_ms": 12
+          },
+          "pip": {
+            "status": 0,
+            "stdout": "pip 26.2.1 from <owned-temp>/sweep381-tool-0.11.3/lib/python3.12/site-packages/pip (python 3.12)\n",
+            "stderr": "",
+            "error": null,
+            "elapsed_ms": 110
+          },
+          "poetry": {
+            "status": null,
+            "stdout": "",
+            "stderr": "",
+            "error": "ENOENT"
+          }
+        },
+        "built": {
+          "marker": "QA381_LOCAL_0.11.3",
+          "python": "3.12.14",
+          "requested_python": "3.12",
+          "requested_uv": "0.11.3",
+          "files": {
+            "uv.lock": {
+              "bytes": 158319,
+              "sha256": "43f07524f1b045e3377854cc2e1d6d1a919d5ba20ad3112f6ac3e74938f5b3fa"
+            },
+            "pyproject.toml": {
+              "bytes": 402,
+              "sha256": "92913b1e3c2e38d54d19941f47a878bd499ea6317a6fd8b8d83332247da9d461"
+            }
+          },
+          "executable": "/private/tmp/bex381-e7_5rxcv/.venv/bin/python3",
+          "venv_prefix": "/private/tmp/bex381-e7_5rxcv/.venv",
+          "project_venv": true,
+          "dependencies": {
+            "fastapi": "0.118.0",
+            "uvicorn": "0.37.0",
+            "uv-docker-example": "0.1.0"
+          },
+          "project_console_hello": {
+            "status": 0,
+            "stdout": "Hello world\n",
+            "stderr": "",
+            "error": null,
+            "elapsed_ms": 921
+          },
+          "tools": {
+            "uv": {
+              "status": 0,
+              "stdout": "uv 0.11.3 (45da18ac3 2026-04-01 aarch64-apple-darwin)\n",
+              "stderr": "",
+              "error": null,
+              "elapsed_ms": 8
+            },
+            "uvx": {
+              "status": 0,
+              "stdout": "uvx 0.11.3 (45da18ac3 2026-04-01 aarch64-apple-darwin)\n",
+              "stderr": "",
+              "error": null,
+              "elapsed_ms": 259
+            },
+            "python": {
+              "status": 0,
+              "stdout": "Python 3.12.14\n",
+              "stderr": "",
+              "error": null,
+              "elapsed_ms": 12
+            },
+            "pip": {
+              "status": 0,
+              "stdout": "pip 26.2.1 from <owned-temp>/sweep381-tool-0.11.3/lib/python3.12/site-packages/pip (python 3.12)\n",
+              "stderr": "",
+              "error": null,
+              "elapsed_ms": 105
+            },
+            "poetry": {
+              "status": null,
+              "stdout": "",
+              "stderr": "",
+              "error": "ENOENT"
+            }
+          }
+        }
+      },
+      "pass_": true,
+      "root_HTTP200_actual_project": true,
+      "diagnostic_HTTP200_exact_marker": true,
+      "server_exit_after_owned_stop": 143,
+      "server_reaped": true,
+      "project_cache_and_tool_scratch_removed": true
+    }
+  ],
+  "pass": true
+}

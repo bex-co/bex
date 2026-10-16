@@ -1,0 +1,83 @@
+from pathlib import Path
+import sys,os,json,struct,hashlib,subprocess,tempfile,shutil,time,signal
+P=Path(__file__).resolve().parent
+
+def literal(s):return "'"+str(s).replace("'","''")+"'"
+def model():
+ out=[]
+ for i in range(1,65):
+  payload=None if i%8==0 else b'' if i%8==1 else bytes((i*13+j)%256 for j in range(256+(i%5)*73));maybe=[None,'',r'\N','ordinary nullable text'][i%4]
+  out.append({'id':i,'big':str((-1 if i%2 else 1)*(9007199254740993+i)),'label':f'row {i}: café 日本 😀\nnext\r\ncomma, "quote" \\ Render','payload':None if payload is None else payload.hex(),'maybe':maybe})
+ return out
+def binary_data(duplicate_last=False):
+ data=bytearray(b'PGCOPY\n\xff\r\n\x00'+struct.pack('!ii',0,0));rows=model()
+ for index,row in enumerate(rows):
+  fields=[struct.pack('!i',1 if duplicate_last and index==len(rows)-1 else row['id']),struct.pack('!q',int(row['big'])),row['label'].encode(),None if row['payload'] is None else bytes.fromhex(row['payload']),None if row['maybe'] is None else row['maybe'].encode()];data+=struct.pack('!h',len(fields))
+  for field in fields:data+=struct.pack('!i',-1 if field is None else len(field))+(b'' if field is None else field)
+ data+=struct.pack('!h',-1);return bytes(data)
+def metadata(path):
+ data=path.read_bytes();return {'path':str(path),'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()}
+def journey(nonce,D,run,persist,e):
+ schema='qa377_'+nonce;cols='id,big,label,payload,maybe';paths={k:D/v for k,v in [('valid','input α.bin'),('invalid','duplicate β.bin'),('render','Render export γ.bin'),('bex','Bex export δ.bin')]};expected=model();e.update(schema=schema,expected_rows=expected,checks=[],files=[],command_labels=[]);persist()
+ def check(label,observed,wanted):
+  v={'label':label,'observed':observed,'expected':wanted,'pass':observed==wanted};e['checks'].append(v);persist();assert v['pass'],label
+ def call(actor,label,statement,expected_exit=0):
+  assert label not in e['command_labels'];e['command_labels'].append(label);persist();v=run(actor,label,statement);check(label+' native exit',v['native_exit'],expected_exit);assert not v.get('harness_timeout');return v['SQL_output']
+ def query(actor,label,statement,wanted):
+  raw=call(actor,label,statement);observed=json.loads(raw.strip());check(label+' actual data',observed,wanted);return observed
+ def objectexpr():return "jsonb_build_object('id',id,'big',big::text,'label',label,'payload',encode(payload,'hex'),'maybe',maybe)"
+ def arrayexpr(table):return '(SELECT coalesce(jsonb_agg('+objectexpr()+" ORDER BY id),'[]'::jsonb) FROM "+schema+'.'+table+')'
+ def snapshot(actor,label,table):return query(actor,label,'SELECT '+arrayexpr(table)+'::text;',expected)
+ def copy(actor,label,table,key,direction,duplicate=False):
+  path=paths[key];statement='\\copy '+(schema+'.'+table+'('+cols+')' if direction=='FROM' else '(SELECT '+cols+' FROM '+schema+'.'+table+' ORDER BY id)')+' '+direction+' '+literal(path)+' WITH (FORMAT binary)';raw=call(actor,label,statement,1 if duplicate else 0)
+  if duplicate:check('duplicate import has23505','23505' in raw,True)
+  if direction=='TO':
+   assert path.exists();e['files'].append({'role':'native local export','actor':actor,**metadata(path)});persist();check(label+' exact input bytes',path.read_bytes()==paths['valid'].read_bytes(),True)
+ try:
+  for key in ('valid','invalid'):assert not paths[key].exists();paths[key].write_bytes(binary_data(key=='invalid'));e['files'].append({'role':'well-formed duplicate-primary-key input' if key=='invalid' else 'deterministic binary input',**metadata(paths[key])});persist()
+  query('bex','fresh own schema absent','SELECT to_json(to_regnamespace('+literal(schema)+') IS NULL)::text;',True)
+  e['owned_schema_intent']={'schema':schema,'before_absent':True};persist();query('bex','create three own binary tables','BEGIN;CREATE SCHEMA '+schema+';'+''.join('CREATE TABLE '+schema+'.'+t+'(id integer PRIMARY KEY,big bigint NOT NULL,label text NOT NULL,payload bytea,maybe text);' for t in ('a','b','c'))+"COMMIT;SELECT jsonb_build_object('a',(SELECT count(*) FROM "+schema+".a),'b',(SELECT count(*) FROM "+schema+".b),'c',(SELECT count(*) FROM "+schema+".c))::text;",{'a':0,'b':0,'c':0})
+  copy('bex','duplicate-last-row binary import','a','invalid','FROM',True)
+  query('render','independent no committed COPY prefix',"SELECT jsonb_build_object('a',(SELECT count(*) FROM "+schema+".a),'b',(SELECT count(*) FROM "+schema+".b),'c',(SELECT count(*) FROM "+schema+".c))::text;",{'a':0,'b':0,'c':0})
+  copy('bex','valid binary import a','a','valid','FROM');snapshot('render','independent exact a rows','a')
+  copy('render','ordered binary export a','a','render','TO');copy('render','binary import b','b','render','FROM');snapshot('bex','independent exact b rows','b')
+  copy('bex','ordered binary export b','b','bex','TO');copy('bex','binary import c','c','bex','FROM')
+  for actor in ('bex','render'):query(actor,'full three table comparison '+actor,"SELECT jsonb_build_object("+','.join(literal(t)+','+arrayexpr(t) for t in ('a','b','c'))+")::text;",{t:expected for t in ('a','b','c')})
+  query('bex','drop exact own binary schema','DROP SCHEMA '+schema+" CASCADE;SELECT to_json(to_regnamespace("+literal(schema)+') IS NULL)::text;',True);query('render','independent final own schema absence','SELECT to_json(to_regnamespace('+literal(schema)+') IS NULL)::text;',True);e['pass']=True;persist()
+ except BaseException as error:e.update({'pass':False,'error':type(error).__name__+': '+str(error)});persist();raise
+ finally:
+  existed=sum(path.exists() for path in paths.values())
+  for path in paths.values():path.unlink(missing_ok=True)
+  e['synthetic_files_removed']={'tracked_paths':4,'files_removed':existed,'all_absent':all(not v.exists() for v in paths.values())};persist()
+ print(json.dumps({'binary_COPY_pass':e['pass'],'native_commands':len(e['command_labels']),'checks':len(e['checks']),'rows_per_table':64,'files_removed':4}),flush=True)
+
+if __name__=='__main__':
+ os.umask(0o077);mode=sys.argv[1];assert mode in ('preflight','live')
+ if mode=='preflight':
+  D=Path(tempfile.mkdtemp(prefix='bex377-',dir='/tmp'));D.chmod(0o700);sock=D/'socket';sock.mkdir(mode=0o700);files=D/'own binary files λ';files.mkdir();data=D/'data';bin=Path('/opt/homebrew/opt/postgresql@18/bin');psql=Path('/opt/homebrew/opt/libpq/bin/psql');log=(P/'sweep377-local-pg.log').open('wb');server=None;e={'qualification':'own PG18.6/psql18.6 binary format/client prerequisite, not hosted PG16 or native wrappers','events':[]}
+  def persist():(P/'sweep377-local-preflight.json').write_text(json.dumps(e,indent=2,ensure_ascii=False))
+  try:
+   subprocess.run([str(bin/'initdb'),'-D',str(data),'-U','qa377','--auth=trust','--no-locale','--encoding=UTF8'],stdout=log,stderr=log,check=True,timeout=20);server=subprocess.Popen([str(bin/'postgres'),'-D',str(data),'-k',str(sock),'-p','16432','-h',''],stdout=log,stderr=log,start_new_session=True)
+   for _ in range(100):
+    if (sock/'.s.PGSQL.16432').exists():break
+    time.sleep(.05)
+   assert (sock/'.s.PGSQL.16432').exists();env={k:v for k,v in os.environ.items() if not k.startswith(('PG','PSQL','QA_','BEX_','RENDER_'))};env.update(PSQL_HISTORY=str(D/'history'),PGCLIENTENCODING='UTF8',PGCONNECT_TIMEOUT='5');args=[str(psql),'-h',str(sock),'-p','16432','-U','qa377','-d','postgres','-X','-q','-t','-A','-v','ON_ERROR_STOP=1','-v','VERBOSITY=verbose']
+   def run(actor,label,statement):
+    event={'actor_label':actor,'label':label,'command':statement};e['events'].append(event);persist();r=subprocess.run([*args,'-c',statement],env=env,capture_output=True,text=True,timeout=15);event.update(native_exit=r.returncode,stdout=r.stdout,stderr=r.stderr);persist();return {'native_exit':r.returncode,'SQL_output':r.stdout if r.returncode==0 else r.stdout+'\n'+r.stderr}
+   journey('local377',files,run,persist,e)
+  finally:
+   if server:os.killpg(server.pid,signal.SIGTERM);server.wait(timeout=10)
+   log.close();shutil.rmtree(D);e.update(local_server_stopped=True,local_data_socket_history_removed=not D.exists());persist()
+ else:
+  f=P/'sweep377-common.py';sys.argv=[str(f),'binary-copy-live','bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==377 and v.get('id'));assert x['workspace']==WS and x['create_result']['native_exit']==0 and x['create_response']['id']==x['id'] and x['create_response']['version']=='16' and not x.get('binary_copy_journey');_,v=detail();assert v['status']=='available';D=P/'sweep377 binary files λ';assert not D.exists();D.mkdir(mode=0o700);e={'at':now(),'state':'finite native binary COPY intent; no replay after ambiguous mutations'};x['binary_copy_journey']=e;save()
+  def persist():save()
+  def run(actor,label,statement):
+   global client
+   previous=client;client=actor;event={'at':now(),'actor':actor,'label':label,'command':statement,'intent':'ordinary own binary file transfer or SQL on recorded fresh Free PG16'};x.setdefault('binary_copy_native_events',[]).append(event);save()
+   try:
+    r=cli(['psql',x['id'],'--command',statement,'--confirm','-o','json','--','-X','-q','-t','-A','-v','ON_ERROR_STOP=1','-v','VERBOSITY=verbose'],bound=60);event['result']=r;save();print(json.dumps({'native_case':label,'actor':actor,'native_exit':r['native_exit'],'harness_timeout':r['harness_timeout']}),flush=True);return {'native_exit':r['native_exit'],'harness_timeout':r['harness_timeout'],'SQL_output':json.loads(r['stdout'])['output'] if r['native_exit']==0 else r['stdout']+'\n'+r['stderr']}
+   finally:client=previous
+  try:journey(x['nonce'],D,run,persist,e)
+  finally:
+   if not any(D.iterdir()):D.rmdir()
+   e['owned_transfer_directory_removed']=not D.exists();save()

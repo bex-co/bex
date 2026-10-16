@@ -1,0 +1,15 @@
+const fs = require('node:fs');
+const http = require('node:http');
+const crypto = require('node:crypto');
+const { WebSocketServer } = require('./index.js');
+const pkg = JSON.parse(fs.readFileSync('package.json'));
+const base = {marker: MARKER,node: process.version,node_env: process.env.NODE_ENV ?? null,package_sha256: crypto.createHash('sha256').update(fs.readFileSync('package.json')).digest('hex'),ws: pkg.version};
+if (base.package_sha256 !== EXPECTED_PACKAGE_SHA) throw new Error('public package source changed');
+if (process.argv.includes('--build')) { fs.writeFileSync('qa369-built.json',JSON.stringify(base)); console.log(JSON.stringify({event:'QA369_BUILD',...base})); process.exit(0); }
+const built = JSON.parse(fs.readFileSync('qa369-built.json'));
+const stats={connections:0,messages:0,bytes:0,closed:0,pings:0};
+const server=http.createServer((req,res)=>{res.writeHead(req.url==='/'?200:404,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({...base,built,stats}));});
+const wss=new WebSocketServer({noServer:true,perMessageDeflate:{threshold:0,clientNoContextTakeover:true,serverNoContextTakeover:true,zlibDeflateOptions:{level:3}},maxPayload:1024*1024});
+server.on('upgrade',(req,socket,head)=>{if(new URL(req.url,'http://localhost').pathname!=='/echo'){socket.end('HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n');return;}wss.handleUpgrade(req,socket,head,ws=>wss.emit('connection',ws,req));});
+wss.on('connection',(ws,req)=>{const id=new URL(req.url,'http://localhost').searchParams.get('id');stats.connections++;console.log(JSON.stringify({event:'QA369_WS_OPEN',marker:MARKER,id,protocol:ws.protocol,extensions:ws.extensions}));ws.on('message',(data,binary)=>{stats.messages++;stats.bytes+=data.length;console.log(JSON.stringify({event:'QA369_WS_ECHO',marker:MARKER,id,binary,bytes:data.length}));ws.send(data,{binary,compress:true});});ws.on('ping',data=>{stats.pings++;console.log(JSON.stringify({event:'QA369_WS_PING',marker:MARKER,id,bytes:data.length}));});ws.on('close',(code,reason)=>{stats.closed++;console.log(JSON.stringify({event:'QA369_WS_CLOSE',marker:MARKER,id,code,reason:reason.toString()}));});ws.on('error',err=>console.log(JSON.stringify({event:'QA369_WS_ERROR',marker:MARKER,id,message:err.message})));});
+server.listen(Number(process.env.PORT ?? '3000'),process.env.QA369_BIND || '0.0.0.0',()=>{const data={event:'QA369_LISTEN',marker:MARKER,port:server.address().port};console.log(JSON.stringify(data));if(process.env.QA369_READY_FILE)fs.writeFileSync(process.env.QA369_READY_FILE,JSON.stringify(data));});

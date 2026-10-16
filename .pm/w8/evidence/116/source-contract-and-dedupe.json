@@ -1,0 +1,48 @@
+{
+  "planned_sweep": 380,
+  "surface": "native Python real Flask/Gunicorn HTTPS URL generation and redirect completion",
+  "status": "completed: both native defaults fail actual HTTPS scheme/URL/redirect behavior; both one-setting controls pass; exact cleanup",
+  "primary_contract": "https://render.com/docs/environment-variables",
+  "documented_default": {
+    "FORWARDED_ALLOW_IPS": "*",
+    "scope": "Python build/runtime by official default-environment table"
+  },
+  "local_prerequisite": "six real Flask test-client hook cases pass under supplied WSGI http/https schemes; actual installed Gunicorn config observed, no Gunicorn proxy/network or hosted claim",
+  "dedupe": {
+    "search_scope": "all .pm open/blocked/done plus targeted git log",
+    "terms": "FORWARDED_ALLOW_IPS|forwarded_allow_ips|wsgi.url_scheme|ProxyFix|Gunicorn+scheme/forward/https|url_for|redirect loop|https redirect",
+    "finding": "no matching functional native-Python scheme defect; w8/113 is separate accesslog/preload default and remains an existing neighbor",
+    "post_sync": "head unchanged430e0673e; no forwarding default or matching board item added"
+  },
+  "source_boundaries": [
+    "lego/operator/internal/build/native.go:301–308 primary Python nativeBuildDefaults supplies only Gunicorn preload/log flags; generator244–285, sole production caller368",
+    "lego/operator/internal/controller/app_controller.go:4832–4884 appEnv and ordered envFromSources user values/port, no new default",
+    "Gunicorn26.2.0 config.ForwardedAllowIPS uses environment or127.0.0.1,::1; message peer gate chooses whether forwarded scheme headers apply; http/wsgi.py uses req.scheme",
+    "Flask generates external URLs and redirect locations from actual WSGI scheme"
+  ],
+  "primary_sources": [
+    "https://raw.githubusercontent.com/benoitc/gunicorn/26.2.0/gunicorn/config.py",
+    "https://raw.githubusercontent.com/benoitc/gunicorn/26.2.0/gunicorn/http/message.py",
+    "https://raw.githubusercontent.com/benoitc/gunicorn/26.2.0/gunicorn/http/wsgi.py",
+    "https://flask.palletsprojects.com/en/stable/deploying/proxy_fix/"
+  ],
+  "planned_live_actions": [
+    "fresh native published Bex explicit Free Python3.12 fixture; public Render Flask original source unchanged with diagnostic routes in separate module",
+    "ordinary real HTTPS GETs only; no forwarded-header overrides, no redirect following, no foreign resource access",
+    "if actually incorrect, reproduce through unchanged native Render equivalent and correct only shell runtime FORWARDED_ALLOW_IPS=* prefix as control",
+    "native logs and shared source/config reads, exact child enumeration, native delete/detail/list/URL/quota cleanup",
+    "research and file nonduplicate only if actual live behavior proves the candidate; otherwise retain positive evidence"
+  ],
+  "unverified": [
+    "actual hosted behavior",
+    "serving SHA",
+    "actual hosted Gunicorn version",
+    "specific ingress peer address",
+    "other Python lines/pooling/predeploy/static/other app servers",
+    "Render production"
+  ],
+  "original_plan_status": "unverified candidate, no live380 allocation yet",
+  "completed_sweep": 380,
+  "source_head": "430e0673e77a970b0aa40af64a9762b28b9eaaa6",
+  "serving_revision": "unknown"
+}

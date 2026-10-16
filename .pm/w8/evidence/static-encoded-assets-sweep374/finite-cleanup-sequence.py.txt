@@ -1,0 +1,10 @@
+from pathlib import Path
+import subprocess,json,time
+P=Path(__file__).resolve().parent
+subprocess.run(['python3',str(P/'sweep374-native-static.py'),'delete','bex'],check=True,timeout=90)
+for attempt in range(6):
+ r=subprocess.run(['python3',str(P/'sweep374-native-static.py'),'reconcile','bex'],capture_output=True,text=True,check=True,timeout=100);print(r.stdout,flush=True)
+ if json.loads(r.stdout)['cleanup_pass']:break
+ if attempt<5:time.sleep(10)
+else:raise RuntimeError('Owned static deletion convergence needs follow-up')
+subprocess.run(['python3',str(P/'sweep374-final-inventory.py')],check=True,timeout=100)

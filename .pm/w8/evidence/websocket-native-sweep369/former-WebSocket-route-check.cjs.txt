@@ -1,0 +1,8 @@
+const WS=require(process.argv[2]);
+const url=process.argv[3];let done=false;
+const ws=new WS(url+'/echo',['qa-echo'],{handshakeTimeout:6000,perMessageDeflate:false});
+const t=setTimeout(()=>finish({pass:false,error:'bounded teardown response absent'}),8000);
+function finish(v){if(done)return;done=true;clearTimeout(t);console.log(JSON.stringify(v));if(ws.readyState!==WS.CLOSED)ws.terminate();if(!v.pass)process.exitCode=1;}
+ws.on('error',err=>{if(!done)finish({pass:false,error:err.message});});
+ws.on('open',()=>finish({pass:false,error:'former own WebSocket route still opened'}));
+ws.on('unexpected-response',(request,response)=>{const status=response.statusCode;response.resume();finish({pass:status===404,HTTP:status,former_owned_endpoint:true});request.destroy();});

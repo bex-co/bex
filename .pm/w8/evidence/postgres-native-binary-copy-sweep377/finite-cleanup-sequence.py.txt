@@ -1,0 +1,10 @@
+from pathlib import Path
+import subprocess,json,time
+P=Path(__file__).resolve().parent
+subprocess.run(['python3',str(P/'sweep377-native-pg.py'),'delete','bex'],check=True,timeout=75)
+for attempt in range(4):
+ r=subprocess.run(['python3',str(P/'sweep377-native-pg.py'),'reconcile','bex'],capture_output=True,text=True,check=True,timeout=90);print(r.stdout,flush=True)
+ if json.loads(r.stdout)['cleanup_pass']:break
+ if attempt<3:time.sleep(10)
+else:raise RuntimeError('Own deletion convergence needs follow-up; preserve cached credentials for endpoint check')
+for script,args in [('sweep377-cached-connection.py',['after']),('sweep377-cached-connection.py',['remove']),('sweep377-final-inventory.py',[])]:subprocess.run(['python3',str(P/script),*args],check=True,timeout=100)

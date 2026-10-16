@@ -1,0 +1,18 @@
+from pathlib import Path
+import sys,os,json,tempfile,subprocess,time,shutil,signal,importlib.util
+P=Path(__file__).resolve().parent;spec=importlib.util.spec_from_file_location('lo373',P/'sweep373-largeobjects.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+os.umask(0o077);D=Path(tempfile.mkdtemp(prefix='bex373-',dir='/tmp'));D.chmod(0o700);sock=D/'socket';sock.mkdir(mode=0o700);files=D/'own transfer λ';files.mkdir();data=D/'data';bin=Path('/opt/homebrew/opt/postgresql@18/bin');psql=Path('/opt/homebrew/opt/libpq/bin/psql');log=(P/'sweep373-local-pg.log').open('wb');server=None;e={'qualification':'own local PostgreSQL18.6/psql18.6 prerequisite, not hosted PG14 or native CLI evidence','steps':[]}
+def persist():(P/'sweep373-local-preflight.json').write_text(json.dumps(e,indent=2,ensure_ascii=False))
+try:
+ subprocess.run([str(bin/'initdb'),'-D',str(data),'-U','qa373','--auth=trust','--no-locale','--encoding=UTF8'],stdout=log,stderr=log,timeout=20,check=True);server=subprocess.Popen([str(bin/'postgres'),'-D',str(data),'-k',str(sock),'-p','16432','-h',''],stdout=log,stderr=log,start_new_session=True)
+ for _ in range(100):
+  if (sock/'.s.PGSQL.16432').exists():break
+  time.sleep(.05)
+ assert (sock/'.s.PGSQL.16432').exists();env={k:v for k,v in os.environ.items() if not k.startswith(('PG','PSQL','QA_','BEX_','RENDER_'))};env.update(PSQL_HISTORY=str(D/'history'),PGCLIENTENCODING='UTF8',PGCONNECT_TIMEOUT='5');base=[str(psql),'-h',str(sock),'-p','16432','-U','qa373','-d','postgres','-X','-q','-t','-A','-v','ON_ERROR_STOP=1']
+ def run(actor,label,command):
+  v={'actor_label':actor,'label':label,'command':command};e['steps'].append(v);persist();r=subprocess.run([*base,*(['-v','QUIET=off'] if command.startswith('\\lo_') else []),'-c',command],env=env,capture_output=True,text=True,timeout=20);v.update(native_exit=r.returncode,stdout=r.stdout,stderr=r.stderr);persist();return {'native_exit':r.returncode,'SQL_output':r.stdout if r.returncode==0 else r.stdout+'\n'+r.stderr}
+ m.journey(run,persist,e,files,'local373')
+finally:
+ if server:
+  os.killpg(server.pid,signal.SIGTERM);server.wait(timeout=10)
+ log.close();shutil.rmtree(D);e.update(server_stopped=True,own_data_socket_transfer_history_removed=not D.exists());persist()

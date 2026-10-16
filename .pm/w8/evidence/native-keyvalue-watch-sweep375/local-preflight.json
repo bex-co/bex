@@ -1,0 +1,955 @@
+{
+  "qualification": "own local redis-server/redis-cli8.10.1; not native Bex or hosted behavior",
+  "steps": [
+    {
+      "actor": "bex",
+      "label": "initial stable client identity",
+      "stdin": "CLIENT \"\\x49\\x44\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\"\n",
+      "expected": null,
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        4,
+        "QA375_local375_FENCE_1"
+      ],
+      "observed": [
+        4
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "server protocol and same connection identity",
+      "stdin": "HELLO \"\\x32\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\"\n",
+      "expected": null,
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        [
+          "server",
+          "redis",
+          "version",
+          "8.10.1",
+          "proto",
+          2,
+          "id",
+          4,
+          "mode",
+          "standalone",
+          "role",
+          "master",
+          "modules",
+          [
+            [
+              "name",
+              "vectorset",
+              "ver",
+              1,
+              "path",
+              "",
+              "args",
+              []
+            ]
+          ]
+        ],
+        "QA375_local375_FENCE_2"
+      ],
+      "observed": [
+        [
+          "server",
+          "redis",
+          "version",
+          "8.10.1",
+          "proto",
+          2,
+          "id",
+          4,
+          "mode",
+          "standalone",
+          "role",
+          "master",
+          "modules",
+          [
+            [
+              "name",
+              "vectorset",
+              "ver",
+              1,
+              "path",
+              "",
+              "args",
+              []
+            ]
+          ]
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "initial stable client identity",
+      "stdin": "CLIENT \"\\x49\\x44\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\"\n",
+      "expected": null,
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        5,
+        "QA375_local375_FENCE_3"
+      ],
+      "observed": [
+        5
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "server protocol and same connection identity",
+      "stdin": "HELLO \"\\x32\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x34\"\n",
+      "expected": null,
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        [
+          "server",
+          "redis",
+          "version",
+          "8.10.1",
+          "proto",
+          2,
+          "id",
+          5,
+          "mode",
+          "standalone",
+          "role",
+          "master",
+          "modules",
+          [
+            [
+              "name",
+              "vectorset",
+              "ver",
+              1,
+              "path",
+              "",
+              "args",
+              []
+            ]
+          ]
+        ],
+        "QA375_local375_FENCE_4"
+      ],
+      "observed": [
+        [
+          "server",
+          "redis",
+          "version",
+          "8.10.1",
+          "proto",
+          2,
+          "id",
+          5,
+          "mode",
+          "standalone",
+          "role",
+          "master",
+          "modules",
+          [
+            [
+              "name",
+              "vectorset",
+              "ver",
+              1,
+              "path",
+              "",
+              "args",
+              []
+            ]
+          ]
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "fresh own-key absence",
+      "stdin": "EXISTS \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x63\\x6f\\x75\\x6e\\x74\\x65\\x72\" \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x35\"\n",
+      "expected": [
+        0
+      ],
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        0,
+        "QA375_local375_FENCE_5"
+      ],
+      "observed": [
+        0
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "baseline value",
+      "stdin": "SET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x62\\x61\\x73\\x65\\x6c\\x69\\x6e\\x65\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x36\"\n",
+      "expected": [
+        "OK"
+      ],
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        "OK",
+        "QA375_local375_FENCE_6"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "watch before competing client write",
+      "stdin": "WATCH \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x76\\x61\\x6c\\x75\\x65\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x37\"\n",
+      "expected": [
+        "OK"
+      ],
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        "OK",
+        "QA375_local375_FENCE_7"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "independent competing write",
+      "stdin": "SET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x6f\\x74\\x68\\x65\\x72\\x20\\x63\\x6c\\x69\\x65\\x6e\\x74\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x38\"\n",
+      "expected": [
+        "OK"
+      ],
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        "OK",
+        "QA375_local375_FENCE_8"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "conflicted transaction aborts",
+      "stdin": "MULTI\nSET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x6d\\x75\\x73\\x74\\x20\\x6e\\x65\\x76\\x65\\x72\\x20\\x63\\x6f\\x6d\\x6d\\x69\\x74\"\nINCR \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x63\\x6f\\x75\\x6e\\x74\\x65\\x72\"\nEXEC\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x39\"\n",
+      "expected": [
+        "OK",
+        "QUEUED",
+        "QUEUED",
+        null
+      ],
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        "OK",
+        "QUEUED",
+        "QUEUED",
+        null,
+        "QA375_local375_FENCE_9"
+      ],
+      "observed": [
+        "OK",
+        "QUEUED",
+        "QUEUED",
+        null
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "abort leaves both keys unchanged",
+      "stdin": "MGET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x63\\x6f\\x75\\x6e\\x74\\x65\\x72\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x30\"\n",
+      "expected": [
+        [
+          "other client",
+          null
+        ]
+      ],
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        [
+          "other client",
+          null
+        ],
+        "QA375_local375_FENCE_10"
+      ],
+      "observed": [
+        [
+          "other client",
+          null
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "uncontended watched commit",
+      "stdin": "WATCH \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x76\\x61\\x6c\\x75\\x65\"\nMULTI\nSET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x63\\x6f\\x6d\\x6d\\x69\\x74\\x74\\x65\\x64\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\"\nINCR \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x63\\x6f\\x75\\x6e\\x74\\x65\\x72\"\nEXEC\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x31\"\n",
+      "expected": [
+        "OK",
+        "OK",
+        "QUEUED",
+        "QUEUED",
+        [
+          "OK",
+          1
+        ]
+      ],
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        "OK",
+        "OK",
+        "QUEUED",
+        "QUEUED",
+        [
+          "OK",
+          1
+        ],
+        "QA375_local375_FENCE_11"
+      ],
+      "observed": [
+        "OK",
+        "OK",
+        "QUEUED",
+        "QUEUED",
+        [
+          "OK",
+          1
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "independent committed read",
+      "stdin": "MGET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x63\\x6f\\x75\\x6e\\x74\\x65\\x72\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x32\"\n",
+      "expected": [
+        [
+          "committed café 日本 😀",
+          "1"
+        ]
+      ],
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        [
+          "committed café 日本 😀",
+          "1"
+        ],
+        "QA375_local375_FENCE_12"
+      ],
+      "observed": [
+        [
+          "committed café 日本 😀",
+          "1"
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "watch before explicit unwatch",
+      "stdin": "WATCH \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x76\\x61\\x6c\\x75\\x65\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x33\"\n",
+      "expected": [
+        "OK"
+      ],
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        "OK",
+        "QA375_local375_FENCE_13"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "competing write before unwatch",
+      "stdin": "SET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x75\\x6e\\x77\\x61\\x74\\x63\\x68\\x20\\x63\\x6f\\x6d\\x70\\x65\\x74\\x69\\x74\\x6f\\x72\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x34\"\n",
+      "expected": [
+        "OK"
+      ],
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        "OK",
+        "QA375_local375_FENCE_14"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "unwatch permits normal commit",
+      "stdin": "UNWATCH\nMULTI\nSET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x75\\x6e\\x77\\x61\\x74\\x63\\x68\\x65\\x64\\x20\\x63\\x6f\\x6d\\x6d\\x69\\x74\"\nEXEC\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x35\"\n",
+      "expected": [
+        "OK",
+        "OK",
+        "QUEUED",
+        [
+          "OK"
+        ]
+      ],
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        "OK",
+        "OK",
+        "QUEUED",
+        [
+          "OK"
+        ],
+        "QA375_local375_FENCE_15"
+      ],
+      "observed": [
+        "OK",
+        "OK",
+        "QUEUED",
+        [
+          "OK"
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "watch then discard queued write",
+      "stdin": "WATCH \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x76\\x61\\x6c\\x75\\x65\"\nMULTI\nSET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x64\\x69\\x73\\x63\\x61\\x72\\x64\\x65\\x64\\x20\\x76\\x61\\x6c\\x75\\x65\"\nDISCARD\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x36\"\n",
+      "expected": [
+        "OK",
+        "OK",
+        "QUEUED",
+        "OK"
+      ],
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        "OK",
+        "OK",
+        "QUEUED",
+        "OK",
+        "QA375_local375_FENCE_16"
+      ],
+      "observed": [
+        "OK",
+        "OK",
+        "QUEUED",
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "discard preserves actual value",
+      "stdin": "GET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x76\\x61\\x6c\\x75\\x65\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x37\"\n",
+      "expected": [
+        "unwatched commit"
+      ],
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        "unwatched commit",
+        "QA375_local375_FENCE_17"
+      ],
+      "observed": [
+        "unwatched commit"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "write after discard",
+      "stdin": "SET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x61\\x66\\x74\\x65\\x72\\x20\\x64\\x69\\x73\\x63\\x61\\x72\\x64\\x20\\x63\\x6f\\x6d\\x70\\x65\\x74\\x69\\x74\\x6f\\x72\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x38\"\n",
+      "expected": [
+        "OK"
+      ],
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        "OK",
+        "QA375_local375_FENCE_18"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "discard cleared watch state",
+      "stdin": "MULTI\nSET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x66\\x69\\x6e\\x61\\x6c\\x20\\x63\\x6f\\x6d\\x6d\\x69\\x74\\x74\\x65\\x64\\x20\\x76\\x61\\x6c\\x75\\x65\"\nEXEC\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x39\"\n",
+      "expected": [
+        "OK",
+        "QUEUED",
+        [
+          "OK"
+        ]
+      ],
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        "OK",
+        "QUEUED",
+        [
+          "OK"
+        ],
+        "QA375_local375_FENCE_19"
+      ],
+      "observed": [
+        "OK",
+        "QUEUED",
+        [
+          "OK"
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "own expiring key",
+      "stdin": "SET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\" \"\\x65\\x78\\x70\\x69\\x72\\x65\\x73\\x20\\x6e\\x6f\\x72\\x6d\\x61\\x6c\\x6c\\x79\" \"\\x50\\x58\" \"\\x34\\x30\\x30\\x30\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x30\"\n",
+      "expected": [
+        "OK"
+      ],
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        "OK",
+        "QA375_local375_FENCE_20"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "watch expiring key before deadline",
+      "stdin": "WATCH \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x31\"\n",
+      "expected": [
+        "OK"
+      ],
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        "OK",
+        "QA375_local375_FENCE_21"
+      ],
+      "observed": [
+        "OK"
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "positive TTL proves watch happened before expiry",
+      "stdin": "PTTL \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x32\"\n",
+      "expected": null,
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        3999,
+        "QA375_local375_FENCE_22"
+      ],
+      "observed": [
+        3999
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "observe own TTL 1",
+      "stdin": "PTTL \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x33\"\n",
+      "expected": null,
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        3998,
+        "QA375_local375_FENCE_23"
+      ],
+      "observed": [
+        3998
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "observe own TTL 2",
+      "stdin": "PTTL \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x34\"\n",
+      "expected": null,
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        3596,
+        "QA375_local375_FENCE_24"
+      ],
+      "observed": [
+        3596
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "observe own TTL 3",
+      "stdin": "PTTL \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x35\"\n",
+      "expected": null,
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        3190,
+        "QA375_local375_FENCE_25"
+      ],
+      "observed": [
+        3190
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "observe own TTL 4",
+      "stdin": "PTTL \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x36\"\n",
+      "expected": null,
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        2785,
+        "QA375_local375_FENCE_26"
+      ],
+      "observed": [
+        2785
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "observe own TTL 5",
+      "stdin": "PTTL \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x37\"\n",
+      "expected": null,
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        2383,
+        "QA375_local375_FENCE_27"
+      ],
+      "observed": [
+        2383
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "observe own TTL 6",
+      "stdin": "PTTL \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x38\"\n",
+      "expected": null,
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        1978,
+        "QA375_local375_FENCE_28"
+      ],
+      "observed": [
+        1978
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "observe own TTL 7",
+      "stdin": "PTTL \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x39\"\n",
+      "expected": null,
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        1575,
+        "QA375_local375_FENCE_29"
+      ],
+      "observed": [
+        1575
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "observe own TTL 8",
+      "stdin": "PTTL \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\\x30\"\n",
+      "expected": null,
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        1173,
+        "QA375_local375_FENCE_30"
+      ],
+      "observed": [
+        1173
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "observe own TTL 9",
+      "stdin": "PTTL \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\\x31\"\n",
+      "expected": null,
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        771,
+        "QA375_local375_FENCE_31"
+      ],
+      "observed": [
+        771
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "observe own TTL 10",
+      "stdin": "PTTL \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\\x32\"\n",
+      "expected": null,
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        368,
+        "QA375_local375_FENCE_32"
+      ],
+      "observed": [
+        368
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "observe own TTL 11",
+      "stdin": "PTTL \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\\x33\"\n",
+      "expected": null,
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        -2,
+        "QA375_local375_FENCE_33"
+      ],
+      "observed": [
+        -2
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "expiry aborts watched transaction",
+      "stdin": "MULTI\nSET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x65\\x78\\x70\\x69\\x72\\x79\\x20\\x6d\\x75\\x73\\x74\\x20\\x6e\\x6f\\x74\\x20\\x63\\x6f\\x6d\\x6d\\x69\\x74\"\nEXEC\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\\x34\"\n",
+      "expected": [
+        "OK",
+        "QUEUED",
+        null
+      ],
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        "OK",
+        "QUEUED",
+        null,
+        "QA375_local375_FENCE_34"
+      ],
+      "observed": [
+        "OK",
+        "QUEUED",
+        null
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "independent expiry and prior value read",
+      "stdin": "MGET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x63\\x6f\\x75\\x6e\\x74\\x65\\x72\" \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\\x35\"\n",
+      "expected": [
+        [
+          "final committed value",
+          "1",
+          null
+        ]
+      ],
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        [
+          "final committed value",
+          "1",
+          null
+        ],
+        "QA375_local375_FENCE_35"
+      ],
+      "observed": [
+        [
+          "final committed value",
+          "1",
+          null
+        ]
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "same client identity after all transactions",
+      "stdin": "CLIENT \"\\x49\\x44\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\\x36\"\n",
+      "expected": [
+        4
+      ],
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        4,
+        "QA375_local375_FENCE_36"
+      ],
+      "observed": [
+        4
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "same client identity after all transactions",
+      "stdin": "CLIENT \"\\x49\\x44\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\\x37\"\n",
+      "expected": [
+        5
+      ],
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        5,
+        "QA375_local375_FENCE_37"
+      ],
+      "observed": [
+        5
+      ],
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "delete exact own surviving keys",
+      "stdin": "DEL \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x63\\x6f\\x75\\x6e\\x74\\x65\\x72\" \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\\x38\"\n",
+      "expected": [
+        2
+      ],
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        2,
+        "QA375_local375_FENCE_38"
+      ],
+      "observed": [
+        2
+      ],
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "all own keys absent",
+      "stdin": "EXISTS \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x63\\x6f\\x75\\x6e\\x74\\x65\\x72\" \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x37\\x35\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\\x39\"\n",
+      "expected": [
+        0
+      ],
+      "intent": "ordinary operation on exact own cache and three nonce keys",
+      "decoded_with_fence": [
+        0,
+        "QA375_local375_FENCE_39"
+      ],
+      "observed": [
+        0
+      ],
+      "pass": true
+    }
+  ],
+  "sessions": {
+    "bex": {
+      "intent": "own bounded native interactive client",
+      "command": [
+        "local-redis-cli",
+        "<own-unix-socket>",
+        "--json",
+        "-2"
+      ],
+      "PID": 16095,
+      "PGID": 16095,
+      "client_id": 4,
+      "server_hello": {
+        "server": "redis",
+        "version": "8.10.1",
+        "proto": 2,
+        "id": 4,
+        "mode": "standalone",
+        "role": "master",
+        "modules": [
+          [
+            "name",
+            "vectorset",
+            "ver",
+            1,
+            "path",
+            "",
+            "args",
+            []
+          ]
+        ]
+      },
+      "natural_exit": 0,
+      "terminal": {
+        "command": [
+          "local-redis-cli",
+          "<own-unix-socket>",
+          "--json",
+          "-2"
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 4.07,
+        "decoded_JSON": [],
+        "arrival_seconds": [],
+        "output": "redis <owned-temp>/sweep375-preflight.sock> 4\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_1\"\nredis <owned-temp>/sweep375-preflight.sock> [\"server\",\"redis\",\"version\",\"8.10.1\",\"proto\",2,\"id\",4,\"mode\",\"standalone\",\"role\",\"master\",\"modules\",[[\"name\",\"vectorset\",\"ver\",1,\"path\",\"\",\"args\",[]]]]\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_2\"\nredis <owned-temp>/sweep375-preflight.sock> 0\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_5\"\nredis <owned-temp>/sweep375-preflight.sock> \"OK\"\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_6\"\nredis <owned-temp>/sweep375-preflight.sock> \"OK\"\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_7\"\nredis <owned-temp>/sweep375-preflight.sock> \"OK\"\nredis <owned-temp>/sweep375-preflight.sock(TX)> \"QUEUED\"\nredis <owned-temp>/sweep375-preflight.sock(TX)> \"QUEUED\"\nredis <owned-temp>/sweep375-preflight.sock(TX)> null\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_9\"\nredis <owned-temp>/sweep375-preflight.sock> \"OK\"\nredis <owned-temp>/sweep375-preflight.sock> \"OK\"\nredis <owned-temp>/sweep375-preflight.sock(TX)> \"QUEUED\"\nredis <owned-temp>/sweep375-preflight.sock(TX)> \"QUEUED\"\nredis <owned-temp>/sweep375-preflight.sock(TX)> [\"OK\",1]\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_11\"\nredis <owned-temp>/sweep375-preflight.sock> \"OK\"\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_14\"\nredis <owned-temp>/sweep375-preflight.sock> \"unwatched commit\"\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_17\"\nredis <owned-temp>/sweep375-preflight.sock> \"OK\"\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_18\"\nredis <owned-temp>/sweep375-preflight.sock> \"OK\"\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_21\"\nredis <owned-temp>/sweep375-preflight.sock> \"OK\"\nredis <owned-temp>/sweep375-preflight.sock(TX)> \"QUEUED\"\nredis <owned-temp>/sweep375-preflight.sock(TX)> null\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_34\"\nredis <owned-temp>/sweep375-preflight.sock> 4\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_36\"\nredis <owned-temp>/sweep375-preflight.sock> 0\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_39\"\nredis <owned-temp>/sweep375-preflight.sock> ",
+        "own_process_group_cleaned": true
+      }
+    },
+    "render": {
+      "intent": "own bounded native interactive client",
+      "command": [
+        "local-redis-cli",
+        "<own-unix-socket>",
+        "--json",
+        "-2"
+      ],
+      "PID": 16096,
+      "PGID": 16096,
+      "client_id": 5,
+      "server_hello": {
+        "server": "redis",
+        "version": "8.10.1",
+        "proto": 2,
+        "id": 5,
+        "mode": "standalone",
+        "role": "master",
+        "modules": [
+          [
+            "name",
+            "vectorset",
+            "ver",
+            1,
+            "path",
+            "",
+            "args",
+            []
+          ]
+        ]
+      },
+      "natural_exit": 0,
+      "terminal": {
+        "command": [
+          "local-redis-cli",
+          "<own-unix-socket>",
+          "--json",
+          "-2"
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 4.06,
+        "decoded_JSON": [],
+        "arrival_seconds": [],
+        "output": "redis <owned-temp>/sweep375-preflight.sock> 5\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_3\"\nredis <owned-temp>/sweep375-preflight.sock> [\"server\",\"redis\",\"version\",\"8.10.1\",\"proto\",2,\"id\",5,\"mode\",\"standalone\",\"role\",\"master\",\"modules\",[[\"name\",\"vectorset\",\"ver\",1,\"path\",\"\",\"args\",[]]]]\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_4\"\nredis <owned-temp>/sweep375-preflight.sock> \"OK\"\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_8\"\nredis <owned-temp>/sweep375-preflight.sock> [\"other client\",null]\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_10\"\nredis <owned-temp>/sweep375-preflight.sock> [\"committed café 日本 😀\",\"1\"]\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_12\"\nredis <owned-temp>/sweep375-preflight.sock> \"OK\"\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_13\"\nredis <owned-temp>/sweep375-preflight.sock> \"OK\"\nredis <owned-temp>/sweep375-preflight.sock> \"OK\"\nredis <owned-temp>/sweep375-preflight.sock(TX)> \"QUEUED\"\nredis <owned-temp>/sweep375-preflight.sock(TX)> [\"OK\"]\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_15\"\nredis <owned-temp>/sweep375-preflight.sock> \"OK\"\nredis <owned-temp>/sweep375-preflight.sock> \"OK\"\nredis <owned-temp>/sweep375-preflight.sock(TX)> \"QUEUED\"\nredis <owned-temp>/sweep375-preflight.sock(TX)> \"OK\"\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_16\"\nredis <owned-temp>/sweep375-preflight.sock> \"OK\"\nredis <owned-temp>/sweep375-preflight.sock(TX)> \"QUEUED\"\nredis <owned-temp>/sweep375-preflight.sock(TX)> [\"OK\"]\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_19\"\nredis <owned-temp>/sweep375-preflight.sock> \"OK\"\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_20\"\nredis <owned-temp>/sweep375-preflight.sock> 3999\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_22\"\nredis <owned-temp>/sweep375-preflight.sock> 3998\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_23\"\nredis <owned-temp>/sweep375-preflight.sock> 3596\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_24\"\nredis <owned-temp>/sweep375-preflight.sock> 3190\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_25\"\nredis <owned-temp>/sweep375-preflight.sock> 2785\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_26\"\nredis <owned-temp>/sweep375-preflight.sock> 2383\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_27\"\nredis <owned-temp>/sweep375-preflight.sock> 1978\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_28\"\nredis <owned-temp>/sweep375-preflight.sock> 1575\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_29\"\nredis <owned-temp>/sweep375-preflight.sock> 1173\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_30\"\nredis <owned-temp>/sweep375-preflight.sock> 771\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_31\"\nredis <owned-temp>/sweep375-preflight.sock> 368\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_32\"\nredis <owned-temp>/sweep375-preflight.sock> -2\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_33\"\nredis <owned-temp>/sweep375-preflight.sock> [\"final committed value\",\"1\",null]\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_35\"\nredis <owned-temp>/sweep375-preflight.sock> 5\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_37\"\nredis <owned-temp>/sweep375-preflight.sock> 2\nredis <owned-temp>/sweep375-preflight.sock> \"QA375_local375_FENCE_38\"\nredis <owned-temp>/sweep375-preflight.sock> ",
+        "own_process_group_cleaned": true
+      }
+    }
+  },
+  "keys": [
+    "qa375_local375:value",
+    "qa375_local375:counter",
+    "qa375_local375:expires"
+  ],
+  "positive_watched_TTL_ms": 3999,
+  "pass": true,
+  "server_stopped": true,
+  "socket_removed": true,
+  "own_history_files_removed": true,
+  "preexisting_history_unchanged": true
+}

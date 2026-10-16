@@ -1,0 +1,41 @@
+{
+  "sweep": 381,
+  "source_head": "430e0673e77a970b0aa40af64a9762b28b9eaaa6",
+  "serving_revision": "unknown",
+  "existing_finding": "w8/m81",
+  "source_fix": "4464830e556d85299adc3c63d0920c3a730d37eb",
+  "public_commit": "3c23b2cd3a2baf090d52ba2a5699249ab9499808",
+  "native_clients": [
+    "published Bex0.3.2/a6350da0",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "actual_unchanged_POST201": 2,
+  "native_creates_deletes_exit0": [
+    2,
+    2
+  ],
+  "first_original_uv_requiring_deploys_live_HTTP200": 2,
+  "default_uv": "0.12.10",
+  "explicit_requested_and_observed_uv": "0.11.3",
+  "actual_uvx_matches_uv_build_runtime": true,
+  "locked_real_project_sync": true,
+  "uv_run_project_virtual_environment_both_phases": true,
+  "real_installed_project_console_Hello_world": true,
+  "real_upstream_FastAPI_root_Hello_world_HTTP200": true,
+  "original_lock_pyproject_unchanged": true,
+  "native_python_pip_poetry_controls_pass_both_phases": true,
+  "native_shared_readbacks_pass": 6,
+  "native_log_queries_exit0": 6,
+  "local_exact_uv_release_cases": 2,
+  "local_servers_projects_caches_tool_scratch_removed": true,
+  "owned_parents_children_URLs_absent": [
+    2,
+    2,
+    2
+  ],
+  "original_baseline_preserved": true,
+  "all_terminating_zero": true,
+  "m81_closeout": "hosted gate satisfied with inherited source artifact/neighbor checks, move through PM to done",
+  "new_issue": null,
+  "uncommitted": true
+}
