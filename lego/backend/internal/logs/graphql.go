@@ -31,6 +31,10 @@ import (
 var logGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "LogEntry",
 	Fields: graphql.Fields{
+		// id is the record's identity — REST's per-record id (instance,
+		// original timestamp, message hash) — so a client can keep two records
+		// that share a millisecond apart and recognize a replay of one (w4/m217).
+		"id":         gqlutil.StrField(func(e LogEntry) any { return logID(e) }),
 		"timestamp":  gqlutil.StrField(func(e LogEntry) any { return e.Timestamp }),
 		"message":    gqlutil.StrField(func(e LogEntry) any { return e.Message }),
 		"type":       gqlutil.StrField(func(e LogEntry) any { return e.Labels[LabelType] }),
