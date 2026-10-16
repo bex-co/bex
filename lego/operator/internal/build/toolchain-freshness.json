@@ -138,6 +138,15 @@
       "files": ["lego/operator/internal/build/native.go"]
     },
     {
+      "id": "native-ffmpeg",
+      "kind": "native-base",
+      "upstream": "docker.io/mwader/static-ffmpeg:9.0.2-1",
+      "committed": "mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822",
+      "resolved_at": "2026-10-16T12:00:00Z",
+      "source": "Docker Hub mwader/static-ffmpeg:9.0.2-1 multi-arch index (linux/amd64 + linux/arm64), FFmpeg 9.0.2 static ffmpeg/ffprobe copied into every native toolchain image (w8/m82); upstream publishes fixed per-release tags only, so this entry reports a rebuilt release, not a new FFmpeg release, which is a reviewed bump",
+      "files": ["lego/operator/internal/build/nativeffmpeg.go"]
+    },
+    {
       "id": "native-pnpm",
       "kind": "npm-package",
       "upstream": "registry.npmjs.org/pnpm:latest-10",
