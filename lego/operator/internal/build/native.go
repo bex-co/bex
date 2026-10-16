@@ -267,7 +267,7 @@ COPY . .
 COPY <<'%s' %s
 %s%s
 %sRUN --mount=type=secret,id=render-env,target=%s%s %s
-`, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeNodeTools(o)+nativeMediaTools, nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
+`, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeNodeTools(o)+nativeMediaTools+nativeBuildDefaults(o), nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
 		installLines, nativeEnvSecretPath, fileMounts.String(), run)
 	if o.StaticSite {
 		// No PORT/CMD: the image only carries the built site for the publish
@@ -282,6 +282,20 @@ COPY <<'%s' %s
 ENTRYPOINT []
 CMD %s
 `, nativeRuntimeDefaults(o), start)
+}
+
+// nativeBuildDefaults is the environment Render gives a native runtime at
+// build and runtime alike, as image ENV before the build RUN: the env loader
+// exports the service's own values over it for the build, and the container's
+// configured values override it at runtime, an explicit empty one included in
+// either phase. An explicit Elixir static build gets it for its build.
+// Elixir builds and runs with MIX_ENV=prod (w8/112), so a Phoenix app's
+// production dependencies and config are the ones compiled and started.
+func nativeBuildDefaults(o Options) string {
+	if nativeRuntime(o) == "elixir" {
+		return "ENV MIX_ENV=prod\n"
+	}
+	return ""
 }
 
 // nativeRuntimeDefaults is the environment Render gives a native runtime's
