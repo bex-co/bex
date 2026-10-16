@@ -280,6 +280,37 @@ describe("DeployLogPanel", () => {
     expect(screen.getByText("running migration")).toBeInTheDocument();
   });
 
+  // w4/m216 (a743): the panel lowercased with JavaScript, which folds a final
+  // Σ to ς, so "QA_A743 οσ" lost the uppercase ΟΣ line and "QA_A743 ος" wrongly
+  // gained it. It now folds like the server's log search (Go, per rune).
+  it.each([
+    ["QA_A743 οσ", ["QA_A743 ΟΣ", "QA_A743 οσ"]],
+    ["QA_A743 ος", ["QA_A743 ος"]],
+    ["qa_a743 alpha", ["QA_A743 Alpha"]],
+  ])("search %s finds the lines the server would", async (term, want) => {
+    const all = ["QA_A743 ΟΣ", "QA_A743 οσ", "QA_A743 ος", "QA_A743 Alpha"];
+    logState.lines = all.map((message) => line(message, "app"));
+    render(
+      <DeployLogPanel
+        resource="web"
+        startTime="2026-07-14T00:00:00Z"
+        endTime={undefined}
+        hasPreDeploy={false}
+        followBuild={false}
+      />,
+    );
+    const user = userEvent.setup();
+    await user.type(screen.getByPlaceholderText("Search logs…"), term);
+    await waitFor(() => {
+      for (const message of all.filter((m) => !want.includes(m))) {
+        expect(screen.queryByText(message)).not.toBeInTheDocument();
+      }
+    });
+    for (const message of want) {
+      expect(screen.getByText(message)).toBeInTheDocument();
+    }
+  });
+
   it("searches the displayed text, not the raw ANSI bytes", async () => {
     const esc = "\u001b";
     const line = (key: string, message: string): LogLine => ({
