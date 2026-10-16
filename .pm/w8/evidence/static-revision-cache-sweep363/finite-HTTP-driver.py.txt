@@ -1,0 +1,40 @@
+from pathlib import Path
+import sys,json,hashlib,subprocess
+f=Path(__file__).with_name('sweep363-common.py');sys.argv=[str(f),'http','bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==363);own(x);phase=x['phase'];tag='B' if phase=='B' else 'A';url=x['create_view']['serviceDetails']['url'];h=history(x);assert h[0]['status']=='live' and h[0]['id']==x['phase_deploys'][phase];assert x['observations'][-1]['phase']==phase and x['observations'][-1]['ready'];assert not any(e['phase']==phase for e in x.get('HTTP_rounds',[]));e={'at':now(),'phase':phase,'tag':tag,'history':h,'requests':[],'qualification':'ordinary uncached curl requests at unchanged URLs; caches warmed through visits but internal cache hits and browser revalidation are not observed'};x.setdefault('HTTP_rounds',[]).append(e);save()
+def sha(b):return hashlib.sha256(b).hexdigest()
+main=''.join('/* QA363_'+x['nonce']+'_'+tag+'_'+str(i).zfill(4)+' */ console.log("'+tag+'_'+x['nonce']+'");\n' for i in range(2048)).encode();sibling=('/* QA363_'+x['nonce']+'_'+tag+'_sibling */\n').encode()*2048;index=('QA363_'+x['nonce']+'_'+tag+'\n').encode();expected={'index.html':index,'app.js':main,('later.js' if tag=='B' else 'retired.js'):sibling}
+def get(path,offer='identity',method='GET',extra=None):
+ hf=P/'sweep363-response.headers';bf=P/'sweep363-response.body';assert not hf.exists() and not bf.exists();hs={'Accept-Encoding':offer,**(extra or {})};z={'at':now(),'request':{'method':method,'url':url+path,'headers':hs}};e['requests'].append(z);save();args=['curl','--disable','-sS','--max-time','15','-D',str(hf),'-o','/dev/null' if method=='HEAD' else str(bf),'-w','%{http_code}']
+ if method=='HEAD':args+=['--head']
+ for k,v in hs.items():args+=['-H',k+': '+v]
+ try:
+  if method!='HEAD':bf.touch(mode=0o600)
+  r=subprocess.run([*args,url+path],capture_output=True,text=True,timeout=20);raw=b'' if method=='HEAD' else bf.read_bytes();header=hf.read_text();last=header.replace('\r\n','\n').strip().split('\n\n')[-1];fields={}
+  for line in last.splitlines()[1:]:
+   k,sep,v=line.partition(':')
+   if sep:fields[k.lower()]=fields.get(k.lower(),'')+(', ' if k.lower() in fields else '')+v.strip()
+  z.update(curl_exit=r.returncode,HTTP=r.stdout,stderr=r.stderr,response_headers=header,headers=fields,wire_bytes=len(raw),wire_sha256=sha(raw));save();assert r.returncode==0;return z,raw,fields
+ finally:hf.unlink(missing_ok=True);bf.unlink(missing_ok=True)
+def check(z,passed,label):
+ z.update(check=label,pass_result=bool(passed));save();print(json.dumps({'phase':phase,'check':label,'HTTP':z['HTTP'],'encoding':z['headers'].get('content-encoding','identity'),'wire_bytes':z['wire_bytes'],'pass':bool(passed)}),flush=True);assert passed,label
+
+def decode_br(raw):return subprocess.run(['node','-e',"const fs=require('node:fs');process.stdout.write(require('node:zlib').brotliDecompressSync(fs.readFileSync(0)))"],input=raw,capture_output=True,check=True).stdout
+
+def revalidates(hs):return hs.get('cache-control')=='public, max-age=0, must-revalidate'
+z,raw,hs=get('/manifest.json');v=json.loads(raw);check(z,z['HTTP']=='200' and v=={'nonce':x['nonce'],'tag':tag,'files':{n:{'bytes':len(b),'sha256':sha(b)} for n,b in expected.items()}} and revalidates(hs),'independent latest artifact manifest')
+z,raw,hs=get('/');check(z,z['HTTP']=='200' and raw==index and revalidates(hs),'latest root marker')
+saved=None
+for iteration in range(2):
+ z,raw,hs=get('/app.js');check(z,z['HTTP']=='200' and raw==main and not hs.get('content-encoding') and revalidates(hs),'latest identity app pass'+str(iteration+1))
+ z,raw,hs=get('/app.js','br');ok=z['HTTP']=='200' and hs.get('content-encoding')=='br' and len(raw)<len(main) and decode_br(raw)==main and 'accept-encoding' in hs.get('vary','').lower() and revalidates(hs) and (saved is None or raw==saved);check(z,ok,'latest Brotli app pass'+str(iteration+1));saved=raw
+z,raw,hs=get('/app.js','br','HEAD');check(z,z['HTTP']=='200' and not raw and hs.get('content-encoding')=='br' and int(hs['content-length'])==len(saved) and revalidates(hs),'latest encoded HEAD length')
+z,raw,hs=get('/app.js','br',extra={'Range':'bytes=0-15'});check(z,z['HTTP']=='206' and hs.get('content-encoding')=='br' and hs.get('content-range')==f'bytes 0-15/{len(saved)}' and raw==saved[:16],'latest encoded byte range')
+z,raw,hs=get('/app.js',extra={'Range':'bytes=0-15'});check(z,z['HTTP']=='206' and not hs.get('content-encoding') and hs.get('content-range')==f'bytes 0-15/{len(main)}' and raw==main[:16],'latest identity byte range')
+z,raw,hs=get('/app.js','gzip');check(z,z['HTTP']=='200' and raw==main and not hs.get('content-encoding'),'gzip-only identity control')
+for name in ['retired.js','later.js']:
+ for offer in ['identity','br']:
+  z,raw,hs=get('/'+name,offer);exists=name in expected
+  if exists:passed=z['HTTP']=='200' and revalidates(hs) and (hs.get('content-encoding')=='br' and decode_br(raw)==sibling if offer=='br' else not hs.get('content-encoding') and raw==sibling)
+  else:passed=z['HTTP']=='404' and not hs.get('content-encoding')
+  check(z,passed,'revision '+('present ' if exists else 'absent ')+name+' '+offer)
+assert len(e['requests'])==14 and all(z['pass_result'] for z in e['requests']);e.update(pass_result=True,**{'pass':True});save();print(json.dumps({'phase':phase,'HTTP_checks_pass':14,'main_bytes':len(main),'brotli_bytes':len(saved),'main_sha256':sha(main),'encoded_sha256':sha(saved)}))

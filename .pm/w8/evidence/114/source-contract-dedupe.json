@@ -1,0 +1,39 @@
+{
+  "source_head": "54d27f5786a6a11ca15037948b1af7579a5bb6f5",
+  "serving_revision": "unobserved",
+  "contracts": [
+    {
+      "url": "https://render.com/docs/environment-variables",
+      "relevant_requirement": "primary native Ruby RAILS_ENV=production at build and runtime"
+    },
+    {
+      "url": "https://render.com/docs/deploy-rails-8",
+      "relevant_start": "native Ruby Rails server, no explicit production flag required in documented command"
+    }
+  ],
+  "exact_framework_consumer": [
+    {
+      "url": "https://github.com/rails/rails/blob/v8.0.4/railties/lib/rails.rb#L69",
+      "effect": "actual Rails environment uses nonblank RAILS_ENV, then RACK_ENV, then development"
+    },
+    {
+      "url": "https://github.com/rails/rails/blob/v8.0.4/railties/lib/rails/commands/server/server_command.rb",
+      "effect": "without explicit binding, development chooses localhost; other environments0.0.0.0; port follows PORT; framework normalizes RAILS_ENV before app boot"
+    }
+  ],
+  "dedupe": {
+    "pattern": "RAILS_ENV|Rails.*development|Rails.*production",
+    "matches": "",
+    "conclusion": "no existing primary Ruby production-mode finding; prior Node111/Elixir112/Python113 scope their own variables; preserve Ruby version-selection m85 and JS supplier m77/m213 scopes"
+  },
+  "source_targets": {
+    "generator": "lego/operator/internal/build/native.go:262-284",
+    "resolver": "lego/operator/internal/build/nativeresolve.go:50-102",
+    "native_call": "lego/operator/internal/build/native.go:330;build.go:1126-1128",
+    "runtime_env": "lego/operator/internal/controller/deployment_projection.go:260-261;app_controller.go:4676-4677,4831-4886,5754-5755"
+  },
+  "local_causal_checks": "cached exact Ruby3.4.11 + actual Rails8.0.4/Puma7.1.0 boots; default dev localhost loopback200/mapped port000, binding-only dev mapped200, production without binding override mapped200; all containers removed",
+  "hosted_scope": "Both native defaults prove Rails development/loopback and repeated503; both production controls prove Live200 with exact source and production build/runtime. Six shared configuration reads pass; both parents/four children/former URLs removed and zero termination verified. Natural original deadline is unobserved.",
+  "public_fixture_configuration": "A fixed public app-only secret_key_base makes the minimal Rails boot deterministic; the fixture uses no external datastore.",
+  "probe_consumer": "lego/operator/internal/controller/deployment_projection.go:299-315,340-351; HTTPGetAction.Host stays unset, so kubelet connects to pod IP with only Host header set. Port3000 is correct; localhost-only listener cannot satisfy probe."
+}

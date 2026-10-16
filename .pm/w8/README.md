@@ -15,6 +15,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m87** — [Make psql Ctrl+C stop external PostgreSQL queries](m87/README.md) (8 tasks,435m) ← major functional CLI sweep365; both native queries ignore Ctrl+C, modern control cancels in0.7s; original fixture fully cleaned.
+
 - [ ] **m86** — [Install automatic npm dependencies for static builds](blocked/m86/README.md) (6 tasks) — **BLOCKED (2026-10-16: t001–t005 done — native Node static builds now install an npm project's dependencies (devDependencies included) before the unchanged build command unless SKIP_INSTALL_DEPS=true, leaving other managers' projects and root-publishing sites alone and never failing a build on a failed automatic install; 11-case BuildKit gate, fail-before verified; needs the operator deployed plus a hosted fresh-fixture replay through both native clients with cleanup (t006), runnable with the QA login)**
 
 - [ ] **m85** — [Honor committed Ruby lockfile and tool-version pins](blocked/m85/README.md) (6 tasks) — **BLOCKED (2026-10-16: t001–t005 done — native Ruby now resolves in Render's order (lockfile RUBY VERSION → .ruby-version → .tool-versions → Gemfile → default), so the Discourse shape builds and runs 3.4 not 4.0; a stale unsupported lock defers rather than failing existing services (recorded in ADR060); fail-before verified; needs the operator deployed plus a hosted fresh-fixture replay with cleanup (t006), runnable with the QA login)**
@@ -234,6 +236,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [Static byte-range acceptance and scoped rollout recheck](evidence/static-ranges-sweep317/README.md) — sweep317:62 text/binary/multipart/conditional/HEAD HTTP checks and three source controls pass; all three clients now refuse Free cron and accept the shared service/database name (six validations). Two sites/two deploys cleaned; no new issue.
 
 ## Inbox
+
+- [ ] **114** — [Native Ruby starts Rails in development on loopback](114.md) (55m, major) ← functional CLI sweep364; both ordinary servers return503 with loopback listeners, production-only prefixes restore Live/HTTP200; own fixtures cleaned.
 
 - [ ] **113** — [Native Python omits Gunicorn application access logging](blocked/113.md) (55m, minor) — **BLOCKED (2026-10-16: implemented — primary Python images default GUNICORN_CMD_ARGS="--preload --access-logfile -" before the build RUN (no Render --bind; Gunicorn binds PORT), the service's own value incl. empty winning; real-Gunicorn BuildKit gate + fail-before verified; needs the operator deployed plus the hosted both-client Flask replay, runnable with the QA login)**
 

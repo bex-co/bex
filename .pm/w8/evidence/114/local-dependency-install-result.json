@@ -1,0 +1,6 @@
+{
+  "exit": 0,
+  "elapsed": 29.45344195899088,
+  "exact_base": "ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172",
+  "qualification": "local authored minimal app dependencies; cached exact Ruby image; no pull"
+}

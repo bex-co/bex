@@ -1,0 +1,6 @@
+{
+  "repo": "https://github.com/expressjs/serve-static",
+  "branch": "master",
+  "commit": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+  "qualification": "public Git source; authored build emits new nonce assets without depending on repository npm dependencies; SKIP_INSTALL_DEPS=true intentional"
+}

@@ -1,0 +1,34 @@
+from pathlib import Path
+import tempfile,subprocess,os,time,signal,json,shutil,importlib.util,re
+P=Path(__file__).resolve().parent
+sp=importlib.util.spec_from_file_location('qa365pty',P/'sweep365-pty.py');mod=importlib.util.module_from_spec(sp);sp.loader.exec_module(mod);Session=mod.Session
+base=Path(tempfile.mkdtemp(prefix='qa365-pg-'));data=base/'data';sock=base/'sock';sock.mkdir(mode=0o700);bindir=Path('/opt/homebrew/opt/postgresql@18/bin')
+r=subprocess.run([str(bindir/'initdb'),'-D',str(data),'-A','trust','-U','qa365_local','--no-locale','--encoding=UTF8'],capture_output=True,text=True,timeout=30)
+(P/'sweep365-local-initdb.log').write_text(r.stdout+r.stderr);assert r.returncode==0,r.stderr
+f=(P/'sweep365-local-postgres.log').open('w');proc=subprocess.Popen([str(bindir/'postgres'),'-D',str(data),'-k',str(sock),'-h','','-p','55465'],stdout=f,stderr=f,start_new_session=True)
+session=None;result={'qualification':'owned local PostgreSQL18 controlling-terminal harness preflight, not Bex product proof'}
+try:
+ for i in range(100):
+  if (sock/'.s.PGSQL.55465').exists():break
+  assert proc.poll() is None;time.sleep(.1)
+ else:raise RuntimeError('local startup bound exceeded')
+ env={k:v for k,v in os.environ.items() if not k.startswith(('PG','PSQL','BEX_','RENDER_','QA_'))}
+ env.update(TERM='xterm-256color',PSQL_HISTORY=str(base/'history'),PGCONNECT_TIMEOUT='5')
+ args=['/opt/homebrew/opt/libpq/bin/psql','-h',str(sock),'-p','55465','-U','qa365_local','-d','postgres','-X','-n','-q','-t','-A','-P','pager=off','-v','PROMPT1=QA365_PROMPT> ','-v','PROMPT2=QA365_CONT> ']
+ session=Session(args,env);assert session.wait('QA365_PROMPT> ',10)
+ session.send("SELECT pg_backend_pid();\n\\echo QA365_BEFORE\n");assert session.wait('QA365_BEFORE',5)
+ session.send('BEGIN; SELECT pg_sleep(30);\n');time.sleep(1);start=time.monotonic();session.send(b'\x03')
+ assert session.wait('canceling statement due to user request',8)
+ session.send("\\echo QA365_SQLSTATE :SQLSTATE\nROLLBACK;\nSELECT jsonb_build_object('marker','QA365_AFTER_VALUE','value',365)::text;\n\\echo QA365_AFTER\n")
+ assert session.wait('QA365_AFTER\n',8)
+ assert 'QA365_SQLSTATE 57014' in session.text()
+ observed=json.loads(re.search(r'\{[^\n]*QA365_AFTER_VALUE[^\n]*\}',session.text()).group(0));assert observed=={'marker':'QA365_AFTER_VALUE','value':365}
+ result.update(cancel_seconds=round(time.monotonic()-start,3),pass_result=True,post_cancel_SQL=observed)
+ session.send('\\q\n');end=time.monotonic()+8
+ while session.poll() is None and time.monotonic()<end:session.step()
+ assert session.poll()==0;result['natural_psql_exit']=0
+finally:
+ if session:session.close();result['PTY']=session.record()
+ os.killpg(proc.pid,signal.SIGTERM);proc.wait(timeout=10);f.close();shutil.rmtree(base)
+ result['own_server_stopped']=True;result['own_data_socket_history_removed']=not base.exists();(P/'sweep365-local-preflight.json').write_text(json.dumps(result,indent=2))
+print(json.dumps({k:v for k,v in result.items() if k!='PTY'}))

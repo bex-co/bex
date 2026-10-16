@@ -1,0 +1,16 @@
+{
+  "qualification": "owned local PostgreSQL18 controlling-terminal harness preflight, not Bex product proof",
+  "PTY": {
+    "stdin_stdout_TTY": true,
+    "controlling_terminal": true,
+    "terminal_ISIG_enabled": true,
+    "terminal_echo_disabled": true,
+    "elapsed": 1.027,
+    "native_exit": -15,
+    "output": "QA365_PROMPT> 49457\nQA365_PROMPT> QA365_BEFORE\nQA365_PROMPT> Cancel request sent\nERROR:  canceling statement due to user request\nQA365_PROMPT> QA365_SQLSTATE 57014\nQA365_PROMPT> QA365_PROMPT> 365\nQA365_PROMPT> QA365_AFTER\nQA365_PROMPT> ",
+    "own_process_group_cleaned": true,
+    "events": []
+  },
+  "own_server_stopped": true,
+  "own_data_socket_history_removed": true
+}

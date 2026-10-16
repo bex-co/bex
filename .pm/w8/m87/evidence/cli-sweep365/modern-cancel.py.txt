@@ -1,0 +1,24 @@
+from pathlib import Path
+import sys,json,os,time,urllib.parse,ctypes
+f=Path(__file__).with_name('sweep365-common.py');sys.argv=[str(f),'modern-libpq-control','bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==365 and v.get('id'));assert not x.get('modern_libpq_control');v=json.loads((P/'sweep365-connection-private.json').read_text());u=urllib.parse.urlparse(v['externalConnectionString']);password=urllib.parse.unquote(u.password)
+for k in list(os.environ):
+ if k.startswith(('PG','PSQL')):del os.environ[k]
+os.environ.update(PGHOST=u.hostname,PGPORT=str(u.port or 5432),PGUSER=urllib.parse.unquote(u.username),PGPASSWORD=password,PGDATABASE=urllib.parse.unquote(u.path.lstrip('/')),PGSSLMODE=urllib.parse.parse_qs(u.query).get('sslmode',['verify-full'])[0],PGSSLROOTCERT=str(P/'sweep365-session-ca.pem'),PGCONNECT_TIMEOUT='5')
+lib=ctypes.CDLL('/opt/homebrew/opt/libpq/lib/libpq.5.dylib');ptr=ctypes.c_void_p;char=ctypes.c_char_p;integer=ctypes.c_int
+signatures={'PQconnectdb':([char],ptr),'PQstatus':([ptr],integer),'PQerrorMessage':([ptr],char),'PQexec':([ptr,char],ptr),'PQresultStatus':([ptr],integer),'PQgetvalue':([ptr,integer,integer],char),'PQresultErrorField':([ptr,integer],char),'PQclear':([ptr],None),'PQsendQuery':([ptr,char],integer),'PQgetResult':([ptr],ptr),'PQcancelCreate':([ptr],ptr),'PQcancelBlocking':([ptr],integer),'PQcancelFinish':([ptr],None),'PQcancelErrorMessage':([ptr],char),'PQfinish':([ptr],None),'PQbackendPID':([ptr],integer),'PQlibVersion':([],integer)}
+for n,(args,res) in signatures.items():getattr(lib,n).argtypes=args;getattr(lib,n).restype=res
+e={'at':now(),'qualification':'documented modern libpq cancellation API on the same exact owned database; external API diagnostic, not native CLI acceptance','libpq_version':lib.PQlibVersion(),'pass':False};x['modern_libpq_control']=e;save();conn=None;cancel=None;result=None
+try:
+ conn=lib.PQconnectdb(b'');assert conn and lib.PQstatus(conn)==0,'own connection failed';pid=lib.PQbackendPID(conn);e['PID']=pid;name='qa365_modern_'+x['nonce'];result=lib.PQexec(conn,("SET application_name='"+name+"'").encode());assert lib.PQresultStatus(result)==1;lib.PQclear(result);result=None;assert lib.PQsendQuery(conn,b'SELECT pg_sleep(12)')==1;event=sql('modern control active sleep',"SELECT jsonb_build_object('pid',"+str(pid)+",'sleeping',EXISTS(SELECT 1 FROM pg_stat_activity WHERE pid="+str(pid)+" AND application_name='"+name+"' AND state='active' AND wait_event='PgSleep'))::text;");r=event['result'];assert r['native_exit']==0;e['independent_active_sleep']=json.loads(json.loads(r['stdout'])['output']);assert e['independent_active_sleep']['sleeping'];save();start=time.monotonic();cancel=lib.PQcancelCreate(conn);assert cancel;dispatched=lib.PQcancelBlocking(cancel);e['cancel_dispatch_return']=dispatched;assert dispatched==1,'modern cancel not dispatched';result=lib.PQgetResult(conn);assert result;code=lib.PQresultErrorField(result,ord('C'));e['SQLSTATE']=code.decode() if code else None;e['result_status']=lib.PQresultStatus(result);e['cancel_elapsed']=round(time.monotonic()-start,3);assert e['SQLSTATE']=='57014' and e['result_status']==7;lib.PQclear(result);result=None
+ while True:
+  result=lib.PQgetResult(conn)
+  if not result:break
+  lib.PQclear(result);result=None
+ result=lib.PQexec(conn,b'SELECT jsonb_build_object(\'one\',1,\'pid\',pg_backend_pid())::text');assert lib.PQresultStatus(result)==2;e['reuse']=json.loads(lib.PQgetvalue(result,0,0));assert e['reuse']=={'one':1,'pid':pid};e['pass']=True
+except Exception as error:e['error']=str(error).replace(password,'[OWN_DB_PASSWORD_REDACTED]')
+finally:
+ if result:lib.PQclear(result)
+ if cancel:lib.PQcancelFinish(cancel)
+ if conn:lib.PQfinish(conn)
+ e['own_connection_closed']=True;save();assert password not in json.dumps(e)
+print(json.dumps(e));assert e['pass']

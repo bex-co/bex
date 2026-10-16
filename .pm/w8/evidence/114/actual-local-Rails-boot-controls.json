@@ -1,0 +1,99 @@
+[
+  {
+    "phase": "default",
+    "build_probe": {
+      "marker": "QA364_LOCAL",
+      "phase": "build",
+      "ruby": "3.4.11",
+      "rails": "8.0.4",
+      "rails_env_present": false,
+      "rails_env": null,
+      "rack_env_present": false,
+      "rack_env": null,
+      "rails_environment": "development",
+      "server_environment": "development",
+      "host": "localhost",
+      "port": 3000,
+      "binding": null
+    },
+    "loopback_probe": {
+      "HTTP": "200",
+      "body": "{\"marker\":\"QA364_LOCAL\",\"rails\":\"8.0.4\",\"ruby\":\"3.4.11\",\"rails_environment\":\"development\",\"env_after_framework\":\"development\",\"build\":{\"marker\":\"QA364_LOCAL\",\"phase\":\"build\",\"ruby\":\"3.4.11\",\"rails\":\"8.0.4\",\"rails_env_present\":false,\"rails_env\":null,\"rack_env_present\":false,\"rack_env\":null,\"rails_environment\":\"development\",\"server_environment\":\"development\",\"host\":\"localhost\",\"port\":3000,\"binding\":null}}"
+    },
+    "mapped_port_probe": {
+      "curl_exit": 52,
+      "HTTP": "000",
+      "body": "",
+      "stderr": "curl: (52) Empty reply from server\n"
+    },
+    "actual_listen_lines": [
+      "* Listening on http://127.0.0.1:3000",
+      "* Listening on http://[::1]:3000"
+    ],
+    "pass": true
+  },
+  {
+    "phase": "binding-only",
+    "build_probe": {
+      "marker": "QA364_LOCAL",
+      "phase": "build",
+      "ruby": "3.4.11",
+      "rails": "8.0.4",
+      "rails_env_present": false,
+      "rails_env": null,
+      "rack_env_present": false,
+      "rack_env": null,
+      "rails_environment": "development",
+      "server_environment": "development",
+      "host": "0.0.0.0",
+      "port": 3000,
+      "binding": "0.0.0.0"
+    },
+    "loopback_probe": {
+      "HTTP": "200",
+      "body": "{\"marker\":\"QA364_LOCAL\",\"rails\":\"8.0.4\",\"ruby\":\"3.4.11\",\"rails_environment\":\"development\",\"env_after_framework\":\"development\",\"build\":{\"marker\":\"QA364_LOCAL\",\"phase\":\"build\",\"ruby\":\"3.4.11\",\"rails\":\"8.0.4\",\"rails_env_present\":false,\"rails_env\":null,\"rack_env_present\":false,\"rack_env\":null,\"rails_environment\":\"development\",\"server_environment\":\"development\",\"host\":\"0.0.0.0\",\"port\":3000,\"binding\":\"0.0.0.0\"}}"
+    },
+    "mapped_port_probe": {
+      "curl_exit": 0,
+      "HTTP": "200",
+      "body": "{\"marker\":\"QA364_LOCAL\",\"rails\":\"8.0.4\",\"ruby\":\"3.4.11\",\"rails_environment\":\"development\",\"env_after_framework\":\"development\",\"build\":{\"marker\":\"QA364_LOCAL\",\"phase\":\"build\",\"ruby\":\"3.4.11\",\"rails\":\"8.0.4\",\"rails_env_present\":false,\"rails_env\":null,\"rack_env_present\":false,\"rack_env\":null,\"rails_environment\":\"development\",\"server_environment\":\"development\",\"host\":\"0.0.0.0\",\"port\":3000,\"binding\":\"0.0.0.0\"}}",
+      "stderr": ""
+    },
+    "actual_listen_lines": [
+      "* Listening on http://0.0.0.0:3000"
+    ],
+    "pass": true
+  },
+  {
+    "phase": "production",
+    "build_probe": {
+      "marker": "QA364_LOCAL",
+      "phase": "build",
+      "ruby": "3.4.11",
+      "rails": "8.0.4",
+      "rails_env_present": true,
+      "rails_env": "production",
+      "rack_env_present": false,
+      "rack_env": null,
+      "rails_environment": "production",
+      "server_environment": "production",
+      "host": "0.0.0.0",
+      "port": 3000,
+      "binding": null
+    },
+    "loopback_probe": {
+      "HTTP": "200",
+      "body": "{\"marker\":\"QA364_LOCAL\",\"rails\":\"8.0.4\",\"ruby\":\"3.4.11\",\"rails_environment\":\"production\",\"env_after_framework\":\"production\",\"build\":{\"marker\":\"QA364_LOCAL\",\"phase\":\"build\",\"ruby\":\"3.4.11\",\"rails\":\"8.0.4\",\"rails_env_present\":true,\"rails_env\":\"production\",\"rack_env_present\":false,\"rack_env\":null,\"rails_environment\":\"production\",\"server_environment\":\"production\",\"host\":\"0.0.0.0\",\"port\":3000,\"binding\":null}}"
+    },
+    "mapped_port_probe": {
+      "curl_exit": 0,
+      "HTTP": "200",
+      "body": "{\"marker\":\"QA364_LOCAL\",\"rails\":\"8.0.4\",\"ruby\":\"3.4.11\",\"rails_environment\":\"production\",\"env_after_framework\":\"production\",\"build\":{\"marker\":\"QA364_LOCAL\",\"phase\":\"build\",\"ruby\":\"3.4.11\",\"rails\":\"8.0.4\",\"rails_env_present\":true,\"rails_env\":\"production\",\"rack_env_present\":false,\"rack_env\":null,\"rails_environment\":\"production\",\"server_environment\":\"production\",\"host\":\"0.0.0.0\",\"port\":3000,\"binding\":null}}",
+      "stderr": ""
+    },
+    "actual_listen_lines": [
+      "* Listening on http://0.0.0.0:3000"
+    ],
+    "pass": true
+  }
+]

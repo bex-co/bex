@@ -1,0 +1,48 @@
+[
+  {
+    "tag": "A",
+    "manifest": {
+      "nonce": "a1b2c3",
+      "tag": "A",
+      "files": {
+        "index.html": {
+          "bytes": 15,
+          "sha256": "19201ad484e360262c83cdb8b4ddb26c8408767f7ca0f09b6271ff7507fee757"
+        },
+        "app.js": {
+          "bytes": 104448,
+          "sha256": "cf793f77776200af8bf8c07879a15c5df9886d0883bee82b9bea999c68709fd8"
+        },
+        "retired.js": {
+          "bytes": 59392,
+          "sha256": "c76b8a7af27e98841056c8e56023a96de97f2a8750782e034544f619fa53c21f"
+        }
+      }
+    },
+    "independent_expected": true,
+    "pass": true
+  },
+  {
+    "tag": "B",
+    "manifest": {
+      "nonce": "a1b2c3",
+      "tag": "B",
+      "files": {
+        "index.html": {
+          "bytes": 15,
+          "sha256": "ccb3ec66533a44817839def1090bc95da5927f25b557f633ae331c8e8ad6330d"
+        },
+        "app.js": {
+          "bytes": 104448,
+          "sha256": "0e0e3ff2b00cbd0e030c705d90a68521b04405d071a1e3db123d7eeb9bce1210"
+        },
+        "later.js": {
+          "bytes": 59392,
+          "sha256": "eccec005e6c39d470c2bcbc6930e61fe038355968d8fde8704e6e033f46973d4"
+        }
+      }
+    },
+    "independent_expected": true,
+    "pass": true
+  }
+]

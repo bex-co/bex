@@ -1,0 +1,15 @@
+from pathlib import Path
+import sys,json,os,time,urllib.parse,importlib.util
+f=Path(__file__).with_name('sweep365-common.py');sys.argv=[str(f),'direct-cancel-control','bex'];exec(compile(f.read_text(),str(f),'exec'));sp=importlib.util.spec_from_file_location('qa365pty',P/'sweep365-pty.py');m=importlib.util.module_from_spec(sp);sp.loader.exec_module(m);Session=m.Session;x=next(v for v in c['resources'] if v.get('sweep')==365 and v.get('id'));assert x['cancel_schema_ready'] and not x.get('direct_cancel_control');private=json.loads((P/'sweep365-connection-private.json').read_text());u=urllib.parse.urlparse(private['externalConnectionString']);password=urllib.parse.unquote(u.password);env={k:v for k,v in os.environ.items() if not k.startswith(('PG','PSQL','BEX_','RENDER_','QA_'))};env.update(PGHOST=u.hostname,PGPORT=str(u.port or 5432),PGUSER=urllib.parse.unquote(u.username),PGPASSWORD=password,PGDATABASE=urllib.parse.unquote(u.path.lstrip('/')),PGSSLMODE=urllib.parse.parse_qs(u.query).get('sslmode',['verify-full'])[0],PGSSLROOTCERT=str(P/'sweep365-session-ca.pem'),PGCONNECT_TIMEOUT='5',PSQL_HISTORY=str(P/'sweep365-direct-history'),TERM='xterm-256color');args=['/opt/homebrew/opt/libpq/bin/psql','-X','-n','-q','-t','-A','-P','pager=off','-v','PROMPT1=QA365_DIRECT> '];e={'at':now(),'qualification':'direct external psql diagnostic on the same exact owned database/route; not native CLI coverage','commands':[],'pass':False};x['direct_cancel_control']=e;save();s=None
+try:
+ s=Session(args,env);assert s.wait('QA365_DIRECT> ',15);s.send("SET application_name='qa365_direct_"+x['nonce']+"'; SELECT pg_backend_pid();\n\\echo QA365_DIRECT_READY\n");assert s.wait('QA365_DIRECT_READY',5);s.send('BEGIN; SELECT pg_sleep(30);\n');time.sleep(1);e['terminal_flags_at_ctrl_C']={'ISIG':bool(__import__('termios').tcgetattr(s.fd)[3]&__import__('termios').ISIG)};save();start=time.monotonic();s.send(b'\x03');e['user_cancel_error_received']=s.wait('canceling statement due to user request',10);e['cancel_seconds']=round(time.monotonic()-start,3);save()
+ if e['user_cancel_error_received']:
+  s.send("\\echo QA365_DIRECT_SQLSTATE :SQLSTATE\nROLLBACK; SELECT 'QA365_DIRECT_REUSED';\n");assert s.wait('QA365_DIRECT_REUSED',8);assert 'QA365_DIRECT_SQLSTATE 57014' in s.text();e['same_connection_reused']=True;s.send('\\q\n');end=time.monotonic()+8
+  while s.poll() is None and time.monotonic()<end:s.step()
+  e['natural_exit']=s.poll();e['pass']=s.poll()==0
+ else:e['native_or_external_exit_after_cancel']=s.poll()
+except Exception as error:e['error']=str(error)
+finally:
+ if s:s.close();e['PTY']=s.record();assert password not in json.dumps(e)
+ history=P/'sweep365-direct-history';history.unlink(missing_ok=True);e['history_removed']=not history.exists();save()
+print(json.dumps({k:v for k,v in e.items() if k not in ['PTY','commands']}))

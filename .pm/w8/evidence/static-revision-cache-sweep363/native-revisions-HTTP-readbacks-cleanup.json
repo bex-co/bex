@@ -1,0 +1,2294 @@
+{
+  "sweep": 363,
+  "client": "bex",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "name": "qa-20261016-fa2eef-revision",
+  "nonce": "fa2eef",
+  "time": "2026-10-16T09:40:44.091320+00:00",
+  "source_head": "f373dd508ab22da646c8eb260fd7cdf90c683305",
+  "primary_reference": {
+    "repo": "https://github.com/expressjs/serve-static",
+    "branch": "master",
+    "commit": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+    "qualification": "public Git source; authored build emits new nonce assets without depending on repository npm dependencies; SKIP_INSTALL_DEPS=true intentional"
+  },
+  "type": "static_site",
+  "commands": {
+    "A": "cat > qa363-assets.js <<'QA363_ASSETS'\nconst fs=require('node:fs'),c=require('node:crypto');\nconst nonce=process.argv[2],tag=process.argv[3]; if(!/^[a-f0-9]{6}$/.test(nonce)||!['A','B'].includes(tag)) throw Error('invalid owned marker');\nconst hash=b=>c.createHash('sha256').update(b).digest('hex');\nconst main=Buffer.from(Array.from({length:2048},(_,i)=>'/* QA363_'+nonce+'_'+tag+'_'+String(i).padStart(4,'0')+' */ console.log(\"'+tag+'_'+nonce+'\");\\n').join(''));\nconst sibling=Buffer.from(('/* QA363_'+nonce+'_'+tag+'_sibling */\\n').repeat(2048));\nfs.rmSync('public',{recursive:true,force:true});fs.mkdirSync('public');\nconst files={'index.html':Buffer.from('QA363_'+nonce+'_'+tag+'\\n'),'app.js':main,[tag==='A'?'retired.js':'later.js']:sibling};\nfor(const [n,b] of Object.entries(files))fs.writeFileSync('public/'+n,b);\nfs.writeFileSync('public/manifest.json',JSON.stringify({nonce,tag,files:Object.fromEntries(Object.entries(files).map(([n,b])=>[n,{bytes:b.length,sha256:hash(b)}]))}));\n\nQA363_ASSETS\nnode qa363-assets.js fa2eef A",
+    "B": "cat > qa363-assets.js <<'QA363_ASSETS'\nconst fs=require('node:fs'),c=require('node:crypto');\nconst nonce=process.argv[2],tag=process.argv[3]; if(!/^[a-f0-9]{6}$/.test(nonce)||!['A','B'].includes(tag)) throw Error('invalid owned marker');\nconst hash=b=>c.createHash('sha256').update(b).digest('hex');\nconst main=Buffer.from(Array.from({length:2048},(_,i)=>'/* QA363_'+nonce+'_'+tag+'_'+String(i).padStart(4,'0')+' */ console.log(\"'+tag+'_'+nonce+'\");\\n').join(''));\nconst sibling=Buffer.from(('/* QA363_'+nonce+'_'+tag+'_sibling */\\n').repeat(2048));\nfs.rmSync('public',{recursive:true,force:true});fs.mkdirSync('public');\nconst files={'index.html':Buffer.from('QA363_'+nonce+'_'+tag+'\\n'),'app.js':main,[tag==='A'?'retired.js':'later.js']:sibling};\nfor(const [n,b] of Object.entries(files))fs.writeFileSync('public/'+n,b);\nfs.writeFileSync('public/manifest.json',JSON.stringify({nonce,tag,files:Object.fromEntries(Object.entries(files).map(([n,b])=>[n,{bytes:b.length,sha256:hash(b)}]))}));\n\nQA363_ASSETS\nnode qa363-assets.js fa2eef B"
+  },
+  "phase": "A2",
+  "capacity": {
+    "at": "2026-10-16T09:40:42.537371+00:00",
+    "API_only": true,
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "body": null,
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "status": "200",
+    "curl_exit": 0,
+    "elapsed": 0.685,
+    "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+    "stderr": ""
+  },
+  "pre_inventory": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.495,
+    "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}]",
+    "stderr": "",
+    "native_exit": 0
+  },
+  "pre_ids": [
+    "srv-dap3v694dm7c7390q930",
+    "srv-dap3umrbdpcs73f5eeug",
+    "srv-dap3r714dm7c7390q91g",
+    "srv-daif6dsmg29s73d1umvg",
+    "srv-db09vbgehcmc739j12i0",
+    "srv-db09u90ehcmc739j12cg"
+  ],
+  "dependency_ids": [],
+  "recorded_child_ids": [
+    "dep-db8v27a9cl7s73ae4ejg",
+    "dep-db8v4329cl7s73ae4elg",
+    "dep-db8v58vdbg8c73dghggg"
+  ],
+  "create_command": [
+    "bex",
+    "services",
+    "create",
+    "--name",
+    "qa-20261016-fa2eef-revision",
+    "--type",
+    "static_site",
+    "--repo",
+    "https://github.com/expressjs/serve-static",
+    "--branch",
+    "master",
+    "--build-command",
+    "cat > qa363-assets.js <<'QA363_ASSETS'\nconst fs=require('node:fs'),c=require('node:crypto');\nconst nonce=process.argv[2],tag=process.argv[3]; if(!/^[a-f0-9]{6}$/.test(nonce)||!['A','B'].includes(tag)) throw Error('invalid owned marker');\nconst hash=b=>c.createHash('sha256').update(b).digest('hex');\nconst main=Buffer.from(Array.from({length:2048},(_,i)=>'/* QA363_'+nonce+'_'+tag+'_'+String(i).padStart(4,'0')+' */ console.log(\"'+tag+'_'+nonce+'\");\\n').join(''));\nconst sibling=Buffer.from(('/* QA363_'+nonce+'_'+tag+'_sibling */\\n').repeat(2048));\nfs.rmSync('public',{recursive:true,force:true});fs.mkdirSync('public');\nconst files={'index.html':Buffer.from('QA363_'+nonce+'_'+tag+'\\n'),'app.js':main,[tag==='A'?'retired.js':'later.js']:sibling};\nfor(const [n,b] of Object.entries(files))fs.writeFileSync('public/'+n,b);\nfs.writeFileSync('public/manifest.json',JSON.stringify({nonce,tag,files:Object.fromEntries(Object.entries(files).map(([n,b])=>[n,{bytes:b.length,sha256:hash(b)}]))}));\n\nQA363_ASSETS\nnode qa363-assets.js fa2eef A",
+    "--publish-directory",
+    "public",
+    "--env-var",
+    "NODE_VERSION=24",
+    "--env-var",
+    "SKIP_INSTALL_DEPS=true",
+    "--auto-deploy=false",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "state": "deleted: native0/detail404/listabsent/runtime404/children404/baseline6/quota terminating0",
+  "create_result": {
+    "binary": "published Bex 0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261016-fa2eef-revision",
+      "--type",
+      "static_site",
+      "--repo",
+      "https://github.com/expressjs/serve-static",
+      "--branch",
+      "master",
+      "--build-command",
+      "cat > qa363-assets.js <<'QA363_ASSETS'\nconst fs=require('node:fs'),c=require('node:crypto');\nconst nonce=process.argv[2],tag=process.argv[3]; if(!/^[a-f0-9]{6}$/.test(nonce)||!['A','B'].includes(tag)) throw Error('invalid owned marker');\nconst hash=b=>c.createHash('sha256').update(b).digest('hex');\nconst main=Buffer.from(Array.from({length:2048},(_,i)=>'/* QA363_'+nonce+'_'+tag+'_'+String(i).padStart(4,'0')+' */ console.log(\"'+tag+'_'+nonce+'\");\\n').join(''));\nconst sibling=Buffer.from(('/* QA363_'+nonce+'_'+tag+'_sibling */\\n').repeat(2048));\nfs.rmSync('public',{recursive:true,force:true});fs.mkdirSync('public');\nconst files={'index.html':Buffer.from('QA363_'+nonce+'_'+tag+'\\n'),'app.js':main,[tag==='A'?'retired.js':'later.js']:sibling};\nfor(const [n,b] of Object.entries(files))fs.writeFileSync('public/'+n,b);\nfs.writeFileSync('public/manifest.json',JSON.stringify({nonce,tag,files:Object.fromEntries(Object.entries(files).map(([n,b])=>[n,{bytes:b.length,sha256:hash(b)}]))}));\n\nQA363_ASSETS\nnode qa363-assets.js fa2eef A",
+      "--publish-directory",
+      "public",
+      "--env-var",
+      "NODE_VERSION=24",
+      "--env-var",
+      "SKIP_INSTALL_DEPS=true",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.315,
+    "stdout": "{\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"master\", \"createdAt\": \"2026-10-16T09:40:45Z\", \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db8v27a9cl7s73ae4ej0\", \"id\": \"srv-db8v27a9cl7s73ae4ej0\", \"name\": \"qa-20261016-fa2eef-revision\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/expressjs/serve-static\", \"rootDir\": \"\", \"serviceDetails\": {\"buildCommand\": \"cat > qa363-assets.js <<'QA363_ASSETS'\\nconst fs=require('node:fs'),c=require('node:crypto');\\nconst nonce=process.argv[2],tag=process.argv[3]; if(!/^[a-f0-9]{6}$/.test(nonce)||!['A','B'].includes(tag)) throw Error('invalid owned marker');\\nconst hash=b=>c.createHash('sha256').update(b).digest('hex');\\nconst main=Buffer.from(Array.from({length:2048},(_,i)=>'/* QA363_'+nonce+'_'+tag+'_'+String(i).padStart(4,'0')+' */ console.log(\\\"'+tag+'_'+nonce+'\\\");\\\\n').join(''));\\nconst sibling=Buffer.from(('/* QA363_'+nonce+'_'+tag+'_sibling */\\\\n').repeat(2048));\\nfs.rmSync('public',{recursive:true,force:true});fs.mkdirSync('public');\\nconst files={'index.html':Buffer.from('QA363_'+nonce+'_'+tag+'\\\\n'),'app.js':main,[tag==='A'?'retired.js':'later.js']:sibling};\\nfor(const [n,b] of Object.entries(files))fs.writeFileSync('public/'+n,b);\\nfs.writeFileSync('public/manifest.json',JSON.stringify({nonce,tag,files:Object.fromEntries(Object.entries(files).map(([n,b])=>[n,{bytes:b.length,sha256:hash(b)}]))}));\\n\\nQA363_ASSETS\\nnode qa363-assets.js fa2eef A\", \"numInstances\": 1, \"plan\": \"free\", \"publishPath\": \"public\", \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"url\": \"https://qa-20261016-fa2eef-revision.onbex.co\"}, \"slug\": \"qa-20261016-fa2eef-revision\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"static_site\", \"updatedAt\": \"2026-10-16T09:40:45.267840323Z\"}",
+    "stderr": "",
+    "captures": [
+      {
+        "request": {
+          "method": "POST",
+          "path": "/v1/services",
+          "body": {
+            "autoDeploy": "no",
+            "branch": "master",
+            "envVars": [
+              {
+                "key": "NODE_VERSION",
+                "value": "24"
+              },
+              {
+                "key": "SKIP_INSTALL_DEPS",
+                "value": "true"
+              }
+            ],
+            "name": "qa-20261016-fa2eef-revision",
+            "ownerId": "tea-daif693dqjvc73e7as3g",
+            "repo": "https://github.com/expressjs/serve-static",
+            "serviceDetails": {
+              "buildCommand": "cat > qa363-assets.js <<'QA363_ASSETS'\nconst fs=require('node:fs'),c=require('node:crypto');\nconst nonce=process.argv[2],tag=process.argv[3]; if(!/^[a-f0-9]{6}$/.test(nonce)||!['A','B'].includes(tag)) throw Error('invalid owned marker');\nconst hash=b=>c.createHash('sha256').update(b).digest('hex');\nconst main=Buffer.from(Array.from({length:2048},(_,i)=>'/* QA363_'+nonce+'_'+tag+'_'+String(i).padStart(4,'0')+' */ console.log(\"'+tag+'_'+nonce+'\");\\n').join(''));\nconst sibling=Buffer.from(('/* QA363_'+nonce+'_'+tag+'_sibling */\\n').repeat(2048));\nfs.rmSync('public',{recursive:true,force:true});fs.mkdirSync('public');\nconst files={'index.html':Buffer.from('QA363_'+nonce+'_'+tag+'\\n'),'app.js':main,[tag==='A'?'retired.js':'later.js']:sibling};\nfor(const [n,b] of Object.entries(files))fs.writeFileSync('public/'+n,b);\nfs.writeFileSync('public/manifest.json',JSON.stringify({nonce,tag,files:Object.fromEntries(Object.entries(files).map(([n,b])=>[n,{bytes:b.length,sha256:hash(b)}]))}));\n\nQA363_ASSETS\nnode qa363-assets.js fa2eef A",
+              "publishPath": "public"
+            },
+            "type": "static_site"
+          },
+          "raw_body": "{\"autoDeploy\": \"no\", \"branch\": \"master\", \"envVars\": [{\"key\": \"NODE_VERSION\", \"value\": \"24\"}, {\"key\": \"SKIP_INSTALL_DEPS\", \"value\": \"true\"}], \"name\": \"qa-20261016-fa2eef-revision\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/expressjs/serve-static\", \"serviceDetails\": {\"buildCommand\": \"cat > qa363-assets.js <<'QA363_ASSETS'\\nconst fs=require('node:fs'),c=require('node:crypto');\\nconst nonce=process.argv[2],tag=process.argv[3]; if(!/^[a-f0-9]{6}$/.test(nonce)||!['A','B'].includes(tag)) throw Error('invalid owned marker');\\nconst hash=b=>c.createHash('sha256').update(b).digest('hex');\\nconst main=Buffer.from(Array.from({length:2048},(_,i)=>'/* QA363_'+nonce+'_'+tag+'_'+String(i).padStart(4,'0')+' */ console.log(\\\"'+tag+'_'+nonce+'\\\");\\\\n').join(''));\\nconst sibling=Buffer.from(('/* QA363_'+nonce+'_'+tag+'_sibling */\\\\n').repeat(2048));\\nfs.rmSync('public',{recursive:true,force:true});fs.mkdirSync('public');\\nconst files={'index.html':Buffer.from('QA363_'+nonce+'_'+tag+'\\\\n'),'app.js':main,[tag==='A'?'retired.js':'later.js']:sibling};\\nfor(const [n,b] of Object.entries(files))fs.writeFileSync('public/'+n,b);\\nfs.writeFileSync('public/manifest.json',JSON.stringify({nonce,tag,files:Object.fromEntries(Object.entries(files).map(([n,b])=>[n,{bytes:b.length,sha256:hash(b)}]))}));\\n\\nQA363_ASSETS\\nnode qa363-assets.js fa2eef A\", \"publishPath\": \"public\"}, \"type\": \"static_site\"}",
+          "headers": {
+            "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "Content-Type": "application/json",
+            "X-Bex-Cli-Version": "0.3.2"
+          },
+          "authorization": "[REDACTED]"
+        },
+        "status": 201,
+        "response": "{\"service\": {\"id\": \"srv-db8v27a9cl7s73ae4ej0\", \"name\": \"qa-20261016-fa2eef-revision\", \"immutableName\": \"qa-20261016-fa2eef-revision\", \"slug\": \"qa-20261016-fa2eef-revision\", \"displayName\": \"\", \"type\": \"static_site\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db8v27a9cl7s73ae4ej0\", \"createdAt\": \"2026-10-16T09:40:45Z\", \"updatedAt\": \"2026-10-16T09:40:45.267840323Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"buildCommand\": \"cat > qa363-assets.js <<'QA363_ASSETS'\\nconst fs=require('node:fs'),c=require('node:crypto');\\nconst nonce=process.argv[2],tag=process.argv[3]; if(!/^[a-f0-9]{6}$/.test(nonce)||!['A','B'].includes(tag)) throw Error('invalid owned marker');\\nconst hash=b=>c.createHash('sha256').update(b).digest('hex');\\nconst main=Buffer.from(Array.from({length:2048},(_,i)=>'/* QA363_'+nonce+'_'+tag+'_'+String(i).padStart(4,'0')+' */ console.log(\\\"'+tag+'_'+nonce+'\\\");\\\\n').join(''));\\nconst sibling=Buffer.from(('/* QA363_'+nonce+'_'+tag+'_sibling */\\\\n').repeat(2048));\\nfs.rmSync('public',{recursive:true,force:true});fs.mkdirSync('public');\\nconst files={'index.html':Buffer.from('QA363_'+nonce+'_'+tag+'\\\\n'),'app.js':main,[tag==='A'?'retired.js':'later.js']:sibling};\\nfor(const [n,b] of Object.entries(files))fs.writeFileSync('public/'+n,b);\\nfs.writeFileSync('public/manifest.json',JSON.stringify({nonce,tag,files:Object.fromEntries(Object.entries(files).map(([n,b])=>[n,{bytes:b.length,sha256:hash(b)}]))}));\\n\\nQA363_ASSETS\\nnode qa363-assets.js fa2eef A\", \"numInstances\": 1, \"plan\": \"free\", \"publishPath\": \"public\", \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"url\": \"https://qa-20261016-fa2eef-revision.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"repo\": \"https://github.com/expressjs/serve-static\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}, \"deployId\": \"dep-db8v27a9cl7s73ae4ejg\"}",
+        "response_headers": {
+          "Content-Type": "application/json",
+          "CF-RAY": "a4b61a91eaf49e53-SJC"
+        }
+      }
+    ],
+    "qualification": "actual native POST forwarded unchanged to production; owned local relay and copied config cleaned",
+    "native_exit": 0
+  },
+  "id": "srv-db8v27a9cl7s73ae4ej0",
+  "create_view": {
+    "autoDeploy": "no",
+    "autoDeployTrigger": "off",
+    "branch": "master",
+    "createdAt": "2026-10-16T09:40:45Z",
+    "dashboardUrl": "https://dashboard.bex.co/static/srv-db8v27a9cl7s73ae4ej0",
+    "id": "srv-db8v27a9cl7s73ae4ej0",
+    "name": "qa-20261016-fa2eef-revision",
+    "notifyOnFail": "default",
+    "ownerId": "tea-daif693dqjvc73e7as3g",
+    "repo": "https://github.com/expressjs/serve-static",
+    "rootDir": "",
+    "serviceDetails": {
+      "buildCommand": "cat > qa363-assets.js <<'QA363_ASSETS'\nconst fs=require('node:fs'),c=require('node:crypto');\nconst nonce=process.argv[2],tag=process.argv[3]; if(!/^[a-f0-9]{6}$/.test(nonce)||!['A','B'].includes(tag)) throw Error('invalid owned marker');\nconst hash=b=>c.createHash('sha256').update(b).digest('hex');\nconst main=Buffer.from(Array.from({length:2048},(_,i)=>'/* QA363_'+nonce+'_'+tag+'_'+String(i).padStart(4,'0')+' */ console.log(\"'+tag+'_'+nonce+'\");\\n').join(''));\nconst sibling=Buffer.from(('/* QA363_'+nonce+'_'+tag+'_sibling */\\n').repeat(2048));\nfs.rmSync('public',{recursive:true,force:true});fs.mkdirSync('public');\nconst files={'index.html':Buffer.from('QA363_'+nonce+'_'+tag+'\\n'),'app.js':main,[tag==='A'?'retired.js':'later.js']:sibling};\nfor(const [n,b] of Object.entries(files))fs.writeFileSync('public/'+n,b);\nfs.writeFileSync('public/manifest.json',JSON.stringify({nonce,tag,files:Object.fromEntries(Object.entries(files).map(([n,b])=>[n,{bytes:b.length,sha256:hash(b)}]))}));\n\nQA363_ASSETS\nnode qa363-assets.js fa2eef A",
+      "numInstances": 1,
+      "plan": "free",
+      "publishPath": "public",
+      "region": "fsn1",
+      "renderSubdomainPolicy": "enabled",
+      "url": "https://qa-20261016-fa2eef-revision.onbex.co"
+    },
+    "slug": "qa-20261016-fa2eef-revision",
+    "suspended": "not_suspended",
+    "suspenders": [],
+    "type": "static_site",
+    "updatedAt": "2026-10-16T09:40:45.267840323Z"
+  },
+  "history_receipts": [
+    {
+      "at": "2026-10-16T09:40:47.151582+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db8v27a9cl7s73ae4ej0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.772,
+        "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:40:45.232267Z\", \"id\": \"dep-db8v27a9cl7s73ae4ejg\", \"status\": \"created\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T09:40:45.232267Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    },
+    {
+      "at": "2026-10-16T09:43:58.385578+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db8v27a9cl7s73ae4ej0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.603,
+        "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:40:45.232267Z\", \"finishedAt\": \"2026-10-16T09:43:02.676419Z\", \"id\": \"dep-db8v27a9cl7s73ae4ejg\", \"startedAt\": \"2026-10-16T09:42:02.460632Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T09:43:02.676421Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    },
+    {
+      "at": "2026-10-16T09:44:17.952242+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db8v27a9cl7s73ae4ej0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.961,
+        "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:40:45.232267Z\", \"finishedAt\": \"2026-10-16T09:43:02.676419Z\", \"id\": \"dep-db8v27a9cl7s73ae4ejg\", \"startedAt\": \"2026-10-16T09:42:02.460632Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T09:43:02.676421Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    },
+    {
+      "at": "2026-10-16T09:44:42.716669+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db8v27a9cl7s73ae4ej0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.425,
+        "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:40:45.232267Z\", \"finishedAt\": \"2026-10-16T09:43:02.676419Z\", \"id\": \"dep-db8v27a9cl7s73ae4ejg\", \"startedAt\": \"2026-10-16T09:42:02.460632Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T09:43:02.676421Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    },
+    {
+      "at": "2026-10-16T09:44:45.732830+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db8v27a9cl7s73ae4ej0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.683,
+        "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:44:44.286153Z\", \"id\": \"dep-db8v4329cl7s73ae4elg\", \"status\": \"created\", \"trigger\": \"service_updated\", \"updatedAt\": \"2026-10-16T09:44:44.286153Z\"}, {\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:40:45.232267Z\", \"finishedAt\": \"2026-10-16T09:43:02.676419Z\", \"id\": \"dep-db8v27a9cl7s73ae4ejg\", \"startedAt\": \"2026-10-16T09:42:02.460632Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T09:43:02.676421Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    },
+    {
+      "at": "2026-10-16T09:45:08.370136+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db8v27a9cl7s73ae4ej0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.741,
+        "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:44:44.286153Z\", \"id\": \"dep-db8v4329cl7s73ae4elg\", \"startedAt\": \"2026-10-16T09:45:02.344413Z\", \"status\": \"build_in_progress\", \"trigger\": \"service_updated\", \"updatedAt\": \"2026-10-16T09:45:02.344415Z\"}, {\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:40:45.232267Z\", \"finishedAt\": \"2026-10-16T09:43:02.676419Z\", \"id\": \"dep-db8v27a9cl7s73ae4ejg\", \"startedAt\": \"2026-10-16T09:42:02.460632Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T09:43:02.676421Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    },
+    {
+      "at": "2026-10-16T09:46:28.226831+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db8v27a9cl7s73ae4ej0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.631,
+        "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:44:44.286153Z\", \"finishedAt\": \"2026-10-16T09:45:43.01115Z\", \"id\": \"dep-db8v4329cl7s73ae4elg\", \"startedAt\": \"2026-10-16T09:45:02.344413Z\", \"status\": \"live\", \"trigger\": \"service_updated\", \"updatedAt\": \"2026-10-16T09:45:43.011152Z\"}, {\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:40:45.232267Z\", \"finishedAt\": \"2026-10-16T09:43:02.676419Z\", \"id\": \"dep-db8v27a9cl7s73ae4ejg\", \"startedAt\": \"2026-10-16T09:42:02.460632Z\", \"status\": \"deactivated\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T09:45:43.016468Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    },
+    {
+      "at": "2026-10-16T09:46:54.539210+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db8v27a9cl7s73ae4ej0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.853,
+        "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:44:44.286153Z\", \"finishedAt\": \"2026-10-16T09:45:43.01115Z\", \"id\": \"dep-db8v4329cl7s73ae4elg\", \"startedAt\": \"2026-10-16T09:45:02.344413Z\", \"status\": \"live\", \"trigger\": \"service_updated\", \"updatedAt\": \"2026-10-16T09:45:43.011152Z\"}, {\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:40:45.232267Z\", \"finishedAt\": \"2026-10-16T09:43:02.676419Z\", \"id\": \"dep-db8v27a9cl7s73ae4ejg\", \"startedAt\": \"2026-10-16T09:42:02.460632Z\", \"status\": \"deactivated\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T09:45:43.016468Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    },
+    {
+      "at": "2026-10-16T09:47:14.003171+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db8v27a9cl7s73ae4ej0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.35,
+        "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:44:44.286153Z\", \"finishedAt\": \"2026-10-16T09:45:43.01115Z\", \"id\": \"dep-db8v4329cl7s73ae4elg\", \"startedAt\": \"2026-10-16T09:45:02.344413Z\", \"status\": \"live\", \"trigger\": \"service_updated\", \"updatedAt\": \"2026-10-16T09:45:43.011152Z\"}, {\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:40:45.232267Z\", \"finishedAt\": \"2026-10-16T09:43:02.676419Z\", \"id\": \"dep-db8v27a9cl7s73ae4ejg\", \"startedAt\": \"2026-10-16T09:42:02.460632Z\", \"status\": \"deactivated\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T09:45:43.016468Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    },
+    {
+      "at": "2026-10-16T09:47:16.331349+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db8v27a9cl7s73ae4ej0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.317,
+        "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:47:15.221769Z\", \"id\": \"dep-db8v58vdbg8c73dghggg\", \"status\": \"created\", \"trigger\": \"service_updated\", \"updatedAt\": \"2026-10-16T09:47:15.221769Z\"}, {\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:44:44.286153Z\", \"finishedAt\": \"2026-10-16T09:45:43.01115Z\", \"id\": \"dep-db8v4329cl7s73ae4elg\", \"startedAt\": \"2026-10-16T09:45:02.344413Z\", \"status\": \"live\", \"trigger\": \"service_updated\", \"updatedAt\": \"2026-10-16T09:45:43.011152Z\"}, {\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:40:45.232267Z\", \"finishedAt\": \"2026-10-16T09:43:02.676419Z\", \"id\": \"dep-db8v27a9cl7s73ae4ejg\", \"startedAt\": \"2026-10-16T09:42:02.460632Z\", \"status\": \"deactivated\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T09:45:43.016468Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    },
+    {
+      "at": "2026-10-16T09:48:56.810292+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db8v27a9cl7s73ae4ej0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.472,
+        "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:47:15.221769Z\", \"finishedAt\": \"2026-10-16T09:48:13.129255Z\", \"id\": \"dep-db8v58vdbg8c73dghggg\", \"startedAt\": \"2026-10-16T09:47:32.310137Z\", \"status\": \"live\", \"trigger\": \"service_updated\", \"updatedAt\": \"2026-10-16T09:48:13.129256Z\"}, {\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:44:44.286153Z\", \"finishedAt\": \"2026-10-16T09:45:43.01115Z\", \"id\": \"dep-db8v4329cl7s73ae4elg\", \"startedAt\": \"2026-10-16T09:45:02.344413Z\", \"status\": \"deactivated\", \"trigger\": \"service_updated\", \"updatedAt\": \"2026-10-16T09:48:13.133244Z\"}, {\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:40:45.232267Z\", \"finishedAt\": \"2026-10-16T09:43:02.676419Z\", \"id\": \"dep-db8v27a9cl7s73ae4ejg\", \"startedAt\": \"2026-10-16T09:42:02.460632Z\", \"status\": \"deactivated\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T09:45:43.016468Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    },
+    {
+      "at": "2026-10-16T09:49:13.108021+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db8v27a9cl7s73ae4ej0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.006,
+        "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:47:15.221769Z\", \"finishedAt\": \"2026-10-16T09:48:13.129255Z\", \"id\": \"dep-db8v58vdbg8c73dghggg\", \"startedAt\": \"2026-10-16T09:47:32.310137Z\", \"status\": \"live\", \"trigger\": \"service_updated\", \"updatedAt\": \"2026-10-16T09:48:13.129256Z\"}, {\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:44:44.286153Z\", \"finishedAt\": \"2026-10-16T09:45:43.01115Z\", \"id\": \"dep-db8v4329cl7s73ae4elg\", \"startedAt\": \"2026-10-16T09:45:02.344413Z\", \"status\": \"deactivated\", \"trigger\": \"service_updated\", \"updatedAt\": \"2026-10-16T09:48:13.133244Z\"}, {\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:40:45.232267Z\", \"finishedAt\": \"2026-10-16T09:43:02.676419Z\", \"id\": \"dep-db8v27a9cl7s73ae4ejg\", \"startedAt\": \"2026-10-16T09:42:02.460632Z\", \"status\": \"deactivated\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T09:45:43.016468Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    },
+    {
+      "at": "2026-10-16T09:49:39.570596+00:00",
+      "result": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "deploys",
+          "list",
+          "srv-db8v27a9cl7s73ae4ej0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.291,
+        "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:47:15.221769Z\", \"finishedAt\": \"2026-10-16T09:48:13.129255Z\", \"id\": \"dep-db8v58vdbg8c73dghggg\", \"startedAt\": \"2026-10-16T09:47:32.310137Z\", \"status\": \"live\", \"trigger\": \"service_updated\", \"updatedAt\": \"2026-10-16T09:48:13.129256Z\"}, {\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:44:44.286153Z\", \"finishedAt\": \"2026-10-16T09:45:43.01115Z\", \"id\": \"dep-db8v4329cl7s73ae4elg\", \"startedAt\": \"2026-10-16T09:45:02.344413Z\", \"status\": \"deactivated\", \"trigger\": \"service_updated\", \"updatedAt\": \"2026-10-16T09:48:13.133244Z\"}, {\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T09:40:45.232267Z\", \"finishedAt\": \"2026-10-16T09:43:02.676419Z\", \"id\": \"dep-db8v27a9cl7s73ae4ejg\", \"startedAt\": \"2026-10-16T09:42:02.460632Z\", \"status\": \"deactivated\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T09:45:43.016468Z\"}]",
+        "stderr": "",
+        "native_exit": 0
+      }
+    }
+  ],
+  "deploy_children": [
+    {
+      "commit": {
+        "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+        "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+      },
+      "createdAt": "2026-10-16T09:47:15.221769Z",
+      "finishedAt": "2026-10-16T09:48:13.129255Z",
+      "id": "dep-db8v58vdbg8c73dghggg",
+      "startedAt": "2026-10-16T09:47:32.310137Z",
+      "status": "live",
+      "trigger": "service_updated",
+      "updatedAt": "2026-10-16T09:48:13.129256Z"
+    },
+    {
+      "commit": {
+        "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+        "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+      },
+      "createdAt": "2026-10-16T09:44:44.286153Z",
+      "finishedAt": "2026-10-16T09:45:43.01115Z",
+      "id": "dep-db8v4329cl7s73ae4elg",
+      "startedAt": "2026-10-16T09:45:02.344413Z",
+      "status": "deactivated",
+      "trigger": "service_updated",
+      "updatedAt": "2026-10-16T09:48:13.133244Z"
+    },
+    {
+      "commit": {
+        "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+        "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+      },
+      "createdAt": "2026-10-16T09:40:45.232267Z",
+      "finishedAt": "2026-10-16T09:43:02.676419Z",
+      "id": "dep-db8v27a9cl7s73ae4ejg",
+      "startedAt": "2026-10-16T09:42:02.460632Z",
+      "status": "deactivated",
+      "trigger": "other",
+      "updatedAt": "2026-10-16T09:45:43.016468Z"
+    }
+  ],
+  "phase_deploys": {
+    "A1": "dep-db8v27a9cl7s73ae4ejg",
+    "B": "dep-db8v4329cl7s73ae4elg",
+    "A2": "dep-db8v58vdbg8c73dghggg"
+  },
+  "observations": [
+    {
+      "at": "2026-10-16T09:43:59.263236+00:00",
+      "phase": "A1",
+      "latest": {
+        "commit": {
+          "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+          "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+        },
+        "createdAt": "2026-10-16T09:40:45.232267Z",
+        "finishedAt": "2026-10-16T09:43:02.676419Z",
+        "id": "dep-db8v27a9cl7s73ae4ejg",
+        "startedAt": "2026-10-16T09:42:02.460632Z",
+        "status": "live",
+        "trigger": "other",
+        "updatedAt": "2026-10-16T09:43:02.676421Z"
+      },
+      "HTTP": "200",
+      "curl_exit": 0,
+      "body": "QA363_fa2eef_A\n",
+      "ready": true
+    },
+    {
+      "at": "2026-10-16T09:45:09.156017+00:00",
+      "phase": "B",
+      "latest": {
+        "commit": {
+          "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+          "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+        },
+        "createdAt": "2026-10-16T09:44:44.286153Z",
+        "id": "dep-db8v4329cl7s73ae4elg",
+        "startedAt": "2026-10-16T09:45:02.344413Z",
+        "status": "build_in_progress",
+        "trigger": "service_updated",
+        "updatedAt": "2026-10-16T09:45:02.344415Z"
+      },
+      "HTTP": "200",
+      "curl_exit": 0,
+      "body": "QA363_fa2eef_A\n",
+      "ready": false
+    },
+    {
+      "at": "2026-10-16T09:46:29.107509+00:00",
+      "phase": "B",
+      "latest": {
+        "commit": {
+          "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+          "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+        },
+        "createdAt": "2026-10-16T09:44:44.286153Z",
+        "finishedAt": "2026-10-16T09:45:43.01115Z",
+        "id": "dep-db8v4329cl7s73ae4elg",
+        "startedAt": "2026-10-16T09:45:02.344413Z",
+        "status": "live",
+        "trigger": "service_updated",
+        "updatedAt": "2026-10-16T09:45:43.011152Z"
+      },
+      "HTTP": "200",
+      "curl_exit": 0,
+      "body": "QA363_fa2eef_B\n",
+      "ready": true
+    },
+    {
+      "at": "2026-10-16T09:48:57.741243+00:00",
+      "phase": "A2",
+      "latest": {
+        "commit": {
+          "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+          "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+        },
+        "createdAt": "2026-10-16T09:47:15.221769Z",
+        "finishedAt": "2026-10-16T09:48:13.129255Z",
+        "id": "dep-db8v58vdbg8c73dghggg",
+        "startedAt": "2026-10-16T09:47:32.310137Z",
+        "status": "live",
+        "trigger": "service_updated",
+        "updatedAt": "2026-10-16T09:48:13.129256Z"
+      },
+      "HTTP": "200",
+      "curl_exit": 0,
+      "body": "QA363_fa2eef_A\n",
+      "ready": true
+    }
+  ],
+  "HTTP_rounds": [
+    {
+      "at": "2026-10-16T09:44:18.123038+00:00",
+      "phase": "A1",
+      "tag": "A",
+      "history": [
+        {
+          "commit": {
+            "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+            "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+          },
+          "createdAt": "2026-10-16T09:40:45.232267Z",
+          "finishedAt": "2026-10-16T09:43:02.676419Z",
+          "id": "dep-db8v27a9cl7s73ae4ejg",
+          "startedAt": "2026-10-16T09:42:02.460632Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-16T09:43:02.676421Z"
+        }
+      ],
+      "requests": [
+        {
+          "at": "2026-10-16T09:44:18.279253+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/manifest.json",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: application/json\ndate: Fri, 16 Oct 2026 09:44:18 GMT\ncontent-length: 347\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "application/json",
+            "date": "Fri, 16 Oct 2026 09:44:18 GMT",
+            "content-length": "347"
+          },
+          "wire_bytes": 347,
+          "wire_sha256": "acefd560598230f48db8292a2e9cd73454b86bc5e07683965791856c121368fe",
+          "check": "independent latest artifact manifest",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:44:19.395131+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/html\ndate: Fri, 16 Oct 2026 09:44:20 GMT\ncontent-length: 15\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/html",
+            "date": "Fri, 16 Oct 2026 09:44:20 GMT",
+            "content-length": "15"
+          },
+          "wire_bytes": 15,
+          "wire_sha256": "ec4f5dc2689649f97c1f4fb0c33bc0b57cb01f69bd21d142f1f498bba03c73e7",
+          "check": "latest root marker",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:44:20.473530+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:44:21 GMT\nvary: Accept-Encoding\ncontent-length: 104448\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:44:21 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "104448"
+          },
+          "wire_bytes": 104448,
+          "wire_sha256": "d51942a99ef012d4fbaeec630cab13c81f6d31869f07f9cb72fe6cf79c1b078d",
+          "check": "latest identity app pass1",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:44:22.647923+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:44:23 GMT\nvary: Accept-Encoding\ncontent-length: 2018\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:44:23 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "2018"
+          },
+          "wire_bytes": 2018,
+          "wire_sha256": "2309d30365d485ddc4183764ee9867943ec6f9cf0af4ba032246b4a3e5c11f4d",
+          "check": "latest Brotli app pass1",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:44:25.513343+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:44:26 GMT\nvary: Accept-Encoding\ncontent-length: 104448\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:44:26 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "104448"
+          },
+          "wire_bytes": 104448,
+          "wire_sha256": "d51942a99ef012d4fbaeec630cab13c81f6d31869f07f9cb72fe6cf79c1b078d",
+          "check": "latest identity app pass2",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:44:28.250592+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:44:29 GMT\nvary: Accept-Encoding\ncontent-length: 2018\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:44:29 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "2018"
+          },
+          "wire_bytes": 2018,
+          "wire_sha256": "2309d30365d485ddc4183764ee9867943ec6f9cf0af4ba032246b4a3e5c11f4d",
+          "check": "latest Brotli app pass2",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:44:29.935915+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:44:30 GMT\nvary: Accept-Encoding\ncontent-length: 2018\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:44:30 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "2018"
+          },
+          "wire_bytes": 0,
+          "wire_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "check": "latest encoded HEAD length",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:44:31.312972+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "br",
+              "Range": "bytes=0-15"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "206",
+          "stderr": "",
+          "response_headers": "HTTP/2 206 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-range: bytes 0-15/2018\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:44:32 GMT\nvary: Accept-Encoding\ncontent-length: 16\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-range": "bytes 0-15/2018",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:44:32 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "16"
+          },
+          "wire_bytes": 16,
+          "wire_sha256": "cfbc1ded91e5e8c88e54834be389cf27d457035c364d394ce4fd507e99c8a795",
+          "check": "latest encoded byte range",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:44:33.206741+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "identity",
+              "Range": "bytes=0-15"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "206",
+          "stderr": "",
+          "response_headers": "HTTP/2 206 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-range: bytes 0-15/104448\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:44:34 GMT\nvary: Accept-Encoding\ncontent-length: 16\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-range": "bytes 0-15/104448",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:44:34 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "16"
+          },
+          "wire_bytes": 16,
+          "wire_sha256": "a3774a149e7038e01c01e6dbc30c6193682d14150715c8790128449bcf10758d",
+          "check": "latest identity byte range",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:44:35.164733+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "gzip"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:44:35 GMT\nvary: Accept-Encoding\ncontent-length: 104448\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:44:35 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "104448"
+          },
+          "wire_bytes": 104448,
+          "wire_sha256": "d51942a99ef012d4fbaeec630cab13c81f6d31869f07f9cb72fe6cf79c1b078d",
+          "check": "gzip-only identity control",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:44:36.850146+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/retired.js",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:44:37 GMT\nvary: Accept-Encoding\ncontent-length: 59392\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:44:37 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "59392"
+          },
+          "wire_bytes": 59392,
+          "wire_sha256": "a94b19a234d4e19b56e1dca2c40464919863ec5dcf6f713606e3b2b866ac7dd1",
+          "check": "revision present retired.js identity",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:44:38.450169+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/retired.js",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:44:39 GMT\nvary: Accept-Encoding\ncontent-length: 39\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:44:39 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "39"
+          },
+          "wire_bytes": 39,
+          "wire_sha256": "5b5e15a94017d04fea131aeef0560c041d1173d818e95b3af2ebbb2e765dd2bc",
+          "check": "revision present retired.js br",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:44:39.557341+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/later.js",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "404",
+          "stderr": "",
+          "response_headers": "HTTP/2 404 \ncontent-type: text/plain; charset=utf-8\ndate: Fri, 16 Oct 2026 09:44:40 GMT\nx-content-type-options: nosniff\ncontent-length: 10\n\n",
+          "headers": {
+            "content-type": "text/plain; charset=utf-8",
+            "date": "Fri, 16 Oct 2026 09:44:40 GMT",
+            "x-content-type-options": "nosniff",
+            "content-length": "10"
+          },
+          "wire_bytes": 10,
+          "wire_sha256": "709009e02c8e364113b28205aadde30cce270d709073f28153c85fdc5036c96d",
+          "check": "revision absent later.js identity",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:44:40.672082+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/later.js",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "404",
+          "stderr": "",
+          "response_headers": "HTTP/2 404 \ncontent-type: text/plain; charset=utf-8\ndate: Fri, 16 Oct 2026 09:44:41 GMT\nx-content-type-options: nosniff\ncontent-length: 10\n\n",
+          "headers": {
+            "content-type": "text/plain; charset=utf-8",
+            "date": "Fri, 16 Oct 2026 09:44:41 GMT",
+            "x-content-type-options": "nosniff",
+            "content-length": "10"
+          },
+          "wire_bytes": 10,
+          "wire_sha256": "709009e02c8e364113b28205aadde30cce270d709073f28153c85fdc5036c96d",
+          "check": "revision absent later.js br",
+          "pass_result": true
+        }
+      ],
+      "qualification": "ordinary uncached curl requests at unchanged URLs; caches warmed through visits but internal cache hits and browser revalidation are not observed",
+      "pass_result": true,
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T09:46:54.725267+00:00",
+      "phase": "B",
+      "tag": "B",
+      "history": [
+        {
+          "commit": {
+            "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+            "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+          },
+          "createdAt": "2026-10-16T09:44:44.286153Z",
+          "finishedAt": "2026-10-16T09:45:43.01115Z",
+          "id": "dep-db8v4329cl7s73ae4elg",
+          "startedAt": "2026-10-16T09:45:02.344413Z",
+          "status": "live",
+          "trigger": "service_updated",
+          "updatedAt": "2026-10-16T09:45:43.011152Z"
+        },
+        {
+          "commit": {
+            "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+            "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+          },
+          "createdAt": "2026-10-16T09:40:45.232267Z",
+          "finishedAt": "2026-10-16T09:43:02.676419Z",
+          "id": "dep-db8v27a9cl7s73ae4ejg",
+          "startedAt": "2026-10-16T09:42:02.460632Z",
+          "status": "deactivated",
+          "trigger": "other",
+          "updatedAt": "2026-10-16T09:45:43.016468Z"
+        }
+      ],
+      "requests": [
+        {
+          "at": "2026-10-16T09:46:54.887368+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/manifest.json",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: application/json\ndate: Fri, 16 Oct 2026 09:46:55 GMT\ncontent-length: 345\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "application/json",
+            "date": "Fri, 16 Oct 2026 09:46:55 GMT",
+            "content-length": "345"
+          },
+          "wire_bytes": 345,
+          "wire_sha256": "d33429e36b2fa180e5cf0d7d24e550fe939fef4a30f61772ae42bf52409ea3d5",
+          "check": "independent latest artifact manifest",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:46:56.113132+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/html\ndate: Fri, 16 Oct 2026 09:46:56 GMT\ncontent-length: 15\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/html",
+            "date": "Fri, 16 Oct 2026 09:46:56 GMT",
+            "content-length": "15"
+          },
+          "wire_bytes": 15,
+          "wire_sha256": "ecd7050598c185eee1e41ba0dfeede849af11997113c1704d8c6ecd1630e9130",
+          "check": "latest root marker",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:46:57.289600+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:46:58 GMT\nvary: Accept-Encoding\ncontent-length: 104448\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:46:58 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "104448"
+          },
+          "wire_bytes": 104448,
+          "wire_sha256": "038c16e8f0230dd8aed5ae1c66cb692aee17cb73bc7b7a57134df19a8eaacb1c",
+          "check": "latest identity app pass1",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:46:58.998949+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:46:59 GMT\nvary: Accept-Encoding\ncontent-length: 2018\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:46:59 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "2018"
+          },
+          "wire_bytes": 2018,
+          "wire_sha256": "fbbf022da2b978eff8dd7522c7bda8f3789a97d490760b5c39bf5136284bc254",
+          "check": "latest Brotli app pass1",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:47:00.425068+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:47:01 GMT\nvary: Accept-Encoding\ncontent-length: 104448\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:47:01 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "104448"
+          },
+          "wire_bytes": 104448,
+          "wire_sha256": "038c16e8f0230dd8aed5ae1c66cb692aee17cb73bc7b7a57134df19a8eaacb1c",
+          "check": "latest identity app pass2",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:47:02.143102+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:47:02 GMT\nvary: Accept-Encoding\ncontent-length: 2018\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:47:02 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "2018"
+          },
+          "wire_bytes": 2018,
+          "wire_sha256": "fbbf022da2b978eff8dd7522c7bda8f3789a97d490760b5c39bf5136284bc254",
+          "check": "latest Brotli app pass2",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:47:03.429785+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:47:04 GMT\nvary: Accept-Encoding\ncontent-length: 2018\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:47:04 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "2018"
+          },
+          "wire_bytes": 0,
+          "wire_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "check": "latest encoded HEAD length",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:47:04.543872+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "br",
+              "Range": "bytes=0-15"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "206",
+          "stderr": "",
+          "response_headers": "HTTP/2 206 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-range: bytes 0-15/2018\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:47:05 GMT\nvary: Accept-Encoding\ncontent-length: 16\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-range": "bytes 0-15/2018",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:47:05 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "16"
+          },
+          "wire_bytes": 16,
+          "wire_sha256": "6b6b747d4b62efb91fbc1d5b7f4d69bd9e7e656e7ee2ec372e6557779ecc4ebf",
+          "check": "latest encoded byte range",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:47:05.724035+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "identity",
+              "Range": "bytes=0-15"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "206",
+          "stderr": "",
+          "response_headers": "HTTP/2 206 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-range: bytes 0-15/104448\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:47:06 GMT\nvary: Accept-Encoding\ncontent-length: 16\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-range": "bytes 0-15/104448",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:47:06 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "16"
+          },
+          "wire_bytes": 16,
+          "wire_sha256": "a3774a149e7038e01c01e6dbc30c6193682d14150715c8790128449bcf10758d",
+          "check": "latest identity byte range",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:47:06.788799+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "gzip"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:47:07 GMT\nvary: Accept-Encoding\ncontent-length: 104448\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:47:07 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "104448"
+          },
+          "wire_bytes": 104448,
+          "wire_sha256": "038c16e8f0230dd8aed5ae1c66cb692aee17cb73bc7b7a57134df19a8eaacb1c",
+          "check": "gzip-only identity control",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:47:08.338668+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/retired.js",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "404",
+          "stderr": "",
+          "response_headers": "HTTP/2 404 \ncontent-type: text/plain; charset=utf-8\ndate: Fri, 16 Oct 2026 09:47:08 GMT\nx-content-type-options: nosniff\ncontent-length: 10\n\n",
+          "headers": {
+            "content-type": "text/plain; charset=utf-8",
+            "date": "Fri, 16 Oct 2026 09:47:08 GMT",
+            "x-content-type-options": "nosniff",
+            "content-length": "10"
+          },
+          "wire_bytes": 10,
+          "wire_sha256": "709009e02c8e364113b28205aadde30cce270d709073f28153c85fdc5036c96d",
+          "check": "revision absent retired.js identity",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:47:09.412469+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/retired.js",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "404",
+          "stderr": "",
+          "response_headers": "HTTP/2 404 \ncontent-type: text/plain; charset=utf-8\ndate: Fri, 16 Oct 2026 09:47:10 GMT\nx-content-type-options: nosniff\ncontent-length: 10\n\n",
+          "headers": {
+            "content-type": "text/plain; charset=utf-8",
+            "date": "Fri, 16 Oct 2026 09:47:10 GMT",
+            "x-content-type-options": "nosniff",
+            "content-length": "10"
+          },
+          "wire_bytes": 10,
+          "wire_sha256": "709009e02c8e364113b28205aadde30cce270d709073f28153c85fdc5036c96d",
+          "check": "revision absent retired.js br",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:47:10.469336+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/later.js",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:47:11 GMT\nvary: Accept-Encoding\ncontent-length: 59392\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:47:11 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "59392"
+          },
+          "wire_bytes": 59392,
+          "wire_sha256": "037229155500aa01b84f9d80ce7112fc1e6c13128ea9e07573746a437040402d",
+          "check": "revision present later.js identity",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:47:11.903193+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/later.js",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:47:12 GMT\nvary: Accept-Encoding\ncontent-length: 39\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:47:12 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "39"
+          },
+          "wire_bytes": 39,
+          "wire_sha256": "b66ef1ad77eccbdcbc5279565ad9e5a3acbd2519b25842a9101e2b4b8bd7609a",
+          "check": "revision present later.js br",
+          "pass_result": true
+        }
+      ],
+      "qualification": "ordinary uncached curl requests at unchanged URLs; caches warmed through visits but internal cache hits and browser revalidation are not observed",
+      "pass_result": true,
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T09:49:13.277853+00:00",
+      "phase": "A2",
+      "tag": "A",
+      "history": [
+        {
+          "commit": {
+            "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+            "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+          },
+          "createdAt": "2026-10-16T09:47:15.221769Z",
+          "finishedAt": "2026-10-16T09:48:13.129255Z",
+          "id": "dep-db8v58vdbg8c73dghggg",
+          "startedAt": "2026-10-16T09:47:32.310137Z",
+          "status": "live",
+          "trigger": "service_updated",
+          "updatedAt": "2026-10-16T09:48:13.129256Z"
+        },
+        {
+          "commit": {
+            "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+            "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+          },
+          "createdAt": "2026-10-16T09:44:44.286153Z",
+          "finishedAt": "2026-10-16T09:45:43.01115Z",
+          "id": "dep-db8v4329cl7s73ae4elg",
+          "startedAt": "2026-10-16T09:45:02.344413Z",
+          "status": "deactivated",
+          "trigger": "service_updated",
+          "updatedAt": "2026-10-16T09:48:13.133244Z"
+        },
+        {
+          "commit": {
+            "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+            "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+          },
+          "createdAt": "2026-10-16T09:40:45.232267Z",
+          "finishedAt": "2026-10-16T09:43:02.676419Z",
+          "id": "dep-db8v27a9cl7s73ae4ejg",
+          "startedAt": "2026-10-16T09:42:02.460632Z",
+          "status": "deactivated",
+          "trigger": "other",
+          "updatedAt": "2026-10-16T09:45:43.016468Z"
+        }
+      ],
+      "requests": [
+        {
+          "at": "2026-10-16T09:49:13.437353+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/manifest.json",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: application/json\ndate: Fri, 16 Oct 2026 09:49:14 GMT\ncontent-length: 347\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "application/json",
+            "date": "Fri, 16 Oct 2026 09:49:14 GMT",
+            "content-length": "347"
+          },
+          "wire_bytes": 347,
+          "wire_sha256": "acefd560598230f48db8292a2e9cd73454b86bc5e07683965791856c121368fe",
+          "check": "independent latest artifact manifest",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:49:14.718638+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/html\ndate: Fri, 16 Oct 2026 09:49:15 GMT\ncontent-length: 15\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/html",
+            "date": "Fri, 16 Oct 2026 09:49:15 GMT",
+            "content-length": "15"
+          },
+          "wire_bytes": 15,
+          "wire_sha256": "ec4f5dc2689649f97c1f4fb0c33bc0b57cb01f69bd21d142f1f498bba03c73e7",
+          "check": "latest root marker",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:49:16.087257+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:49:16 GMT\nvary: Accept-Encoding\ncontent-length: 104448\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:49:16 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "104448"
+          },
+          "wire_bytes": 104448,
+          "wire_sha256": "d51942a99ef012d4fbaeec630cab13c81f6d31869f07f9cb72fe6cf79c1b078d",
+          "check": "latest identity app pass1",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:49:17.763667+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:49:18 GMT\nvary: Accept-Encoding\ncontent-length: 2018\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:49:18 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "2018"
+          },
+          "wire_bytes": 2018,
+          "wire_sha256": "2309d30365d485ddc4183764ee9867943ec6f9cf0af4ba032246b4a3e5c11f4d",
+          "check": "latest Brotli app pass1",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:49:19.172800+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:49:20 GMT\nvary: Accept-Encoding\ncontent-length: 104448\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:49:20 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "104448"
+          },
+          "wire_bytes": 104448,
+          "wire_sha256": "d51942a99ef012d4fbaeec630cab13c81f6d31869f07f9cb72fe6cf79c1b078d",
+          "check": "latest identity app pass2",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:49:20.989027+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:49:21 GMT\nvary: Accept-Encoding\ncontent-length: 2018\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:49:21 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "2018"
+          },
+          "wire_bytes": 2018,
+          "wire_sha256": "2309d30365d485ddc4183764ee9867943ec6f9cf0af4ba032246b4a3e5c11f4d",
+          "check": "latest Brotli app pass2",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:49:22.083801+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:49:22 GMT\nvary: Accept-Encoding\ncontent-length: 2018\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:49:22 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "2018"
+          },
+          "wire_bytes": 0,
+          "wire_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "check": "latest encoded HEAD length",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:49:23.233058+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "br",
+              "Range": "bytes=0-15"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "206",
+          "stderr": "",
+          "response_headers": "HTTP/2 206 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-range: bytes 0-15/2018\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:49:24 GMT\nvary: Accept-Encoding\ncontent-length: 16\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-range": "bytes 0-15/2018",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:49:24 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "16"
+          },
+          "wire_bytes": 16,
+          "wire_sha256": "cfbc1ded91e5e8c88e54834be389cf27d457035c364d394ce4fd507e99c8a795",
+          "check": "latest encoded byte range",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:49:24.594709+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "identity",
+              "Range": "bytes=0-15"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "206",
+          "stderr": "",
+          "response_headers": "HTTP/2 206 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-range: bytes 0-15/104448\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:49:25 GMT\nvary: Accept-Encoding\ncontent-length: 16\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-range": "bytes 0-15/104448",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:49:25 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "16"
+          },
+          "wire_bytes": 16,
+          "wire_sha256": "a3774a149e7038e01c01e6dbc30c6193682d14150715c8790128449bcf10758d",
+          "check": "latest identity byte range",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:49:26.035821+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "gzip"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:49:26 GMT\nvary: Accept-Encoding\ncontent-length: 104448\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:49:26 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "104448"
+          },
+          "wire_bytes": 104448,
+          "wire_sha256": "d51942a99ef012d4fbaeec630cab13c81f6d31869f07f9cb72fe6cf79c1b078d",
+          "check": "gzip-only identity control",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:49:27.680626+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/retired.js",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:49:28 GMT\nvary: Accept-Encoding\ncontent-length: 59392\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:49:28 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "59392"
+          },
+          "wire_bytes": 59392,
+          "wire_sha256": "a94b19a234d4e19b56e1dca2c40464919863ec5dcf6f713606e3b2b866ac7dd1",
+          "check": "revision present retired.js identity",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:49:29.208315+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/retired.js",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 09:49:29 GMT\nvary: Accept-Encoding\ncontent-length: 39\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 09:49:29 GMT",
+            "vary": "Accept-Encoding",
+            "content-length": "39"
+          },
+          "wire_bytes": 39,
+          "wire_sha256": "5b5e15a94017d04fea131aeef0560c041d1173d818e95b3af2ebbb2e765dd2bc",
+          "check": "revision present retired.js br",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:49:30.331916+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/later.js",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "404",
+          "stderr": "",
+          "response_headers": "HTTP/2 404 \ncontent-type: text/plain; charset=utf-8\ndate: Fri, 16 Oct 2026 09:49:31 GMT\nx-content-type-options: nosniff\ncontent-length: 10\n\n",
+          "headers": {
+            "content-type": "text/plain; charset=utf-8",
+            "date": "Fri, 16 Oct 2026 09:49:31 GMT",
+            "x-content-type-options": "nosniff",
+            "content-length": "10"
+          },
+          "wire_bytes": 10,
+          "wire_sha256": "709009e02c8e364113b28205aadde30cce270d709073f28153c85fdc5036c96d",
+          "check": "revision absent later.js identity",
+          "pass_result": true
+        },
+        {
+          "at": "2026-10-16T09:49:31.476837+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-fa2eef-revision.onbex.co/later.js",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "404",
+          "stderr": "",
+          "response_headers": "HTTP/2 404 \ncontent-type: text/plain; charset=utf-8\ndate: Fri, 16 Oct 2026 09:49:32 GMT\nx-content-type-options: nosniff\ncontent-length: 10\n\n",
+          "headers": {
+            "content-type": "text/plain; charset=utf-8",
+            "date": "Fri, 16 Oct 2026 09:49:32 GMT",
+            "x-content-type-options": "nosniff",
+            "content-length": "10"
+          },
+          "wire_bytes": 10,
+          "wire_sha256": "709009e02c8e364113b28205aadde30cce270d709073f28153c85fdc5036c96d",
+          "check": "revision absent later.js br",
+          "pass_result": true
+        }
+      ],
+      "qualification": "ordinary uncached curl requests at unchanged URLs; caches warmed through visits but internal cache hits and browser revalidation are not observed",
+      "pass_result": true,
+      "pass": true
+    }
+  ],
+  "update_intents": [
+    {
+      "at": "2026-10-16T09:44:42.893624+00:00",
+      "from": "A1",
+      "destination": "B",
+      "actor": "render",
+      "before_ids": [
+        "dep-db8v27a9cl7s73ae4ejg"
+      ],
+      "only_change": "authored build-command; A2 restores original A bytes through a new normal deployment, not historical rollback",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "services",
+          "update",
+          "srv-db8v27a9cl7s73ae4ej0",
+          "--build-command",
+          "cat > qa363-assets.js <<'QA363_ASSETS'\nconst fs=require('node:fs'),c=require('node:crypto');\nconst nonce=process.argv[2],tag=process.argv[3]; if(!/^[a-f0-9]{6}$/.test(nonce)||!['A','B'].includes(tag)) throw Error('invalid owned marker');\nconst hash=b=>c.createHash('sha256').update(b).digest('hex');\nconst main=Buffer.from(Array.from({length:2048},(_,i)=>'/* QA363_'+nonce+'_'+tag+'_'+String(i).padStart(4,'0')+' */ console.log(\"'+tag+'_'+nonce+'\");\\n').join(''));\nconst sibling=Buffer.from(('/* QA363_'+nonce+'_'+tag+'_sibling */\\n').repeat(2048));\nfs.rmSync('public',{recursive:true,force:true});fs.mkdirSync('public');\nconst files={'index.html':Buffer.from('QA363_'+nonce+'_'+tag+'\\n'),'app.js':main,[tag==='A'?'retired.js':'later.js']:sibling};\nfor(const [n,b] of Object.entries(files))fs.writeFileSync('public/'+n,b);\nfs.writeFileSync('public/manifest.json',JSON.stringify({nonce,tag,files:Object.fromEntries(Object.entries(files).map(([n,b])=>[n,{bytes:b.length,sha256:hash(b)}]))}));\n\nQA363_ASSETS\nnode qa363-assets.js fa2eef B",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 1.72,
+        "stdout": "{\"data\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"master\", \"createdAt\": \"2026-10-16T09:40:45Z\", \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db8v27a9cl7s73ae4ej0\", \"id\": \"srv-db8v27a9cl7s73ae4ej0\", \"name\": \"qa-20261016-fa2eef-revision\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/expressjs/serve-static\", \"rootDir\": \"\", \"serviceDetails\": {\"buildCommand\": \"cat > qa363-assets.js <<'QA363_ASSETS'\\nconst fs=require('node:fs'),c=require('node:crypto');\\nconst nonce=process.argv[2],tag=process.argv[3]; if(!/^[a-f0-9]{6}$/.test(nonce)||!['A','B'].includes(tag)) throw Error('invalid owned marker');\\nconst hash=b=>c.createHash('sha256').update(b).digest('hex');\\nconst main=Buffer.from(Array.from({length:2048},(_,i)=>'/* QA363_'+nonce+'_'+tag+'_'+String(i).padStart(4,'0')+' */ console.log(\\\"'+tag+'_'+nonce+'\\\");\\\\n').join(''));\\nconst sibling=Buffer.from(('/* QA363_'+nonce+'_'+tag+'_sibling */\\\\n').repeat(2048));\\nfs.rmSync('public',{recursive:true,force:true});fs.mkdirSync('public');\\nconst files={'index.html':Buffer.from('QA363_'+nonce+'_'+tag+'\\\\n'),'app.js':main,[tag==='A'?'retired.js':'later.js']:sibling};\\nfor(const [n,b] of Object.entries(files))fs.writeFileSync('public/'+n,b);\\nfs.writeFileSync('public/manifest.json',JSON.stringify({nonce,tag,files:Object.fromEntries(Object.entries(files).map(([n,b])=>[n,{bytes:b.length,sha256:hash(b)}]))}));\\n\\nQA363_ASSETS\\nnode qa363-assets.js fa2eef B\", \"numInstances\": 1, \"plan\": \"free\", \"publishPath\": \"public\", \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"url\": \"https://qa-20261016-fa2eef-revision.onbex.co\"}, \"slug\": \"qa-20261016-fa2eef-revision\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"static_site\", \"updatedAt\": \"2026-10-16T09:44:44.247496526Z\", \"environmentId\": null, \"projectId\": null}}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T09:47:14.199781+00:00",
+      "from": "B",
+      "destination": "A2",
+      "actor": "bex",
+      "before_ids": [
+        "dep-db8v4329cl7s73ae4elg",
+        "dep-db8v27a9cl7s73ae4ejg"
+      ],
+      "only_change": "authored build-command; A2 restores original A bytes through a new normal deployment, not historical rollback",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "update",
+          "srv-db8v27a9cl7s73ae4ej0",
+          "--build-command",
+          "cat > qa363-assets.js <<'QA363_ASSETS'\nconst fs=require('node:fs'),c=require('node:crypto');\nconst nonce=process.argv[2],tag=process.argv[3]; if(!/^[a-f0-9]{6}$/.test(nonce)||!['A','B'].includes(tag)) throw Error('invalid owned marker');\nconst hash=b=>c.createHash('sha256').update(b).digest('hex');\nconst main=Buffer.from(Array.from({length:2048},(_,i)=>'/* QA363_'+nonce+'_'+tag+'_'+String(i).padStart(4,'0')+' */ console.log(\"'+tag+'_'+nonce+'\");\\n').join(''));\nconst sibling=Buffer.from(('/* QA363_'+nonce+'_'+tag+'_sibling */\\n').repeat(2048));\nfs.rmSync('public',{recursive:true,force:true});fs.mkdirSync('public');\nconst files={'index.html':Buffer.from('QA363_'+nonce+'_'+tag+'\\n'),'app.js':main,[tag==='A'?'retired.js':'later.js']:sibling};\nfor(const [n,b] of Object.entries(files))fs.writeFileSync('public/'+n,b);\nfs.writeFileSync('public/manifest.json',JSON.stringify({nonce,tag,files:Object.fromEntries(Object.entries(files).map(([n,b])=>[n,{bytes:b.length,sha256:hash(b)}]))}));\n\nQA363_ASSETS\nnode qa363-assets.js fa2eef A",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.393,
+        "stdout": "{\"data\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"master\", \"createdAt\": \"2026-10-16T09:40:45Z\", \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db8v27a9cl7s73ae4ej0\", \"id\": \"srv-db8v27a9cl7s73ae4ej0\", \"name\": \"qa-20261016-fa2eef-revision\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/expressjs/serve-static\", \"rootDir\": \"\", \"serviceDetails\": {\"buildCommand\": \"cat > qa363-assets.js <<'QA363_ASSETS'\\nconst fs=require('node:fs'),c=require('node:crypto');\\nconst nonce=process.argv[2],tag=process.argv[3]; if(!/^[a-f0-9]{6}$/.test(nonce)||!['A','B'].includes(tag)) throw Error('invalid owned marker');\\nconst hash=b=>c.createHash('sha256').update(b).digest('hex');\\nconst main=Buffer.from(Array.from({length:2048},(_,i)=>'/* QA363_'+nonce+'_'+tag+'_'+String(i).padStart(4,'0')+' */ console.log(\\\"'+tag+'_'+nonce+'\\\");\\\\n').join(''));\\nconst sibling=Buffer.from(('/* QA363_'+nonce+'_'+tag+'_sibling */\\\\n').repeat(2048));\\nfs.rmSync('public',{recursive:true,force:true});fs.mkdirSync('public');\\nconst files={'index.html':Buffer.from('QA363_'+nonce+'_'+tag+'\\\\n'),'app.js':main,[tag==='A'?'retired.js':'later.js']:sibling};\\nfor(const [n,b] of Object.entries(files))fs.writeFileSync('public/'+n,b);\\nfs.writeFileSync('public/manifest.json',JSON.stringify({nonce,tag,files:Object.fromEntries(Object.entries(files).map(([n,b])=>[n,{bytes:b.length,sha256:hash(b)}]))}));\\n\\nQA363_ASSETS\\nnode qa363-assets.js fa2eef A\", \"numInstances\": 1, \"plan\": \"free\", \"publishPath\": \"public\", \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"url\": \"https://qa-20261016-fa2eef-revision.onbex.co\"}, \"slug\": \"qa-20261016-fa2eef-revision\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"static_site\", \"updatedAt\": \"2026-10-16T09:47:15.15100731Z\", \"environmentId\": null, \"projectId\": null}}",
+        "stderr": "",
+        "native_exit": 0
+      }
+    }
+  ],
+  "shared_state": [
+    {
+      "at": "2026-10-16T09:49:33.095836+00:00",
+      "surface": "REST",
+      "receipt": {
+        "at": "2026-10-16T09:49:33.735120+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db8v27a9cl7s73ae4ej0",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.463,
+        "response": "{\"id\": \"srv-db8v27a9cl7s73ae4ej0\", \"name\": \"qa-20261016-fa2eef-revision\", \"immutableName\": \"qa-20261016-fa2eef-revision\", \"slug\": \"qa-20261016-fa2eef-revision\", \"displayName\": \"\", \"type\": \"static_site\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db8v27a9cl7s73ae4ej0\", \"createdAt\": \"2026-10-16T09:40:45Z\", \"updatedAt\": \"2026-10-16T09:48:05Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"buildCommand\": \"cat > qa363-assets.js <<'QA363_ASSETS'\\nconst fs=require('node:fs'),c=require('node:crypto');\\nconst nonce=process.argv[2],tag=process.argv[3]; if(!/^[a-f0-9]{6}$/.test(nonce)||!['A','B'].includes(tag)) throw Error('invalid owned marker');\\nconst hash=b=>c.createHash('sha256').update(b).digest('hex');\\nconst main=Buffer.from(Array.from({length:2048},(_,i)=>'/* QA363_'+nonce+'_'+tag+'_'+String(i).padStart(4,'0')+' */ console.log(\\\"'+tag+'_'+nonce+'\\\");\\\\n').join(''));\\nconst sibling=Buffer.from(('/* QA363_'+nonce+'_'+tag+'_sibling */\\\\n').repeat(2048));\\nfs.rmSync('public',{recursive:true,force:true});fs.mkdirSync('public');\\nconst files={'index.html':Buffer.from('QA363_'+nonce+'_'+tag+'\\\\n'),'app.js':main,[tag==='A'?'retired.js':'later.js']:sibling};\\nfor(const [n,b] of Object.entries(files))fs.writeFileSync('public/'+n,b);\\nfs.writeFileSync('public/manifest.json',JSON.stringify({nonce,tag,files:Object.fromEntries(Object.entries(files).map(([n,b])=>[n,{bytes:b.length,sha256:hash(b)}]))}));\\n\\nQA363_ASSETS\\nnode qa363-assets.js fa2eef A\", \"numInstances\": 1, \"plan\": \"free\", \"publishPath\": \"public\", \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"url\": \"https://qa-20261016-fa2eef-revision.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Running\", \"replicas\": 1, \"revision\": \"rev-3\", \"urls\": [\"https://qa-20261016-fa2eef-revision.onbex.co\"], \"idleTTLSeconds\": 0, \"repo\": \"https://github.com/expressjs/serve-static\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+        "stderr": ""
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T09:49:34.080534+00:00",
+      "surface": "GraphQL",
+      "receipt": {
+        "at": "2026-10-16T09:49:34.598155+00:00",
+        "API_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA363 {service(id:\"srv-db8v27a9cl7s73ae4ej0\"){id name repo branch plan buildCommand autoDeploy}}"
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.34,
+        "response": "{\"data\": {\"service\": {\"autoDeploy\": false, \"branch\": \"master\", \"buildCommand\": \"cat > qa363-assets.js <<'QA363_ASSETS'\\nconst fs=require('node:fs'),c=require('node:crypto');\\nconst nonce=process.argv[2],tag=process.argv[3]; if(!/^[a-f0-9]{6}$/.test(nonce)||!['A','B'].includes(tag)) throw Error('invalid owned marker');\\nconst hash=b=>c.createHash('sha256').update(b).digest('hex');\\nconst main=Buffer.from(Array.from({length:2048},(_,i)=>'/* QA363_'+nonce+'_'+tag+'_'+String(i).padStart(4,'0')+' */ console.log(\\\"'+tag+'_'+nonce+'\\\");\\\\n').join(''));\\nconst sibling=Buffer.from(('/* QA363_'+nonce+'_'+tag+'_sibling */\\\\n').repeat(2048));\\nfs.rmSync('public',{recursive:true,force:true});fs.mkdirSync('public');\\nconst files={'index.html':Buffer.from('QA363_'+nonce+'_'+tag+'\\\\n'),'app.js':main,[tag==='A'?'retired.js':'later.js']:sibling};\\nfor(const [n,b] of Object.entries(files))fs.writeFileSync('public/'+n,b);\\nfs.writeFileSync('public/manifest.json',JSON.stringify({nonce,tag,files:Object.fromEntries(Object.entries(files).map(([n,b])=>[n,{bytes:b.length,sha256:hash(b)}]))}));\\n\\nQA363_ASSETS\\nnode qa363-assets.js fa2eef A\", \"id\": \"srv-db8v27a9cl7s73ae4ej0\", \"name\": \"qa-20261016-fa2eef-revision\", \"plan\": \"free\", \"repo\": \"https://github.com/expressjs/serve-static\"}}}",
+        "stderr": ""
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T09:49:34.932036+00:00",
+      "surface": "MCP",
+      "receipt": {
+        "at": "2026-10-16T09:49:35.751647+00:00",
+        "API_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/mcp",
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 363,
+            "method": "tools/call",
+            "params": {
+              "name": "get_service",
+              "arguments": {
+                "serviceId": "srv-db8v27a9cl7s73ae4ej0",
+                "workspaceId": "tea-daif693dqjvc73e7as3g"
+              }
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.632,
+        "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":363,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"autoDeploy\\\":\\\"no\\\",\\\"autoDeployTrigger\\\":\\\"off\\\",\\\"branch\\\":\\\"master\\\",\\\"createdAt\\\":\\\"2026-10-16T09:40:45Z\\\",\\\"dashboardUrl\\\":\\\"https://dashboard.bex.co/static/srv-db8v27a9cl7s73ae4ej0\\\",\\\"displayName\\\":\\\"\\\",\\\"id\\\":\\\"srv-db8v27a9cl7s73ae4ej0\\\",\\\"idleTTLSeconds\\\":0,\\\"immutableName\\\":\\\"qa-20261016-fa2eef-revision\\\",\\\"name\\\":\\\"qa-20261016-fa2eef-revision\\\",\\\"notificationsToSend\\\":\\\"default\\\",\\\"notifyOnFail\\\":\\\"default\\\",\\\"ownerId\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"phase\\\":\\\"Running\\\",\\\"pushDeliveryMethod\\\":\\\"manual_webhook\\\",\\\"replicas\\\":1,\\\"repo\\\":\\\"https://github.com/expressjs/serve-static\\\",\\\"revision\\\":\\\"rev-3\\\",\\\"serviceDetails\\\":{\\\"buildCommand\\\":\\\"cat \\\\u003e qa363-assets.js \\\\u003c\\\\u003c'QA363_ASSETS'\\\\nconst fs=require('node:fs'),c=require('node:crypto');\\\\nconst nonce=process.argv[2],tag=process.argv[3]; if(!/^[a-f0-9]{6}$/.test(nonce)||!['A','B'].includes(tag)) throw Error('invalid owned marker');\\\\nconst hash=b=\\\\u003ec.createHash('sha256').update(b).digest('hex');\\\\nconst main=Buffer.from(Array.from({length:2048},(_,i)=\\\\u003e'/* QA363_'+nonce+'_'+tag+'_'+String(i).padStart(4,'0')+' */ console.log(\\\\\\\"'+tag+'_'+nonce+'\\\\\\\");\\\\\\\\n').join(''));\\\\nconst sibling=Buffer.from(('/* QA363_'+nonce+'_'+tag+'_sibling */\\\\\\\\n').repeat(2048));\\\\nfs.rmSync('public',{recursive:true,force:true});fs.mkdirSync('public');\\\\nconst files={'index.html':Buffer.from('QA363_'+nonce+'_'+tag+'\\\\\\\\n'),'app.js':main,[tag==='A'?'retired.js':'later.js']:sibling};\\\\nfor(const [n,b] of Object.entries(files))fs.writeFileSync('public/'+n,b);\\\\nfs.writeFileSync('public/manifest.json',JSON.stringify({nonce,tag,files:Object.fromEntries(Object.entries(files).map(([n,b])=\\\\u003e[n,{bytes:b.length,sha256:hash(b)}]))}));\\\\n\\\\nQA363_ASSETS\\\\nnode qa363-assets.js fa2eef A\\\",\\\"numInstances\\\":1,\\\"plan\\\":\\\"free\\\",\\\"publishPath\\\":\\\"public\\\",\\\"region\\\":\\\"fsn1\\\",\\\"renderSubdomainPolicy\\\":\\\"enabled\\\",\\\"url\\\":\\\"https://qa-20261016-fa2eef-revision.onbex.co\\\"},\\\"slug\\\":\\\"qa-20261016-fa2eef-revision\\\",\\\"suspended\\\":\\\"not_suspended\\\",\\\"suspenders\\\":[],\\\"type\\\":\\\"static_site\\\",\\\"updatedAt\\\":\\\"2026-10-16T09:48:05Z\\\",\\\"urls\\\":[\\\"https://qa-20261016-fa2eef-revision.onbex.co\\\"]}\"}],\"structuredContent\":{\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"branch\":\"master\",\"createdAt\":\"2026-10-16T09:40:45Z\",\"dashboardUrl\":\"https://dashboard.bex.co/static/srv-db8v27a9cl7s73ae4ej0\",\"displayName\":\"\",\"id\":\"srv-db8v27a9cl7s73ae4ej0\",\"idleTTLSeconds\":0,\"immutableName\":\"qa-20261016-fa2eef-revision\",\"name\":\"qa-20261016-fa2eef-revision\",\"notificationsToSend\":\"default\",\"notifyOnFail\":\"default\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"pushDeliveryMethod\":\"manual_webhook\",\"replicas\":1,\"repo\":\"https://github.com/expressjs/serve-static\",\"revision\":\"rev-3\",\"serviceDetails\":{\"buildCommand\":\"cat \\u003e qa363-assets.js \\u003c\\u003c'QA363_ASSETS'\\nconst fs=require('node:fs'),c=require('node:crypto');\\nconst nonce=process.argv[2],tag=process.argv[3]; if(!/^[a-f0-9]{6}$/.test(nonce)||!['A','B'].includes(tag)) throw Error('invalid owned marker');\\nconst hash=b=\\u003ec.createHash('sha256').update(b).digest('hex');\\nconst main=Buffer.from(Array.from({length:2048},(_,i)=\\u003e'/* QA363_'+nonce+'_'+tag+'_'+String(i).padStart(4,'0')+' */ console.log(\\\"'+tag+'_'+nonce+'\\\");\\\\n').join(''));\\nconst sibling=Buffer.from(('/* QA363_'+nonce+'_'+tag+'_sibling */\\\\n').repeat(2048));\\nfs.rmSync('public',{recursive:true,force:true});fs.mkdirSync('public');\\nconst files={'index.html':Buffer.from('QA363_'+nonce+'_'+tag+'\\\\n'),'app.js':main,[tag==='A'?'retired.js':'later.js']:sibling};\\nfor(const [n,b] of Object.entries(files))fs.writeFileSync('public/'+n,b);\\nfs.writeFileSync('public/manifest.json',JSON.stringify({nonce,tag,files:Object.fromEntries(Object.entries(files).map(([n,b])=\\u003e[n,{bytes:b.length,sha256:hash(b)}]))}));\\n\\nQA363_ASSETS\\nnode qa363-assets.js fa2eef A\",\"numInstances\":1,\"plan\":\"free\",\"publishPath\":\"public\",\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"url\":\"https://qa-20261016-fa2eef-revision.onbex.co\"},\"slug\":\"qa-20261016-fa2eef-revision\",\"suspended\":\"not_suspended\",\"suspenders\":[],\"type\":\"static_site\",\"updatedAt\":\"2026-10-16T09:48:05Z\",\"urls\":[\"https://qa-20261016-fa2eef-revision.onbex.co\"]}}}\n\n",
+        "stderr": ""
+      },
+      "pass": true
+    }
+  ],
+  "authored_header_readback": {
+    "at": "2026-10-16T09:49:36.399722+00:00",
+    "receipt": {
+      "at": "2026-10-16T09:49:36.399607+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/services/srv-db8v27a9cl7s73ae4ej0/headers",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.271,
+      "response": "[]",
+      "stderr": ""
+    },
+    "pass": true
+  },
+  "native_inventory_readbacks": [
+    {
+      "at": "2026-10-16T09:49:37.422193+00:00",
+      "client": "bex",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.788,
+        "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"master\", \"createdAt\": \"2026-10-16T09:40:45Z\", \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db8v27a9cl7s73ae4ej0\", \"id\": \"srv-db8v27a9cl7s73ae4ej0\", \"name\": \"qa-20261016-fa2eef-revision\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/expressjs/serve-static\", \"rootDir\": \"\", \"serviceDetails\": {\"buildCommand\": \"cat > qa363-assets.js <<'QA363_ASSETS'\\nconst fs=require('node:fs'),c=require('node:crypto');\\nconst nonce=process.argv[2],tag=process.argv[3]; if(!/^[a-f0-9]{6}$/.test(nonce)||!['A','B'].includes(tag)) throw Error('invalid owned marker');\\nconst hash=b=>c.createHash('sha256').update(b).digest('hex');\\nconst main=Buffer.from(Array.from({length:2048},(_,i)=>'/* QA363_'+nonce+'_'+tag+'_'+String(i).padStart(4,'0')+' */ console.log(\\\"'+tag+'_'+nonce+'\\\");\\\\n').join(''));\\nconst sibling=Buffer.from(('/* QA363_'+nonce+'_'+tag+'_sibling */\\\\n').repeat(2048));\\nfs.rmSync('public',{recursive:true,force:true});fs.mkdirSync('public');\\nconst files={'index.html':Buffer.from('QA363_'+nonce+'_'+tag+'\\\\n'),'app.js':main,[tag==='A'?'retired.js':'later.js']:sibling};\\nfor(const [n,b] of Object.entries(files))fs.writeFileSync('public/'+n,b);\\nfs.writeFileSync('public/manifest.json',JSON.stringify({nonce,tag,files:Object.fromEntries(Object.entries(files).map(([n,b])=>[n,{bytes:b.length,sha256:hash(b)}]))}));\\n\\nQA363_ASSETS\\nnode qa363-assets.js fa2eef A\", \"numInstances\": 1, \"plan\": \"free\", \"publishPath\": \"public\", \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"url\": \"https://qa-20261016-fa2eef-revision.onbex.co\"}, \"slug\": \"qa-20261016-fa2eef-revision\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"static_site\", \"updatedAt\": \"2026-10-16T09:48:05Z\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}]",
+        "stderr": "",
+        "native_exit": 0
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T09:49:38.470308+00:00",
+      "client": "render",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.659,
+        "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"master\", \"createdAt\": \"2026-10-16T09:40:45Z\", \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db8v27a9cl7s73ae4ej0\", \"id\": \"srv-db8v27a9cl7s73ae4ej0\", \"name\": \"qa-20261016-fa2eef-revision\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/expressjs/serve-static\", \"rootDir\": \"\", \"serviceDetails\": {\"buildCommand\": \"cat > qa363-assets.js <<'QA363_ASSETS'\\nconst fs=require('node:fs'),c=require('node:crypto');\\nconst nonce=process.argv[2],tag=process.argv[3]; if(!/^[a-f0-9]{6}$/.test(nonce)||!['A','B'].includes(tag)) throw Error('invalid owned marker');\\nconst hash=b=>c.createHash('sha256').update(b).digest('hex');\\nconst main=Buffer.from(Array.from({length:2048},(_,i)=>'/* QA363_'+nonce+'_'+tag+'_'+String(i).padStart(4,'0')+' */ console.log(\\\"'+tag+'_'+nonce+'\\\");\\\\n').join(''));\\nconst sibling=Buffer.from(('/* QA363_'+nonce+'_'+tag+'_sibling */\\\\n').repeat(2048));\\nfs.rmSync('public',{recursive:true,force:true});fs.mkdirSync('public');\\nconst files={'index.html':Buffer.from('QA363_'+nonce+'_'+tag+'\\\\n'),'app.js':main,[tag==='A'?'retired.js':'later.js']:sibling};\\nfor(const [n,b] of Object.entries(files))fs.writeFileSync('public/'+n,b);\\nfs.writeFileSync('public/manifest.json',JSON.stringify({nonce,tag,files:Object.fromEntries(Object.entries(files).map(([n,b])=>[n,{bytes:b.length,sha256:hash(b)}]))}));\\n\\nQA363_ASSETS\\nnode qa363-assets.js fa2eef A\", \"numInstances\": 1, \"plan\": \"free\", \"publishPath\": \"public\", \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"url\": \"https://qa-20261016-fa2eef-revision.onbex.co\"}, \"slug\": \"qa-20261016-fa2eef-revision\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"static_site\", \"updatedAt\": \"2026-10-16T09:48:05Z\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}]",
+        "stderr": ""
+      },
+      "pass": true
+    }
+  ],
+  "delete_intent": {
+    "at": "2026-10-16T09:49:39.748403+00:00",
+    "children": [
+      {
+        "commit": {
+          "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+          "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+        },
+        "createdAt": "2026-10-16T09:47:15.221769Z",
+        "finishedAt": "2026-10-16T09:48:13.129255Z",
+        "id": "dep-db8v58vdbg8c73dghggg",
+        "startedAt": "2026-10-16T09:47:32.310137Z",
+        "status": "live",
+        "trigger": "service_updated",
+        "updatedAt": "2026-10-16T09:48:13.129256Z"
+      },
+      {
+        "commit": {
+          "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+          "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+        },
+        "createdAt": "2026-10-16T09:44:44.286153Z",
+        "finishedAt": "2026-10-16T09:45:43.01115Z",
+        "id": "dep-db8v4329cl7s73ae4elg",
+        "startedAt": "2026-10-16T09:45:02.344413Z",
+        "status": "deactivated",
+        "trigger": "service_updated",
+        "updatedAt": "2026-10-16T09:48:13.133244Z"
+      },
+      {
+        "commit": {
+          "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+          "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+        },
+        "createdAt": "2026-10-16T09:40:45.232267Z",
+        "finishedAt": "2026-10-16T09:43:02.676419Z",
+        "id": "dep-db8v27a9cl7s73ae4ejg",
+        "startedAt": "2026-10-16T09:42:02.460632Z",
+        "status": "deactivated",
+        "trigger": "other",
+        "updatedAt": "2026-10-16T09:45:43.016468Z"
+      }
+    ]
+  },
+  "delete_result": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "delete",
+      "srv-db8v27a9cl7s73ae4ej0",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.61,
+    "stdout": "{\"data\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"master\", \"createdAt\": \"2026-10-16T09:40:45Z\", \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db8v27a9cl7s73ae4ej0\", \"id\": \"srv-db8v27a9cl7s73ae4ej0\", \"name\": \"qa-20261016-fa2eef-revision\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/expressjs/serve-static\", \"rootDir\": \"\", \"serviceDetails\": {\"buildCommand\": \"cat > qa363-assets.js <<'QA363_ASSETS'\\nconst fs=require('node:fs'),c=require('node:crypto');\\nconst nonce=process.argv[2],tag=process.argv[3]; if(!/^[a-f0-9]{6}$/.test(nonce)||!['A','B'].includes(tag)) throw Error('invalid owned marker');\\nconst hash=b=>c.createHash('sha256').update(b).digest('hex');\\nconst main=Buffer.from(Array.from({length:2048},(_,i)=>'/* QA363_'+nonce+'_'+tag+'_'+String(i).padStart(4,'0')+' */ console.log(\\\"'+tag+'_'+nonce+'\\\");\\\\n').join(''));\\nconst sibling=Buffer.from(('/* QA363_'+nonce+'_'+tag+'_sibling */\\\\n').repeat(2048));\\nfs.rmSync('public',{recursive:true,force:true});fs.mkdirSync('public');\\nconst files={'index.html':Buffer.from('QA363_'+nonce+'_'+tag+'\\\\n'),'app.js':main,[tag==='A'?'retired.js':'later.js']:sibling};\\nfor(const [n,b] of Object.entries(files))fs.writeFileSync('public/'+n,b);\\nfs.writeFileSync('public/manifest.json',JSON.stringify({nonce,tag,files:Object.fromEntries(Object.entries(files).map(([n,b])=>[n,{bytes:b.length,sha256:hash(b)}]))}));\\n\\nQA363_ASSETS\\nnode qa363-assets.js fa2eef A\", \"numInstances\": 1, \"plan\": \"free\", \"publishPath\": \"public\", \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"url\": \"https://qa-20261016-fa2eef-revision.onbex.co\"}, \"slug\": \"qa-20261016-fa2eef-revision\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"static_site\", \"updatedAt\": \"2026-10-16T09:48:05Z\", \"environmentId\": null, \"projectId\": null}, \"meta\": {\"deleted\": true}}",
+    "stderr": "",
+    "native_exit": 0
+  },
+  "cleanup_receipts": [
+    {
+      "at": "2026-10-16T09:49:45.360707+00:00",
+      "detail": {
+        "at": "2026-10-16T09:49:42.458015+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db8v27a9cl7s73ae4ej0",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "404",
+        "curl_exit": 0,
+        "elapsed": 0.34,
+        "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+        "stderr": ""
+      },
+      "inventory": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.716,
+        "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}]",
+        "stderr": "",
+        "native_exit": 0
+      },
+      "runtime_HTTP": "404",
+      "runtime_exit": 0,
+      "quota": {
+        "at": "2026-10-16T09:49:44.420556+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.646,
+        "response": "{\"services\": {\"used\": 7, \"terminating\": 1, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+        "stderr": ""
+      },
+      "children": [
+        {
+          "at": "2026-10-16T09:49:44.800989+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db8v27a9cl7s73ae4ej0/deploys/dep-db8v27a9cl7s73ae4ejg",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "404",
+          "curl_exit": 0,
+          "elapsed": 0.368,
+          "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-16T09:49:45.078078+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db8v27a9cl7s73ae4ej0/deploys/dep-db8v4329cl7s73ae4elg",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "404",
+          "curl_exit": 0,
+          "elapsed": 0.263,
+          "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-16T09:49:45.360600+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db8v27a9cl7s73ae4ej0/deploys/dep-db8v58vdbg8c73dghggg",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "404",
+          "curl_exit": 0,
+          "elapsed": 0.269,
+          "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+          "stderr": ""
+        }
+      ],
+      "pass": false
+    },
+    {
+      "at": "2026-10-16T09:51:55.101572+00:00",
+      "detail": {
+        "at": "2026-10-16T09:51:51.961491+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db8v27a9cl7s73ae4ej0",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "404",
+        "curl_exit": 0,
+        "elapsed": 0.504,
+        "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+        "stderr": ""
+      },
+      "inventory": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.09,
+        "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}]",
+        "stderr": "",
+        "native_exit": 0
+      },
+      "runtime_HTTP": "404",
+      "runtime_exit": 0,
+      "quota": {
+        "at": "2026-10-16T09:51:54.052927+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.334,
+        "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+        "stderr": ""
+      },
+      "children": [
+        {
+          "at": "2026-10-16T09:51:54.407038+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db8v27a9cl7s73ae4ej0/deploys/dep-db8v27a9cl7s73ae4ejg",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "404",
+          "curl_exit": 0,
+          "elapsed": 0.34,
+          "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-16T09:51:54.730808+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db8v27a9cl7s73ae4ej0/deploys/dep-db8v4329cl7s73ae4elg",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "404",
+          "curl_exit": 0,
+          "elapsed": 0.31,
+          "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+          "stderr": ""
+        },
+        {
+          "at": "2026-10-16T09:51:55.101450+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db8v27a9cl7s73ae4ej0/deploys/dep-db8v58vdbg8c73dghggg",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "404",
+          "curl_exit": 0,
+          "elapsed": 0.356,
+          "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+          "stderr": ""
+        }
+      ],
+      "pass": true
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "references": [
+    {
+      "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/src/fe_utils/cancel.c",
+      "source": "PostgreSQL REL_18_6",
+      "bytes": 5437,
+      "sha256": "2b34235145df8d3613baba39d2bbedf23a49c9efa54ad4514791452c94f16b9a",
+      "local_file": "sweep365-reference-psql-signal-cancel.c"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/postgres/postgres/REL_18_6/src/interfaces/libpq/fe-cancel.c",
+      "source": "PostgreSQL REL_18_6",
+      "bytes": 21724,
+      "sha256": "e1acd1002bb3087c2fdfde11c60d443ced8148c68cd6f842f67ea3e8ac73a9e2",
+      "local_file": "sweep365-reference-libpq-cancel.c"
+    }
+  ],
+  "protocol": "https://www.postgresql.org/docs/18/protocol-message-formats.html",
+  "modern_cancel": "https://www.postgresql.org/docs/18/libpq-cancel.html"
+}

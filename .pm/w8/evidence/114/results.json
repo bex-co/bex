@@ -1,0 +1,57 @@
+{
+  "tested_source_head": "54d27f5786a6a11ca15037948b1af7579a5bb6f5",
+  "reviewed_current_head": "54d27f5786a6a11ca15037948b1af7579a5bb6f5",
+  "serving_revision": "unobserved",
+  "native_Free_Ruby_creates_exit0": 2,
+  "captured_Bex_create201": 1,
+  "Render_create_wire": "not captured",
+  "actual_authored_Rails_app": "railties8.0.4/Puma7.1.0 in qa364app; public Rack repository is Git seed only",
+  "hosted_ruby": "3.4.11",
+  "public_Git_commit": "a9833c8f3bd6b6d1e0ab35de00a1f1a16b5095f5",
+  "original_build_and_prelaunch_env_absent_development": 2,
+  "original_actual_loopback_only_listeners": 2,
+  "repeated_original_public_HTTP503": true,
+  "original_status_before_replacement": "update_in_progress",
+  "natural_15_minute_deadline": "not awaited; not claimed as terminal-failure proof",
+  "native_prod_prefix_updates_exit0": 2,
+  "production_Live_HTTP200_exact_source_and_both_phases": 2,
+  "API_only_shared_configuration_reads_pass": 6,
+  "exact_local_base_three_actual_boot_controls": 3,
+  "local_own_containers_removed": true,
+  "real_generator_resolver_observations": 6,
+  "source_named_passes": 10,
+  "source_top_tests": 4,
+  "source_fail": 0,
+  "source_skip": 0,
+  "generated_Docker_execution": false,
+  "owned_services_deleted": [
+    "srv-db8vamvdbg8c73dghgmg",
+    "srv-db8vanq9cl7s73ae4es0"
+  ],
+  "owned_children_deleted": 4,
+  "baseline_services_present": true,
+  "final_service_count": 6,
+  "final_Blueprint_count": 1,
+  "final_group_count": 0,
+  "final_project_count": 0,
+  "final_quota": {
+    "services": {
+      "used": 6,
+      "terminating": 0,
+      "limit": 25
+    },
+    "postgres": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    },
+    "keyValues": {
+      "used": 0,
+      "terminating": 0,
+      "limit": 1
+    }
+  },
+  "new_issue": "w8/114",
+  "estimate_minutes": 55,
+  "uncommitted": true
+}
