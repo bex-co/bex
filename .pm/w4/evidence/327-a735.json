@@ -1,0 +1,769 @@
+{
+  "pass": "a735",
+  "scope": "Functional Unicode log rendering and visible-text search",
+  "sourceHead": "2fc3791344fcf6ec2af5c0a93f70e56bae61e7a8",
+  "fixture": {
+    "id": "srv-db93magpkj5c73dkrtgg",
+    "name": "qa-20261016-a735-unicode",
+    "plan": "free",
+    "deploy": "dep-db93magpkj5c73dkrth0"
+  },
+  "receipts": [
+    {
+      "artifact": "qa-recovered-a735Baseline.json",
+      "receipt": {
+        "at": "2026-10-16T14:56:37.200Z",
+        "status": 200,
+        "inventory": {
+          "data": {
+            "blueprints": [
+              {
+                "id": "blp-d9nqg95cavls73fp8m10",
+                "name": "discourse_docker"
+              }
+            ],
+            "databases": [
+              {
+                "id": "dpg-d9nqg95cavls73fp8m20",
+                "name": "beancount-forum-db"
+              },
+              {
+                "id": "dpg-d9rrkoc4h4mc73edurp0",
+                "name": "tianpan-forum-db"
+              },
+              {
+                "id": "dpg-d9rs3ee0ccis738kc7c0",
+                "name": "blockeden-forum-db"
+              },
+              {
+                "id": "dpg-db34l9bor55s73cqpq9g",
+                "name": "qa-20261007-r16-owner-f208ab"
+              }
+            ],
+            "envGroups": [
+              {
+                "id": "evg-db0s94c48ccs739jikr0",
+                "name": "qa-20261003-keys-r85"
+              }
+            ],
+            "keyValues": [
+              {
+                "id": "red-d9p49kdrtmes73c34ovg",
+                "name": "beancount-forum-redis"
+              },
+              {
+                "id": "red-da4086iii7bs73drbqh0",
+                "name": "blockeden-forum-redis"
+              }
+            ],
+            "projects": [
+              {
+                "id": "prj-d9dgeo0bd9nc73a0vh1g",
+                "name": "bex.co"
+              },
+              {
+                "id": "prj-d9e5qct5qe4s73b1mjn0",
+                "name": "beancount.io"
+              },
+              {
+                "id": "prj-d9sgfnbjghus73cg6hg0",
+                "name": "forums"
+              }
+            ],
+            "services": [
+              {
+                "id": "srv-d9bkcspg9s7c73d0n8ug",
+                "name": "agentmarketcap-1",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9bj8s3eg85c7390eb9g",
+                "name": "beancount-cms-v2",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9nqg9dcavls73fp8m2g",
+                "name": "beancount-forum",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9ndt8hmcglc739fkp50",
+                "name": "eden-dash-v3",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9e40ei9086p3l1jri30",
+                "name": "eden-cms-v2",
+                "type": "web_service"
+              }
+            ],
+            "webhookEndpoints": []
+          }
+        }
+      }
+    },
+    {
+      "artifact": "qa-recovered-a735Cleanup.json",
+      "receipt": {
+        "at": "2026-10-16T15:01:02.672Z",
+        "checks": [
+          {
+            "path": "/v1/services/srv-db93magpkj5c73dkrtgg",
+            "status": 404
+          },
+          {
+            "path": "/v1/services/srv-db93magpkj5c73dkrtgg/deploys/dep-db93magpkj5c73dkrth0",
+            "status": 404
+          }
+        ],
+        "inventory": {
+          "request": {
+            "operationName": "Qaa467Inventory",
+            "variables": {
+              "ownerId": "tea-d98210cbbpdc73dcrkvg"
+            },
+            "query": "query Qaa467Inventory($ownerId:String!){ services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name}}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "blueprints": [
+                {
+                  "id": "blp-d9nqg95cavls73fp8m10",
+                  "name": "discourse_docker"
+                }
+              ],
+              "databases": [
+                {
+                  "id": "dpg-d9nqg95cavls73fp8m20",
+                  "name": "beancount-forum-db"
+                },
+                {
+                  "id": "dpg-d9rrkoc4h4mc73edurp0",
+                  "name": "tianpan-forum-db"
+                },
+                {
+                  "id": "dpg-d9rs3ee0ccis738kc7c0",
+                  "name": "blockeden-forum-db"
+                },
+                {
+                  "id": "dpg-db34l9bor55s73cqpq9g",
+                  "name": "qa-20261007-r16-owner-f208ab"
+                }
+              ],
+              "envGroups": [
+                {
+                  "id": "evg-db0s94c48ccs739jikr0",
+                  "name": "qa-20261003-keys-r85"
+                }
+              ],
+              "keyValues": [
+                {
+                  "id": "red-d9p49kdrtmes73c34ovg",
+                  "name": "beancount-forum-redis"
+                },
+                {
+                  "id": "red-da4086iii7bs73drbqh0",
+                  "name": "blockeden-forum-redis"
+                }
+              ],
+              "projects": [
+                {
+                  "id": "prj-d9dgeo0bd9nc73a0vh1g",
+                  "name": "bex.co"
+                },
+                {
+                  "id": "prj-d9e5qct5qe4s73b1mjn0",
+                  "name": "beancount.io"
+                },
+                {
+                  "id": "prj-d9sgfnbjghus73cg6hg0",
+                  "name": "forums"
+                }
+              ],
+              "services": [
+                {
+                  "id": "srv-d9bkcspg9s7c73d0n8ug",
+                  "name": "agentmarketcap-1",
+                  "type": "web_service"
+                },
+                {
+                  "id": "srv-d9bj8s3eg85c7390eb9g",
+                  "name": "beancount-cms-v2",
+                  "type": "web_service"
+                },
+                {
+                  "id": "srv-d9nqg9dcavls73fp8m2g",
+                  "name": "beancount-forum",
+                  "type": "web_service"
+                },
+                {
+                  "id": "srv-d9ndt8hmcglc739fkp50",
+                  "name": "eden-dash-v3",
+                  "type": "web_service"
+                },
+                {
+                  "id": "srv-d9e40ei9086p3l1jri30",
+                  "name": "eden-cms-v2",
+                  "type": "web_service"
+                }
+              ],
+              "webhookEndpoints": []
+            }
+          }
+        },
+        "baselineMatches": {
+          "blueprints": true,
+          "databases": true,
+          "envGroups": true,
+          "keyValues": true,
+          "projects": true,
+          "services": true,
+          "webhookEndpoints": true
+        }
+      }
+    },
+    {
+      "artifact": "qa-recovered-a735Create.json",
+      "receipt": {
+        "at": "2026-10-16T14:56:43.373Z",
+        "request": {
+          "operationName": "CreateService",
+          "variables": {
+            "image": "node:24-alpine",
+            "name": "qa-20261016-a735-unicode",
+            "type": "web_service",
+            "registryCredentialId": "",
+            "runtime": "image",
+            "startCommand": "node -e 'const http=require(\"http\");const lines=[\"QA_A735_ASTRAL 𝒜Z\\rQA_A735_ASTRAL AB\",\"QA_A735_BMP XYZ\\rQA_A735_BMP AB\",\"QA_A735_LITERAL 𝒜Z\"];for(const line of lines)console.log(line);http.createServer((req,res)=>{if(req.url.startsWith(\"/emit\"))for(const line of lines)console.log(line);res.end(\"QA_A735 ready\\n\")}).listen(8080,\"0.0.0.0\")'",
+            "plan": "free",
+            "port": 8080,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "createService": {
+              "__typename": "Service",
+              "environmentId": null,
+              "id": "srv-db93magpkj5c73dkrtgg",
+              "latestDeployId": "dep-db93magpkj5c73dkrth0",
+              "name": "qa-20261016-a735-unicode",
+              "phase": "",
+              "projectId": null,
+              "registryCredentialId": "",
+              "type": "web_service"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792162602142.5127,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.14,
+          "responseStart": 515.856,
+          "responseEnd": 516.36
+        },
+        "url": "https://dashboard.bex.co/services/srv-db93magpkj5c73dkrtgg/deploys/dep-db93magpkj5c73dkrth0"
+      }
+    },
+    {
+      "artifact": "qa-recovered-a735Delete.json",
+      "receipt": {
+        "at": "2026-10-16T15:00:41.235Z",
+        "request": {
+          "operationName": "DeleteService",
+          "variables": {
+            "id": "srv-db93magpkj5c73dkrtgg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "deleteService": true
+          }
+        },
+        "timing": {
+          "startTime": 1792162839245.803,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.127,
+          "responseStart": 1263.291,
+          "responseEnd": 1263.811
+        },
+        "url": "https://dashboard.bex.co/"
+      }
+    },
+    {
+      "artifact": "qa-recovered-a735DeployLocalSearchControl.json",
+      "receipt": {
+        "at": "2026-10-16T14:58:02.138Z",
+        "url": "https://dashboard.bex.co/services/srv-db93magpkj5c73dkrtgg/deploys/dep-db93magpkj5c73dkrth0",
+        "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261016-a735-unicode\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261016-a735-unicode\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db93magpkj5c73dkrtgg/deploys/dep-db93magpkj5c73dkrth0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db93magpkj5c73dkrtgg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db93magpkj5c73dkrtgg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261016-a735-unicode.onbex.co\":\n    - /url: https://qa-20261016-a735-unicode.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261016-a735-unicode\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 1m\n  - text: Deploy status Live First Deploy dep-db93magpkj5c73dkrth0\n  - paragraph: node:24-alpine\n  - term: \"Created:\"\n  - definition: October 16, 2026 at 7:56 AM\n  - term: \"Updated:\"\n  - definition: October 16, 2026 at 7:57 AM\n  - term: \"Started:\"\n  - definition: October 16, 2026 at 7:56 AM\n  - term: \"Finished:\"\n  - definition: October 16, 2026 at 7:57 AM\n  - term: \"Duration:\"\n  - definition: 16s\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 16, 2026 at 7:56 AM\n    - listitem:\n      - paragraph: Deploy started\n      - time: October 16, 2026 at 7:56 AM\n    - listitem:\n      - paragraph: Live\n      - time: October 16, 2026 at 7:57 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\": QA_A735_ASTRAL ABZ\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: 07:56:44 AM\n  - button \"Filter logs by instance srv-db93magpkj5c73dkrtgg-nl08b5emvqq19fq5uutd\": \"[nl08b]\"\n  - text: QA_A735_ASTRAL ABZ"
+      }
+    },
+    {
+      "artifact": "qa-recovered-a735DisplayMatrix.json",
+      "receipt": {
+        "at": "2026-10-16T14:57:28.295Z",
+        "probes": [
+          {
+            "at": "2026-10-16T14:57:27.018Z",
+            "request": {
+              "operationName": "QaA735DisplayProbe",
+              "query": "query QaA735DisplayProbe($resource:String!,$type:String,$text:String,$textMode:String,$startTime:String,$endTime:String,$limit:Int){logs(resource:$resource,type:$type,text:$text,textMode:$textMode,startTime:$startTime,endTime:$endTime,limit:$limit){hasMore nextStartTime nextEndTime logs{timestamp message type instance level}}}",
+              "variables": {
+                "resource": "srv-db93magpkj5c73dkrtgg",
+                "type": "app",
+                "startTime": "2026-10-16T14:56:00Z",
+                "endTime": "2026-10-16T14:57:26.208Z",
+                "limit": 100,
+                "text": "QA_A735_ASTRAL ABZ",
+                "textMode": "display"
+              }
+            },
+            "status": 200,
+            "body": {
+              "data": {
+                "logs": {
+                  "hasMore": false,
+                  "logs": [],
+                  "nextEndTime": "2026-10-16T14:57:26Z",
+                  "nextStartTime": "2026-10-16T14:56:00Z"
+                }
+              }
+            }
+          },
+          {
+            "at": "2026-10-16T14:57:27.265Z",
+            "request": {
+              "operationName": "QaA735DisplayProbe",
+              "query": "query QaA735DisplayProbe($resource:String!,$type:String,$text:String,$textMode:String,$startTime:String,$endTime:String,$limit:Int){logs(resource:$resource,type:$type,text:$text,textMode:$textMode,startTime:$startTime,endTime:$endTime,limit:$limit){hasMore nextStartTime nextEndTime logs{timestamp message type instance level}}}",
+              "variables": {
+                "resource": "srv-db93magpkj5c73dkrtgg",
+                "type": "app",
+                "startTime": "2026-10-16T14:56:00Z",
+                "endTime": "2026-10-16T14:57:26.208Z",
+                "limit": 100,
+                "text": "QA_A735_ASTRAL AB",
+                "textMode": "display"
+              }
+            },
+            "status": 200,
+            "body": {
+              "data": {
+                "logs": {
+                  "hasMore": false,
+                  "logs": [
+                    {
+                      "instance": "srv-db93magpkj5c73dkrtgg-nl08b5emvqq19fq5uutd",
+                      "level": "unknown",
+                      "message": "QA_A735_ASTRAL 𝒜Z\rQA_A735_ASTRAL AB",
+                      "timestamp": "2026-10-16T14:56:44.687824743Z",
+                      "type": "app"
+                    }
+                  ],
+                  "nextEndTime": "2026-10-16T14:56:44.687824742Z",
+                  "nextStartTime": "2026-10-16T14:56:00Z"
+                }
+              }
+            }
+          },
+          {
+            "at": "2026-10-16T14:57:27.582Z",
+            "request": {
+              "operationName": "QaA735DisplayProbe",
+              "query": "query QaA735DisplayProbe($resource:String!,$type:String,$text:String,$textMode:String,$startTime:String,$endTime:String,$limit:Int){logs(resource:$resource,type:$type,text:$text,textMode:$textMode,startTime:$startTime,endTime:$endTime,limit:$limit){hasMore nextStartTime nextEndTime logs{timestamp message type instance level}}}",
+              "variables": {
+                "resource": "srv-db93magpkj5c73dkrtgg",
+                "type": "app",
+                "startTime": "2026-10-16T14:56:00Z",
+                "endTime": "2026-10-16T14:57:26.208Z",
+                "limit": 100,
+                "text": "QA_A735_ASTRAL",
+                "textMode": "display"
+              }
+            },
+            "status": 200,
+            "body": {
+              "data": {
+                "logs": {
+                  "hasMore": false,
+                  "logs": [
+                    {
+                      "instance": "srv-db93magpkj5c73dkrtgg-nl08b5emvqq19fq5uutd",
+                      "level": "unknown",
+                      "message": "QA_A735_ASTRAL 𝒜Z\rQA_A735_ASTRAL AB",
+                      "timestamp": "2026-10-16T14:56:44.687824743Z",
+                      "type": "app"
+                    }
+                  ],
+                  "nextEndTime": "2026-10-16T14:56:44.687824742Z",
+                  "nextStartTime": "2026-10-16T14:56:00Z"
+                }
+              }
+            }
+          },
+          {
+            "at": "2026-10-16T14:57:27.827Z",
+            "request": {
+              "operationName": "QaA735DisplayProbe",
+              "query": "query QaA735DisplayProbe($resource:String!,$type:String,$text:String,$textMode:String,$startTime:String,$endTime:String,$limit:Int){logs(resource:$resource,type:$type,text:$text,textMode:$textMode,startTime:$startTime,endTime:$endTime,limit:$limit){hasMore nextStartTime nextEndTime logs{timestamp message type instance level}}}",
+              "variables": {
+                "resource": "srv-db93magpkj5c73dkrtgg",
+                "type": "app",
+                "startTime": "2026-10-16T14:56:00Z",
+                "endTime": "2026-10-16T14:57:26.208Z",
+                "limit": 100,
+                "text": "QA_A735_BMP ABZ",
+                "textMode": "display"
+              }
+            },
+            "status": 200,
+            "body": {
+              "data": {
+                "logs": {
+                  "hasMore": false,
+                  "logs": [
+                    {
+                      "instance": "srv-db93magpkj5c73dkrtgg-nl08b5emvqq19fq5uutd",
+                      "level": "unknown",
+                      "message": "QA_A735_BMP XYZ\rQA_A735_BMP AB",
+                      "timestamp": "2026-10-16T14:56:44.687864529Z",
+                      "type": "app"
+                    }
+                  ],
+                  "nextEndTime": "2026-10-16T14:56:44.687864528Z",
+                  "nextStartTime": "2026-10-16T14:56:00Z"
+                }
+              }
+            }
+          },
+          {
+            "at": "2026-10-16T14:57:28.085Z",
+            "request": {
+              "operationName": "QaA735DisplayProbe",
+              "query": "query QaA735DisplayProbe($resource:String!,$type:String,$text:String,$textMode:String,$startTime:String,$endTime:String,$limit:Int){logs(resource:$resource,type:$type,text:$text,textMode:$textMode,startTime:$startTime,endTime:$endTime,limit:$limit){hasMore nextStartTime nextEndTime logs{timestamp message type instance level}}}",
+              "variables": {
+                "resource": "srv-db93magpkj5c73dkrtgg",
+                "type": "app",
+                "startTime": "2026-10-16T14:56:00Z",
+                "endTime": "2026-10-16T14:57:26.208Z",
+                "limit": 100,
+                "text": "QA_A735_LITERAL 𝒜Z",
+                "textMode": "display"
+              }
+            },
+            "status": 200,
+            "body": {
+              "data": {
+                "logs": {
+                  "hasMore": false,
+                  "logs": [
+                    {
+                      "instance": "srv-db93magpkj5c73dkrtgg-nl08b5emvqq19fq5uutd",
+                      "level": "unknown",
+                      "message": "QA_A735_LITERAL 𝒜Z",
+                      "timestamp": "2026-10-16T14:56:44.687867164Z",
+                      "type": "app"
+                    }
+                  ],
+                  "nextEndTime": "2026-10-16T14:56:44.687867163Z",
+                  "nextStartTime": "2026-10-16T14:56:00Z"
+                }
+              }
+            }
+          },
+          {
+            "at": "2026-10-16T14:57:28.295Z",
+            "request": {
+              "operationName": "QaA735DisplayProbe",
+              "query": "query QaA735DisplayProbe($resource:String!,$type:String,$text:String,$textMode:String,$startTime:String,$endTime:String,$limit:Int){logs(resource:$resource,type:$type,text:$text,textMode:$textMode,startTime:$startTime,endTime:$endTime,limit:$limit){hasMore nextStartTime nextEndTime logs{timestamp message type instance level}}}",
+              "variables": {
+                "resource": "srv-db93magpkj5c73dkrtgg",
+                "type": "app",
+                "startTime": "2026-10-16T14:56:00Z",
+                "endTime": "2026-10-16T14:57:26.208Z",
+                "limit": 100,
+                "text": "𝒜Z"
+              }
+            },
+            "status": 200,
+            "body": {
+              "data": {
+                "logs": {
+                  "hasMore": false,
+                  "logs": [
+                    {
+                      "instance": "srv-db93magpkj5c73dkrtgg-nl08b5emvqq19fq5uutd",
+                      "level": "unknown",
+                      "message": "QA_A735_ASTRAL 𝒜Z\rQA_A735_ASTRAL AB",
+                      "timestamp": "2026-10-16T14:56:44.687824743Z",
+                      "type": "app"
+                    },
+                    {
+                      "instance": "srv-db93magpkj5c73dkrtgg-nl08b5emvqq19fq5uutd",
+                      "level": "unknown",
+                      "message": "QA_A735_LITERAL 𝒜Z",
+                      "timestamp": "2026-10-16T14:56:44.687867164Z",
+                      "type": "app"
+                    }
+                  ],
+                  "nextEndTime": "2026-10-16T14:56:44.687824742Z",
+                  "nextStartTime": "2026-10-16T14:56:00Z"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "artifact": "qa-recovered-a735FailedDesktopSearch.json",
+      "receipt": {
+        "at": "2026-10-16T14:57:25.046Z",
+        "url": "https://dashboard.bex.co/services/srv-db93magpkj5c73dkrtgg/logs?type=app&text=QA_A735_ASTRAL+ABZ",
+        "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261016-a735-unicode\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261016-a735-unicode\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db93magpkj5c73dkrtgg/deploys/dep-db93magpkj5c73dkrth0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db93magpkj5c73dkrtgg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db93magpkj5c73dkrtgg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261016-a735-unicode.onbex.co\":\n    - /url: https://qa-20261016-a735-unicode.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261016-a735-unicode\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: now\n  - combobox \"Log type\": Application logs\n  - textbox \"Search logs\": QA_A735_ASTRAL ABZ\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\" [checked]\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - paragraph: No matching logs\n  - paragraph: No logs match these filters."
+      }
+    },
+    {
+      "artifact": "qa-recovered-a735Filled.json",
+      "receipt": {
+        "at": "2026-10-16T14:56:41.417Z",
+        "free": true
+      }
+    },
+    {
+      "artifact": "qa-recovered-a735FreshMobileFailure.json",
+      "receipt": {
+        "control": {
+          "at": "2026-10-16T14:57:44.790Z",
+          "url": "https://dashboard.bex.co/services/srv-db93magpkj5c73dkrtgg/logs?type=app&text=QA_A735_BMP+ABZ",
+          "main": "Projects\nqa-20261016-a735-unicode\nSearch\n⌘ K\nNew\nP\nWEB SERVICE\nqa-20261016-a735-unicode\nService\nRunning\nLatest deploy\nLive\nFree\nRuntime\nImage\nConnect\nManual Deploy\nService ID:\nsrv-db93magpkj5c73dkrtgg\nhttps://qa-20261016-a735-unicode.onbex.co\nSlug\nqa-20261016-a735-unicode\n·\nInstances\n1\n·\nRevision\nrev-1\n·\nCreated\nnow\nApplication logs\nLast hour\nFilters\nLive\n\nThe range limits history. Live mode appends new lines as they arrive.\n\n07:56:44 AM\n[nl08b]\nQA_A735_BMP ABZ\n\nLive — streaming new lines"
+        },
+        "fresh": {
+          "at": "2026-10-16T14:57:47.662Z",
+          "url": "https://dashboard.bex.co/services/srv-db93magpkj5c73dkrtgg/logs?type=app&text=QA_A735_ASTRAL&live=0",
+          "main": "Toggle Sidebar\nqa-20261016-a735-unicode\nNew\nP\nWEB SERVICE\nqa-20261016-a735-unicode\nService\nRunning\nLatest deploy\nLive\nFree\nRuntime\nImage\nConnect\nManual Deploy\nService ID:\nsrv-db93magpkj5c73dkrtgg\nhttps://qa-20261016-a735-unicode.onbex.co\nSlug\nqa-20261016-a735-unicode\n·\nInstances\n1\n·\nRevision\nrev-1\n·\nCreated\n1m\nApplication logs\nLast hour\nFilters\nLive\n\nThe range limits history. Live mode appends new lines as they arrive.\n\n07:56:44 AM\n[nl08b]\nQA_A735_ASTRAL ABZ\n\nLive tail paused",
+          "docWidth": 390
+        },
+        "failure": {
+          "at": "2026-10-16T14:57:48.501Z",
+          "url": "https://dashboard.bex.co/services/srv-db93magpkj5c73dkrtgg/logs?type=app&text=QA_A735_ASTRAL+ABZ&live=0",
+          "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261016-a735-unicode\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261016-a735-unicode\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db93magpkj5c73dkrtgg/deploys/dep-db93magpkj5c73dkrth0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db93magpkj5c73dkrtgg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db93magpkj5c73dkrtgg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261016-a735-unicode.onbex.co\":\n    - /url: https://qa-20261016-a735-unicode.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261016-a735-unicode\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 1m\n  - combobox \"Log type\": Application logs\n  - textbox \"Search logs\": QA_A735_ASTRAL ABZ\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\"\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - paragraph: No matching logs\n  - paragraph: No logs match these filters."
+        }
+      }
+    },
+    {
+      "artifact": "qa-recovered-a735FreshNativeFailureAndDeleteDraft.json",
+      "receipt": {
+        "at": "2026-10-16T15:00:36.231Z",
+        "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261016-a735-unicode\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261016-a735-unicode\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db93magpkj5c73dkrtgg/deploys/dep-db93magpkj5c73dkrth0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db93magpkj5c73dkrtgg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db93magpkj5c73dkrtgg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261016-a735-unicode.onbex.co\":\n    - /url: https://qa-20261016-a735-unicode.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261016-a735-unicode\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 3m\n  - combobox \"Log type\": Application logs\n  - textbox \"Search logs\": QA_A735_ASTRAL ABZ\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\"\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - paragraph: No matching logs\n  - paragraph: No logs match these filters.",
+        "consoleErrors": []
+      }
+    },
+    {
+      "artifact": "qa-recovered-a735FreshNativeFailureWire.json",
+      "receipt": {
+        "at": "2026-10-16T15:00:35.555Z",
+        "request": {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "srv-db93magpkj5c73dkrtgg",
+            "type": "app",
+            "text": "QA_A735_ASTRAL ABZ",
+            "textMode": "display",
+            "startTime": "2026-10-16T14:00:33.795Z",
+            "endTime": "2026-10-16T15:00:33.795Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [],
+              "nextEndTime": "2026-10-16T15:00:33Z",
+              "nextStartTime": "2026-10-16T14:00:33Z"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792162833808.655,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.096,
+          "responseStart": 1036.994,
+          "responseEnd": 1037.359
+        },
+        "url": "https://dashboard.bex.co/services/srv-db93magpkj5c73dkrtgg/logs?type=app&text=QA_A735_ASTRAL+ABZ&live=0"
+      }
+    },
+    {
+      "artifact": "qa-recovered-a735NativeFailureWire.json",
+      "receipt": {
+        "at": "2026-10-16T15:00:02.687Z",
+        "queries": []
+      }
+    },
+    {
+      "artifact": "qa-recovered-a735SessionCleared.json",
+      "receipt": {
+        "at": "2026-10-16T15:01:10.322Z",
+        "whoami": 401,
+        "cookies": 0,
+        "pages": 1,
+        "url": "about:blank"
+      }
+    },
+    {
+      "artifact": "qa-recovered-a735UnfilteredDesktop.json",
+      "receipt": {
+        "at": "2026-10-16T14:56:56.951Z",
+        "url": "https://dashboard.bex.co/services/srv-db93magpkj5c73dkrtgg/logs?type=app",
+        "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261016-a735-unicode\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261016-a735-unicode\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: In Progress\"':\n    - /url: /services/srv-db93magpkj5c73dkrtgg/deploys/dep-db93magpkj5c73dkrth0\n    - text: Latest deploy In Progress\n  - link \"Free\":\n    - /url: /services/srv-db93magpkj5c73dkrtgg/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db93magpkj5c73dkrtgg\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261016-a735-unicode.onbex.co\":\n    - /url: https://qa-20261016-a735-unicode.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261016-a735-unicode\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: now\n  - combobox \"Log type\": Application logs\n  - textbox \"Search logs\"\n  - combobox \"Log history range\": Last hour\n  - button \"Filters\"\n  - switch \"Live\" [checked]\n  - text: Live\n  - paragraph: The range limits history. Live mode appends new lines as they arrive.\n  - text: 07:56:44 AM\n  - button \"Filter logs by instance srv-db93magpkj5c73dkrtgg-nl08b5emvqq19fq5uutd\": \"[nl08b]\"\n  - text: QA_A735_ASTRAL ABZ 07:56:44 AM\n  - button \"Filter logs by instance srv-db93magpkj5c73dkrtgg-nl08b5emvqq19fq5uutd\": \"[nl08b]\"\n  - text: QA_A735_BMP ABZ 07:56:44 AM\n  - button \"Filter logs by instance srv-db93magpkj5c73dkrtgg-nl08b5emvqq19fq5uutd\": \"[nl08b]\"\n  - text: QA_A735_LITERAL 𝒜Z\n  - paragraph: Live — streaming new lines"
+      }
+    }
+  ],
+  "originalParser": {
+    "runtime": "v22.17.1",
+    "source": "dashboard/src/features/logs/lib/ansi.ts (unmodified import)",
+    "records": [
+      {
+        "input": "𝒜Z\rAB",
+        "output": "ABZ",
+        "spans": [
+          {
+            "text": "ABZ",
+            "className": ""
+          }
+        ],
+        "units": 6,
+        "codePoints": 5
+      },
+      {
+        "input": "XYZ\rAB",
+        "output": "ABZ",
+        "spans": [
+          {
+            "text": "ABZ",
+            "className": ""
+          }
+        ],
+        "units": 6,
+        "codePoints": 6
+      },
+      {
+        "input": "𝒜Z",
+        "output": "𝒜Z",
+        "spans": [
+          {
+            "text": "𝒜Z",
+            "className": ""
+          }
+        ],
+        "units": 3,
+        "codePoints": 2
+      },
+      {
+        "input": "\u001b[31m𝒜Z\rAB\u001b[0m",
+        "output": "ABZ",
+        "spans": [
+          {
+            "text": "ABZ",
+            "className": "text-red-700 dark:text-red-400"
+          }
+        ],
+        "units": 15,
+        "codePoints": 14
+      }
+    ],
+    "width": {
+      "value": "𝒜",
+      "units": 2,
+      "codePoints": 1
+    }
+  },
+  "sourceSha256": "372d41bd81aa43519233050606e62ca859107f4cacd77e016e2c0dccf2cb0497",
+  "runtimeCleanup": {
+    "at": "2026-10-16T15:01:50.620012+00:00",
+    "command": [
+      "kubectl",
+      "--context",
+      "hetzner-prod",
+      "-n",
+      "tea-d98210cbbpdc73dcrkvg",
+      "get",
+      "apps.app.bex.co,pods",
+      "-l",
+      "app.bex.co/app=tea-d98210cbbpdc73dcrkvg-qa-20261016-a735-unicode",
+      "-o",
+      "name"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "sessionCleanup": {
+    "logoutConfirmed": true,
+    "exitCode": 0,
+    "browser": {
+      "at": "2026-10-16T15:01:10.322Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "handlesRemoved": true
+  },
+  "publicCleanup": {
+    "observedAt": "2026-10-16T15:01:02.672Z (same cleanup tool batch; curl exact timestamp was not separately instrumented)",
+    "url": "https://qa-20261016-a735-unicode.onbex.co/",
+    "status": 404
+  },
+  "dedupe": {
+    "markdownFiles": 9456,
+    "actualOpenMilestoneTitles": 83,
+    "related": ["w4/done/m189", "w4/done/m199", "w8/blocked/077"],
+    "result": "m189 original colored-line search fix; newly exposed frontend surrogate-cell case. m199 timestamp identity and w8/077 CLI freeform input differ. No owner found. Recent40product commits and target history inspected."
+  },
+  "qualifications": [
+    "No external HTTP success probe was made before deletion; native Live state and real emitted log records are captured.",
+    "No new future-arrival or live-only SSE failure is claimed; desktop Live-on and fresh mobile Live-off service views fail against existing records.",
+    "The colored astral parser case is local execution of the unmodified TypeScript module, not an additional hosted colored-line reproduction.",
+    "No product implementation or new test was written. Screenshot is supplementary; exact native requests, direct responses and UI text are retained."
+  ]
+}
