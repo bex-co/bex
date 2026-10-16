@@ -298,7 +298,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **322** — [Refresh service precedence after linking an environment group](322.md) (minor · 55m) — fresh desktop/mobile links use A at runtime while cached ordering briefly crosses out A and names Z as winner; poll repairs it. Local panel refresh/pending/error follow-up to w2/m94/t003. [Durable evidence](evidence/322-env-group-precedence-refresh.json); all three fixtures and exact-run session cleaned.
 
-- [ ] **321** — [Supply JavaScript asset tools in native Go builds and runtime](321.md) (major · 55m) — two native Go builds fail on missing Node/exit127; a Go-only Live control confirms all four JS tools absent at runtime. Reuse the Ruby/Python supplier for the newly exercised Go scope. [Durable evidence](evidence/321-native-go-js-tools.json); owned service, four deploys and exact-run session cleaned.
+- [ ] **321** — [Supply JavaScript asset tools in native Go and Rust builds and runtime](321.md) (major · 60m) — both runtimes twice fail on missing Node/exit127; compiler-only Live controls show all four JS tools unavailable. Extend the same Ruby/Python supplier for Go/Rust, preserving Elixir. [Go evidence](evidence/321-native-go-js-tools.json) · [Rust evidence](evidence/321-native-rust-js-tools.json); owned fixtures/deploys and exact-run sessions cleaned.
 
 - [ ] **320** — [Supply Yarn in native Node 26 builds and runtime](320.md) (major · 55m) — fresh Node26/no-Bun Yarn build fails127; identical commands and commit are Live on Node24. Pinned-image execution isolates the missing supplier, with the existing Ruby/Python Yarn helper available for reuse. [Durable evidence](evidence/320-native-node26-yarn.json); both Free fixtures and exact-run session cleaned.
 
