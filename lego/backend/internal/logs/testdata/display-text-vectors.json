@@ -1,0 +1,122 @@
+[
+  {
+    "name": "plain",
+    "in": "plain, 中文 .* | text",
+    "want": "plain, 中文 .* | text"
+  },
+  {
+    "name": "sgr",
+    "in": "QA_A31_ANSI_\u001b[31mred\u001b[0m_end",
+    "want": "QA_A31_ANSI_red_end"
+  },
+  {
+    "name": "extended sgr",
+    "in": "\u001b[38;2;1;2;3mtrue\u001b[38;5;196mcolor\u001b[m",
+    "want": "truecolor"
+  },
+  {
+    "name": "cr overwrite",
+    "in": "secret\rSHOWN",
+    "want": "SHOWNt"
+  },
+  {
+    "name": "progress bar",
+    "in": "10%\r50%\r100%",
+    "want": "100%"
+  },
+  {
+    "name": "cr per line",
+    "in": "abc\ndef\rX",
+    "want": "abc\nXef"
+  },
+  {
+    "name": "erase to end",
+    "in": "abcdef\r\u001b[Kxy",
+    "want": "xy"
+  },
+  {
+    "name": "erase to start",
+    "in": "abcdef\u001b[3D\u001b[1Kz",
+    "want": "      z"
+  },
+  {
+    "name": "erase line",
+    "in": "old\u001b[2Knew",
+    "want": "new"
+  },
+  {
+    "name": "osc hyperlink bel",
+    "in": "\u001b]8;;https://x.test\u0007label\u001b]8;;\u0007!",
+    "want": "label!"
+  },
+  {
+    "name": "osc title st",
+    "in": "\u001b]0;title\u001b\\body",
+    "want": "body"
+  },
+  {
+    "name": "charset",
+    "in": "\u001b(Bok",
+    "want": "ok"
+  },
+  {
+    "name": "two byte escape",
+    "in": "a\u001b7b",
+    "want": "ab"
+  },
+  {
+    "name": "private csi",
+    "in": "\u001b[?25lhidden-cursor",
+    "want": "hidden-cursor"
+  },
+  {
+    "name": "unterminated csi",
+    "in": "keep\u001b[31",
+    "want": "keep"
+  },
+  {
+    "name": "unterminated osc",
+    "in": "keep\u001b]0;never ends",
+    "want": "keep"
+  },
+  {
+    "name": "lone esc",
+    "in": "keep\u001b",
+    "want": "keep"
+  },
+  {
+    "name": "astral overwrite, equal length",
+    "in": "QA_A735_ASTRAL 𝒜Z\rQA_A735_ASTRAL AB",
+    "want": "QA_A735_ASTRAL AB"
+  },
+  {
+    "name": "bmp overwrite control",
+    "in": "QA_A735_BMP XYZ\rQA_A735_BMP AB",
+    "want": "QA_A735_BMP ABZ"
+  },
+  {
+    "name": "astral untouched",
+    "in": "QA_A735_LITERAL 𝒜Z",
+    "want": "QA_A735_LITERAL 𝒜Z"
+  },
+  {
+    "name": "astral overwrite, shorter",
+    "in": "𝒜𝒜Z\rA",
+    "want": "A𝒜Z"
+  },
+  {
+    "name": "astral overwrite, longer",
+    "in": "𝒜\rABC",
+    "want": "ABC"
+  },
+  {
+    "name": "astral overwritten by astral",
+    "in": "AB\r𝒜",
+    "want": "𝒜B"
+  },
+  {
+    "name": "styled astral overwrite",
+    "in": "\u001b[31m𝒜\u001b[0mZ\rAB",
+    "want": "AB"
+  }
+]
