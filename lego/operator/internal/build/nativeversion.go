@@ -72,7 +72,7 @@ func ResolveNativeVersion(runtime string, env map[string]string, readFile func(s
 	}
 	r := resolver{t: t, env: env, readFile: readFile}
 	switch runtime {
-	case "python":
+	case nativePythonRuntime:
 		return r.first(r.fromEnv("PYTHON_VERSION", r.minorLine), r.fromFile(".python-version", r.minorLine))
 	case nativeNodeRuntime:
 		return r.first(r.fromEnv("NODE_VERSION", r.nodeRequest), r.fromFile(".node-version", r.nodeRequest),
