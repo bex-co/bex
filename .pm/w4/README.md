@@ -302,6 +302,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **331** — [Blueprint source tabs discard the chosen Public Git branch](331.md) (55m) ← functional QA a773, 2026-10-16: a valid main/path preview loses Branch on GitHub → Public Git URL; URL/name/path remain, Deploy correctly disables, and re-entering main recovers. Preserve the URL-bound draft locally; GitHub-default and service-create controls pass. No Create/Sync; exact session revoked. Filing only.
+
 - [ ] **330** — [Key Value creation shows an empty instance picker while its catalog loads](330.md) (55m) ← functional QA a771, 2026-10-16: empty catalog grid grows to three 70px cards, moving the following control 70px desktop / 234px mobile. Reuse a matching inert preview; retain draft, default Free and the submission gate. Read-only; exact session revoked. Filing only.
 
 - [ ] **329** — [Service creation replaces its plan grid with one short loading block](329.md) (60m) ← functional QA a770, 2026-10-16: mounted catalog preview102px becomes280px desktop/584px mobile for Web,502px mobile for Private. Keep the responsive tier grid and following Project control stable; Static absence, selection and prices preserved. Read-only; exact session revoked. Filing only.
