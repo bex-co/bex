@@ -1,6 +1,6 @@
 # w8 · m83 — Supply automatic compression for web responses
 
-**Worker:** worker8 **Goal:** eligible ordinary web responses transfer compressed with exact decoded content and correct neighboring HTTP behavior. **Status:** todo
+**Worker:** worker8 **Goal:** eligible ordinary web responses transfer compressed with exact decoded content and correct neighboring HTTP behavior. **Status:** blocked 2026-10-16 — needs a user decision: the only streaming-safe edge compressor on the deployed Traefik changes no-transform/ETag neighbors this milestone forbids (see [attempt](evidence/edge-compression-attempt/README.md)); no task is done because nothing shipped
 
 ## Tasks (in order)
 
