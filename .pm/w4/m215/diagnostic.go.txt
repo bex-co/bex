@@ -1,0 +1,15 @@
+func TestQaA713PendingMajorUpgradeOldReady(t *testing.T) {
+ ctx := context.Background()
+ r, cl, req := newMajorUpgradeReconciler(t, "Cluster in healthy state")
+ cluster := &unstructured.Unstructured{}
+ cluster.SetGroupVersionKind(cnpgClusterGVK)
+ if err := cl.Get(ctx, req.NamespacedName, cluster); err != nil { t.Fatal(err) }
+ if err := unstructured.SetNestedField(cluster.Object, int64(1), "status", "readyInstances"); err != nil { t.Fatal(err) }
+ if err := cl.Update(ctx, cluster); err != nil { t.Fatal(err) }
+ if _, err := r.Reconcile(ctx, req); err != nil { t.Fatal(err) }
+ var db appv1alpha1.Database
+ if err := cl.Get(ctx, req.NamespacedName, &db); err != nil { t.Fatal(err) }
+ t.Logf("desired=%s observed=%s phase=%s conditions=%+v", db.Spec.Version, db.Status.CurrentVersion, db.Status.Phase, db.Status.Conditions)
+ if db.Spec.Version != "17" || db.Status.CurrentVersion != "16" { t.Fatal("diagnostic preconditions changed") }
+ if db.Status.Phase == appv1alpha1.DBPhaseReady { t.Error("pending major upgrade returned Ready from old healthy CNPG status") }
+}

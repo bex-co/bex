@@ -1,0 +1,2425 @@
+{
+  "kind": "functional-upgrade-status-capture",
+  "date": "2026-10-16 UTC",
+  "receipts": {
+    "a713CreatePG": {
+      "at": "2026-10-16T11:30:31.058Z",
+      "request": {
+        "operationName": "CreateDatabase",
+        "variables": {
+          "name": "qa-20261016-a713-status",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "plan": "free",
+          "version": "16",
+          "public": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateDatabase($name: String!, $databaseName: String, $databaseUser: String, $ownerId: String, $environmentId: String, $plan: String, $version: String, $diskSizeGB: Int, $public: Boolean) {\n  createDatabase(\n    name: $name\n    databaseName: $databaseName\n    databaseUser: $databaseUser\n    ownerId: $ownerId\n    environmentId: $environmentId\n    plan: $plan\n    version: $version\n    diskSizeGB: $diskSizeGB\n    public: $public\n  ) {\n    id\n    name\n    databaseName\n    databaseUser\n    plan\n    status\n    projectId\n    environmentId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createDatabase": {
+            "__typename": "Database",
+            "databaseName": "dpg_db90llhn9t2s73cq25a0",
+            "databaseUser": "dpg_db90llhn9t2s73cq25a0_user",
+            "environmentId": null,
+            "id": "dpg-db90llhn9t2s73cq25a0",
+            "name": "qa-20261016-a713-status",
+            "plan": "free",
+            "projectId": null,
+            "status": "creating"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792150230009.887,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.133,
+        "responseStart": 336.18,
+        "responseEnd": 336.648
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db90llhn9t2s73cq25a0"
+    },
+    "a713FreshReady": {
+      "at": "2026-10-16T11:31:38.678Z",
+      "statusText": ["Available", "Available"]
+    },
+    "a713Upgrade17Timeline": {
+      "native": {
+        "at": "2026-10-16T11:31:40.649Z",
+        "request": [
+          {
+            "operationName": "UpdateDatabaseVersion",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0",
+              "version": "17"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "mutation UpdateDatabaseVersion($id: String!, $version: String!) {\n  updateDatabaseVersion(id: $id, version: $version) {\n    id\n    version\n    status\n    __typename\n  }\n}"
+          }
+        ],
+        "status": 200,
+        "body": [
+          {
+            "data": {
+              "updateDatabaseVersion": {
+                "__typename": "Database",
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "status": "config_restart",
+                "version": "16"
+              }
+            }
+          }
+        ]
+      },
+      "samples": [
+        {
+          "at": "2026-10-16T11:31:40.901Z",
+          "elapsedMs": 609,
+          "uiStatus": ["Restarting", "Restarting"],
+          "request": {
+            "operationName": "QaA713Timeline",
+            "query": "query QaA713Timeline($id:String!){database(id:$id){id status version plan}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "available",
+                "version": "16"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:31:41.885Z",
+          "elapsedMs": 1593,
+          "uiStatus": ["Available", "Available"],
+          "request": {
+            "operationName": "QaA713Timeline",
+            "query": "query QaA713Timeline($id:String!){database(id:$id){id status version plan}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "available",
+                "version": "16"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:31:42.857Z",
+          "elapsedMs": 2565,
+          "uiStatus": ["Available", "Available"],
+          "request": {
+            "operationName": "QaA713Timeline",
+            "query": "query QaA713Timeline($id:String!){database(id:$id){id status version plan}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "available",
+                "version": "16"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:31:44.017Z",
+          "elapsedMs": 3725,
+          "uiStatus": ["Available", "Available"],
+          "request": {
+            "operationName": "QaA713Timeline",
+            "query": "query QaA713Timeline($id:String!){database(id:$id){id status version plan}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "upgrading",
+                "version": "16"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:31:44.970Z",
+          "elapsedMs": 4678,
+          "uiStatus": ["Available", "Available"],
+          "request": {
+            "operationName": "QaA713Timeline",
+            "query": "query QaA713Timeline($id:String!){database(id:$id){id status version plan}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "upgrading",
+                "version": "16"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:31:45.938Z",
+          "elapsedMs": 5646,
+          "uiStatus": ["Available", "Available"],
+          "request": {
+            "operationName": "QaA713Timeline",
+            "query": "query QaA713Timeline($id:String!){database(id:$id){id status version plan}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "upgrading",
+                "version": "16"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:31:46.919Z",
+          "elapsedMs": 6627,
+          "uiStatus": ["Available", "Available"],
+          "request": {
+            "operationName": "QaA713Timeline",
+            "query": "query QaA713Timeline($id:String!){database(id:$id){id status version plan}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "upgrading",
+                "version": "16"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:31:47.909Z",
+          "elapsedMs": 7617,
+          "uiStatus": ["Available", "Available"],
+          "request": {
+            "operationName": "QaA713Timeline",
+            "query": "query QaA713Timeline($id:String!){database(id:$id){id status version plan}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "upgrading",
+                "version": "16"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:31:48.904Z",
+          "elapsedMs": 8612,
+          "uiStatus": ["Available", "Available"],
+          "request": {
+            "operationName": "QaA713Timeline",
+            "query": "query QaA713Timeline($id:String!){database(id:$id){id status version plan}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "upgrading",
+                "version": "16"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:31:49.868Z",
+          "elapsedMs": 9576,
+          "uiStatus": ["Available", "Available"],
+          "request": {
+            "operationName": "QaA713Timeline",
+            "query": "query QaA713Timeline($id:String!){database(id:$id){id status version plan}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "upgrading",
+                "version": "16"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:31:50.831Z",
+          "elapsedMs": 10539,
+          "uiStatus": ["Available", "Available"],
+          "request": {
+            "operationName": "QaA713Timeline",
+            "query": "query QaA713Timeline($id:String!){database(id:$id){id status version plan}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "upgrading",
+                "version": "16"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:31:51.801Z",
+          "elapsedMs": 11509,
+          "uiStatus": ["Available", "Available"],
+          "request": {
+            "operationName": "QaA713Timeline",
+            "query": "query QaA713Timeline($id:String!){database(id:$id){id status version plan}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "upgrading",
+                "version": "16"
+              }
+            }
+          }
+        }
+      ],
+      "watchers": [
+        {
+          "at": "2026-10-16T11:31:40.662Z",
+          "request": {
+            "operationName": "Database",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "duration": 935.703,
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "status": "available",
+                "version": "16"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "a713Upgrade17Ready": {
+      "samples": [
+        {
+          "at": "2026-10-16T11:33:54.001Z",
+          "request": {
+            "operationName": "QaA713UpgradeProgress",
+            "query": "query QaA713UpgradeProgress($id:String!){database(id:$id){id plan status version statusReason statusReasonCode}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "available",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "17"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "a713Fresh17Ready": {
+      "at": "2026-10-16T11:34:29.841Z",
+      "statusText": ["Available", "Available"],
+      "width": {
+        "viewport": 390,
+        "document": 390
+      }
+    },
+    "a713Upgrade18Timeline": {
+      "native": {
+        "at": "2026-10-16T11:34:52.709Z",
+        "request": [
+          {
+            "operationName": "UpdateDatabaseVersion",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0",
+              "version": "18"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "mutation UpdateDatabaseVersion($id: String!, $version: String!) {\n  updateDatabaseVersion(id: $id, version: $version) {\n    id\n    version\n    status\n    __typename\n  }\n}"
+          }
+        ],
+        "status": 200,
+        "body": [
+          {
+            "data": {
+              "updateDatabaseVersion": {
+                "__typename": "Database",
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "status": "config_restart",
+                "version": "17"
+              }
+            }
+          }
+        ]
+      },
+      "samples": [
+        {
+          "at": "2026-10-16T11:34:52.942Z",
+          "elapsedMs": 516,
+          "uiStatus": ["Restarting", "Restarting"],
+          "request": {
+            "operationName": "QaA713Timeline",
+            "query": "query QaA713Timeline($id:String!){database(id:$id){id status version plan}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "available",
+                "version": "17"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:34:53.923Z",
+          "elapsedMs": 1497,
+          "uiStatus": ["Available", "Available"],
+          "request": {
+            "operationName": "QaA713Timeline",
+            "query": "query QaA713Timeline($id:String!){database(id:$id){id status version plan}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "available",
+                "version": "17"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:34:54.903Z",
+          "elapsedMs": 2477,
+          "uiStatus": ["Available", "Available"],
+          "request": {
+            "operationName": "QaA713Timeline",
+            "query": "query QaA713Timeline($id:String!){database(id:$id){id status version plan}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "upgrading",
+                "version": "17"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:34:55.876Z",
+          "elapsedMs": 3450,
+          "uiStatus": ["Available", "Available"],
+          "request": {
+            "operationName": "QaA713Timeline",
+            "query": "query QaA713Timeline($id:String!){database(id:$id){id status version plan}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "upgrading",
+                "version": "17"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:34:56.841Z",
+          "elapsedMs": 4415,
+          "uiStatus": ["Available", "Available"],
+          "request": {
+            "operationName": "QaA713Timeline",
+            "query": "query QaA713Timeline($id:String!){database(id:$id){id status version plan}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "upgrading",
+                "version": "17"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:34:57.795Z",
+          "elapsedMs": 5369,
+          "uiStatus": ["Available", "Available"],
+          "request": {
+            "operationName": "QaA713Timeline",
+            "query": "query QaA713Timeline($id:String!){database(id:$id){id status version plan}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "upgrading",
+                "version": "17"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:34:58.765Z",
+          "elapsedMs": 6339,
+          "uiStatus": ["Available", "Available"],
+          "request": {
+            "operationName": "QaA713Timeline",
+            "query": "query QaA713Timeline($id:String!){database(id:$id){id status version plan}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "upgrading",
+                "version": "17"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:34:59.769Z",
+          "elapsedMs": 7343,
+          "uiStatus": ["Available", "Available"],
+          "request": {
+            "operationName": "QaA713Timeline",
+            "query": "query QaA713Timeline($id:String!){database(id:$id){id status version plan}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "upgrading",
+                "version": "17"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:35:00.729Z",
+          "elapsedMs": 8304,
+          "uiStatus": ["Available", "Available"],
+          "request": {
+            "operationName": "QaA713Timeline",
+            "query": "query QaA713Timeline($id:String!){database(id:$id){id status version plan}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "upgrading",
+                "version": "17"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:35:01.683Z",
+          "elapsedMs": 9257,
+          "uiStatus": ["Available", "Available"],
+          "request": {
+            "operationName": "QaA713Timeline",
+            "query": "query QaA713Timeline($id:String!){database(id:$id){id status version plan}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "upgrading",
+                "version": "17"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:35:02.660Z",
+          "elapsedMs": 10234,
+          "uiStatus": ["Available", "Available"],
+          "request": {
+            "operationName": "QaA713Timeline",
+            "query": "query QaA713Timeline($id:String!){database(id:$id){id status version plan}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "upgrading",
+                "version": "17"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:35:03.621Z",
+          "elapsedMs": 11195,
+          "uiStatus": ["Available", "Available"],
+          "request": {
+            "operationName": "QaA713Timeline",
+            "query": "query QaA713Timeline($id:String!){database(id:$id){id status version plan}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "upgrading",
+                "version": "17"
+              }
+            }
+          }
+        }
+      ],
+      "watchers": [
+        {
+          "at": "2026-10-16T11:34:52.724Z",
+          "request": {
+            "operationName": "Database",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "duration": 227.537,
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "status": "available",
+                "version": "17"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "a713Upgrade18Current": {
+      "at": "2026-10-16T11:35:17.682Z",
+      "request": {
+        "operationName": "QaA713UpgradeProgress",
+        "query": "query QaA713UpgradeProgress($id:String!){database(id:$id){id plan status version statusReason statusReasonCode}}",
+        "variables": {
+          "id": "dpg-db90llhn9t2s73cq25a0"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "database": {
+            "id": "dpg-db90llhn9t2s73cq25a0",
+            "plan": "free",
+            "status": "upgrading",
+            "statusReason": null,
+            "statusReasonCode": null,
+            "version": "17"
+          }
+        }
+      },
+      "uiStatus": ["Available", "Available"]
+    },
+    "a713Upgrade18Progress": {
+      "samples": [
+        {
+          "at": "2026-10-16T11:35:56.472Z",
+          "request": {
+            "operationName": "QaA713UpgradeProgress",
+            "query": "query QaA713UpgradeProgress($id:String!){database(id:$id){id plan status version statusReason statusReasonCode}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "upgrading",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "17"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:36:01.685Z",
+          "request": {
+            "operationName": "QaA713UpgradeProgress",
+            "query": "query QaA713UpgradeProgress($id:String!){database(id:$id){id plan status version statusReason statusReasonCode}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "upgrading",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "17"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:36:06.903Z",
+          "request": {
+            "operationName": "QaA713UpgradeProgress",
+            "query": "query QaA713UpgradeProgress($id:String!){database(id:$id){id plan status version statusReason statusReasonCode}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "upgrading",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "17"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:36:12.107Z",
+          "request": {
+            "operationName": "QaA713UpgradeProgress",
+            "query": "query QaA713UpgradeProgress($id:String!){database(id:$id){id plan status version statusReason statusReasonCode}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "upgrading",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "17"
+              }
+            }
+          }
+        }
+      ],
+      "uiStatus": ["Upgrading", "Upgrading"]
+    },
+    "a713Upgrade18Settling": {
+      "samples": [
+        {
+          "at": "2026-10-16T11:36:33.332Z",
+          "request": {
+            "operationName": "QaA713UpgradeProgress",
+            "query": "query QaA713UpgradeProgress($id:String!){database(id:$id){id plan status version statusReason statusReasonCode}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "config_restart",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "18"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:36:38.554Z",
+          "request": {
+            "operationName": "QaA713UpgradeProgress",
+            "query": "query QaA713UpgradeProgress($id:String!){database(id:$id){id plan status version statusReason statusReasonCode}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "config_restart",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "18"
+              }
+            }
+          }
+        },
+        {
+          "at": "2026-10-16T11:36:43.782Z",
+          "request": {
+            "operationName": "QaA713UpgradeProgress",
+            "query": "query QaA713UpgradeProgress($id:String!){database(id:$id){id plan status version statusReason statusReasonCode}}",
+            "variables": {
+              "id": "dpg-db90llhn9t2s73cq25a0"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "id": "dpg-db90llhn9t2s73cq25a0",
+                "plan": "free",
+                "status": "available",
+                "statusReason": null,
+                "statusReasonCode": null,
+                "version": "18"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "a713FinalVersion": {
+      "at": "2026-10-16T11:37:08.745Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db90llhn9t2s73cq25a0",
+          "sql": "SELECT current_setting('server_version_num') AS version_num;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["version_num"],
+            "rowCount": 1,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["180006"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792150627680.718,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.147,
+        "responseStart": 359.145,
+        "responseEnd": 359.594
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db90llhn9t2s73cq25a0#sql-console"
+    },
+    "a713FinalUi": {
+      "at": "2026-10-16T11:37:09.900Z",
+      "historyRemoved": true,
+      "consoleErrors": 0,
+      "status": ["Available", "Available"],
+      "width": {
+        "viewport": 390,
+        "document": 390
+      }
+    },
+    "a713DeletePG": {
+      "at": "2026-10-16T11:37:11.813Z",
+      "request": {
+        "operationName": "DeleteDatabase",
+        "variables": {
+          "id": "dpg-db90llhn9t2s73cq25a0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteDatabase($id: String!, $confirm: String) {\n  deleteDatabase(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteDatabase": true
+        }
+      },
+      "timing": {
+        "startTime": 1792150630848.545,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.137,
+        "responseStart": 255.341,
+        "responseEnd": 255.788
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "a713Cleanup": {
+      "at": "2026-10-16T11:37:33.648Z",
+      "deletedStatus": 404,
+      "inventoryStatus": 200,
+      "baselineMatches": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      }
+    },
+    "a713SessionCleared": {
+      "at": "2026-10-16T11:37:39.045Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  },
+  "kubernetesStatusTimeline": [
+    {
+      "at": "2026-10-16T11:34:51.350709+00:00",
+      "exit": 0,
+      "items": [
+        {
+          "kind": "Database",
+          "generation": 2,
+          "desiredVersion": "17",
+          "image": null,
+          "phase": "Ready",
+          "currentVersion": "17",
+          "majorVersion": null,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "True",
+              "reason": "Provisioned",
+              "observedGeneration": 2
+            }
+          ]
+        },
+        {
+          "kind": "Cluster",
+          "generation": 2,
+          "desiredVersion": null,
+          "image": "ghcr.io/cloudnative-pg/postgresql:17@sha256:03cacc5491ebdabf58eeecec2ae401076f1062f14f84af9956fd6ec235082188",
+          "phase": "Cluster in healthy state",
+          "currentVersion": null,
+          "majorVersion": 17,
+          "readyInstances": 1,
+          "conditions": [
+            {
+              "type": "Initialized",
+              "status": "True",
+              "reason": "BootstrapCompleted",
+              "observedGeneration": null
+            },
+            {
+              "type": "ConsistentSystemID",
+              "status": "True",
+              "reason": "Unique",
+              "observedGeneration": null
+            },
+            {
+              "type": "Ready",
+              "status": "True",
+              "reason": "ClusterIsReady",
+              "observedGeneration": null
+            },
+            {
+              "type": "ContinuousArchiving",
+              "status": "True",
+              "reason": "ContinuousArchivingSuccess",
+              "observedGeneration": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "at": "2026-10-16T11:34:52.785873+00:00",
+      "exit": 0,
+      "items": [
+        {
+          "kind": "Database",
+          "generation": 2,
+          "desiredVersion": "17",
+          "image": null,
+          "phase": "Ready",
+          "currentVersion": "17",
+          "majorVersion": null,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "True",
+              "reason": "Provisioned",
+              "observedGeneration": 2
+            }
+          ]
+        },
+        {
+          "kind": "Cluster",
+          "generation": 3,
+          "desiredVersion": null,
+          "image": "ghcr.io/cloudnative-pg/postgresql:18@sha256:d7a81cb5da3182d95d0da5fabfb9e484e375db899dcd54b684105f1e8966e9ca",
+          "phase": "Cluster in healthy state",
+          "currentVersion": null,
+          "majorVersion": 17,
+          "readyInstances": 1,
+          "conditions": [
+            {
+              "type": "Initialized",
+              "status": "True",
+              "reason": "BootstrapCompleted",
+              "observedGeneration": null
+            },
+            {
+              "type": "ConsistentSystemID",
+              "status": "True",
+              "reason": "Unique",
+              "observedGeneration": null
+            },
+            {
+              "type": "Ready",
+              "status": "True",
+              "reason": "ClusterIsReady",
+              "observedGeneration": null
+            },
+            {
+              "type": "ContinuousArchiving",
+              "status": "True",
+              "reason": "ContinuousArchivingSuccess",
+              "observedGeneration": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "at": "2026-10-16T11:34:54.089128+00:00",
+      "exit": 0,
+      "items": [
+        {
+          "kind": "Database",
+          "generation": 3,
+          "desiredVersion": "18",
+          "image": null,
+          "phase": "Ready",
+          "currentVersion": "17",
+          "majorVersion": null,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "True",
+              "reason": "Provisioned",
+              "observedGeneration": 3
+            }
+          ]
+        },
+        {
+          "kind": "Cluster",
+          "generation": 3,
+          "desiredVersion": null,
+          "image": "ghcr.io/cloudnative-pg/postgresql:18@sha256:d7a81cb5da3182d95d0da5fabfb9e484e375db899dcd54b684105f1e8966e9ca",
+          "phase": "Cluster in healthy state",
+          "currentVersion": null,
+          "majorVersion": 17,
+          "readyInstances": 1,
+          "conditions": [
+            {
+              "type": "Initialized",
+              "status": "True",
+              "reason": "BootstrapCompleted",
+              "observedGeneration": null
+            },
+            {
+              "type": "ConsistentSystemID",
+              "status": "True",
+              "reason": "Unique",
+              "observedGeneration": null
+            },
+            {
+              "type": "Ready",
+              "status": "True",
+              "reason": "ClusterIsReady",
+              "observedGeneration": null
+            },
+            {
+              "type": "ContinuousArchiving",
+              "status": "True",
+              "reason": "ContinuousArchivingSuccess",
+              "observedGeneration": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "at": "2026-10-16T11:34:55.569147+00:00",
+      "exit": 0,
+      "items": [
+        {
+          "kind": "Database",
+          "generation": 3,
+          "desiredVersion": "18",
+          "image": null,
+          "phase": "Upgrading",
+          "currentVersion": "17",
+          "majorVersion": null,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "MajorVersionUpgrade",
+              "observedGeneration": 3
+            }
+          ]
+        },
+        {
+          "kind": "Cluster",
+          "generation": 3,
+          "desiredVersion": null,
+          "image": "ghcr.io/cloudnative-pg/postgresql:18@sha256:d7a81cb5da3182d95d0da5fabfb9e484e375db899dcd54b684105f1e8966e9ca",
+          "phase": "Upgrading Postgres major version",
+          "currentVersion": null,
+          "majorVersion": 17,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Initialized",
+              "status": "True",
+              "reason": "BootstrapCompleted",
+              "observedGeneration": null
+            },
+            {
+              "type": "ConsistentSystemID",
+              "status": "False",
+              "reason": "NotFound",
+              "observedGeneration": null
+            },
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "ClusterIsNotReady",
+              "observedGeneration": null
+            },
+            {
+              "type": "ContinuousArchiving",
+              "status": "True",
+              "reason": "ContinuousArchivingSuccess",
+              "observedGeneration": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "at": "2026-10-16T11:34:56.872539+00:00",
+      "exit": 0,
+      "items": [
+        {
+          "kind": "Database",
+          "generation": 3,
+          "desiredVersion": "18",
+          "image": null,
+          "phase": "Upgrading",
+          "currentVersion": "17",
+          "majorVersion": null,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "MajorVersionUpgrade",
+              "observedGeneration": 3
+            }
+          ]
+        },
+        {
+          "kind": "Cluster",
+          "generation": 3,
+          "desiredVersion": null,
+          "image": "ghcr.io/cloudnative-pg/postgresql:18@sha256:d7a81cb5da3182d95d0da5fabfb9e484e375db899dcd54b684105f1e8966e9ca",
+          "phase": "Upgrading Postgres major version",
+          "currentVersion": null,
+          "majorVersion": 17,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Initialized",
+              "status": "True",
+              "reason": "BootstrapCompleted",
+              "observedGeneration": null
+            },
+            {
+              "type": "ConsistentSystemID",
+              "status": "False",
+              "reason": "NotFound",
+              "observedGeneration": null
+            },
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "ClusterIsNotReady",
+              "observedGeneration": null
+            },
+            {
+              "type": "ContinuousArchiving",
+              "status": "True",
+              "reason": "ContinuousArchivingSuccess",
+              "observedGeneration": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "at": "2026-10-16T11:34:58.213027+00:00",
+      "exit": 0,
+      "items": [
+        {
+          "kind": "Database",
+          "generation": 3,
+          "desiredVersion": "18",
+          "image": null,
+          "phase": "Upgrading",
+          "currentVersion": "17",
+          "majorVersion": null,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "MajorVersionUpgrade",
+              "observedGeneration": 3
+            }
+          ]
+        },
+        {
+          "kind": "Cluster",
+          "generation": 3,
+          "desiredVersion": null,
+          "image": "ghcr.io/cloudnative-pg/postgresql:18@sha256:d7a81cb5da3182d95d0da5fabfb9e484e375db899dcd54b684105f1e8966e9ca",
+          "phase": "Upgrading Postgres major version",
+          "currentVersion": null,
+          "majorVersion": 17,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Initialized",
+              "status": "True",
+              "reason": "BootstrapCompleted",
+              "observedGeneration": null
+            },
+            {
+              "type": "ConsistentSystemID",
+              "status": "False",
+              "reason": "NotFound",
+              "observedGeneration": null
+            },
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "ClusterIsNotReady",
+              "observedGeneration": null
+            },
+            {
+              "type": "ContinuousArchiving",
+              "status": "True",
+              "reason": "ContinuousArchivingSuccess",
+              "observedGeneration": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "at": "2026-10-16T11:34:59.532897+00:00",
+      "exit": 0,
+      "items": [
+        {
+          "kind": "Database",
+          "generation": 3,
+          "desiredVersion": "18",
+          "image": null,
+          "phase": "Upgrading",
+          "currentVersion": "17",
+          "majorVersion": null,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "MajorVersionUpgrade",
+              "observedGeneration": 3
+            }
+          ]
+        },
+        {
+          "kind": "Cluster",
+          "generation": 3,
+          "desiredVersion": null,
+          "image": "ghcr.io/cloudnative-pg/postgresql:18@sha256:d7a81cb5da3182d95d0da5fabfb9e484e375db899dcd54b684105f1e8966e9ca",
+          "phase": "Upgrading Postgres major version",
+          "currentVersion": null,
+          "majorVersion": 17,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Initialized",
+              "status": "True",
+              "reason": "BootstrapCompleted",
+              "observedGeneration": null
+            },
+            {
+              "type": "ConsistentSystemID",
+              "status": "False",
+              "reason": "NotFound",
+              "observedGeneration": null
+            },
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "ClusterIsNotReady",
+              "observedGeneration": null
+            },
+            {
+              "type": "ContinuousArchiving",
+              "status": "True",
+              "reason": "ContinuousArchivingSuccess",
+              "observedGeneration": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "at": "2026-10-16T11:35:00.828922+00:00",
+      "exit": 0,
+      "items": [
+        {
+          "kind": "Database",
+          "generation": 3,
+          "desiredVersion": "18",
+          "image": null,
+          "phase": "Upgrading",
+          "currentVersion": "17",
+          "majorVersion": null,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "MajorVersionUpgrade",
+              "observedGeneration": 3
+            }
+          ]
+        },
+        {
+          "kind": "Cluster",
+          "generation": 3,
+          "desiredVersion": null,
+          "image": "ghcr.io/cloudnative-pg/postgresql:18@sha256:d7a81cb5da3182d95d0da5fabfb9e484e375db899dcd54b684105f1e8966e9ca",
+          "phase": "Upgrading Postgres major version",
+          "currentVersion": null,
+          "majorVersion": 17,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Initialized",
+              "status": "True",
+              "reason": "BootstrapCompleted",
+              "observedGeneration": null
+            },
+            {
+              "type": "ConsistentSystemID",
+              "status": "False",
+              "reason": "NotFound",
+              "observedGeneration": null
+            },
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "ClusterIsNotReady",
+              "observedGeneration": null
+            },
+            {
+              "type": "ContinuousArchiving",
+              "status": "True",
+              "reason": "ContinuousArchivingSuccess",
+              "observedGeneration": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "at": "2026-10-16T11:35:02.115841+00:00",
+      "exit": 0,
+      "items": [
+        {
+          "kind": "Database",
+          "generation": 3,
+          "desiredVersion": "18",
+          "image": null,
+          "phase": "Upgrading",
+          "currentVersion": "17",
+          "majorVersion": null,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "MajorVersionUpgrade",
+              "observedGeneration": 3
+            }
+          ]
+        },
+        {
+          "kind": "Cluster",
+          "generation": 3,
+          "desiredVersion": null,
+          "image": "ghcr.io/cloudnative-pg/postgresql:18@sha256:d7a81cb5da3182d95d0da5fabfb9e484e375db899dcd54b684105f1e8966e9ca",
+          "phase": "Upgrading Postgres major version",
+          "currentVersion": null,
+          "majorVersion": 17,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Initialized",
+              "status": "True",
+              "reason": "BootstrapCompleted",
+              "observedGeneration": null
+            },
+            {
+              "type": "ConsistentSystemID",
+              "status": "False",
+              "reason": "NotFound",
+              "observedGeneration": null
+            },
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "ClusterIsNotReady",
+              "observedGeneration": null
+            },
+            {
+              "type": "ContinuousArchiving",
+              "status": "True",
+              "reason": "ContinuousArchivingSuccess",
+              "observedGeneration": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "at": "2026-10-16T11:35:03.435878+00:00",
+      "exit": 0,
+      "items": [
+        {
+          "kind": "Database",
+          "generation": 3,
+          "desiredVersion": "18",
+          "image": null,
+          "phase": "Upgrading",
+          "currentVersion": "17",
+          "majorVersion": null,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "MajorVersionUpgrade",
+              "observedGeneration": 3
+            }
+          ]
+        },
+        {
+          "kind": "Cluster",
+          "generation": 3,
+          "desiredVersion": null,
+          "image": "ghcr.io/cloudnative-pg/postgresql:18@sha256:d7a81cb5da3182d95d0da5fabfb9e484e375db899dcd54b684105f1e8966e9ca",
+          "phase": "Upgrading Postgres major version",
+          "currentVersion": null,
+          "majorVersion": 17,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Initialized",
+              "status": "True",
+              "reason": "BootstrapCompleted",
+              "observedGeneration": null
+            },
+            {
+              "type": "ConsistentSystemID",
+              "status": "False",
+              "reason": "NotFound",
+              "observedGeneration": null
+            },
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "ClusterIsNotReady",
+              "observedGeneration": null
+            },
+            {
+              "type": "ContinuousArchiving",
+              "status": "True",
+              "reason": "ContinuousArchivingSuccess",
+              "observedGeneration": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "at": "2026-10-16T11:35:04.737300+00:00",
+      "exit": 0,
+      "items": [
+        {
+          "kind": "Database",
+          "generation": 3,
+          "desiredVersion": "18",
+          "image": null,
+          "phase": "Upgrading",
+          "currentVersion": "17",
+          "majorVersion": null,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "MajorVersionUpgrade",
+              "observedGeneration": 3
+            }
+          ]
+        },
+        {
+          "kind": "Cluster",
+          "generation": 3,
+          "desiredVersion": null,
+          "image": "ghcr.io/cloudnative-pg/postgresql:18@sha256:d7a81cb5da3182d95d0da5fabfb9e484e375db899dcd54b684105f1e8966e9ca",
+          "phase": "Upgrading Postgres major version",
+          "currentVersion": null,
+          "majorVersion": 17,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Initialized",
+              "status": "True",
+              "reason": "BootstrapCompleted",
+              "observedGeneration": null
+            },
+            {
+              "type": "ConsistentSystemID",
+              "status": "False",
+              "reason": "NotFound",
+              "observedGeneration": null
+            },
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "ClusterIsNotReady",
+              "observedGeneration": null
+            },
+            {
+              "type": "ContinuousArchiving",
+              "status": "True",
+              "reason": "ContinuousArchivingSuccess",
+              "observedGeneration": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "at": "2026-10-16T11:35:06.032250+00:00",
+      "exit": 0,
+      "items": [
+        {
+          "kind": "Database",
+          "generation": 3,
+          "desiredVersion": "18",
+          "image": null,
+          "phase": "Upgrading",
+          "currentVersion": "17",
+          "majorVersion": null,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "MajorVersionUpgrade",
+              "observedGeneration": 3
+            }
+          ]
+        },
+        {
+          "kind": "Cluster",
+          "generation": 3,
+          "desiredVersion": null,
+          "image": "ghcr.io/cloudnative-pg/postgresql:18@sha256:d7a81cb5da3182d95d0da5fabfb9e484e375db899dcd54b684105f1e8966e9ca",
+          "phase": "Upgrading Postgres major version",
+          "currentVersion": null,
+          "majorVersion": 17,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Initialized",
+              "status": "True",
+              "reason": "BootstrapCompleted",
+              "observedGeneration": null
+            },
+            {
+              "type": "ConsistentSystemID",
+              "status": "False",
+              "reason": "NotFound",
+              "observedGeneration": null
+            },
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "ClusterIsNotReady",
+              "observedGeneration": null
+            },
+            {
+              "type": "ContinuousArchiving",
+              "status": "True",
+              "reason": "ContinuousArchivingSuccess",
+              "observedGeneration": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "at": "2026-10-16T11:35:07.355927+00:00",
+      "exit": 0,
+      "items": [
+        {
+          "kind": "Database",
+          "generation": 3,
+          "desiredVersion": "18",
+          "image": null,
+          "phase": "Upgrading",
+          "currentVersion": "17",
+          "majorVersion": null,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "MajorVersionUpgrade",
+              "observedGeneration": 3
+            }
+          ]
+        },
+        {
+          "kind": "Cluster",
+          "generation": 3,
+          "desiredVersion": null,
+          "image": "ghcr.io/cloudnative-pg/postgresql:18@sha256:d7a81cb5da3182d95d0da5fabfb9e484e375db899dcd54b684105f1e8966e9ca",
+          "phase": "Upgrading Postgres major version",
+          "currentVersion": null,
+          "majorVersion": 17,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Initialized",
+              "status": "True",
+              "reason": "BootstrapCompleted",
+              "observedGeneration": null
+            },
+            {
+              "type": "ConsistentSystemID",
+              "status": "False",
+              "reason": "NotFound",
+              "observedGeneration": null
+            },
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "ClusterIsNotReady",
+              "observedGeneration": null
+            },
+            {
+              "type": "ContinuousArchiving",
+              "status": "True",
+              "reason": "ContinuousArchivingSuccess",
+              "observedGeneration": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "at": "2026-10-16T11:35:08.680560+00:00",
+      "exit": 0,
+      "items": [
+        {
+          "kind": "Database",
+          "generation": 3,
+          "desiredVersion": "18",
+          "image": null,
+          "phase": "Upgrading",
+          "currentVersion": "17",
+          "majorVersion": null,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "MajorVersionUpgrade",
+              "observedGeneration": 3
+            }
+          ]
+        },
+        {
+          "kind": "Cluster",
+          "generation": 3,
+          "desiredVersion": null,
+          "image": "ghcr.io/cloudnative-pg/postgresql:18@sha256:d7a81cb5da3182d95d0da5fabfb9e484e375db899dcd54b684105f1e8966e9ca",
+          "phase": "Upgrading Postgres major version",
+          "currentVersion": null,
+          "majorVersion": 17,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Initialized",
+              "status": "True",
+              "reason": "BootstrapCompleted",
+              "observedGeneration": null
+            },
+            {
+              "type": "ConsistentSystemID",
+              "status": "False",
+              "reason": "NotFound",
+              "observedGeneration": null
+            },
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "ClusterIsNotReady",
+              "observedGeneration": null
+            },
+            {
+              "type": "ContinuousArchiving",
+              "status": "True",
+              "reason": "ContinuousArchivingSuccess",
+              "observedGeneration": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "at": "2026-10-16T11:35:09.986293+00:00",
+      "exit": 0,
+      "items": [
+        {
+          "kind": "Database",
+          "generation": 3,
+          "desiredVersion": "18",
+          "image": null,
+          "phase": "Upgrading",
+          "currentVersion": "17",
+          "majorVersion": null,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "MajorVersionUpgrade",
+              "observedGeneration": 3
+            }
+          ]
+        },
+        {
+          "kind": "Cluster",
+          "generation": 3,
+          "desiredVersion": null,
+          "image": "ghcr.io/cloudnative-pg/postgresql:18@sha256:d7a81cb5da3182d95d0da5fabfb9e484e375db899dcd54b684105f1e8966e9ca",
+          "phase": "Upgrading Postgres major version",
+          "currentVersion": null,
+          "majorVersion": 17,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Initialized",
+              "status": "True",
+              "reason": "BootstrapCompleted",
+              "observedGeneration": null
+            },
+            {
+              "type": "ConsistentSystemID",
+              "status": "False",
+              "reason": "NotFound",
+              "observedGeneration": null
+            },
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "ClusterIsNotReady",
+              "observedGeneration": null
+            },
+            {
+              "type": "ContinuousArchiving",
+              "status": "True",
+              "reason": "ContinuousArchivingSuccess",
+              "observedGeneration": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "at": "2026-10-16T11:35:11.291135+00:00",
+      "exit": 0,
+      "items": [
+        {
+          "kind": "Database",
+          "generation": 3,
+          "desiredVersion": "18",
+          "image": null,
+          "phase": "Upgrading",
+          "currentVersion": "17",
+          "majorVersion": null,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "MajorVersionUpgrade",
+              "observedGeneration": 3
+            }
+          ]
+        },
+        {
+          "kind": "Cluster",
+          "generation": 3,
+          "desiredVersion": null,
+          "image": "ghcr.io/cloudnative-pg/postgresql:18@sha256:d7a81cb5da3182d95d0da5fabfb9e484e375db899dcd54b684105f1e8966e9ca",
+          "phase": "Upgrading Postgres major version",
+          "currentVersion": null,
+          "majorVersion": 17,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Initialized",
+              "status": "True",
+              "reason": "BootstrapCompleted",
+              "observedGeneration": null
+            },
+            {
+              "type": "ConsistentSystemID",
+              "status": "False",
+              "reason": "NotFound",
+              "observedGeneration": null
+            },
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "ClusterIsNotReady",
+              "observedGeneration": null
+            },
+            {
+              "type": "ContinuousArchiving",
+              "status": "True",
+              "reason": "ContinuousArchivingSuccess",
+              "observedGeneration": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "at": "2026-10-16T11:35:12.599892+00:00",
+      "exit": 0,
+      "items": [
+        {
+          "kind": "Database",
+          "generation": 3,
+          "desiredVersion": "18",
+          "image": null,
+          "phase": "Upgrading",
+          "currentVersion": "17",
+          "majorVersion": null,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "MajorVersionUpgrade",
+              "observedGeneration": 3
+            }
+          ]
+        },
+        {
+          "kind": "Cluster",
+          "generation": 3,
+          "desiredVersion": null,
+          "image": "ghcr.io/cloudnative-pg/postgresql:18@sha256:d7a81cb5da3182d95d0da5fabfb9e484e375db899dcd54b684105f1e8966e9ca",
+          "phase": "Upgrading Postgres major version",
+          "currentVersion": null,
+          "majorVersion": 17,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Initialized",
+              "status": "True",
+              "reason": "BootstrapCompleted",
+              "observedGeneration": null
+            },
+            {
+              "type": "ConsistentSystemID",
+              "status": "False",
+              "reason": "NotFound",
+              "observedGeneration": null
+            },
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "ClusterIsNotReady",
+              "observedGeneration": null
+            },
+            {
+              "type": "ContinuousArchiving",
+              "status": "True",
+              "reason": "ContinuousArchivingSuccess",
+              "observedGeneration": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "at": "2026-10-16T11:35:13.903534+00:00",
+      "exit": 0,
+      "items": [
+        {
+          "kind": "Database",
+          "generation": 3,
+          "desiredVersion": "18",
+          "image": null,
+          "phase": "Upgrading",
+          "currentVersion": "17",
+          "majorVersion": null,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "MajorVersionUpgrade",
+              "observedGeneration": 3
+            }
+          ]
+        },
+        {
+          "kind": "Cluster",
+          "generation": 3,
+          "desiredVersion": null,
+          "image": "ghcr.io/cloudnative-pg/postgresql:18@sha256:d7a81cb5da3182d95d0da5fabfb9e484e375db899dcd54b684105f1e8966e9ca",
+          "phase": "Upgrading Postgres major version",
+          "currentVersion": null,
+          "majorVersion": 17,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Initialized",
+              "status": "True",
+              "reason": "BootstrapCompleted",
+              "observedGeneration": null
+            },
+            {
+              "type": "ConsistentSystemID",
+              "status": "False",
+              "reason": "NotFound",
+              "observedGeneration": null
+            },
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "ClusterIsNotReady",
+              "observedGeneration": null
+            },
+            {
+              "type": "ContinuousArchiving",
+              "status": "True",
+              "reason": "ContinuousArchivingSuccess",
+              "observedGeneration": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "at": "2026-10-16T11:35:15.270514+00:00",
+      "exit": 0,
+      "items": [
+        {
+          "kind": "Database",
+          "generation": 3,
+          "desiredVersion": "18",
+          "image": null,
+          "phase": "Upgrading",
+          "currentVersion": "17",
+          "majorVersion": null,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "MajorVersionUpgrade",
+              "observedGeneration": 3
+            }
+          ]
+        },
+        {
+          "kind": "Cluster",
+          "generation": 3,
+          "desiredVersion": null,
+          "image": "ghcr.io/cloudnative-pg/postgresql:18@sha256:d7a81cb5da3182d95d0da5fabfb9e484e375db899dcd54b684105f1e8966e9ca",
+          "phase": "Upgrading Postgres major version",
+          "currentVersion": null,
+          "majorVersion": 17,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Initialized",
+              "status": "True",
+              "reason": "BootstrapCompleted",
+              "observedGeneration": null
+            },
+            {
+              "type": "ConsistentSystemID",
+              "status": "False",
+              "reason": "NotFound",
+              "observedGeneration": null
+            },
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "ClusterIsNotReady",
+              "observedGeneration": null
+            },
+            {
+              "type": "ContinuousArchiving",
+              "status": "True",
+              "reason": "ContinuousArchivingSuccess",
+              "observedGeneration": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "at": "2026-10-16T11:35:16.579547+00:00",
+      "exit": 0,
+      "items": [
+        {
+          "kind": "Database",
+          "generation": 3,
+          "desiredVersion": "18",
+          "image": null,
+          "phase": "Upgrading",
+          "currentVersion": "17",
+          "majorVersion": null,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "MajorVersionUpgrade",
+              "observedGeneration": 3
+            }
+          ]
+        },
+        {
+          "kind": "Cluster",
+          "generation": 3,
+          "desiredVersion": null,
+          "image": "ghcr.io/cloudnative-pg/postgresql:18@sha256:d7a81cb5da3182d95d0da5fabfb9e484e375db899dcd54b684105f1e8966e9ca",
+          "phase": "Upgrading Postgres major version",
+          "currentVersion": null,
+          "majorVersion": 17,
+          "readyInstances": null,
+          "conditions": [
+            {
+              "type": "Initialized",
+              "status": "True",
+              "reason": "BootstrapCompleted",
+              "observedGeneration": null
+            },
+            {
+              "type": "ConsistentSystemID",
+              "status": "False",
+              "reason": "NotFound",
+              "observedGeneration": null
+            },
+            {
+              "type": "Ready",
+              "status": "False",
+              "reason": "ClusterIsNotReady",
+              "observedGeneration": null
+            },
+            {
+              "type": "ContinuousArchiving",
+              "status": "True",
+              "reason": "ContinuousArchivingSuccess",
+              "observedGeneration": null
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "localDiagnostic": {
+    "expectedExit": 1,
+    "actualExit": 1,
+    "command": "go test -overlay=<ignored overlay> -run ^TestQaA713PendingMajorUpgradeOldReady$ -count=1 -v ./internal/controller",
+    "framework": "existing real reconciler with fake CNPG status, no production fault injection"
+  },
+  "a712IndependentDataControl": {
+    "a712BeforeUpgradeRows": {
+      "at": "2026-10-16T11:25:33.297Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db90ih45bijs73cipjjg",
+          "sql": "SELECT current_setting('server_version_num') AS version_num, id, label, amount::text AS amount, doc::text AS doc FROM qa_a712_upgrade ORDER BY id;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["version_num", "id", "label", "amount", "doc"],
+            "rowCount": 3,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "160015",
+                  "1",
+                  "snow 雪",
+                  "12.3400",
+                  "{\"items\": [1, null, \"雪\"], \"state\": \"one\"}"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["160015", "2", null, null, null]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["160015", "3", "", "-0.1250", "[]"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792149932269.434,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.158,
+        "responseStart": 322.758,
+        "responseEnd": 323.194
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db90ih45bijs73cipjjg"
+    },
+    "a712AfterUpgradeRows": {
+      "at": "2026-10-16T11:28:19.870Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db90ih45bijs73cipjjg",
+          "sql": "SELECT current_setting('server_version_num') AS version_num, id, label, amount::text AS amount, doc::text AS doc FROM qa_a712_upgrade ORDER BY id;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["version_num", "id", "label", "amount", "doc"],
+            "rowCount": 3,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "180006",
+                  "1",
+                  "snow 雪",
+                  "12.3400",
+                  "{\"items\": [1, null, \"雪\"], \"state\": \"one\"}"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["180006", "2", null, null, null]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["180006", "3", "", "-0.1250", "[]"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792150098829.844,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.139,
+        "responseStart": 332.276,
+        "responseEnd": 332.708
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db90ih45bijs73cipjjg#sql-console"
+    },
+    "a712Cleanup": {
+      "at": "2026-10-16T11:28:56.255Z",
+      "deletedStatus": 404,
+      "inventoryStatus": 200,
+      "baselineMatches": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      }
+    },
+    "a712SessionCleared": {
+      "at": "2026-10-16T11:29:00.266Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  },
+  "infrastructureCleanup": {
+    "at": "2026-10-16T11:37:23.890455+00:00",
+    "exit": 0,
+    "resources": []
+  }
+}

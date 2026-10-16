@@ -1,0 +1,7 @@
+=== RUN   TestQaA713PendingMajorUpgradeOldReady
+    database_upgrade_test.go:243: desired=17 observed=16 phase=Ready conditions=[{Type:Ready Status:True ObservedGeneration:0 LastTransitionTime:2026-10-16 04:34:36 -0700 PDT Reason:Provisioned Message:postgres ready}]
+    database_upgrade_test.go:245: pending major upgrade returned Ready from old healthy CNPG status
+--- FAIL: TestQaA713PendingMajorUpgradeOldReady (0.04s)
+FAIL
+FAIL	github.com/bex-co/bex/lego/operator/internal/controller	0.792s
+FAIL
