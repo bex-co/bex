@@ -777,6 +777,21 @@ func TestMCP_EnvGroupEditingRoundTrip(t *testing.T) {
 	if file.Content != "pem" {
 		t.Fatalf("get_env_group_secret_file: %+v", file)
 	}
+	// A revealed empty file says so in both result forms (w4/326).
+	call("set_env_group_secret_file", map[string]any{"id": group.ID, "name": "empty.txt", "content": ""}, nil)
+	empty, err := cs.CallTool(ctx, &mcp.CallToolParams{
+		Name: "get_env_group_secret_file", Arguments: map[string]any{"id": group.ID, "name": "empty.txt"},
+	})
+	if err != nil || empty.IsError {
+		t.Fatalf("get_env_group_secret_file empty: err=%v result=%+v", err, empty)
+	}
+	structured, _ := json.Marshal(empty.StructuredContent)
+	if string(structured) != `{"content":"","name":"empty.txt"}` && string(structured) != `{"name":"empty.txt","content":""}` {
+		t.Fatalf("empty file structured result = %s, want name and content \"\"", structured)
+	}
+	if len(empty.Content) == 0 || !strings.Contains(empty.Content[0].(*mcp.TextContent).Text, `"content":""`) {
+		t.Fatalf("empty file text result = %+v, want content \"\"", empty.Content)
+	}
 	call("rename_env_group", map[string]any{"id": group.ID, "name": "Shared production"}, &group)
 	if group.Name != "Shared production" {
 		t.Fatalf("rename_env_group: %+v", group)

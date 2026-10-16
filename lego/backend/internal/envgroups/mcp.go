@@ -254,8 +254,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_env_group_secret_file",
 		Description: "Reveal one secret file's contents in an environment group.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envGroupFileArgs) (*mcp.CallToolResult, SecretFileView, error) {
-		f, err := s.GetEnvGroupFile(ctx, in.ID, in.Name)
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envGroupFileArgs) (*mcp.CallToolResult, SecretFileContent, error) {
+		f, err := s.RevealEnvGroupFile(ctx, in.ID, in.Name)
 		return nil, f, err
 	})
 
