@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m217** — [Preserve distinct log records within one millisecond](m217/README.md) (7 tasks) ← functional QA a751, 2026-10-16: native history and REST retain20 distinct records while desktop and fresh mobile show one; spaced and numbered controls render20 and live replay remains deduped. Propagate existing record identity through shared readers while preserving replay/cursor guarantees. Fixture and exact session cleaned up; filing only.
+
 - [ ] **m216** — [Keep deploy log search on the established literal contract](m216/README.md) (6 tasks) ← functional QA a743, 2026-10-16: desktop and fresh mobile drop uppercase Greek sigma for one query and add it for another; same-window service/API controls pass. Align the client matcher with the existing Go contract, preserve loaded-reader behavior, and verify the two route aliases. Fixture and exact session cleaned up; filing only.
 
 - [ ] **m215** — [Keep accepted Postgres upgrades non-Ready](blocked/m215/README.md) (6 tasks) — **BLOCKED (release pipeline deploys the operator; QA replays t002: owned private Free native upgrades with two supported source/target pairs at desktop and a fresh 390px page, seeded rows checked afterward; no post-acceptance `available` before the target major is healthy, and the open page follows progress without reload; then cleans up, then t006 closeout)**. t001/t003/t004/t005 done 2026-10-16: a pending major (desired ahead of recorded) holds Upgrading before CNPG's phase, and a new major is recorded only once healthy, which also fixes a skipped post-upgrade base backup and archive re-pointing. Operator regressions fail on the old controller. Operator test/lint pass.
