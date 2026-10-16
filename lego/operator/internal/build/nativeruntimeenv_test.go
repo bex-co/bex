@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // A primary Node serving image defaults NODE_ENV=production after its build
@@ -33,7 +34,7 @@ func TestNativeNodeServingImageDefaultsProduction(t *testing.T) {
 	o := nativeOptions()
 	for _, line := range nativeToolchains[nativeNodeRuntime].lines {
 		df := resolvedDockerfile(t, o, map[string]string{"NODE_VERSION": line.line})
-		at, run, cmd := strings.Index(df, "\n"+want), strings.Index(df, "\nRUN --mount=type=secret,id=render-env"), strings.Index(df, "\nCMD ")
+		at, run, cmd := strings.Index(df, "\n"+want), strings.Index(df, nativeBuildRun), strings.Index(df, "\nCMD ")
 		if strings.Count(df, want) != 1 || at < run || at > cmd {
 			t.Fatalf("node %s: NODE_ENV default is not once between the build RUN and CMD:\n%s", line.line, df)
 		}
@@ -93,28 +94,43 @@ func TestNativeNodeImageRuntimeEnvironment(t *testing.T) {
 	}
 }
 
-// An Elixir image builds and runs with MIX_ENV=prod (w8/112): the default
-// precedes the build RUN on every reviewed line, and no other runtime gets it.
-func TestNativeElixirImageDefaultsMixProd(t *testing.T) {
-	const want = "ENV MIX_ENV=prod\n"
-	o := nativeOptions()
-	o.Runtime = "elixir"
-	for _, line := range nativeToolchains["elixir"].lines {
-		df := resolvedDockerfile(t, o, map[string]string{"ELIXIR_VERSION": line.line})
-		if at, run := strings.Index(df, "\n"+want), strings.Index(df, "\nRUN --mount=type=secret,id=render-env"); strings.Count(df, want) != 1 || at < 0 || at > run {
-			t.Fatalf("elixir %s: MIX_ENV default is not once before the build RUN:\n%s", line.line, df)
+// nativeBuildRun marks the generated build RUN in a Dockerfile.
+const nativeBuildRun = "\nRUN --mount=type=secret,id=render-env"
+
+// Elixir builds and runs with MIX_ENV=prod (w8/112) and Python with Render's
+// Gunicorn flags (w8/113): each default precedes the build RUN once on every
+// reviewed line and for an explicit static build of that runtime, and no
+// other runtime gets it.
+func TestNativeBuildDefaultsPrecedeTheBuild(t *testing.T) {
+	for _, tc := range []struct{ runtime, versionEnv, want, name string }{
+		{"elixir", "ELIXIR_VERSION", "ENV MIX_ENV=prod\n", "MIX_ENV"},
+		{nativePythonRuntime, "PYTHON_VERSION", `ENV GUNICORN_CMD_ARGS="--preload --access-logfile -"` + "\n", "GUNICORN_CMD_ARGS"},
+	} {
+		precedesBuild := func(df string) bool {
+			at := strings.Index(df, "\n"+tc.want)
+			return strings.Count(df, tc.want) == 1 && at >= 0 && at < strings.Index(df, nativeBuildRun)
 		}
-	}
-	static := nativeOptions()
-	static.StaticSite, static.Runtime, static.StartCommand = true, "elixir", ""
-	if df := nativeDockerfile(static); strings.Count(df, want) != 1 || strings.Index(df, want) > strings.Index(df, "\nRUN --mount=type=secret,id=render-env") {
-		t.Errorf("explicit Elixir static build lacks the build default:\n%s", df)
-	}
-	for _, runtime := range []string{nativeNodeRuntime, "python", "ruby", "go", "rust"} {
-		other := nativeOptions()
-		other.Runtime = runtime
-		if df := nativeDockerfile(other); strings.Contains(df, "MIX_ENV") {
-			t.Errorf("%s gained MIX_ENV:\n%s", runtime, df)
+		o := nativeOptions()
+		o.Runtime = tc.runtime
+		for _, line := range nativeToolchains[tc.runtime].lines {
+			if df := resolvedDockerfile(t, o, map[string]string{tc.versionEnv: line.line}); !precedesBuild(df) {
+				t.Fatalf("%s %s: %s default is not once before the build RUN:\n%s", tc.runtime, line.line, tc.name, df)
+			}
+		}
+		static := o
+		static.StaticSite, static.StartCommand = true, ""
+		if df := nativeDockerfile(static); !precedesBuild(df) {
+			t.Errorf("explicit %s static build lacks the build default:\n%s", tc.runtime, df)
+		}
+		for runtime := range nativeToolchains {
+			if runtime == tc.runtime {
+				continue
+			}
+			other := nativeOptions()
+			other.Runtime = runtime
+			if df := nativeDockerfile(other); strings.Contains(df, tc.name) {
+				t.Errorf("%s gained %s:\n%s", runtime, tc.name, df)
+			}
 		}
 	}
 }
@@ -161,6 +177,76 @@ func TestNativeElixirImageMixEnvironment(t *testing.T) {
 				if err != nil || !strings.Contains(string(out), "build "+tc.build) || !strings.Contains(string(out), want) {
 					t.Fatalf("run %v = %v\n%s; want build %q and %q", args, err, out, tc.build, want)
 				}
+			}
+		})
+	}
+}
+
+// TestNativePythonImageGunicornAccessLog is w8/113's execution gate: Render's
+// Flask shape — pip install, then a bare `gunicorn app:app` — writes an access
+// line for each request to the service's stdout at the platform's port, with
+// the flags present at build too, while an explicitly empty value restores
+// Gunicorn's own default (no access log). Opt-in: needs Docker and network
+// for PyPI.
+func TestNativePythonImageGunicornAccessLog(t *testing.T) {
+	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
+		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the generated image")
+	}
+	o := nativeOptions()
+	o.Runtime, o.BuildEnv = nativePythonRuntime, nil
+	o.BuildCommand = `pip install --no-cache-dir --disable-pip-version-check -q gunicorn==23.0.0 && printf '%s' "$GUNICORN_CMD_ARGS" > build.txt`
+	o.StartCommand = "gunicorn app:app"
+	app := `import os
+
+def app(environ, start_response):
+    start_response("200 OK", [("Content-Type", "text/plain")])
+    built = open("build.txt").read()
+    return [("build=%s runtime=%s" % (built, os.environ.get("GUNICORN_CMD_ARGS"))).encode()]
+`
+	tag := buildResolvedImage(t, o, map[string]string{"PYTHON_VERSION": "3.12"}, map[string]string{"app.py": app},
+		fmt.Sprintf("bex-native-gunicorn-it:%d", os.Getpid()))
+	for i, tc := range []struct {
+		name, env, body string
+		accessLine      bool
+	}{
+		{"default", "", "build=--preload --access-logfile - runtime=--preload --access-logfile -", true},
+		{"explicit empty", "GUNICORN_CMD_ARGS=", "build=--preload --access-logfile - runtime=", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			name := fmt.Sprintf("bex-native-gunicorn-it-%d-%d", i, os.Getpid())
+			args := []string{"run", "-d", "--name", name, "--network", "none"}
+			if tc.env != "" {
+				args = append(args, "-e", tc.env)
+			}
+			if out, err := exec.Command("docker", append(args, tag)...).CombinedOutput(); err != nil {
+				t.Fatalf("run: %v\n%s", err, out)
+			}
+			t.Cleanup(func() { _ = exec.Command("docker", "rm", "-f", name).Run() })
+			var body []byte
+			for deadline := time.Now().Add(time.Minute); ; time.Sleep(time.Second) {
+				out, err := exec.Command("docker", "exec", name, "curl", "-sf", "http://127.0.0.1:10000/?probe=m8113").Output()
+				if body = out; err == nil {
+					break
+				}
+				if time.Now().After(deadline) {
+					logs, _ := exec.Command("docker", "logs", name).CombinedOutput()
+					t.Fatalf("Gunicorn never served:\n%s", logs)
+				}
+			}
+			if string(body) != tc.body {
+				t.Fatalf("body = %q, want %q", body, tc.body)
+			}
+			// The line follows the response; give it a few seconds to arrive
+			// (or, when it must not, to have arrived).
+			var logs []byte
+			for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(250 * time.Millisecond) {
+				logs, _ = exec.Command("docker", "logs", name).CombinedOutput()
+				if strings.Contains(string(logs), `"GET /?probe=m8113 HTTP/1.1" 200`) {
+					break
+				}
+			}
+			if got := strings.Contains(string(logs), `"GET /?probe=m8113 HTTP/1.1" 200`); got != tc.accessLine {
+				t.Fatalf("access line present = %v, want %v:\n%s", got, tc.accessLine, logs)
 			}
 		})
 	}
