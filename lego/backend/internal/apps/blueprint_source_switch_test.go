@@ -49,6 +49,13 @@ func switchSource(t *testing.T, initial appv1alpha1.AppSpec, manifest string) (a
 
 func switchSourceWith(t *testing.T, initial appv1alpha1.AppSpec, req DeployRequest) (appv1alpha1.AppSpec, *recordingStore) {
 	t.Helper()
+	return switchSourceWithGitHub(t, initial, req, nil)
+}
+
+// switchSourceWithGitHub is switchSourceWith with a repository metadata seam
+// (nil: GitHub off); an identical reapply also reads no more metadata.
+func switchSourceWithGitHub(t *testing.T, initial appv1alpha1.AppSpec, req DeployRequest, gh *fakeCloneTokens) (appv1alpha1.AppSpec, *recordingStore) {
+	t.Helper()
 	st, _, err := compileStack(req)
 	if err != nil {
 		t.Fatal(err)
@@ -63,16 +70,21 @@ func switchSourceWith(t *testing.T, initial appv1alpha1.AppSpec, req DeployReque
 	cl := fakeClient(existing)
 	rec := &recordingStore{}
 	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}, Store: rec}
+	lookups := func() int { return 0 }
+	if gh != nil {
+		svc.GitHub = gh
+		lookups = func() int { return gh.validateCalls }
+	}
 	if _, err := svc.updateStackService(context.Background(), decl.req, decl.fields, want, existing); err != nil {
 		t.Fatal(err)
 	}
 	got := getApp(t, cl, existing.Name)
-	deploys := len(rec.deployCalls)
+	deploys, read := len(rec.deployCalls), lookups()
 	if _, err := svc.updateStackService(context.Background(), decl.req, decl.fields, want, got); err != nil {
 		t.Fatal(err)
 	}
-	if len(rec.deployCalls) != deploys {
-		t.Errorf("identical reapply opened another deploy: %d -> %d", deploys, len(rec.deployCalls))
+	if len(rec.deployCalls) != deploys || lookups() != read {
+		t.Errorf("identical reapply: deploys %d -> %d, lookups %d -> %d", deploys, len(rec.deployCalls), read, lookups())
 	}
 	return got.Spec, rec
 }
@@ -181,13 +193,15 @@ func TestBlueprintImageToGitDropsImageOnlySettings(t *testing.T) {
 }
 
 // A Git entry that inherits its repo from the Blueprint switches an
-// image-backed service as a declared repo would.
+// image-backed service as a declared repo would, onto the Blueprint's branch
+// rather than the image's placeholder, with no repository lookup (w8/m80).
 func TestBlueprintInheritedRepoSwitchesAnImageService(t *testing.T) {
-	got, rec := switchSourceWith(t, imageBornSpec(), DeployRequest{Repo: switchRepo, Branch: "master", ContainingSource: true,
-		Manifest: "services:\n- {name: own-source, type: web, runtime: node, plan: free, buildCommand: 'true', startCommand: 'node server.js'}\n"})
-	if got.Repo != switchRepo || got.Image != "" || got.Runtime != "node" || len(rec.deployCalls) != 1 {
-		t.Errorf("inherited repo: repo %q image %q runtime %q, %d deploys; want the Git source, node, one deploy",
-			got.Repo, got.Image, got.Runtime, len(rec.deployCalls))
+	gh := &fakeCloneTokens{defaultBranch: "trunk"}
+	got, rec := switchSourceWithGitHub(t, imageBornSpec(), DeployRequest{Repo: switchRepo, Branch: "master", ContainingSource: true,
+		Manifest: "services:\n- {name: own-source, type: web, runtime: node, plan: free, buildCommand: 'true', startCommand: 'node server.js'}\n"}, gh)
+	if got.Repo != switchRepo || got.Branch != "master" || got.Image != "" || got.Runtime != "node" || len(rec.deployCalls) != 1 || gh.validateCalls != 0 {
+		t.Errorf("inherited repo: repo %q branch %q image %q runtime %q, %d deploys, %d lookups; want the Git source on master, node, one deploy, no lookup",
+			got.Repo, got.Branch, got.Image, got.Runtime, len(rec.deployCalls), gh.validateCalls)
 	}
 }
 

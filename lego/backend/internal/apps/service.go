@@ -2049,13 +2049,10 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		if err != nil {
 			return AppView{}, err
 		}
-		if req.Branch == "" && defaultBranch != "" {
-			// The build passes the ref to git, so only a safe ref is built;
-			// an unusable default is the caller's to override, never a guess.
-			if !store.ValidGitRef(defaultBranch) {
-				return AppView{}, fmt.Errorf("%w: the repository's default branch %q cannot be built; specify a branch", core.ErrBadRequest, defaultBranch)
+		if req.Branch == "" {
+			if err := useRepositoryDefaultBranch(&desired, defaultBranch); err != nil {
+				return AppView{}, err
 			}
-			desired.Branch = defaultBranch
 		}
 	}
 
@@ -2303,6 +2300,9 @@ func (s *Service) planStackApp(ctx context.Context, req CreateRequest, desired a
 		// workspace's own namespace under per-tenant isolation (ADR043), matching
 		// where the projector projects it; AppNamespace == s.Namespace when off.
 		a.Namespace = s.AppNamespace(tenantID)
+	}
+	if err := s.resolveBlueprintBranch(ctx, tenantID, req, &a.Spec); err != nil {
+		return stackAppPlan{}, err
 	}
 	environment, err := core.ResolveEnvironmentForCreate(ctx, s.Environments, req.EnvironmentID, tenantID)
 	if err != nil {
@@ -3064,12 +3064,29 @@ func validateTypeSpecificCreate(svcType string, req CreateRequest) error {
 	return nil
 }
 
+// useRepositoryDefaultBranch gives spec, whose branch the caller omitted, the
+// default branch its repository reported, per Render's Create service and
+// Blueprint branch contracts (w8/m76, w8/m80). With no opinion ("": GitHub
+// off, a non-github.com host) the request-shape DefaultBranch stays. The build
+// passes the ref to git, so only a safe ref is built; an unusable default is
+// the caller's to override, never a guess.
+func useRepositoryDefaultBranch(spec *appv1alpha1.AppSpec, reported string) error {
+	if reported == "" {
+		return nil
+	}
+	if !store.ValidGitRef(reported) {
+		return fmt.Errorf("%w: the repository's default branch %q cannot be built; specify a branch", core.ErrBadRequest, reported)
+	}
+	spec.Branch = reported
+	return nil
+}
+
 // normalizeCreateDefaults bounds-checks the create's port/replica values and
 // resolves the fields with request-shape defaults: port (DefaultPort),
 // replicas (1), branch ("main" for a repo-backed service), and autoDeploy.
-// The branch default is the request-shape fallback only: a direct create
-// replaces it with the repository's real default branch when GitHub reports
-// one (create, w8/m76).
+// The branch default is the request-shape fallback only: a direct create and
+// a Blueprint create or source switch replace it with the repository's real
+// default branch when GitHub reports one (w8/m76, w8/m80).
 func normalizeCreateDefaults(req CreateRequest) (port, replicas int32, branch string, autoDeploy bool, err error) {
 	// 0 is "unset" here (the default applies below); anything else must be a
 	// port the container can actually bind — the same rule SetPort enforces, so

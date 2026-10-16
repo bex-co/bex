@@ -167,22 +167,32 @@ func blueprintDeclaredCommand(want appv1alpha1.AppSpec) string {
 // applyBlueprintRepo applies a declared (or Blueprint-inherited) repo. A new
 // repo is a source switch, as the source setter treats one
 // (applySourceChange): its build replaces a former prebuilt image or rollback
-// override, the old origin's clone token and an image-only credential go with
-// it, and an untracked branch gets the declared default (w8/m70). It runs
+// override, and the old origin's clone token and an image-only credential go
+// with it (w8/m70). A branch names a ref of one repository, so the switch
+// builds the entry's branch, as a create would: the declared one, the
+// Blueprint's for its own repo, or the new repo's default (w8/m80) — never an
+// image's placeholder or the old repo's. As the repo field's applier it runs
 // before the branch and registryCredential appliers, so their declared values
-// still win. The same repo, however spelled, keeps a rollback's image override.
+// still win. The same repo, however spelled, keeps a rollback's image override
+// and its branch.
 func applyBlueprintRepo(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
-	if want.Repo != "" && core.CanonicalRepo(want.Repo) != core.CanonicalRepo(dst.Repo) {
+	if blueprintRepoSwitch(*dst, want) {
 		if prebuiltImageSource(*dst) {
 			dst.RegistryCredentialID = nil
 		}
 		dst.Image = ""
 		dst.CloneSecret = ""
-		if dst.Branch == "" {
+		if want.Branch != "" {
 			dst.Branch = want.Branch
 		}
 	}
 	dst.Repo = want.Repo
+}
+
+// blueprintRepoSwitch reports whether next builds another repository than
+// current, an image-backed service's none included.
+func blueprintRepoSwitch(current, next appv1alpha1.AppSpec) bool {
+	return next.Repo != "" && core.CanonicalRepo(next.Repo) != core.CanonicalRepo(current.Repo)
 }
 
 var blueprintServiceFieldAppliers = []struct {
