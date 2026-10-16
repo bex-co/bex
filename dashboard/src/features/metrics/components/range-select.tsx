@@ -71,7 +71,7 @@ export function RangeSelect({
   const [pickerOpen, setPickerOpen] = useState(false);
   // Seeded when the picker opens (in the handler, not an effect) so it prefills
   // the active custom range, else the last 24 hours.
-  const [draft, setDraft] = useState({ start: "", end: "" });
+  const [draft, setDraft] = useState<RangeDraft>(EMPTY_DRAFT);
 
   function openPicker() {
     const now = new Date();
@@ -79,7 +79,18 @@ export function RangeSelect({
       ? new Date(range.startTime)
       : new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const endAt = isCustomRange(range) ? new Date(range.endTime) : now;
-    setDraft({ start: toLocalInput(startAt), end: toLocalInput(endAt) });
+    const start = toLocalInput(startAt);
+    const end = toLocalInput(endAt);
+    setDraft({
+      start,
+      end,
+      seed: {
+        start,
+        end,
+        startIso: startAt.toISOString(),
+        endIso: endAt.toISOString(),
+      },
+    });
     setPickerOpen(true);
   }
 
@@ -135,6 +146,18 @@ export function RangeSelect({
   );
 }
 
+// The dialog's two local wall-time fields, plus what they were seeded with:
+// a field still equal to its seed applies its original instant exactly, so an
+// unchanged Apply never moves an accepted bound (w4/328 — the minute-only
+// fields turned 18:28:10.123–18:28:50.987 into an empty, refused window).
+interface RangeDraft {
+  start: string;
+  end: string;
+  seed: { start: string; end: string; startIso: string; endIso: string } | null;
+}
+
+const EMPTY_DRAFT: RangeDraft = { start: "", end: "", seed: null };
+
 function CustomRangeDialog({
   open,
   onOpenChange,
@@ -144,17 +167,20 @@ function CustomRangeDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  draft: { start: string; end: string };
-  onDraftChange: (draft: { start: string; end: string }) => void;
+  draft: RangeDraft;
+  onDraftChange: (draft: RangeDraft) => void;
   onApply: (custom: RangeSelection) => void;
 }) {
   const { t } = useTranslations();
   const [error, setError] = useState<string | null>(null);
 
   function apply() {
+    const seed = draft.seed;
     const made = makeCustomRange(
-      fromLocalInput(draft.start),
-      fromLocalInput(draft.end),
+      seed && draft.start === seed.start
+        ? seed.startIso
+        : fromLocalInput(draft.start),
+      seed && draft.end === seed.end ? seed.endIso : fromLocalInput(draft.end),
     );
     if (typeof made === "string") {
       setError(
@@ -192,6 +218,7 @@ function CustomRangeDialog({
             <Input
               id="range-custom-start"
               type="datetime-local"
+              step={inputStep(draft.start)}
               value={draft.start}
               onChange={(e) =>
                 onDraftChange({ ...draft, start: e.target.value })
@@ -205,6 +232,7 @@ function CustomRangeDialog({
             <Input
               id="range-custom-end"
               type="datetime-local"
+              step={inputStep(draft.end)}
               value={draft.end}
               onChange={(e) => onDraftChange({ ...draft, end: e.target.value })}
             />
@@ -229,10 +257,25 @@ function CustomRangeDialog({
   );
 }
 
-/** A Date → the local `YYYY-MM-DDTHH:mm` a datetime-local input expects. */
+/** A Date → the local wall time a datetime-local input expects: `HH:mm`,
+ *  extended with seconds and milliseconds only when the instant has them, so a
+ *  whole-minute range looks as it always did and a precise one stays precise. */
 function toLocalInput(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  const pad = (n: number, width = 2) => String(n).padStart(width, "0");
+  let time = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  if (date.getSeconds() || date.getMilliseconds()) {
+    time += `:${pad(date.getSeconds())}`;
+    if (date.getMilliseconds()) time += `.${pad(date.getMilliseconds(), 3)}`;
+  }
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${time}`;
+}
+
+/** The input step that lets a datetime-local hold its value's precision (the
+ *  default is 60 seconds); undefined keeps the minute picker for minute values. */
+function inputStep(value: string): number | undefined {
+  const seconds = value.split("T")[1]?.split(":")[2];
+  if (seconds === undefined) return undefined;
+  return seconds.includes(".") ? 0.001 : 1;
 }
 
 /** A datetime-local value (local wall time) → an ISO instant, or "" if blank. */
