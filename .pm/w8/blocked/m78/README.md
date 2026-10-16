@@ -1,15 +1,15 @@
 # w8 · m78 — Respect per-service Git sources in persistent Blueprints
 
-**Worker:** worker8 **Goal:** a persistent Blueprint sync builds each service's explicitly declared repo/branch instead of replacing them with the containing Blueprint source. **Status:** todo
+**Worker:** worker8 **Goal:** a persistent Blueprint sync builds each service's explicitly declared repo/branch instead of replacing them with the containing Blueprint source. **Status:** blocked
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Separate containing source defaults from explicit deploy overrides | 55m | — |
-| t002 | Audit shared compiler callers and source binding | 35m | t001 |
-| t003 | Render parity | 25m | t001, t002 |
-| t004 | Simplify | 15m | t003 |
+| [t001](done/t001.md) | Separate containing source defaults from explicit deploy overrides | 55m | — — **DONE 2026-10-15** |
+| [t002](done/t002.md) | Audit shared compiler callers and source binding | 35m | t001 — **DONE 2026-10-15** |
+| [t003](done/t003.md) | Render parity | 25m | t001, t002 — **DONE 2026-10-15** |
+| [t004](done/t004.md) | Simplify | 15m | t003 — **DONE 2026-10-15** |
 | t005 | Test coverage | 45m | t003 |
 | t006 | Closeout | 20m | t004, t005 |
 

@@ -104,7 +104,7 @@ func requireDeployAuthority(ctx context.Context, s *Service) error {
 // DeployRequest is the deploy-from-chat input: a git repo plus its render.yaml
 // (render.yaml-shaped manifest). Repo/Branch, when set, override the manifest's
 // per-service repo/branch — an agent that already knows the checkout it is
-// deploying need not duplicate it in the file.
+// deploying need not duplicate it in the file — unless ContainingSource is set.
 type DeployRequest struct {
 	// OwnerID is the workspace to deploy INTO — the same optional, membership-checked
 	// `ownerId` contract Create has (w6/m14). Empty means the caller's default
@@ -129,7 +129,12 @@ type DeployRequest struct {
 	BlueprintRunID string
 	Repo           string
 	Branch         string
-	Manifest       string
+	// ContainingSource marks Repo/Branch as the source of the Blueprint that
+	// contains Manifest (Blueprint preview, create and sync) rather than a
+	// direct deploy's explicit target: a service's declared repo and branch
+	// win, and Repo/Branch are only Render's default for omitted ones (w8/m78).
+	ContainingSource bool
+	Manifest         string
 	// EnvVarValues supplies sync:false values collected by an interactive
 	// Blueprint create flow. They are never included in a validation plan or an
 	// App spec; apply seeds them once into the mutable env store.
@@ -1870,7 +1875,7 @@ func compileStack(req DeployRequest) (parsedStack, BlueprintIR, error) {
 	if len(problems) > 0 {
 		return parsedStack{}, BlueprintIR{}, blueprintSourceProblemsError(problems)
 	}
-	st, err := parseCompiledStack(blueprintParseOverrides{repo: req.Repo, branch: req.Branch, envVarValues: req.EnvVarValues}, source, ir)
+	st, err := parseCompiledStack(blueprintParseOverrides{repo: req.Repo, branch: req.Branch, containing: req.ContainingSource, envVarValues: req.EnvVarValues}, source, ir)
 	if err != nil {
 		return parsedStack{}, BlueprintIR{}, err
 	}
@@ -1906,7 +1911,35 @@ func validateBlueprintEnvVarValues(st parsedStack, values map[string]string) err
 type blueprintParseOverrides struct {
 	repo         string
 	branch       string
+	containing   bool // DeployRequest.ContainingSource
 	envVarValues map[string]string
+}
+
+// serviceSource resolves one Git-built declaration's repo and branch. A
+// containing Blueprint's branch fills an omitted one only while the entry
+// builds the Blueprint's own repo: a branch names a ref of one repository, and
+// Render gives another repo's omitted branch that repo's default (w8/m78).
+func (o blueprintParseOverrides) serviceSource(a bexService) (repo, branch string) {
+	repo, branch = a.Repo, a.Branch
+	if a.Image != nil {
+		return repo, branch
+	}
+	if !o.containing {
+		if o.repo != "" {
+			repo = o.repo
+		}
+		if o.branch != "" {
+			branch = o.branch
+		}
+		return repo, branch
+	}
+	if repo == "" {
+		repo = o.repo
+	}
+	if branch == "" && core.CanonicalRepo(repo) == core.CanonicalRepo(o.repo) {
+		branch = o.branch
+	}
+	return repo, branch
 }
 
 // validateUniqueName trims, validates non-empty, and checks for duplicates.
@@ -2556,21 +2589,14 @@ type serviceEnv struct {
 	literals      map[string]string // plain manifest literals (spec.Env), which win over the store at runtime
 }
 
-// parseService maps one services[] entry onto a CreateRequest (with repo/branch
-// overrides applied) plus its classified env (serviceEnv). Structural validation
-// (type, schedule, plan, private+domains) happens here.
+// parseService maps one services[] entry onto a CreateRequest plus its
+// classified env (serviceEnv).
+// Structural validation (type, schedule, plan, private+domains) happens here.
 func parseService(overrides blueprintParseOverrides, a bexService) (CreateRequest, serviceEnv, error) {
 	if err := validateManifestServiceFields(a); err != nil {
 		return CreateRequest{}, serviceEnv{}, err
 	}
-	repo := a.Repo
-	if overrides.repo != "" && a.Image == nil {
-		repo = overrides.repo // the explicit deploy target wins over the manifest
-	}
-	branch := a.Branch
-	if overrides.branch != "" && a.Image == nil {
-		branch = overrides.branch
-	}
+	repo, branch := overrides.serviceSource(a)
 	svcType, err := manifestType(a.Type, a.Runtime)
 	if err != nil {
 		return CreateRequest{}, serviceEnv{}, err
