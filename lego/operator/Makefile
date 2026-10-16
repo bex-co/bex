@@ -253,10 +253,15 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 .PHONY: setup-envtest
 setup-envtest: envtest ## Download the binaries required for ENVTEST in the local bin directory.
 	@echo "Setting up envtest binaries for Kubernetes version $(ENVTEST_K8S_VERSION)..."
-	@"$(ENVTEST)" use $(ENVTEST_K8S_VERSION) --bin-dir "$(LOCALBIN)" -p path || { \
-		echo "Error: Failed to set up envtest binaries for version $(ENVTEST_K8S_VERSION)."; \
-		exit 1; \
-	}
+	@for attempt in 1 2 3; do \
+		if "$(ENVTEST)" use $(ENVTEST_K8S_VERSION) --bin-dir "$(LOCALBIN)" -p path; then exit 0; fi; \
+		if [ "$$attempt" -eq 3 ]; then \
+			echo "Error: Failed to set up envtest binaries for version $(ENVTEST_K8S_VERSION) after $$attempt attempts." >&2; \
+			exit 1; \
+		fi; \
+		echo "Envtest setup attempt $$attempt failed; retrying..." >&2; \
+		sleep $$((attempt * 2)); \
+	done
 
 .PHONY: envtest
 envtest: $(ENVTEST) ## Download setup-envtest locally if necessary.
