@@ -26,8 +26,8 @@ package build
 // toolchain-freshness.json; changing the pin changes the generated Dockerfile
 // and therefore BuildKit's cache key for the pnpm layers.
 var nativePnpm = struct{ version, checksum string }{
-	version:  "10.34.6",
-	checksum: "sha256:44d7db90fcbb2315b581f85989a913466765421fc656c28e80fac1b7ab5be456",
+	version:  "10.34.7",
+	checksum: "sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694",
 }
 
 // nativeNodeTools is the generated layer pair that installs the pinned pnpm

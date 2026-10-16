@@ -73,7 +73,7 @@ spec:
   # majors (25+, which link libatomic.so.1) start. Published and Node-checked by
   # .github/workflows/cnb-run-image.yml; recipe in deploy/cnb-run/Dockerfile.
   runImage:
-    image: ghcr.io/bex-co/bex-cnb-run@sha256:e737036058ca4fb01ac1fbc344a8d56ea926f9ed77bef471c4d796830b589fe6
+    image: ghcr.io/bex-co/bex-cnb-run@sha256:b2ec0fa5b6f5e6bf2e4f427eeb3db09b7573ebe6e789cf1676b6f717a5e95423
 ---
 # kpack v0.18 does not accept a complete builder image directly on Image.
 # Instead, ClusterStore imports its buildpackages and this ClusterBuilder
