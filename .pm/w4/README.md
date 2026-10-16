@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m219** — Make creation inputs editable only when their handlers are ready (8 tasks, 2h45) ← functional QA a797, 2026-10-16; eight startup input-loss replays, [finding](m219/finding.md), [durable evidence](evidence/m219-a797-input-startup.json).
+
 - [ ] **m218** — [Recover plan catalogs in creation and datastore details](m218/README.md) (10 tasks) ← functional live QA a785/a796, 2026-10-16: three create forms and both datastore detail plan editors hide settled catalog errors and offer no Retry; browser-local fault injection only, no production API outage observed.
 
 - [ ] **m217** — [Preserve distinct log records within one millisecond](blocked/m217/README.md) (7 tasks) — **BLOCKED (release pipeline deploys the dashboard; QA replays t004 per the [finding.md](blocked/m217/finding.md) DoD: the owned Free fixture's 20 fast records show as 20 rows on desktop and a fresh 390px page; the spaced-repeat and numbered controls render 20, and Live replay/pause stays 20, not 40; then cleans up and t007)**. t001/t002/t003/t005/t006 done 2026-10-16: GraphQL `LogEntry.id` (shipped ahead of the dashboard), and dashboard lines keyed by record id with a bucket-pairing rule that keeps the w9/053 replay single. The a751 regressions fail on legacy keys.
