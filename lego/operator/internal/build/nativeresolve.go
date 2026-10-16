@@ -133,34 +133,43 @@ func addNativeBun(dockerfile, baseImage, bunImage string) (string, error) {
 // Primary Node already has them.
 var nativeJSCompanionRuntimes = map[string]bool{"ruby": true, "python": true, "go": true, "rust": true, "elixir": true}
 
-// nativeYarnDir is Yarn 1 as the official Node 22/24 images ship it. Yarn 1
-// is plain JavaScript, so it is always taken from the pinned default Node
-// image — Node 26's image ships no Yarn.
+// nativeYarnDir is Yarn 1 as the official Node 22/24 images ship it.
 const nativeYarnDir = "/opt/yarn-v1.22.22"
+
+// nativeYarnSourceLine is the reviewed Node line whose pinned image Yarn 1 is
+// copied from. Yarn 1 is plain JavaScript, so one source serves every Node
+// line and every companion; it is named rather than "the default image" so a
+// later default of 26 — whose image ships no Yarn — cannot silently drop it.
+const nativeYarnSourceLine = "24"
+
+// nativeYarnInstall copies Yarn 1 out of the reviewed source image and links
+// yarn and yarnpkg onto the image PATH, the way the official node images do.
+// Shared by primary Node (w4/320) and the JavaScript companion (w8/m77).
+func nativeYarnInstall() string {
+	source, _ := nativeToolchains[nativeNodeRuntime].find(nativeYarnSourceLine)
+	return "COPY --link --from=" + source.image + " " + nativeYarnDir + " " + nativeYarnDir + "\n" +
+		"RUN ln -sf " + nativeYarnDir + "/bin/yarn /usr/local/bin/yarn && ln -sf " + nativeYarnDir + "/bin/yarnpkg /usr/local/bin/yarnpkg\n"
+}
 
 // addNativeJSTools copies the selected Node line's node binary and its global
 // node_modules (npm, plus Corepack where the line has it) out of that line's
-// pinned image, Yarn from the default Node image, and installs the pinned
-// pnpm — right after the primary FROM, before the source and the authored
-// build, with the links the official node images use. The Node images are
-// Debian bookworm; every primary image is bookworm or (Elixir 1.18/1.19)
-// trixie, whose glibc and libstdc++ are newer and backward compatible, so the
-// copied binary runs on the primary image's own libraries — the real-image
-// gate executes it on every line. --link keeps these layers cached when the
-// primary line changes.
+// pinned image, then adds Yarn and the pinned pnpm — right after the primary
+// FROM, before the source and the authored build, with the links the official
+// node images use. The Node images are Debian bookworm; every primary image is
+// bookworm or (Elixir 1.18/1.19) trixie, whose glibc and libstdc++ are newer
+// and backward compatible, so the copied binary runs on the primary image's own
+// libraries — the real-image gate executes it on every line. --link keeps these
+// layers cached when the primary line changes.
 func addNativeJSTools(dockerfile, baseImage, nodeImage string) (string, error) {
 	return afterNativeBase(dockerfile, baseImage, nativeJSToolLines(nodeImage))
 }
 
 func nativeJSToolLines(nodeImage string) string {
-	yarnImage := nativeToolchains[nativeNodeRuntime].defaultImage()
 	return "COPY --link --from=" + nodeImage + " /usr/local/bin/node /usr/local/bin/node\n" +
 		"COPY --link --from=" + nodeImage + " /usr/local/lib/node_modules /usr/local/lib/node_modules\n" +
-		"COPY --link --from=" + yarnImage + " " + nativeYarnDir + " " + nativeYarnDir + "\n" +
 		"RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm" +
-		" && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx" +
-		" && ln -sf " + nativeYarnDir + "/bin/yarn /usr/local/bin/yarn && ln -sf " + nativeYarnDir + "/bin/yarnpkg /usr/local/bin/yarnpkg\n" +
-		nativePnpmInstall()
+		" && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx\n" +
+		nativeYarnInstall() + nativePnpmInstall()
 }
 
 // addNativePoetry installs the chosen Poetry (w8/m72); see

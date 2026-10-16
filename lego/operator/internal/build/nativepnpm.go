@@ -30,20 +30,22 @@ var nativePnpm = struct{ version, checksum string }{
 	checksum: "sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694",
 }
 
-// nativeNodeTools is the generated layer pair that installs the pinned pnpm
-// into a Node toolchain image, right after its FROM and before the source and
-// the authored build, so the build, the pre-deploy step and the started service
-// all find pnpm and pnpx. It unpacks into npm's global prefix in the official
-// node images — exactly where `npm install -g pnpm` would put it, on the image
-// PATH beside node, npm and Yarn (which it leaves alone). Other runtimes get
-// nothing. ADD --checksum verifies the tarball before anything runs; --link
-// keeps that layer cached when the primary Node line changes. The RUN is bex's
-// own, under the image's PATH, never the tenant's env.
+// nativeNodeTools is the generated layers that complete a primary Node
+// toolchain image, right after its FROM and before the source and the authored
+// build, so the build, the pre-deploy step and the started service all find
+// them: Yarn 1 from the reviewed Yarn source (Node 26's official image ships
+// none, w4/320; on 22/24 it lays down the same 1.22.22 the image carries) and
+// the pinned pnpm, unpacked into npm's global prefix in the official node
+// images — exactly where `npm install -g pnpm` would put it, on the image PATH
+// beside node and npm. Other runtimes get nothing here. ADD --checksum verifies
+// the tarball before anything runs; --link keeps these layers cached when the
+// primary Node line changes. The RUNs are bex's own, under the image's PATH,
+// never the tenant's env.
 func nativeNodeTools(o Options) string {
 	if nativeRuntime(o) != nativeNodeRuntime {
 		return ""
 	}
-	return nativePnpmInstall()
+	return nativeYarnInstall() + nativePnpmInstall()
 }
 
 // nativePnpmInstall is the pnpm layer pair itself, shared by primary Node
