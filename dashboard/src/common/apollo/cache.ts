@@ -8,5 +8,9 @@ export const apolloCacheConfig: InMemoryCacheConfig = {
     UsageSummary: { keyFields: false },
     ServiceUsage: { keyFields: false },
     UsageRow: { keyFields: false },
+    // A log entry's id is a record identity for the reader's dedupe (w4/m217),
+    // not a cache identity: entries stay embedded in their query's result, as
+    // they were before the id was selected.
+    LogEntry: { keyFields: false },
   },
 };
