@@ -18,10 +18,12 @@ package webhooks
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -90,7 +92,7 @@ func TestQuietWindowParksTheWatermarkOnlyOncePastTheParkInterval(t *testing.T) {
 	t.Run("inside the park interval writes nothing", func(t *testing.T) {
 		w, st := countingWorker(now)
 		st.wmSeeded, st.wmAt = true, until.Add(-parkInterval/2)
-		if err := w.dispatch(context.Background(), st.endpoints); err != nil {
+		if err := dispatchStored(w); err != nil {
 			t.Fatalf("dispatch: %v", err)
 		}
 		if len(st.writes) != 0 {
@@ -101,7 +103,7 @@ func TestQuietWindowParksTheWatermarkOnlyOncePastTheParkInterval(t *testing.T) {
 	t.Run("past the park interval writes once, with no deliveries", func(t *testing.T) {
 		w, st := countingWorker(now)
 		st.wmSeeded, st.wmAt = true, until.Add(-2*parkInterval)
-		if err := w.dispatch(context.Background(), st.endpoints); err != nil {
+		if err := dispatchStored(w); err != nil {
 			t.Fatalf("dispatch: %v", err)
 		}
 		if len(st.writes) != 1 {
@@ -129,7 +131,7 @@ func TestBatchAndWatermarkAdvanceInOneStoreCall(t *testing.T) {
 		deployRow("dep-2:started", eventAt.Add(time.Second)),
 	}
 
-	if err := w.dispatch(context.Background(), st.endpoints); err != nil {
+	if err := dispatchStored(w); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
 	if len(st.writes) != 1 {
@@ -161,7 +163,7 @@ func TestCappedBatchStillAdvancesTheSourceWatermark(t *testing.T) {
 		deployRow("dep-2:started", eventAt.Add(time.Second)),
 	}
 
-	if err := w.dispatch(context.Background(), st.endpoints); err != nil {
+	if err := dispatchStored(w); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
 	if got := len(st.queue); got != 1 {
@@ -187,7 +189,7 @@ func TestFullPageLoopsAndShortPageEndsThePass(t *testing.T) {
 		w, st := countingWorker(now)
 		st.wmSeeded, st.wmAt = true, eventAt.Add(-time.Hour)
 		st.events = []store.WebhookEventRow{deployRow("dep-1:started", eventAt)}
-		if err := w.dispatch(context.Background(), st.endpoints); err != nil {
+		if err := dispatchStored(w); err != nil {
 			t.Fatalf("dispatch: %v", err)
 		}
 		if st.reads != 1 {
@@ -201,7 +203,7 @@ func TestFullPageLoopsAndShortPageEndsThePass(t *testing.T) {
 		for i := range dispatchBatch {
 			st.events = append(st.events, deployRow("dep-"+string(rune('a'+i%26))+string(rune('a'+i/26))+":started", eventAt.Add(time.Duration(i)*time.Millisecond)))
 		}
-		if err := w.dispatch(context.Background(), st.endpoints); err != nil {
+		if err := dispatchStored(w); err != nil {
 			t.Fatalf("dispatch: %v", err)
 		}
 		// One read fills the page, the second comes back empty and ends the pass.
@@ -234,7 +236,7 @@ func TestAuditSourcedEventsReachTheirEndpoint(t *testing.T) {
 		Source: store.EventSourceAudit, Verb: core.AuditVerbSetPlan,
 	}}
 
-	if err := w.dispatch(context.Background(), st.endpoints); err != nil {
+	if err := dispatchStored(w); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
 	if len(st.queue) != 1 {
@@ -273,7 +275,7 @@ func TestNoEventIsDeliveredFromBeforeItsEndpointExisted(t *testing.T) {
 		deployRow("dep-new:started", now.Add(-30*time.Minute)),
 	}
 
-	if err := w.dispatch(context.Background(), st.endpoints); err != nil {
+	if err := dispatchStored(w); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
 	got := map[string][]string{}
@@ -285,5 +287,125 @@ func TestNoEventIsDeliveredFromBeforeItsEndpointExisted(t *testing.T) {
 	}
 	if len(got["whk-new"]) != 1 {
 		t.Errorf("the endpoint created an hour ago got %d deliveries, want only the event that postdates it", len(got["whk-new"]))
+	}
+}
+
+// TestFanOutAdmitsOnlyEventsInsideEligibilityIntervals pins w4/m212's exact
+// boundaries: an interval admits its start and stops just before its end, so
+// an event in a disabled stretch — however it is reached — is never admitted,
+// while events on either side of it are.
+func TestFanOutAdmitsOnlyEventsInsideEligibilityIntervals(t *testing.T) {
+	t0 := time.Date(2026, 10, 16, 5, 0, 0, 0, time.UTC)
+	t1, t2 := t0.Add(time.Minute), t0.Add(2*time.Minute)
+	a := endpoint("whk-a", "tea-a", "https://a.example/hook", "whsec_a", TypeDeployStarted)
+	a.Eligibility = []store.WebhookEligibility{{EnabledAt: t0, DisabledAt: &t1}, {EnabledAt: t2}}
+	w := &Worker{Clock: func() time.Time { return t2.Add(time.Hour) }}
+	for _, tc := range []struct {
+		at   time.Time
+		want bool
+	}{
+		{t0.Add(-time.Microsecond), false},
+		{t0, true},
+		{t1.Add(-time.Microsecond), true},
+		{t1, false},
+		{t1.Add(30 * time.Second), false},
+		{t2.Add(-time.Microsecond), false},
+		{t2, true},
+		{t2.Add(time.Hour), true},
+	} {
+		batch, err := w.fanOutPage([]store.WebhookEventRow{deployRow("k", tc.at)}, map[string][]store.WebhookEndpoint{"tea-a": {a}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := len(batch) == 1; got != tc.want {
+			t.Errorf("event at %v admitted=%v, want %v", tc.at, got, tc.want)
+		}
+	}
+}
+
+// TestDisabledStretchIsSkippedWhateverEachWorkerHasRead: two workers sharing
+// one store, one of which has already read past the disabled-period event (with
+// peer B enabled) and one fresh, still behind it. Neither gives A that event,
+// both give it to B exactly once, and A still gets its enabled-period events —
+// the decision is the endpoint's own interval, not any worker's cursor.
+func TestDisabledStretchIsSkippedWhateverEachWorkerHasRead(t *testing.T) {
+	t0 := time.Date(2026, 10, 16, 5, 0, 0, 0, time.UTC)
+	disabledAt, enabledAt := t0.Add(time.Minute), t0.Add(2*time.Minute)
+	st := newFakeWorkerStore()
+	a := endpoint("whk-a", "tea-a", "https://a.example/hook", "whsec_a", TypeDeployStarted)
+	a.Eligibility = []store.WebhookEligibility{{EnabledAt: t0, DisabledAt: &disabledAt}, {EnabledAt: enabledAt}}
+	b := endpoint("whk-b", "tea-a", "https://b.example/hook", "whsec_b", TypeDeployStarted)
+	b.Eligibility = []store.WebhookEligibility{{EnabledAt: t0}}
+	st.endpoints = []store.WebhookEndpoint{a, b}
+	st.events = []store.WebhookEventRow{
+		deployRow("1-backlog", t0.Add(30*time.Second)),
+		deployRow("2-disabled", disabledAt.Add(30*time.Second)),
+		deployRow("3-reenabled", enabledAt.Add(30*time.Second)),
+	}
+	st.wmSeeded, st.wmAt = true, t0
+
+	now := enabledAt.Add(time.Hour)
+	ahead := &Worker{Store: st, Clock: func() time.Time { return now }}
+	if err := dispatchStored(ahead); err != nil {
+		t.Fatal(err)
+	}
+	behind := &Worker{Store: st, Clock: func() time.Time { return now }}
+	behind.cursor.Load(context.Background(), func(context.Context, time.Time) (time.Time, string, error) { return t0, "", nil }, t0) //nolint:errcheck // fixed position
+	if err := dispatchStored(behind); err != nil {
+		t.Fatal(err)
+	}
+	got := map[string][]string{}
+	for _, d := range st.queue {
+		got[d.EndpointID] = append(got[d.EndpointID], d.EventID)
+	}
+	want := func(keys ...string) []string {
+		var out []string
+		for _, k := range keys {
+			out = append(out, ids.Derive(ids.Event, k))
+		}
+		return slices.Sorted(slices.Values(out))
+	}
+	if g := slices.Sorted(slices.Values(got["whk-a"])); !slices.Equal(g, want("1-backlog", "3-reenabled")) {
+		t.Errorf("A notifications = %v, want backlog + re-enabled only", g)
+	}
+	if g := slices.Sorted(slices.Values(got["whk-b"])); !slices.Equal(g, want("1-backlog", "2-disabled", "3-reenabled")) {
+		t.Errorf("B notifications = %v, want all three once", g)
+	}
+}
+
+// TestLateRecordedFactReachesTheIntervalItHappenedIn: the feed cursor follows
+// recording time while eligibility follows source time, so a fact recorded
+// after the cursor passed an endpoint's earlier interval still belongs to it
+// (w4/m212 review). Both a re-enabled endpoint and one disabled since get it.
+func TestLateRecordedFactReachesTheIntervalItHappenedIn(t *testing.T) {
+	t0 := time.Date(2026, 10, 16, 5, 0, 0, 0, time.UTC)
+	t1, t2 := t0.Add(time.Minute), t0.Add(2*time.Minute)
+	for _, tc := range []struct {
+		name      string
+		intervals []store.WebhookEligibility
+	}{
+		{name: "re-enabled", intervals: []store.WebhookEligibility{{EnabledAt: t0, DisabledAt: &t1}, {EnabledAt: t2}}},
+		{name: "disabled since", intervals: []store.WebhookEligibility{{EnabledAt: t0, DisabledAt: &t1}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := newFakeWorkerStore()
+			a := endpoint("whk-a", "tea-a", "https://a.example/hook", "whsec_a", TypeDeployStarted)
+			a.Eligibility = tc.intervals
+			st.endpoints = []store.WebhookEndpoint{a}
+			recorded := t2.Add(2 * time.Hour)
+			late := deployRow("late", t0.Add(30*time.Second))
+			late.CursorAt = recorded
+			st.events = []store.WebhookEventRow{late}
+			st.wmSeeded, st.wmAt = true, recorded.Add(-time.Minute)
+			now := recorded.Add(time.Minute)
+			w := &Worker{Store: st, Clock: func() time.Time { return now }}
+			w.cursor.Load(context.Background(), st.EnsureWebhookWatermark, now) //nolint:errcheck // fake never fails
+			if err := dispatchStored(w); err != nil {
+				t.Fatal(err)
+			}
+			if len(st.queue) != 1 {
+				t.Fatalf("late fact notifications = %d, want 1", len(st.queue))
+			}
+		})
 	}
 }

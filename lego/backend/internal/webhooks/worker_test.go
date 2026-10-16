@@ -174,16 +174,43 @@ func (f *fakeWorkerStore) ListWebhookEvents(_ context.Context, afterAt time.Time
 	return out, nil
 }
 
-func (f *fakeWorkerStore) ListEnabledWebhookEndpoints(context.Context) ([]store.WebhookEndpoint, error) {
+// ListWebhookDispatchEndpoints mirrors the store read. An endpoint fixture
+// that sets Eligibility states its intervals outright; otherwise an enabled
+// one has been eligible since CreatedAt, and a disabled or auto-disabled one
+// has no interval left.
+func (f *fakeWorkerStore) ListWebhookDispatchEndpoints(_ context.Context, since time.Time) ([]store.WebhookEndpoint, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	var out []store.WebhookEndpoint
 	for _, e := range f.endpoints {
-		if _, off := f.disabled[e.ID]; e.Enabled && !off {
+		intervals := e.Eligibility
+		if intervals == nil {
+			if _, off := f.disabled[e.ID]; e.Enabled && !off {
+				intervals = []store.WebhookEligibility{{EnabledAt: e.CreatedAt}}
+			}
+		}
+		if slices.ContainsFunc(intervals, func(i store.WebhookEligibility) bool {
+			return i.DisabledAt == nil || i.DisabledAt.After(since)
+		}) {
+			e.Eligibility = intervals
 			out = append(out, e)
 		}
 	}
 	return out, nil
+}
+
+// dispatchStored runs one dispatch over the store's own dispatch read, as
+// RunOnce does, without the send pass.
+func dispatchStored(w *Worker) error {
+	endpoints, until, err := w.dispatchEndpoints(context.Background())
+	if err != nil || len(endpoints) == 0 {
+		return err
+	}
+	return w.dispatch(context.Background(), endpoints, until)
+}
+
+func (f *fakeWorkerStore) PruneWebhookEligibility(context.Context, time.Time) (int64, error) {
+	return 0, nil
 }
 
 func (f *fakeWorkerStore) EnqueueWebhookDeliveries(_ context.Context, deliveries []store.WebhookDelivery, at time.Time, key string, maxPerWorkspace int) (store.WebhookEnqueueResult, error) {
@@ -467,7 +494,7 @@ func TestDispatchFansOutOnlyToSubscribedEndpointsOfTheEventsWorkspace(t *testing
 	}
 	w := &Worker{Store: st, Clock: func() time.Time { return now }}
 
-	if err := w.dispatch(context.Background(), st.endpoints); err != nil {
+	if err := dispatchStored(w); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
 
@@ -515,7 +542,7 @@ func TestEmptyFilterSubscribesToNewlyIntroducedEvents(t *testing.T) {
 		endpoint("whk-all", "tea-a", "https://a.example/hook", "whsec_x"),
 	}
 	w := &Worker{Store: st, Clock: func() time.Time { return now }}
-	if err := w.dispatch(context.Background(), st.endpoints); err != nil {
+	if err := dispatchStored(w); err != nil {
 		t.Fatal(err)
 	}
 	if len(st.queue) != 1 {
@@ -655,7 +682,7 @@ func TestDispatchSkipsEventsInsideTheSafetyLag(t *testing.T) {
 	st.endpoints = []store.WebhookEndpoint{endpoint("whk-1", "tea-a", "https://a.example/hook", "whsec_x", TypeDeployStarted)}
 	w := &Worker{Store: st, Clock: func() time.Time { return now }}
 
-	if err := w.dispatch(context.Background(), st.endpoints); err != nil {
+	if err := dispatchStored(w); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
 	if len(st.queue) != 0 {
@@ -663,7 +690,7 @@ func TestDispatchSkipsEventsInsideTheSafetyLag(t *testing.T) {
 	}
 	// Once the clock passes the lag, the same event dispatches.
 	w.Clock = func() time.Time { return now.Add(dispatchLag) }
-	if err := w.dispatch(context.Background(), st.endpoints); err != nil {
+	if err := dispatchStored(w); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
 	if len(st.queue) != 1 {
@@ -686,7 +713,7 @@ func TestDispatchUsesFactRecordingTimeWithoutRewritingOccurrenceTime(t *testing.
 	}
 	w := &Worker{Store: st, Clock: func() time.Time { return now }}
 
-	if err := w.dispatch(context.Background(), st.endpoints); err != nil {
+	if err := dispatchStored(w); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
 	if len(st.queue) != 1 {
@@ -1158,7 +1185,7 @@ func TestNoEndpointsCostsOneQueryAndLateEndpointsGetNoReplay(t *testing.T) {
 	late.CreatedAt = now.Add(-time.Minute)
 	st.endpoints = []store.WebhookEndpoint{late}
 	w.Clock = func() time.Time { return now.Add(time.Minute) }
-	if err := w.dispatch(context.Background(), st.endpoints); err != nil {
+	if err := dispatchStored(w); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
 	if len(st.queue) != 0 {
@@ -1174,7 +1201,7 @@ func TestNoEndpointsCostsOneQueryAndLateEndpointsGetNoReplay(t *testing.T) {
 	})
 	st.mu.Unlock()
 	w.Clock = func() time.Time { return now.Add(2 * time.Minute) }
-	if err := w.dispatch(context.Background(), st.endpoints); err != nil {
+	if err := dispatchStored(w); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
 	if len(st.queue) != 1 {
