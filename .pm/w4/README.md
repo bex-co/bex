@@ -306,6 +306,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **332** — [Require a Publish Directory before enabling Static Site deployment](332.md) (50m) ← functional QA a802, 2026-10-16; empty desktop and whitespace-only mobile drafts enable Deploy, then the API rejects the omitted required path. Two refused creates, no resources.
+
 - [ ] **331** — [Blueprint source tabs discard the chosen Public Git branch](blocked/331.md) — **BLOCKED (release pipeline deploys the dashboard; QA replays the a773 `/blueprints/new` Public Git URL → GitHub → Public Git round trip at desktop and fresh 390px: Branch stays `main`, the review stays successful and Deploy enabled, and the GitHub-default and service-create controls hold; no Create/Sync)**. Implementation done 2026-10-16: the Public Git branch is restored for the unchanged URL (the w4/240 policy). The route test fails on the old reset; dashboard suite and lint pass.
 
 - [ ] **330** — [Key Value creation shows an empty instance picker while its catalog loads](blocked/330.md) — **BLOCKED (release pipeline deploys the dashboard; QA replays the a771 held-catalog `/keyvalue/new` at 1440 and 390: the plan region is 92/256px both pending and ready, the version control doesn't move, and the draft name and disabled Create survive; no Create)**. Implementation done 2026-10-16: three inert tier slots while the catalog first loads, with the route-loader preview aligned to them. Route tests fail on the old empty grid; dashboard suite and lint pass.
