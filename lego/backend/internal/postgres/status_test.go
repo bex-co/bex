@@ -88,3 +88,26 @@ func TestPostgresStatusTellsARestartFromCreation(t *testing.T) {
 		})
 	}
 }
+
+// TestPendingMajorUpgradeReadsUpgradingWithTheSourceVersion (w4/m215): the
+// operator now writes this status from an accepted upgrade's acceptance until
+// the target major is healthy — including before CNPG announces its phase —
+// so every surface reads upgrading with the observed source version, never
+// the desired one and never available.
+func TestPendingMajorUpgradeReadsUpgradingWithTheSourceVersion(t *testing.T) {
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "dpg-upgrade", Generation: 4},
+		Spec:       appv1alpha1.DatabaseSpec{Version: "17"},
+		Status: appv1alpha1.DatabaseStatus{
+			Phase: appv1alpha1.DBPhaseUpgrading, Provisioned: true, CurrentVersion: "16",
+			Conditions: []metav1.Condition{{
+				Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse,
+				Reason: appv1alpha1.ReasonMajorVersionUpgrade, ObservedGeneration: 4,
+			}},
+		},
+	}
+	view := pgView(db)
+	if view.Status != "upgrading" || view.Version != "16" {
+		t.Fatalf("pending upgrade view = status %q version %q, want upgrading on 16", view.Status, view.Version)
+	}
+}

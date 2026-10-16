@@ -432,7 +432,8 @@ type DatabaseStatus struct {
 
 	// CurrentVersion is the PostgreSQL major version reported by CNPG for the
 	// active PGDATA image. During a major upgrade this remains the source version
-	// until pg_upgrade succeeds, while spec.version already holds the target.
+	// until the upgraded cluster is healthy, while spec.version already holds
+	// the target.
 	// +optional
 	CurrentVersion string `json:"currentVersion,omitempty"`
 
