@@ -4,6 +4,7 @@ go 1.26.0
 
 require (
 	filippo.io/age v1.3.1
+	github.com/andybalholm/brotli v1.2.6
 	github.com/aws/aws-sdk-go-v2 v1.43.7
 	github.com/aws/aws-sdk-go-v2/config v1.32.38
 	github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager v0.3.15

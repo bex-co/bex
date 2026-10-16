@@ -17,11 +17,16 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+
+	"github.com/andybalholm/brotli"
 
 	"github.com/bex-co/bex/lego/operator/internal/staticserver"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -155,6 +160,53 @@ func TestHealthPathErrorsKeepTheSiteContract(t *testing.T) {
 		httptest.NewRequest(http.MethodGet, "https://"+siteHost+"/healthz", nil))
 	if rr.Code != http.StatusServiceUnavailable {
 		t.Fatalf("degraded /healthz = %d, want 503", rr.Code)
+	}
+}
+
+// TestStartupServerServesBrotli: through the startup server construction over a
+// real connection, an eligible published asset is br-encoded for a br offer
+// (decoding to the exact bytes) and identity otherwise (w8/m79).
+func TestStartupServerServesBrotli(t *testing.T) {
+	script := strings.Repeat("console.log('w8/m79 startup');\n", 2048)
+	origin := publishedSite(map[string]string{"app.js": script})
+	h := staticserver.New(hostResolver{siteHost: {Prefix: sitePrefix}}, origin, 1<<20)
+	server := httptest.NewServer(newServer(":0", h).Handler)
+	defer server.Close()
+
+	for _, offer := range []string{"br", "identity"} {
+		req, err := http.NewRequest(http.MethodGet, server.URL+"/app.js", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Host = siteHost
+		req.Header.Set("Accept-Encoding", offer)
+		res, err := http.DefaultTransport.RoundTrip(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw, err := io.ReadAll(res.Body)
+		_ = res.Body.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		body := raw
+		if offer == "br" {
+			if res.Header.Get("Content-Encoding") != "br" || len(raw) >= len(script) {
+				t.Fatalf("br offer => Content-Encoding %q, %d bytes for %d",
+					res.Header.Get("Content-Encoding"), len(raw), len(script))
+			}
+			if body, err = io.ReadAll(brotli.NewReader(bytes.NewReader(raw))); err != nil {
+				t.Fatal(err)
+			}
+		} else if res.Header.Get("Content-Encoding") != "" {
+			t.Fatalf("identity offer => Content-Encoding %q", res.Header.Get("Content-Encoding"))
+		}
+		if res.StatusCode != http.StatusOK || string(body) != script || res.ContentLength != int64(len(raw)) {
+			t.Fatalf("%s offer => %d length %d, body differs from the published asset", offer, res.StatusCode, res.ContentLength)
+		}
+		if res.Header.Get("Vary") != "Accept-Encoding" {
+			t.Fatalf("%s offer Vary = %q, want Accept-Encoding", offer, res.Header.Get("Vary"))
+		}
 	}
 }
 

@@ -1,15 +1,15 @@
 # w8 · m79 — Supply automatic Brotli for static sites
 
-**Worker:** worker8 **Goal:** native static deployments serve eligible assets with Render-compatible automatic compression. **Status:** todo
+**Worker:** worker8 **Goal:** native static deployments serve eligible assets with Render-compatible automatic compression. **Status:** blocked
 
 ## Tasks (in order)
 
 | ID | Task | Estimate | Depends on |
 | --- | --- | --- | --- |
-| t001 | [Implement bounded automatic Brotli for static responses](t001.md) | 55m | — |
-| t002 | [Render parity and shared-path verification](t002.md) | 35m | t001 |
-| t003 | [Simplify the changed code](t003.md) | 20m | t002 |
-| t004 | [Test encoding and neighboring HTTP contracts](t004.md) | 35m | t002, t003 |
+| [t001](done/t001.md) | [Implement bounded automatic Brotli for static responses](done/t001.md) | 55m | — — **DONE 2026-10-15** |
+| [t002](done/t002.md) | [Render parity and shared-path verification](done/t002.md) | 35m | t001 — **DONE 2026-10-15** |
+| [t003](done/t003.md) | [Simplify the changed code](done/t003.md) | 20m | t002 — **DONE 2026-10-15** |
+| [t004](done/t004.md) | [Test encoding and neighboring HTTP contracts](done/t004.md) | 35m | t002, t003 — **DONE 2026-10-15** |
 | t005 | [Closeout after native hosted acceptance](t005.md) | 25m | t004 |
 
 Five tasks,170m. [Finding](finding.md) · [native/runtime/source/cleanup evidence](evidence/cli-sweep326/README.md).

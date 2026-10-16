@@ -42,6 +42,15 @@ func TestAggregateBudgetInvariant(t *testing.T) {
 			aggregate>>20, DefaultCacheBytes>>20, defaultMaxLiveBodyBytes>>20, defaultMaxInflightBytes>>20,
 			maxAggregate>>20, cgroupLimitBytes>>20)
 	}
+	// Automatic Brotli (w8/m79) adds no ceiling of its own: encoded variants
+	// are charged to the cache, and each encode's working set is leased from
+	// the live-body budget. Concurrent encodes at the largest admitted input
+	// must leave at least half of that budget for serving.
+	encodeWorkingSet := int64(defaultMaxConcurrentEncodes) * encodeLease(maxBrotliBytes)
+	if encodeWorkingSet > defaultMaxLiveBodyBytes/2 {
+		t.Fatalf("brotli encode working set %d MiB exceeds half of the %d MiB live-body budget",
+			encodeWorkingSet>>20, defaultMaxLiveBodyBytes>>20)
+	}
 	t.Logf("aggregate budget %d MiB of %d MiB allowed (pod limit %d MiB)",
 		aggregate>>20, maxAggregate>>20, cgroupLimitBytes>>20)
 }
