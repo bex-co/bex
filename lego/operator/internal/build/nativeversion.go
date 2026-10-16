@@ -118,14 +118,49 @@ func ResolveNativePoetry(env map[string]string) (NativeChoice, error) {
 	}
 	version := strings.TrimPrefix(strings.ToLower(request), "v")
 	if !poetryRelease.MatchString(version) {
-		what := "POETRY_VERSION=" + request
-		if len(what) > 120 {
-			what = strings.ToValidUTF8(what[:120], "") + "…"
-		}
 		return NativeChoice{}, &UnsupportedVersionError{msg: fmt.Sprintf(
-			"%s is not a supported Poetry version; set an exact Poetry 1.x or 2.x release such as %s", what, defaultPoetryVersion)}
+			"%s is not a supported Poetry version; set an exact Poetry 1.x or 2.x release such as %s", boundedRequest("POETRY_VERSION="+request), defaultPoetryVersion)}
 	}
 	return NativeChoice{Label: "Poetry", Line: version, Source: "POETRY_VERSION=" + request}, nil
+}
+
+// defaultUVVersion is the uv a native Python uv project gets when the service
+// names none — Render's current default for new services (its uv version
+// contract, w8/m81).
+const defaultUVVersion = "0.12.10"
+
+// uvRelease is an exact uv release, the form Render's UV_VERSION takes ("any
+// version number"); ranges are not resolved.
+var uvRelease = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
+
+// ResolveNativeUV picks the uv a native Python build adds. As on Render, a
+// uv.lock in the service's root directory opts in, and UV_VERSION then picks
+// the release (else the default); without the lockfile the build is exactly
+// as before and UV_VERSION is not read (w8/m81). Like Poetry it is an exact
+// PyPI release, so Line is the version itself, and an incompatible Python
+// fails the install step by name.
+func ResolveNativeUV(env map[string]string, readFile func(string) ([]byte, bool)) (choice NativeChoice, found bool, err error) {
+	if _, locked := readFile("uv.lock"); !locked {
+		return NativeChoice{}, false, nil
+	}
+	request := strings.TrimSpace(env["UV_VERSION"])
+	if request == "" {
+		return NativeChoice{Label: "uv", Line: defaultUVVersion, Source: "uv.lock"}, true, nil
+	}
+	version := strings.TrimPrefix(strings.ToLower(request), "v")
+	if !uvRelease.MatchString(version) {
+		return NativeChoice{}, false, &UnsupportedVersionError{msg: fmt.Sprintf(
+			"%s is not a supported uv version; set an exact uv release such as %s", boundedRequest("UV_VERSION="+request), defaultUVVersion)}
+	}
+	return NativeChoice{Label: "uv", Line: version, Source: "UV_VERSION=" + request}, true, nil
+}
+
+// boundedRequest bounds a tenant's version request for an error message.
+func boundedRequest(what string) string {
+	if len(what) > 120 {
+		return strings.ToValidUTF8(what[:120], "") + "…"
+	}
+	return what
 }
 
 // bunRequest maps a Bun version request: `latest`, a plain version onto its
@@ -199,9 +234,7 @@ func (r resolver) choice(line, source string) (NativeChoice, error) {
 // unsupported names the request the way the tenant wrote it: what is the env
 // assignment (`PYTHON_VERSION=2.7.18`) or the file and its quoted content.
 func (r resolver) unsupported(what string) error {
-	if len(what) > 120 {
-		what = strings.ToValidUTF8(what[:120], "") + "…"
-	}
+	what = boundedRequest(what)
 	lines := make([]string, len(r.t.lines))
 	for i, l := range r.t.lines {
 		lines[i] = l.line
