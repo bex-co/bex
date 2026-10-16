@@ -3218,6 +3218,42 @@ func (s *Service) applyStackService(ctx context.Context, req CreateRequest, fiel
 	return v, existing, err
 }
 
+// resolveBlueprintBranch gives a Git entry with no branch of its own, an
+// independent repo's omitted branch that serviceSource leaves empty, that
+// repository's default, as Render's Blueprint spec does (w8/m80). It runs
+// before the plan's first write, so the App, the canonical row, the first
+// deploy's commit and the build ref all read the resolved branch; a lookup
+// failure refuses the service, as a direct create's does (w8/m76).
+func (s *Service) resolveBlueprintBranch(ctx context.Context, tenantID string, req CreateRequest, spec *appv1alpha1.AppSpec) error {
+	if req.Branch != "" || spec.Repo == "" || s.GitHub == nil {
+		return nil
+	}
+	// One validation or preview asks once per repository, however many of
+	// its services build it.
+	reported, err := memoized(ctx, "repoDefaultBranch:"+tenantID+"\x00"+core.CanonicalRepo(spec.Repo), func() (string, error) {
+		return s.GitHub.ValidateRepo(ctx, tenantID, spec.Repo)
+	})
+	if err != nil {
+		return err
+	}
+	return useRepositoryDefaultBranch(spec, reported)
+}
+
+// resolveBlueprintSwitchBranch is resolveBlueprintBranch for an existing
+// service: only an update that moves it to another repository builds the
+// entry's branch (applyBlueprintRepo), so only that asks GitHub. A re-sync on
+// the same repository keeps the service's branch and reads nothing.
+func (s *Service) resolveBlueprintSwitchBranch(ctx context.Context, req CreateRequest, fields map[string]BlueprintField, current *appv1alpha1.App, want *appv1alpha1.AppSpec) error {
+	if req.Branch != "" || s.GitHub == nil || !blueprintRepoSwitch(current.Spec, *want) {
+		return nil
+	}
+	probe := *current.Spec.DeepCopy()
+	if _, err := applyBlueprintServiceSpec(&probe, *want, fields); err != nil || !blueprintRepoSwitch(current.Spec, probe) {
+		return nil // the apply reports a refusal itself
+	}
+	return s.resolveBlueprintBranch(ctx, s.AppWorkspace(ctx, current), req, want)
+}
+
 // updateStackService re-applies a stack service to its existing App.
 func (s *Service) updateStackService(ctx context.Context, req CreateRequest, fields map[string]BlueprintField, desired appv1alpha1.AppSpec, existing *appv1alpha1.App) (AppView, error) {
 	// Per update, not per stack: a protection answer must not outlive a move
@@ -3225,6 +3261,9 @@ func (s *Service) updateStackService(ctx context.Context, req CreateRequest, fie
 	ctx = withRequestMemo(ctx)
 	if effectiveType(existing.Spec.Type) != effectiveType(desired.Type) {
 		return AppView{}, fmt.Errorf("%w: spec.type is immutable; delete and recreate the service to change type", core.ErrBadRequest)
+	}
+	if err := s.resolveBlueprintSwitchBranch(ctx, req, fields, existing, &desired); err != nil {
+		return AppView{}, err
 	}
 	markHookRan, initialHookChanged := initialDeployHookState(req, existing, &desired)
 	final := existing.DeepCopy()

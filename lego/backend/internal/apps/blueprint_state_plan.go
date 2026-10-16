@@ -62,6 +62,8 @@ type blueprintActionResolver struct {
 	keyValues map[string]*appv1alpha1.KeyValue
 	envGroups map[string]string
 	parsed    parsedStack
+	// service resolves a source switch's branch as the apply does (w8/m80).
+	service *Service
 }
 
 func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedStack, snap *workspaceSnapshot) (*blueprintActionResolver, error) {
@@ -70,6 +72,7 @@ func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedSt
 		keyValues: map[string]*appv1alpha1.KeyValue{},
 		envGroups: map[string]string{},
 		parsed:    parsed,
+		service:   s,
 	}
 	if len(parsed.envGroups) > 0 {
 		groups, err := s.EnvGroups.GroupIDsByName(ctx)
@@ -178,6 +181,9 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 		// The sync's own hook reconciliation, so a completed legacy hook does
 		// not plan a change the apply never makes (w8/m63).
 		initialDeployHookState(svc.req, r.services[resource.Name], &want)
+		if err := r.service.resolveBlueprintSwitchBranch(ctx, svc.req, svc.fields, r.services[resource.Name], &want); err != nil {
+			return BlueprintPlanAction{}, err
+		}
 		probe := r.services[resource.Name].Spec
 		changed, err := ApplyBlueprintServiceSpec(&probe, want, svc.fields)
 		if err != nil {

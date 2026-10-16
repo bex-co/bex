@@ -1,16 +1,16 @@
 # w8 · m80 — Resolve omitted Git branches in Blueprint services
 
-**Worker:** worker8 **Goal:** independently sourced Blueprint services build their repository's actual default when branch is omitted. **Status:** todo
+**Worker:** worker8 **Goal:** independently sourced Blueprint services build their repository's actual default when branch is omitted. **Status:** blocked — t001–t005 done 2026-10-16; t006 needs the deployed API plus a hosted fresh-fixture replay
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Resolve own-repository defaults before Blueprint planning | 50m | — |
-| [t002](t002.md) | Audit shared callers and source omission semantics | 30m | t001 |
-| [t003](t003.md) | Render parity | 20m | t002 |
-| [t004](t004.md) | Simplify | 10m | t003 |
-| [t005](t005.md) | Test coverage | 35m | t003 |
+| [t001](done/t001.md) | Resolve own-repository defaults before Blueprint planning | 50m | — — **DONE 2026-10-16** |
+| [t002](done/t002.md) | Audit shared callers and source omission semantics | 30m | t001 — **DONE 2026-10-16** |
+| [t003](done/t003.md) | Render parity | 20m | t002 — **DONE 2026-10-16** |
+| [t004](done/t004.md) | Simplify | 10m | t003 — **DONE 2026-10-16** |
+| [t005](done/t005.md) | Test coverage | 35m | t003 — **DONE 2026-10-16** |
 | [t006](t006.md) | Closeout | 20m | t004, t005 |
 
 Six tasks,165m total.

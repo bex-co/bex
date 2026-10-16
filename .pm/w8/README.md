@@ -27,7 +27,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m81** — [Provide uv for native Python lockfile projects](m81/README.md) (6 tasks) ← functional CLI sweep350: both root-lock first builds fail uv127; build/runtime diagnostics and generated-image execution confirm missing uv with healthy Python/pip/Poetry; two parents/four children cleaned.
 
-- [ ] **m80** — [Resolve omitted Git branches in Blueprint services](m80/README.md) (6 tasks) ← functional CLI sweep344: two accepted own-repo omissions choose main and fail; branch-only master controls recover, four source omission cases fail/four explicit controls pass; all owned fixtures cleaned.
+- [ ] **m80** — [Resolve omitted Git branches in Blueprint services](blocked/m80/README.md) (6 tasks) — **BLOCKED (2026-10-16: t001–t005 done — a Blueprint service with no branch of its own now builds its repository's GitHub default on create and on a switch to another repo (image→Git or Git→Git), through validate, preview, create and every sync, with direct-create refusal rules; same-repo re-syncs keep their branch and read nothing; source-tested root/nested fail-before/pass-after; needs the API deployed plus a hosted fresh-fixture first-deployment replay with cleanup (t006), runnable with the QA login)**
 
 - [x] **m79** — [Supply automatic Brotli for static sites](done/m79/README.md) (5 tasks) — **DONE 2026-10-16:** two native Free sites serve12 actual compressed text/JS/CSS representations with exact decoded content,24 base/28 neighbor HTTP checks and17 maintained serving tests pass in sweep340; all owned parents/children cleaned.
 
