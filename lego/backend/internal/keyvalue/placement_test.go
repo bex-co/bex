@@ -20,6 +20,7 @@ import (
 	"errors"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -139,11 +140,15 @@ type placementPatchClient struct {
 	client.Client
 	patches     int
 	beforePatch func()
+	beforeEach  func()
 	fail        error
 }
 
 func (c *placementPatchClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 	c.patches++
+	if c.beforeEach != nil {
+		c.beforeEach()
+	}
 	if c.beforePatch != nil {
 		before := c.beforePatch
 		c.beforePatch = nil
@@ -259,8 +264,10 @@ func TestPlacementConcurrentReassignmentWinsOverStalePatch(t *testing.T) {
 			if kind == "environment" {
 				clear, expected = svc.ClearEnvironmentID, "env-a"
 			}
-			if err := clear(ctxAs("user-a"), "placement", expected); !apierrors.IsConflict(err) {
-				t.Fatalf("stale cleanup error=%v, want resourceVersion conflict", err)
+			// The lost patch re-reads, sees the reassignment and leaves it alone
+			// (w4/m214): a stale clear is a no-op, not an error.
+			if err := clear(ctxAs("user-a"), "placement", expected); err != nil {
+				t.Fatalf("stale cleanup error=%v, want a no-op after re-reading", err)
 			}
 			got := readPlacement(t, cl)
 			if got.Labels[core.LabelProject] != "prj-b" || got.Labels[core.LabelEnvironment] != "env-b" || !slices.Equal(got.Spec.EnvironmentIPAllowList, []string{"192.0.2.0/24"}) {
@@ -273,6 +280,109 @@ func TestPlacementConcurrentReassignmentWinsOverStalePatch(t *testing.T) {
 				t.Fatal("cleanup retry changed the reassignment")
 			}
 		})
+	}
+}
+
+// TestPlacementConditionalClearRecoversFromLockConflicts is w4/m214's a698
+// mechanism: an unrelated write between the clear's read and its patch (a
+// status or annotation update) costs the patch its resourceVersion. The clear
+// now re-reads and finishes in the same call, keeping that write; conflicts
+// that never stop end in a public, explanatory conflict with placement intact;
+// a resource replaced under the same name is never cleared; and a canceled
+// request stops retrying with its own error.
+func TestPlacementConditionalClearRecoversFromLockConflicts(t *testing.T) {
+	unrelated := func(t *testing.T, cl client.Client) func() {
+		return func() {
+			updated := readPlacement(t, cl)
+			if updated.Annotations == nil {
+				updated.Annotations = map[string]string{}
+			}
+			updated.Annotations["unrelated-writes"] += "x"
+			if err := cl.Update(context.Background(), updated); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	for _, kind := range []string{"project", "environment"} {
+		for _, scenario := range []string{"one unrelated update", "persistent updates", "replaced", "canceled"} {
+			t.Run(kind+"/"+scenario, func(t *testing.T) {
+				svc, cl := newService(placementResource())
+				original := readPlacement(t, cl)
+				original.UID = "uid-original"
+				if err := cl.Delete(context.Background(), original); err != nil {
+					t.Fatal(err)
+				}
+				original.ResourceVersion = ""
+				if err := cl.Create(context.Background(), original); err != nil {
+					t.Fatal(err)
+				}
+				before := readPlacement(t, cl)
+				tracking := &placementPatchClient{Client: cl}
+				svc.Client = tracking
+				ctx, cancel := context.WithCancel(ctxAs("user-a"))
+				defer cancel()
+				switch scenario {
+				case "one unrelated update":
+					tracking.beforePatch = unrelated(t, cl)
+				case "persistent updates":
+					tracking.beforeEach = unrelated(t, cl)
+				case "replaced":
+					tracking.beforePatch = func() {
+						replacement := readPlacement(t, cl)
+						if err := cl.Delete(context.Background(), replacement); err != nil {
+							t.Fatal(err)
+						}
+						replacement.UID, replacement.ResourceVersion = "uid-replacement", ""
+						if err := cl.Create(context.Background(), replacement); err != nil {
+							t.Fatal(err)
+						}
+						// A real apiserver's resourceVersions are global, so the
+						// replacement never matches the stale read; the fake
+						// restarts them per object, so move it on once.
+						unrelated(t, cl)()
+					}
+				case "canceled":
+					tracking.beforePatch = func() { unrelated(t, cl)(); cancel() }
+				}
+				clear, expected := svc.ClearProjectID, "prj-a"
+				if kind == "environment" {
+					clear, expected = svc.ClearEnvironmentID, "env-a"
+				}
+				err := clear(ctx, "placement", expected)
+				got := readPlacement(t, cl)
+				placementKept := got.Labels[core.LabelProject] == "prj-a" && got.Labels[core.LabelEnvironment] == "env-a" &&
+					slices.Equal(got.Spec.EnvironmentIPAllowList, before.Spec.EnvironmentIPAllowList)
+				var coded *core.CodedError
+				switch scenario {
+				case "one unrelated update":
+					wantProject := "prj-a"
+					if kind == "project" {
+						wantProject = ""
+					}
+					if err != nil || tracking.patches != 2 || got.Annotations["unrelated-writes"] != "x" ||
+						got.Labels[core.LabelProject] != wantProject || got.Labels[core.LabelEnvironment] != "" ||
+						len(got.Spec.EnvironmentIPAllowList) != 0 || !slices.Equal(got.Spec.IPAllowList, before.Spec.IPAllowList) {
+						t.Fatalf("err=%v patches=%d labels=%v annotations=%v spec=%+v, want one retried clear keeping the unrelated write",
+							err, tracking.patches, got.Labels, got.Annotations, got.Spec)
+					}
+				case "persistent updates", "replaced":
+					if !errors.Is(err, core.ErrConflict) || !errors.As(err, &coded) || coded.Code != core.CodePlacementCleanupConflict ||
+						!strings.Contains(err.Error(), "reload the current placement") {
+						t.Fatalf("err=%v, want the public placement-cleanup conflict", err)
+					}
+					if !placementKept {
+						t.Fatalf("an unfinished clear changed placement: labels=%v", got.Labels)
+					}
+					if scenario == "replaced" && (tracking.patches != 1 || got.UID != "uid-replacement" || got.Annotations["unrelated-writes"] != "x") {
+						t.Fatalf("patches=%d uid=%s, want the replacement untouched after one lost patch", tracking.patches, got.UID)
+					}
+				case "canceled":
+					if !errors.Is(err, context.Canceled) || tracking.patches != 1 || !placementKept {
+						t.Fatalf("err=%v patches=%d labels=%v, want the request's cancellation and no further attempt", err, tracking.patches, got.Labels)
+					}
+				}
+			})
+		}
 	}
 }
 

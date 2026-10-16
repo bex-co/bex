@@ -1,17 +1,17 @@
 # w4 · m214 — Recover datastore cleanup from transient lock conflicts
 
-**Worker:** worker4 **Goal:** an ordinary project deletion survives an unrelated datastore update, and persistent contention gives a truthful reload-before-retry explanation. **Status:** todo
+**Worker:** worker4 **Goal:** an ordinary project deletion survives an unrelated datastore update, and persistent contention gives a truthful reload-before-retry explanation. **Status:** blocked — t001–t006 done 2026-10-16; t007 needs the release pipeline and the live replay
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Retry conditional datastore cleanup after unrelated lock conflicts | 35m | — |
-| t002 | Explain interrupted cleanup with a safe public conflict | 25m | t001 |
-| t003 | Audit shared cleanup consumers and preserve ordinary assignment | 25m | t001, t002 |
-| t004 | Render parity | 20m | t003 |
-| t005 | Simplify | 10m | t004 |
-| t006 | Test coverage | 35m | t004 |
+| t001 | Retry conditional datastore cleanup after unrelated lock conflicts — **DONE** | 35m | — |
+| t002 | Explain interrupted cleanup with a safe public conflict — **DONE** | 25m | t001 |
+| t003 | Audit shared cleanup consumers and preserve ordinary assignment — **DONE** | 25m | t001, t002 |
+| t004 | Render parity — **DONE** | 20m | t003 |
+| t005 | Simplify — **DONE** | 10m | t004 |
+| t006 | Test coverage — **DONE** | 35m | t004 |
 | t007 | Closeout | 15m | t005, t006 |
 
 ## Definition of done
@@ -32,3 +32,11 @@
 - **Sizing:** 165m across scoped producer retry, truthful interruption classification, shared consumer audit and standing closing tasks. This is more than an hour across multiple tasks.
 - **Render parity included:** REST/GraphQL/MCP/dashboard outcomes change. Keep the documented Bex deletion divergence; authenticated Render retry/timing behavior was not measured.
 - **Relationship:** m151 explicitly permits partial cleanup and protects concurrent reassignment; preserve that contract. m211 owns batch deadlines, m206 group lifecycle recovery and287 App cancellation retry. None owns this conditional datastore-clear conflict gap.
+
+## Implementation record (2026-10-16)
+
+- **t001:** `core.RetryPlacementClear` (`lego/backend/internal/core/placementclear.go`) wraps all four conditional clears (Postgres/Key Value `ClearProjectID`/`ClearEnvironmentID`). It uses client-go `retry.OnError(DefaultBackoff)` on Kubernetes conflicts only. Every attempt does a fresh authorized fetch, the UID identity check, the expected-label recheck, and the same optimistic patch. A concurrent reassignment makes the retried clear a no-op instead of a raw conflict.
+- **t002:** exhausted conflicts and a replaced resource answer `PLACEMENT_CLEANUP_CONFLICT` (`core.ErrConflict`; 409 on REST, an extension code on GraphQL, a tool error on MCP). The message says earlier cleanup steps may already have been applied and to reload current placement before retrying. A canceled or expired context returns its own error: client-go's `OnError` otherwise reports a done context as the last conflict. Non-conflict errors are unchanged. The dashboard toast already relays the refusal (`mutationErrorMessage`), so no dashboard change was needed.
+- **t003:** callers are the project-delete loop (`ClearProjectID`), plus environment teardown and omitted-member removal (`ClearEnvironmentID`, via the two typed `leave` adapters). Teardown serves both direct environment Delete and the project cascade. Ordinary `SetProjectID`/`SetEnvironmentID` and `SetEnvironmentIPAllowList` stay single-attempt.
+- **t004:** ADR032 and ADR018 record the behavior and the preserved preserve-and-detach divergence. Render retry/timing was not measured.
+- **t006:** `TestPlacementConditionalClearRecoversFromLockConflicts` (both kinds × project/environment) covers one unrelated update recovered in two patches with the write kept; persistent updates giving the coded conflict with placement intact; replaced UID; and cancellation. `TestPlacementConcurrentReassignmentWinsOverStalePatch` now expects a no-op. `TestProjectDeleteSurvivesDatastoreLockConflicts` runs REST/GraphQL/MCP project delete with real resourceVersion bumps: transient contention succeeds and detaches both datastores; persistent contention returns the coded conflict, keeps the project, then the same delete succeeds once contention ends. Both new tests fail with a single attempt. Full backend suite (real Postgres, `-p 1`), lint and deadcode pass. **Not exercised:** a live multi-writer cluster and the 390px native replay (t007).
