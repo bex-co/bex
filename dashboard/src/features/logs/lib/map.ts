@@ -9,9 +9,10 @@ import { needsAnsiParse, parseAnsi } from "./ansi";
 // the one flat `LogLine` the viewer draws, and derives the dedupe `key` both
 // share so a line seen on both paths is drawn once.
 
-// logLineKey mirrors the backend's stable id derivation (instance + timestamp +
-// message, internal/logs/render.go) with a client-computable key. The GraphQL
-// projection carries no id, so this is the only key both sources agree on.
+// logLineKey is a record's millisecond bucket: instance + message + the
+// timestamp at millisecond resolution. It is the key of a line the backend did
+// not identify (an older backend, or a stamp no finer than a millisecond), and
+// the bucket every line's identity is checked against (LogIdentity below).
 //
 // The timestamp enters the key at MILLISECOND resolution (JS's native clock
 // precision, and finer than the viewer's second-precision clock display), not
@@ -31,11 +32,31 @@ export function logLineKey(
   return `${Number.isNaN(ms) ? timestamp : ms}|${instance}|${message}`;
 }
 
+// A record the backend identified (its per-record id: instance, original
+// timestamp, message hash — internal/logs/render.go, on GraphQL since w4/m217)
+// and stamped finer than a millisecond is keyed by that id, so twenty distinct
+// records inside one millisecond stay twenty. Anything coarser keeps the
+// bucket key; LogIdentity reconciles the two.
+const ID_KEY_PREFIX = "id:";
+const SUB_MILLISECOND = /T\d{2}:\d{2}:\d{2}\.\d{4,}/;
+
+function lineKey(
+  id: string | undefined,
+  timestamp: string,
+  instance: string,
+  message: string,
+): string {
+  return id && SUB_MILLISECOND.test(timestamp)
+    ? ID_KEY_PREFIX + id
+    : logLineKey(timestamp, instance, message);
+}
+
 // makeLogLine is the single place a LogLine is built — both wire shapes converge
 // here so the key derivation, the once-computed formatted `time`, and the `app`
 // type fallback live in one spot. level/method/statusCode come from the entry's
 // labels (empty for an app line without them, populated for a request line).
 function makeLogLine(
+  id: string | undefined,
   timestamp: string,
   instance: string,
   message: string,
@@ -43,7 +64,7 @@ function makeLogLine(
   labels: { level?: string; method?: string; statusCode?: string } = {},
 ): LogLine {
   return {
-    key: logLineKey(timestamp, instance, message),
+    key: lineKey(id, timestamp, instance, message),
     timestamp,
     time: formatLogTimestamp(timestamp),
     instance,
@@ -64,6 +85,7 @@ type GraphQLLogEntry = NonNullable<
 // toLogLine maps one GraphQL LogEntry row onto a LogLine.
 export function toLogLine(e: GraphQLLogEntry): LogLine {
   return makeLogLine(
+    e.id ?? undefined,
     e.timestamp ?? "",
     e.instance ?? "",
     e.message ?? "",
@@ -104,6 +126,7 @@ export function fromRenderLog(log: RenderLog): LogLine {
   const label = (name: string) =>
     labels.find((l) => l?.name === name)?.value ?? "";
   return makeLogLine(
+    log.id,
     log.timestamp ?? "",
     label("instance"),
     log.message ?? "",
@@ -116,17 +139,61 @@ export function fromRenderLog(log: RenderLog): LogLine {
   );
 }
 
-// dedupeLogLines drops any line whose key already appeared earlier in the
-// array, keeping the first occurrence — the key-based unique-by-key building
-// block any multi-source merge (mergeLogLines below, or a fan-out across
-// several typed queries) shares.
-export function dedupeLogLines(lines: LogLine[]): LogLine[] {
-  const seen = new Set<string>();
-  return lines.filter((line) => {
-    if (seen.has(line.key)) return false;
-    seen.add(line.key);
+// LogIdentity decides whether a line is a record already shown. Equal keys are
+// one record. Beyond that, a record can arrive twice at different precision —
+// once identified with its nanoseconds, once re-rendered to milliseconds (the
+// w9/053 reconnect replay), where it has a different key and possibly a
+// different id. So within one millisecond bucket, the first coarse copy and
+// the first identified record are taken to be the same record, in either
+// arrival order; further identified records in that bucket are distinct
+// (w4/m217), and further coarse copies already share the coarse key.
+export class LogIdentity {
+  private readonly keys = new Set<string>();
+  private readonly buckets = new Map<
+    string,
+    { fine: number; coarse: number; paired: boolean }
+  >();
+
+  /** Records `line` and reports whether it is new. */
+  admit(line: LogLine): boolean {
+    if (this.keys.has(line.key)) return false;
+    const bucket = logLineKey(line.timestamp, line.instance, line.message);
+    const entry = this.buckets.get(bucket) ?? {
+      fine: 0,
+      coarse: 0,
+      paired: false,
+    };
+    const fine = line.key.startsWith(ID_KEY_PREFIX);
+    this.keys.add(line.key);
+    this.buckets.set(bucket, entry);
+    if (!entry.paired && (fine ? entry.coarse : entry.fine) > 0) {
+      entry.paired = true;
+      return false;
+    }
+    if (fine) entry.fine++;
+    else entry.coarse++;
     return true;
-  });
+  }
+
+  /** Forgets an evicted line, so a later copy of it is new again. */
+  forget(line: LogLine): void {
+    this.keys.delete(line.key);
+    const bucket = logLineKey(line.timestamp, line.instance, line.message);
+    const entry = this.buckets.get(bucket);
+    if (!entry) return;
+    if (line.key.startsWith(ID_KEY_PREFIX)) entry.fine--;
+    else entry.coarse--;
+    if (entry.fine <= 0 && entry.coarse <= 0) this.buckets.delete(bucket);
+  }
+}
+
+// dedupeLogLines drops every line LogIdentity has already seen earlier in the
+// array, keeping the first occurrence — the building block any multi-source
+// merge (mergeLogLines below, or a fan-out across several typed queries)
+// shares.
+export function dedupeLogLines(lines: LogLine[]): LogLine[] {
+  const identity = new LogIdentity();
+  return lines.filter((line) => identity.admit(line));
 }
 
 // Sub-millisecond digits of an RFC3339Nano stamp (the 4th–9th fractional

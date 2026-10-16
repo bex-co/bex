@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
+  LogIdentity,
+  dedupeLogLines,
   fromRenderLog,
   logLineKey,
   mergeLogLines,
@@ -11,6 +13,7 @@ import type { LogLine } from "../../types";
 
 const gqlEntry = (over: Partial<Record<string, string | null>> = {}) => ({
   __typename: "LogEntry" as const,
+  id: null as string | null,
   timestamp: "2026-07-05T10:36:01.709Z",
   message: "hello world",
   type: "app",
@@ -333,5 +336,93 @@ describe("formatLogTimestamp", () => {
 
     const plain = fromRenderLog({ message: "no escapes here" });
     expect(plain.spans).toBeNull();
+  });
+});
+
+// w4/m217 (a751): twenty records logged inside one millisecond, same pod and
+// message, distinct nanosecond stamps and backend ids. The reader kept one,
+// because its key was the millisecond bucket. Distinct ids now stay distinct,
+// while the w9/053 guarantee holds: one record redelivered at millisecond
+// precision is still one row, whichever copy arrives first.
+describe("record identity within one millisecond (w4/m217)", () => {
+  const ms = "2026-10-16T12:24:33.681";
+  const fine = (n: number) => {
+    const timestamp = `${ms}${String(100000 + n).slice(1)}Z`; // .681xxxxxZ
+    return toLogLine({
+      __typename: "LogEntry",
+      id: `pod-a-${timestamp}-c0ffee`,
+      timestamp,
+      message: "QA_A751 same",
+      type: "app",
+      instance: "pod-a",
+      level: null,
+      method: null,
+      statusCode: null,
+    });
+  };
+  const coarse = (id?: string) =>
+    fromRenderLog({
+      id,
+      timestamp: `${ms}Z`,
+      message: "QA_A751 same",
+      labels: [{ name: "instance", value: "pod-a" }],
+    });
+  const twenty = Array.from({ length: 20 }, (_, n) => fine(n + 1));
+
+  it("keeps twenty distinct records through dedupe and the paused-history merge", () => {
+    expect(new Set(twenty.map((line) => line.key)).size).toBe(20);
+    expect(dedupeLogLines(twenty)).toHaveLength(20);
+    expect(mergeLogLines(twenty, [])).toHaveLength(20);
+  });
+
+  it("draws one row for a record and its millisecond-precision replay, either order", () => {
+    const record = fine(7);
+    const replay = coarse(`pod-a-${ms}Z-c0ffee`); // its id names the coarse stamp
+    expect(dedupeLogLines([record, replay])).toEqual([record]);
+    expect(dedupeLogLines([replay, record])).toEqual([replay]);
+    expect(mergeLogLines([record], [replay, record])).toEqual([record]);
+  });
+
+  it("keeps the other records when one coarse replay joins them", () => {
+    expect(dedupeLogLines([...twenty, coarse(), coarse()])).toHaveLength(20);
+    expect(dedupeLogLines([coarse(), ...twenty])).toHaveLength(20);
+  });
+
+  it("keeps the legacy bucket key for a line without an id", () => {
+    const legacy = toLogLines([
+      {
+        __typename: "LogEntry",
+        id: null,
+        timestamp: `${ms}100Z`,
+        message: "x",
+        type: "app",
+        instance: "p",
+        level: null,
+        method: null,
+        statusCode: null,
+      },
+      {
+        __typename: "LogEntry",
+        id: null,
+        timestamp: `${ms}200Z`,
+        message: "x",
+        type: "app",
+        instance: "p",
+        level: null,
+        method: null,
+        statusCode: null,
+      },
+    ]);
+    expect(legacy[0].key).toBe(logLineKey(`${ms}100Z`, "p", "x"));
+    expect(dedupeLogLines(legacy)).toHaveLength(1);
+  });
+
+  it("admits an evicted record again", () => {
+    const identity = new LogIdentity();
+    const record = fine(3);
+    expect(identity.admit(record)).toBe(true);
+    expect(identity.admit(fine(3))).toBe(false);
+    identity.forget(record);
+    expect(identity.admit(fine(3))).toBe(true);
   });
 });

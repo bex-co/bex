@@ -50,6 +50,7 @@ query Logs(
     nextStartTime
     nextEndTime
     logs {
+      id
       timestamp
       message
       type
