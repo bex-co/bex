@@ -1,0 +1,82 @@
+package main
+
+import (
+	"bufio"
+	"encoding/json"
+	"fmt"
+	"net"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"time"
+)
+
+func guard(p string) map[string]any {
+	return map[string]any{"plugin": map[string]any{"bexCompressGuard": map[string]any{"phase": p}}}
+}
+
+func main() {
+	pluginDir := os.Args[1]
+	ln, _ := net.Listen("tcp", "0.0.0.0:0")
+	go http.Serve(ln, http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		rw.Header().Set("Content-Type", r.URL.Query().Get("ct"))
+		for i := 0; i < 3; i++ {
+			fmt.Fprintf(rw, "data: event %d\n\n", i)
+			rw.(http.Flusher).Flush()
+			time.Sleep(time.Second)
+		}
+	}))
+	port := ln.Addr().(*net.TCPAddr).Port
+	mws := map[string]any{"outer": guard("outer"), "inner": guard("inner"),
+		"compress": map[string]any{"compress": map[string]any{"encodings": []any{"br", "gzip"}, "includedContentTypes": []any{"text/plain"}}}}
+	chains := map[string][]string{"none": {}, "inner": {"inner"}, "outer": {"outer"}, "compress": {"compress"}, "chain": {"outer", "compress", "inner"}}
+	routers := map[string]any{}
+	for name, c := range chains {
+		r := map[string]any{"rule": "PathPrefix(`/" + name + "/`)", "service": "origin"}
+		if len(c) > 0 {
+			r["middlewares"] = c
+		}
+		routers[name] = r
+	}
+	dyn, _ := json.Marshal(map[string]any{"http": map[string]any{"routers": routers, "middlewares": mws,
+		"services": map[string]any{"origin": map[string]any{"loadBalancer": map[string]any{"servers": []any{map[string]any{"url": fmt.Sprintf("http://host.docker.internal:%d", port)}}}}}}})
+	dir, _ := os.MkdirTemp("", "tf")
+	os.WriteFile(filepath.Join(dir, "dynamic.yml"), dyn, 0o644)
+	name := "bex-flush-traefik"
+	exec.Command("docker", "rm", "-f", name).Run()
+	out, err := exec.Command("docker", "run", "-d", "--rm", "--name", name, "--add-host", "host.docker.internal:host-gateway",
+		"-p", "18731:8000", "-v", dir+":/dynamic:ro", "-v", pluginDir+":/plugins-local/src/github.com/bex-co/bex-compress-guard:ro", "traefik:v3.7.5",
+		"--entrypoints.web.address=:8000", "--providers.file.filename=/dynamic/dynamic.yml", "--experimental.abortonpluginfailure=true",
+		"--experimental.localPlugins.bexCompressGuard.moduleName=github.com/bex-co/bex-compress-guard").CombinedOutput()
+	if err != nil {
+		panic(string(out))
+	}
+	defer func() { o, _ := exec.Command("docker", "logs", name).CombinedOutput(); fmt.Println(string(o)); exec.Command("docker", "rm", "-f", name).Run() }()
+	base := "http://127.0.0.1:18731"
+	for i := 0; i < 120; i++ {
+		c := &http.Client{Timeout: 10 * time.Second}
+		if r, err := c.Get(base + "/none/x?ct=text/event-stream"); err == nil && r.StatusCode == 200 {
+			r.Body.Close()
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	tr := &http.Transport{DisableCompression: true}
+	for _, ct := range []string{"text/event-stream", "application/octet-stream"} {
+		for _, rt := range []string{"none", "inner", "outer", "compress", "chain"} {
+			req, _ := http.NewRequest("GET", base+"/"+rt+"/x?ct="+ct, nil)
+			req.Header.Set("Accept-Encoding", "gzip, br")
+			t0 := time.Now()
+			resp, err := tr.RoundTrip(req)
+			if err != nil {
+				fmt.Println(rt, err)
+				continue
+			}
+			br := bufio.NewReader(resp.Body)
+			line, _ := br.ReadString('\n')
+			fmt.Printf("%-24s %-9s first line after %v: %q enc=%q\n", ct, rt, time.Since(t0).Round(10*time.Millisecond), line, resp.Header.Get("Content-Encoding"))
+			resp.Body.Close()
+		}
+	}
+}

@@ -1,0 +1,933 @@
+diff --git a/deploy/gitops/base/values/traefik.values.yaml b/deploy/gitops/base/values/traefik.values.yaml
+index 739e580ee..15f113efe 100644
+--- a/deploy/gitops/base/values/traefik.values.yaml
++++ b/deploy/gitops/base/values/traefik.values.yaml
+@@ -17,6 +17,10 @@ deployment:
+     - name: bex-websocket-egress-plugin
+       configMap:
+         name: bex-websocket-egress-plugin
++    # Brackets Traefik's compress middleware on web routes (w8/m83).
++    - name: bex-compress-guard-plugin
++      configMap:
++        name: bex-compress-guard-plugin
+ experimental:
+   abortOnPluginFailure: true
+   localPlugins:
+@@ -25,6 +29,11 @@ experimental:
+       moduleName: github.com/bex-co/bex-websocket-egress
+       mountPath: /plugins-local/src/github.com/bex-co/bex-websocket-egress
+       volumeName: bex-websocket-egress-plugin
++    bexCompressGuard:
++      type: localPath
++      moduleName: github.com/bex-co/bex-compress-guard
++      mountPath: /plugins-local/src/github.com/bex-co/bex-compress-guard
++      volumeName: bex-compress-guard-plugin
+ # w1/m19 t003: platform pool
+ nodeSelector:
+   bex.co/pool: platform
+diff --git a/deploy/gitops/charts/traefik-plugins/compressguard/.traefik.yml b/deploy/gitops/charts/traefik-plugins/compressguard/.traefik.yml
+new file mode 100644
+index 000000000..25739d325
+--- /dev/null
++++ b/deploy/gitops/charts/traefik-plugins/compressguard/.traefik.yml
+@@ -0,0 +1,6 @@
++displayName: bex compression guard
++type: middleware
++import: github.com/bex-co/bex-compress-guard
++summary: Keeps Traefik's compress middleware off no-transform responses and weakens a strong ETag it compressed.
++testData:
++  phase: inner
+diff --git a/deploy/gitops/charts/traefik-plugins/compressguard/compressguard.go b/deploy/gitops/charts/traefik-plugins/compressguard/compressguard.go
+new file mode 100644
+index 000000000..ec794caa3
+--- /dev/null
++++ b/deploy/gitops/charts/traefik-plugins/compressguard/compressguard.go
+@@ -0,0 +1,170 @@
++// Copyright 2026.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++// Package compressguard is a Traefik local HTTP middleware that brackets
++// Traefik's own compress middleware on a web service's route (w8/m83).
++// Traefik compresses a response the origin marked Cache-Control: no-transform,
++// and keeps a strong ETag on the encoded body it made; HTTP forbids the first
++// and makes the second a validator two different representations share, so a
++// resumed If-Range download could splice identity bytes onto a compressed
++// prefix. Render's edge does neither.
++//
++// One instance runs inside compress ("inner": it sees the origin's headers
++// first) and one outside it ("outer": it sees what compress did). The inner
++// phase holds a no-transform response back from compress by giving it a
++// placeholder Content-Encoding, which compress never re-encodes, and marks a
++// response the origin sent unencoded. The outer phase removes the placeholder
++// and the marks, and weakens a strong ETag on a response compress encoded. The
++// markers never reach the client, and an origin cannot forge them: the inner
++// phase drops any it sent.
++package bex_compress_guard
++
++import (
++	"bufio"
++	"context"
++	"fmt"
++	"net"
++	"net/http"
++	"strings"
++)
++
++const (
++	// PhaseInner and PhaseOuter name where an instance sits around compress.
++	PhaseInner = "inner"
++	PhaseOuter = "outer"
++
++	heldHeader    = "X-Bex-Compress-Held"
++	plainHeader   = "X-Bex-Compress-Plain"
++	heldEncoding  = "identity"
++	encodingField = "Content-Encoding"
++)
++
++// Config is the middleware's dynamic configuration.
++type Config struct {
++	Phase string `json:"phase,omitempty"`
++}
++
++// CreateConfig returns the default (invalid until a phase is chosen) config.
++func CreateConfig() *Config { return &Config{} }
++
++type guard struct {
++	next  http.Handler
++	inner bool
++}
++
++// New builds one phase of the guard.
++func New(_ context.Context, next http.Handler, config *Config, _ string) (http.Handler, error) {
++	switch config.Phase {
++	case PhaseInner:
++		return &guard{next: next, inner: true}, nil
++	case PhaseOuter:
++		return &guard{next: next}, nil
++	}
++	return nil, fmt.Errorf("bexCompressGuard: phase must be %q or %q, not %q", PhaseInner, PhaseOuter, config.Phase)
++}
++
++func (g *guard) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
++	g.next.ServeHTTP(&writer{ResponseWriter: rw, inner: g.inner}, req)
++}
++
++// writer applies its phase to the final response header block, once, just
++// before it is written; informational (1xx) responses pass untouched.
++type writer struct {
++	http.ResponseWriter
++	inner bool
++	done  bool
++}
++
++func (w *writer) WriteHeader(code int) {
++	if !w.done && code >= http.StatusOK {
++		w.done = true
++		if w.inner {
++			holdNoTransform(w.Header())
++		} else {
++			releaseHeld(w.Header())
++		}
++	}
++	w.ResponseWriter.WriteHeader(code)
++}
++
++func (w *writer) Write(p []byte) (int, error) {
++	if !w.done {
++		w.WriteHeader(http.StatusOK)
++	}
++	return w.ResponseWriter.Write(p)
++}
++
++// Flush writes the header block as net/http would (an implicit 200) before
++// flushing, so a stream that flushes first still gets its phase applied.
++func (w *writer) Flush() {
++	if !w.done {
++		w.WriteHeader(http.StatusOK)
++	}
++	if flusher, ok := w.ResponseWriter.(http.Flusher); ok {
++		flusher.Flush()
++	}
++}
++
++func (w *writer) Hijack() (net.Conn, *bufio.ReadWriter, error) {
++	hijacker, ok := w.ResponseWriter.(http.Hijacker)
++	if !ok {
++		return nil, nil, fmt.Errorf("%T does not support hijacking", w.ResponseWriter)
++	}
++	return hijacker.Hijack()
++}
++
++// Unwrap lets http.ResponseController reach the connection's own writer.
++func (w *writer) Unwrap() http.ResponseWriter { return w.ResponseWriter }
++
++// holdNoTransform is the inner phase.
++func holdNoTransform(h http.Header) {
++	h.Del(heldHeader)
++	h.Del(plainHeader)
++	if h.Get(encodingField) != "" {
++		return
++	}
++	h.Set(plainHeader, "1")
++	if noTransform(h) {
++		h.Set(encodingField, heldEncoding)
++		h.Set(heldHeader, "1")
++	}
++}
++
++// releaseHeld is the outer phase.
++func releaseHeld(h http.Header) {
++	held, plain := h.Get(heldHeader) != "", h.Get(plainHeader) != ""
++	h.Del(heldHeader)
++	h.Del(plainHeader)
++	switch {
++	case held:
++		if h.Get(encodingField) == heldEncoding {
++			h.Del(encodingField)
++		}
++	case plain && h.Get(encodingField) != "":
++		if etag := h.Get("ETag"); etag != "" && !strings.HasPrefix(etag, "W/") {
++			h.Set("ETag", "W/"+etag)
++		}
++	}
++}
++
++func noTransform(h http.Header) bool {
++	for _, value := range h.Values("Cache-Control") {
++		for _, directive := range strings.Split(value, ",") {
++			if strings.EqualFold(strings.TrimSpace(directive), "no-transform") {
++				return true
++			}
++		}
++	}
++	return false
++}
+diff --git a/deploy/gitops/charts/traefik-plugins/compressguard/compressguard_test.go b/deploy/gitops/charts/traefik-plugins/compressguard/compressguard_test.go
+new file mode 100644
+index 000000000..aa695a265
+--- /dev/null
++++ b/deploy/gitops/charts/traefik-plugins/compressguard/compressguard_test.go
+@@ -0,0 +1,159 @@
++// Copyright 2026.
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package bex_compress_guard
++
++import (
++	"bufio"
++	"context"
++	"net"
++	"net/http"
++	"net/http/httptest"
++	"testing"
++)
++
++// fakeCompress stands in for Traefik's compress: it encodes a 200 the way
++// compress does, unless the response already carries a Content-Encoding.
++func fakeCompress(next http.Handler) http.Handler {
++	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
++		next.ServeHTTP(&fakeCompressWriter{ResponseWriter: rw}, req)
++	})
++}
++
++type fakeCompressWriter struct{ http.ResponseWriter }
++
++func (w *fakeCompressWriter) WriteHeader(code int) {
++	if code == http.StatusOK && w.Header().Get("Content-Encoding") == "" {
++		w.Header().Set("Content-Encoding", "br")
++		w.Header().Del("Content-Length")
++	}
++	w.ResponseWriter.WriteHeader(code)
++}
++
++func (w *fakeCompressWriter) Flush() { w.ResponseWriter.(http.Flusher).Flush() }
++
++func chain(t *testing.T, origin http.HandlerFunc) http.Handler {
++	t.Helper()
++	inner, err := New(context.Background(), origin, &Config{Phase: PhaseInner}, "inner")
++	if err != nil {
++		t.Fatal(err)
++	}
++	outer, err := New(context.Background(), fakeCompress(inner), &Config{Phase: PhaseOuter}, "outer")
++	if err != nil {
++		t.Fatal(err)
++	}
++	return outer
++}
++
++func serve(t *testing.T, origin http.HandlerFunc) *httptest.ResponseRecorder {
++	t.Helper()
++	rec := httptest.NewRecorder()
++	chain(t, origin).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
++	return rec
++}
++
++func TestGuardPhases(t *testing.T) {
++	for _, tc := range []struct {
++		name               string
++		headers            map[string]string
++		wantEncoding, etag string
++	}{
++		{"plain response is compressed and its strong ETag weakened", map[string]string{"ETag": `"v1"`}, "br", `W/"v1"`},
++		{"weak ETag is kept", map[string]string{"ETag": `W/"v1"`}, "br", `W/"v1"`},
++		{"no-transform is held back with its ETag", map[string]string{"Cache-Control": "public, No-Transform", "ETag": `"v1"`}, "", `"v1"`},
++		{"authored encoding is the origin's", map[string]string{"Content-Encoding": "gzip", "ETag": `"v1"`}, "gzip", `"v1"`},
++		{"forged markers are ignored", map[string]string{heldHeader: "1", plainHeader: "1", "ETag": `"v1"`}, "br", `W/"v1"`},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			rec := serve(t, func(rw http.ResponseWriter, _ *http.Request) {
++				for k, v := range tc.headers {
++					rw.Header().Set(k, v)
++				}
++				_, _ = rw.Write([]byte("body"))
++			})
++			if got := rec.Header().Get("Content-Encoding"); got != tc.wantEncoding {
++				t.Errorf("Content-Encoding = %q, want %q", got, tc.wantEncoding)
++			}
++			if got := rec.Header().Get("ETag"); got != tc.etag {
++				t.Errorf("ETag = %q, want %q", got, tc.etag)
++			}
++			if rec.Header().Get(heldHeader) != "" || rec.Header().Get(plainHeader) != "" {
++				t.Errorf("markers reached the client: %v", rec.Header())
++			}
++			if rec.Body.String() != "body" {
++				t.Errorf("body = %q", rec.Body.String())
++			}
++		})
++	}
++}
++
++// A stream that flushes before writing still gets its phases applied, and an
++// informational response passes untouched ahead of the final one.
++func TestGuardFlushFirstAndInformational(t *testing.T) {
++	rec := serve(t, func(rw http.ResponseWriter, _ *http.Request) {
++		rw.Header().Set("Cache-Control", "no-transform")
++		rw.(http.Flusher).Flush()
++		_, _ = rw.Write([]byte("event"))
++	})
++	if rec.Header().Get("Content-Encoding") != "" || rec.Header().Get(heldHeader) != "" {
++		t.Errorf("flush-first no-transform stream headers = %v", rec.Header())
++	}
++	rec = serve(t, func(rw http.ResponseWriter, _ *http.Request) {
++		rw.Header().Set("Link", "</app.css>; rel=preload")
++		rw.WriteHeader(http.StatusEarlyHints)
++		rw.Header().Set("ETag", `"v2"`)
++		rw.WriteHeader(http.StatusOK)
++	})
++	// The recorder keeps the first status it saw (103); the final header block
++	// is what the phases must have treated.
++	if rec.Header().Get("ETag") != `W/"v2"` || rec.Header().Get(plainHeader) != "" {
++		t.Errorf("after early hints: %v", rec.Header())
++	}
++}
++
++type hijackRecorder struct {
++	*httptest.ResponseRecorder
++	hijacked bool
++}
++
++func (h *hijackRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
++	h.hijacked = true
++	return nil, nil, nil
++}
++
++func TestGuardPassesHijack(t *testing.T) {
++	for _, phase := range []string{PhaseInner, PhaseOuter} {
++		g, err := New(context.Background(), http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
++			if _, _, err := rw.(http.Hijacker).Hijack(); err != nil {
++				t.Errorf("%s hijack: %v", phase, err)
++			}
++		}), &Config{Phase: phase}, phase)
++		if err != nil {
++			t.Fatal(err)
++		}
++		rec := &hijackRecorder{ResponseRecorder: httptest.NewRecorder()}
++		g.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/ws", nil))
++		if !rec.hijacked {
++			t.Errorf("%s phase did not reach the connection's hijacker", phase)
++		}
++	}
++}
++
++func TestNewRefusesAnUnknownPhase(t *testing.T) {
++	for _, phase := range []string{"", "middle"} {
++		if _, err := New(context.Background(), http.NotFoundHandler(), &Config{Phase: phase}, "x"); err == nil {
++			t.Errorf("phase %q accepted", phase)
++		}
++	}
++}
+diff --git a/deploy/gitops/charts/traefik-plugins/compressguard/go.mod b/deploy/gitops/charts/traefik-plugins/compressguard/go.mod
+new file mode 100644
+index 000000000..0755c10a6
+--- /dev/null
++++ b/deploy/gitops/charts/traefik-plugins/compressguard/go.mod
+@@ -0,0 +1,3 @@
++module github.com/bex-co/bex-compress-guard
++
++go 1.25
+diff --git a/deploy/gitops/charts/traefik-plugins/kustomization.yaml b/deploy/gitops/charts/traefik-plugins/kustomization.yaml
+index a01810d97..735b6d882 100644
+--- a/deploy/gitops/charts/traefik-plugins/kustomization.yaml
++++ b/deploy/gitops/charts/traefik-plugins/kustomization.yaml
+@@ -9,3 +9,8 @@ configMapGenerator:
+       - .traefik.yml=websocketegress/.traefik.yml
+       - go.mod=websocketegress/go.mod
+       - websocketegress.go=websocketegress/websocketegress.go
++  - name: bex-compress-guard-plugin
++    files:
++      - .traefik.yml=compressguard/.traefik.yml
++      - go.mod=compressguard/go.mod
++      - compressguard.go=compressguard/compressguard.go
+diff --git a/docs/ADR018-render-parity.md b/docs/ADR018-render-parity.md
+index e3f64a1cd..6e7a90c9a 100644
+--- a/docs/ADR018-render-parity.md
++++ b/docs/ADR018-render-parity.md
+@@ -115,6 +115,8 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
+ 
+ **Health paths are tenant paths (w4/m162, docs checked 2026-10-03):** [Render's free-instance docs](https://render.com/docs/free) spin a service up on any incoming HTTP request or WebSocket connection, with `/robots.txt` as the only documented exception. [Render's health-check docs](https://render.com/docs/health-checks) send instance probes to a path the application chooses. Neither documents a platform-reserved `/healthz`. bex's activator and static-server used to answer `/healthz` themselves with an empty 200. Now every path reaches the tenant's suspended, wake, or static-content handling, and both platform pods use TCP readiness instead. The deliberate differences are unchanged: the bounded 503 wake response ([ADR007](ADR007-restart-suspend-and-resume.md)), the static SPA fallback ([ADR029](ADR029-static-sites.md)), and no `robots.txt` exception in bex. This is documentation parity only. No live Render `/healthz` or suspended-static wire response was captured. On bex, live custom-host and paid-maintenance health paths are covered by unit tests, not live probes.
+ 
++**Edge compression for web services (w8/m83, 2026-10-16):** Render's load balancer compresses app responses with Brotli or gzip ([web services](https://render.com/docs/web-services)); bex served every web response at full size. Each exposed web service's route (`reconcileIngressWithMiddlewares`, so warm serving and the auto-hibernate activator route alike) now carries three App-owned Traefik Middlewares after its access layers and before the WebSocket meter: Traefik's `compress` (`br`, then `gzip`, chosen by the client's `Accept-Encoding` q-values; responses of at least 1 KiB of a listed text, script, style, structured-data or SVG type) bracketed by the `bexCompressGuard` local plugin (`deploy/gitops/charts/traefik-plugins/compressguard`). Measured on the deployed Traefik v3.7.5 (`edge_compression_traefik_test.go`): a request with no offer, `identity` or `q=0` stays identity; an app's own `Content-Encoding` passes through untouched; `206` Range, `HEAD`, WebSocket upgrades, `text/event-stream` and images are not encoded; streamed text is encoded flush by flush. Traefik's `compress` alone would also encode a `Cache-Control: no-transform` response and keep a strong `ETag` on the encoded body (so an `If-Range` resume could splice identity bytes onto a compressed prefix); the guard's inner phase holds `no-transform` responses back and its outer phase weakens a strong `ETag` only on a body the edge encoded, as Render's edge does. HTTP bytes are metered at Traefik's router, after the chain, so bandwidth counts what was actually sent. Static sites keep their own handler compression (ADR029, w8/m79); private services, workers and cron jobs have no public route; a suspended service's 503 page is uncompressed. No API field or setting: REST, GraphQL, MCP, the dashboard and Blueprints are unchanged. Deliberate differences: no zstd (Traefik offers it, Render does not), and the compressed-type list is bex's (`edgeCompressedTypes`), not a vendor's.
++
+ **A deploy queued behind a failed build always runs (w6/m100, 2026-08-26):** a live hunt triggered a second deploy while the first was still building, the first failed its build (wrong branch → clone exit 90 → `PodFailurePolicy`), and the second stayed at `status:"queued"` with empty `startedAt`/`finishedAt`/`failureReason` and a frozen `updatedAt` for 185+ seconds — indefinitely, in fact: only a human clicking Cancel closed it. Render's behaviour is the parity target — a deploy queued behind a sibling that fails takes the build slot the failure freed. The cause was generation bookkeeping, not the wire contract: the operator stamped a build failure's durable marker with `metadata.generation`, which the queued deploy's own spec patch had already bumped, so the re-dispatch gate read the first deploy's verdict as the second's and halted before ever building it. The terminal build verdict now rides its own `status.conditions[Build]`, attributed to the release generation that actually built, and both the operator's re-dispatch gate and bex-api's deploy projection read it there. **No wire-shape change:** the eleven-value status vocabulary, `renderDeploy`'s fields, the GraphQL/MCP projections (MCP literally reuses REST's `toRenderDeploy`), and the dashboard's status/label/polling logic are all untouched — this is a liveness fix, so the same row simply now reaches `build_in_progress` → `live`/`build_failed` instead of never leaving `queued`. One consequence worth naming: the deploy whose build failed still closes `build_failed` **with its build error**, not `canceled`. It would have become `canceled` under the plain generation comparison, because the operator adopts the queued generation milliseconds after recording the failure while bex-api resyncs every 30s — the durable condition is what keeps the verdict readable that late. Regression coverage: `build_failed_pending_release_envtest_test.go` (operator), `queued_behind_failure_test.go` (bex-api, including the Rollback call site).
+ 
+ **Deploy-detail timeline/actions (w5/m29 + w2/m38, refreshed 2026-07-15):** the detail page renders exact-deploy row/event facts, shared Cancel/Rollback controls, all eleven status labels/filters, and correct open-versus-terminal polling. The store now persists the evidence-backed lifecycle and `updatedAt`; the timeline never invents a skipped phase. Events links never use the unrelated `evt-…` id. Comparison: [render-artifacts/deploy-detail-page.md](render-artifacts/deploy-detail-page.md).
+diff --git a/lego/operator/internal/controller/app_controller.go b/lego/operator/internal/controller/app_controller.go
+index 7d8a09892..bf01fb822 100644
+--- a/lego/operator/internal/controller/app_controller.go
++++ b/lego/operator/internal/controller/app_controller.go
+@@ -457,6 +457,9 @@ type AppReconciler struct {
+ // gate the App Ingress with an ipAllowList (source-range) middleware.
+ var traefikHTTPMiddlewareGVK = schema.GroupVersionKind{Group: "traefik.io", Version: "v1alpha1", Kind: "Middleware"}
+ 
++// traefikPluginKey is a Middleware spec's key for a Traefik plugin's config.
++const traefikPluginKey = "plugin"
++
+ const traefikRouterMiddlewaresAnnotation = "traefik.ingress.kubernetes.io/router.middlewares"
+ 
+ // legacyTraefikRouterMiddlewaresAnnotation is the pre-m30 nonstandard key. It is
+@@ -2899,18 +2902,23 @@ func (r *AppReconciler) ingressBackend(ctx context.Context, app *appv1alpha1.App
+ }
+ 
+ // reconcileIngressWithMiddlewares assembles the App's Traefik middlewares (IP
+-// allow-list + websocket meter) and applies the Ingress fronting svc:port. On
+-// error it returns the failure reason for the caller's r.fail.
++// allow-list, edge compression, websocket meter) and applies the Ingress
++// fronting svc:port. On error it returns the failure reason for the caller's
++// r.fail.
+ func (r *AppReconciler) reconcileIngressWithMiddlewares(ctx context.Context, app *appv1alpha1.App, hosts []string, svc string, port int32) (string, error) {
+ 	mwNames, err := r.reconcileIPAllowListMiddleware(ctx, app)
+ 	if err != nil {
+ 		return "MiddlewareFailed", err
+ 	}
++	compression, err := r.reconcileEdgeCompressionMiddlewares(ctx, app, len(hosts) > 0)
++	if err != nil {
++		return "MiddlewareFailed", err
++	}
+ 	wsMeter, err := r.reconcileWebsocketMeterMiddleware(ctx, app, len(hosts) > 0)
+ 	if err != nil {
+ 		return "MiddlewareFailed", err
+ 	}
+-	middlewareNames := mwNames
++	middlewareNames := append(mwNames, compression...)
+ 	if wsMeter != "" {
+ 		middlewareNames = append(middlewareNames, wsMeter)
+ 	}
+@@ -3510,7 +3518,7 @@ func (r *AppReconciler) reconcileWebsocketMeterMiddleware(ctx context.Context, a
+ 		}
+ 		return "", nil
+ 	}
+-	spec := map[string]any{"plugin": map[string]any{
++	spec := map[string]any{traefikPluginKey: map[string]any{
+ 		"bexWebsocketEgress": map[string]any{"appId": appIDOrName(app), "metricsAddr": ":9101"},
+ 	}}
+ 	if err := upsertOwned(ctx, r.Client, r.Scheme, app, traefikHTTPMiddlewareGVK, middlewareName, spec); err != nil {
+diff --git a/lego/operator/internal/controller/edge_compression.go b/lego/operator/internal/controller/edge_compression.go
+new file mode 100644
+index 000000000..e81861633
+--- /dev/null
++++ b/lego/operator/internal/controller/edge_compression.go
+@@ -0,0 +1,77 @@
++/*
++Copyright 2026.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/
++
++package controller
++
++import (
++	"context"
++
++	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
++)
++
++// edgeCompressedTypes are the response media types the edge compresses, as
++// Render's load balancer applies Brotli/gzip to app responses (w8/m83): text,
++// script, style and structured-data types. Images, media, archives and fonts
++// are already compressed, and text/event-stream stays untouched so an event
++// stream is exactly what the service wrote. Traefik matches the media type
++// with its parameters ignored.
++var edgeCompressedTypes = []any{
++	"text/html", "text/plain", "text/css", "text/javascript", "text/xml", "text/csv", "text/markdown",
++	"application/javascript", "application/x-javascript", "application/json", "application/ld+json",
++	"application/manifest+json", "application/problem+json", "application/graphql-response+json",
++	"application/x-ndjson", "application/xml", "application/xhtml+xml", "application/rss+xml",
++	"application/atom+xml", "application/wasm", "image/svg+xml",
++}
++
++// edgeCompressionMiddlewares is the router chain that compresses a web
++// service's public responses, outermost first: Traefik's compress (Brotli
++// preferred, then gzip; at least 1 KiB of a listed type, never an encoded,
++// partial or HEAD response) bracketed by the bexCompressGuard plugin, whose
++// inner phase keeps compress off a Cache-Control: no-transform response and
++// whose outer phase weakens a strong ETag on a body compress encoded.
++func edgeCompressionMiddlewares(app *appv1alpha1.App) (names []string, specs []map[string]any) {
++	guard := func(phase string) map[string]any {
++		return map[string]any{traefikPluginKey: map[string]any{"bexCompressGuard": map[string]any{"phase": phase}}}
++	}
++	names = []string{app.Name + "-compress-outer", app.Name + "-compress", app.Name + "-compress-inner"}
++	specs = []map[string]any{
++		guard("outer"),
++		{"compress": map[string]any{"encodings": []any{"br", "gzip"}, "includedContentTypes": edgeCompressedTypes}},
++		guard("inner"),
++	}
++	return names, specs
++}
++
++// reconcileEdgeCompressionMiddlewares creates (enabled) or removes the App's
++// edge compression chain and returns its names in router order.
++func (r *AppReconciler) reconcileEdgeCompressionMiddlewares(ctx context.Context, app *appv1alpha1.App, enabled bool) ([]string, error) {
++	names, specs := edgeCompressionMiddlewares(app)
++	for i, name := range names {
++		if !enabled {
++			if err := deleteOwned(ctx, r.Client, app, traefikHTTPMiddlewareGVK, name); err != nil {
++				return nil, err
++			}
++			continue
++		}
++		if err := upsertOwned(ctx, r.Client, r.Scheme, app, traefikHTTPMiddlewareGVK, name, specs[i]); err != nil {
++			return nil, err
++		}
++	}
++	if !enabled {
++		return nil, nil
++	}
++	return names, nil
++}
+diff --git a/lego/operator/internal/controller/edge_compression_test.go b/lego/operator/internal/controller/edge_compression_test.go
+new file mode 100644
+index 000000000..c36b3ba89
+--- /dev/null
++++ b/lego/operator/internal/controller/edge_compression_test.go
+@@ -0,0 +1,94 @@
++/*
++Copyright 2026.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/
++
++package controller
++
++import (
++	"context"
++	"slices"
++	"strings"
++	"testing"
++
++	apierrors "k8s.io/apimachinery/pkg/api/errors"
++	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
++	"k8s.io/apimachinery/pkg/types"
++	"sigs.k8s.io/controller-runtime/pkg/client/fake"
++
++	networkingv1 "k8s.io/api/networking/v1"
++
++	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
++)
++
++// A public web service's route compresses its responses at the edge, as
++// Render's load balancer does (w8/m83): three App-owned Middlewares — the
++// guard's outer phase, Traefik's compress (Brotli then gzip, compressible
++// types only, no event stream) and the guard's inner phase — sit in that
++// order after the access layers and before the WebSocket meter. Unexposing
++// the service removes them with its Ingress.
++func TestWebServiceEdgeCompressionProjection(t *testing.T) {
++	scheme := newIPAllowListScheme()
++	app := appWithAllowList("edge", nil, appv1alpha1.TypeWebService)
++	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).WithStatusSubresource(&appv1alpha1.App{}).Build()
++	r := &AppReconciler{Client: cl, Scheme: scheme, Mode: ModeKubernetes, BaseDomain: "onbex.co", ClusterIssuer: "letsencrypt-prod"}
++	ctx := context.Background()
++	nn := types.NamespacedName{Name: "edge", Namespace: "default"}
++	middleware := func(name string) (*unstructured.Unstructured, error) {
++		o := &unstructured.Unstructured{}
++		o.SetGroupVersionKind(traefikHTTPMiddlewareGVK)
++		return o, cl.Get(ctx, types.NamespacedName{Name: name, Namespace: "default"}, o)
++	}
++	reconcileTwice(t, r, nn)
++
++	for name, phase := range map[string]string{"edge-compress-outer": "outer", "edge-compress-inner": "inner"} {
++		mw, err := middleware(name)
++		if err != nil {
++			t.Fatalf("%s: %v", name, err)
++		}
++		if got, _, _ := unstructured.NestedString(mw.Object, "spec", "plugin", "bexCompressGuard", "phase"); got != phase {
++			t.Errorf("%s guard phase = %q, want %q", name, got, phase)
++		}
++		if owners := mw.GetOwnerReferences(); len(owners) != 1 || owners[0].Name != "edge" || owners[0].Controller == nil || !*owners[0].Controller {
++			t.Errorf("%s owners = %+v, want the App as controller", name, owners)
++		}
++	}
++	mw, err := middleware("edge-compress")
++	if err != nil {
++		t.Fatalf("compress: %v", err)
++	}
++	encodings, _, _ := unstructured.NestedStringSlice(mw.Object, "spec", "compress", "encodings")
++	contentTypes, _, _ := unstructured.NestedStringSlice(mw.Object, "spec", "compress", "includedContentTypes")
++	if !slices.Equal(encodings, []string{"br", "gzip"}) || !slices.Contains(contentTypes, "text/html") || !slices.Contains(contentTypes, "application/json") ||
++		slices.Contains(contentTypes, "text/event-stream") || slices.ContainsFunc(contentTypes, func(t string) bool { return strings.HasPrefix(t, "image/") && t != "image/svg+xml" }) {
++		t.Errorf("compress spec = encodings %v, types %v", encodings, contentTypes)
++	}
++
++	ing := &networkingv1.Ingress{}
++	if err := cl.Get(ctx, nn, ing); err != nil {
++		t.Fatal(err)
++	}
++	want := "default-edge-compress-outer@kubernetescrd,default-edge-compress@kubernetescrd,default-edge-compress-inner@kubernetescrd,default-edge-ws-egress@kubernetescrd"
++	if got := ing.Annotations[traefikRouterMiddlewaresAnnotation]; got != want {
++		t.Fatalf("router middlewares = %q, want %q", got, want)
++	}
++
++	updateApp(t, cl, nn, func(a *appv1alpha1.App) { a.Spec.Expose = false })
++	reconcileOnce(t, r, nn)
++	for _, name := range []string{"edge-compress-outer", "edge-compress", "edge-compress-inner"} {
++		if _, err := middleware(name); !apierrors.IsNotFound(err) {
++			t.Errorf("%s after unexposing: %v, want removed", name, err)
++		}
++	}
++}
+diff --git a/lego/operator/internal/controller/edge_compression_traefik_test.go b/lego/operator/internal/controller/edge_compression_traefik_test.go
+new file mode 100644
+index 000000000..b5bc8a3be
+--- /dev/null
++++ b/lego/operator/internal/controller/edge_compression_traefik_test.go
+@@ -0,0 +1,235 @@
++/*
++Copyright 2026.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++*/
++
++package controller
++
++import (
++	"bytes"
++	"compress/gzip"
++	"encoding/json"
++	"fmt"
++	"io"
++	"net"
++	"net/http"
++	"net/http/httptest"
++	"os"
++	"os/exec"
++	"path/filepath"
++	"strings"
++	"testing"
++	"time"
++
++	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
++)
++
++// edgeTraefikImage is the Traefik the deployed chart runs (base values: chart
++// 41.0.0 = Traefik v3.7.5).
++const edgeTraefikImage = "traefik:v3.7.5"
++
++// TestEdgeCompressionOnTheDeployedTraefik is w8/m83's actual-proxy gate: the
++// operator's own middleware chain, loaded into the deployed Traefik release
++// with the bexCompressGuard plugin, compresses eligible responses and leaves
++// every neighbor the way an origin wrote it. Opt-in: needs Docker.
++func TestEdgeCompressionOnTheDeployedTraefik(t *testing.T) {
++	if os.Getenv("BEX_TRAEFIK_INTEGRATION") == "" {
++		t.Skip("set BEX_TRAEFIK_INTEGRATION=1 to run the chain on the deployed Traefik release")
++	}
++	text := bytes.Repeat([]byte("bex compression probe line\n"), 12000)
++	authored := gzipBytes(t, text)
++	origin := httptest.NewUnstartedServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
++		h := rw.Header()
++		switch req.URL.Path {
++		case "/text":
++			h.Set("Content-Type", "text/plain; charset=utf-8")
++		case "/etag":
++			h.Set("Content-Type", "text/plain")
++			h.Set("ETag", `"v1"`)
++		case "/no-transform":
++			h.Set("Content-Type", "text/plain")
++			h.Set("Cache-Control", "no-cache, no-transform")
++			h.Set("ETag", `"v1"`)
++		case "/authored":
++			h.Set("Content-Type", "text/plain")
++			h.Set("Content-Encoding", "gzip")
++			_, _ = rw.Write(authored)
++			return
++		case "/forged":
++			h.Set("Content-Type", "text/plain")
++			h.Set("X-Bex-Compress-Held", "1")
++		case "/events":
++			h.Set("Content-Type", "text/event-stream")
++		case "/png":
++			h.Set("Content-Type", "image/png")
++		case "/range":
++			h.Set("Content-Type", "text/plain")
++			http.ServeContent(rw, req, "probe.txt", time.Time{}, bytes.NewReader(text))
++			return
++		}
++		_, _ = rw.Write(text)
++	}))
++	listener, err := net.Listen("tcp", "0.0.0.0:0")
++	if err != nil {
++		t.Fatal(err)
++	}
++	origin.Listener = listener
++	origin.Start()
++	t.Cleanup(origin.Close)
++
++	app := &appv1alpha1.App{}
++	app.Name = "probe"
++	names, specs := edgeCompressionMiddlewares(app)
++	middlewares := map[string]any{}
++	for i, name := range names {
++		middlewares[name] = specs[i]
++	}
++	routing := map[string]any{
++		"routers": map[string]any{"web": map[string]any{"rule": "PathPrefix(`/`)", "service": "origin", "middlewares": names}},
++		"services": map[string]any{"origin": map[string]any{"loadBalancer": map[string]any{"servers": []any{
++			map[string]any{"url": fmt.Sprintf("http://host.docker.internal:%d", listener.Addr().(*net.TCPAddr).Port)}}}}},
++	}
++	if len(middlewares) > 0 {
++		routing["middlewares"] = middlewares
++	}
++	dynamic, _ := json.Marshal(map[string]any{"http": routing})
++	dir := t.TempDir()
++	if err := os.WriteFile(filepath.Join(dir, "dynamic.yml"), dynamic, 0o644); err != nil {
++		t.Fatal(err)
++	}
++	plugin, err := filepath.Abs("../../../../deploy/gitops/charts/traefik-plugins/compressguard")
++	if err != nil {
++		t.Fatal(err)
++	}
++	port := freePort(t)
++	name := fmt.Sprintf("bex-edge-compress-it-%d", os.Getpid())
++	run := exec.Command("docker", "run", "-d", "--rm", "--name", name, "--add-host", "host.docker.internal:host-gateway",
++		"-p", fmt.Sprintf("%d:8000", port), "-v", dir+":/dynamic:ro",
++		"-v", plugin+":/plugins-local/src/github.com/bex-co/bex-compress-guard:ro", edgeTraefikImage,
++		"--entrypoints.web.address=:8000", "--providers.file.filename=/dynamic/dynamic.yml",
++		"--experimental.abortonpluginfailure=true",
++		"--experimental.localPlugins.bexCompressGuard.moduleName=github.com/bex-co/bex-compress-guard")
++	if out, err := run.CombinedOutput(); err != nil {
++		t.Fatalf("docker run: %v\n%s", err, out)
++	}
++	t.Cleanup(func() { _ = exec.Command("docker", "rm", "-f", name).Run() })
++	base := fmt.Sprintf("http://127.0.0.1:%d", port)
++	waitForRoute(t, name, base+"/text")
++
++	for _, tc := range []struct {
++		name, path, acceptEncoding, rangeHeader string
++		wantStatus                              int
++		wantEncoding, wantETag                  string
++		want                                    []byte
++	}{
++		{name: "Brotli preferred", path: "/text", acceptEncoding: "gzip, br", wantStatus: 200, wantEncoding: "br"},
++		{name: "gzip decodes exactly", path: "/text", acceptEncoding: "gzip", wantStatus: 200, wantEncoding: "gzip", want: text},
++		{name: "no offer is identity", path: "/text", wantStatus: 200, want: text},
++		{name: "refused coding is identity", path: "/text", acceptEncoding: "gzip;q=0, br;q=0", wantStatus: 200, want: text},
++		{name: "strong ETag weakened when compressed", path: "/etag", acceptEncoding: "gzip", wantStatus: 200, wantEncoding: "gzip", wantETag: `W/"v1"`, want: text},
++		{name: "strong ETag kept when not", path: "/etag", wantStatus: 200, wantETag: `"v1"`, want: text},
++		{name: "no-transform untouched", path: "/no-transform", acceptEncoding: "gzip, br", wantStatus: 200, wantETag: `"v1"`, want: text},
++		{name: "authored encoding passes through", path: "/authored", acceptEncoding: "br", wantStatus: 200, wantEncoding: "gzip", want: text},
++		{name: "forged marker is not obeyed", path: "/forged", acceptEncoding: "gzip", wantStatus: 200, wantEncoding: "gzip", want: text},
++		{name: "event stream untouched", path: "/events", acceptEncoding: "gzip, br", wantStatus: 200, want: text},
++		{name: "image untouched", path: "/png", acceptEncoding: "gzip, br", wantStatus: 200, want: text},
++		{name: "range untouched", path: "/range", acceptEncoding: "gzip, br", rangeHeader: "bytes=0-99", wantStatus: 206, want: text[:100]},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			req, _ := http.NewRequest(http.MethodGet, base+tc.path, nil)
++			req.Header.Set("Accept-Encoding", tc.acceptEncoding)
++			if tc.acceptEncoding == "" {
++				req.Header.Del("Accept-Encoding")
++			}
++			if tc.rangeHeader != "" {
++				req.Header.Set("Range", tc.rangeHeader)
++			}
++			resp, err := (&http.Transport{DisableCompression: true}).RoundTrip(req)
++			if err != nil {
++				t.Fatal(err)
++			}
++			defer func() { _ = resp.Body.Close() }()
++			body, _ := io.ReadAll(resp.Body)
++			if resp.StatusCode != tc.wantStatus || resp.Header.Get("Content-Encoding") != tc.wantEncoding || resp.Header.Get("ETag") != tc.wantETag {
++				t.Fatalf("got %d encoding %q etag %q, want %d %q %q", resp.StatusCode, resp.Header.Get("Content-Encoding"), resp.Header.Get("ETag"),
++					tc.wantStatus, tc.wantEncoding, tc.wantETag)
++			}
++			for key := range resp.Header {
++				if strings.HasPrefix(strings.ToLower(key), "x-bex-compress") {
++					t.Errorf("guard marker %s reached the client", key)
++				}
++			}
++			if tc.wantEncoding != "" && len(body) >= len(text)/10 {
++				t.Errorf("encoded body is %d bytes for a %d-byte response", len(body), len(text))
++			}
++			if tc.wantEncoding == "gzip" {
++				body = gunzipBytes(t, body)
++			}
++			if tc.want != nil && !bytes.Equal(body, tc.want) {
++				t.Errorf("decoded body differs from what the origin wrote (%d vs %d bytes)", len(body), len(tc.want))
++			}
++		})
++	}
++}
++
++func gzipBytes(t *testing.T, b []byte) []byte {
++	t.Helper()
++	var out bytes.Buffer
++	w := gzip.NewWriter(&out)
++	_, _ = w.Write(b)
++	if err := w.Close(); err != nil {
++		t.Fatal(err)
++	}
++	return out.Bytes()
++}
++
++func gunzipBytes(t *testing.T, b []byte) []byte {
++	t.Helper()
++	r, err := gzip.NewReader(bytes.NewReader(b))
++	if err != nil {
++		t.Fatal(err)
++	}
++	out, err := io.ReadAll(r)
++	if err != nil {
++		t.Fatal(err)
++	}
++	return out
++}
++
++func freePort(t *testing.T) int {
++	t.Helper()
++	l, err := net.Listen("tcp", "127.0.0.1:0")
++	if err != nil {
++		t.Fatal(err)
++	}
++	defer func() { _ = l.Close() }()
++	return l.Addr().(*net.TCPAddr).Port
++}
++
++// waitForRoute waits until Traefik serves the router, failing with its log.
++func waitForRoute(t *testing.T, container, url string) {
++	t.Helper()
++	deadline := time.Now().Add(60 * time.Second)
++	for time.Now().Before(deadline) {
++		if resp, err := http.Get(url); err == nil {
++			_ = resp.Body.Close()
++			if resp.StatusCode == http.StatusOK {
++				return
++			}
++		}
++		time.Sleep(500 * time.Millisecond)
++	}
++	logs, _ := exec.Command("docker", "logs", container).CombinedOutput()
++	t.Fatalf("Traefik never routed %s:\n%s", url, logs)
++}
+diff --git a/lego/operator/internal/controller/ip_allow_list_test.go b/lego/operator/internal/controller/ip_allow_list_test.go
+index 7ef2988df..91021b497 100644
+--- a/lego/operator/internal/controller/ip_allow_list_test.go
++++ b/lego/operator/internal/controller/ip_allow_list_test.go
+@@ -135,7 +135,7 @@ func TestWebServiceIPAllowListMiddlewareProjection(t *testing.T) {
+ 	if err != nil {
+ 		t.Fatalf("Ingress not created: %v", err)
+ 	}
+-	wantAnnotation := "default-ws-acl-ip-allow@kubernetescrd,default-ws-acl-ws-egress@kubernetescrd"
++	wantAnnotation := "default-ws-acl-ip-allow@kubernetescrd,default-ws-acl-compress-outer@kubernetescrd,default-ws-acl-compress@kubernetescrd,default-ws-acl-compress-inner@kubernetescrd,default-ws-acl-ws-egress@kubernetescrd"
+ 	if got := ing.Annotations[traefikRouterMiddlewaresAnnotation]; got != wantAnnotation {
+ 		t.Fatalf("Ingress annotation %s = %q, want %q", traefikRouterMiddlewaresAnnotation, got, wantAnnotation)
+ 	}
+@@ -157,8 +157,8 @@ func TestWebServiceIPAllowListMiddlewareProjection(t *testing.T) {
+ 	if err != nil {
+ 		t.Fatalf("Ingress must survive after allowlist is cleared: %v", err)
+ 	}
+-	if got := ing.Annotations[traefikRouterMiddlewaresAnnotation]; got != "default-ws-acl-ws-egress@kubernetescrd" {
+-		t.Fatalf("Ingress must retain only WebSocket accounting after allowlist clear: %v", ing.Annotations)
++	if got := ing.Annotations[traefikRouterMiddlewaresAnnotation]; got != "default-ws-acl-compress-outer@kubernetescrd,default-ws-acl-compress@kubernetescrd,default-ws-acl-compress-inner@kubernetescrd,default-ws-acl-ws-egress@kubernetescrd" {
++		t.Fatalf("Ingress must retain compression and WebSocket accounting after allowlist clear: %v", ing.Annotations)
+ 	}
+ }
+ 
+@@ -300,14 +300,14 @@ func TestEnvironmentIPAllowListChaining(t *testing.T) {
+ 		wantEnvMW bool
+ 	}{
+ 		{"both layers chain", []string{"10.0.0.0/8"}, []string{"203.0.113.0/24"},
+-			"default-chain-acl-ip-allow@kubernetescrd,default-chain-acl-env-ip-allow@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd", true, true},
++			"default-chain-acl-ip-allow@kubernetescrd,default-chain-acl-env-ip-allow@kubernetescrd,default-chain-acl-compress-outer@kubernetescrd,default-chain-acl-compress@kubernetescrd,default-chain-acl-compress-inner@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd", true, true},
+ 		{"own only", []string{"10.0.0.0/8"}, nil,
+-			"default-chain-acl-ip-allow@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd", true, false},
++			"default-chain-acl-ip-allow@kubernetescrd,default-chain-acl-compress-outer@kubernetescrd,default-chain-acl-compress@kubernetescrd,default-chain-acl-compress-inner@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd", true, false},
+ 		{"env only", nil, []string{"203.0.113.0/24"},
+-			"default-chain-acl-env-ip-allow@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd", false, true},
++			"default-chain-acl-env-ip-allow@kubernetescrd,default-chain-acl-compress-outer@kubernetescrd,default-chain-acl-compress@kubernetescrd,default-chain-acl-compress-inner@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd", false, true},
+ 		{"env deny-all placeholder", nil, []string{"255.255.255.255/32"},
+-			"default-chain-acl-env-ip-allow@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd", false, true},
+-		{"no layers", nil, nil, "default-chain-acl-ws-egress@kubernetescrd", false, false},
++			"default-chain-acl-env-ip-allow@kubernetescrd,default-chain-acl-compress-outer@kubernetescrd,default-chain-acl-compress@kubernetescrd,default-chain-acl-compress-inner@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd", false, true},
++		{"no layers", nil, nil, "default-chain-acl-compress-outer@kubernetescrd,default-chain-acl-compress@kubernetescrd,default-chain-acl-compress-inner@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd", false, false},
+ 	}
+ 	for _, tc := range cases {
+ 		t.Run(tc.name, func(t *testing.T) {

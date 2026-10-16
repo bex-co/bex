@@ -1,0 +1,43 @@
+import sys, http.client, gzip, socket, base64, os, subprocess
+port = int(sys.argv[1]); plain = 18080
+def get(port, path, headers=None, method="GET"):
+    c = http.client.HTTPConnection("localhost", port, timeout=10); c.request(method, path, headers=headers or {})
+    r = c.getresponse(); body = r.read(); return r.status, {k.lower(): v for k, v in r.getheaders()}, body
+def decode(ce, body):
+    if ce == "gzip": return gzip.decompress(body)
+    if ce == "br":
+        return subprocess.run(["brotli", "-d", "-c"], input=body, capture_output=True, check=True).stdout
+    return body
+rows = [("text none", "/text", {}), ("text gzip", "/text", {"Accept-Encoding": "gzip"}), ("text br", "/text", {"Accept-Encoding": "br"}),
+        ("text br,gzip", "/text", {"Accept-Encoding": "br, gzip"}), ("text gzip;q=1,br;q=0.5", "/text", {"Accept-Encoding": "gzip;q=1, br;q=0.5"}),
+        ("text zstd", "/text", {"Accept-Encoding": "zstd"}), ("text identity", "/text", {"Accept-Encoding": "identity"}),
+        ("text gzip;q=0", "/text", {"Accept-Encoding": "gzip;q=0"}), ("text *;q=0,identity", "/text", {"Accept-Encoding": "*;q=0, identity"}),
+        ("text empty AE", "/text", {"Accept-Encoding": ""}), ("json br", "/json", {"Accept-Encoding": "br"}), ("svg gzip", "/svg", {"Accept-Encoding": "gzip"}),
+        ("small gzip", "/small", {"Accept-Encoding": "gzip"}), ("png gzip", "/png", {"Accept-Encoding": "gzip"}),
+        ("authored gzip (AE gzip)", "/gzip", {"Accept-Encoding": "gzip"}), ("authored gzip (AE br)", "/gzip", {"Accept-Encoding": "br"}),
+        ("no-transform gzip", "/notransform", {"Accept-Encoding": "gzip"}), ("no-transform br", "/notransform", {"Accept-Encoding": "br"}),
+        ("no-transform+etag br", "/notransform-etag", {"Accept-Encoding": "br"}), ("forged markers br", "/forged", {"Accept-Encoding": "br"}),
+        ("strong etag br", "/etag", {"Accept-Encoding": "br"}), ("strong etag none", "/etag", {}), ("weak etag br", "/weak-etag", {"Accept-Encoding": "br"}),
+        ("range br", "/range", {"Accept-Encoding": "br", "Range": "bytes=0-99"}), ("sse br", "/sse", {"Accept-Encoding": "br"}),
+        ("stream-text br", "/stream-text", {"Accept-Encoding": "br"})]
+_, _, ref_text = get(plain, "/text")
+for name, path, h in rows:
+    st, hd, body = get(port, path, h)
+    _, _, ref = get(plain, path, {k: v for k, v in h.items() if k != "Accept-Encoding"})
+    ce = hd.get("content-encoding", "-")
+    out = decode(ce, body) if path != "/gzip" else body
+    exact = "exact" if (out == ref or (path == "/gzip")) else "MISMATCH"
+    marks = [k for k in hd if k.startswith("x-bex-compress")]
+    print(f"{name:26s} {st} ce={ce:8s} bytes={len(body):7d} {exact:8s} etag={hd.get('etag','-'):22s} vary={hd.get('vary','-'):16s} cr={hd.get('content-range','-')} marks={marks or '-'}")
+st, hd, body = get(port, "/text", {"Accept-Encoding": "br"}, "HEAD"); print(f"{'HEAD br':26s} {st} ce={hd.get('content-encoding','-')} cl={hd.get('content-length','-')}")
+_, hd, _ = get(port, "/etag", {"Accept-Encoding": "br"}); et = hd.get("etag")
+st, hd, _ = get(port, "/etag", {"Accept-Encoding": "br", "If-None-Match": et}); print(f"{'If-None-Match weak':26s} {st}")
+st, hd, body = get(port, "/range", {"Accept-Encoding": "br", "Range": "bytes=0-99", "If-Range": et}); print(f"{'If-Range weak':26s} {st} bytes={len(body)} (200 = full body: correct for a weak validator)")
+s = socket.create_connection(("localhost", port)); key = base64.b64encode(os.urandom(16)).decode()
+s.sendall(f"GET /ws HTTP/1.1\r\nHost: x\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\nAccept-Encoding: gzip, br\r\n\r\n".encode())
+resp = b""
+while b"ws-echo-ok!" not in resp:
+    resp += s.recv(4096)
+    if b"\r\n\r\n" in resp and not resp.startswith(b"HTTP/1.1 101"): break
+    if len(resp) > 0: s.sendall(b"\x81\x82abcd" + bytes([ord("h") ^ ord("a"), ord("i") ^ ord("b")])) if b"\r\n\r\n" in resp and b"ws-echo" not in resp else None
+print(f"{'websocket':26s} {resp.split(b'\r\n')[0].decode()} echo={'ok' if b'ws-echo-ok!' in resp else 'MISSING'}")
