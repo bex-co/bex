@@ -2,7 +2,7 @@
 
 Why: the primary compiler/interpreter works, but a normal JavaScript asset step fails because the shared native builder supplies those tools only to Ruby/Python.
 
-**Major.** This combines the preserved [a676/a692 Go/Rust finding](../done/321.md) with a693's newly measured Elixir scope. [Go receipts](../evidence/321-native-go-js-tools.json), [Rust receipts](../evidence/321-native-rust-js-tools.json) and [Elixir receipts, exact source, image execution and cleanup](../evidence/321-native-elixir-js-tools.json) are durable. Product code is unchanged.
+**Major.** This combines the preserved [a676/a692 Go/Rust finding](../../done/321.md) with a693's newly measured Elixir scope. [Go receipts](../../evidence/321-native-go-js-tools.json), [Rust receipts](../../evidence/321-native-rust-js-tools.json) and [Elixir receipts, exact source, image execution and cleanup](../../evidence/321-native-elixir-js-tools.json) are durable. Product code is unchanged.
 
 ## Observations and controls
 
