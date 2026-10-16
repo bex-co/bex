@@ -36,6 +36,7 @@ import {
   MAXMEMORY_POLICIES,
   RECOMMENDED_MAXMEMORY_POLICY,
 } from "@/features/keyvalue/lib/labels";
+import { PlanTierSlots } from "@/common/components/datastore-plan-preview";
 import { PlanCardGrid } from "@/common/components/plan-card-grid";
 import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
 import { KeyValueCreatePageSkeleton } from "@/common/components/route-skeletons";
@@ -85,7 +86,7 @@ export const Route = createFileRoute("/keyvalue/new")({
 export function NewKeyValuePage() {
   const { t } = useTranslations();
   const navigate = useNavigate();
-  const { instanceTypes } = useKeyValueInstanceTypes();
+  const { instanceTypes, loading: catalogLoading } = useKeyValueInstanceTypes();
   const { create, busy, capLimit } = useCreateKeyValue();
 
   const [name, setName] = useState("");
@@ -161,12 +162,20 @@ export function NewKeyValuePage() {
 
               <div className="space-y-2">
                 <Label>{t("keyvalue.fieldPlan")}</Label>
-                <PlanCardGrid
-                  instanceTypes={instanceTypes}
-                  value={plan}
-                  ariaLabel={t("keyvalue.fieldPlan")}
-                  onChange={setPlanOverride}
-                />
+                {/* The ready grid's three inert tier cards while the catalog
+                    first loads, so the version control below doesn't jump
+                    (w4/330); an empty or failed catalog is not shown as
+                    pending. */}
+                {catalogLoading && instanceTypes.length === 0 ? (
+                  <PlanTierSlots />
+                ) : (
+                  <PlanCardGrid
+                    instanceTypes={instanceTypes}
+                    value={plan}
+                    ariaLabel={t("keyvalue.fieldPlan")}
+                    onChange={setPlanOverride}
+                  />
+                )}
               </div>
 
               <div className="space-y-2">
