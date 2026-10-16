@@ -50,14 +50,14 @@ import (
 // cnpgClusterGVK is the CloudNativePG Cluster type. We project onto it via
 // unstructured so the operator needn't vendor CNPG's Go API (and stays decoupled
 // from its version).
-var cnpgClusterGVK = schema.GroupVersionKind{Group: "postgresql.cnpg.io", Version: "v1", Kind: "Cluster"}
+var cnpgClusterGVK = schema.GroupVersionKind{Group: cnpgGroup, Version: "v1", Kind: "Cluster"}
 
 // cnpgScheduledBackupGVK / cnpgPoolerGVK are the CloudNativePG resources the
 // Database projects for durability (a daily base backup) and connection pooling
 // (a PgBouncer instance). Projected via unstructured like the Cluster.
-var cnpgScheduledBackupGVK = schema.GroupVersionKind{Group: "postgresql.cnpg.io", Version: "v1", Kind: "ScheduledBackup"}
-var cnpgBackupGVK = schema.GroupVersionKind{Group: "postgresql.cnpg.io", Version: "v1", Kind: "Backup"}
-var cnpgPoolerGVK = schema.GroupVersionKind{Group: "postgresql.cnpg.io", Version: "v1", Kind: "Pooler"}
+var cnpgScheduledBackupGVK = schema.GroupVersionKind{Group: cnpgGroup, Version: "v1", Kind: "ScheduledBackup"}
+var cnpgBackupGVK = schema.GroupVersionKind{Group: cnpgGroup, Version: "v1", Kind: "Backup"}
+var cnpgPoolerGVK = schema.GroupVersionKind{Group: cnpgGroup, Version: "v1", Kind: "Pooler"}
 
 // barmanCloudObjectStoreGVK is the Barman Cloud plugin's ObjectStore — a NAMESPACED
 // object the Cluster references by name. Projected via unstructured like the
@@ -389,10 +389,10 @@ func managedRoles(owner string, users []appv1alpha1.DatabaseUser, deletedUsers [
 	if owner != "" {
 		present[owner] = struct{}{}
 		roles = append(roles, map[string]any{
-			"name":    owner,
-			"ensure":  "present",
-			"login":   true,
-			"inRoles": []any{insightsMonitorRole},
+			"name":     owner,
+			cnpgEnsure: cnpgPresent,
+			"login":    true,
+			"inRoles":  []any{insightsMonitorRole},
 		})
 	}
 	for _, u := range users {
@@ -400,7 +400,7 @@ func managedRoles(owner string, users []appv1alpha1.DatabaseUser, deletedUsers [
 			continue
 		}
 		present[u.Name] = struct{}{}
-		role := map[string]any{"name": u.Name, "ensure": "present", "login": true}
+		role := map[string]any{"name": u.Name, cnpgEnsure: cnpgPresent, "login": true}
 		if u.SecretName != "" {
 			role["passwordSecret"] = map[string]any{"name": u.SecretName}
 		}
@@ -414,7 +414,7 @@ func managedRoles(owner string, users []appv1alpha1.DatabaseUser, deletedUsers [
 			continue
 		}
 		roles = append(roles, map[string]any{
-			"name": name, "ensure": "present", "login": false, "disablePassword": true,
+			"name": name, cnpgEnsure: cnpgPresent, "login": false, "disablePassword": true,
 		})
 	}
 	return roles
@@ -574,7 +574,7 @@ func scheduledBackupSpec(clusterName string) map[string]any {
 		"schedule":             backupSchedule,
 		"backupOwnerReference": "self",
 		"immediate":            true,
-		"cluster":              map[string]any{"name": clusterName},
+		cnpgClusterRef:         map[string]any{"name": clusterName},
 		"method":               "plugin",
 		"pluginConfiguration":  map[string]any{"name": barmanCloudPluginName},
 	}
@@ -582,7 +582,7 @@ func scheduledBackupSpec(clusterName string) map[string]any {
 
 func onDemandBackupSpec(clusterName string) map[string]any {
 	return map[string]any{
-		"cluster":             map[string]any{"name": clusterName},
+		cnpgClusterRef:        map[string]any{"name": clusterName},
 		"method":              "plugin",
 		"pluginConfiguration": map[string]any{"name": barmanCloudPluginName},
 	}
@@ -593,10 +593,10 @@ func onDemandBackupSpec(clusterName string) map[string]any {
 // Service named after the Pooler ("<db>-pooler") that the pooled URLs target.
 func poolerSpec(clusterName string) map[string]any {
 	return map[string]any{
-		"cluster":   map[string]any{"name": clusterName},
-		"instances": int64(1),
-		"type":      "rw",
-		"pgbouncer": map[string]any{"poolMode": "transaction"},
+		cnpgClusterRef: map[string]any{"name": clusterName},
+		"instances":    int64(1),
+		"type":         "rw",
+		"pgbouncer":    map[string]any{"poolMode": "transaction"},
 	}
 }
 
@@ -704,7 +704,7 @@ func (r *DatabaseReconciler) secretClient() client.Client {
 // +kubebuilder:rbac:groups=app.bex.co,resources=databases,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=app.bex.co,resources=databases/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=app.bex.co,resources=databases/finalizers,verbs=update
-// +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=clusters;backups;scheduledbackups;poolers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=clusters;backups;scheduledbackups;poolers;databases,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=clusters/status,verbs=patch
 // reconcileTenantBackupStore reads the GitOps-installed ObjectStore in the apps
 // namespace and projects it into each tenant namespace (ADR043 D8.4). Without
@@ -730,6 +730,12 @@ func upsertOwned(ctx context.Context, c client.Client, scheme *runtime.Scheme, o
 	o.SetGroupVersionKind(gvk)
 	o.SetName(name)
 	o.SetNamespace(owner.GetNamespace())
+	return upsertOwnedObject(ctx, c, scheme, owner, o, spec)
+}
+
+// upsertOwnedObject is upsertOwned for a caller holding o (its GVK, name and
+// namespace set), which is left holding the live object afterwards.
+func upsertOwnedObject(ctx context.Context, c client.Client, scheme *runtime.Scheme, owner client.Object, o *unstructured.Unstructured, spec map[string]any) error {
 	_, err := controllerutil.CreateOrUpdate(ctx, c, o, func() error {
 		if err := projectUnstructuredSpec(o, spec); err != nil {
 			return err
@@ -826,6 +832,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}); err != nil {
 		return r.dbFail(ctx, &db, appv1alpha1.ReasonClusterFailed, err)
 	}
+	r.reconcileApplicationDatabase(ctx, &db, dbname, owner)
 	if err := reconcileEnvironmentPeerPolicy(ctx, r.Client, r.Scheme, &db, db.Labels[labelEnvironment], "-environment-ingress", map[string]string{"app.bex.co/component": "database"}); err != nil {
 		return r.dbFail(ctx, &db, appv1alpha1.ReasonNetworkPolicyFailed, err)
 	}
@@ -1640,12 +1647,18 @@ func (r *DatabaseReconciler) rejectDatabaseStorageShrink(ctx context.Context, db
 func (r *DatabaseReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	owned := &unstructured.Unstructured{}
 	owned.SetGroupVersionKind(cnpgClusterGVK)
+	application := &unstructured.Unstructured{}
+	application.SetGroupVersionKind(cnpgDatabaseGVK)
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appv1alpha1.Database{}, builder.WithPredicates(generationDeletionOrFinalizerPredicate{})).
 		// CNPG reports readiness and major-upgrade progress through Cluster status
 		// updates, which do not advance metadata.generation. Watch resourceVersion
 		// so Database.status promptly reflects Upgrading, Failed, and Ready.
 		Owns(owned, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
+		// CNPG's verdict on the application database (its extensions) is a
+		// status update too; without this an existing Ready database would
+		// report it only on an unrelated Cluster change.
+		Owns(application, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
 		// Job status updates do not change metadata.generation, so use resource
 		// version here; otherwise completed/failed exports would never settle.
 		Owns(&batchv1.Job{}, builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
