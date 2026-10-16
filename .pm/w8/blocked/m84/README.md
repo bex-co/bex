@@ -1,16 +1,16 @@
 # w8 · m84 — Make packaged pgvector usable in managed Postgres
 
-**Worker:** worker8 **Goal:** ordinary application connections can use the supplied vector extension in new and existing supported managed databases. **Status:** todo
+**Worker:** worker8 **Goal:** ordinary application connections can use the supplied vector extension in new and existing supported managed databases. **Status:** blocked — t001–t005 done 2026-10-16; t006 needs the operator deployed plus a hosted fresh-fixture replay
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Reconcile vector in the application database | 65m | — |
-| [t002](t002.md) | Trace shared database lifecycle and backfill | 40m | t001 |
-| [t003](t003.md) | Render parity | 25m | t002 |
-| [t004](t004.md) | Simplify | 15m | t003 |
-| [t005](t005.md) | Test coverage | 50m | t003 |
+| [t001](done/t001.md) | Reconcile vector in the application database | 65m | — — **DONE 2026-10-16** |
+| [t002](done/t002.md) | Trace shared database lifecycle and backfill | 40m | t001 — **DONE 2026-10-16** |
+| [t003](done/t003.md) | Render parity | 25m | t002 — **DONE 2026-10-16** |
+| [t004](done/t004.md) | Simplify | 15m | t003 — **DONE 2026-10-16** |
+| [t005](done/t005.md) | Test coverage | 50m | t003 — **DONE 2026-10-16** |
 | [t006](t006.md) | Closeout | 25m | t004, t005 |
 
 Six tasks,220m total.

@@ -297,7 +297,7 @@ spec:
       - apiGroups: ["postgresql.cnpg.io"]
         apiVersions: ["v1"]
         operations: ["CREATE", "UPDATE", "DELETE"]
-        resources: ["backups", "clusters", "poolers", "scheduledbackups"]
+        resources: ["backups", "clusters", "databases", "poolers", "scheduledbackups"]
       - apiGroups: ["postgresql.cnpg.io"]
         apiVersions: ["v1"]
         operations: ["UPDATE"]
