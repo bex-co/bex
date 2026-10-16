@@ -197,6 +197,9 @@ export function EditableFieldRow({
     else void persist();
   }
 
+  // The editing, prefixed plain-input variant wraps on narrow screens.
+  const prefixedEdit =
+    editing && Boolean(valuePrefix) && !options && !comboboxOptions;
   return (
     <div className="space-y-2">
       <div>
@@ -219,13 +222,22 @@ export function EditableFieldRow({
           // A long select label must not push the actions off a narrow
           // screen: the select wraps its label, and while editing it takes
           // the whole first line so Cancel/Save wrap beneath it (w4/251).
-          options && "flex-wrap sm:flex-nowrap",
+          // A prefixed text input being edited does the same: beside a root
+          // prefix and both actions it collapsed to its own padding, so on a
+          // narrow screen the prefix, the input and the actions each get a
+          // line (w4/323).
+          (options || prefixedEdit) && "flex-wrap sm:flex-nowrap",
         )}
       >
         {/* The value prefix (e.g. "app/ $") only makes sense before a text
             input, never a select. */}
         {!options && valuePrefix && (
-          <code className="text-muted-foreground shrink-0 font-mono text-sm">
+          <code
+            className={cn(
+              "text-muted-foreground shrink-0 font-mono text-sm",
+              prefixedEdit && "basis-full break-all sm:basis-auto",
+            )}
+          >
             {valuePrefix}
           </code>
         )}
@@ -293,7 +305,11 @@ export function EditableFieldRow({
             aria-describedby={validationError !== null ? errorId : undefined}
             placeholder={placeholder}
             autoComplete="off"
-            className={cn("flex-1", mono && "font-mono text-sm")}
+            className={cn(
+              "flex-1",
+              prefixedEdit && "basis-full sm:basis-0",
+              mono && "font-mono text-sm",
+            )}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {

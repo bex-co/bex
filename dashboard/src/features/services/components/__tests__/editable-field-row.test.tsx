@@ -657,4 +657,84 @@ describe("EditableFieldRow", () => {
       expect(screen.getByRole("button", { name: "Elsewhere" })).toHaveFocus();
     });
   });
+
+  // w4/323: a prefixed text input being edited wraps onto its own line on a
+  // narrow screen (the width guarantee itself is a real-browser measurement:
+  // 26px → 316px input at 390px). Behavior must not change with it: the
+  // prefix is display-only, the save carries the root-relative draft, and
+  // Escape restores the read state and the pencil's focus.
+  describe("prefixed input while editing (w4/323)", () => {
+    function prefixed(onSave = ok()) {
+      render(
+        <EditableFieldRow
+          label="Publish directory"
+          value="qa-dist-a"
+          editLabel="Edit publish directory"
+          valuePrefix="examples/static-site/"
+          mono
+          onSave={onSave}
+        />,
+      );
+      return onSave;
+    }
+
+    it("saves the draft without the prefix, which stays shown beside it", async () => {
+      const user = userEvent.setup();
+      const onSave = prefixed();
+      const row = screen.getByText("examples/static-site/").parentElement!;
+      expect(row).not.toHaveClass("flex-wrap"); // read mode keeps its geometry
+      await user.click(
+        screen.getByRole("button", { name: "Edit publish directory" }),
+      );
+      expect(row).toHaveClass("flex-wrap", "sm:flex-nowrap");
+      const input = screen.getByRole("textbox", { name: "Publish directory" });
+      expect(
+        screen.getByRole("button", { name: "Save changes" }),
+      ).toBeDisabled();
+      await user.clear(input);
+      await user.type(input, "qa-dist-b");
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+      expect(onSave).toHaveBeenCalledWith("qa-dist-b");
+      expect(screen.getByText("examples/static-site/")).toBeInTheDocument();
+      expect(row).not.toHaveClass("flex-wrap");
+    });
+
+    it("Escape discards the draft and returns focus to the pencil", async () => {
+      const user = userEvent.setup();
+      const onSave = prefixed();
+      await user.click(
+        screen.getByRole("button", { name: "Edit publish directory" }),
+      );
+      await user.type(
+        screen.getByRole("textbox", { name: "Publish directory" }),
+        "-x",
+      );
+      await user.keyboard("{Escape}");
+      expect(onSave).not.toHaveBeenCalled();
+      expect(
+        screen.getByRole("textbox", { name: "Publish directory" }),
+      ).toHaveValue("qa-dist-a");
+      expect(
+        screen.getByRole("button", { name: "Edit publish directory" }),
+      ).toHaveFocus();
+    });
+
+    it("leaves an unprefixed input's row unwrapped while editing", async () => {
+      const user = userEvent.setup();
+      render(
+        <EditableFieldRow
+          label="Service Name"
+          value="docs-site"
+          editLabel="Edit service name"
+          onSave={ok()}
+        />,
+      );
+      await user.click(
+        screen.getByRole("button", { name: "Edit service name" }),
+      );
+      expect(
+        screen.getByRole("textbox", { name: "Service Name" }).parentElement,
+      ).not.toHaveClass("flex-wrap");
+    });
+  });
 });
