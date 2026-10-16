@@ -141,9 +141,9 @@ func TestGraphQLWebhookAttemptEvidenceAndIdempotentResend(t *testing.T) {
 	}
 }
 
-func TestMCPWebhookDeliveryDiagnosticsAndValidation(t *testing.T) {
-	svc, st := newTestService()
-	ctx := context.Background()
+// webhookMCPClient connects an in-memory MCP client to svc's tools.
+func webhookMCPClient(t *testing.T, ctx context.Context, svc *Service) *mcp.ClientSession {
+	t.Helper()
 	server := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
 	svc.RegisterMCP(server)
 	serverTransport, clientTransport := mcp.NewInMemoryTransports()
@@ -155,6 +155,13 @@ func TestMCPWebhookDeliveryDiagnosticsAndValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = client.Close() })
+	return client
+}
+
+func TestMCPWebhookDeliveryDiagnosticsAndValidation(t *testing.T) {
+	svc, st := newTestService()
+	ctx := context.Background()
+	client := webhookMCPClient(t, ctx, svc)
 
 	createdResult, err := client.CallTool(ctx, &mcp.CallToolParams{
 		Name: "create_webhook_endpoint",

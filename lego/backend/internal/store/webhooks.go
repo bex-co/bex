@@ -58,6 +58,8 @@ type WebhookEndpoint struct {
 	CreatedBy      string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+	// Eligibility is populated only by ListWebhookDispatchEndpoints.
+	Eligibility []WebhookEligibility
 	// Latest* is the newest completed immutable attempt for this endpoint and
 	// the state of that attempt's logical notification, fetched in the same
 	// query as the endpoint rather than by one history query per endpoint.
@@ -324,29 +326,77 @@ func (s *PGStore) UpdateWebhookEndpoint(ctx context.Context, tenantID, id, name,
 	return e, nil
 }
 
-// ListEnabledWebhookEndpoints returns every enabled endpoint platform-wide
-// for the dispatcher's subscription table, refreshed each poll pass.
+// WebhookEligibility is one stretch an endpoint was enabled (w4/m212):
+// [EnabledAt, DisabledAt), DisabledAt nil while it still is. A source event is
+// eligible for the endpoint only when its time falls inside one.
+type WebhookEligibility struct {
+	EnabledAt  time.Time
+	DisabledAt *time.Time
+}
+
+// Contains reports whether a source event at `at` falls inside the interval.
+func (e WebhookEligibility) Contains(at time.Time) bool {
+	return !at.Before(e.EnabledAt) && (e.DisabledAt == nil || at.Before(*e.DisabledAt))
+}
+
+// ListWebhookDispatchEndpoints returns the dispatcher's subscription table,
+// refreshed each poll pass: every endpoint that is enabled or whose last
+// interval ended after `since`, with ALL its retained intervals in
+// Eligibility. Every interval, because the feed cursor follows recording time
+// while eligibility is judged on source time: a fact recorded late can belong
+// to an interval the cursor passed long ago. A disabled endpoint stays while
+// its enabled-period events may still arrive — they are owed to it, and the
+// send pass holds them until it is enabled again — so the caller passes the
+// feed position less its late-recording allowance.
 //
-// Only the columns dispatch needs are selected (id, tenant, event types,
-// created_at). The destination URL is loaded later, per due delivery, so a
-// large catalog cannot pin unbounded URL text in the shared API process
-// (codex round-15 #2).
-func (s *PGStore) ListEnabledWebhookEndpoints(ctx context.Context) ([]WebhookEndpoint, error) {
+// Only the columns dispatch needs are selected. The destination URL is loaded
+// later, per due delivery, so a large catalog cannot pin unbounded URL text in
+// the shared API process (codex round-15 #2).
+func (s *PGStore) ListWebhookDispatchEndpoints(ctx context.Context, since time.Time) ([]WebhookEndpoint, error) {
 	rows, err := s.Pool.Query(ctx,
-		`SELECT id, tenant_id, event_types, created_at FROM webhook_endpoints WHERE enabled`)
+		`SELECT e.id, e.tenant_id, e.event_types,
+		        array_agg(i.enabled_at ORDER BY i.enabled_at),
+		        array_agg(i.disabled_at ORDER BY i.enabled_at)
+		   FROM webhook_endpoint_eligibility i
+		   JOIN webhook_endpoints e ON e.id = i.endpoint_id
+		  GROUP BY e.id
+		 HAVING bool_or(i.disabled_at IS NULL OR i.disabled_at > $1)`, since)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	var out []WebhookEndpoint
 	for rows.Next() {
-		var e WebhookEndpoint
-		if err := rows.Scan(&e.ID, &e.TenantID, &e.EventTypes, &e.CreatedAt); err != nil {
+		var (
+			e        WebhookEndpoint
+			enabled  []time.Time
+			disabled []*time.Time
+		)
+		if err := rows.Scan(&e.ID, &e.TenantID, &e.EventTypes, &enabled, &disabled); err != nil {
 			return nil, err
+		}
+		if len(enabled) != len(disabled) {
+			return nil, fmt.Errorf("webhook endpoint %s: eligibility bounds disagree", e.ID)
+		}
+		for i := range enabled {
+			e.Eligibility = append(e.Eligibility, WebhookEligibility{EnabledAt: enabled[i], DisabledAt: disabled[i]})
 		}
 		out = append(out, e)
 	}
 	return out, rows.Err()
+}
+
+// PruneWebhookEligibility deletes closed eligibility intervals that ended
+// before `before` — the delivery retention horizon. A feed read lagging past it
+// would treat those events as ineligible (skip, never replay), the same side
+// the dispatcher errs on everywhere else.
+func (s *PGStore) PruneWebhookEligibility(ctx context.Context, before time.Time) (int64, error) {
+	tag, err := s.Pool.Exec(ctx,
+		`DELETE FROM webhook_endpoint_eligibility WHERE disabled_at < $1`, before)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
 }
 
 // WebhookDelivery is the logical parent row for one event × one subscribed

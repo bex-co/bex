@@ -261,6 +261,8 @@ A single, evidence-based map of how far bex actually matches [render.com](https:
 
 ---
 
+**Webhook disabled intervals (w4/m212, 2026-10-16).** Disabling an outbound webhook closes its source-event eligibility, and enabling it opens a new interval. A deploy that ends while an endpoint is disabled is never delivered to it after re-enable. Before this fix it was, depending only on how far the shared dispatch cursor had read. Enabled-period backlog and admitted retries keep their at-least-once delivery. REST, GraphQL and MCP reach this through the same store rule. Render documents no disabled-gap replay behavior, so this records a bex guarantee rather than verified Render parity ([ADR052](ADR052-notifications.md) §D3b).
+
 **Service-event ownership correction (w4/m129, 2026-09-21).** Service lists, single-event reads, and outbound webhooks bind audit events to the immutable app row captured at insertion; a replacement service cannot inherit a deleted service's history. New audit writes use the fetched `srv-` id. Legacy name associations are retained only for the recorded owner and impossible pre-creation associations are removed without deleting raw audit evidence. Refused idle-timeout changes and hook rotations no longer announce success; unchanged idle-timeout/display-name saves emit no change event. Payloads and vocabulary stay unchanged. The API's one-hour default and the dashboard's explicit wider window remain deliberate and Render-compatible; authenticated Render name-reuse/no-op behavior was not probed. [Contract and evidence limits](render-artifacts/service-events.md#immutable-service-ownership-2026-09-21-w4m129).
 
 ## Resource-object metadata parity (w6/m28)

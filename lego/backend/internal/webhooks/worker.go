@@ -130,7 +130,8 @@ const parkInterval = store.DefaultFeedPark
 type WorkerStore interface {
 	EnsureWebhookWatermark(ctx context.Context, at time.Time) (time.Time, string, error)
 	ListWebhookEvents(ctx context.Context, afterAt time.Time, afterKey string, until time.Time, verbs, tenants []string, limit int) ([]store.WebhookEventRow, error)
-	ListEnabledWebhookEndpoints(ctx context.Context) ([]store.WebhookEndpoint, error)
+	ListWebhookDispatchEndpoints(ctx context.Context, since time.Time) ([]store.WebhookEndpoint, error)
+	PruneWebhookEligibility(ctx context.Context, before time.Time) (int64, error)
 	EnqueueWebhookDeliveries(ctx context.Context, deliveries []store.WebhookDelivery, at time.Time, key string, maxPerWorkspace int) (store.WebhookEnqueueResult, error)
 	ClaimDueWebhookAttempts(ctx context.Context, now, leaseUntil time.Time, limit int) ([]store.DueWebhookAttempt, error)
 	SweepWebhookDeliveries(ctx context.Context, before time.Time, keepPerEndpoint, limit int) (int64, error)
@@ -289,23 +290,49 @@ func (w *Worker) Run(ctx context.Context) {
 // RunOnce drives one dispatch pass then one send pass — exported so tests and
 // the verification harness can step the worker deterministically.
 //
-// The enabled-endpoint set is read once and shared: with NO enabled endpoints
-// (every deployment that never touches webhooks) a tick costs exactly this
-// one indexed SELECT — no feed read, no watermark write, no due-delivery
-// query (deliveries join enabled endpoints, so none can be due).
+// The dispatch-endpoint set is read once and shared: with none (every
+// deployment that never touches webhooks) a tick costs exactly this one
+// indexed SELECT — no feed read, no watermark write, no due-delivery query
+// (deliveries join enabled endpoints, and every enabled endpoint has an open
+// eligibility interval, so none can be due).
+//
+// The read window's end is fixed BEFORE the eligibility snapshot (w4/m212), so
+// a toggle the snapshot misses lies after every event this pass reads — given
+// that a toggle commits within dispatchLag of its trigger timestamp, the same
+// commit-lag assumption the feed itself rests on. The decision never depends on
+// another worker's cursor or on which other endpoints exist.
 func (w *Worker) RunOnce(ctx context.Context) error {
 	// Retention runs before the early return: a workspace that deletes its last
 	// endpoint must still have its terminal history reclaimed, and the sweep is
 	// self-throttling (at most one pass per sweepInterval).
 	sweepErr := w.sweepRetention(ctx)
-	endpoints, err := w.Store.ListEnabledWebhookEndpoints(ctx)
+	endpoints, until, err := w.dispatchEndpoints(ctx)
 	if err != nil {
-		return errors.Join(sweepErr, fmt.Errorf("list endpoints: %w", err))
+		return errors.Join(sweepErr, err)
 	}
 	if len(endpoints) == 0 {
 		return sweepErr
 	}
-	return errors.Join(sweepErr, w.dispatch(ctx, endpoints), w.send(ctx))
+	return errors.Join(sweepErr, w.dispatch(ctx, endpoints, until), w.send(ctx))
+}
+
+// lateFactAllowance is how far behind the feed position a disabled endpoint
+// is still read for: a fact recorded that much after it happened can still
+// belong to the endpoint's last enabled interval.
+const lateFactAllowance = 24 * time.Hour
+
+// dispatchEndpoints fixes this pass's read-window end, then snapshots the
+// endpoints dispatch must consider. An unloaded cursor reads as the zero time,
+// which keeps every endpoint with a retained interval until the first pass
+// loads the watermark.
+func (w *Worker) dispatchEndpoints(ctx context.Context) ([]store.WebhookEndpoint, time.Time, error) {
+	until := w.now().Add(-dispatchLag)
+	position, _ := w.cursor.Position()
+	endpoints, err := w.Store.ListWebhookDispatchEndpoints(ctx, position.Add(-lateFactAllowance))
+	if err != nil {
+		return nil, until, fmt.Errorf("list endpoints: %w", err)
+	}
+	return endpoints, until, nil
 }
 
 // sweepRetention purges terminal deliveries past the retention policy, at most
@@ -327,12 +354,16 @@ func (w *Worker) sweepRetention(ctx context.Context) error {
 		return nil
 	}
 	w.lastSweep = now
-	n, err := w.Store.SweepWebhookDeliveries(ctx, now.AddDate(0, 0, -days), keep, sweepBatch)
+	before := now.AddDate(0, 0, -days)
+	n, err := w.Store.SweepWebhookDeliveries(ctx, before, keep, sweepBatch)
 	if err != nil {
 		return fmt.Errorf("sweep webhook deliveries: %w", err)
 	}
 	if n > 0 {
 		log.Printf("webhooks: purged %d terminal deliveries older than %dd or beyond %d per endpoint", n, days, keep)
+	}
+	if _, err := w.Store.PruneWebhookEligibility(ctx, before); err != nil {
+		return fmt.Errorf("prune webhook eligibility: %w", err)
 	}
 	return nil
 }
@@ -359,28 +390,30 @@ type payloadData struct {
 // event out to its workspace's subscribed endpoints.
 //
 // The watermark deliberately does NOT chase the clock while nothing is
-// subscribed (RunOnce returns before dispatch runs) — no-replay for a
-// later-registered endpoint is enforced where it belongs, per endpoint: the
-// fan-out below skips any event older than the endpoint's own CreatedAt, and
-// the read floor starts at the OLDEST enabled endpoint's creation, so a long
-// endpoint-less stretch is skipped outright rather than paged through.
-func (w *Worker) dispatch(ctx context.Context, endpoints []store.WebhookEndpoint) error {
-	until := w.now().Add(-dispatchLag)
+// subscribed (RunOnce returns before dispatch runs) — no-replay is enforced
+// where it belongs, per endpoint: the fan-out below admits an event only when
+// its source time falls inside one of the endpoint's eligibility intervals
+// (w4/m212; the first starts at creation), and the read floor starts at the
+// OLDEST interval start, so a long endpoint-less stretch is skipped outright
+// rather than paged through.
+func (w *Worker) dispatch(ctx context.Context, endpoints []store.WebhookEndpoint, until time.Time) error {
 	if err := w.cursor.Load(ctx, w.Store.EnsureWebhookWatermark, until); err != nil {
 		return fmt.Errorf("watermark: %w", err)
 	}
 	byTenant := make(map[string][]store.WebhookEndpoint)
-	oldest := endpoints[0].CreatedAt
+	var oldest time.Time
 	for _, e := range endpoints {
 		byTenant[e.TenantID] = append(byTenant[e.TenantID], e)
-		if e.CreatedAt.Before(oldest) {
-			oldest = e.CreatedAt
+		for _, interval := range e.Eligibility {
+			if oldest.IsZero() || interval.EnabledAt.Before(oldest) {
+				oldest = interval.EnabledAt
+			}
 		}
 	}
 	var capped int
 	err := store.TailFeed(ctx, &w.cursor, store.FeedPass[store.WebhookDelivery]{
 		Until: until,
-		// Nothing from before the oldest enabled endpoint existed can be delivered
+		// Nothing from before the oldest eligibility interval can be delivered
 		// (the per-endpoint guard in fanOut), so the read may start there when the
 		// durable watermark is older.
 		Floor:   oldest,
@@ -416,8 +449,8 @@ func (w *Worker) dispatch(ctx context.Context, endpoints []store.WebhookEndpoint
 }
 
 // fanOutPage turns one page of the feed into deliveries: every subscribed
-// endpoint of the event's workspace that both wants this event type and already
-// existed when it happened.
+// endpoint of the event's workspace that both wants this event type and was
+// enabled when it happened.
 func (w *Worker) fanOutPage(rows []store.WebhookEventRow, byTenant map[string][]store.WebhookEndpoint) ([]store.WebhookDelivery, error) {
 	var batch []store.WebhookDelivery
 	now := w.now()
@@ -430,9 +463,10 @@ func (w *Worker) fanOutPage(rows []store.WebhookEventRow, byTenant map[string][]
 		// delivery row wants so N endpoints share one copy rather than N.
 		var body string
 		for _, e := range byTenant[r.TenantID] {
-			// CreatedAt guard: an endpoint never receives events from before
-			// it existed, however far back the watermark was when it appeared.
-			if r.At.Before(e.CreatedAt) || (len(e.EventTypes) > 0 && !endpointSubscribes(e.EventTypes, eventType)) {
+			// Eligibility guard: an endpoint never receives an event from before
+			// it existed or from a stretch it was disabled, however far back the
+			// watermark was when it appeared or came back (w4/m212).
+			if !eligibleAt(e.Eligibility, r.At) || (len(e.EventTypes) > 0 && !endpointSubscribes(e.EventTypes, eventType)) {
 				continue
 			}
 			if body == "" {
@@ -454,6 +488,10 @@ func (w *Worker) fanOutPage(rows []store.WebhookEventRow, byTenant map[string][]
 		}
 	}
 	return batch, nil
+}
+
+func eligibleAt(intervals []store.WebhookEligibility, at time.Time) bool {
+	return slices.ContainsFunc(intervals, func(i store.WebhookEligibility) bool { return i.Contains(at) })
 }
 
 // endpointSubscribes reports whether a stored eventFilter wants eventType.

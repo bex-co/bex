@@ -17,6 +17,7 @@ limitations under the License.
 package webhooks
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -34,9 +35,16 @@ func webhookREST(t *testing.T, svc *Service, method, target, body string) *httpt
 
 func webhookRESTWithHeaders(t *testing.T, svc *Service, method, target, body string, headers map[string]string) *httptest.ResponseRecorder {
 	t.Helper()
+	return webhookRESTAs(t, context.Background(), svc, method, target, body, headers)
+}
+
+// webhookRESTAs serves one request carrying ctx (an identity, for a Service
+// with a workspace resolver).
+func webhookRESTAs(t *testing.T, ctx context.Context, svc *Service, method, target, body string, headers map[string]string) *httptest.ResponseRecorder {
+	t.Helper()
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
-	req := httptest.NewRequest(method, target, strings.NewReader(body))
+	req := httptest.NewRequestWithContext(ctx, method, target, strings.NewReader(body))
 	if body != "" {
 		req.Header.Set("Content-Type", "application/json")
 	}
