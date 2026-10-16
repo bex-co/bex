@@ -35,6 +35,19 @@ func files(m map[string]string) func(string) ([]byte, bool) {
 	}
 }
 
+// discourseLock is the tail of sweep354's real Discourse Gemfile.lock: its
+// RUBY VERSION block pins 3.4.7 with a patchlevel.
+const discourseLock = `PLATFORMS
+  ruby
+  x86_64-linux
+
+RUBY VERSION
+   ruby 3.4.7p58
+
+BUNDLED WITH
+   2.6.9
+`
+
 // TestResolveNativeVersion pins w8/m51's resolution policy per runtime. Every
 // non-default row fails on the single-pin code it replaces.
 func TestResolveNativeVersion(t *testing.T) {
@@ -59,7 +72,31 @@ func TestResolveNativeVersion(t *testing.T) {
 		{"node open engines → newest", "node", nil, map[string]string{"package.json": `{"engines":{"node":">=18"}}`}, "26", "package.json engines.node"},
 		{"node or-range", "node", nil, map[string]string{"package.json": `{"engines":{"node":"20.x || 22.x"}}`}, "22", "package.json engines.node"},
 		{"node package.json without engines", "node", nil, map[string]string{"package.json": `{"name":"x"}`}, "24", ""},
-		{"ruby Gemfile beats .ruby-version", "ruby", nil, map[string]string{"Gemfile": "source 'x'\nruby '3.3.6'\n", ".ruby-version": "4.0.1"}, "3.3", "Gemfile"},
+		// Render's Ruby precedence (w8/m85): lockfile RUBY VERSION, .ruby-version,
+		// .tool-versions, then the Gemfile directive.
+		{"ruby lockfile beats a permissive Gemfile range", "ruby", nil, map[string]string{
+			"Gemfile": "source 'https://rubygems.org'\nruby '>= 3.4', '< 4.1'\n", "Gemfile.lock": discourseLock}, "3.4", "Gemfile.lock"},
+		{"ruby lockfile beats every file", "ruby", nil, map[string]string{"Gemfile.lock": discourseLock, ".ruby-version": "4.0.1",
+			".tool-versions": "ruby 3.3.6\n", "Gemfile": "ruby '4.0.0'"}, "3.4", "Gemfile.lock"},
+		{"ruby gems.locked", "ruby", nil, map[string]string{"gems.locked": discourseLock}, "3.4", "gems.locked"},
+		{"ruby gems.locked beats Gemfile.lock, as in Bundler", "ruby", nil, map[string]string{
+			"Gemfile.lock": "RUBY VERSION\n   ruby 3.3.6p108\n", "gems.locked": discourseLock}, "3.4", "gems.locked"},
+		{"ruby gems.locked without RUBY VERSION, Gemfile.lock with", "ruby", nil, map[string]string{
+			"gems.locked": "GEM\n  remote: https://rubygems.org/\n", "Gemfile.lock": discourseLock}, "3.4", "Gemfile.lock"},
+		{"ruby Bundler 4 lockfile without patchlevel, CRLF", "ruby", nil, map[string]string{"Gemfile.lock": "RUBY VERSION\r\n  ruby 3.3.6\r\n"}, "3.3", "Gemfile.lock"},
+		{"ruby stale unsupported lock defers to the Gemfile", "ruby", nil, map[string]string{
+			"Gemfile.lock": "RUBY VERSION\n   ruby 3.2.2p53\n", "Gemfile": "ruby '~> 3.2'"}, "3.4", "Gemfile"},
+		{"ruby stale unsupported lock and no other signal keeps the default", "ruby", nil, map[string]string{
+			"Gemfile.lock": "RUBY VERSION\n   ruby 2.7.8p225\n"}, "3.4", ""},
+		{"ruby .tool-versions system defers", "ruby", nil, map[string]string{".tool-versions": "ruby system\n", "Gemfile": "ruby '3.3.6'"}, "3.3", "Gemfile"},
+		{"ruby JRuby lockfile", "ruby", nil, map[string]string{"Gemfile.lock": "RUBY VERSION\n   ruby 3.3.6p108 (jruby 9.4.9.0)\n"}, "3.3", "Gemfile.lock"},
+		{"ruby lockfile without RUBY VERSION falls through", "ruby", nil, map[string]string{
+			"Gemfile.lock": "GEM\n  remote: https://rubygems.org/\n  specs:\n    rake (13.2.1)\n", ".ruby-version": "3.3.1"}, "3.3", ".ruby-version"},
+		{"ruby .ruby-version beats .tool-versions", "ruby", nil, map[string]string{".ruby-version": "4.0.1", ".tool-versions": "ruby 3.3.6\n"}, "4.0", ".ruby-version"},
+		{"ruby .ruby-version beats Gemfile", "ruby", nil, map[string]string{"Gemfile": "source 'x'\nruby '3.3.6'\n", ".ruby-version": "4.0.1"}, "4.0", ".ruby-version"},
+		{"ruby .tool-versions", "ruby", nil, map[string]string{".tool-versions": "# pinned\nnodejs 24.1.0\nruby 3.3.6 3.4.7 # fallback\n"}, "3.3", ".tool-versions"},
+		{"ruby .tool-versions beats Gemfile", "ruby", nil, map[string]string{".tool-versions": "ruby 3.3.6\n", "Gemfile": "ruby '4.0.0'"}, "3.3", ".tool-versions"},
+		{"ruby .tool-versions without ruby falls through", "ruby", nil, map[string]string{".tool-versions": "nodejs 24.1.0\n", "Gemfile": "ruby '4.0.0'"}, "4.0", "Gemfile"},
 		{"ruby pessimistic minor", "ruby", nil, map[string]string{"Gemfile": `ruby "~> 3.3.0"`}, "3.3", "Gemfile"},
 		{"ruby pessimistic major", "ruby", nil, map[string]string{"Gemfile": `ruby "~> 3.3"`}, "3.4", "Gemfile"},
 		{"ruby file", "ruby", nil, map[string]string{".ruby-version": "ruby-4.0.0"}, "4.0", ".ruby-version"},
@@ -96,6 +133,7 @@ func TestResolveNativeVersionRefusesUnsupportedByName(t *testing.T) {
 		{"node", map[string]string{"NODE_VERSION": "18"}, nil, "supported Node lines are 22, 24, 26"},
 		{"node", nil, map[string]string{"package.json": `{"engines":{"node":"<20"}}`}, `package.json engines.node "<20"`},
 		{"ruby", nil, map[string]string{"Gemfile": `ruby "2.7.8"`}, `Gemfile ruby "2.7.8"`},
+		{"ruby", nil, map[string]string{".tool-versions": "ruby 2.7.8\n"}, `.tool-versions ruby "2.7.8"`},
 		{"elixir", map[string]string{"ELIXIR_VERSION": "1.18", "ERLANG_VERSION": "26.2"}, nil, "runs on Erlang/OTP 28"},
 	}
 	for _, tc := range cases {
