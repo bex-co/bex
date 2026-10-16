@@ -181,7 +181,7 @@ export function ParameterOverridesEditor({
           {t("databases.insightsNoDeclaredParams")}
         </p>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b text-left text-muted-foreground">
