@@ -1,0 +1,1859 @@
+{
+  "pass": "a675",
+  "date": "2026-10-16 UTC",
+  "scope": "Functional webhook disable interval; one owned Free receiver and two owned endpoints",
+  "sourceHead": "c84c348b0e4a2248ee0f80a09cc15165275e14d7",
+  "probes": [
+    {
+      "receipt": "qa-recovered-a675DisableReadback.json",
+      "sha256": "0d34f649315b6aacb39b89e1be07e20c1f8b19652d0a391ce8c863124dd38852",
+      "capture": {
+        "at": "2026-10-16T05:21:21.909Z",
+        "ui": false,
+        "api": {
+          "status": 200,
+          "body": {
+            "data": {
+              "webhookEndpoint": {
+                "enabled": false,
+                "eventTypes": ["deploy_ended"],
+                "id": "whk-db8r6529cl7s73ae49i0",
+                "url": "https://qa-20261016-a675-receiver.onbex.co/webhook"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "receipt": "qa-recovered-a675DisabledRestart.json",
+      "sha256": "07a2481dd36ebd1c3dae587b4dc7d1d7684a148a22caba33fe669a17756026b3",
+      "capture": {
+        "at": "2026-10-16T05:21:27.574Z",
+        "request": {
+          "operationName": "RestartServer",
+          "variables": {
+            "serviceId": "srv-db8r60i9cl7s73ae49gg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation RestartServer($serviceId: String!) {\n  restartServer(serviceId: $serviceId) {\n    id\n    status\n    createdAt\n    trigger\n    rollbackOf\n    image\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "restartServer": {
+              "__typename": "Deploy",
+              "createdAt": "2026-10-16T05:21:26.884467Z",
+              "id": "dep-db8r8li9cl7s73ae49qg",
+              "image": "node:24-bookworm-slim",
+              "rollbackOf": "",
+              "status": "created",
+              "trigger": "api"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792128086562.124,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.14,
+          "responseStart": 308.719,
+          "responseEnd": 309.152
+        },
+        "url": "https://dashboard.bex.co/services/srv-db8r60i9cl7s73ae49gg/deploys/dep-db8r8li9cl7s73ae49qg"
+      }
+    },
+    {
+      "receipt": "qa-recovered-a675DisabledRestartLive.json",
+      "sha256": "bdfbbf6909990c7c7b1d5590bf470358ef342a32ff068d51c5d3ba42669e0fda",
+      "capture": {
+        "at": "2026-10-16T05:21:44.386Z",
+        "rows": [
+          {
+            "at": "2026-10-16T05:21:41.641Z",
+            "status": 200,
+            "deploy": {
+              "id": "dep-db8r8li9cl7s73ae49qg",
+              "serviceId": "srv-db8r60i9cl7s73ae49gg",
+              "status": "update_in_progress",
+              "trigger": "api",
+              "bexTrigger": "api",
+              "image": {
+                "ref": "node:24-bookworm-slim"
+              },
+              "createdAt": "2026-10-16T05:21:26.884467Z",
+              "updatedAt": "2026-10-16T05:21:32.422624Z",
+              "startedAt": "2026-10-16T05:21:32.422622Z"
+            }
+          },
+          {
+            "at": "2026-10-16T05:21:44.386Z",
+            "status": 200,
+            "deploy": {
+              "id": "dep-db8r8li9cl7s73ae49qg",
+              "serviceId": "srv-db8r60i9cl7s73ae49gg",
+              "status": "live",
+              "trigger": "api",
+              "bexTrigger": "api",
+              "image": {
+                "ref": "node:24-bookworm-slim"
+              },
+              "createdAt": "2026-10-16T05:21:26.884467Z",
+              "updatedAt": "2026-10-16T05:21:43.107707Z",
+              "startedAt": "2026-10-16T05:21:32.422622Z",
+              "finishedAt": "2026-10-16T05:21:43.107706Z"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "receipt": "qa-recovered-a675DisabledNoDelivery.json",
+      "sha256": "edaa3edf34a4046f05e2c860b3168747260e2fc6ae45842739995e7ff8257783",
+      "capture": {
+        "at": "2026-10-16T05:21:58.337Z",
+        "deliveries": {
+          "status": 200,
+          "body": {
+            "data": {
+              "webhookDeliveries": [
+                {
+                  "attemptNumber": 2,
+                  "cursor": "MjAyNi0xMC0xNlQwNToyMDo1OC4wMTQ4OTdafHdoZC1kYjhyOGVhOWNsN3M3M2FlNDlwMA",
+                  "eventId": "evt-bkgos76sfc5ie1nm2738",
+                  "eventType": "deploy_ended",
+                  "id": "whd-db8r8ea9cl7s73ae49p0",
+                  "nextAttemptAt": "",
+                  "parentStatus": "delivered",
+                  "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:20:23Z\",\"data\":{\"id\":\"evt-bkgos76sfc5ie1nm2738\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                  "responseBody": "",
+                  "sentAt": "2026-10-16T05:20:58Z",
+                  "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                  "serviceName": "qa-20261016-a675-receiver",
+                  "status": "delivered",
+                  "statusCode": 204,
+                  "transportError": ""
+                },
+                {
+                  "attemptNumber": 1,
+                  "cursor": "MjAyNi0xMC0xNlQwNToyMDoyOC4wMzA1NDZafHdoZC1kYjhyODcyOWNsN3M3M2FlNDltZw",
+                  "eventId": "evt-bkgos76sfc5ie1nm2738",
+                  "eventType": "deploy_ended",
+                  "id": "whd-db8r8729cl7s73ae49mg",
+                  "nextAttemptAt": "",
+                  "parentStatus": "delivered",
+                  "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:20:23Z\",\"data\":{\"id\":\"evt-bkgos76sfc5ie1nm2738\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                  "responseBody": "QA_A675_FAIL",
+                  "sentAt": "2026-10-16T05:20:28Z",
+                  "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                  "serviceName": "qa-20261016-a675-receiver",
+                  "status": "failed",
+                  "statusCode": 503,
+                  "transportError": "endpoint answered 503"
+                }
+              ]
+            }
+          }
+        },
+        "receiver": {
+          "status": 200,
+          "body": {
+            "marker": "QA_A675",
+            "boot": "2026-10-16T05:21:29.070Z",
+            "received": []
+          }
+        },
+        "disabled": true
+      }
+    },
+    {
+      "receipt": "qa-recovered-a675EnableHook.json",
+      "sha256": "70dace5306d35ce05e0e1bfabc73352bba7c9b9b4b70da04bc38284c3422318c",
+      "capture": {
+        "at": "2026-10-16T05:21:59.983Z",
+        "request": {
+          "operationName": "SetWebhookEndpointEnabled",
+          "variables": {
+            "id": "whk-db8r6529cl7s73ae49i0",
+            "enabled": true,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation SetWebhookEndpointEnabled($id: String!, $ownerId: String, $enabled: Boolean!) {\n  setWebhookEndpointEnabled(id: $id, ownerId: $ownerId, enabled: $enabled) {\n    id\n    enabled\n    disabledReason\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "setWebhookEndpointEnabled": {
+              "__typename": "WebhookEndpoint",
+              "disabledReason": "",
+              "enabled": true,
+              "id": "whk-db8r6529cl7s73ae49i0"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792128118992.826,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.131,
+          "responseStart": 281.921,
+          "responseEnd": 282.349
+        },
+        "url": "https://dashboard.bex.co/webhook/whk-db8r6529cl7s73ae49i0/settings"
+      }
+    },
+    {
+      "receipt": "qa-recovered-a675EnabledNoReplay.json",
+      "sha256": "3ead2d71db295597134b07047e23f1eb48a7a61aa5f6d88781f8bdc94ded8674",
+      "capture": {
+        "at": "2026-10-16T05:22:17.558Z",
+        "receiver": {
+          "status": 200,
+          "body": {
+            "marker": "QA_A675",
+            "boot": "2026-10-16T05:21:29.070Z",
+            "received": [
+              {
+                "at": "2026-10-16T05:22:00.042Z",
+                "payload": {
+                  "type": "deploy_ended",
+                  "timestamp": "2026-10-16T05:21:43Z",
+                  "data": {
+                    "id": "evt-5efb2thu6il0ilvaqvnh",
+                    "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                    "serviceName": "qa-20261016-a675-receiver",
+                    "status": "succeeded"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "deliveries": {
+          "status": 200,
+          "body": {
+            "data": {
+              "webhookDeliveries": [
+                {
+                  "attemptNumber": 1,
+                  "cursor": "MjAyNi0xMC0xNlQwNToyMjowMC4wMzY5MDFafHdoZC1kYjhyOHUyOWNsN3M3M2FlNDlzMA",
+                  "eventId": "evt-5efb2thu6il0ilvaqvnh",
+                  "eventType": "deploy_ended",
+                  "id": "whd-db8r8u29cl7s73ae49s0",
+                  "nextAttemptAt": "",
+                  "parentStatus": "delivered",
+                  "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:21:43Z\",\"data\":{\"id\":\"evt-5efb2thu6il0ilvaqvnh\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                  "responseBody": "",
+                  "sentAt": "2026-10-16T05:22:00Z",
+                  "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                  "serviceName": "qa-20261016-a675-receiver",
+                  "status": "delivered",
+                  "statusCode": 204,
+                  "transportError": ""
+                },
+                {
+                  "attemptNumber": 2,
+                  "cursor": "MjAyNi0xMC0xNlQwNToyMDo1OC4wMTQ4OTdafHdoZC1kYjhyOGVhOWNsN3M3M2FlNDlwMA",
+                  "eventId": "evt-bkgos76sfc5ie1nm2738",
+                  "eventType": "deploy_ended",
+                  "id": "whd-db8r8ea9cl7s73ae49p0",
+                  "nextAttemptAt": "",
+                  "parentStatus": "delivered",
+                  "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:20:23Z\",\"data\":{\"id\":\"evt-bkgos76sfc5ie1nm2738\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                  "responseBody": "",
+                  "sentAt": "2026-10-16T05:20:58Z",
+                  "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                  "serviceName": "qa-20261016-a675-receiver",
+                  "status": "delivered",
+                  "statusCode": 204,
+                  "transportError": ""
+                },
+                {
+                  "attemptNumber": 1,
+                  "cursor": "MjAyNi0xMC0xNlQwNToyMDoyOC4wMzA1NDZafHdoZC1kYjhyODcyOWNsN3M3M2FlNDltZw",
+                  "eventId": "evt-bkgos76sfc5ie1nm2738",
+                  "eventType": "deploy_ended",
+                  "id": "whd-db8r8729cl7s73ae49mg",
+                  "nextAttemptAt": "",
+                  "parentStatus": "delivered",
+                  "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:20:23Z\",\"data\":{\"id\":\"evt-bkgos76sfc5ie1nm2738\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                  "responseBody": "QA_A675_FAIL",
+                  "sentAt": "2026-10-16T05:20:28Z",
+                  "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                  "serviceName": "qa-20261016-a675-receiver",
+                  "status": "failed",
+                  "statusCode": 503,
+                  "transportError": "endpoint answered 503"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "receipt": "qa-recovered-a675EnabledRestart.json",
+      "sha256": "5be13a84c2c970ad34989c57183ecaa5194004112f5e82a84e4d8adb783b0f3b",
+      "capture": {
+        "at": "2026-10-16T05:22:23.193Z",
+        "request": {
+          "operationName": "RestartServer",
+          "variables": {
+            "serviceId": "srv-db8r60i9cl7s73ae49gg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation RestartServer($serviceId: String!) {\n  restartServer(serviceId: $serviceId) {\n    id\n    status\n    createdAt\n    trigger\n    rollbackOf\n    image\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "restartServer": {
+              "__typename": "Deploy",
+              "createdAt": "2026-10-16T05:22:22.495697Z",
+              "id": "dep-db8r93ndbg8c73dghbo0",
+              "image": "node:24-bookworm-slim",
+              "rollbackOf": "",
+              "status": "created",
+              "trigger": "api"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792128142142.4917,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.129,
+          "responseStart": 344.634,
+          "responseEnd": 345.066
+        },
+        "url": "https://dashboard.bex.co/services/srv-db8r60i9cl7s73ae49gg/deploys/dep-db8r93ndbg8c73dghbo0"
+      }
+    },
+    {
+      "receipt": "qa-recovered-a675CreateControlHook.json",
+      "sha256": "d2b7b5a5b0eff90f022214a3489f8f9513935658631529970876e346d923ad80",
+      "capture": {
+        "at": "2026-10-16T05:23:07.915Z",
+        "request": {
+          "operationName": "CreateWebhookEndpoint",
+          "variables": {
+            "name": "qa-20261016-a675-control",
+            "url": "https://qa-20261016-a675-receiver.onbex.co/webhook",
+            "eventTypes": ["deploy_ended"],
+            "enabled": true,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation CreateWebhookEndpoint($ownerId: String, $name: String, $url: String!, $eventTypes: [String]!, $enabled: Boolean) {\n  createWebhookEndpoint(\n    ownerId: $ownerId\n    name: $name\n    url: $url\n    eventTypes: $eventTypes\n    enabled: $enabled\n  ) {\n    id\n    name\n    url\n    eventTypes\n    enabled\n    secret\n    createdAt\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "createWebhookEndpoint": {
+              "__typename": "WebhookEndpoint",
+              "createdAt": "2026-10-16T05:23:07Z",
+              "enabled": true,
+              "eventTypes": ["deploy_ended"],
+              "id": "whk-db8r9evdbg8c73dghbpg",
+              "name": "qa-20261016-a675-control",
+              "url": "https://qa-20261016-a675-receiver.onbex.co/webhook"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792128186890.497,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.163,
+          "responseStart": 319.914,
+          "responseEnd": 320.35
+        },
+        "url": "https://dashboard.bex.co/webhooks/new"
+      }
+    },
+    {
+      "receipt": "qa-recovered-a675DisableAWithB.json",
+      "sha256": "795689aa1acfe52a0308de083f7fd7fab7d3dabdf54695e474c392a454eeaf57",
+      "capture": {
+        "at": "2026-10-16T05:23:31.763Z",
+        "request": {
+          "operationName": "SetWebhookEndpointEnabled",
+          "variables": {
+            "id": "whk-db8r6529cl7s73ae49i0",
+            "enabled": false,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation SetWebhookEndpointEnabled($id: String!, $ownerId: String, $enabled: Boolean!) {\n  setWebhookEndpointEnabled(id: $id, ownerId: $ownerId, enabled: $enabled) {\n    id\n    enabled\n    disabledReason\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "setWebhookEndpointEnabled": {
+              "__typename": "WebhookEndpoint",
+              "disabledReason": "disabled manually",
+              "enabled": false,
+              "id": "whk-db8r6529cl7s73ae49i0"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792128210588.059,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.128,
+          "responseStart": 467.704,
+          "responseEnd": 468.128
+        },
+        "url": "https://dashboard.bex.co/webhook/whk-db8r6529cl7s73ae49i0/settings"
+      }
+    },
+    {
+      "receipt": "qa-recovered-a675BControlRestart.json",
+      "sha256": "9741ff0ef72a1cbfa86406dbc6620c0da38250792bec278bc965c72dfda19413",
+      "capture": {
+        "at": "2026-10-16T05:23:36.939Z",
+        "request": {
+          "operationName": "RestartServer",
+          "variables": {
+            "serviceId": "srv-db8r60i9cl7s73ae49gg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation RestartServer($serviceId: String!) {\n  restartServer(serviceId: $serviceId) {\n    id\n    status\n    createdAt\n    trigger\n    rollbackOf\n    image\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "restartServer": {
+              "__typename": "Deploy",
+              "createdAt": "2026-10-16T05:23:36.242191Z",
+              "id": "dep-db8r9m29cl7s73ae49v0",
+              "image": "node:24-bookworm-slim",
+              "rollbackOf": "",
+              "status": "created",
+              "trigger": "api"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792128215902.433,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.121,
+          "responseStart": 331.249,
+          "responseEnd": 331.66
+        },
+        "url": "https://dashboard.bex.co/services/srv-db8r60i9cl7s73ae49gg/deploys/dep-db8r9m29cl7s73ae49v0"
+      }
+    },
+    {
+      "receipt": "qa-recovered-a675BControlDisabledObserved.json",
+      "sha256": "b98f1cf30978d54cb7aefa14cb279cb2fcb37b532b06682270f6f70f897cf12c",
+      "capture": {
+        "at": "2026-10-16T05:24:06.758Z",
+        "request": {
+          "query": "query($a:String!,$b:String!,$sid:String!){a:webhookEndpoint(id:$a){id enabled createdAt eventTypes} b:webhookEndpoint(id:$b){id enabled createdAt eventTypes} ah:webhookDeliveries(endpointId:$a,limit:30){id eventId eventType serviceId status statusCode requestBody sentAt attemptNumber} bh:webhookDeliveries(endpointId:$b,limit:30){id eventId eventType serviceId status statusCode requestBody sentAt attemptNumber} events:serviceEvents(serviceId:$sid,limit:30){id timestamp type details{deployId deployStatus}}}",
+          "variables": {
+            "a": "whk-db8r6529cl7s73ae49i0",
+            "b": "whk-db8r9evdbg8c73dghbpg",
+            "sid": "srv-db8r60i9cl7s73ae49gg"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "a": {
+              "createdAt": "2026-10-16T05:16:04Z",
+              "enabled": false,
+              "eventTypes": ["deploy_ended"],
+              "id": "whk-db8r6529cl7s73ae49i0"
+            },
+            "ah": [
+              {
+                "attemptNumber": 1,
+                "eventId": "evt-avprr9hkc6702kv1nelc",
+                "eventType": "deploy_ended",
+                "id": "whd-db8r99ndbg8c73dghbog",
+                "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:22:43Z\",\"data\":{\"id\":\"evt-avprr9hkc6702kv1nelc\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                "sentAt": "2026-10-16T05:22:46Z",
+                "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                "status": "delivered",
+                "statusCode": 204
+              },
+              {
+                "attemptNumber": 1,
+                "eventId": "evt-5efb2thu6il0ilvaqvnh",
+                "eventType": "deploy_ended",
+                "id": "whd-db8r8u29cl7s73ae49s0",
+                "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:21:43Z\",\"data\":{\"id\":\"evt-5efb2thu6il0ilvaqvnh\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                "sentAt": "2026-10-16T05:22:00Z",
+                "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                "status": "delivered",
+                "statusCode": 204
+              },
+              {
+                "attemptNumber": 2,
+                "eventId": "evt-bkgos76sfc5ie1nm2738",
+                "eventType": "deploy_ended",
+                "id": "whd-db8r8ea9cl7s73ae49p0",
+                "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:20:23Z\",\"data\":{\"id\":\"evt-bkgos76sfc5ie1nm2738\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                "sentAt": "2026-10-16T05:20:58Z",
+                "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                "status": "delivered",
+                "statusCode": 204
+              },
+              {
+                "attemptNumber": 1,
+                "eventId": "evt-bkgos76sfc5ie1nm2738",
+                "eventType": "deploy_ended",
+                "id": "whd-db8r8729cl7s73ae49mg",
+                "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:20:23Z\",\"data\":{\"id\":\"evt-bkgos76sfc5ie1nm2738\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                "sentAt": "2026-10-16T05:20:28Z",
+                "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                "status": "failed",
+                "statusCode": 503
+              }
+            ],
+            "b": {
+              "createdAt": "2026-10-16T05:23:07Z",
+              "enabled": true,
+              "eventTypes": ["deploy_ended"],
+              "id": "whk-db8r9evdbg8c73dghbpg"
+            },
+            "bh": [
+              {
+                "attemptNumber": 1,
+                "eventId": "evt-e78r5s21vnvac7d1ck4h",
+                "eventType": "deploy_ended",
+                "id": "whd-db8r9ti9cl7s73ae49vg",
+                "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:24:02Z\",\"data\":{\"id\":\"evt-e78r5s21vnvac7d1ck4h\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                "sentAt": "2026-10-16T05:24:06Z",
+                "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                "status": "delivered",
+                "statusCode": 204
+              }
+            ],
+            "events": [
+              {
+                "details": {
+                  "deployId": "dep-db8r9m29cl7s73ae49v0",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-e78r5s21vnvac7d1ck4h",
+                "timestamp": "2026-10-16T05:24:02Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r9m29cl7s73ae49v0",
+                  "deployStatus": ""
+                },
+                "id": "evt-mj2uf4m104il9nr43ccf",
+                "timestamp": "2026-10-16T05:23:36Z",
+                "type": "deploy_started"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r93ndbg8c73dghbo0",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-avprr9hkc6702kv1nelc",
+                "timestamp": "2026-10-16T05:22:43Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r93ndbg8c73dghbo0",
+                  "deployStatus": ""
+                },
+                "id": "evt-al4oj729vtsqclph9bps",
+                "timestamp": "2026-10-16T05:22:22Z",
+                "type": "deploy_started"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r8li9cl7s73ae49qg",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-5efb2thu6il0ilvaqvnh",
+                "timestamp": "2026-10-16T05:21:43Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r8li9cl7s73ae49qg",
+                  "deployStatus": ""
+                },
+                "id": "evt-43hhfhh478rgbielh891",
+                "timestamp": "2026-10-16T05:21:26Z",
+                "type": "deploy_started"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r81vdbg8c73dghbj0",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-bkgos76sfc5ie1nm2738",
+                "timestamp": "2026-10-16T05:20:23Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "",
+                  "deployStatus": ""
+                },
+                "id": "evt-hh4fqjbku7u2tbo4imna",
+                "timestamp": "2026-10-16T05:20:07Z",
+                "type": "commands_changed"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r81vdbg8c73dghbj0",
+                  "deployStatus": ""
+                },
+                "id": "evt-gbpl22v9tp87nt0junmh",
+                "timestamp": "2026-10-16T05:20:07Z",
+                "type": "deploy_started"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r6pq9cl7s73ae49k0",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-outdn74dli9hvscdiva0",
+                "timestamp": "2026-10-16T05:17:43Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r6pq9cl7s73ae49k0",
+                  "deployStatus": ""
+                },
+                "id": "evt-ucub2iaj7a3nhp0qkpon",
+                "timestamp": "2026-10-16T05:17:27Z",
+                "type": "deploy_started"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r60i9cl7s73ae49h0",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-afunecqhlb61uojqqsho",
+                "timestamp": "2026-10-16T05:16:02Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r60i9cl7s73ae49h0",
+                  "deployStatus": ""
+                },
+                "id": "evt-mpk4hr4l31jd0rvn5ai2",
+                "timestamp": "2026-10-16T05:15:46Z",
+                "type": "deploy_started"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "receipt": "qa-recovered-a675EnableAWithB.json",
+      "sha256": "f6ff5a07375c8397b749d0543545f9ebcd74717febf91451c98055723978e908",
+      "capture": {
+        "at": "2026-10-16T05:24:10.451Z",
+        "request": {
+          "operationName": "SetWebhookEndpointEnabled",
+          "variables": {
+            "id": "whk-db8r6529cl7s73ae49i0",
+            "enabled": true,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation SetWebhookEndpointEnabled($id: String!, $ownerId: String, $enabled: Boolean!) {\n  setWebhookEndpointEnabled(id: $id, ownerId: $ownerId, enabled: $enabled) {\n    id\n    enabled\n    disabledReason\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "setWebhookEndpointEnabled": {
+              "__typename": "WebhookEndpoint",
+              "disabledReason": "",
+              "enabled": true,
+              "id": "whk-db8r6529cl7s73ae49i0"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792128249503.2827,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.144,
+          "responseStart": 239.783,
+          "responseEnd": 240.21
+        },
+        "url": "https://dashboard.bex.co/webhook/whk-db8r6529cl7s73ae49i0/settings"
+      }
+    },
+    {
+      "receipt": "qa-recovered-a675BControlAfterEnable.json",
+      "sha256": "2d232b3961c7c980874427732247f23217b4768ee5a19859847ac3e8ee6dad5c",
+      "capture": {
+        "at": "2026-10-16T05:24:45.126Z",
+        "request": {
+          "query": "query($a:String!,$b:String!,$sid:String!){a:webhookEndpoint(id:$a){id enabled createdAt eventTypes} b:webhookEndpoint(id:$b){id enabled createdAt eventTypes} ah:webhookDeliveries(endpointId:$a,limit:30){id eventId eventType serviceId status statusCode requestBody sentAt attemptNumber} bh:webhookDeliveries(endpointId:$b,limit:30){id eventId eventType serviceId status statusCode requestBody sentAt attemptNumber} events:serviceEvents(serviceId:$sid,limit:30){id timestamp type details{deployId deployStatus}}}",
+          "variables": {
+            "a": "whk-db8r6529cl7s73ae49i0",
+            "b": "whk-db8r9evdbg8c73dghbpg",
+            "sid": "srv-db8r60i9cl7s73ae49gg"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "a": {
+              "createdAt": "2026-10-16T05:16:04Z",
+              "enabled": true,
+              "eventTypes": ["deploy_ended"],
+              "id": "whk-db8r6529cl7s73ae49i0"
+            },
+            "ah": [
+              {
+                "attemptNumber": 1,
+                "eventId": "evt-avprr9hkc6702kv1nelc",
+                "eventType": "deploy_ended",
+                "id": "whd-db8r99ndbg8c73dghbog",
+                "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:22:43Z\",\"data\":{\"id\":\"evt-avprr9hkc6702kv1nelc\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                "sentAt": "2026-10-16T05:22:46Z",
+                "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                "status": "delivered",
+                "statusCode": 204
+              },
+              {
+                "attemptNumber": 1,
+                "eventId": "evt-5efb2thu6il0ilvaqvnh",
+                "eventType": "deploy_ended",
+                "id": "whd-db8r8u29cl7s73ae49s0",
+                "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:21:43Z\",\"data\":{\"id\":\"evt-5efb2thu6il0ilvaqvnh\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                "sentAt": "2026-10-16T05:22:00Z",
+                "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                "status": "delivered",
+                "statusCode": 204
+              },
+              {
+                "attemptNumber": 2,
+                "eventId": "evt-bkgos76sfc5ie1nm2738",
+                "eventType": "deploy_ended",
+                "id": "whd-db8r8ea9cl7s73ae49p0",
+                "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:20:23Z\",\"data\":{\"id\":\"evt-bkgos76sfc5ie1nm2738\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                "sentAt": "2026-10-16T05:20:58Z",
+                "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                "status": "delivered",
+                "statusCode": 204
+              },
+              {
+                "attemptNumber": 1,
+                "eventId": "evt-bkgos76sfc5ie1nm2738",
+                "eventType": "deploy_ended",
+                "id": "whd-db8r8729cl7s73ae49mg",
+                "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:20:23Z\",\"data\":{\"id\":\"evt-bkgos76sfc5ie1nm2738\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                "sentAt": "2026-10-16T05:20:28Z",
+                "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                "status": "failed",
+                "statusCode": 503
+              }
+            ],
+            "b": {
+              "createdAt": "2026-10-16T05:23:07Z",
+              "enabled": true,
+              "eventTypes": ["deploy_ended"],
+              "id": "whk-db8r9evdbg8c73dghbpg"
+            },
+            "bh": [
+              {
+                "attemptNumber": 1,
+                "eventId": "evt-e78r5s21vnvac7d1ck4h",
+                "eventType": "deploy_ended",
+                "id": "whd-db8r9ti9cl7s73ae49vg",
+                "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:24:02Z\",\"data\":{\"id\":\"evt-e78r5s21vnvac7d1ck4h\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                "sentAt": "2026-10-16T05:24:06Z",
+                "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                "status": "delivered",
+                "statusCode": 204
+              }
+            ],
+            "events": [
+              {
+                "details": {
+                  "deployId": "dep-db8r9m29cl7s73ae49v0",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-e78r5s21vnvac7d1ck4h",
+                "timestamp": "2026-10-16T05:24:02Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r9m29cl7s73ae49v0",
+                  "deployStatus": ""
+                },
+                "id": "evt-mj2uf4m104il9nr43ccf",
+                "timestamp": "2026-10-16T05:23:36Z",
+                "type": "deploy_started"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r93ndbg8c73dghbo0",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-avprr9hkc6702kv1nelc",
+                "timestamp": "2026-10-16T05:22:43Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r93ndbg8c73dghbo0",
+                  "deployStatus": ""
+                },
+                "id": "evt-al4oj729vtsqclph9bps",
+                "timestamp": "2026-10-16T05:22:22Z",
+                "type": "deploy_started"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r8li9cl7s73ae49qg",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-5efb2thu6il0ilvaqvnh",
+                "timestamp": "2026-10-16T05:21:43Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r8li9cl7s73ae49qg",
+                  "deployStatus": ""
+                },
+                "id": "evt-43hhfhh478rgbielh891",
+                "timestamp": "2026-10-16T05:21:26Z",
+                "type": "deploy_started"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r81vdbg8c73dghbj0",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-bkgos76sfc5ie1nm2738",
+                "timestamp": "2026-10-16T05:20:23Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "",
+                  "deployStatus": ""
+                },
+                "id": "evt-hh4fqjbku7u2tbo4imna",
+                "timestamp": "2026-10-16T05:20:07Z",
+                "type": "commands_changed"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r81vdbg8c73dghbj0",
+                  "deployStatus": ""
+                },
+                "id": "evt-gbpl22v9tp87nt0junmh",
+                "timestamp": "2026-10-16T05:20:07Z",
+                "type": "deploy_started"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r6pq9cl7s73ae49k0",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-outdn74dli9hvscdiva0",
+                "timestamp": "2026-10-16T05:17:43Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r6pq9cl7s73ae49k0",
+                  "deployStatus": ""
+                },
+                "id": "evt-ucub2iaj7a3nhp0qkpon",
+                "timestamp": "2026-10-16T05:17:27Z",
+                "type": "deploy_started"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r60i9cl7s73ae49h0",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-afunecqhlb61uojqqsho",
+                "timestamp": "2026-10-16T05:16:02Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r60i9cl7s73ae49h0",
+                  "deployStatus": ""
+                },
+                "id": "evt-mpk4hr4l31jd0rvn5ai2",
+                "timestamp": "2026-10-16T05:15:46Z",
+                "type": "deploy_started"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "receipt": "qa-recovered-a675DisableB.json",
+      "sha256": "d7569e6928e261e3720613c9ad5f40c78b46b64acac6e9b47575777a3683a4c3",
+      "capture": {
+        "at": "2026-10-16T05:24:50.246Z",
+        "request": {
+          "operationName": "SetWebhookEndpointEnabled",
+          "variables": {
+            "id": "whk-db8r9evdbg8c73dghbpg",
+            "enabled": false,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation SetWebhookEndpointEnabled($id: String!, $ownerId: String, $enabled: Boolean!) {\n  setWebhookEndpointEnabled(id: $id, ownerId: $ownerId, enabled: $enabled) {\n    id\n    enabled\n    disabledReason\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "setWebhookEndpointEnabled": {
+              "__typename": "WebhookEndpoint",
+              "disabledReason": "disabled manually",
+              "enabled": false,
+              "id": "whk-db8r9evdbg8c73dghbpg"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792128289257.3293,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.137,
+          "responseStart": 268.838,
+          "responseEnd": 269.265
+        },
+        "url": "https://dashboard.bex.co/webhook/whk-db8r9evdbg8c73dghbpg/settings"
+      }
+    },
+    {
+      "receipt": "qa-recovered-a675ReplayDisableA.json",
+      "sha256": "70f600fb4e74020037815a25d7b4f70c6ab2bf7df85490203f90b9c428aecb06",
+      "capture": {
+        "at": "2026-10-16T05:24:53.698Z",
+        "request": {
+          "operationName": "SetWebhookEndpointEnabled",
+          "variables": {
+            "id": "whk-db8r6529cl7s73ae49i0",
+            "enabled": false,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation SetWebhookEndpointEnabled($id: String!, $ownerId: String, $enabled: Boolean!) {\n  setWebhookEndpointEnabled(id: $id, ownerId: $ownerId, enabled: $enabled) {\n    id\n    enabled\n    disabledReason\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "setWebhookEndpointEnabled": {
+              "__typename": "WebhookEndpoint",
+              "disabledReason": "disabled manually",
+              "enabled": false,
+              "id": "whk-db8r6529cl7s73ae49i0"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792128292750.263,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.145,
+          "responseStart": 236.591,
+          "responseEnd": 237.032
+        },
+        "url": "https://dashboard.bex.co/webhook/whk-db8r6529cl7s73ae49i0/settings"
+      }
+    },
+    {
+      "receipt": "qa-recovered-a675ReplayRestart.json",
+      "sha256": "1e99a7802016bd826bd91952514e56166497ea9d9c4d74c09bfea8266ad942c0",
+      "capture": {
+        "at": "2026-10-16T05:24:59.076Z",
+        "request": {
+          "operationName": "RestartServer",
+          "variables": {
+            "serviceId": "srv-db8r60i9cl7s73ae49gg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation RestartServer($serviceId: String!) {\n  restartServer(serviceId: $serviceId) {\n    id\n    status\n    createdAt\n    trigger\n    rollbackOf\n    image\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "restartServer": {
+              "__typename": "Deploy",
+              "createdAt": "2026-10-16T05:24:58.342869Z",
+              "id": "dep-db8raai9cl7s73ae4a30",
+              "image": "node:24-bookworm-slim",
+              "rollbackOf": "",
+              "status": "created",
+              "trigger": "api"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792128297995.659,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.139,
+          "responseStart": 371.442,
+          "responseEnd": 371.895
+        },
+        "url": "https://dashboard.bex.co/services/srv-db8r60i9cl7s73ae49gg/deploys/dep-db8raai9cl7s73ae4a30"
+      }
+    },
+    {
+      "receipt": "qa-recovered-a675ReplayRestartLive.json",
+      "sha256": "2727f590fd0cd0e80925376ca80823d3b0e30508579dbd45cc470bbd450b4be7",
+      "capture": {
+        "at": "2026-10-16T05:25:21.958Z",
+        "status": 200,
+        "body": {
+          "id": "dep-db8raai9cl7s73ae4a30",
+          "serviceId": "srv-db8r60i9cl7s73ae49gg",
+          "status": "live",
+          "trigger": "api",
+          "bexTrigger": "api",
+          "image": {
+            "ref": "node:24-bookworm-slim"
+          },
+          "createdAt": "2026-10-16T05:24:58.342869Z",
+          "updatedAt": "2026-10-16T05:25:13.205314Z",
+          "finishedAt": "2026-10-16T05:25:13.205312Z"
+        }
+      }
+    },
+    {
+      "receipt": "qa-recovered-a675ReplayDisabledObserved.json",
+      "sha256": "dea89100d9102948a66f892d982f6b3b7f156f9ebffafa55facecc8806d96601",
+      "capture": {
+        "at": "2026-10-16T05:25:30.281Z",
+        "request": {
+          "query": "query($a:String!,$b:String!,$sid:String!){a:webhookEndpoint(id:$a){id enabled createdAt eventTypes} b:webhookEndpoint(id:$b){id enabled createdAt eventTypes} ah:webhookDeliveries(endpointId:$a,limit:30){id eventId eventType serviceId status statusCode requestBody sentAt attemptNumber} bh:webhookDeliveries(endpointId:$b,limit:30){id eventId eventType serviceId status statusCode requestBody sentAt attemptNumber} events:serviceEvents(serviceId:$sid,limit:30){id timestamp type details{deployId deployStatus}}}",
+          "variables": {
+            "a": "whk-db8r6529cl7s73ae49i0",
+            "b": "whk-db8r9evdbg8c73dghbpg",
+            "sid": "srv-db8r60i9cl7s73ae49gg"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "a": {
+              "createdAt": "2026-10-16T05:16:04Z",
+              "enabled": false,
+              "eventTypes": ["deploy_ended"],
+              "id": "whk-db8r6529cl7s73ae49i0"
+            },
+            "ah": [
+              {
+                "attemptNumber": 1,
+                "eventId": "evt-avprr9hkc6702kv1nelc",
+                "eventType": "deploy_ended",
+                "id": "whd-db8r99ndbg8c73dghbog",
+                "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:22:43Z\",\"data\":{\"id\":\"evt-avprr9hkc6702kv1nelc\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                "sentAt": "2026-10-16T05:22:46Z",
+                "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                "status": "delivered",
+                "statusCode": 204
+              },
+              {
+                "attemptNumber": 1,
+                "eventId": "evt-5efb2thu6il0ilvaqvnh",
+                "eventType": "deploy_ended",
+                "id": "whd-db8r8u29cl7s73ae49s0",
+                "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:21:43Z\",\"data\":{\"id\":\"evt-5efb2thu6il0ilvaqvnh\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                "sentAt": "2026-10-16T05:22:00Z",
+                "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                "status": "delivered",
+                "statusCode": 204
+              },
+              {
+                "attemptNumber": 2,
+                "eventId": "evt-bkgos76sfc5ie1nm2738",
+                "eventType": "deploy_ended",
+                "id": "whd-db8r8ea9cl7s73ae49p0",
+                "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:20:23Z\",\"data\":{\"id\":\"evt-bkgos76sfc5ie1nm2738\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                "sentAt": "2026-10-16T05:20:58Z",
+                "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                "status": "delivered",
+                "statusCode": 204
+              },
+              {
+                "attemptNumber": 1,
+                "eventId": "evt-bkgos76sfc5ie1nm2738",
+                "eventType": "deploy_ended",
+                "id": "whd-db8r8729cl7s73ae49mg",
+                "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:20:23Z\",\"data\":{\"id\":\"evt-bkgos76sfc5ie1nm2738\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                "sentAt": "2026-10-16T05:20:28Z",
+                "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                "status": "failed",
+                "statusCode": 503
+              }
+            ],
+            "b": {
+              "createdAt": "2026-10-16T05:23:07Z",
+              "enabled": false,
+              "eventTypes": ["deploy_ended"],
+              "id": "whk-db8r9evdbg8c73dghbpg"
+            },
+            "bh": [
+              {
+                "attemptNumber": 1,
+                "eventId": "evt-e78r5s21vnvac7d1ck4h",
+                "eventType": "deploy_ended",
+                "id": "whd-db8r9ti9cl7s73ae49vg",
+                "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:24:02Z\",\"data\":{\"id\":\"evt-e78r5s21vnvac7d1ck4h\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                "sentAt": "2026-10-16T05:24:06Z",
+                "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                "status": "delivered",
+                "statusCode": 204
+              }
+            ],
+            "events": [
+              {
+                "details": {
+                  "deployId": "dep-db8raai9cl7s73ae4a30",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-2lefv4v4l7npuq3mqfj7",
+                "timestamp": "2026-10-16T05:25:13Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8raai9cl7s73ae4a30",
+                  "deployStatus": ""
+                },
+                "id": "evt-9qqlut1cf1hvfurri2os",
+                "timestamp": "2026-10-16T05:24:58Z",
+                "type": "deploy_started"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r9m29cl7s73ae49v0",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-e78r5s21vnvac7d1ck4h",
+                "timestamp": "2026-10-16T05:24:02Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r9m29cl7s73ae49v0",
+                  "deployStatus": ""
+                },
+                "id": "evt-mj2uf4m104il9nr43ccf",
+                "timestamp": "2026-10-16T05:23:36Z",
+                "type": "deploy_started"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r93ndbg8c73dghbo0",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-avprr9hkc6702kv1nelc",
+                "timestamp": "2026-10-16T05:22:43Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r93ndbg8c73dghbo0",
+                  "deployStatus": ""
+                },
+                "id": "evt-al4oj729vtsqclph9bps",
+                "timestamp": "2026-10-16T05:22:22Z",
+                "type": "deploy_started"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r8li9cl7s73ae49qg",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-5efb2thu6il0ilvaqvnh",
+                "timestamp": "2026-10-16T05:21:43Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r8li9cl7s73ae49qg",
+                  "deployStatus": ""
+                },
+                "id": "evt-43hhfhh478rgbielh891",
+                "timestamp": "2026-10-16T05:21:26Z",
+                "type": "deploy_started"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r81vdbg8c73dghbj0",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-bkgos76sfc5ie1nm2738",
+                "timestamp": "2026-10-16T05:20:23Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "",
+                  "deployStatus": ""
+                },
+                "id": "evt-hh4fqjbku7u2tbo4imna",
+                "timestamp": "2026-10-16T05:20:07Z",
+                "type": "commands_changed"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r81vdbg8c73dghbj0",
+                  "deployStatus": ""
+                },
+                "id": "evt-gbpl22v9tp87nt0junmh",
+                "timestamp": "2026-10-16T05:20:07Z",
+                "type": "deploy_started"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r6pq9cl7s73ae49k0",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-outdn74dli9hvscdiva0",
+                "timestamp": "2026-10-16T05:17:43Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r6pq9cl7s73ae49k0",
+                  "deployStatus": ""
+                },
+                "id": "evt-ucub2iaj7a3nhp0qkpon",
+                "timestamp": "2026-10-16T05:17:27Z",
+                "type": "deploy_started"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r60i9cl7s73ae49h0",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-afunecqhlb61uojqqsho",
+                "timestamp": "2026-10-16T05:16:02Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r60i9cl7s73ae49h0",
+                  "deployStatus": ""
+                },
+                "id": "evt-mpk4hr4l31jd0rvn5ai2",
+                "timestamp": "2026-10-16T05:15:46Z",
+                "type": "deploy_started"
+              }
+            ]
+          }
+        },
+        "disabled": true
+      }
+    },
+    {
+      "receipt": "qa-recovered-a675ReplayEnableA.json",
+      "sha256": "487a66c0c7a7ca3e8a2fb9c21efcca6d30b6b3e3c5a297cadc2fb3514e45d803",
+      "capture": {
+        "at": "2026-10-16T05:25:32.102Z",
+        "request": {
+          "operationName": "SetWebhookEndpointEnabled",
+          "variables": {
+            "id": "whk-db8r6529cl7s73ae49i0",
+            "enabled": true,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation SetWebhookEndpointEnabled($id: String!, $ownerId: String, $enabled: Boolean!) {\n  setWebhookEndpointEnabled(id: $id, ownerId: $ownerId, enabled: $enabled) {\n    id\n    enabled\n    disabledReason\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "setWebhookEndpointEnabled": {
+              "__typename": "WebhookEndpoint",
+              "disabledReason": "",
+              "enabled": true,
+              "id": "whk-db8r6529cl7s73ae49i0"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792128331064.2632,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.145,
+          "responseStart": 328.619,
+          "responseEnd": 329.137
+        },
+        "url": "https://dashboard.bex.co/webhook/whk-db8r6529cl7s73ae49i0/settings"
+      }
+    },
+    {
+      "receipt": "qa-recovered-a675ReplayAfterEnable.json",
+      "sha256": "f866b0ba22d1ad4d61843741e2f8ec5cf504a5cd0b7a3e99c4308d8b79ffd298",
+      "capture": {
+        "at": "2026-10-16T05:25:38.833Z",
+        "request": {
+          "query": "query($a:String!,$b:String!,$sid:String!){a:webhookEndpoint(id:$a){id enabled createdAt eventTypes} b:webhookEndpoint(id:$b){id enabled createdAt eventTypes} ah:webhookDeliveries(endpointId:$a,limit:30){id eventId eventType serviceId status statusCode requestBody sentAt attemptNumber} bh:webhookDeliveries(endpointId:$b,limit:30){id eventId eventType serviceId status statusCode requestBody sentAt attemptNumber} events:serviceEvents(serviceId:$sid,limit:30){id timestamp type details{deployId deployStatus}}}",
+          "variables": {
+            "a": "whk-db8r6529cl7s73ae49i0",
+            "b": "whk-db8r9evdbg8c73dghbpg",
+            "sid": "srv-db8r60i9cl7s73ae49gg"
+          }
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "a": {
+              "createdAt": "2026-10-16T05:16:04Z",
+              "enabled": true,
+              "eventTypes": ["deploy_ended"],
+              "id": "whk-db8r6529cl7s73ae49i0"
+            },
+            "ah": [
+              {
+                "attemptNumber": 1,
+                "eventId": "evt-2lefv4v4l7npuq3mqfj7",
+                "eventType": "deploy_ended",
+                "id": "whd-db8raj29cl7s73ae4a4g",
+                "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:25:13Z\",\"data\":{\"id\":\"evt-2lefv4v4l7npuq3mqfj7\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                "sentAt": "2026-10-16T05:25:32Z",
+                "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                "status": "delivered",
+                "statusCode": 204
+              },
+              {
+                "attemptNumber": 1,
+                "eventId": "evt-avprr9hkc6702kv1nelc",
+                "eventType": "deploy_ended",
+                "id": "whd-db8r99ndbg8c73dghbog",
+                "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:22:43Z\",\"data\":{\"id\":\"evt-avprr9hkc6702kv1nelc\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                "sentAt": "2026-10-16T05:22:46Z",
+                "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                "status": "delivered",
+                "statusCode": 204
+              },
+              {
+                "attemptNumber": 1,
+                "eventId": "evt-5efb2thu6il0ilvaqvnh",
+                "eventType": "deploy_ended",
+                "id": "whd-db8r8u29cl7s73ae49s0",
+                "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:21:43Z\",\"data\":{\"id\":\"evt-5efb2thu6il0ilvaqvnh\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                "sentAt": "2026-10-16T05:22:00Z",
+                "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                "status": "delivered",
+                "statusCode": 204
+              },
+              {
+                "attemptNumber": 2,
+                "eventId": "evt-bkgos76sfc5ie1nm2738",
+                "eventType": "deploy_ended",
+                "id": "whd-db8r8ea9cl7s73ae49p0",
+                "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:20:23Z\",\"data\":{\"id\":\"evt-bkgos76sfc5ie1nm2738\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                "sentAt": "2026-10-16T05:20:58Z",
+                "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                "status": "delivered",
+                "statusCode": 204
+              },
+              {
+                "attemptNumber": 1,
+                "eventId": "evt-bkgos76sfc5ie1nm2738",
+                "eventType": "deploy_ended",
+                "id": "whd-db8r8729cl7s73ae49mg",
+                "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:20:23Z\",\"data\":{\"id\":\"evt-bkgos76sfc5ie1nm2738\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                "sentAt": "2026-10-16T05:20:28Z",
+                "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                "status": "failed",
+                "statusCode": 503
+              }
+            ],
+            "b": {
+              "createdAt": "2026-10-16T05:23:07Z",
+              "enabled": false,
+              "eventTypes": ["deploy_ended"],
+              "id": "whk-db8r9evdbg8c73dghbpg"
+            },
+            "bh": [
+              {
+                "attemptNumber": 1,
+                "eventId": "evt-e78r5s21vnvac7d1ck4h",
+                "eventType": "deploy_ended",
+                "id": "whd-db8r9ti9cl7s73ae49vg",
+                "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:24:02Z\",\"data\":{\"id\":\"evt-e78r5s21vnvac7d1ck4h\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+                "sentAt": "2026-10-16T05:24:06Z",
+                "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                "status": "delivered",
+                "statusCode": 204
+              }
+            ],
+            "events": [
+              {
+                "details": {
+                  "deployId": "dep-db8raai9cl7s73ae4a30",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-2lefv4v4l7npuq3mqfj7",
+                "timestamp": "2026-10-16T05:25:13Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8raai9cl7s73ae4a30",
+                  "deployStatus": ""
+                },
+                "id": "evt-9qqlut1cf1hvfurri2os",
+                "timestamp": "2026-10-16T05:24:58Z",
+                "type": "deploy_started"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r9m29cl7s73ae49v0",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-e78r5s21vnvac7d1ck4h",
+                "timestamp": "2026-10-16T05:24:02Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r9m29cl7s73ae49v0",
+                  "deployStatus": ""
+                },
+                "id": "evt-mj2uf4m104il9nr43ccf",
+                "timestamp": "2026-10-16T05:23:36Z",
+                "type": "deploy_started"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r93ndbg8c73dghbo0",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-avprr9hkc6702kv1nelc",
+                "timestamp": "2026-10-16T05:22:43Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r93ndbg8c73dghbo0",
+                  "deployStatus": ""
+                },
+                "id": "evt-al4oj729vtsqclph9bps",
+                "timestamp": "2026-10-16T05:22:22Z",
+                "type": "deploy_started"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r8li9cl7s73ae49qg",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-5efb2thu6il0ilvaqvnh",
+                "timestamp": "2026-10-16T05:21:43Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r8li9cl7s73ae49qg",
+                  "deployStatus": ""
+                },
+                "id": "evt-43hhfhh478rgbielh891",
+                "timestamp": "2026-10-16T05:21:26Z",
+                "type": "deploy_started"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r81vdbg8c73dghbj0",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-bkgos76sfc5ie1nm2738",
+                "timestamp": "2026-10-16T05:20:23Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "",
+                  "deployStatus": ""
+                },
+                "id": "evt-hh4fqjbku7u2tbo4imna",
+                "timestamp": "2026-10-16T05:20:07Z",
+                "type": "commands_changed"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r81vdbg8c73dghbj0",
+                  "deployStatus": ""
+                },
+                "id": "evt-gbpl22v9tp87nt0junmh",
+                "timestamp": "2026-10-16T05:20:07Z",
+                "type": "deploy_started"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r6pq9cl7s73ae49k0",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-outdn74dli9hvscdiva0",
+                "timestamp": "2026-10-16T05:17:43Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r6pq9cl7s73ae49k0",
+                  "deployStatus": ""
+                },
+                "id": "evt-ucub2iaj7a3nhp0qkpon",
+                "timestamp": "2026-10-16T05:17:27Z",
+                "type": "deploy_started"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r60i9cl7s73ae49h0",
+                  "deployStatus": "succeeded"
+                },
+                "id": "evt-afunecqhlb61uojqqsho",
+                "timestamp": "2026-10-16T05:16:02Z",
+                "type": "deploy_ended"
+              },
+              {
+                "details": {
+                  "deployId": "dep-db8r60i9cl7s73ae49h0",
+                  "deployStatus": ""
+                },
+                "id": "evt-mpk4hr4l31jd0rvn5ai2",
+                "timestamp": "2026-10-16T05:15:46Z",
+                "type": "deploy_started"
+              }
+            ]
+          }
+        },
+        "receiver": {
+          "status": 200,
+          "body": {
+            "marker": "QA_A675",
+            "boot": "2026-10-16T05:25:02.781Z",
+            "received": [
+              {
+                "at": "2026-10-16T05:25:32.090Z",
+                "payload": {
+                  "type": "deploy_ended",
+                  "timestamp": "2026-10-16T05:25:13Z",
+                  "data": {
+                    "id": "evt-2lefv4v4l7npuq3mqfj7",
+                    "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                    "serviceName": "qa-20261016-a675-receiver",
+                    "status": "succeeded"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "receipt": "qa-recovered-a675Resend.json",
+      "sha256": "005d0dd97e0f562e2b6f28d96a93e5ac4dfc2ca9dbec9bc00700d09a111ed4c5",
+      "capture": {
+        "at": "2026-10-16T05:20:58.072Z",
+        "request": {
+          "operationName": "ResendWebhookDelivery",
+          "variables": {
+            "endpointId": "whk-db8r6529cl7s73ae49i0",
+            "attemptId": "whd-db8r8729cl7s73ae49mg",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "idempotencyKey": "dashboard-b4f52020-0d71-42b6-aa49-915dd593d2fb"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation ResendWebhookDelivery($endpointId: String!, $attemptId: String!, $ownerId: String, $idempotencyKey: String!) {\n  resendWebhookDelivery(\n    endpointId: $endpointId\n    attemptId: $attemptId\n    ownerId: $ownerId\n    idempotencyKey: $idempotencyKey\n  ) {\n    ...WebhookDeliveryFields\n    __typename\n  }\n}\n\nfragment WebhookDeliveryFields on WebhookDelivery {\n  id\n  eventId\n  eventType\n  serviceId\n  serviceName\n  status\n  attemptNumber\n  statusCode\n  transportError\n  responseBody\n  requestBody\n  sentAt\n  nextAttemptAt\n  parentStatus\n  cursor\n  __typename\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "resendWebhookDelivery": {
+              "__typename": "WebhookDelivery",
+              "attemptNumber": 2,
+              "cursor": "",
+              "eventId": "evt-bkgos76sfc5ie1nm2738",
+              "eventType": "deploy_ended",
+              "id": "whd-db8r8ea9cl7s73ae49p0",
+              "nextAttemptAt": "2026-10-16T05:20:57Z",
+              "parentStatus": "pending",
+              "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:20:23Z\",\"data\":{\"id\":\"evt-bkgos76sfc5ie1nm2738\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+              "responseBody": "",
+              "sentAt": "",
+              "serviceId": "srv-db8r60i9cl7s73ae49gg",
+              "serviceName": "qa-20261016-a675-receiver",
+              "status": "pending",
+              "statusCode": 0,
+              "transportError": ""
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792128057062.5632,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.142,
+          "responseStart": 301.327,
+          "responseEnd": 301.756
+        },
+        "url": "https://dashboard.bex.co/webhook/whk-db8r6529cl7s73ae49i0"
+      }
+    },
+    {
+      "receipt": "qa-recovered-a675ResendObserved.json",
+      "sha256": "c561a60d1ce3724e9e0b7bd518e9a0cd42afc61479bcb32f070adcd9d14e11a1",
+      "capture": {
+        "at": "2026-10-16T05:21:10.567Z",
+        "deliveries": {
+          "status": 200,
+          "rows": [
+            {
+              "attemptNumber": 2,
+              "cursor": "MjAyNi0xMC0xNlQwNToyMDo1OC4wMTQ4OTdafHdoZC1kYjhyOGVhOWNsN3M3M2FlNDlwMA",
+              "eventId": "evt-bkgos76sfc5ie1nm2738",
+              "eventType": "deploy_ended",
+              "id": "whd-db8r8ea9cl7s73ae49p0",
+              "nextAttemptAt": "",
+              "parentStatus": "delivered",
+              "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:20:23Z\",\"data\":{\"id\":\"evt-bkgos76sfc5ie1nm2738\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+              "responseBody": "",
+              "sentAt": "2026-10-16T05:20:58Z",
+              "serviceId": "srv-db8r60i9cl7s73ae49gg",
+              "serviceName": "qa-20261016-a675-receiver",
+              "status": "delivered",
+              "statusCode": 204,
+              "transportError": ""
+            },
+            {
+              "attemptNumber": 1,
+              "cursor": "MjAyNi0xMC0xNlQwNToyMDoyOC4wMzA1NDZafHdoZC1kYjhyODcyOWNsN3M3M2FlNDltZw",
+              "eventId": "evt-bkgos76sfc5ie1nm2738",
+              "eventType": "deploy_ended",
+              "id": "whd-db8r8729cl7s73ae49mg",
+              "nextAttemptAt": "",
+              "parentStatus": "delivered",
+              "requestBody": "{\"type\":\"deploy_ended\",\"timestamp\":\"2026-10-16T05:20:23Z\",\"data\":{\"id\":\"evt-bkgos76sfc5ie1nm2738\",\"serviceId\":\"srv-db8r60i9cl7s73ae49gg\",\"serviceName\":\"qa-20261016-a675-receiver\",\"status\":\"succeeded\"}}",
+              "responseBody": "QA_A675_FAIL",
+              "sentAt": "2026-10-16T05:20:28Z",
+              "serviceId": "srv-db8r60i9cl7s73ae49gg",
+              "serviceName": "qa-20261016-a675-receiver",
+              "status": "failed",
+              "statusCode": 503,
+              "transportError": "endpoint answered 503"
+            }
+          ],
+          "otherRowsOmitted": 0,
+          "errors": []
+        },
+        "receiver": {
+          "status": 200,
+          "body": {
+            "marker": "QA_A675",
+            "boot": "2026-10-16T05:20:11.387Z",
+            "received": [
+              {
+                "at": "2026-10-16T05:20:58.042Z",
+                "payload": {
+                  "type": "deploy_ended",
+                  "timestamp": "2026-10-16T05:20:23Z",
+                  "data": {
+                    "id": "evt-bkgos76sfc5ie1nm2738",
+                    "serviceId": "srv-db8r60i9cl7s73ae49gg",
+                    "serviceName": "qa-20261016-a675-receiver",
+                    "status": "succeeded"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "sourceFiles": [
+    {
+      "path": "lego/backend/internal/webhooks/worker.go",
+      "sha256": "b9c507dadc0d3e5f378424471a19cd072d03b184f1348cd5b0f9129a6d012a41"
+    },
+    {
+      "path": "lego/backend/internal/store/webhooks.go",
+      "sha256": "846b627fb8327d4f839adc26afb08b2fd460a3972aa4493ceff82fde83a4e6ce"
+    },
+    {
+      "path": "lego/backend/internal/store/feedtail.go",
+      "sha256": "9649a9295dcbd990795fef9ddc962c4c004f95a6c66b6f258684d8d7a707e406"
+    },
+    {
+      "path": "lego/backend/internal/webhooks/service.go",
+      "sha256": "f593854cbd9373e7d504f3a354a307dfba3cbfa88f362f75f5354faca1db8eab"
+    },
+    {
+      "path": "lego/backend/internal/webhooks/rest.go",
+      "sha256": "baa19088b56ed47c846c7fc650e0bfa5ac30dfb58ccaa26811bd47a1c1a48b34"
+    },
+    {
+      "path": "lego/backend/internal/webhooks/graphql.go",
+      "sha256": "f17bf77cee505d1eeaca010a8562f200665424da2ba246a38c85343f600d90a2"
+    },
+    {
+      "path": "lego/backend/internal/webhooks/mcp.go",
+      "sha256": "d19953cc8b0fc7083ba78832b37c4fd13cc2f90903b4a35f2b2fbbab6b124ad3"
+    }
+  ],
+  "cleanup": {
+    "at": "2026-10-16T05:27:08.359Z",
+    "deleted": [
+      {
+        "path": "/v1/webhooks/whk-db8r6529cl7s73ae49i0",
+        "status": 404
+      },
+      {
+        "path": "/v1/webhooks/whk-db8r9evdbg8c73dghbpg",
+        "status": 404
+      },
+      {
+        "path": "/v1/services/srv-db8r60i9cl7s73ae49gg",
+        "status": 404
+      }
+    ],
+    "baselineSortedIDSetsEqual": {
+      "blueprints": true,
+      "databases": true,
+      "envGroups": true,
+      "keyValues": true,
+      "projects": true,
+      "services": true,
+      "webhookEndpoints": true
+    },
+    "cluster": {
+      "at": "2026-10-16T05:27:49.980884+00:00",
+      "pods": []
+    },
+    "logout": "Exact-run helper exit0, ok logged-out",
+    "browser": {
+      "at": "2026-10-16T05:27:48.666Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "publicURL": "404 measured after native delete",
+    "handles": "Owned jars removed; shared jar removed only by matching its exact timestamp and size"
+  },
+  "limitations": [
+    "No platform-wide endpoint catalog or live worker cursor/replica schedule inspected",
+    "Signing secrets excluded; signature validation not exercised",
+    "REST/MCP toggles, initially disabled create, auto-disable and eligible pre-disable backlog were not live-replayed"
+  ]
+}
