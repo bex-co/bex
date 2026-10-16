@@ -109,7 +109,7 @@ var nativeToolchains = map[string]nativeToolchain{
 	// Rust stays one stable image: rustup inside it applies Render's own
 	// RUSTUP_TOOLCHAIN / rust-toolchain signals itself.
 	"rust": {label: "Rust", defaultLine: "1", lines: []nativeLine{
-		{line: "1", image: "rust:1-bookworm@sha256:114c7a4425406451c2866b6aafe69fe29b1b298832db1277d411ac73c82d04d6"},
+		{line: "1", image: "rust:1-bookworm@sha256:e12566d5abc17a0da741628782cdb504b68b8961f5bfcf677936bf3e8b32de29"},
 	}},
 }
 
