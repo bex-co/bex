@@ -1,0 +1,11 @@
+{
+  "command": "go test -overlay <owned-temp>/sweep365-overlay.json -run ^(TestQA365LegacyCancelHeader|TestReadTLSRecord_DirectTLS|TestReadTLSRecord_FreshStart)$ -count=1 -json ./cmd/pg-sni-proxy",
+  "private_overlay_only": true,
+  "production_packets": "only ordinary psql and documented opaque libpq API; synthetic headers used only on own loopback socket",
+  "top_tests": 3,
+  "named_pass": 5,
+  "fail": 0,
+  "skip": 0,
+  "package_pass": true,
+  "limits": "characterization of current defect and two maintained TLS-record controls; not a product fix or end-to-end fixed ingress acceptance"
+}

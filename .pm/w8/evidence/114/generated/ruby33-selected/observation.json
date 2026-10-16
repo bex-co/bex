@@ -1,0 +1,22 @@
+{
+  "case": "ruby33-selected",
+  "choices": [
+    {
+      "Label": "Ruby",
+      "Line": "3.3",
+      "Image": "ruby:3.3-bookworm@sha256:b899e7de6ffa6e974d947202d3ce2ac921c12e46c14cff3106214079388dcff4",
+      "Source": "Gemfile"
+    },
+    {
+      "Label": "Node",
+      "Line": "24",
+      "Image": "node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0",
+      "Source": ""
+    }
+  ],
+  "generated_default_RAILS_ENV_present": false,
+  "qualification": "actual unchanged generator/resolver; supplied env is only transported by real loader at authored RUN; configured runtime env is separate; no generated-image execution or fixed regression asserted",
+  "static": false,
+  "user_RAILS_ENV": "",
+  "user_RAILS_ENV_present": false
+}

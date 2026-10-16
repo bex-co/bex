@@ -1,0 +1,20 @@
+{
+  "repo": "https://github.com/rack/rack",
+  "branch": "main",
+  "commit": "a9833c8f3bd6b6d1e0ab35de00a1f1a16b5095f5",
+  "files": {
+    "Gemfile": {
+      "bytes": 400,
+      "sha256": "07d7305ca8a7a4399aae0d62dea08b43a4240a6904948d5a84bc676be1542204"
+    },
+    "rack.gemspec": {
+      "bytes": 1425,
+      "sha256": "40c56b87deb696baf8941f17e0eba8c922dcbb1999c5657bb8cdc1ba649a43e8"
+    },
+    "lib/rack/version.rb": {
+      "bytes": 391,
+      "sha256": "27be3b79c14bd1c700a11e88d40673be617d505e0463a2ea69e2150e498b244b"
+    }
+  },
+  "qualification": "public Ruby Git seed; a separate authored minimal Rails app is generated under qa364app; not a claim to run the Rack repository test suite or app"
+}

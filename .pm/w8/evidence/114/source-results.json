@@ -1,0 +1,18 @@
+{
+  "exit": 0,
+  "passes": [
+    "TestNativeDockerfilePreservesRenderCommands",
+    "TestNativeDockerfileKeepsToolchainPATH",
+    "TestResolveNativeBuildAddsJSToolsToRubyAndPython",
+    "TestQA364RailsEnvironmentObservation/ruby34-default",
+    "TestQA364RailsEnvironmentObservation/ruby33-selected",
+    "TestQA364RailsEnvironmentObservation/ruby40-selected",
+    "TestQA364RailsEnvironmentObservation/ruby34-user-dev",
+    "TestQA364RailsEnvironmentObservation/ruby34-user-empty",
+    "TestQA364RailsEnvironmentObservation/ruby34-static",
+    "TestQA364RailsEnvironmentObservation"
+  ],
+  "fails": [],
+  "skips": [],
+  "qualification": "actual unchanged generator/resolver observations plus maintained command/PATH/JS companion controls; no fixed image acceptance"
+}

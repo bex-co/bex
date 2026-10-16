@@ -1,0 +1,8 @@
+{
+  "initial_guard": "expected numeric line without psql prompt; raw receipt retained privately",
+  "correction": "parse actual JSON-framed SQL result independently of prompt",
+  "initial_effect": "cancellation itself succeeded; not a product finding",
+  "intermediate_syntax_error": "compile-time only; no server process or production mutation",
+  "all_prior_local_servers_and_owned_paths_cleaned": true,
+  "final_preflight_pass": true
+}

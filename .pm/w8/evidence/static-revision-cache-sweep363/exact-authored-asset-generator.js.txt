@@ -1,0 +1,9 @@
+const fs=require('node:fs'),c=require('node:crypto');
+const nonce=process.argv[2],tag=process.argv[3]; if(!/^[a-f0-9]{6}$/.test(nonce)||!['A','B'].includes(tag)) throw Error('invalid owned marker');
+const hash=b=>c.createHash('sha256').update(b).digest('hex');
+const main=Buffer.from(Array.from({length:2048},(_,i)=>'/* QA363_'+nonce+'_'+tag+'_'+String(i).padStart(4,'0')+' */ console.log("'+tag+'_'+nonce+'");\n').join(''));
+const sibling=Buffer.from(('/* QA363_'+nonce+'_'+tag+'_sibling */\n').repeat(2048));
+fs.rmSync('public',{recursive:true,force:true});fs.mkdirSync('public');
+const files={'index.html':Buffer.from('QA363_'+nonce+'_'+tag+'\n'),'app.js':main,[tag==='A'?'retired.js':'later.js']:sibling};
+for(const [n,b] of Object.entries(files))fs.writeFileSync('public/'+n,b);
+fs.writeFileSync('public/manifest.json',JSON.stringify({nonce,tag,files:Object.fromEntries(Object.entries(files).map(([n,b])=>[n,{bytes:b.length,sha256:hash(b)}]))}));

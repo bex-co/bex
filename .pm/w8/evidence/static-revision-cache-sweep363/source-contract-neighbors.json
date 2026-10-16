@@ -1,0 +1,25 @@
+{
+  "tested_create_head": "f373dd508ab22da646c8eb260fd7cdf90c683305",
+  "reviewed_head": "781ec11c572a908a1c4ebe365a9a18434d213e54",
+  "serving_revision": "unobserved",
+  "product_diff_from_create": "",
+  "scope": "native static create and config update A1 -> B -> A2; same file URLs with automatic Brotli and positive/negative object cache boundaries",
+  "primary_contracts": [
+    "https://render.com/docs/static-sites",
+    "docs/ADR029-static-sites.md",
+    "docs/ADR060-build-worker-reliability-and-performance.md"
+  ],
+  "source_producers": [
+    "lego/operator/internal/staticserver/staticserver.go:345-404",
+    "lego/operator/internal/staticserver/encoding.go:24-49,65-70,174-212",
+    "lego/operator/internal/staticserver/resolver.go",
+    "lego/operator/internal/publish/publish.go"
+  ],
+  "neighbors": {
+    "w8/done/m79": "completed automatic Brotli baseline; original live journey did not change a publication",
+    "w4/blocked/m160": "browser-managed returning-visitor cache DoD remains untested; curl captures server default Cache-Control only",
+    "w4/done/m197": "retained historical static rollback is separate; pinned CLI2.27 has no rollback command",
+    "w4/done/272": "authored validators; none configured in this journey"
+  },
+  "qualification": "no browser caching, internal cache-hit metrics, historical rollback, concurrent publication stress or paid fixture; pure ordinary functional delivery"
+}

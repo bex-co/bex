@@ -1,0 +1,18 @@
+{
+  "exit": 0,
+  "qualification": "read-only cached base inspection; no pull",
+  "id": "sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172",
+  "env": [
+    "PATH=/usr/local/bundle/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "LANG=C.UTF-8",
+    "RUBY_VERSION=3.4.11",
+    "RUBY_DOWNLOAD_URL=https://cache.ruby-lang.org/pub/ruby/3.4/ruby-3.4.11.tar.xz",
+    "RUBY_DOWNLOAD_SHA256=f79c6e789ce4f30f77c88a40b23b93e2547c512a843dc17db27ab1f5cc66f4e4",
+    "GEM_HOME=/usr/local/bundle",
+    "BUNDLE_SILENCE_ROOT_WARNING=1",
+    "BUNDLE_APP_CONFIG=/usr/local/bundle"
+  ],
+  "repo_digests": [
+    "ruby@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172"
+  ]
+}

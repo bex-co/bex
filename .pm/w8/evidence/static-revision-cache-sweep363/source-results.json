@@ -1,0 +1,12 @@
+{
+  "exit": 0,
+  "pass": [
+    "TestBrotliVariantIsRevisionScoped",
+    "TestBrotliFramingOverHTTP",
+    "TestRepublishedURLServesNewBytesAndRevalidates",
+    "TestConfirmedMissIsNegativelyCached"
+  ],
+  "fail": [],
+  "skip": [],
+  "qualification": "maintained handler/revision/negative-cache/Brotli checks; independent hosted journey still pending; no browser or rollback execution"
+}

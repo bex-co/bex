@@ -1,0 +1,14 @@
+from pathlib import Path
+import sys,json
+f=Path(__file__).with_name('sweep363-common.py');sys.argv=[str(f),'shared-state','bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==363);own(x);sid=x['id'];assert x['phase']=='A2' and any(v['phase']=='A2' and v.get('pass') for v in x.get('HTTP_rounds',[]));query='query QA363 {service(id:'+json.dumps(sid)+'){id name repo branch plan buildCommand autoDeploy}}'
+for surface,method,path,body in [('REST','GET','/v1/services/'+sid,None),('GraphQL','POST','/graphql',{'query':query}),('MCP','POST','/mcp',{'jsonrpc':'2.0','id':363,'method':'tools/call','params':{'name':'get_service','arguments':{'serviceId':sid,'workspaceId':ws}}})]:
+ assert not any(v['surface']==surface for v in x.get('shared_state',[]));e={'at':now(),'surface':surface};x.setdefault('shared_state',[]).append(e);save();r=api(method,path,body);e['receipt']=r;save();assert r['status']=='200';v=decode(r)
+ if surface=='GraphQL':assert not v.get('errors');v=v['data']['service']
+ elif surface=='MCP':
+  assert not v.get('error') and not v['result'].get('isError');z=v['result'];v=z.get('structuredContent')
+  if v is None:v=json.loads(next(a['text'] for a in z['content'] if a['type']=='text'))
+  v=v.get('service',v)
+ d=v.get('serviceDetails',{});build=v.get('buildCommand') if surface=='GraphQL' else d.get('buildCommand');plan=v.get('plan') or d.get('plan');e['pass']=v['id']==sid and v['name']==x['name'] and v['repo']==x['primary_reference']['repo'] and v['branch']=='master' and plan=='free' and build==x['commands']['A'] and v['autoDeploy'] in (False,'no') and (surface=='GraphQL' or d.get('publishPath')=='public');save();print(json.dumps({'surface':surface,'exact_source_Free_build_and_available_publish_path':e['pass']}),flush=True);assert e['pass']
+r=api('GET','/v1/services/'+sid+'/headers');x['authored_header_readback']={'at':now(),'receipt':r,'pass':r['status']=='200' and decode(r)==[]};save();assert x['authored_header_readback']['pass'];print(json.dumps({'API_header_rules_empty':True}),flush=True)
+for actor in ['bex','render']:
+ r=cli(['services','--confirm','-o','json'],client=actor);e={'at':now(),'client':actor,'native':r};x.setdefault('native_inventory_readbacks',[]).append(e);save();assert r['native_exit']==0;v=next(z.get('service',z) for z in json.loads(r['stdout']) if z.get('service',z)['id']==sid);e['pass']=v['ownerId']==ws and v['name']==x['name'] and v['type']=='static_site' and v['serviceDetails']['plan']=='free' and v['serviceDetails']['buildCommand']==x['commands']['A'];save();assert e['pass'];print(json.dumps({'client':actor,'native_static_readback':True}),flush=True)

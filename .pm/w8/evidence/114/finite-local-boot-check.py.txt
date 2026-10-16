@@ -1,0 +1,28 @@
+from pathlib import Path
+import json,subprocess,os,socket,time
+p=Path(__file__).resolve().parent;image='ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172';app=p/'sweep364-local-app';gems=p/'sweep364-local-gems';results=[]
+base=['--rm','--pull','never','--mount','type=bind,src='+str(app)+',dst=/work','--mount','type=bind,src='+str(gems)+',dst=/usr/local/bundle,readonly','--workdir','/work','--env','PORT=3000','--env','QA364_HOST=qa364.local','--env','QA364_MARKER=QA364_LOCAL']
+for phase in ['default','binding-only','production']:
+ envargs=[]
+ if phase=='binding-only':envargs=['--env','BINDING=0.0.0.0']
+ if phase=='production':envargs=['--env','RAILS_ENV=production']
+ args=['docker','run',*base,*envargs,'--name','qa364-local-probe-'+phase,image,'bundle','exec','ruby','qa364-probe.rb','build'];r=subprocess.run(args,capture_output=True,text=True,timeout=20);(p/('sweep364-local-build-probe-'+phase+'.log')).write_text(r.stdout+r.stderr);assert r.returncode==0,r.stderr[-2000:];build=json.loads(r.stdout.split('QA364_OBSERVER ')[1]);assert build['rails']=='8.0.4' and build['ruby']=='3.4.11';assert build['rails_environment']==('production' if phase=='production' else 'development') and build['host']==('localhost' if phase=='default' else '0.0.0.0')
+ sock=socket.socket();sock.bind(('127.0.0.1',0));port=sock.getsockname()[1];sock.close();name='qa364-local-server-'+phase;log=p/('sweep364-local-server-'+phase+'.log');f=log.open('w');args=['docker','run',*base,*envargs,'--name',name,'-p','127.0.0.1:'+str(port)+':3000',image,'/bin/bash','-c','bundle exec ruby qa364-probe.rb runtime && exec bundle exec ruby bin/rails server'];proc=subprocess.Popen(args,stdout=f,stderr=f)
+ try:
+  for i in range(90):
+   r=subprocess.run(['docker','logs',name],capture_output=True,text=True,timeout=5);text=r.stdout+r.stderr
+   if 'Listening on' in text:break
+   if proc.poll() is not None:raise RuntimeError('local app boot failed: '+text[-2500:])
+   time.sleep(.3)
+  else:raise RuntimeError('local app readiness bound exceeded')
+  code='require "net/http"; require "json"; r=Net::HTTP.get_response(URI("http://127.0.0.1:3000/")); puts JSON.generate({HTTP:r.code,body:r.body})';r=subprocess.run(['docker','exec',name,'ruby','-e',code],capture_output=True,text=True,timeout=15);assert r.returncode==0,r.stderr[-1000:];loop=json.loads(r.stdout);assert loop['HTTP']=='200';body=json.loads(loop['body']);assert body['rails_environment']==('production' if phase=='production' else 'development')
+  r=subprocess.run(['curl','--disable','-sS','--max-time','5','-H','Host: qa364.local','-w','\n%{http_code}','http://127.0.0.1:'+str(port)+'/'],capture_output=True,text=True,timeout=10);raw,_,status=r.stdout.rpartition('\n');external={'curl_exit':r.returncode,'HTTP':status,'body':raw,'stderr':r.stderr}
+  if phase=='default':assert r.returncode!=0 and status=='000'
+  else:assert r.returncode==0 and status=='200' and json.loads(raw)['rails_environment']==body['rails_environment']
+  results.append({'phase':phase,'build_probe':build,'loopback_probe':loop,'mapped_port_probe':external,'actual_listen_lines':[s for s in text.splitlines() if 'Listening on' in s],'pass':True});print(json.dumps({'phase':phase,'Rails':body['rails'],'environment':body['rails_environment'],'external_HTTP':status,'local_loopback_HTTP':loop['HTTP'],'pass':True}),flush=True)
+ finally:
+  subprocess.run(['docker','stop','--time','2',name],capture_output=True,text=True,timeout=10)
+  try:proc.wait(timeout=10)
+  except subprocess.TimeoutExpired:subprocess.run(['docker','rm','-f',name],capture_output=True,text=True);proc.wait(timeout=10)
+  f.close();subprocess.run(['docker','rm','-f',name],capture_output=True,text=True,timeout=10)
+(p/'sweep364-local-server-results.json').write_text(json.dumps(results,indent=2));r=subprocess.run(['docker','container','ls','-a','--filter','name=qa364-','--format','{{.Names}}'],capture_output=True,text=True,timeout=10);assert r.returncode==0 and r.stdout.strip()=='';print(json.dumps({'local_boot_rounds_passed':3,'all_own_containers_removed':True}))

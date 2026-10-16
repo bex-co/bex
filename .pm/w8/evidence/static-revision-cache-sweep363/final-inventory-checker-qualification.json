@@ -1,0 +1,71 @@
+{
+  "at": "2026-10-16T09:55:02.591628+00:00",
+  "cause": "copied checker replaced numeric362 inside immutable baseline Blueprint ID",
+  "expected_restored": "blp-db136288mmqc73d4hpug",
+  "no_resource_mutation": "read-only diagnostic only; no foreign resource changed",
+  "initial_false_check": {
+    "env-groups": {
+      "at": "2026-10-16T09:52:13.981038+00:00",
+      "receipt": {
+        "at": "2026-10-16T09:52:13.980580+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/env-groups?ownerId=tea-daif693dqjvc73e7as3g",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.991,
+        "response": "[]\n",
+        "stderr": ""
+      },
+      "pass": true
+    },
+    "projects": {
+      "at": "2026-10-16T09:52:14.500201+00:00",
+      "receipt": {
+        "at": "2026-10-16T09:52:14.500046+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/projects?ownerId=tea-daif693dqjvc73e7as3g",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.327,
+        "response": "[]\n",
+        "stderr": ""
+      },
+      "pass": true
+    },
+    "blueprints": {
+      "at": "2026-10-16T09:52:15.024995+00:00",
+      "receipt": {
+        "at": "2026-10-16T09:52:15.024853+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/blueprints?ownerId=tea-daif693dqjvc73e7as3g",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.314,
+        "response": "[{\"id\": \"blp-db136288mmqc73d4hpug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}]",
+        "stderr": ""
+      },
+      "pass": false
+    }
+  }
+}

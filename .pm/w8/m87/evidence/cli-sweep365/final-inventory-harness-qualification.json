@@ -1,0 +1,5 @@
+{
+  "first_attempt": "copied checker selected sweep364 while requiring one resource; assertion failed before any live inventory request",
+  "correction": "select exact sweep365; immutable Blueprint ID remains blp-db136288mmqc73d4hpug",
+  "product_failure": false
+}
