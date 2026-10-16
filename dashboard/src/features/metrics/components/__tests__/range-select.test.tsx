@@ -259,3 +259,92 @@ describe("RangeSelect edit active custom range (w4/245)", () => {
     expect(onRangeChange).not.toHaveBeenCalled();
   });
 });
+
+// w4/328 (a761): an accepted precise window 18:28:10.123Z–18:28:50.987Z opened
+// with both fields cut to 18:28, so an unchanged Apply was refused ("end must
+// be after the start"), and a wider one silently moved to whole minutes.
+describe("RangeSelect keeps a precise custom window (w4/328)", () => {
+  const precise = (startTime: string, endTime: string): RangeSelection => ({
+    id: "custom",
+    startTime,
+    endTime,
+    resolutionSeconds: 60,
+  });
+
+  it.each([
+    [
+      "a sub-minute window",
+      "2026-10-16T18:28:10.123Z",
+      "2026-10-16T18:28:50.987Z",
+    ],
+    ["a wider window", "2026-10-16T18:27:10.123Z", "2026-10-16T18:28:50.987Z"],
+    [
+      "a whole-second window",
+      "2026-10-16T18:27:10.000Z",
+      "2026-10-16T18:28:50.000Z",
+    ],
+  ])(
+    "applies %s unchanged at its exact instants",
+    async (_, startTime, endTime) => {
+      const user = userEvent.setup();
+      const onRangeChange = vi.fn();
+      render(
+        <StatefulRangeSelect
+          initial={precise(startTime, endTime)}
+          onRangeChange={onRangeChange}
+        />,
+      );
+      await user.click(
+        screen.getByRole("button", { name: "Edit custom range" }),
+      );
+      // The fields show the precision they carry.
+      expect(
+        (screen.getByLabelText("Start") as HTMLInputElement).value,
+      ).toMatch(/:\d{2}:\d{2}/);
+      await user.click(screen.getByRole("button", { name: "Apply" }));
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(onRangeChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: "custom", startTime, endTime }),
+      );
+    },
+  );
+
+  it("keeps the untouched bound exact when only the other is edited", async () => {
+    const user = userEvent.setup();
+    const onRangeChange = vi.fn();
+    render(
+      <StatefulRangeSelect
+        initial={precise(
+          "2026-10-16T18:27:10.123Z",
+          "2026-10-16T18:28:50.987Z",
+        )}
+        onRangeChange={onRangeChange}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Edit custom range" }));
+    fireEvent.change(screen.getByLabelText("End"), {
+      target: { value: "2026-10-16T23:59" },
+    });
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+    expect(onRangeChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        startTime: "2026-10-16T18:27:10.123Z",
+        endTime: iso("2026-10-16T23:59"),
+      }),
+    );
+  });
+
+  it("still shows a whole-minute window in minutes", async () => {
+    const user = userEvent.setup();
+    render(
+      <StatefulRangeSelect
+        initial={precise(iso("2026-10-10T17:45"), iso("2026-10-10T17:46"))}
+        onRangeChange={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Edit custom range" }));
+    expect(screen.getByLabelText("Start")).toHaveValue("2026-10-10T17:45");
+    expect(screen.getByLabelText("Start")).not.toHaveAttribute("step");
+  });
+});
