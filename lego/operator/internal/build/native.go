@@ -69,6 +69,7 @@ func nativeFileSecretID(i int) string { return fmt.Sprintf("bex-file-%d", i) }
 const (
 	nativePreparerImage = "busybox:1.37.0@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e"
 	nativeNodeRuntime   = "node"
+	nativePythonRuntime = "python"
 )
 
 // nativeToolchains is the reviewed set of toolchain lines a native build may
@@ -94,7 +95,7 @@ var nativeToolchains = map[string]nativeToolchain{
 		{line: "24", version: "24.22.0", image: "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0"},
 		{line: "26", version: "26.12.0", image: "node:26-bookworm@sha256:a856ae5e25d498bbe5ec85fde88f00f5ed99908fda803ba39d7735ab8574f58c"},
 	}},
-	"python": {label: "Python", defaultLine: "3.13", lines: []nativeLine{
+	nativePythonRuntime: {label: "Python", defaultLine: "3.13", lines: []nativeLine{
 		{line: "3.10", version: "3.10.22", image: "python:3.10-bookworm@sha256:f72a86806f92fe13a49f49aeca1db0b19ea5cf4a0470b842a01b0e14314945b8"},
 		{line: "3.11", version: "3.11.17", image: "python:3.11-bookworm@sha256:5887f265d8d44d8b4734d3658b21d668edf5aaf92e4945bc0c984afbfab105d3"},
 		{line: "3.12", version: "3.12.15", image: "python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b"},
@@ -288,12 +289,21 @@ CMD %s
 // build and runtime alike, as image ENV before the build RUN: the env loader
 // exports the service's own values over it for the build, and the container's
 // configured values override it at runtime, an explicit empty one included in
-// either phase. An explicit Elixir static build gets it for its build.
+// either phase. An explicit Elixir or Python static build gets it for its
+// build.
+//
 // Elixir builds and runs with MIX_ENV=prod (w8/112), so a Phoenix app's
 // production dependencies and config are the ones compiled and started.
+// Python gets Render's Gunicorn flags, preloading the app and writing access
+// lines to stdout (w8/113). Render's --bind is left out: Gunicorn binds the
+// platform's PORT by default, which a bind in gunicorn.conf.py or on the
+// command line still replaces, as it would without these flags.
 func nativeBuildDefaults(o Options) string {
-	if nativeRuntime(o) == "elixir" {
+	switch nativeRuntime(o) {
+	case "elixir":
 		return "ENV MIX_ENV=prod\n"
+	case nativePythonRuntime:
+		return `ENV GUNICORN_CMD_ARGS="--preload --access-logfile -"` + "\n"
 	}
 	return ""
 }
