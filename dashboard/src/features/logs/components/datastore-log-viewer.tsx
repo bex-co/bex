@@ -167,7 +167,22 @@ export function DatastoreLogViewer({
     else setLocalInstance(value);
   };
 
-  const win = useMemo(() => rangeWindow(range), [range]);
+  // A relative range is resampled whenever the reader's predicate changes —
+  // resource, committed search or instance — in this same render, so the first
+  // request for a new search ends now rather than when the page opened (w4/319).
+  // The viewer stays a one-shot reader: an unchanged predicate keeps its window
+  // and pages, and an explicit Custom range passes through unchanged.
+  // Keyed by value, so a parent re-deriving an equal range object is no change.
+  const reader = JSON.stringify([range, resource, queryText, instance]);
+  const [sampled, setSampled] = useState(() => ({
+    reader,
+    win: rangeWindow(range),
+  }));
+  let win = sampled.win;
+  if (sampled.reader !== reader) {
+    win = rangeWindow(range);
+    setSampled({ reader, win });
+  }
   const queryFilters = useMemo(
     () => ({ ...EMPTY_LOG_FILTERS, text: queryText, instance }),
     [queryText, instance],
