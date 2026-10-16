@@ -1,4 +1,12 @@
-import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
+import {
+  afterEach,
+  describe,
+  it,
+  expect,
+  vi,
+  beforeAll,
+  beforeEach,
+} from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
@@ -223,5 +231,49 @@ describe("NewKeyValuePage", () => {
     await waitFor(() => expect(create).toHaveBeenCalled());
     expect(router.state.location.pathname).toBe("/keyvalue/new");
     expect(screen.getByLabelText("Name")).toHaveValue("friendly-cache");
+  });
+});
+
+// w4/330 (a771): while the catalog first loaded, the plan region was an empty
+// 0px radiogroup, then three 70px cards pushed the version control 70px down
+// (234px on a phone). It now previews three inert tier slots — the ready
+// grid's shape — and swaps to the real cards with the draft intact.
+describe("NewKeyValuePage plan region while the catalog loads (w4/330)", () => {
+  afterEach(() => {
+    instanceTypesState.loading = false;
+  });
+
+  it("previews three inert slots, then the real cards with the draft kept", async () => {
+    const user = userEvent.setup();
+    instanceTypesState.instanceTypes = [];
+    instanceTypesState.loading = true;
+    renderPage();
+    const label = await screen.findByText("Instance type");
+    const preview = label.parentElement!.querySelector('[aria-hidden="true"]');
+    expect(preview?.children).toHaveLength(3);
+    expect(screen.queryByRole("radiogroup")).toBeNull();
+    await user.type(screen.getByLabelText("Name"), "qa-a771-previe");
+    const submit = screen.getByRole("button", {
+      name: "Create Key Value Instance",
+    });
+    expect(submit).toBeDisabled();
+
+    instanceTypesState.instanceTypes = [FREE, STARTER];
+    instanceTypesState.loading = false;
+    await user.type(screen.getByLabelText("Name"), "w"); // any render
+    expect(screen.getByLabelText("Name")).toHaveValue("qa-a771-preview");
+    expect(screen.getByRole("radio", { name: /Free/ })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(submit).toBeEnabled();
+  });
+
+  it("does not show a settled empty catalog as pending", async () => {
+    instanceTypesState.instanceTypes = [];
+    instanceTypesState.loading = false;
+    renderPage();
+    expect(await screen.findByRole("radiogroup")).toBeInTheDocument();
+    expect(screen.queryAllByRole("radio")).toHaveLength(0);
   });
 });

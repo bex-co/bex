@@ -28,7 +28,6 @@ import {
   FieldRowsSkeleton,
   MetadataListSkeleton,
 } from "@/common/components/detail-skeletons";
-import { CREATE_PLAN_CARD_GRID_CLASS } from "@/common/components/plan-card-grid";
 import {
   SECTION_NAVIGATION_ITEMS_CLASS,
   SECTION_NAVIGATION_STICKY_CLASS,
@@ -351,16 +350,6 @@ function SourcePickerSkeleton({ tabs }: { tabs: 2 | 3 }) {
           ))}
         </div>
       </div>
-    </div>
-  );
-}
-
-function CreatePlanGridSkeleton({ count }: { count: number }) {
-  return (
-    <div className={CREATE_PLAN_CARD_GRID_CLASS}>
-      {Array.from({ length: count }, (_, index) => (
-        <Skeleton key={index} className="h-[4.25rem] w-full rounded-lg" />
-      ))}
     </div>
   );
 }
@@ -942,7 +931,7 @@ export function KeyValueCreatePageSkeleton() {
             </Region>
             <Region name="plan-picker" className="space-y-2">
               <Skeleton className="h-4 w-28" />
-              <CreatePlanGridSkeleton count={3} />
+              <PlanTierSlots />
             </Region>
             <Region name="version">
               <FieldRowSkeleton />
