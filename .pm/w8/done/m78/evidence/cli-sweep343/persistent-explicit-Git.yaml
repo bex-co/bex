@@ -1,0 +1,21 @@
+services:
+- name: qa-20261016-baade3-source
+  type: web
+  runtime: node
+  plan: free
+  repo: https://github.com/expressjs/serve-static
+  branch: master
+  rootDir: ''
+  buildCommand: /usr/local/bin/node -e 'const fs=require('"'"'node:fs'"'"'),crypto=require('"'"'node:crypto'"'"');const
+    b=fs.readFileSync('"'"'package.json'"'"');fs.writeFileSync('"'"'qa-built.json'"'"',JSON.stringify({package_name:JSON.parse(b).name,package_sha256:crypto.createHash('"'"'sha256'"'"').update(b).digest('"'"'hex'"'"'),literal:process.env.QA_LITERAL}));'
+  startCommand: /usr/local/bin/node -e 'const fs=require('"'"'node:fs'"'"'),http=require('"'"'node:http'"'"'),crypto=require('"'"'node:crypto'"'"');const
+    built=JSON.parse(fs.readFileSync('"'"'/opt/render/project/src/qa-built.json'"'"')),boot=crypto.randomUUID();http.createServer((q,r)=>{r.setHeader('"'"'Content-Type'"'"','"'"'application/json'"'"');r.end(JSON.stringify({built,literal:process.env.QA_LITERAL,boot}));}).listen(Number(process.env.PORT||3000),'"'"'0.0.0.0'"'"');'
+  healthCheckPath: /
+  autoDeploy: false
+  envVars:
+  - key: QA_LITERAL
+    value: "QA343_baade3\n\u2603=literal"
+  - key: HTTP_PORT
+    value: '3000'
+  - key: WHOAMI_PORT_NUMBER
+    value: '3000'

@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-16T02:36:43.513003+00:00",
+  "source_head": "5a39b80ff05a1e6c2b58458e99c0d455d58b730a",
+  "command": [
+    "go",
+    "test",
+    "-json",
+    "./internal/build",
+    "-run",
+    "^(TestNativeImageRunsPnpm|TestNativeDockerfileSuppliesPnpmToNodeOnly|TestNativePnpmPinKeysTheCache)$",
+    "-count=1",
+    "-timeout=8m"
+  ],
+  "BEX_BUILDKIT_INTEGRATION": "1",
+  "runner_pid": 12450,
+  "exit": 0,
+  "harness_timeout": false
+}

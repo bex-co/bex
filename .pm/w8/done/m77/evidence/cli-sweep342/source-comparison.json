@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-16T03:42:36.628325+00:00",
+  "acceptance_head": "e5ff3a6f013e6060c09b9ce7291515f1b14bd1e4",
+  "source_execution_head": "7ee5a95fd1d88dd8766072f497e8e191d51a06cb",
+  "source_execution_evidence": ".pm/w8/done/m72/evidence/cli-sweep341/source-execution.jsonl",
+  "all_lego_source_unchanged": true,
+  "comparison_command": [
+    "git",
+    "diff",
+    "--quiet",
+    "7ee5a95fd1d88dd8766072f497e8e191d51a06cb",
+    "e5ff3a6f013e6060c09b9ce7291515f1b14bd1e4",
+    "--",
+    "lego"
+  ],
+  "comparison_exit": 0,
+  "qualification": "reuse actual five-test/18-event Docker/resolver execution from341; no unnecessary repeat on identical Go source"
+}

@@ -1,0 +1,45 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package build
+
+import (
+ "testing"
+ "os"
+ "path/filepath"
+ "encoding/base64"
+ "encoding/json"
+)
+
+func TestQA350NativeUVResolverObservation(t *testing.T) {
+ out:=os.Getenv("QA350_OUTPUT");if out=="" {t.Fatal("private output required")}
+ lock,err:=os.ReadFile(os.Getenv("QA350_LOCK"));if err!=nil {t.Fatal(err)}
+ for _,tc:=range []struct{name string; lock,nested,explicit bool}{
+  {"no-lock-default",false,false,false},{"root-lock-default",true,false,false},{"root-lock-explicit-version",true,false,true},{"nested-lock-default",true,true,false},
+ } {t.Run(tc.name,func(t *testing.T){
+  dir:=t.TempDir();src:=filepath.Join(dir,"source");must(t,os.Mkdir(src,0700));selection:=src
+  if tc.nested {selection=filepath.Join(src,"app");must(t,os.Mkdir(selection,0700))}
+  if tc.lock {must(t,os.WriteFile(filepath.Join(selection,"uv.lock"),lock,0600))}
+  env:="PYTHON_VERSION="+base64.StdEncoding.EncodeToString([]byte("3.12"))+"\n"
+  if tc.explicit {env+="UV_VERSION="+base64.StdEncoding.EncodeToString([]byte("0.12.10"))+"\n"}
+  bundle:=filepath.Join(dir,"env");must(t,os.WriteFile(bundle,[]byte(env),0600))
+  o:=nativeOptions();o.Runtime="python";if tc.nested {o.RootDir="app"};o.BuildCommand="python --version && pip --version && poetry --version && (uv --version || true)";o.StartCommand="python --version && pip --version && poetry --version && uv --version"
+  file:=filepath.Join(dir,"Dockerfile");must(t,os.WriteFile(file,[]byte(nativeDockerfile(o)),0600));choices,err:=ResolveNativeBuild("python",bundle,file,selection);if err!=nil {t.Fatal(err)};resolved,err:=os.ReadFile(file);if err!=nil {t.Fatal(err)}
+  dest:=filepath.Join(out,tc.name);ctx:=filepath.Join(dest,"source");must(t,os.MkdirAll(ctx,0700));must(t,os.WriteFile(filepath.Join(ctx,"Dockerfile"),resolved,0600));must(t,os.WriteFile(filepath.Join(dest,"env"),[]byte(env),0600))
+  if tc.lock {target:=ctx;if tc.nested {target=filepath.Join(ctx,"app");must(t,os.Mkdir(target,0700))};must(t,os.WriteFile(filepath.Join(target,"uv.lock"),lock,0600))}
+  record:=map[string]any{"case":tc.name,"rootDir":o.RootDir,"uv_lock_at_selected_root":tc.lock,"UV_VERSION_explicit":tc.explicit,"choices":choices,"qualification":"real unchanged resolver; Docker execution is separate; fixed test revision makes no cache-defect claim"};data,err:=json.MarshalIndent(record,"","  ");if err!=nil {t.Fatal(err)};must(t,os.WriteFile(filepath.Join(dest,"choices.json"),data,0600));t.Logf("choices for %s: %+v",tc.name,choices)
+ })}
+}

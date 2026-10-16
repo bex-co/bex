@@ -1,0 +1,1675 @@
+{
+  "sweep": 360,
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "type": "postgres",
+  "name": "qa-20261016-121159-csv",
+  "nonce": "121159",
+  "time": "2026-10-16T08:30:46.072014+00:00",
+  "source_head": "ae5f8cada22510baa1e6a79cb2c09b8346103ccf",
+  "capacity": {
+    "at": "2026-10-16T08:30:40.275123+00:00",
+    "API_only": true,
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "status": "200",
+    "curl_exit": 0,
+    "elapsed": 0.375,
+    "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+    "stderr": ""
+  },
+  "pre_inventory": {
+    "at": "2026-10-16T08:30:41.273571+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "postgres",
+      "list",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "client_setup": null,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.998,
+    "stdout": "{\"data\": []}",
+    "stderr": ""
+  },
+  "pre_service_inventory": {
+    "at": "2026-10-16T08:30:46.071856+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "client_setup": null,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 4.798,
+    "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}]",
+    "stderr": ""
+  },
+  "pre_ids": [],
+  "dependency_ids": [],
+  "recorded_child_ids": [],
+  "database_name": "qa360_db_121159",
+  "database_user": "qa360_user_121159",
+  "create_command": [
+    "bex",
+    "postgres",
+    "create",
+    "--name",
+    "qa-20261016-121159-csv",
+    "--plan",
+    "free",
+    "--version",
+    "18",
+    "--region",
+    "frankfurt",
+    "--connection-pool",
+    "none",
+    "--database-name",
+    "qa360_db_121159",
+    "--database-user",
+    "qa360_user_121159",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "state": "deleted: native0/detail404/listempty/baseline6/PGquota0 terminating0",
+  "create_result": {
+    "at": "2026-10-16T08:30:46.713561+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "postgres",
+      "create",
+      "--name",
+      "qa-20261016-121159-csv",
+      "--plan",
+      "free",
+      "--version",
+      "18",
+      "--region",
+      "frankfurt",
+      "--connection-pool",
+      "none",
+      "--database-name",
+      "qa360_db_121159",
+      "--database-user",
+      "qa360_user_121159",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "client_setup": null,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.422,
+    "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-16T08:30:46Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db8u1di9cl7s73ae4d10\", \"databaseName\": \"qa360_db_121159\", \"databaseUser\": \"qa360_user_121159\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db8u1di9cl7s73ae4d10\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261016-121159-csv\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-16T08:30:46.534478944Z\", \"version\": \"18\", \"projectId\": null}}",
+    "stderr": ""
+  },
+  "id": "dpg-db8u1di9cl7s73ae4d10",
+  "create_response": {
+    "connectionPool": "none",
+    "createdAt": "2026-10-16T08:30:46Z",
+    "dashboardUrl": "https://dashboard.bex.co/d/dpg-db8u1di9cl7s73ae4d10",
+    "databaseName": "qa360_db_121159",
+    "databaseUser": "qa360_user_121159",
+    "diskAutoscalingEnabled": false,
+    "diskSizeGB": 1,
+    "highAvailabilityEnabled": false,
+    "id": "dpg-db8u1di9cl7s73ae4d10",
+    "ipAllowList": [
+      {
+        "cidrBlock": "0.0.0.0/0",
+        "description": ""
+      },
+      {
+        "cidrBlock": "::/0",
+        "description": ""
+      }
+    ],
+    "name": "qa-20261016-121159-csv",
+    "owner": {
+      "email": "QA_PRIVATE_REDACTED",
+      "id": "tea-daif693dqjvc73e7as3g",
+      "name": "bex-canary",
+      "type": "team"
+    },
+    "plan": "free",
+    "readReplicas": [],
+    "region": "fsn1",
+    "role": "",
+    "status": "creating",
+    "suspended": "not_suspended",
+    "suspenders": null,
+    "updatedAt": "2026-10-16T08:30:46.534478944Z",
+    "version": "18",
+    "projectId": null
+  },
+  "csv_prepare_intent": {
+    "at": "2026-10-16T08:32:26.479079+00:00",
+    "directory": "<owned-temp>/sweep360 CSV files",
+    "synthetic_only": true
+  },
+  "csv_inputs": {
+    "valid": {
+      "path": "<owned-temp>/sweep360 CSV files/input α.csv",
+      "bytes": 6593,
+      "sha256": "277d75e78bf3d1c67f706ffe12c34d01dc6f0ef6b63f291d0e22f2d255d8a8d8"
+    },
+    "invalid": {
+      "path": "<owned-temp>/sweep360 CSV files/bad input β.csv",
+      "bytes": 6582,
+      "sha256": "86fb8d70d11f6d39443cbfe9fdcb2ca69e7652dba0dcb8e24435a2b66dc59589"
+    }
+  },
+  "csv_schema": "qa360_121159",
+  "csv_expected_rows": [
+    {
+      "id": 1,
+      "label": "row 1, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "",
+      "payload": {
+        "row": 1,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row1\n"
+        ]
+      },
+      "amount": "-9007199254740994.000001"
+    },
+    {
+      "id": 2,
+      "label": "row 2, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "__QA360_NULL__",
+      "payload": {
+        "row": 2,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row2\n"
+        ]
+      },
+      "amount": "9007199254740995.000002"
+    },
+    {
+      "id": 3,
+      "label": "row 3, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "\\N",
+      "payload": {
+        "row": 3,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row3\n"
+        ]
+      },
+      "amount": "-9007199254740996.000003"
+    },
+    {
+      "id": 4,
+      "label": "row 4, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "comma, \"quoted\"",
+      "payload": {
+        "row": 4,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row4\n"
+        ]
+      },
+      "amount": "9007199254740997.000004"
+    },
+    {
+      "id": 5,
+      "label": "row 5, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "café\r\n日本 😀",
+      "payload": {
+        "row": 5,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row5\n"
+        ]
+      },
+      "amount": "-9007199254740998.000005"
+    },
+    {
+      "id": 6,
+      "label": "row 6, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "plain",
+      "payload": {
+        "row": 6,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row6\n"
+        ]
+      },
+      "amount": "9007199254740999.000006"
+    },
+    {
+      "id": 7,
+      "label": "row 7, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": null,
+      "payload": {
+        "row": 7,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row7\n"
+        ]
+      },
+      "amount": "-9007199254741000.000007"
+    },
+    {
+      "id": 8,
+      "label": "row 8, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "",
+      "payload": {
+        "row": 8,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row8\n"
+        ]
+      },
+      "amount": "9007199254741001.000008"
+    },
+    {
+      "id": 9,
+      "label": "row 9, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "__QA360_NULL__",
+      "payload": {
+        "row": 9,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row9\n"
+        ]
+      },
+      "amount": "-9007199254741002.000009"
+    },
+    {
+      "id": 10,
+      "label": "row 10, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "\\N",
+      "payload": {
+        "row": 10,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row10\n"
+        ]
+      },
+      "amount": "9007199254741003.000010"
+    },
+    {
+      "id": 11,
+      "label": "row 11, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "comma, \"quoted\"",
+      "payload": {
+        "row": 11,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row11\n"
+        ]
+      },
+      "amount": "-9007199254741004.000011"
+    },
+    {
+      "id": 12,
+      "label": "row 12, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "café\r\n日本 😀",
+      "payload": {
+        "row": 12,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row12\n"
+        ]
+      },
+      "amount": "9007199254741005.000012"
+    },
+    {
+      "id": 13,
+      "label": "row 13, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "plain",
+      "payload": {
+        "row": 13,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row13\n"
+        ]
+      },
+      "amount": "-9007199254741006.000013"
+    },
+    {
+      "id": 14,
+      "label": "row 14, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": null,
+      "payload": {
+        "row": 14,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row14\n"
+        ]
+      },
+      "amount": "9007199254741007.000014"
+    },
+    {
+      "id": 15,
+      "label": "row 15, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "",
+      "payload": {
+        "row": 15,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row15\n"
+        ]
+      },
+      "amount": "-9007199254741008.000015"
+    },
+    {
+      "id": 16,
+      "label": "row 16, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "__QA360_NULL__",
+      "payload": {
+        "row": 16,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row16\n"
+        ]
+      },
+      "amount": "9007199254741009.000016"
+    },
+    {
+      "id": 17,
+      "label": "row 17, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "\\N",
+      "payload": {
+        "row": 17,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row17\n"
+        ]
+      },
+      "amount": "-9007199254741010.000017"
+    },
+    {
+      "id": 18,
+      "label": "row 18, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "comma, \"quoted\"",
+      "payload": {
+        "row": 18,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row18\n"
+        ]
+      },
+      "amount": "9007199254741011.000018"
+    },
+    {
+      "id": 19,
+      "label": "row 19, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "café\r\n日本 😀",
+      "payload": {
+        "row": 19,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row19\n"
+        ]
+      },
+      "amount": "-9007199254741012.000019"
+    },
+    {
+      "id": 20,
+      "label": "row 20, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "plain",
+      "payload": {
+        "row": 20,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row20\n"
+        ]
+      },
+      "amount": "9007199254741013.000020"
+    },
+    {
+      "id": 21,
+      "label": "row 21, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": null,
+      "payload": {
+        "row": 21,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row21\n"
+        ]
+      },
+      "amount": "-9007199254741014.000021"
+    },
+    {
+      "id": 22,
+      "label": "row 22, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "",
+      "payload": {
+        "row": 22,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row22\n"
+        ]
+      },
+      "amount": "9007199254741015.000022"
+    },
+    {
+      "id": 23,
+      "label": "row 23, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "__QA360_NULL__",
+      "payload": {
+        "row": 23,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row23\n"
+        ]
+      },
+      "amount": "-9007199254741016.000023"
+    },
+    {
+      "id": 24,
+      "label": "row 24, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "\\N",
+      "payload": {
+        "row": 24,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row24\n"
+        ]
+      },
+      "amount": "9007199254741017.000024"
+    },
+    {
+      "id": 25,
+      "label": "row 25, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "comma, \"quoted\"",
+      "payload": {
+        "row": 25,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row25\n"
+        ]
+      },
+      "amount": "-9007199254741018.000025"
+    },
+    {
+      "id": 26,
+      "label": "row 26, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "café\r\n日本 😀",
+      "payload": {
+        "row": 26,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row26\n"
+        ]
+      },
+      "amount": "9007199254741019.000026"
+    },
+    {
+      "id": 27,
+      "label": "row 27, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "plain",
+      "payload": {
+        "row": 27,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row27\n"
+        ]
+      },
+      "amount": "-9007199254741020.000027"
+    },
+    {
+      "id": 28,
+      "label": "row 28, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": null,
+      "payload": {
+        "row": 28,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row28\n"
+        ]
+      },
+      "amount": "9007199254741021.000028"
+    },
+    {
+      "id": 29,
+      "label": "row 29, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "",
+      "payload": {
+        "row": 29,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row29\n"
+        ]
+      },
+      "amount": "-9007199254741022.000029"
+    },
+    {
+      "id": 30,
+      "label": "row 30, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "__QA360_NULL__",
+      "payload": {
+        "row": 30,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row30\n"
+        ]
+      },
+      "amount": "9007199254741023.000030"
+    },
+    {
+      "id": 31,
+      "label": "row 31, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "\\N",
+      "payload": {
+        "row": 31,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row31\n"
+        ]
+      },
+      "amount": "-9007199254741024.000031"
+    },
+    {
+      "id": 32,
+      "label": "row 32, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "comma, \"quoted\"",
+      "payload": {
+        "row": 32,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row32\n"
+        ]
+      },
+      "amount": "9007199254741025.000032"
+    },
+    {
+      "id": 33,
+      "label": "row 33, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "café\r\n日本 😀",
+      "payload": {
+        "row": 33,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row33\n"
+        ]
+      },
+      "amount": "-9007199254741026.000033"
+    },
+    {
+      "id": 34,
+      "label": "row 34, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "plain",
+      "payload": {
+        "row": 34,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row34\n"
+        ]
+      },
+      "amount": "9007199254741027.000034"
+    },
+    {
+      "id": 35,
+      "label": "row 35, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": null,
+      "payload": {
+        "row": 35,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row35\n"
+        ]
+      },
+      "amount": "-9007199254741028.000035"
+    },
+    {
+      "id": 36,
+      "label": "row 36, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "",
+      "payload": {
+        "row": 36,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row36\n"
+        ]
+      },
+      "amount": "9007199254741029.000036"
+    },
+    {
+      "id": 37,
+      "label": "row 37, \"quoted\"\nnext\r\ncafé 日本 😀",
+      "maybe": "__QA360_NULL__",
+      "payload": {
+        "row": 37,
+        "marker": "QA360_121159",
+        "values": [
+          null,
+          "",
+          "日本",
+          "row37\n"
+        ]
+      },
+      "amount": "-9007199254741030.000037"
+    }
+  ],
+  "details": [
+    {
+      "at": "2026-10-16T08:33:01.090256+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db8u1di9cl7s73ae4d10",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.758,
+      "response": "{\"id\": \"dpg-db8u1di9cl7s73ae4d10\", \"name\": \"qa-20261016-121159-csv\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa360_db_121159\", \"databaseUser\": \"qa360_user_121159\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T08:30:46Z\", \"updatedAt\": \"2026-10-16T08:31:48Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db8u1di9cl7s73ae4d10\", \"externalHost\": \"dpg-db8u1di9cl7s73ae4d10.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T08:33:02.300109+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db8u1di9cl7s73ae4d10",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.388,
+      "response": "{\"id\": \"dpg-db8u1di9cl7s73ae4d10\", \"name\": \"qa-20261016-121159-csv\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa360_db_121159\", \"databaseUser\": \"qa360_user_121159\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T08:30:46Z\", \"updatedAt\": \"2026-10-16T08:31:48Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db8u1di9cl7s73ae4d10\", \"externalHost\": \"dpg-db8u1di9cl7s73ae4d10.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T08:33:06.783463+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db8u1di9cl7s73ae4d10",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.301,
+      "response": "{\"id\": \"dpg-db8u1di9cl7s73ae4d10\", \"name\": \"qa-20261016-121159-csv\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa360_db_121159\", \"databaseUser\": \"qa360_user_121159\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T08:30:46Z\", \"updatedAt\": \"2026-10-16T08:31:48Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db8u1di9cl7s73ae4d10\", \"externalHost\": \"dpg-db8u1di9cl7s73ae4d10.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T08:35:36.246708+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db8u1di9cl7s73ae4d10",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.339,
+      "response": "{\"id\": \"dpg-db8u1di9cl7s73ae4d10\", \"name\": \"qa-20261016-121159-csv\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa360_db_121159\", \"databaseUser\": \"qa360_user_121159\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T08:30:46Z\", \"updatedAt\": \"2026-10-16T08:31:48Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db8u1di9cl7s73ae4d10\", \"externalHost\": \"dpg-db8u1di9cl7s73ae4d10.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    }
+  ],
+  "native_readiness": [
+    {
+      "at": "2026-10-16T08:33:01.329285+00:00",
+      "native": {
+        "at": "2026-10-16T08:33:00.317040+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db8u1di9cl7s73ae4d10",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.486,
+        "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-16T08:30:46Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db8u1di9cl7s73ae4d10\", \"databaseName\": \"qa360_db_121159\", \"databaseUser\": \"qa360_user_121159\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db8u1di9cl7s73ae4d10\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261016-121159-csv\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-16T08:31:48Z\", \"version\": \"18\", \"projectId\": null}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-16T08:33:01.090256+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db8u1di9cl7s73ae4d10",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.758,
+        "response": "{\"id\": \"dpg-db8u1di9cl7s73ae4d10\", \"name\": \"qa-20261016-121159-csv\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa360_db_121159\", \"databaseUser\": \"qa360_user_121159\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T08:30:46Z\", \"updatedAt\": \"2026-10-16T08:31:48Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db8u1di9cl7s73ae4d10\", \"externalHost\": \"dpg-db8u1di9cl7s73ae4d10.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      }
+    }
+  ],
+  "native_SQL_readiness": [
+    {
+      "at": "2026-10-16T08:33:02.522310+00:00",
+      "client": "bex",
+      "before": {
+        "at": "2026-10-16T08:33:02.300109+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db8u1di9cl7s73ae4d10",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.388,
+        "response": "{\"id\": \"dpg-db8u1di9cl7s73ae4d10\", \"name\": \"qa-20261016-121159-csv\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa360_db_121159\", \"databaseUser\": \"qa360_user_121159\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T08:30:46Z\", \"updatedAt\": \"2026-10-16T08:31:48Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db8u1di9cl7s73ae4d10\", \"externalHost\": \"dpg-db8u1di9cl7s73ae4d10.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      },
+      "intent": "read-only own SELECT1 readiness control",
+      "result": {
+        "at": "2026-10-16T08:33:05.658921+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db8u1di9cl7s73ae4d10",
+          "--command",
+          "SELECT jsonb_build_object('one',1,'database',current_database(),'user',current_user,'version',current_setting('server_version_num')::int/10000,'encoding',current_setting('server_encoding'))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.916,
+        "stdout": "{\"output\": \"{\\\"one\\\": 1, \\\"user\\\": \\\"qa360_user_121159\\\", \\\"version\\\": 18, \\\"database\\\": \\\"qa360_db_121159\\\", \\\"encoding\\\": \\\"UTF8\\\"}\"}",
+        "stderr": ""
+      },
+      "observed": {
+        "one": 1,
+        "user": "qa360_user_121159",
+        "version": 18,
+        "database": "qa360_db_121159",
+        "encoding": "UTF8"
+      },
+      "pass": true
+    }
+  ],
+  "cached_SQL_acquisition": {
+    "at": "2026-10-16T08:33:07.339078+00:00",
+    "API_only": true,
+    "path": "/v1/postgres/dpg-db8u1di9cl7s73ae4d10/connection-info",
+    "status": "200",
+    "connection_info_payload": "credential-bearing URI/command fields omitted before ledger; private owner-only files",
+    "owned_endpoint_database_user_matched": true
+  },
+  "cached_SQL_probes": [
+    {
+      "at": "2026-10-16T08:33:07.939676+00:00",
+      "API_only": true,
+      "qualification": "ordinary cached psql data-plane diagnostic; not Bex/Render native CLI coverage",
+      "after_delete": false,
+      "exit": 0,
+      "SQL_1": true,
+      "stderr": "",
+      "elapsed": 1.372
+    },
+    {
+      "at": "2026-10-16T08:35:40.481635+00:00",
+      "API_only": true,
+      "qualification": "ordinary cached psql data-plane diagnostic; not Bex/Render native CLI coverage",
+      "after_delete": true,
+      "exit": 2,
+      "SQL_1": false,
+      "stderr": "psql: error: connection to server at \"dpg-db8u1di9cl7s73ae4d10.db.bex.co\" (49.12.20.236), port 5432 failed: SSL error: unexpected eof while reading\n",
+      "elapsed": 0.539
+    }
+  ],
+  "sql_events": [
+    {
+      "at": "2026-10-16T08:33:49.483484+00:00",
+      "label": "schema-absent",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db8u1di9cl7s73ae4d10",
+      "command": "SELECT to_regnamespace('qa360_121159') IS NULL;",
+      "result": {
+        "at": "2026-10-16T08:33:52.108129+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db8u1di9cl7s73ae4d10",
+          "--command",
+          "SELECT to_regnamespace('qa360_121159') IS NULL;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.414,
+        "stdout": "{\"output\": \"t\\n\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T08:33:52.559134+00:00",
+      "label": "create-three-tables",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db8u1di9cl7s73ae4d10",
+      "command": "BEGIN; CREATE SCHEMA qa360_121159; CREATE TABLE qa360_121159.a (id integer PRIMARY KEY,label text NOT NULL,maybe text,payload jsonb NOT NULL,amount numeric(30,6) NOT NULL); CREATE TABLE qa360_121159.b (id integer PRIMARY KEY,label text NOT NULL,maybe text,payload jsonb NOT NULL,amount numeric(30,6) NOT NULL); CREATE TABLE qa360_121159.c (id integer PRIMARY KEY,label text NOT NULL,maybe text,payload jsonb NOT NULL,amount numeric(30,6) NOT NULL); COMMIT; SELECT jsonb_build_object('a', (SELECT count(*) FROM qa360_121159.a),'b',(SELECT count(*) FROM qa360_121159.b),'c',(SELECT count(*) FROM qa360_121159.c))::text;",
+      "result": {
+        "at": "2026-10-16T08:33:55.361425+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db8u1di9cl7s73ae4d10",
+          "--command",
+          "BEGIN; CREATE SCHEMA qa360_121159; CREATE TABLE qa360_121159.a (id integer PRIMARY KEY,label text NOT NULL,maybe text,payload jsonb NOT NULL,amount numeric(30,6) NOT NULL); CREATE TABLE qa360_121159.b (id integer PRIMARY KEY,label text NOT NULL,maybe text,payload jsonb NOT NULL,amount numeric(30,6) NOT NULL); CREATE TABLE qa360_121159.c (id integer PRIMARY KEY,label text NOT NULL,maybe text,payload jsonb NOT NULL,amount numeric(30,6) NOT NULL); COMMIT; SELECT jsonb_build_object('a', (SELECT count(*) FROM qa360_121159.a),'b',(SELECT count(*) FROM qa360_121159.b),'c',(SELECT count(*) FROM qa360_121159.c))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.576,
+        "stdout": "{\"output\": \"{\\\"a\\\": 0, \\\"b\\\": 0, \\\"c\\\": 0}\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T08:33:56.435080+00:00",
+      "label": "bad-import",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db8u1di9cl7s73ae4d10",
+      "command": "\\copy qa360_121159.a(id,label,maybe,payload,amount) FROM '<owned-temp>/sweep360 CSV files/bad input β.csv' WITH (FORMAT csv, HEADER true, NULL '__QA360_NULL__')",
+      "result": {
+        "at": "2026-10-16T08:33:59.296922+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db8u1di9cl7s73ae4d10",
+          "--command",
+          "\\copy qa360_121159.a(id,label,maybe,payload,amount) FROM '<owned-temp>/sweep360 CSV files/bad input β.csv' WITH (FORMAT csv, HEADER true, NULL '__QA360_NULL__')",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": null,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 2.628,
+        "stdout": "",
+        "stderr": "Error: exit status 1: ERROR:  invalid input syntax for type numeric: \"not_a_decimal\"\nCONTEXT:  COPY a, line 117, column amount: \"not_a_decimal\"\n"
+      },
+      "expected_data_error_pass": true
+    },
+    {
+      "at": "2026-10-16T08:34:00.114215+00:00",
+      "label": "failed-copy-left-zero-rows",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db8u1di9cl7s73ae4d10",
+      "command": "SELECT jsonb_build_object('a',(SELECT count(*) FROM qa360_121159.a),'b',(SELECT count(*) FROM qa360_121159.b),'c',(SELECT count(*) FROM qa360_121159.c))::text;",
+      "result": {
+        "at": "2026-10-16T08:34:02.802095+00:00",
+        "binary": "unchanged Render2.27.0/a764810a7682",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db8u1di9cl7s73ae4d10",
+          "--command",
+          "SELECT jsonb_build_object('a',(SELECT count(*) FROM qa360_121159.a),'b',(SELECT count(*) FROM qa360_121159.b),'c',(SELECT count(*) FROM qa360_121159.c))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": {
+          "API_only_CA_preparation": true,
+          "path": "/v1/postgres/dpg-db8u1di9cl7s73ae4d10/connection-info",
+          "HTTP": "200",
+          "certificate_sha256": "656db74542152093f4f42902b5bc01435984936e5f6a6d65379227ead514ccde",
+          "PGSSLROOTCERT": "<owned-temp>/sweep360-owned-pg-ca.pem",
+          "connection_info_payload_not_retained": true
+        },
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.146,
+        "stdout": "{\"output\": \"{\\\"a\\\": 0, \\\"b\\\": 0, \\\"c\\\": 0}\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T08:34:03.604115+00:00",
+      "label": "good-import",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db8u1di9cl7s73ae4d10",
+      "command": "\\copy qa360_121159.a(id,label,maybe,payload,amount) FROM '<owned-temp>/sweep360 CSV files/input α.csv' WITH (FORMAT csv, HEADER true, NULL '__QA360_NULL__')",
+      "result": {
+        "at": "2026-10-16T08:34:06.263466+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db8u1di9cl7s73ae4d10",
+          "--command",
+          "\\copy qa360_121159.a(id,label,maybe,payload,amount) FROM '<owned-temp>/sweep360 CSV files/input α.csv' WITH (FORMAT csv, HEADER true, NULL '__QA360_NULL__')",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.447,
+        "stdout": "{\"output\": \"\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T08:34:06.839470+00:00",
+      "label": "snapshot-a",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db8u1di9cl7s73ae4d10",
+      "command": "SELECT (SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'label',label,'maybe',maybe,'payload',payload,'amount',amount::text) ORDER BY id),'[]'::jsonb) FROM qa360_121159.a)::text;",
+      "result": {
+        "at": "2026-10-16T08:34:09.750215+00:00",
+        "binary": "unchanged Render2.27.0/a764810a7682",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db8u1di9cl7s73ae4d10",
+          "--command",
+          "SELECT (SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'label',label,'maybe',maybe,'payload',payload,'amount',amount::text) ORDER BY id),'[]'::jsonb) FROM qa360_121159.a)::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": {
+          "API_only_CA_preparation": true,
+          "path": "/v1/postgres/dpg-db8u1di9cl7s73ae4d10/connection-info",
+          "HTTP": "200",
+          "certificate_sha256": "656db74542152093f4f42902b5bc01435984936e5f6a6d65379227ead514ccde",
+          "PGSSLROOTCERT": "<owned-temp>/sweep360-owned-pg-ca.pem",
+          "connection_info_payload_not_retained": true
+        },
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.007,
+        "stdout": "{\"output\": \"[{\\\"id\\\": 1, \\\"label\\\": \\\"row 1, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"-9007199254740994.000001\\\", \\\"payload\\\": {\\\"row\\\": 1, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row1\\\\n\\\"]}}, {\\\"id\\\": 2, \\\"label\\\": \\\"row 2, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"9007199254740995.000002\\\", \\\"payload\\\": {\\\"row\\\": 2, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row2\\\\n\\\"]}}, {\\\"id\\\": 3, \\\"label\\\": \\\"row 3, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"-9007199254740996.000003\\\", \\\"payload\\\": {\\\"row\\\": 3, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row3\\\\n\\\"]}}, {\\\"id\\\": 4, \\\"label\\\": \\\"row 4, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"9007199254740997.000004\\\", \\\"payload\\\": {\\\"row\\\": 4, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row4\\\\n\\\"]}}, {\\\"id\\\": 5, \\\"label\\\": \\\"row 5, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"-9007199254740998.000005\\\", \\\"payload\\\": {\\\"row\\\": 5, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row5\\\\n\\\"]}}, {\\\"id\\\": 6, \\\"label\\\": \\\"row 6, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"9007199254740999.000006\\\", \\\"payload\\\": {\\\"row\\\": 6, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row6\\\\n\\\"]}}, {\\\"id\\\": 7, \\\"label\\\": \\\"row 7, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"-9007199254741000.000007\\\", \\\"payload\\\": {\\\"row\\\": 7, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row7\\\\n\\\"]}}, {\\\"id\\\": 8, \\\"label\\\": \\\"row 8, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"9007199254741001.000008\\\", \\\"payload\\\": {\\\"row\\\": 8, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row8\\\\n\\\"]}}, {\\\"id\\\": 9, \\\"label\\\": \\\"row 9, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"-9007199254741002.000009\\\", \\\"payload\\\": {\\\"row\\\": 9, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row9\\\\n\\\"]}}, {\\\"id\\\": 10, \\\"label\\\": \\\"row 10, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"9007199254741003.000010\\\", \\\"payload\\\": {\\\"row\\\": 10, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row10\\\\n\\\"]}}, {\\\"id\\\": 11, \\\"label\\\": \\\"row 11, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"-9007199254741004.000011\\\", \\\"payload\\\": {\\\"row\\\": 11, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row11\\\\n\\\"]}}, {\\\"id\\\": 12, \\\"label\\\": \\\"row 12, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"9007199254741005.000012\\\", \\\"payload\\\": {\\\"row\\\": 12, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row12\\\\n\\\"]}}, {\\\"id\\\": 13, \\\"label\\\": \\\"row 13, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"-9007199254741006.000013\\\", \\\"payload\\\": {\\\"row\\\": 13, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row13\\\\n\\\"]}}, {\\\"id\\\": 14, \\\"label\\\": \\\"row 14, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"9007199254741007.000014\\\", \\\"payload\\\": {\\\"row\\\": 14, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row14\\\\n\\\"]}}, {\\\"id\\\": 15, \\\"label\\\": \\\"row 15, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"-9007199254741008.000015\\\", \\\"payload\\\": {\\\"row\\\": 15, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row15\\\\n\\\"]}}, {\\\"id\\\": 16, \\\"label\\\": \\\"row 16, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"9007199254741009.000016\\\", \\\"payload\\\": {\\\"row\\\": 16, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row16\\\\n\\\"]}}, {\\\"id\\\": 17, \\\"label\\\": \\\"row 17, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"-9007199254741010.000017\\\", \\\"payload\\\": {\\\"row\\\": 17, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row17\\\\n\\\"]}}, {\\\"id\\\": 18, \\\"label\\\": \\\"row 18, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"9007199254741011.000018\\\", \\\"payload\\\": {\\\"row\\\": 18, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row18\\\\n\\\"]}}, {\\\"id\\\": 19, \\\"label\\\": \\\"row 19, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"-9007199254741012.000019\\\", \\\"payload\\\": {\\\"row\\\": 19, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row19\\\\n\\\"]}}, {\\\"id\\\": 20, \\\"label\\\": \\\"row 20, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"9007199254741013.000020\\\", \\\"payload\\\": {\\\"row\\\": 20, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row20\\\\n\\\"]}}, {\\\"id\\\": 21, \\\"label\\\": \\\"row 21, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"-9007199254741014.000021\\\", \\\"payload\\\": {\\\"row\\\": 21, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row21\\\\n\\\"]}}, {\\\"id\\\": 22, \\\"label\\\": \\\"row 22, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"9007199254741015.000022\\\", \\\"payload\\\": {\\\"row\\\": 22, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row22\\\\n\\\"]}}, {\\\"id\\\": 23, \\\"label\\\": \\\"row 23, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"-9007199254741016.000023\\\", \\\"payload\\\": {\\\"row\\\": 23, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row23\\\\n\\\"]}}, {\\\"id\\\": 24, \\\"label\\\": \\\"row 24, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"9007199254741017.000024\\\", \\\"payload\\\": {\\\"row\\\": 24, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row24\\\\n\\\"]}}, {\\\"id\\\": 25, \\\"label\\\": \\\"row 25, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"-9007199254741018.000025\\\", \\\"payload\\\": {\\\"row\\\": 25, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row25\\\\n\\\"]}}, {\\\"id\\\": 26, \\\"label\\\": \\\"row 26, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"9007199254741019.000026\\\", \\\"payload\\\": {\\\"row\\\": 26, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row26\\\\n\\\"]}}, {\\\"id\\\": 27, \\\"label\\\": \\\"row 27, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"-9007199254741020.000027\\\", \\\"payload\\\": {\\\"row\\\": 27, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row27\\\\n\\\"]}}, {\\\"id\\\": 28, \\\"label\\\": \\\"row 28, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"9007199254741021.000028\\\", \\\"payload\\\": {\\\"row\\\": 28, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row28\\\\n\\\"]}}, {\\\"id\\\": 29, \\\"label\\\": \\\"row 29, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"-9007199254741022.000029\\\", \\\"payload\\\": {\\\"row\\\": 29, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row29\\\\n\\\"]}}, {\\\"id\\\": 30, \\\"label\\\": \\\"row 30, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"9007199254741023.000030\\\", \\\"payload\\\": {\\\"row\\\": 30, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row30\\\\n\\\"]}}, {\\\"id\\\": 31, \\\"label\\\": \\\"row 31, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"-9007199254741024.000031\\\", \\\"payload\\\": {\\\"row\\\": 31, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row31\\\\n\\\"]}}, {\\\"id\\\": 32, \\\"label\\\": \\\"row 32, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"9007199254741025.000032\\\", \\\"payload\\\": {\\\"row\\\": 32, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row32\\\\n\\\"]}}, {\\\"id\\\": 33, \\\"label\\\": \\\"row 33, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"-9007199254741026.000033\\\", \\\"payload\\\": {\\\"row\\\": 33, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row33\\\\n\\\"]}}, {\\\"id\\\": 34, \\\"label\\\": \\\"row 34, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"9007199254741027.000034\\\", \\\"payload\\\": {\\\"row\\\": 34, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row34\\\\n\\\"]}}, {\\\"id\\\": 35, \\\"label\\\": \\\"row 35, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"-9007199254741028.000035\\\", \\\"payload\\\": {\\\"row\\\": 35, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row35\\\\n\\\"]}}, {\\\"id\\\": 36, \\\"label\\\": \\\"row 36, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"9007199254741029.000036\\\", \\\"payload\\\": {\\\"row\\\": 36, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row36\\\\n\\\"]}}, {\\\"id\\\": 37, \\\"label\\\": \\\"row 37, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"-9007199254741030.000037\\\", \\\"payload\\\": {\\\"row\\\": 37, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row37\\\\n\\\"]}}]\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T08:34:41.320790+00:00",
+      "label": "export-render",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db8u1di9cl7s73ae4d10",
+      "command": "\\copy (SELECT id,label,maybe,payload,amount FROM qa360_121159.a ORDER BY id) TO '<owned-temp>/sweep360 CSV files/Render export γ.csv' WITH (FORMAT csv, HEADER true, NULL '__QA360_NULL__', FORCE_QUOTE *)",
+      "result": {
+        "at": "2026-10-16T08:34:44.184968+00:00",
+        "binary": "unchanged Render2.27.0/a764810a7682",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db8u1di9cl7s73ae4d10",
+          "--command",
+          "\\copy (SELECT id,label,maybe,payload,amount FROM qa360_121159.a ORDER BY id) TO '<owned-temp>/sweep360 CSV files/Render export γ.csv' WITH (FORMAT csv, HEADER true, NULL '__QA360_NULL__', FORCE_QUOTE *)",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": {
+          "API_only_CA_preparation": true,
+          "path": "/v1/postgres/dpg-db8u1di9cl7s73ae4d10/connection-info",
+          "HTTP": "200",
+          "certificate_sha256": "656db74542152093f4f42902b5bc01435984936e5f6a6d65379227ead514ccde",
+          "PGSSLROOTCERT": "<owned-temp>/sweep360-owned-pg-ca.pem",
+          "connection_info_payload_not_retained": true
+        },
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.274,
+        "stdout": "{\"output\": \"\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T08:34:44.970266+00:00",
+      "label": "import-b",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db8u1di9cl7s73ae4d10",
+      "command": "\\copy qa360_121159.b(id,label,maybe,payload,amount) FROM '<owned-temp>/sweep360 CSV files/Render export γ.csv' WITH (FORMAT csv, HEADER true, NULL '__QA360_NULL__')",
+      "result": {
+        "at": "2026-10-16T08:34:48.016795+00:00",
+        "binary": "unchanged Render2.27.0/a764810a7682",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db8u1di9cl7s73ae4d10",
+          "--command",
+          "\\copy qa360_121159.b(id,label,maybe,payload,amount) FROM '<owned-temp>/sweep360 CSV files/Render export γ.csv' WITH (FORMAT csv, HEADER true, NULL '__QA360_NULL__')",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": {
+          "API_only_CA_preparation": true,
+          "path": "/v1/postgres/dpg-db8u1di9cl7s73ae4d10/connection-info",
+          "HTTP": "200",
+          "certificate_sha256": "656db74542152093f4f42902b5bc01435984936e5f6a6d65379227ead514ccde",
+          "PGSSLROOTCERT": "<owned-temp>/sweep360-owned-pg-ca.pem",
+          "connection_info_payload_not_retained": true
+        },
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.436,
+        "stdout": "{\"output\": \"\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T08:34:48.600950+00:00",
+      "label": "snapshot-b",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db8u1di9cl7s73ae4d10",
+      "command": "SELECT (SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'label',label,'maybe',maybe,'payload',payload,'amount',amount::text) ORDER BY id),'[]'::jsonb) FROM qa360_121159.b)::text;",
+      "result": {
+        "at": "2026-10-16T08:34:50.995623+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db8u1di9cl7s73ae4d10",
+          "--command",
+          "SELECT (SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'label',label,'maybe',maybe,'payload',payload,'amount',amount::text) ORDER BY id),'[]'::jsonb) FROM qa360_121159.b)::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.18,
+        "stdout": "{\"output\": \"[{\\\"id\\\": 1, \\\"label\\\": \\\"row 1, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"-9007199254740994.000001\\\", \\\"payload\\\": {\\\"row\\\": 1, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row1\\\\n\\\"]}}, {\\\"id\\\": 2, \\\"label\\\": \\\"row 2, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"9007199254740995.000002\\\", \\\"payload\\\": {\\\"row\\\": 2, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row2\\\\n\\\"]}}, {\\\"id\\\": 3, \\\"label\\\": \\\"row 3, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"-9007199254740996.000003\\\", \\\"payload\\\": {\\\"row\\\": 3, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row3\\\\n\\\"]}}, {\\\"id\\\": 4, \\\"label\\\": \\\"row 4, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"9007199254740997.000004\\\", \\\"payload\\\": {\\\"row\\\": 4, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row4\\\\n\\\"]}}, {\\\"id\\\": 5, \\\"label\\\": \\\"row 5, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"-9007199254740998.000005\\\", \\\"payload\\\": {\\\"row\\\": 5, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row5\\\\n\\\"]}}, {\\\"id\\\": 6, \\\"label\\\": \\\"row 6, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"9007199254740999.000006\\\", \\\"payload\\\": {\\\"row\\\": 6, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row6\\\\n\\\"]}}, {\\\"id\\\": 7, \\\"label\\\": \\\"row 7, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"-9007199254741000.000007\\\", \\\"payload\\\": {\\\"row\\\": 7, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row7\\\\n\\\"]}}, {\\\"id\\\": 8, \\\"label\\\": \\\"row 8, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"9007199254741001.000008\\\", \\\"payload\\\": {\\\"row\\\": 8, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row8\\\\n\\\"]}}, {\\\"id\\\": 9, \\\"label\\\": \\\"row 9, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"-9007199254741002.000009\\\", \\\"payload\\\": {\\\"row\\\": 9, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row9\\\\n\\\"]}}, {\\\"id\\\": 10, \\\"label\\\": \\\"row 10, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"9007199254741003.000010\\\", \\\"payload\\\": {\\\"row\\\": 10, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row10\\\\n\\\"]}}, {\\\"id\\\": 11, \\\"label\\\": \\\"row 11, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"-9007199254741004.000011\\\", \\\"payload\\\": {\\\"row\\\": 11, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row11\\\\n\\\"]}}, {\\\"id\\\": 12, \\\"label\\\": \\\"row 12, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"9007199254741005.000012\\\", \\\"payload\\\": {\\\"row\\\": 12, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row12\\\\n\\\"]}}, {\\\"id\\\": 13, \\\"label\\\": \\\"row 13, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"-9007199254741006.000013\\\", \\\"payload\\\": {\\\"row\\\": 13, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row13\\\\n\\\"]}}, {\\\"id\\\": 14, \\\"label\\\": \\\"row 14, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"9007199254741007.000014\\\", \\\"payload\\\": {\\\"row\\\": 14, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row14\\\\n\\\"]}}, {\\\"id\\\": 15, \\\"label\\\": \\\"row 15, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"-9007199254741008.000015\\\", \\\"payload\\\": {\\\"row\\\": 15, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row15\\\\n\\\"]}}, {\\\"id\\\": 16, \\\"label\\\": \\\"row 16, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"9007199254741009.000016\\\", \\\"payload\\\": {\\\"row\\\": 16, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row16\\\\n\\\"]}}, {\\\"id\\\": 17, \\\"label\\\": \\\"row 17, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"-9007199254741010.000017\\\", \\\"payload\\\": {\\\"row\\\": 17, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row17\\\\n\\\"]}}, {\\\"id\\\": 18, \\\"label\\\": \\\"row 18, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"9007199254741011.000018\\\", \\\"payload\\\": {\\\"row\\\": 18, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row18\\\\n\\\"]}}, {\\\"id\\\": 19, \\\"label\\\": \\\"row 19, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"-9007199254741012.000019\\\", \\\"payload\\\": {\\\"row\\\": 19, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row19\\\\n\\\"]}}, {\\\"id\\\": 20, \\\"label\\\": \\\"row 20, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"9007199254741013.000020\\\", \\\"payload\\\": {\\\"row\\\": 20, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row20\\\\n\\\"]}}, {\\\"id\\\": 21, \\\"label\\\": \\\"row 21, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"-9007199254741014.000021\\\", \\\"payload\\\": {\\\"row\\\": 21, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row21\\\\n\\\"]}}, {\\\"id\\\": 22, \\\"label\\\": \\\"row 22, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"9007199254741015.000022\\\", \\\"payload\\\": {\\\"row\\\": 22, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row22\\\\n\\\"]}}, {\\\"id\\\": 23, \\\"label\\\": \\\"row 23, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"-9007199254741016.000023\\\", \\\"payload\\\": {\\\"row\\\": 23, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row23\\\\n\\\"]}}, {\\\"id\\\": 24, \\\"label\\\": \\\"row 24, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"9007199254741017.000024\\\", \\\"payload\\\": {\\\"row\\\": 24, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row24\\\\n\\\"]}}, {\\\"id\\\": 25, \\\"label\\\": \\\"row 25, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"-9007199254741018.000025\\\", \\\"payload\\\": {\\\"row\\\": 25, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row25\\\\n\\\"]}}, {\\\"id\\\": 26, \\\"label\\\": \\\"row 26, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"9007199254741019.000026\\\", \\\"payload\\\": {\\\"row\\\": 26, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row26\\\\n\\\"]}}, {\\\"id\\\": 27, \\\"label\\\": \\\"row 27, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"-9007199254741020.000027\\\", \\\"payload\\\": {\\\"row\\\": 27, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row27\\\\n\\\"]}}, {\\\"id\\\": 28, \\\"label\\\": \\\"row 28, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"9007199254741021.000028\\\", \\\"payload\\\": {\\\"row\\\": 28, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row28\\\\n\\\"]}}, {\\\"id\\\": 29, \\\"label\\\": \\\"row 29, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"-9007199254741022.000029\\\", \\\"payload\\\": {\\\"row\\\": 29, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row29\\\\n\\\"]}}, {\\\"id\\\": 30, \\\"label\\\": \\\"row 30, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"9007199254741023.000030\\\", \\\"payload\\\": {\\\"row\\\": 30, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row30\\\\n\\\"]}}, {\\\"id\\\": 31, \\\"label\\\": \\\"row 31, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"-9007199254741024.000031\\\", \\\"payload\\\": {\\\"row\\\": 31, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row31\\\\n\\\"]}}, {\\\"id\\\": 32, \\\"label\\\": \\\"row 32, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"9007199254741025.000032\\\", \\\"payload\\\": {\\\"row\\\": 32, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row32\\\\n\\\"]}}, {\\\"id\\\": 33, \\\"label\\\": \\\"row 33, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"-9007199254741026.000033\\\", \\\"payload\\\": {\\\"row\\\": 33, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row33\\\\n\\\"]}}, {\\\"id\\\": 34, \\\"label\\\": \\\"row 34, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"9007199254741027.000034\\\", \\\"payload\\\": {\\\"row\\\": 34, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row34\\\\n\\\"]}}, {\\\"id\\\": 35, \\\"label\\\": \\\"row 35, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"-9007199254741028.000035\\\", \\\"payload\\\": {\\\"row\\\": 35, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row35\\\\n\\\"]}}, {\\\"id\\\": 36, \\\"label\\\": \\\"row 36, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"9007199254741029.000036\\\", \\\"payload\\\": {\\\"row\\\": 36, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row36\\\\n\\\"]}}, {\\\"id\\\": 37, \\\"label\\\": \\\"row 37, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"-9007199254741030.000037\\\", \\\"payload\\\": {\\\"row\\\": 37, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row37\\\\n\\\"]}}]\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T08:34:51.782392+00:00",
+      "label": "export-bex",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db8u1di9cl7s73ae4d10",
+      "command": "\\copy (SELECT id,label,maybe,payload,amount FROM qa360_121159.b ORDER BY id) TO '<owned-temp>/sweep360 CSV files/Bex export δ.csv' WITH (FORMAT csv, HEADER true, NULL '__QA360_NULL__', FORCE_QUOTE *)",
+      "result": {
+        "at": "2026-10-16T08:34:54.330215+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db8u1di9cl7s73ae4d10",
+          "--command",
+          "\\copy (SELECT id,label,maybe,payload,amount FROM qa360_121159.b ORDER BY id) TO '<owned-temp>/sweep360 CSV files/Bex export δ.csv' WITH (FORMAT csv, HEADER true, NULL '__QA360_NULL__', FORCE_QUOTE *)",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.332,
+        "stdout": "{\"output\": \"\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T08:34:55.345735+00:00",
+      "label": "import-c",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db8u1di9cl7s73ae4d10",
+      "command": "\\copy qa360_121159.c(id,label,maybe,payload,amount) FROM '<owned-temp>/sweep360 CSV files/Bex export δ.csv' WITH (FORMAT csv, HEADER true, NULL '__QA360_NULL__')",
+      "result": {
+        "at": "2026-10-16T08:34:58.168012+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db8u1di9cl7s73ae4d10",
+          "--command",
+          "\\copy qa360_121159.c(id,label,maybe,payload,amount) FROM '<owned-temp>/sweep360 CSV files/Bex export δ.csv' WITH (FORMAT csv, HEADER true, NULL '__QA360_NULL__')",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.606,
+        "stdout": "{\"output\": \"\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T08:34:58.734716+00:00",
+      "label": "all-tables-bex",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db8u1di9cl7s73ae4d10",
+      "command": "SELECT jsonb_build_object('a',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'label',label,'maybe',maybe,'payload',payload,'amount',amount::text) ORDER BY id),'[]'::jsonb) FROM qa360_121159.a),'b',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'label',label,'maybe',maybe,'payload',payload,'amount',amount::text) ORDER BY id),'[]'::jsonb) FROM qa360_121159.b),'c',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'label',label,'maybe',maybe,'payload',payload,'amount',amount::text) ORDER BY id),'[]'::jsonb) FROM qa360_121159.c))::text;",
+      "result": {
+        "at": "2026-10-16T08:35:01.484379+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db8u1di9cl7s73ae4d10",
+          "--command",
+          "SELECT jsonb_build_object('a',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'label',label,'maybe',maybe,'payload',payload,'amount',amount::text) ORDER BY id),'[]'::jsonb) FROM qa360_121159.a),'b',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'label',label,'maybe',maybe,'payload',payload,'amount',amount::text) ORDER BY id),'[]'::jsonb) FROM qa360_121159.b),'c',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'label',label,'maybe',maybe,'payload',payload,'amount',amount::text) ORDER BY id),'[]'::jsonb) FROM qa360_121159.c))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.533,
+        "stdout": "{\"output\": \"{\\\"a\\\": [{\\\"id\\\": 1, \\\"label\\\": \\\"row 1, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"-9007199254740994.000001\\\", \\\"payload\\\": {\\\"row\\\": 1, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row1\\\\n\\\"]}}, {\\\"id\\\": 2, \\\"label\\\": \\\"row 2, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"9007199254740995.000002\\\", \\\"payload\\\": {\\\"row\\\": 2, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row2\\\\n\\\"]}}, {\\\"id\\\": 3, \\\"label\\\": \\\"row 3, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"-9007199254740996.000003\\\", \\\"payload\\\": {\\\"row\\\": 3, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row3\\\\n\\\"]}}, {\\\"id\\\": 4, \\\"label\\\": \\\"row 4, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"9007199254740997.000004\\\", \\\"payload\\\": {\\\"row\\\": 4, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row4\\\\n\\\"]}}, {\\\"id\\\": 5, \\\"label\\\": \\\"row 5, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"-9007199254740998.000005\\\", \\\"payload\\\": {\\\"row\\\": 5, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row5\\\\n\\\"]}}, {\\\"id\\\": 6, \\\"label\\\": \\\"row 6, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"9007199254740999.000006\\\", \\\"payload\\\": {\\\"row\\\": 6, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row6\\\\n\\\"]}}, {\\\"id\\\": 7, \\\"label\\\": \\\"row 7, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"-9007199254741000.000007\\\", \\\"payload\\\": {\\\"row\\\": 7, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row7\\\\n\\\"]}}, {\\\"id\\\": 8, \\\"label\\\": \\\"row 8, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"9007199254741001.000008\\\", \\\"payload\\\": {\\\"row\\\": 8, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row8\\\\n\\\"]}}, {\\\"id\\\": 9, \\\"label\\\": \\\"row 9, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"-9007199254741002.000009\\\", \\\"payload\\\": {\\\"row\\\": 9, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row9\\\\n\\\"]}}, {\\\"id\\\": 10, \\\"label\\\": \\\"row 10, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"9007199254741003.000010\\\", \\\"payload\\\": {\\\"row\\\": 10, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row10\\\\n\\\"]}}, {\\\"id\\\": 11, \\\"label\\\": \\\"row 11, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"-9007199254741004.000011\\\", \\\"payload\\\": {\\\"row\\\": 11, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row11\\\\n\\\"]}}, {\\\"id\\\": 12, \\\"label\\\": \\\"row 12, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"9007199254741005.000012\\\", \\\"payload\\\": {\\\"row\\\": 12, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row12\\\\n\\\"]}}, {\\\"id\\\": 13, \\\"label\\\": \\\"row 13, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"-9007199254741006.000013\\\", \\\"payload\\\": {\\\"row\\\": 13, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row13\\\\n\\\"]}}, {\\\"id\\\": 14, \\\"label\\\": \\\"row 14, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"9007199254741007.000014\\\", \\\"payload\\\": {\\\"row\\\": 14, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row14\\\\n\\\"]}}, {\\\"id\\\": 15, \\\"label\\\": \\\"row 15, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"-9007199254741008.000015\\\", \\\"payload\\\": {\\\"row\\\": 15, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row15\\\\n\\\"]}}, {\\\"id\\\": 16, \\\"label\\\": \\\"row 16, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"9007199254741009.000016\\\", \\\"payload\\\": {\\\"row\\\": 16, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row16\\\\n\\\"]}}, {\\\"id\\\": 17, \\\"label\\\": \\\"row 17, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"-9007199254741010.000017\\\", \\\"payload\\\": {\\\"row\\\": 17, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row17\\\\n\\\"]}}, {\\\"id\\\": 18, \\\"label\\\": \\\"row 18, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"9007199254741011.000018\\\", \\\"payload\\\": {\\\"row\\\": 18, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row18\\\\n\\\"]}}, {\\\"id\\\": 19, \\\"label\\\": \\\"row 19, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"-9007199254741012.000019\\\", \\\"payload\\\": {\\\"row\\\": 19, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row19\\\\n\\\"]}}, {\\\"id\\\": 20, \\\"label\\\": \\\"row 20, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"9007199254741013.000020\\\", \\\"payload\\\": {\\\"row\\\": 20, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row20\\\\n\\\"]}}, {\\\"id\\\": 21, \\\"label\\\": \\\"row 21, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"-9007199254741014.000021\\\", \\\"payload\\\": {\\\"row\\\": 21, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row21\\\\n\\\"]}}, {\\\"id\\\": 22, \\\"label\\\": \\\"row 22, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"9007199254741015.000022\\\", \\\"payload\\\": {\\\"row\\\": 22, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row22\\\\n\\\"]}}, {\\\"id\\\": 23, \\\"label\\\": \\\"row 23, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"-9007199254741016.000023\\\", \\\"payload\\\": {\\\"row\\\": 23, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row23\\\\n\\\"]}}, {\\\"id\\\": 24, \\\"label\\\": \\\"row 24, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"9007199254741017.000024\\\", \\\"payload\\\": {\\\"row\\\": 24, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row24\\\\n\\\"]}}, {\\\"id\\\": 25, \\\"label\\\": \\\"row 25, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"-9007199254741018.000025\\\", \\\"payload\\\": {\\\"row\\\": 25, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row25\\\\n\\\"]}}, {\\\"id\\\": 26, \\\"label\\\": \\\"row 26, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"9007199254741019.000026\\\", \\\"payload\\\": {\\\"row\\\": 26, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row26\\\\n\\\"]}}, {\\\"id\\\": 27, \\\"label\\\": \\\"row 27, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"-9007199254741020.000027\\\", \\\"payload\\\": {\\\"row\\\": 27, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row27\\\\n\\\"]}}, {\\\"id\\\": 28, \\\"label\\\": \\\"row 28, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"9007199254741021.000028\\\", \\\"payload\\\": {\\\"row\\\": 28, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row28\\\\n\\\"]}}, {\\\"id\\\": 29, \\\"label\\\": \\\"row 29, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"-9007199254741022.000029\\\", \\\"payload\\\": {\\\"row\\\": 29, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row29\\\\n\\\"]}}, {\\\"id\\\": 30, \\\"label\\\": \\\"row 30, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"9007199254741023.000030\\\", \\\"payload\\\": {\\\"row\\\": 30, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row30\\\\n\\\"]}}, {\\\"id\\\": 31, \\\"label\\\": \\\"row 31, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"-9007199254741024.000031\\\", \\\"payload\\\": {\\\"row\\\": 31, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row31\\\\n\\\"]}}, {\\\"id\\\": 32, \\\"label\\\": \\\"row 32, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"9007199254741025.000032\\\", \\\"payload\\\": {\\\"row\\\": 32, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row32\\\\n\\\"]}}, {\\\"id\\\": 33, \\\"label\\\": \\\"row 33, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"-9007199254741026.000033\\\", \\\"payload\\\": {\\\"row\\\": 33, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row33\\\\n\\\"]}}, {\\\"id\\\": 34, \\\"label\\\": \\\"row 34, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"9007199254741027.000034\\\", \\\"payload\\\": {\\\"row\\\": 34, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row34\\\\n\\\"]}}, {\\\"id\\\": 35, \\\"label\\\": \\\"row 35, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"-9007199254741028.000035\\\", \\\"payload\\\": {\\\"row\\\": 35, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row35\\\\n\\\"]}}, {\\\"id\\\": 36, \\\"label\\\": \\\"row 36, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"9007199254741029.000036\\\", \\\"payload\\\": {\\\"row\\\": 36, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row36\\\\n\\\"]}}, {\\\"id\\\": 37, \\\"label\\\": \\\"row 37, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"-9007199254741030.000037\\\", \\\"payload\\\": {\\\"row\\\": 37, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row37\\\\n\\\"]}}], \\\"b\\\": [{\\\"id\\\": 1, \\\"label\\\": \\\"row 1, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"-9007199254740994.000001\\\", \\\"payload\\\": {\\\"row\\\": 1, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row1\\\\n\\\"]}}, {\\\"id\\\": 2, \\\"label\\\": \\\"row 2, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"9007199254740995.000002\\\", \\\"payload\\\": {\\\"row\\\": 2, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row2\\\\n\\\"]}}, {\\\"id\\\": 3, \\\"label\\\": \\\"row 3, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"-9007199254740996.000003\\\", \\\"payload\\\": {\\\"row\\\": 3, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row3\\\\n\\\"]}}, {\\\"id\\\": 4, \\\"label\\\": \\\"row 4, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"9007199254740997.000004\\\", \\\"payload\\\": {\\\"row\\\": 4, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row4\\\\n\\\"]}}, {\\\"id\\\": 5, \\\"label\\\": \\\"row 5, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"-9007199254740998.000005\\\", \\\"payload\\\": {\\\"row\\\": 5, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row5\\\\n\\\"]}}, {\\\"id\\\": 6, \\\"label\\\": \\\"row 6, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"9007199254740999.000006\\\", \\\"payload\\\": {\\\"row\\\": 6, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row6\\\\n\\\"]}}, {\\\"id\\\": 7, \\\"label\\\": \\\"row 7, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"-9007199254741000.000007\\\", \\\"payload\\\": {\\\"row\\\": 7, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row7\\\\n\\\"]}}, {\\\"id\\\": 8, \\\"label\\\": \\\"row 8, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"9007199254741001.000008\\\", \\\"payload\\\": {\\\"row\\\": 8, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row8\\\\n\\\"]}}, {\\\"id\\\": 9, \\\"label\\\": \\\"row 9, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"-9007199254741002.000009\\\", \\\"payload\\\": {\\\"row\\\": 9, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row9\\\\n\\\"]}}, {\\\"id\\\": 10, \\\"label\\\": \\\"row 10, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"9007199254741003.000010\\\", \\\"payload\\\": {\\\"row\\\": 10, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row10\\\\n\\\"]}}, {\\\"id\\\": 11, \\\"label\\\": \\\"row 11, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"-9007199254741004.000011\\\", \\\"payload\\\": {\\\"row\\\": 11, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row11\\\\n\\\"]}}, {\\\"id\\\": 12, \\\"label\\\": \\\"row 12, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"9007199254741005.000012\\\", \\\"payload\\\": {\\\"row\\\": 12, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row12\\\\n\\\"]}}, {\\\"id\\\": 13, \\\"label\\\": \\\"row 13, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"-9007199254741006.000013\\\", \\\"payload\\\": {\\\"row\\\": 13, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row13\\\\n\\\"]}}, {\\\"id\\\": 14, \\\"label\\\": \\\"row 14, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"9007199254741007.000014\\\", \\\"payload\\\": {\\\"row\\\": 14, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row14\\\\n\\\"]}}, {\\\"id\\\": 15, \\\"label\\\": \\\"row 15, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"-9007199254741008.000015\\\", \\\"payload\\\": {\\\"row\\\": 15, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row15\\\\n\\\"]}}, {\\\"id\\\": 16, \\\"label\\\": \\\"row 16, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"9007199254741009.000016\\\", \\\"payload\\\": {\\\"row\\\": 16, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row16\\\\n\\\"]}}, {\\\"id\\\": 17, \\\"label\\\": \\\"row 17, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"-9007199254741010.000017\\\", \\\"payload\\\": {\\\"row\\\": 17, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row17\\\\n\\\"]}}, {\\\"id\\\": 18, \\\"label\\\": \\\"row 18, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"9007199254741011.000018\\\", \\\"payload\\\": {\\\"row\\\": 18, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row18\\\\n\\\"]}}, {\\\"id\\\": 19, \\\"label\\\": \\\"row 19, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"-9007199254741012.000019\\\", \\\"payload\\\": {\\\"row\\\": 19, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row19\\\\n\\\"]}}, {\\\"id\\\": 20, \\\"label\\\": \\\"row 20, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"9007199254741013.000020\\\", \\\"payload\\\": {\\\"row\\\": 20, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row20\\\\n\\\"]}}, {\\\"id\\\": 21, \\\"label\\\": \\\"row 21, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"-9007199254741014.000021\\\", \\\"payload\\\": {\\\"row\\\": 21, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row21\\\\n\\\"]}}, {\\\"id\\\": 22, \\\"label\\\": \\\"row 22, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"9007199254741015.000022\\\", \\\"payload\\\": {\\\"row\\\": 22, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row22\\\\n\\\"]}}, {\\\"id\\\": 23, \\\"label\\\": \\\"row 23, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"-9007199254741016.000023\\\", \\\"payload\\\": {\\\"row\\\": 23, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row23\\\\n\\\"]}}, {\\\"id\\\": 24, \\\"label\\\": \\\"row 24, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"9007199254741017.000024\\\", \\\"payload\\\": {\\\"row\\\": 24, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row24\\\\n\\\"]}}, {\\\"id\\\": 25, \\\"label\\\": \\\"row 25, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"-9007199254741018.000025\\\", \\\"payload\\\": {\\\"row\\\": 25, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row25\\\\n\\\"]}}, {\\\"id\\\": 26, \\\"label\\\": \\\"row 26, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"9007199254741019.000026\\\", \\\"payload\\\": {\\\"row\\\": 26, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row26\\\\n\\\"]}}, {\\\"id\\\": 27, \\\"label\\\": \\\"row 27, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"-9007199254741020.000027\\\", \\\"payload\\\": {\\\"row\\\": 27, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row27\\\\n\\\"]}}, {\\\"id\\\": 28, \\\"label\\\": \\\"row 28, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"9007199254741021.000028\\\", \\\"payload\\\": {\\\"row\\\": 28, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row28\\\\n\\\"]}}, {\\\"id\\\": 29, \\\"label\\\": \\\"row 29, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"-9007199254741022.000029\\\", \\\"payload\\\": {\\\"row\\\": 29, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row29\\\\n\\\"]}}, {\\\"id\\\": 30, \\\"label\\\": \\\"row 30, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"9007199254741023.000030\\\", \\\"payload\\\": {\\\"row\\\": 30, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row30\\\\n\\\"]}}, {\\\"id\\\": 31, \\\"label\\\": \\\"row 31, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"-9007199254741024.000031\\\", \\\"payload\\\": {\\\"row\\\": 31, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row31\\\\n\\\"]}}, {\\\"id\\\": 32, \\\"label\\\": \\\"row 32, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"9007199254741025.000032\\\", \\\"payload\\\": {\\\"row\\\": 32, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row32\\\\n\\\"]}}, {\\\"id\\\": 33, \\\"label\\\": \\\"row 33, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"-9007199254741026.000033\\\", \\\"payload\\\": {\\\"row\\\": 33, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row33\\\\n\\\"]}}, {\\\"id\\\": 34, \\\"label\\\": \\\"row 34, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"9007199254741027.000034\\\", \\\"payload\\\": {\\\"row\\\": 34, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row34\\\\n\\\"]}}, {\\\"id\\\": 35, \\\"label\\\": \\\"row 35, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"-9007199254741028.000035\\\", \\\"payload\\\": {\\\"row\\\": 35, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row35\\\\n\\\"]}}, {\\\"id\\\": 36, \\\"label\\\": \\\"row 36, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"9007199254741029.000036\\\", \\\"payload\\\": {\\\"row\\\": 36, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row36\\\\n\\\"]}}, {\\\"id\\\": 37, \\\"label\\\": \\\"row 37, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"-9007199254741030.000037\\\", \\\"payload\\\": {\\\"row\\\": 37, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row37\\\\n\\\"]}}], \\\"c\\\": [{\\\"id\\\": 1, \\\"label\\\": \\\"row 1, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"-9007199254740994.000001\\\", \\\"payload\\\": {\\\"row\\\": 1, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row1\\\\n\\\"]}}, {\\\"id\\\": 2, \\\"label\\\": \\\"row 2, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"9007199254740995.000002\\\", \\\"payload\\\": {\\\"row\\\": 2, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row2\\\\n\\\"]}}, {\\\"id\\\": 3, \\\"label\\\": \\\"row 3, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"-9007199254740996.000003\\\", \\\"payload\\\": {\\\"row\\\": 3, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row3\\\\n\\\"]}}, {\\\"id\\\": 4, \\\"label\\\": \\\"row 4, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"9007199254740997.000004\\\", \\\"payload\\\": {\\\"row\\\": 4, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row4\\\\n\\\"]}}, {\\\"id\\\": 5, \\\"label\\\": \\\"row 5, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"-9007199254740998.000005\\\", \\\"payload\\\": {\\\"row\\\": 5, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row5\\\\n\\\"]}}, {\\\"id\\\": 6, \\\"label\\\": \\\"row 6, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"9007199254740999.000006\\\", \\\"payload\\\": {\\\"row\\\": 6, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row6\\\\n\\\"]}}, {\\\"id\\\": 7, \\\"label\\\": \\\"row 7, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"-9007199254741000.000007\\\", \\\"payload\\\": {\\\"row\\\": 7, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row7\\\\n\\\"]}}, {\\\"id\\\": 8, \\\"label\\\": \\\"row 8, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"9007199254741001.000008\\\", \\\"payload\\\": {\\\"row\\\": 8, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row8\\\\n\\\"]}}, {\\\"id\\\": 9, \\\"label\\\": \\\"row 9, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"-9007199254741002.000009\\\", \\\"payload\\\": {\\\"row\\\": 9, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row9\\\\n\\\"]}}, {\\\"id\\\": 10, \\\"label\\\": \\\"row 10, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"9007199254741003.000010\\\", \\\"payload\\\": {\\\"row\\\": 10, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row10\\\\n\\\"]}}, {\\\"id\\\": 11, \\\"label\\\": \\\"row 11, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"-9007199254741004.000011\\\", \\\"payload\\\": {\\\"row\\\": 11, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row11\\\\n\\\"]}}, {\\\"id\\\": 12, \\\"label\\\": \\\"row 12, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"9007199254741005.000012\\\", \\\"payload\\\": {\\\"row\\\": 12, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row12\\\\n\\\"]}}, {\\\"id\\\": 13, \\\"label\\\": \\\"row 13, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"-9007199254741006.000013\\\", \\\"payload\\\": {\\\"row\\\": 13, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row13\\\\n\\\"]}}, {\\\"id\\\": 14, \\\"label\\\": \\\"row 14, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"9007199254741007.000014\\\", \\\"payload\\\": {\\\"row\\\": 14, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row14\\\\n\\\"]}}, {\\\"id\\\": 15, \\\"label\\\": \\\"row 15, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"-9007199254741008.000015\\\", \\\"payload\\\": {\\\"row\\\": 15, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row15\\\\n\\\"]}}, {\\\"id\\\": 16, \\\"label\\\": \\\"row 16, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"9007199254741009.000016\\\", \\\"payload\\\": {\\\"row\\\": 16, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row16\\\\n\\\"]}}, {\\\"id\\\": 17, \\\"label\\\": \\\"row 17, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"-9007199254741010.000017\\\", \\\"payload\\\": {\\\"row\\\": 17, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row17\\\\n\\\"]}}, {\\\"id\\\": 18, \\\"label\\\": \\\"row 18, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"9007199254741011.000018\\\", \\\"payload\\\": {\\\"row\\\": 18, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row18\\\\n\\\"]}}, {\\\"id\\\": 19, \\\"label\\\": \\\"row 19, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"-9007199254741012.000019\\\", \\\"payload\\\": {\\\"row\\\": 19, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row19\\\\n\\\"]}}, {\\\"id\\\": 20, \\\"label\\\": \\\"row 20, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"9007199254741013.000020\\\", \\\"payload\\\": {\\\"row\\\": 20, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row20\\\\n\\\"]}}, {\\\"id\\\": 21, \\\"label\\\": \\\"row 21, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"-9007199254741014.000021\\\", \\\"payload\\\": {\\\"row\\\": 21, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row21\\\\n\\\"]}}, {\\\"id\\\": 22, \\\"label\\\": \\\"row 22, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"9007199254741015.000022\\\", \\\"payload\\\": {\\\"row\\\": 22, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row22\\\\n\\\"]}}, {\\\"id\\\": 23, \\\"label\\\": \\\"row 23, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"-9007199254741016.000023\\\", \\\"payload\\\": {\\\"row\\\": 23, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row23\\\\n\\\"]}}, {\\\"id\\\": 24, \\\"label\\\": \\\"row 24, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"9007199254741017.000024\\\", \\\"payload\\\": {\\\"row\\\": 24, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row24\\\\n\\\"]}}, {\\\"id\\\": 25, \\\"label\\\": \\\"row 25, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"-9007199254741018.000025\\\", \\\"payload\\\": {\\\"row\\\": 25, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row25\\\\n\\\"]}}, {\\\"id\\\": 26, \\\"label\\\": \\\"row 26, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"9007199254741019.000026\\\", \\\"payload\\\": {\\\"row\\\": 26, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row26\\\\n\\\"]}}, {\\\"id\\\": 27, \\\"label\\\": \\\"row 27, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"-9007199254741020.000027\\\", \\\"payload\\\": {\\\"row\\\": 27, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row27\\\\n\\\"]}}, {\\\"id\\\": 28, \\\"label\\\": \\\"row 28, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"9007199254741021.000028\\\", \\\"payload\\\": {\\\"row\\\": 28, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row28\\\\n\\\"]}}, {\\\"id\\\": 29, \\\"label\\\": \\\"row 29, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"-9007199254741022.000029\\\", \\\"payload\\\": {\\\"row\\\": 29, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row29\\\\n\\\"]}}, {\\\"id\\\": 30, \\\"label\\\": \\\"row 30, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"9007199254741023.000030\\\", \\\"payload\\\": {\\\"row\\\": 30, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row30\\\\n\\\"]}}, {\\\"id\\\": 31, \\\"label\\\": \\\"row 31, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"-9007199254741024.000031\\\", \\\"payload\\\": {\\\"row\\\": 31, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row31\\\\n\\\"]}}, {\\\"id\\\": 32, \\\"label\\\": \\\"row 32, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"9007199254741025.000032\\\", \\\"payload\\\": {\\\"row\\\": 32, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row32\\\\n\\\"]}}, {\\\"id\\\": 33, \\\"label\\\": \\\"row 33, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"-9007199254741026.000033\\\", \\\"payload\\\": {\\\"row\\\": 33, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row33\\\\n\\\"]}}, {\\\"id\\\": 34, \\\"label\\\": \\\"row 34, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"9007199254741027.000034\\\", \\\"payload\\\": {\\\"row\\\": 34, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row34\\\\n\\\"]}}, {\\\"id\\\": 35, \\\"label\\\": \\\"row 35, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"-9007199254741028.000035\\\", \\\"payload\\\": {\\\"row\\\": 35, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row35\\\\n\\\"]}}, {\\\"id\\\": 36, \\\"label\\\": \\\"row 36, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"9007199254741029.000036\\\", \\\"payload\\\": {\\\"row\\\": 36, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row36\\\\n\\\"]}}, {\\\"id\\\": 37, \\\"label\\\": \\\"row 37, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"-9007199254741030.000037\\\", \\\"payload\\\": {\\\"row\\\": 37, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row37\\\\n\\\"]}}]}\"}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T08:35:02.308415+00:00",
+      "label": "all-tables-render",
+      "intent": "SQL on own fresh Free database",
+      "selector": "dpg-db8u1di9cl7s73ae4d10",
+      "command": "SELECT jsonb_build_object('a',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'label',label,'maybe',maybe,'payload',payload,'amount',amount::text) ORDER BY id),'[]'::jsonb) FROM qa360_121159.a),'b',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'label',label,'maybe',maybe,'payload',payload,'amount',amount::text) ORDER BY id),'[]'::jsonb) FROM qa360_121159.b),'c',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'label',label,'maybe',maybe,'payload',payload,'amount',amount::text) ORDER BY id),'[]'::jsonb) FROM qa360_121159.c))::text;",
+      "result": {
+        "at": "2026-10-16T08:35:05.148833+00:00",
+        "binary": "unchanged Render2.27.0/a764810a7682",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db8u1di9cl7s73ae4d10",
+          "--command",
+          "SELECT jsonb_build_object('a',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'label',label,'maybe',maybe,'payload',payload,'amount',amount::text) ORDER BY id),'[]'::jsonb) FROM qa360_121159.a),'b',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'label',label,'maybe',maybe,'payload',payload,'amount',amount::text) ORDER BY id),'[]'::jsonb) FROM qa360_121159.b),'c',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'label',label,'maybe',maybe,'payload',payload,'amount',amount::text) ORDER BY id),'[]'::jsonb) FROM qa360_121159.c))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": {
+          "API_only_CA_preparation": true,
+          "path": "/v1/postgres/dpg-db8u1di9cl7s73ae4d10/connection-info",
+          "HTTP": "200",
+          "certificate_sha256": "656db74542152093f4f42902b5bc01435984936e5f6a6d65379227ead514ccde",
+          "PGSSLROOTCERT": "<owned-temp>/sweep360-owned-pg-ca.pem",
+          "connection_info_payload_not_retained": true
+        },
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.266,
+        "stdout": "{\"output\": \"{\\\"a\\\": [{\\\"id\\\": 1, \\\"label\\\": \\\"row 1, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"-9007199254740994.000001\\\", \\\"payload\\\": {\\\"row\\\": 1, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row1\\\\n\\\"]}}, {\\\"id\\\": 2, \\\"label\\\": \\\"row 2, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"9007199254740995.000002\\\", \\\"payload\\\": {\\\"row\\\": 2, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row2\\\\n\\\"]}}, {\\\"id\\\": 3, \\\"label\\\": \\\"row 3, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"-9007199254740996.000003\\\", \\\"payload\\\": {\\\"row\\\": 3, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row3\\\\n\\\"]}}, {\\\"id\\\": 4, \\\"label\\\": \\\"row 4, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"9007199254740997.000004\\\", \\\"payload\\\": {\\\"row\\\": 4, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row4\\\\n\\\"]}}, {\\\"id\\\": 5, \\\"label\\\": \\\"row 5, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"-9007199254740998.000005\\\", \\\"payload\\\": {\\\"row\\\": 5, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row5\\\\n\\\"]}}, {\\\"id\\\": 6, \\\"label\\\": \\\"row 6, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"9007199254740999.000006\\\", \\\"payload\\\": {\\\"row\\\": 6, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row6\\\\n\\\"]}}, {\\\"id\\\": 7, \\\"label\\\": \\\"row 7, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"-9007199254741000.000007\\\", \\\"payload\\\": {\\\"row\\\": 7, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row7\\\\n\\\"]}}, {\\\"id\\\": 8, \\\"label\\\": \\\"row 8, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"9007199254741001.000008\\\", \\\"payload\\\": {\\\"row\\\": 8, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row8\\\\n\\\"]}}, {\\\"id\\\": 9, \\\"label\\\": \\\"row 9, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"-9007199254741002.000009\\\", \\\"payload\\\": {\\\"row\\\": 9, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row9\\\\n\\\"]}}, {\\\"id\\\": 10, \\\"label\\\": \\\"row 10, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"9007199254741003.000010\\\", \\\"payload\\\": {\\\"row\\\": 10, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row10\\\\n\\\"]}}, {\\\"id\\\": 11, \\\"label\\\": \\\"row 11, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"-9007199254741004.000011\\\", \\\"payload\\\": {\\\"row\\\": 11, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row11\\\\n\\\"]}}, {\\\"id\\\": 12, \\\"label\\\": \\\"row 12, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"9007199254741005.000012\\\", \\\"payload\\\": {\\\"row\\\": 12, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row12\\\\n\\\"]}}, {\\\"id\\\": 13, \\\"label\\\": \\\"row 13, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"-9007199254741006.000013\\\", \\\"payload\\\": {\\\"row\\\": 13, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row13\\\\n\\\"]}}, {\\\"id\\\": 14, \\\"label\\\": \\\"row 14, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"9007199254741007.000014\\\", \\\"payload\\\": {\\\"row\\\": 14, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row14\\\\n\\\"]}}, {\\\"id\\\": 15, \\\"label\\\": \\\"row 15, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"-9007199254741008.000015\\\", \\\"payload\\\": {\\\"row\\\": 15, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row15\\\\n\\\"]}}, {\\\"id\\\": 16, \\\"label\\\": \\\"row 16, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"9007199254741009.000016\\\", \\\"payload\\\": {\\\"row\\\": 16, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row16\\\\n\\\"]}}, {\\\"id\\\": 17, \\\"label\\\": \\\"row 17, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"-9007199254741010.000017\\\", \\\"payload\\\": {\\\"row\\\": 17, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row17\\\\n\\\"]}}, {\\\"id\\\": 18, \\\"label\\\": \\\"row 18, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"9007199254741011.000018\\\", \\\"payload\\\": {\\\"row\\\": 18, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row18\\\\n\\\"]}}, {\\\"id\\\": 19, \\\"label\\\": \\\"row 19, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"-9007199254741012.000019\\\", \\\"payload\\\": {\\\"row\\\": 19, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row19\\\\n\\\"]}}, {\\\"id\\\": 20, \\\"label\\\": \\\"row 20, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"9007199254741013.000020\\\", \\\"payload\\\": {\\\"row\\\": 20, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row20\\\\n\\\"]}}, {\\\"id\\\": 21, \\\"label\\\": \\\"row 21, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"-9007199254741014.000021\\\", \\\"payload\\\": {\\\"row\\\": 21, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row21\\\\n\\\"]}}, {\\\"id\\\": 22, \\\"label\\\": \\\"row 22, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"9007199254741015.000022\\\", \\\"payload\\\": {\\\"row\\\": 22, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row22\\\\n\\\"]}}, {\\\"id\\\": 23, \\\"label\\\": \\\"row 23, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"-9007199254741016.000023\\\", \\\"payload\\\": {\\\"row\\\": 23, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row23\\\\n\\\"]}}, {\\\"id\\\": 24, \\\"label\\\": \\\"row 24, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"9007199254741017.000024\\\", \\\"payload\\\": {\\\"row\\\": 24, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row24\\\\n\\\"]}}, {\\\"id\\\": 25, \\\"label\\\": \\\"row 25, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"-9007199254741018.000025\\\", \\\"payload\\\": {\\\"row\\\": 25, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row25\\\\n\\\"]}}, {\\\"id\\\": 26, \\\"label\\\": \\\"row 26, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"9007199254741019.000026\\\", \\\"payload\\\": {\\\"row\\\": 26, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row26\\\\n\\\"]}}, {\\\"id\\\": 27, \\\"label\\\": \\\"row 27, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"-9007199254741020.000027\\\", \\\"payload\\\": {\\\"row\\\": 27, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row27\\\\n\\\"]}}, {\\\"id\\\": 28, \\\"label\\\": \\\"row 28, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"9007199254741021.000028\\\", \\\"payload\\\": {\\\"row\\\": 28, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row28\\\\n\\\"]}}, {\\\"id\\\": 29, \\\"label\\\": \\\"row 29, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"-9007199254741022.000029\\\", \\\"payload\\\": {\\\"row\\\": 29, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row29\\\\n\\\"]}}, {\\\"id\\\": 30, \\\"label\\\": \\\"row 30, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"9007199254741023.000030\\\", \\\"payload\\\": {\\\"row\\\": 30, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row30\\\\n\\\"]}}, {\\\"id\\\": 31, \\\"label\\\": \\\"row 31, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"-9007199254741024.000031\\\", \\\"payload\\\": {\\\"row\\\": 31, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row31\\\\n\\\"]}}, {\\\"id\\\": 32, \\\"label\\\": \\\"row 32, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"9007199254741025.000032\\\", \\\"payload\\\": {\\\"row\\\": 32, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row32\\\\n\\\"]}}, {\\\"id\\\": 33, \\\"label\\\": \\\"row 33, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"-9007199254741026.000033\\\", \\\"payload\\\": {\\\"row\\\": 33, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row33\\\\n\\\"]}}, {\\\"id\\\": 34, \\\"label\\\": \\\"row 34, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"9007199254741027.000034\\\", \\\"payload\\\": {\\\"row\\\": 34, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row34\\\\n\\\"]}}, {\\\"id\\\": 35, \\\"label\\\": \\\"row 35, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"-9007199254741028.000035\\\", \\\"payload\\\": {\\\"row\\\": 35, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row35\\\\n\\\"]}}, {\\\"id\\\": 36, \\\"label\\\": \\\"row 36, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"9007199254741029.000036\\\", \\\"payload\\\": {\\\"row\\\": 36, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row36\\\\n\\\"]}}, {\\\"id\\\": 37, \\\"label\\\": \\\"row 37, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"-9007199254741030.000037\\\", \\\"payload\\\": {\\\"row\\\": 37, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row37\\\\n\\\"]}}], \\\"b\\\": [{\\\"id\\\": 1, \\\"label\\\": \\\"row 1, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"-9007199254740994.000001\\\", \\\"payload\\\": {\\\"row\\\": 1, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row1\\\\n\\\"]}}, {\\\"id\\\": 2, \\\"label\\\": \\\"row 2, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"9007199254740995.000002\\\", \\\"payload\\\": {\\\"row\\\": 2, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row2\\\\n\\\"]}}, {\\\"id\\\": 3, \\\"label\\\": \\\"row 3, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"-9007199254740996.000003\\\", \\\"payload\\\": {\\\"row\\\": 3, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row3\\\\n\\\"]}}, {\\\"id\\\": 4, \\\"label\\\": \\\"row 4, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"9007199254740997.000004\\\", \\\"payload\\\": {\\\"row\\\": 4, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row4\\\\n\\\"]}}, {\\\"id\\\": 5, \\\"label\\\": \\\"row 5, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"-9007199254740998.000005\\\", \\\"payload\\\": {\\\"row\\\": 5, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row5\\\\n\\\"]}}, {\\\"id\\\": 6, \\\"label\\\": \\\"row 6, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"9007199254740999.000006\\\", \\\"payload\\\": {\\\"row\\\": 6, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row6\\\\n\\\"]}}, {\\\"id\\\": 7, \\\"label\\\": \\\"row 7, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"-9007199254741000.000007\\\", \\\"payload\\\": {\\\"row\\\": 7, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row7\\\\n\\\"]}}, {\\\"id\\\": 8, \\\"label\\\": \\\"row 8, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"9007199254741001.000008\\\", \\\"payload\\\": {\\\"row\\\": 8, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row8\\\\n\\\"]}}, {\\\"id\\\": 9, \\\"label\\\": \\\"row 9, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"-9007199254741002.000009\\\", \\\"payload\\\": {\\\"row\\\": 9, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row9\\\\n\\\"]}}, {\\\"id\\\": 10, \\\"label\\\": \\\"row 10, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"9007199254741003.000010\\\", \\\"payload\\\": {\\\"row\\\": 10, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row10\\\\n\\\"]}}, {\\\"id\\\": 11, \\\"label\\\": \\\"row 11, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"-9007199254741004.000011\\\", \\\"payload\\\": {\\\"row\\\": 11, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row11\\\\n\\\"]}}, {\\\"id\\\": 12, \\\"label\\\": \\\"row 12, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"9007199254741005.000012\\\", \\\"payload\\\": {\\\"row\\\": 12, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row12\\\\n\\\"]}}, {\\\"id\\\": 13, \\\"label\\\": \\\"row 13, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"-9007199254741006.000013\\\", \\\"payload\\\": {\\\"row\\\": 13, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row13\\\\n\\\"]}}, {\\\"id\\\": 14, \\\"label\\\": \\\"row 14, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"9007199254741007.000014\\\", \\\"payload\\\": {\\\"row\\\": 14, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row14\\\\n\\\"]}}, {\\\"id\\\": 15, \\\"label\\\": \\\"row 15, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"-9007199254741008.000015\\\", \\\"payload\\\": {\\\"row\\\": 15, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row15\\\\n\\\"]}}, {\\\"id\\\": 16, \\\"label\\\": \\\"row 16, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"9007199254741009.000016\\\", \\\"payload\\\": {\\\"row\\\": 16, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row16\\\\n\\\"]}}, {\\\"id\\\": 17, \\\"label\\\": \\\"row 17, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"-9007199254741010.000017\\\", \\\"payload\\\": {\\\"row\\\": 17, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row17\\\\n\\\"]}}, {\\\"id\\\": 18, \\\"label\\\": \\\"row 18, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"9007199254741011.000018\\\", \\\"payload\\\": {\\\"row\\\": 18, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row18\\\\n\\\"]}}, {\\\"id\\\": 19, \\\"label\\\": \\\"row 19, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"-9007199254741012.000019\\\", \\\"payload\\\": {\\\"row\\\": 19, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row19\\\\n\\\"]}}, {\\\"id\\\": 20, \\\"label\\\": \\\"row 20, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"9007199254741013.000020\\\", \\\"payload\\\": {\\\"row\\\": 20, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row20\\\\n\\\"]}}, {\\\"id\\\": 21, \\\"label\\\": \\\"row 21, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"-9007199254741014.000021\\\", \\\"payload\\\": {\\\"row\\\": 21, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row21\\\\n\\\"]}}, {\\\"id\\\": 22, \\\"label\\\": \\\"row 22, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"9007199254741015.000022\\\", \\\"payload\\\": {\\\"row\\\": 22, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row22\\\\n\\\"]}}, {\\\"id\\\": 23, \\\"label\\\": \\\"row 23, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"-9007199254741016.000023\\\", \\\"payload\\\": {\\\"row\\\": 23, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row23\\\\n\\\"]}}, {\\\"id\\\": 24, \\\"label\\\": \\\"row 24, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"9007199254741017.000024\\\", \\\"payload\\\": {\\\"row\\\": 24, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row24\\\\n\\\"]}}, {\\\"id\\\": 25, \\\"label\\\": \\\"row 25, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"-9007199254741018.000025\\\", \\\"payload\\\": {\\\"row\\\": 25, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row25\\\\n\\\"]}}, {\\\"id\\\": 26, \\\"label\\\": \\\"row 26, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"9007199254741019.000026\\\", \\\"payload\\\": {\\\"row\\\": 26, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row26\\\\n\\\"]}}, {\\\"id\\\": 27, \\\"label\\\": \\\"row 27, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"-9007199254741020.000027\\\", \\\"payload\\\": {\\\"row\\\": 27, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row27\\\\n\\\"]}}, {\\\"id\\\": 28, \\\"label\\\": \\\"row 28, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"9007199254741021.000028\\\", \\\"payload\\\": {\\\"row\\\": 28, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row28\\\\n\\\"]}}, {\\\"id\\\": 29, \\\"label\\\": \\\"row 29, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"-9007199254741022.000029\\\", \\\"payload\\\": {\\\"row\\\": 29, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row29\\\\n\\\"]}}, {\\\"id\\\": 30, \\\"label\\\": \\\"row 30, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"9007199254741023.000030\\\", \\\"payload\\\": {\\\"row\\\": 30, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row30\\\\n\\\"]}}, {\\\"id\\\": 31, \\\"label\\\": \\\"row 31, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"-9007199254741024.000031\\\", \\\"payload\\\": {\\\"row\\\": 31, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row31\\\\n\\\"]}}, {\\\"id\\\": 32, \\\"label\\\": \\\"row 32, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"9007199254741025.000032\\\", \\\"payload\\\": {\\\"row\\\": 32, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row32\\\\n\\\"]}}, {\\\"id\\\": 33, \\\"label\\\": \\\"row 33, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"-9007199254741026.000033\\\", \\\"payload\\\": {\\\"row\\\": 33, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row33\\\\n\\\"]}}, {\\\"id\\\": 34, \\\"label\\\": \\\"row 34, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"9007199254741027.000034\\\", \\\"payload\\\": {\\\"row\\\": 34, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row34\\\\n\\\"]}}, {\\\"id\\\": 35, \\\"label\\\": \\\"row 35, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"-9007199254741028.000035\\\", \\\"payload\\\": {\\\"row\\\": 35, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row35\\\\n\\\"]}}, {\\\"id\\\": 36, \\\"label\\\": \\\"row 36, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"9007199254741029.000036\\\", \\\"payload\\\": {\\\"row\\\": 36, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row36\\\\n\\\"]}}, {\\\"id\\\": 37, \\\"label\\\": \\\"row 37, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"-9007199254741030.000037\\\", \\\"payload\\\": {\\\"row\\\": 37, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row37\\\\n\\\"]}}], \\\"c\\\": [{\\\"id\\\": 1, \\\"label\\\": \\\"row 1, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"-9007199254740994.000001\\\", \\\"payload\\\": {\\\"row\\\": 1, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row1\\\\n\\\"]}}, {\\\"id\\\": 2, \\\"label\\\": \\\"row 2, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"9007199254740995.000002\\\", \\\"payload\\\": {\\\"row\\\": 2, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row2\\\\n\\\"]}}, {\\\"id\\\": 3, \\\"label\\\": \\\"row 3, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"-9007199254740996.000003\\\", \\\"payload\\\": {\\\"row\\\": 3, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row3\\\\n\\\"]}}, {\\\"id\\\": 4, \\\"label\\\": \\\"row 4, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"9007199254740997.000004\\\", \\\"payload\\\": {\\\"row\\\": 4, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row4\\\\n\\\"]}}, {\\\"id\\\": 5, \\\"label\\\": \\\"row 5, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"-9007199254740998.000005\\\", \\\"payload\\\": {\\\"row\\\": 5, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row5\\\\n\\\"]}}, {\\\"id\\\": 6, \\\"label\\\": \\\"row 6, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"9007199254740999.000006\\\", \\\"payload\\\": {\\\"row\\\": 6, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row6\\\\n\\\"]}}, {\\\"id\\\": 7, \\\"label\\\": \\\"row 7, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"-9007199254741000.000007\\\", \\\"payload\\\": {\\\"row\\\": 7, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row7\\\\n\\\"]}}, {\\\"id\\\": 8, \\\"label\\\": \\\"row 8, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"9007199254741001.000008\\\", \\\"payload\\\": {\\\"row\\\": 8, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row8\\\\n\\\"]}}, {\\\"id\\\": 9, \\\"label\\\": \\\"row 9, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"-9007199254741002.000009\\\", \\\"payload\\\": {\\\"row\\\": 9, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row9\\\\n\\\"]}}, {\\\"id\\\": 10, \\\"label\\\": \\\"row 10, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"9007199254741003.000010\\\", \\\"payload\\\": {\\\"row\\\": 10, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row10\\\\n\\\"]}}, {\\\"id\\\": 11, \\\"label\\\": \\\"row 11, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"-9007199254741004.000011\\\", \\\"payload\\\": {\\\"row\\\": 11, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row11\\\\n\\\"]}}, {\\\"id\\\": 12, \\\"label\\\": \\\"row 12, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"9007199254741005.000012\\\", \\\"payload\\\": {\\\"row\\\": 12, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row12\\\\n\\\"]}}, {\\\"id\\\": 13, \\\"label\\\": \\\"row 13, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"-9007199254741006.000013\\\", \\\"payload\\\": {\\\"row\\\": 13, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row13\\\\n\\\"]}}, {\\\"id\\\": 14, \\\"label\\\": \\\"row 14, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"9007199254741007.000014\\\", \\\"payload\\\": {\\\"row\\\": 14, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row14\\\\n\\\"]}}, {\\\"id\\\": 15, \\\"label\\\": \\\"row 15, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"-9007199254741008.000015\\\", \\\"payload\\\": {\\\"row\\\": 15, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row15\\\\n\\\"]}}, {\\\"id\\\": 16, \\\"label\\\": \\\"row 16, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"9007199254741009.000016\\\", \\\"payload\\\": {\\\"row\\\": 16, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row16\\\\n\\\"]}}, {\\\"id\\\": 17, \\\"label\\\": \\\"row 17, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"-9007199254741010.000017\\\", \\\"payload\\\": {\\\"row\\\": 17, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row17\\\\n\\\"]}}, {\\\"id\\\": 18, \\\"label\\\": \\\"row 18, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"9007199254741011.000018\\\", \\\"payload\\\": {\\\"row\\\": 18, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row18\\\\n\\\"]}}, {\\\"id\\\": 19, \\\"label\\\": \\\"row 19, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"-9007199254741012.000019\\\", \\\"payload\\\": {\\\"row\\\": 19, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row19\\\\n\\\"]}}, {\\\"id\\\": 20, \\\"label\\\": \\\"row 20, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"9007199254741013.000020\\\", \\\"payload\\\": {\\\"row\\\": 20, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row20\\\\n\\\"]}}, {\\\"id\\\": 21, \\\"label\\\": \\\"row 21, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"-9007199254741014.000021\\\", \\\"payload\\\": {\\\"row\\\": 21, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row21\\\\n\\\"]}}, {\\\"id\\\": 22, \\\"label\\\": \\\"row 22, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"9007199254741015.000022\\\", \\\"payload\\\": {\\\"row\\\": 22, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row22\\\\n\\\"]}}, {\\\"id\\\": 23, \\\"label\\\": \\\"row 23, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"-9007199254741016.000023\\\", \\\"payload\\\": {\\\"row\\\": 23, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row23\\\\n\\\"]}}, {\\\"id\\\": 24, \\\"label\\\": \\\"row 24, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"9007199254741017.000024\\\", \\\"payload\\\": {\\\"row\\\": 24, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row24\\\\n\\\"]}}, {\\\"id\\\": 25, \\\"label\\\": \\\"row 25, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"-9007199254741018.000025\\\", \\\"payload\\\": {\\\"row\\\": 25, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row25\\\\n\\\"]}}, {\\\"id\\\": 26, \\\"label\\\": \\\"row 26, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"9007199254741019.000026\\\", \\\"payload\\\": {\\\"row\\\": 26, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row26\\\\n\\\"]}}, {\\\"id\\\": 27, \\\"label\\\": \\\"row 27, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"-9007199254741020.000027\\\", \\\"payload\\\": {\\\"row\\\": 27, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row27\\\\n\\\"]}}, {\\\"id\\\": 28, \\\"label\\\": \\\"row 28, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"9007199254741021.000028\\\", \\\"payload\\\": {\\\"row\\\": 28, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row28\\\\n\\\"]}}, {\\\"id\\\": 29, \\\"label\\\": \\\"row 29, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"-9007199254741022.000029\\\", \\\"payload\\\": {\\\"row\\\": 29, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row29\\\\n\\\"]}}, {\\\"id\\\": 30, \\\"label\\\": \\\"row 30, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"9007199254741023.000030\\\", \\\"payload\\\": {\\\"row\\\": 30, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row30\\\\n\\\"]}}, {\\\"id\\\": 31, \\\"label\\\": \\\"row 31, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\\\\\\N\\\", \\\"amount\\\": \\\"-9007199254741024.000031\\\", \\\"payload\\\": {\\\"row\\\": 31, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row31\\\\n\\\"]}}, {\\\"id\\\": 32, \\\"label\\\": \\\"row 32, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"comma, \\\\\\\"quoted\\\\\\\"\\\", \\\"amount\\\": \\\"9007199254741025.000032\\\", \\\"payload\\\": {\\\"row\\\": 32, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row32\\\\n\\\"]}}, {\\\"id\\\": 33, \\\"label\\\": \\\"row 33, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"café\\\\r\\\\n日本 😀\\\", \\\"amount\\\": \\\"-9007199254741026.000033\\\", \\\"payload\\\": {\\\"row\\\": 33, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row33\\\\n\\\"]}}, {\\\"id\\\": 34, \\\"label\\\": \\\"row 34, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"plain\\\", \\\"amount\\\": \\\"9007199254741027.000034\\\", \\\"payload\\\": {\\\"row\\\": 34, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row34\\\\n\\\"]}}, {\\\"id\\\": 35, \\\"label\\\": \\\"row 35, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": null, \\\"amount\\\": \\\"-9007199254741028.000035\\\", \\\"payload\\\": {\\\"row\\\": 35, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row35\\\\n\\\"]}}, {\\\"id\\\": 36, \\\"label\\\": \\\"row 36, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"\\\", \\\"amount\\\": \\\"9007199254741029.000036\\\", \\\"payload\\\": {\\\"row\\\": 36, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row36\\\\n\\\"]}}, {\\\"id\\\": 37, \\\"label\\\": \\\"row 37, \\\\\\\"quoted\\\\\\\"\\\\nnext\\\\r\\\\ncafé 日本 😀\\\", \\\"maybe\\\": \\\"__QA360_NULL__\\\", \\\"amount\\\": \\\"-9007199254741030.000037\\\", \\\"payload\\\": {\\\"row\\\": 37, \\\"marker\\\": \\\"QA360_121159\\\", \\\"values\\\": [null, \\\"\\\", \\\"日本\\\", \\\"row37\\\\n\\\"]}}]}\"}",
+        "stderr": ""
+      }
+    }
+  ],
+  "csv_seed_intent": {
+    "at": "2026-10-16T08:33:52.340319+00:00",
+    "schema": "qa360_121159"
+  },
+  "csv_seed_pass": true,
+  "csv_failed_copy_atomicity": {
+    "at": "2026-10-16T08:34:03.034315+00:00",
+    "client": "render",
+    "counts": {
+      "a": 0,
+      "b": 0,
+      "c": 0
+    },
+    "pass": true
+  },
+  "csv_comparisons": [
+    {
+      "at": "2026-10-16T08:34:09.971835+00:00",
+      "label": "snapshot-a",
+      "client": "render",
+      "table": "a",
+      "rows": 37,
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T08:34:51.223453+00:00",
+      "label": "snapshot-b",
+      "client": "bex",
+      "table": "b",
+      "rows": 37,
+      "pass": true
+    }
+  ],
+  "csv_file_receipts": [
+    {
+      "at": "2026-10-16T08:34:44.412989+00:00",
+      "label": "export-render",
+      "file": {
+        "path": "<owned-temp>/sweep360 CSV files/Render export γ.csv",
+        "bytes": 6879,
+        "sha256": "601fdd3f25925072d87bc386d17f29170f4f1c36c08a33593c53313d5a4c2afe"
+      }
+    },
+    {
+      "at": "2026-10-16T08:34:54.563276+00:00",
+      "label": "export-bex",
+      "file": {
+        "path": "<owned-temp>/sweep360 CSV files/Bex export δ.csv",
+        "bytes": 6879,
+        "sha256": "601fdd3f25925072d87bc386d17f29170f4f1c36c08a33593c53313d5a4c2afe"
+      }
+    }
+  ],
+  "csv_ordered_exports_byte_equal": {
+    "at": "2026-10-16T08:34:54.779633+00:00",
+    "pass": true,
+    "render": {
+      "path": "<owned-temp>/sweep360 CSV files/Render export γ.csv",
+      "bytes": 6879,
+      "sha256": "601fdd3f25925072d87bc386d17f29170f4f1c36c08a33593c53313d5a4c2afe"
+    },
+    "bex": {
+      "path": "<owned-temp>/sweep360 CSV files/Bex export δ.csv",
+      "bytes": 6879,
+      "sha256": "601fdd3f25925072d87bc386d17f29170f4f1c36c08a33593c53313d5a4c2afe"
+    }
+  },
+  "csv_final": [
+    {
+      "at": "2026-10-16T08:35:01.723316+00:00",
+      "client": "bex",
+      "pass": true,
+      "rows_per_table": {
+        "a": 37,
+        "b": 37,
+        "c": 37
+      }
+    },
+    {
+      "at": "2026-10-16T08:35:05.373707+00:00",
+      "client": "render",
+      "pass": true,
+      "rows_per_table": {
+        "a": 37,
+        "b": 37,
+        "c": 37
+      }
+    }
+  ],
+  "csv_private_files_removed": {
+    "at": "2026-10-16T08:35:05.949428+00:00",
+    "files": {
+      "valid": {
+        "path": "<owned-temp>/sweep360 CSV files/input α.csv",
+        "bytes": 6593,
+        "sha256": "277d75e78bf3d1c67f706ffe12c34d01dc6f0ef6b63f291d0e22f2d255d8a8d8"
+      },
+      "invalid": {
+        "path": "<owned-temp>/sweep360 CSV files/bad input β.csv",
+        "bytes": 6582,
+        "sha256": "86fb8d70d11f6d39443cbfe9fdcb2ca69e7652dba0dcb8e24435a2b66dc59589"
+      },
+      "render_export": {
+        "path": "<owned-temp>/sweep360 CSV files/Render export γ.csv",
+        "bytes": 6879,
+        "sha256": "601fdd3f25925072d87bc386d17f29170f4f1c36c08a33593c53313d5a4c2afe"
+      },
+      "bex_export": {
+        "path": "<owned-temp>/sweep360 CSV files/Bex export δ.csv",
+        "bytes": 6879,
+        "sha256": "601fdd3f25925072d87bc386d17f29170f4f1c36c08a33593c53313d5a4c2afe"
+      }
+    },
+    "removed": true
+  },
+  "delete_intent": {
+    "at": "2026-10-16T08:35:36.480715+00:00",
+    "detail": {
+      "at": "2026-10-16T08:35:36.246708+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db8u1di9cl7s73ae4d10",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.339,
+      "response": "{\"id\": \"dpg-db8u1di9cl7s73ae4d10\", \"name\": \"qa-20261016-121159-csv\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa360_db_121159\", \"databaseUser\": \"qa360_user_121159\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T08:30:46Z\", \"updatedAt\": \"2026-10-16T08:31:48Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db8u1di9cl7s73ae4d10\", \"externalHost\": \"dpg-db8u1di9cl7s73ae4d10.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    }
+  },
+  "delete_result": {
+    "at": "2026-10-16T08:35:37.387840+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "postgres",
+      "delete",
+      "dpg-db8u1di9cl7s73ae4d10",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "client_setup": null,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.69,
+    "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-16T08:30:46Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db8u1di9cl7s73ae4d10\", \"databaseName\": \"qa360_db_121159\", \"databaseUser\": \"qa360_user_121159\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db8u1di9cl7s73ae4d10\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261016-121159-csv\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-16T08:31:48Z\", \"version\": \"18\", \"projectId\": null}, \"meta\": {\"deleted\": true}}",
+    "stderr": ""
+  },
+  "cleanup_receipts": [
+    {
+      "at": "2026-10-16T08:35:39.903282+00:00",
+      "detail": {
+        "at": "2026-10-16T08:35:38.332303+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db8u1di9cl7s73ae4d10",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "404",
+        "curl_exit": 0,
+        "elapsed": 0.37,
+        "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+        "stderr": ""
+      },
+      "inventory": {
+        "at": "2026-10-16T08:35:38.859071+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "list",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.526,
+        "stdout": "{\"data\": []}",
+        "stderr": ""
+      },
+      "services": {
+        "at": "2026-10-16T08:35:39.584145+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.725,
+        "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}]",
+        "stderr": ""
+      },
+      "quota": {
+        "at": "2026-10-16T08:35:39.903122+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.306,
+        "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+        "stderr": ""
+      },
+      "pass": true
+    }
+  ],
+  "cached_SQL_private_files_removed": {
+    "at": "2026-10-16T08:37:46.621010+00:00",
+    "removed": true
+  }
+}

@@ -1,0 +1,94 @@
+{
+  "automatic_compress_referenced": false,
+  "backend_and_meter_control": true,
+  "case": "native-node",
+  "ingress": {
+    "metadata": {
+      "name": "qa352-native-node",
+      "namespace": "default",
+      "resourceVersion": "1",
+      "annotations": {
+        "cert-manager.io/cluster-issuer": "qa-owned-issuer",
+        "traefik.ingress.kubernetes.io/router.middlewares": "default-qa352-native-node-ws-egress@kubernetescrd"
+      },
+      "ownerReferences": [
+        {
+          "apiVersion": "app.bex.co/v1alpha1",
+          "kind": "App",
+          "name": "qa352-native-node",
+          "uid": "qa352-native-node",
+          "controller": true,
+          "blockOwnerDeletion": true
+        }
+      ]
+    },
+    "spec": {
+      "ingressClassName": "traefik",
+      "tls": [
+        {
+          "hosts": [
+            "native-node.example.invalid"
+          ],
+          "secretName": "qa352-native-node-tls"
+        }
+      ],
+      "rules": [
+        {
+          "host": "native-node.example.invalid",
+          "http": {
+            "paths": [
+              {
+                "path": "/",
+                "pathType": "Prefix",
+                "backend": {
+                  "service": {
+                    "name": "qa352-native-node",
+                    "port": {
+                      "number": 10000
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "status": {
+      "loadBalancer": {}
+    }
+  },
+  "middlewares": [
+    {
+      "apiVersion": "traefik.io/v1alpha1",
+      "kind": "Middleware",
+      "metadata": {
+        "annotations": {
+          "app.bex.co/projected-spec": "{\"plugin\":{\"bexWebsocketEgress\":{\"appId\":\"srv-qa352-native-node\",\"metricsAddr\":\":9101\"}}}"
+        },
+        "name": "qa352-native-node-ws-egress",
+        "namespace": "default",
+        "ownerReferences": [
+          {
+            "apiVersion": "app.bex.co/v1alpha1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "App",
+            "name": "qa352-native-node",
+            "uid": "qa352-native-node"
+          }
+        ],
+        "resourceVersion": "1"
+      },
+      "spec": {
+        "plugin": {
+          "bexWebsocketEgress": {
+            "appId": "srv-qa352-native-node",
+            "metricsAddr": ":9101"
+          }
+        }
+      }
+    }
+  ],
+  "qualification": "real unchanged shared web-route projector on fake Kubernetes client; no live cluster or proxy execution"
+}

@@ -1,0 +1,63 @@
+from pathlib import Path
+import ast,datetime,json,os,secrets,shlex,shutil,subprocess,sys,time,yaml
+os.umask(0o077);P=Path(__file__).resolve().parent;root=Path('/Volumes/nvme4tbfish/projects/bex8');cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json';c=json.loads(cp.read_text());assert c.get('sync354_result')==0 and not c.get('active_sync_stash');mode,client=sys.argv[1:3];CLIENT=client;ws='tea-daif693dqjvc73e7as3g';baseline={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']}
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():
+ c['last_updated']=now();temporary=cp.with_name('.'+cp.name+'.qa354.tmp');temporary.write_text(json.dumps(c,indent=2));temporary.chmod(0o600);temporary.replace(cp)
+def cli(args,client=None,bound=45):
+ if client is None:client=CLIENT
+ cfg=P/'render-config/cli.yaml'
+ try:
+  if client=='render':assert not cfg.exists();shutil.copyfile(P/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  runner=['python3',str(P/'run-render.py')] if client=='render' else ['python3',str(P/'run.py'),'--release'];r=json.loads(subprocess.check_output([*runner,'--bound='+str(bound),*args],text=True,timeout=bound+15));r['native_exit']=None if r['exit']==124 else r['exit'];return r
+ finally:
+  if client=='render':cfg.unlink(missing_ok=True)
+def api(method,path,body=None):
+ cfg=yaml.safe_load((P/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token;ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')';auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+ws+'"\n';f=P/'sweep354-request.json';assert not f.exists();args=['curl','--disable','-sS','--max-time','30','--config','-','-X',method,'-H','Accept: application/json, text/event-stream','-H','MCP-Protocol-Version: 2025-03-26']
+ if body is not None:f.write_text(json.dumps(body));args+=['-H','Content-Type: application/json','--data-binary','@'+str(f)]
+ start=time.monotonic()
+ try:r=subprocess.run([*args,'-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=36)
+ finally:f.unlink(missing_ok=True)
+ raw,_,status=r.stdout.rpartition('\n');out={'at':now(),'API_only':True,'request':{'method':method,'path':path,'body':body,'workspace':ws,'user_agent':ua,'authorization':'REDACTED'},'status':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-start,3),'response':raw,'stderr':r.stderr};assert token not in json.dumps(out);return out
+def decode(r):
+ text=r['response']
+ if not text.lstrip().startswith(('{','[')):
+  texts=[s[5:].strip() for s in text.splitlines() if s.startswith('data:')];assert len(texts)==1;text=texts[0]
+ return json.loads(text)
+
+def inventory():
+ r=cli(['services','--confirm','-o','json']);assert r['native_exit']==0;vs=[v.get('service',v.get('postgres',v.get('keyValue',v))) for v in json.loads(r['stdout']) or []];assert baseline<={v['id'] for v in vs};return r,vs
+def own(x):
+ assert x['sweep']==354 and x['workspace']==ws and x['id'] not in baseline and x['create_result']['native_exit']==0 and x['create_view']['name']==x['name'] and x['id'] not in x['pre_ids'] and x['create_view']['id']==x['id'] and x['create_view']['ownerId']==ws and x['create_view']['serviceDetails']['plan']=='free' and (mode in ('reconcile','children') or not x['state'].startswith('deleted:'))
+def history(x):
+ r=cli(['deploys','list',x['id'],'--confirm','-o','json']);assert r['native_exit']==0;rows=json.loads(r['stdout']);x.setdefault('history_receipts',[]).append({'at':now(),'result':r});x['deploy_children']=rows
+ for v in rows:
+  if v['id'] not in x['recorded_child_ids']:x['recorded_child_ids'].append(v['id'])
+ save();return rows
+import re,http.server,http.client,threading,gzip
+p=P
+def captured_create(args):
+ captures=[];expected_name=args[args.index('--name')+1]
+ class Handler(http.server.BaseHTTPRequestHandler):
+  def log_message(self,*values):pass
+  def do_GET(self):self.send_error(405)
+  def do_POST(self):
+   if self.path!='/v1/services' or captures:self.send_error(400);return
+   body=self.rfile.read(int(self.headers.get('Content-Length','0')));request=json.loads(body)
+   if request.get('name')!=expected_name or request.get('ownerId')!=ws or request.get('type')!='web_service' or request.get('serviceDetails',{}).get('plan')!='free':self.send_error(400);return
+   headers={k:v for k,v in self.headers.items() if k.lower() not in ['host','connection','content-length']};headers['Host']='api.bex.co';con=http.client.HTTPSConnection('api.bex.co',timeout=35)
+   try:
+    con.request('POST',self.path,body=body,headers=headers);reply=con.getresponse();raw=reply.read();decoded=gzip.decompress(raw) if reply.getheader('Content-Encoding')=='gzip' else raw;hs=reply.getheaders()
+    captures.append({'request':{'method':'POST','path':self.path,'body':request,'raw_body':body.decode(),'headers':{k:v for k,v in headers.items() if k.lower() in ['user-agent','content-type','x-bex-workspace','x-bex-cli-version']},'authorization':'[REDACTED]'},'status':reply.status,'response':decoded.decode(),'response_headers':{k:v for k,v in hs if k.lower() in ['content-type','x-request-id','cf-ray']}})
+    self.send_response(reply.status)
+    for k,v in hs:
+     if k.lower() not in ['transfer-encoding','connection','content-length','keep-alive']:self.send_header(k,v)
+    self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw)
+   finally:con.close()
+ server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler);server.daemon_threads=True;thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start();origin='http://127.0.0.1:'+str(server.server_port)+'/v1/';cfgdir=p/('sweep354-create-capture-'+client+'-'+str(server.server_port));cfgdir.mkdir(mode=0o700);cfg=cfgdir/'cli.yaml'
+ text,count=re.subn(r'(?m)^(\s+)host:.*$',lambda match:match[1]+'host: '+origin,(p/'config/cli.yaml').read_text());assert count==1;cfg.write_text(text);cfg.chmod(0o600);prefix='BEX' if client!='render' else 'RENDER';env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_'))};env.update(DO_NOT_TRACK='1');env.update({prefix+'_HOST':origin,prefix+'_CLI_CONFIG_PATH':str(cfg),prefix+'_CLI_CONFIG_DIR':str(cfgdir),prefix+'_WORKSPACE':ws,prefix+'_CLI_DISABLE_ANALYTICS':'1','BEX_NO_UPDATE_NOTIFIER':'1','BROWSER':'/usr/bin/true'});binary=p/'release/bex' if client!='render' else p/'render-pin';start=time.monotonic()
+ try:
+  try:r=subprocess.run([str(binary),*args],env=env,text=True,capture_output=True,timeout=42);result={'binary':'published Bex 0.3.2' if client!='render' else 'unmodified Render 2.27.0/a764810a7682','command':['render' if client=='render' else 'bex',*args],'exit':r.returncode,'elapsed':round(time.monotonic()-start,3),'stdout':r.stdout,'stderr':r.stderr}
+  except subprocess.TimeoutExpired:result={'command':['render' if client=='render' else 'bex',*args],'exit':124,'elapsed':round(time.monotonic()-start,3),'stdout':'','stderr':'Bounded native capture timed out; reconcile returned/requested identity before retry'}
+  result['captures']=captures;result['qualification']='actual native POST forwarded unchanged to production; owned local relay and copied config cleaned';return result
+ finally:server.shutdown();server.server_close();thread.join(timeout=2);shutil.rmtree(cfgdir)

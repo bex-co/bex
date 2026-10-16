@@ -1,0 +1,6 @@
+import hashlib
+def values(nonce,client):
+ return {f'qa349:{nonce}:{client}:{i:02}':(b'' if i%5==0 else ('QA349_'+nonce+'_'+client+'_'+str(i)+'\n☃=value').encode()+b'\r\n\x00end') for i in range(50)}
+def resp(*args):
+ bs=[v.encode() if isinstance(v,str) else v for v in args];return ('*'+str(len(bs))+'\r\n').encode()+b''.join(('$'+str(len(v))+'\r\n').encode()+v+b'\r\n' for v in bs)
+def data(nonce,client):return b''.join(resp('SET',key,value) for key,value in values(nonce,client).items())

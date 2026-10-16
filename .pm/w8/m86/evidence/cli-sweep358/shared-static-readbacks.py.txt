@@ -1,0 +1,15 @@
+from pathlib import Path
+import sys,json
+f=Path(__file__).with_name('sweep358-common.py');sys.argv=[str(f),'shared-state','bex'];exec(compile(f.read_text(),str(f),'exec'));xs=[x for x in c['resources'] if x.get('sweep')==358];assert len(xs)==2 and all(any(e['control_pass'] for e in x.get('runtime_receipts',[])) for x in xs)
+for x in xs:
+ own(x);sid=x['id'];query='query QA358 {service(id:'+json.dumps(sid)+'){id name repo branch plan buildCommand autoDeploy}}'
+ for surface,method,path,body in [('REST','GET','/v1/services/'+sid,None),('GraphQL','POST','/graphql',{'query':query}),('MCP','POST','/mcp',{'jsonrpc':'2.0','id':358,'method':'tools/call','params':{'name':'get_service','arguments':{'serviceId':sid,'workspaceId':ws}}})]:
+  assert not any(z['surface']==surface for z in x.get('shared_state',[]));e={'at':now(),'surface':surface};x.setdefault('shared_state',[]).append(e);save();r=api(method,path,body);e['receipt']=r;save();assert r['status']=='200';v=decode(r)
+  if surface=='GraphQL':assert not v.get('errors');v=v['data']['service'];build=v['buildCommand'];plan=v['plan'];type_publish=True
+  else:
+   if surface=='MCP':
+    assert not v.get('error') and not v['result'].get('isError');z=v['result'];v=z.get('structuredContent')
+    if v is None:v=json.loads(next(a['text'] for a in z['content'] if a['type']=='text'))
+    v=v.get('service',v)
+   d=v['serviceDetails'];build=d['buildCommand'];plan=d['plan'];type_publish=v['type']=='static_site' and d['publishPath']=='_site'
+  e['pass']=v['id']==sid and v['name']==x['name'] and v['repo']==x['primary_reference']['repo'] and v['branch']==x['primary_reference']['branch'] and plan=='free' and build==x['control_intent']['build_command'] and v['autoDeploy'] in (False,'no') and type_publish;save();print(json.dumps({'client':x['client'],'surface':surface,'exact_static_source_build_command':e['pass']}),flush=True);assert e['pass']

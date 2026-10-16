@@ -1,0 +1,12 @@
+[
+  {
+    "phase": "js-tools",
+    "build_bash_n_exit": 0,
+    "generated_Python_AST_pass": true
+  },
+  {
+    "phase": "python-default",
+    "build_bash_n_exit": 0,
+    "generated_Python_AST_pass": true
+  }
+]

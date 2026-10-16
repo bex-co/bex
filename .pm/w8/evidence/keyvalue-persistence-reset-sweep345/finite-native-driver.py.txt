@@ -1,0 +1,47 @@
+from pathlib import Path
+import sys,json,re
+f=Path(__file__).with_name('sweep345-common.py');exec(compile(f.read_text(),str(f),'exec'))
+def output(r):
+ text=re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]','',r['output']);return re.sub(r'\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)','',text)
+if mode=='create':
+ assert client=='bex' and not any(v.get('sweep')==345 for v in c['resources'])
+ q=api('GET','/v1/owners/'+WS+'/limits');assert q['status']=='200';quota=json.loads(q['response']);assert quota['keyValues']['used']==quota['keyValues']['terminating']==0
+ inv,kv=rows(['keyvalues','list']);sr,ss=rows(['services']);assert kv==[] and {v['id'] for v in ss}==BASE
+ nonce=secrets.token_hex(3);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-reset';args=['keyvalues','create','--name',name,'--plan','free','--region','frankfurt','--memory-policy','queue','--persistence-mode','journal_snapshot','--confirm','-o','json']
+ x={'sweep':345,'workspace':WS,'type':'keyvalue','name':name,'nonce':nonce,'time':now(),'source_head':c['head'],'dependency_ids':[],'recorded_child_ids':[],'pre_ids':[],'capacity':q,'pre_inventory':inv,'pre_service_inventory':sr,'create_command':['bex',*args],'state':'native Free journal_snapshot create intent persisted'};c['resources'].append(x);save();r=cli(args);x['create_result']=r;x['state']='create returned; reconcile before retry';save();assert r['native_exit']==0
+ v=pgval(r);assert v['name']==name and v['ownerId']==WS and v['plan']=='free' and v['persistenceMode']=='journal_snapshot';x.update(id=v['id'],create_response=v,state='created: native0/exact name/workspace/Free/default ownership proved');save();print(json.dumps({'id':v['id'],'native_exit':0,'mode':v['persistenceMode']}));raise SystemExit(0)
+x=next(v for v in c['resources'] if v.get('sweep')==345);sid=x['id'];assert x['workspace']==WS and x['create_result']['native_exit']==0 and x['create_response']['id']==sid and sid not in BASE
+if mode=='wait-ready':
+ for attempt in range(4):
+  r=cli(['keyvalues','get',sid,'--confirm','-o','json']);x.setdefault('native_readiness',[]).append(r);save();d,v=detail();print(json.dumps({'attempt':attempt+1,'client':client,'native_exit':r['native_exit'],'status':v['status'],'mode':v['persistenceMode']}),flush=True)
+  if r['native_exit']==0 and v['status']=='available':break
+  if attempt<3:time.sleep(10)
+if mode=='ready':
+ r=cli(['keyvalues','get',sid,'--confirm','-o','json']);x.setdefault('native_readiness',[]).append(r);save();d,v=detail();print(json.dumps({'client':client,'native_exit':r['native_exit'],'status':v['status'],'mode':v['persistenceMode']}))
+elif mode=='publish':
+ assert 'publish_intent' not in x;d,v=detail();assert v['status']=='available' and not v['public'];x['publish_intent']={'at':now(),'body':{'public':True},'qualification':'API-only ordinary external connection setup on own disposable Free store'};save();x['publish_result']=api('PATCH','/v1/key-value/'+sid,{'public':True});save();assert x['publish_result']['status']=='200';print(json.dumps({'API_only_external_setup_HTTP':'200'}))
+elif mode in ('seed','check','empty'):
+ stage=sys.argv[3];assert stage in ('journal','off','snapshot');assert 'publish_result' in x;d,v=detail();assert v['status']=='available' and v['public'];want={'journal':'journal_snapshot','off':'off','snapshot':'snapshot'}[stage];assert v['persistenceMode']==want
+ key='qa345:'+x['nonce']+':';value='QA345_'+x['nonce']+'_☃'
+ if mode=='seed':
+  assert not any(e['stage']==stage for e in x.get('native_seeds',[]));code="redis.call('SET',KEYS[1],ARGV[1]);redis.call('INCR',KEYS[2]);return {redis.call('GET',KEYS[1]),redis.call('GET',KEYS[2])}";args=['EVAL',code,'2',key+stage,key+stage+':counter',value+'_'+stage]
+ else:
+  if mode=='check':assert any(e['stage']==stage and e.get('pass') for e in x.get('native_seeds',[]))
+  else:assert stage!='journal' and not any(e['stage']==stage for e in x.get('native_seeds',[]))
+  code="return {redis.call('GET',KEYS[1]) or '<absent>',redis.call('GET',KEYS[2]) or '<absent>',redis.call('GET',KEYS[3]) or '<absent>',redis.call('GET',KEYS[4]) or '<absent>',redis.call('GET',KEYS[5]) or '<absent>',redis.call('GET',KEYS[6]) or '<absent>'}";args=['EVAL',code,'6',*[key+s+suffix for s in ('journal','off','snapshot') for suffix in ('',':counter')]]
+ e={'at':now(),'stage':stage,'client':client,'operation':mode,'before':d,'command':['kv-cli',sid,'-o','interactive','--','--raw',*args],'intent':'seed/check exact own harmless marker and counters'};bucket='native_seeds' if mode=='seed' else 'native_checks';x.setdefault(bucket,[]).append(e);save();r=terminal(e['command']);e['result']=r;save();text=output(r);e['clean_output']=text
+ if mode=='seed':passed=r['native_exit']==0 and value+'_'+stage in text and bool(re.search(r'(?m)^1\r?$',text))
+ else:
+  lines=[l.rstrip('\r') for l in text.splitlines()];vals=[a for s in ('journal','off','snapshot') for a in ([value+'_'+s,'1'] if s==stage and mode=='check' else ['<absent>','<absent>'])];passed=r['native_exit']==0 and any(lines[i:i+6]==vals for i in range(max(0,len(lines)-5)))
+ e['pass']=passed;save();print(json.dumps({'operation':mode,'stage':stage,'client':client,'native_exit':r['native_exit'],'pass':passed}));assert passed
+elif mode=='transition':
+ target=sys.argv[3];assert target in ('off','snapshot');expected_source='journal_snapshot' if target=='off' else 'off';d,v=detail();assert v['status']=='available' and v['persistenceMode']==expected_source;assert not any(z['target']==target for z in x.get('transitions',[]));source='journal' if target=='off' else 'off';assert any(z['stage']==source and z.get('pass') for z in x.get('native_checks',[]));e={'at':now(),'target':target,'client':client,'before':d,'intent':'explicit destructive persistence change on own disposable fixture; data discard expected'};x.setdefault('transitions',[]).append(e);save();r=cli(['keyvalues','update',sid,'--persistence-mode',target,'--confirm','-o','json']);e['native']=r;save();assert r['native_exit']==0;print(json.dumps({'client':client,'target':target,'native_exit':0}))
+elif mode=='noop':
+ d,v=detail();assert v['status']=='available' and v['persistenceMode']=='snapshot';assert any(z['stage']=='snapshot' and z['operation']=='check' and z.get('pass') for z in x.get('native_checks',[]));assert not any(z['client']==client for z in x.get('native_noops',[]));e={'at':now(),'client':client,'before':d,'intent':'identical snapshot persistence save on exact owned fixture'};x.setdefault('native_noops',[]).append(e);save();e['native']=cli(['keyvalues','update',sid,'--persistence-mode','snapshot','--confirm','-o','json']);save();assert e['native']['native_exit']==0;print(json.dumps({'client':client,'identical_snapshot_save_exit':0}))
+elif mode=='server':
+ d,v=detail();assert v['status']=='available';e={'at':now(),'client':client,'before':d};x.setdefault('native_server_observations',[]).append(e);save();r=terminal(['kv-cli',sid,'-o','interactive','--','--raw','INFO']);e['result']=r;save();text=output(r);e['run_id']=next(iter(re.findall(r'run_id:([0-9a-f]{40})',text)),None);e['aof_enabled']=next(iter(re.findall(r'aof_enabled:([01])',text)),None);e['mode']=v['persistenceMode'];e['pass']=r['native_exit']==0 and bool(e['run_id']) and e['aof_enabled']==('1' if e['mode']=='journal_snapshot' else '0');save();print(json.dumps({'client':client,'mode':e['mode'],'aof':e['aof_enabled'],'native_exit':r['native_exit'],'pass':e['pass']}));assert e['pass']
+elif mode=='delete':
+ assert 'delete_intent' not in x;d,v=detail();e={'at':now(),'before':d,'qualification':'exact owned standalone KeyValue; no dependencies or service attachment'};x['delete_intent']=e;save();x['delete_result']=cli(['keyvalues','delete',sid,'--confirm','-o','json']);save();assert x['delete_result']['native_exit']==0;print(json.dumps({'own_delete_exit':0,'id':sid}))
+elif mode=='reconcile':
+ assert 'delete_result' in x;r=api('GET','/v1/key-value/'+sid);inv,kv=rows(['keyvalues','list']);sr,ss=rows(['services']);q=api('GET','/v1/owners/'+WS+'/limits');v=json.loads(q['response']);e={'at':now(),'detail':r,'native_inventory':inv,'native_services':sr,'quota':q};e['pass']=r['status']=='404' and not kv and {z['id'] for z in ss}==BASE and v['keyValues']['used']==v['keyValues']['terminating']==0 and v['services']['used']==6 and v['services']['terminating']==0;x.setdefault('cleanup_receipts',[]).append(e);x['state']='deleted: native0/detail404/listempty/baseline6/quota0 terminating0' if e['pass'] else 'delete acknowledged: convergence pending';save();print(json.dumps({'cleanup_pass':e['pass'],'KV_used':v['keyValues']['used'],'KV_terminating':v['keyValues']['terminating']}))
+elif mode!='wait-ready':raise ValueError(mode)

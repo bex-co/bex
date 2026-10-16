@@ -1,0 +1,25 @@
+{
+  "index": "https://cloudnative-pg.github.io/charts/index.yaml",
+  "download": "https://github.com/cloudnative-pg/charts/releases/download/cloudnative-pg-v0.29.0/cloudnative-pg-0.29.0.tgz",
+  "chart_version": "0.29.0",
+  "chart_appVersion": "1.30.0",
+  "archive_sha256": "668e065ff53508d58238788fd35b355a925060843629a951df0e6a9362e6d32f",
+  "matches_repo_helm_artifact_lock": true,
+  "database_crd_members": [],
+  "database_extension_schema": [],
+  "pinned_operator_Database_CRD_URL": "https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/v1.30.0/config/crd/bases/postgresql.cnpg.io_databases.yaml",
+  "pinned_operator_Database_CRD_sha256": "53f7dfca6d23eb70246f41f1e7db596f8782341cd4fffb6ad990107cc8a588e7",
+  "pinned_operator_Database_extension_schema": [
+    {
+      "version": "v1",
+      "extension_fields": [
+        "ensure",
+        "name",
+        "schema",
+        "version"
+      ],
+      "reclaim_policy_default": "retain"
+    }
+  ],
+  "qualification": "exact locked chart bytes/appVersion and matching upstream tagged Database CRD verified; live running CNPG version unobserved"
+}

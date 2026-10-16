@@ -1,0 +1,37 @@
+from pathlib import Path
+import datetime,json,os,subprocess,yaml,sys,time
+os.umask(0o077);P=Path(__file__).resolve().parent;root=Path('/Volumes/nvme4tbfish/projects/bex8');cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json';c=json.loads(cp.read_text());g=c['sweep339_host_acceptance'];assert len(g['results'])==51 and all(v['pass'] for v in g['results']) and len(g.get('shared_validation',[]))==17 and all(z['surface']=='GraphQL' and z['pass'] for z in g['shared_validation'])
+ws='tea-daif693dqjvc73e7as3g'
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():
+ c['last_updated']=now();f=cp.with_name('.'+cp.name+'.qa339-shared.tmp');f.write_text(json.dumps(c,indent=2));f.chmod(0o600);f.replace(cp)
+def api(method,path,body=None):
+ cfg=yaml.safe_load((P/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token;ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')';auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+ws+'"\n';f=P/'sweep339-shared-request.json';assert not f.exists();args=['curl','--disable','-sS','--max-time','30','--config','-','-X',method,'-H','Accept: application/json, text/event-stream','-H','MCP-Protocol-Version: 2025-03-26']
+ if body is not None:f.write_text(json.dumps(body));args+=['-H','Content-Type: application/json','--data-binary','@'+str(f)]
+ start=time.monotonic()
+ try:r=subprocess.run([*args,'-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=36)
+ finally:f.unlink(missing_ok=True)
+ raw,_,status=r.stdout.rpartition('\n');out={'at':now(),'API_only':True,'request':{'method':method,'path':path,'body':body,'workspace':ws,'user_agent':ua,'authorization':'REDACTED'},'status':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-start,3),'response':raw,'stderr':r.stderr};assert token not in json.dumps(out);return out
+def decode(r):
+ text=r['response']
+ if not text.lstrip().startswith(('{','[')):
+  texts=[s[5:].strip() for s in text.splitlines() if s.startswith('data:')];assert len(texts)==1;text=texts[0]
+ return json.loads(text)
+def errors(v):
+ return [{k:(e.get(k) or (0 if k in ('line','column') else '')) for k in ('code','error','path','line','column')} for e in v or []]
+selected=g['cases'];assert len(selected)==17
+for surface in ('MCP',):
+ for case in selected:
+  native=next(v['decoded'] for v in g['results'] if v['client']=='published Bex0.3.2' and v['case']==case['case'])
+  if surface=='GraphQL':
+   path='/graphql';body={'query':'query($text:String!,$owner:String!){validateBlueprint(bexYaml:$text,ownerId:$owner){valid errors errorDetails{code error path line column}}}','variables':{'text':case['manifest'],'owner':ws}}
+  else:path='/mcp';body={'jsonrpc':'2.0','id':1,'method':'tools/call','params':{'name':'validate_bex_yml','arguments':{'bexYaml':case['manifest'],'workspaceId':ws}}}
+  e={'at':now(),'surface':surface,'case':case['case'],'expected_valid':case['expected_valid'],'intent':'same-authority API-only validation; no resource apply'};g.setdefault('shared_validation',[]).append(e);save();r=api('POST',path,body);e['receipt']=r;save();assert r['status']=='200';v=decode(r)
+  if surface=='GraphQL':
+   assert not v.get('errors');view=v['data']['validateBlueprint'];detail=view.get('errorDetails');legacy=view.get('errors') or [];legacy_match=legacy==[z['error'] for z in native.get('errors') or []]
+  else:
+   result=v['result'];assert not result.get('isError');view=result.get('structuredContent')
+   if view is None:view=json.loads(next(z['text'] for z in result['content'] if z['type']=='text'))
+   detail=view.get('errors');legacy_match=True
+  e.update(validity_matches=view['valid']==case['expected_valid']==native['valid'],errors_match=errors(detail)==errors(native.get('errors')),legacy_errors_match=legacy_match);e['pass']=e['validity_matches'] and e['errors_match'] and legacy_match;save();assert e['pass'],{'surface':surface,'case':case['case'],'detail':detail,'native_errors':native.get('errors')}
+ print(json.dumps({'surface':surface,'API_only_calls':17,'validity_errors_match_native':True}),flush=True)

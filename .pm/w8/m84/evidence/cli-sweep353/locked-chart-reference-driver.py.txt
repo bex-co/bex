@@ -1,0 +1,15 @@
+from pathlib import Path
+import subprocess,yaml,json,hashlib,urllib.parse,tarfile
+P=Path(__file__).resolve().parent;index='https://cloudnative-pg.github.io/charts/index.yaml';r=subprocess.run(['curl','--disable','-fLsS','--connect-timeout','5','--max-time','15',index],text=True,capture_output=True,timeout=20);assert r.returncode==0;r=yaml.safe_load(r.stdout);entry=next(e for e in r['entries']['cloudnative-pg'] if e['version']=='0.29.0');expected='668e065ff53508d58238788fd35b355a925060843629a951df0e6a9362e6d32f';assert entry['digest']==expected;url=urllib.parse.urljoin(index,entry['urls'][0]);assert urllib.parse.urlsplit(url).hostname in ('github.com','cloudnative-pg.github.io');tgz=P/'sweep353-cnpg-chart.tgz';r=subprocess.run(['curl','--disable','-fLsS','--connect-timeout','5','--max-time','20',url,'-o',str(tgz)],text=True,capture_output=True,timeout=25);assert r.returncode==0 and hashlib.sha256(tgz.read_bytes()).hexdigest()==expected
+with tarfile.open(tgz) as t:
+ chart=yaml.safe_load(t.extractfile('cloudnative-pg/Chart.yaml').read());names=[n for n in t.getnames() if 'database' in n.lower()];schemas=[]
+ for n in names:
+  m=t.getmember(n)
+  if not m.isfile() or not n.endswith(('.yaml','.yml')):continue
+  try:docs=list(yaml.safe_load_all(t.extractfile(n).read()))
+  except yaml.YAMLError:continue
+  for d in docs:
+   if isinstance(d,dict) and d.get('kind')=='CustomResourceDefinition' and d.get('metadata',{}).get('name')=='databases.postgresql.cnpg.io':
+    for v in d['spec']['versions']:
+     props=v['schema']['openAPIV3Schema']['properties']['spec']['properties'];schemas.append({'version':v['name'],'extension_management_present':'extensions' in props,'reclaim_policy_default':props.get('databaseReclaimPolicy',{}).get('default')})
+record={'index':index,'download':url,'chart_version':chart['version'],'chart_appVersion':chart['appVersion'],'archive_sha256':expected,'matches_repo_helm_artifact_lock':True,'database_crd_members':names,'database_extension_schema':schemas};(P/'sweep353-chart-reference.json').write_text(json.dumps(record,indent=2));print(json.dumps(record))

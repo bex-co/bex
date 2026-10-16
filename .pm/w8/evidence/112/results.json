@@ -1,0 +1,33 @@
+{
+  "tested_source_head": "71ce7fa28df475ea23fc2a5b0fbb591fc847edb1",
+  "reviewed_current_head": "f373dd508ab22da646c8eb260fd7cdf90c683305",
+  "serving_revision": "unobserved",
+  "native_Free_Elixir_creates_exit0": 2,
+  "captured_Bex_create201": 1,
+  "Render_create_wire": "not captured",
+  "first_source_MIX_ENV_unset_dev_compile_failures": 2,
+  "actual_production_dependency_fetch_completed": 2,
+  "build_prefix_only_Live_runtime_still_dev_controls": 2,
+  "both_prefixes_Live_build_runtime_prod_controls": 2,
+  "API_only_shared_configuration_reads_pass": 6,
+  "exact_public_commit": "d95c60fd4aa2f0f468298b7aa3fcc384f6069b8f",
+  "local_exact_base_default_pipeline_exit": 1,
+  "local_exact_base_prod_pipeline_exit": 0,
+  "real_generator_resolver_observation_cases": 5,
+  "source_named_pass_events": 15,
+  "source_fail": 0,
+  "source_skip": 0,
+  "generated_Docker_execution": false,
+  "full_Phoenix_runtime_started": false,
+  "owned_services_deleted": [
+    "srv-db8ucaa9cl7s73ae4db0",
+    "srv-db8ucui9cl7s73ae4ddg"
+  ],
+  "owned_children_deleted": 6,
+  "baseline_services": 6,
+  "baseline_Blueprints": 1,
+  "terminating": 0,
+  "new_issue": "w8/112",
+  "estimate_minutes": 55,
+  "uncommitted": true
+}

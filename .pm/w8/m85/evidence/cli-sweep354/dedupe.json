@@ -1,0 +1,7 @@
+{
+  "scope": "open/blocked/done board, active titles, DO_NOT_DO, Ruby selector source/history, ADR060/018 and freshly fetched origin/main",
+  "matching_lockfile_or_Ruby_tool_versions_owner": false,
+  "m51_accepted_inputs": "Gemfile literal/range and .ruby-version; reviewed-line/patch/default policy retained; missing lock/gems.locked/tool-versions are newly exercised inputs",
+  "existing_recorded_priority": "ADR060 Ruby table and nativeversion_test.go:62 currently prefer Gemfile; current specialized provider page differs, so update that recorded policy explicitly in this repair",
+  "other_neighbors": "m77 Ruby/Python JS companion and its live closeout do not cover Ruby source selection"
+}

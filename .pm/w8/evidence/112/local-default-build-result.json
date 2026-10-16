@@ -1,0 +1,11 @@
+{
+  "name": "qa361-default-11749730",
+  "image": "elixir:1.18@sha256:f3cc81b7f0f897763f7c74e8f526ddaf18b68f0cdbea6dd65b58f2c5c5629fbd",
+  "source": "<owned-temp>/sweep361-phoenix-source",
+  "command": "mix deps.get --only prod && mix compile",
+  "qualification": "local exact public pinned image; no product fixture; source clone/deps are private and disposable",
+  "started_at": 1792140355.3226938,
+  "exit": 1,
+  "container_absent": true,
+  "finished_at": 1792140362.264287
+}

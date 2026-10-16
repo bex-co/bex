@@ -1,0 +1,15 @@
+{
+  "CMD_present": true,
+  "actual_generator_runtime_NODE_ENV_default_present": false,
+  "case": "web22",
+  "choices": [
+    {
+      "Label": "Node",
+      "Line": "22",
+      "Image": "node:22-bookworm@sha256:0e5f906573693feaa1e21057ebdcfdb5bd5021f050b2dc7c9deceb629c7da2a8",
+      "Source": "NODE_VERSION=22"
+    }
+  ],
+  "qualification": "unchanged real generator and resolver observation; no Docker execution or passing fixed regression claimed",
+  "static": false
+}

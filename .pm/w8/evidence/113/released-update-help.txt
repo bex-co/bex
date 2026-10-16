@@ -1,0 +1,46 @@
+bex CLI v0.3.2
+
+Update configuration for an existing service
+
+USAGE
+  bex services update <service> [flags]
+
+FLAGS
+      --auto-deploy                               Enable auto-deploy
+      --branch <string>                           Git branch
+      --build-command <string>                    Build command
+      --build-filter-ignored-path <stringArray>   Build filter ignored path (can be specified multiple times)
+      --build-filter-path <stringArray>           Build filter path (can be specified multiple times)
+      --cron-command <string>                     Cron command
+      --cron-schedule <string>                    Cron schedule
+      --health-check-path <string>                Health check path
+  -h, --help                                      Show help for this command
+      --image <string>                            Docker image URL
+      --ip-allow-list <stringArray>               IP allow list entry in cidr=..., description=... format (can be specified multiple times)
+      --maintenance-mode                          Enable maintenance mode
+      --maintenance-mode-uri <string>             Maintenance mode URI
+      --max-shutdown-delay <int>                  Max shutdown delay in seconds (default: 0)
+      --name <string>                             Service name
+      --plan <string>                             Service plan
+      --pre-deploy-command <string>               Pre-deploy command
+      --previews <enum>                           Preview generation mode
+      --publish-directory <string>                Publish directory
+      --registry-credential <string>              Registry credential
+      --repo <string>                             Git repository URL
+      --root-directory <string>                   Root directory
+      --runtime <enum>                            Runtime environment
+      --start-command <string>                    Start command
+      --confirm                                   Skip all confirmation prompts
+  -o, --output <FORMAT>                           Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: "interactive")
+
+EXAMPLES
+  # Rename a service
+  bex services update my-service --name my-new-name --output json
+
+  # Change a service plan
+  bex services update srv-abc123 --plan 2c-4g --output json
+
+DETAILS
+Update a service on Bex. This command only runs in non-interactive modes.
+
+Provide configuration updates with flags.

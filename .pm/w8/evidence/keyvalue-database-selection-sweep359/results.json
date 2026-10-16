@@ -1,0 +1,40 @@
+{
+  "source_head": "ae5f8cada22510baa1e6a79cb2c09b8346103ccf",
+  "serving_revision": "unobserved",
+  "native_Free_off_create_delete_exit0": true,
+  "native_PING_pass": 2,
+  "native_data_commands_exit0_pass": 16,
+  "total_native_data_connection_checks_pass": 18,
+  "commands_per_client": 9,
+  "logical_key_values": 40,
+  "keys_per_database": 20,
+  "databases": [
+    1,
+    2
+  ],
+  "events_pass": 16,
+  "distinct_scan_keys": [
+    20,
+    20
+  ],
+  "explicit_protocol3_confirmations": 2,
+  "matched_CAS_updates": 2,
+  "stale_CAS_preserved_new_value": 2,
+  "default_database0_no_own_keys": 2,
+  "cross_database_original_and_updated_hashes_exact": true,
+  "standalone_HELLO_version_observed": "8.1.9",
+  "native_scans_unique_keys_per_DB": [
+    20,
+    20
+  ],
+  "first_cached_SSL_EOF_qualified": true,
+  "explicit_IPv4_cached_PONG_before_and_none_after": true,
+  "private_connection_removed": true,
+  "owned_KeyValue_deleted": "red-db8tsc7dbg8c73dgheog",
+  "baseline_services": 6,
+  "baseline_Blueprints": 1,
+  "KV_used": 0,
+  "KV_terminating": 0,
+  "new_issue": false,
+  "uncommitted": true
+}

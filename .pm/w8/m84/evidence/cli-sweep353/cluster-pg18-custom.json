@@ -1,0 +1,56 @@
+{
+  "case": "pg18-custom",
+  "cluster_spec": {
+    "bootstrap": {
+      "initdb": {
+        "database": "qa353_data",
+        "owner": "qa353_owner",
+        "postInitSQL": [
+          "CREATE EXTENSION IF NOT EXISTS pg_stat_statements"
+        ]
+      }
+    },
+    "enablePDB": false,
+    "imageName": "ghcr.io/cloudnative-pg/postgresql:18@sha256:d7a81cb5da3182d95d0da5fabfb9e484e375db899dcd54b684105f1e8966e9ca",
+    "instances": 1,
+    "managed": {
+      "roles": [
+        {
+          "ensure": "present",
+          "inRoles": [
+            "pg_monitor"
+          ],
+          "login": true,
+          "name": "qa353_owner"
+        }
+      ]
+    },
+    "postgresql": {
+      "parameters": {
+        "pg_stat_statements.track": "all"
+      },
+      "shared_preload_libraries": [
+        "pg_stat_statements"
+      ]
+    },
+    "resources": {
+      "limits": {
+        "cpu": "100m",
+        "memory": "256Mi"
+      },
+      "requests": {
+        "cpu": "100m",
+        "memory": "256Mi"
+      }
+    },
+    "storage": {
+      "size": "1Gi",
+      "storageClass": "hcloud-volumes"
+    }
+  },
+  "database": "qa353_data",
+  "identity_and_reviewed_image_control": true,
+  "owner": "qa353_owner",
+  "qualification": "unchanged real cluster serializer; no CNPG runtime, new child resource or successful vector install executed; repository-wide caller census is separate",
+  "vector_in_cluster_projection": false
+}

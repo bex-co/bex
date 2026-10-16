@@ -1,0 +1,36 @@
+{
+  "at": "2026-10-16T06:00:17.935618+00:00",
+  "source_head": "bd0ffac525f2ff1dfb4d7c7add9f81000fed8036",
+  "tag": "bex-native-qa351-ffmpeg:10fc72b4a6f3",
+  "state": "source Docker observation complete; ordinary pydub MP3 conversion fails missing ffmpeg",
+  "case": "python-root",
+  "qualification": "unmodified real resolver; WAV-only diagnostic build permits missing ffmpeg; default CMD retains real pydub MP3 conversion; no installer added by QA",
+  "build_command": [
+    "docker",
+    "build",
+    "-q",
+    "-t",
+    "bex-native-qa351-ffmpeg:10fc72b4a6f3",
+    "--secret",
+    "id=render-env,src=<owned-temp>/sweep351-source-exports/python-root/env",
+    "<owned-temp>/sweep351-source-exports/python-root/source"
+  ],
+  "build_exit": 0,
+  "runtime_snapshot": {
+    "exit": 0,
+    "stdout": "{\"python\": \"3.12.15\", \"architecture\": \"aarch64\", \"ffmpeg_path\": null, \"ffprobe_path\": null, \"wav_bytes\": 1644, \"wav_sha256\": \"c726d333dd159a31423f3480dbb1c5c4a9dfcd30efe1f7e12ade390dc92e8908\", \"files\": {\"pydub/__init__.py\": {\"bytes\": 39, \"sha256\": \"c355efd5ac1b691ddf3214cd135fa0ae77ecc200114cd42b2a90737d9fbe5410\"}, \"pydub/audio_segment.py\": {\"bytes\": 49233, \"sha256\": \"9f418d5215743ca48cfd2d77ba4a8e355ac9b04ae3dccba4baa5fa917deee1b4\"}}}\n",
+    "stderr": ""
+  },
+  "default_CMD": {
+    "exit": 1,
+    "stdout": "",
+    "stderr": "/opt/render/project/src/pydub/utils.py:174: RuntimeWarning: Couldn't find ffmpeg or avconv - defaulting to ffmpeg, but may not work\n  warn(\"Couldn't find ffmpeg or avconv - defaulting to ffmpeg, but may not work\", RuntimeWarning)\nTraceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"/opt/render/project/src/pydub/audio_segment.py\", line 963, in export\n    p = subprocess.Popen(conversion_command, stdin=devnull, stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/subprocess.py\", line 1026, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n  File \"/usr/local/lib/python3.12/subprocess.py\", line 1955, in _execute_child\n    raise child_exception_type(errno_num, err_msg, err_filename)\nFileNotFoundError: [Errno 2] No such file or directory: 'ffmpeg'\n"
+  },
+  "ffmpeg_missing_with_WAV_and_Python_controls": true,
+  "image_cleanup": {
+    "exit": 0,
+    "stdout": "Untagged: bex-native-qa351-ffmpeg:10fc72b4a6f3\nDeleted: sha256:512618f1c74270b6ed4c19ce5593a1f0804d99dc82d91c9348230c6cfa53f6f3\n",
+    "stderr": ""
+  },
+  "tag_absent_after_cleanup": true
+}

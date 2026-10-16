@@ -1,0 +1,29 @@
+{
+  "source_head": "013418ce3cae21b318d66b39549f65ae502f8e7e",
+  "serving_revision": "unobserved",
+  "native_Free_Node24_creates_exit0": 2,
+  "exact_first_deploy_default_failures": 2,
+  "first_build_unset_correct": 2,
+  "first_runtime_unset_development_cache_disabled": 2,
+  "authored_start_prefix_controls_Live_HTTP200_pass": 2,
+  "control_build_still_unset": 2,
+  "control_runtime_production_cached_view": 2,
+  "exact_source_commit": "a419aa7350389a275ab45fde2e849ed1f02449ef",
+  "API_only_shared_configuration_reads_pass": 6,
+  "real_generator_resolver_observation_cases": 4,
+  "source_named_pass_events": 14,
+  "source_fail": 0,
+  "source_skip": 0,
+  "Docker_execution": false,
+  "owned_services_deleted": [
+    "srv-db8tevvdbg8c73dghed0",
+    "srv-db8tfgq9cl7s73ae4c8g"
+  ],
+  "owned_children_deleted": 4,
+  "baseline_services": 6,
+  "baseline_Blueprints": 1,
+  "terminating": 0,
+  "new_issue": "w8/111",
+  "estimate_minutes": 55,
+  "uncommitted": true
+}

@@ -1,0 +1,11 @@
+{
+  "head": "bd0ffac525f2ff1dfb4d7c7add9f81000fed8036",
+  "fetched_origin_main": "779c825e2b6b99c8e3b697b20355781880da7fc8",
+  "new_commits": [
+    "779c825e2 docs(pm): file stale environment-group precedence after link"
+  ],
+  "product_delta_paths": [],
+  "pgvector_filing_or_source_hits": [],
+  "semantic_owner_on_origin": false,
+  "serving_revision": "unobserved"
+}

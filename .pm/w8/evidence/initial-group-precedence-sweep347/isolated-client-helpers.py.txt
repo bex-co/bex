@@ -1,0 +1,64 @@
+from pathlib import Path
+import datetime,hashlib,json,os,secrets,shlex,shutil,subprocess,sys,time,yaml
+os.umask(0o077)
+P=Path(__file__).resolve().parent;root=Path('/Volumes/nvme4tbfish/projects/bex8');cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json'
+c=json.loads(cp.read_text());assert c.get('sync347_result')==0 and not c.get('active_sync_stash')
+mode,case=sys.argv[1:3];assert case=='inline';ws='tea-daif693dqjvc73e7as3g'
+baseline={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']}
+IMAGE='docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592';BEX='https://github.com/bex-co/bex';EXPRESS='https://github.com/expressjs/serve-static';BP_REPO='https://github.com/nodejs/node';BP_BRANCH='v24.x'
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():
+ c['last_updated']=now();f=cp.with_name('.'+cp.name+'.qa347.tmp');f.write_text(json.dumps(c,indent=2)+'\n');f.chmod(0o600);f.replace(cp)
+def cli(args,client='bex',bound=45):
+ assert client in ('bex','render')
+ config=P/'render-config/cli.yaml'
+ try:
+  if client=='render':assert not config.exists();shutil.copyfile(P/'config/cli.yaml',config);config.chmod(0o600)
+  runner=['python3',str(P/'run-render.py')] if client=='render' else ['python3',str(P/'run.py'),'--release']
+  r=json.loads(subprocess.check_output([*runner,'--bound='+str(bound),*args],text=True,timeout=bound+15))
+  if r['exit']==124:r.update(native_exit=None,harness_timeout=True)
+  else:r['native_exit']=r['exit']
+  return r
+ finally:
+  if client=='render':config.unlink(missing_ok=True)
+def wire(path):return json.loads(subprocess.check_output(['python3',str(P/'wire.py'),'GET',path],text=True,timeout=45))
+def api(method,path,body=None):
+ config=yaml.safe_load((P/'config/cli.yaml').read_text());token=config['api'].get('token') or config['api'].get('key') or config['api'].get('access_token');assert token
+ ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')'
+ auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+ws+'"\n'
+ f=P/'sweep347-request-body.json';args=['curl','--disable','-sS','--max-time','35','--config','-','-X',method]
+ if path=='/mcp':args+=['-H','Accept: application/json, text/event-stream','-H','MCP-Protocol-Version: 2025-03-26']
+ if body is not None:f.write_text(json.dumps(body));args+=['-H','Content-Type: application/json','--data-binary','@'+str(f)]
+ started=time.monotonic()
+ try:r=subprocess.run([*args,'-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=40)
+ finally:f.unlink(missing_ok=True)
+ text,_,status=r.stdout.rpartition('\n');receipt={'at':now(),'api_only':True,'request':{'method':method,'path':path,'body':body,'workspace':ws,'authorization':'REDACTED','user_agent':ua},'status':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-started,3),'response':text,'stderr':r.stderr};assert token not in json.dumps(receipt);return receipt
+def inventory():
+ r=cli(['services','--confirm','-o','json']);assert r['exit']==0;rows=[v.get('service',v.get('postgres',v.get('keyValue',v))) for v in json.loads(r['stdout']) or []];assert baseline<={v['id'] for v in rows};return r,rows
+def blueprints():
+ r=wire('/v1/blueprints?ownerId='+ws);assert r['status']=='200';return r,[v.get('blueprint',v) for v in json.loads(r['response'])]
+def own(x):
+ assert x['sweep']==347 and x['workspace']==ws and x['id'] not in baseline and x['create_result']['exit']==0 and x['create_response']['id']==x['id'] and x['create_response']['ownerId']==ws and x['create_response']['serviceDetails']['plan']=='free' and (mode in ('reconcile','children') or not x['state'].startswith('deleted:'))
+def history(x):
+ r=cli(['deploys','list',x['id'],'--confirm','-o','json']);assert r['exit']==0;rows=json.loads(r['stdout']);x.setdefault('history_receipts',[]).append({'at':now(),'result':r});x['deploy_children']=rows
+ for row in rows:
+  if row['id'] not in x['recorded_child_ids']:x['recorded_child_ids'].append(row['id'])
+ save();return rows
+def desired(x,express):
+ env=[{'key':'QA_LITERAL','value':x['literal']},{'key':'HTTP_PORT','value':'3000'},{'key':'WHOAMI_PORT_NUMBER','value':'3000'}]
+ if not express:return {'name':x['name'],'type':'web','runtime':'image','image':{'url':IMAGE},'plan':'free','healthCheckPath':'/','autoDeploy':False,'envVars':env}
+ return {'name':x['name'],'type':'web','runtime':'node','plan':'free','repo':EXPRESS,'branch':'master','rootDir':'','buildCommand':x['build_command'],'startCommand':x['start_command'],'healthCheckPath':'/','autoDeploy':False,'envVars':env}
+def manifest(x,express):return yaml.safe_dump({'services':[desired(x,express)]},sort_keys=False)
+def validate(x,text,label):
+ f=P/f'sweep347-{case}-{label}.yaml';assert not f.exists();f.write_text(text)
+ for client in ['bex','render']:
+  r=cli(['blueprints','validate',str(f),'--confirm','-o','json'],client);x.setdefault('validations',[]).append({'at':now(),'client':client,'label':label,'manifest':text,'result':r});save();assert r['exit']==0 and json.loads(r['stdout'])['valid']
+ f.unlink();x.setdefault('validation_input_cleanup',[]).append({'label':label,'removed':not f.exists()});save()
+def http(x):
+ url=x['create_response']['serviceDetails']['url'];r=subprocess.run(['curl','--disable','-sS','--max-time','10','-H','X-QA-Marker: '+x['nonce'],'-w','\n%{http_code}',url],text=True,capture_output=True,timeout=15);raw,_,status=r.stdout.rpartition('\n')
+ try:decoded=json.loads(raw)
+ except ValueError:decoded=None
+ return {'at':now(),'url':url,'HTTP':status,'curl_exit':r.returncode,'body':raw,'decoded':decoded,'stderr':r.stderr}
+def gitref(express):
+ repo=P/'sweep347-source-reference' if express else root
+ sha=subprocess.check_output(['git','rev-parse','HEAD'],cwd=repo,text=True).strip();raw=subprocess.check_output(['git','show','HEAD:package.json' if express else 'HEAD:examples/runtime-version/node/package.json'],cwd=repo);return {'commit':sha,'package_sha256':hashlib.sha256(raw).hexdigest(),'package_name':json.loads(raw)['name'],'qualification':'read-only primary Git reference; deployment commit is separately observed'}

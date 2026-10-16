@@ -1,0 +1,16 @@
+{"Time":"2026-10-15T23:36:15.363452-07:00","Action":"start","Package":"github.com/bex-co/bex/lego/operator/internal/controller"}
+{"Time":"2026-10-15T23:36:16.107536-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestDatabaseDisplayNameDoesNotAffectDataPlaneIdentity"}
+{"Time":"2026-10-15T23:36:16.107648-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestDatabaseDisplayNameDoesNotAffectDataPlaneIdentity","Output":"=== RUN   TestDatabaseDisplayNameDoesNotAffectDataPlaneIdentity\n"}
+{"Time":"2026-10-15T23:36:16.107854-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestDatabaseDisplayNameDoesNotAffectDataPlaneIdentity","Output":"--- PASS: TestDatabaseDisplayNameDoesNotAffectDataPlaneIdentity (0.00s)\n"}
+{"Time":"2026-10-15T23:36:16.107942-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestDatabaseDisplayNameDoesNotAffectDataPlaneIdentity","Elapsed":0}
+{"Time":"2026-10-15T23:36:16.108019-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestCnpgClusterSpec"}
+{"Time":"2026-10-15T23:36:16.108026-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestCnpgClusterSpec","Output":"=== RUN   TestCnpgClusterSpec\n"}
+{"Time":"2026-10-15T23:36:16.108041-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestCnpgClusterSpec","Output":"--- PASS: TestCnpgClusterSpec (0.00s)\n"}
+{"Time":"2026-10-15T23:36:16.108065-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestCnpgClusterSpec","Elapsed":0}
+{"Time":"2026-10-15T23:36:16.108073-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestCnpgClusterSpecRecovery"}
+{"Time":"2026-10-15T23:36:16.108086-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestCnpgClusterSpecRecovery","Output":"=== RUN   TestCnpgClusterSpecRecovery\n"}
+{"Time":"2026-10-15T23:36:16.10809-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestCnpgClusterSpecRecovery","Output":"--- PASS: TestCnpgClusterSpecRecovery (0.00s)\n"}
+{"Time":"2026-10-15T23:36:16.108105-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Test":"TestCnpgClusterSpecRecovery","Elapsed":0}
+{"Time":"2026-10-15T23:36:16.10847-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Output":"PASS\n"}
+{"Time":"2026-10-15T23:36:16.110151-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Output":"ok  \tgithub.com/bex-co/bex/lego/operator/internal/controller\t0.745s\n"}
+{"Time":"2026-10-15T23:36:16.110175-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/controller","Elapsed":0.747}

@@ -1,0 +1,13 @@
+from pathlib import Path
+import sys,json
+f=Path(__file__).with_name('sweep352-common.py');sys.argv=[str(f),'shared-state','bex'];exec(compile(f.read_text(),str(f),'exec'));xs=[v for v in c['resources'] if v.get('sweep')==352];assert len(xs)==2 and all(x['runtime_receipts'][-1]['first_live_pass'] for x in xs)
+for x in xs:
+ own(x);sid=x['id'];query='query QA352 {service(id:'+json.dumps(sid)+'){id name repo branch runtime plan buildCommand startCommand autoDeploy}}'
+ for surface,method,path,body in [('REST','GET','/v1/services/'+sid,None),('GraphQL','POST','/graphql',{'query':query}),('MCP','POST','/mcp',{'jsonrpc':'2.0','id':352,'method':'tools/call','params':{'name':'get_service','arguments':{'serviceId':sid,'workspaceId':ws}}})]:
+  assert not any(z['surface']==surface for z in x.get('shared_state',[]));e={'at':now(),'surface':surface};x.setdefault('shared_state',[]).append(e);save();r=api(method,path,body);e['receipt']=r;save();assert r['status']=='200';v=decode(r)
+  if surface=='GraphQL':assert not v.get('errors');v=v['data']['service']
+  elif surface=='MCP':
+   assert not v.get('error') and not v['result'].get('isError');z=v['result'];v=z.get('structuredContent')
+   if v is None:v=json.loads(next(a['text'] for a in z['content'] if a['type']=='text'))
+   v=v.get('service',v)
+  d=v.get('serviceDetails',{});ec=d.get('envSpecificDetails',{});runtime=v.get('runtime') or d.get('runtime');plan=v.get('plan') or d.get('plan');build=v.get('buildCommand') if surface=='GraphQL' else ec.get('buildCommand');start=v.get('startCommand') if surface=='GraphQL' else ec.get('startCommand');e['pass']=v['id']==sid and v['name']==x['name'] and v['repo']==x['primary_reference']['repo'] and v['branch']==x['primary_reference']['branch'] and runtime=='node' and plan=='free' and build==x['commands']['initial']['build'] and start==x['commands']['initial']['start'] and v['autoDeploy'] in (False,'no');save();print(json.dumps({'client':x['client'],'surface':surface,'exact_source_runtime_plan_commands':e['pass']}),flush=True);assert e['pass']

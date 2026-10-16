@@ -1,0 +1,113 @@
+from pathlib import Path
+import datetime,hashlib,json,os,secrets,shlex,shutil,subprocess,sys,time,yaml
+os.umask(0o077)
+P=Path(__file__).resolve().parent;root=Path('/Volumes/nvme4tbfish/projects/bex8');cp=root/'.playwright-mcp/cli-qa-w8-checkpoint.json'
+c=json.loads(cp.read_text());assert c.get('sync343_result')==0 and not c.get('active_sync_stash')
+mode,case=sys.argv[1:3];assert case in ('inline','persistent');ws='tea-daif693dqjvc73e7as3g'
+baseline={v if isinstance(v,str) else v.get('service',v)['id'] for v in c['baseline']['services']}
+IMAGE='docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592';BEX='https://github.com/bex-co/bex';EXPRESS='https://github.com/expressjs/serve-static';BP_REPO='https://github.com/nodejs/node';BP_BRANCH='v24.x'
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():
+ c['last_updated']=now();f=cp.with_name('.'+cp.name+'.qa343.tmp');f.write_text(json.dumps(c,indent=2)+'\n');f.chmod(0o600);f.replace(cp)
+def cli(args,client='bex',bound=45):
+ assert client in ('bex','render')
+ config=P/'render-config/cli.yaml'
+ try:
+  if client=='render':assert not config.exists();shutil.copyfile(P/'config/cli.yaml',config);config.chmod(0o600)
+  runner=['python3',str(P/'run-render.py')] if client=='render' else ['python3',str(P/'run.py'),'--release']
+  r=json.loads(subprocess.check_output([*runner,'--bound='+str(bound),*args],text=True,timeout=bound+15))
+  if r['exit']==124:r.update(native_exit=None,harness_timeout=True)
+  else:r['native_exit']=r['exit']
+  return r
+ finally:
+  if client=='render':config.unlink(missing_ok=True)
+def wire(path):return json.loads(subprocess.check_output(['python3',str(P/'wire.py'),'GET',path],text=True,timeout=45))
+def api(method,path,body=None):
+ config=yaml.safe_load((P/'config/cli.yaml').read_text());token=config['api'].get('token') or config['api'].get('key') or config['api'].get('access_token');assert token
+ ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')'
+ auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+ws+'"\n'
+ f=P/'sweep343-request-body.json';args=['curl','--disable','-sS','--max-time','35','--config','-','-X',method]
+ if path=='/mcp':args+=['-H','Accept: application/json, text/event-stream','-H','MCP-Protocol-Version: 2025-03-26']
+ if body is not None:f.write_text(json.dumps(body));args+=['-H','Content-Type: application/json','--data-binary','@'+str(f)]
+ started=time.monotonic()
+ try:r=subprocess.run([*args,'-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=40)
+ finally:f.unlink(missing_ok=True)
+ text,_,status=r.stdout.rpartition('\n');receipt={'at':now(),'api_only':True,'request':{'method':method,'path':path,'body':body,'workspace':ws,'authorization':'REDACTED','user_agent':ua},'status':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-started,3),'response':text,'stderr':r.stderr};assert token not in json.dumps(receipt);return receipt
+def inventory():
+ r=cli(['services','--confirm','-o','json']);assert r['exit']==0;rows=[v.get('service',v.get('postgres',v.get('keyValue',v))) for v in json.loads(r['stdout']) or []];assert baseline<={v['id'] for v in rows};return r,rows
+def blueprints():
+ r=wire('/v1/blueprints?ownerId='+ws);assert r['status']=='200';return r,[v.get('blueprint',v) for v in json.loads(r['response'])]
+def own(x):
+ assert x['sweep']==343 and x['workspace']==ws and x['id'] not in baseline and x['create_result']['exit']==0 and x['create_response']['id']==x['id'] and x['create_response']['ownerId']==ws and x['create_response']['serviceDetails']['plan']=='free' and (mode in ('reconcile','children') or not x['state'].startswith('deleted:'))
+def history(x):
+ r=cli(['deploys','list',x['id'],'--confirm','-o','json']);assert r['exit']==0;rows=json.loads(r['stdout']);x.setdefault('history_receipts',[]).append({'at':now(),'result':r});x['deploy_children']=rows
+ for row in rows:
+  if row['id'] not in x['recorded_child_ids']:x['recorded_child_ids'].append(row['id'])
+ save();return rows
+def desired(x,express):
+ env=[{'key':'QA_LITERAL','value':x['literal']},{'key':'HTTP_PORT','value':'3000'},{'key':'WHOAMI_PORT_NUMBER','value':'3000'}]
+ if not express:return {'name':x['name'],'type':'web','runtime':'image','image':{'url':IMAGE},'plan':'free','healthCheckPath':'/','autoDeploy':False,'envVars':env}
+ return {'name':x['name'],'type':'web','runtime':'node','plan':'free','repo':EXPRESS,'branch':'master','rootDir':'','buildCommand':x['build_command'],'startCommand':x['start_command'],'healthCheckPath':'/','autoDeploy':False,'envVars':env}
+def manifest(x,express):return yaml.safe_dump({'services':[desired(x,express)]},sort_keys=False)
+def validate(x,text,label):
+ f=P/f'sweep343-{case}-{label}.yaml';assert not f.exists();f.write_text(text)
+ for client in ['bex','render']:
+  r=cli(['blueprints','validate',str(f),'--confirm','-o','json'],client);x.setdefault('validations',[]).append({'at':now(),'client':client,'label':label,'manifest':text,'result':r});save();assert r['exit']==0 and json.loads(r['stdout'])['valid']
+ f.unlink();x.setdefault('validation_input_cleanup',[]).append({'label':label,'removed':not f.exists()});save()
+def http(x):
+ url=x['create_response']['serviceDetails']['url'];r=subprocess.run(['curl','--disable','-sS','--max-time','10','-H','X-QA-Marker: '+x['nonce'],'-w','\n%{http_code}',url],text=True,capture_output=True,timeout=15);raw,_,status=r.stdout.rpartition('\n')
+ try:decoded=json.loads(raw)
+ except ValueError:decoded=None
+ return {'at':now(),'url':url,'HTTP':status,'curl_exit':r.returncode,'body':raw,'decoded':decoded,'stderr':r.stderr}
+def gitref(express):
+ repo=P/'sweep343-source-reference' if express else root
+ sha=subprocess.check_output(['git','rev-parse','HEAD'],cwd=repo,text=True).strip();raw=subprocess.check_output(['git','show','HEAD:package.json' if express else 'HEAD:examples/runtime-version/node/package.json'],cwd=repo);return {'commit':sha,'package_sha256':hashlib.sha256(raw).hexdigest(),'package_name':json.loads(raw)['name'],'qualification':'read-only primary Git reference; deployment commit is separately observed'}
+if mode=='create':
+ assert not any(v.get('sweep')==343 and v.get('case')==case for v in c['resources']);q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';limits=json.loads(q['response'])['services'];assert limits['used']+limits['terminating']<limits['limit'];inv,rows=inventory()
+ nonce=secrets.token_hex(3);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-source';literal='QA343_'+nonce+'\n☃=literal'
+ buildjs="const fs=require('node:fs'),crypto=require('node:crypto');const b=fs.readFileSync('package.json');fs.writeFileSync('qa-built.json',JSON.stringify({package_name:JSON.parse(b).name,package_sha256:crypto.createHash('sha256').update(b).digest('hex'),literal:process.env.QA_LITERAL}));"
+ startjs="const fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto');const built=JSON.parse(fs.readFileSync('/opt/render/project/src/qa-built.json')),boot=crypto.randomUUID();http.createServer((q,r)=>{r.setHeader('Content-Type','application/json');r.end(JSON.stringify({built,literal:process.env.QA_LITERAL,boot}));}).listen(Number(process.env.PORT||3000),'0.0.0.0');"
+ build='/usr/local/bin/node -e '+shlex.quote(buildjs);start='/usr/local/bin/node -e '+shlex.quote(startjs)
+ client='bex' if case=='inline' else 'render';args=['services','create','--name',name,'--type','web_service','--image',IMAGE,'--plan','free','--region','frankfurt','--env-var','QA_LITERAL='+literal,'--env-var','HTTP_PORT=3000','--env-var','WHOAMI_PORT_NUMBER=3000','--health-check-path','/','--auto-deploy=false','--confirm','-o','json']
+ assert name not in {v['name'] for v in rows};x={'sweep':343,'case':case,'type':'web_service','workspace':ws,'name':name,'nonce':nonce,'literal':literal,'build_command':build,'start_command':start,'time':now(),'source_head':c['head'],'dependency_ids':[],'recorded_child_ids':[],'capacity_proof':q,'pre_create_inventory':inv,'create_client':client,'create_command':[client,*args],'source_reference_bex':{'image':IMAGE,'qualification':'initial immutable image; no Git commit claimed'},'source_reference_express':gitref(True),'state':'native Free create intent persisted'};c['resources'].append(x);save();r=cli(args,client);x['create_result']=r;x['state']='create result received; reconcile before retry';save();assert r['exit']==0;v=json.loads(r['stdout']);v=v.get('data',v);v=v.get('service',v);assert v['id'] not in {v['id'] for v in rows} and v['ownerId']==ws and v['name']==name and v['serviceDetails']['plan']=='free';x.update(id=v['id'],create_response=v,state='created: initial runtime pending');save();print(json.dumps({'case':case,'client':client,'id':v['id'],'exit':r['exit']}),flush=True);raise SystemExit(0)
+x=next(v for v in c['resources'] if v.get('sweep')==343 and v.get('case')==case and v.get('type')=='web_service');own(x);sid=x['id']
+if mode=='observe':
+ stage=sys.argv[3];assert stage in ('initial','changed','bex-wait','render-wait','current-wait');rows=history(x);detail=wire('/v1/services/'+sid);x.setdefault('metadata_receipts',[]).append({'at':now(),'stage':stage,'result':detail});save();assert detail['status']=='200';view=json.loads(detail['response']);expected=EXPRESS if stage!='initial' else BEX;branch='master' if stage!='initial' else 'main';r=http(x);value=r['decoded'];reference=x['source_reference_express'] if stage!='initial' else x['source_reference_bex'];runtime_pass=r['HTTP']=='200' and isinstance(value,dict) and value.get('literal')==x['literal'] and value.get('built',{}).get('literal')==x['literal'] and value.get('built',{}).get('package_name')==reference['package_name'] and value.get('built',{}).get('package_sha256')==reference['package_sha256'];source_pass=view.get('repo')==expected and view.get('branch')==branch and not view.get('imagePath') and view.get('serviceDetails',{}).get('runtime')=='node';commit_match=(rows[0].get('commit') or {}).get('id')==reference['commit'];passed=rows[0]['status']=='live' and runtime_pass and source_pass and commit_match;x.setdefault('observations',[]).append({'at':now(),'stage':stage,'detail':detail,'latest_deploy':rows[0],'runtime':r,'exact_runtime_package_and_literals':runtime_pass,'metadata_source_matches':source_pass,'deploy_commit_matches_reference':commit_match,'pass':passed});save();print(json.dumps({'case':case,'stage':stage,'status':rows[0]['status'],'HTTP':r['HTTP'],'source_matches':source_pass,'runtime_matches':runtime_pass,'commit_matches':commit_match,'pass':passed}),flush=True)
+elif mode=='initial-image':
+ rows=history(x);detail=wire('/v1/services/'+sid);assert detail['status']=='200';v=json.loads(detail['response']);r=http(x);value=r['decoded'];passed=rows[0]['status']=='live' and r['HTTP']=='200' and isinstance(value,dict) and value.get('headers',{}).get('x-qa-marker')==x['nonce'] and v.get('imagePath')==IMAGE and v['serviceDetails'].get('runtime')=='image';x.setdefault('observations',[]).append({'at':now(),'stage':'initial','detail':detail,'latest_deploy':rows[0],'runtime':r,'pass':passed,'qualification':'actual native immutable-image create, own HTTP marker and metadata; no Git/build JSON expected yet'});save();print(json.dumps({'case':case,'stage':'initial-image','status':rows[0]['status'],'HTTP':r['HTTP'],'pass':passed}),flush=True)
+elif mode=='metadata':
+ rows=history(x);detail=wire('/v1/services/'+sid);x.setdefault('metadata_receipts',[]).append({'at':now(),'stage':'metadata-only','result':detail});save();assert detail['status']=='200';v=json.loads(detail['response']);print(json.dumps({'case':case,'phase':v.get('phase'),'repo':v.get('repo'),'branch':v.get('branch'),'rootDir':v.get('rootDir'),'latest':{k:rows[0].get(k) for k in ('id','status','commit')}}),flush=True)
+elif mode=='inline':
+ assert case=='inline' and any(v['stage']=='initial' and v['pass'] for v in x.get('observations',[])) and 'inline_intent' not in x;before=history(x);assert before[0]['status']=='live';text=manifest(x,True);validate(x,text,'inline-change');bp_before,bp_rows=blueprints();body={'ownerId':ws,'bexYaml':text};x['inline_intent']={'at':now(),'body':body,'before_deploy_ids':[v['id'] for v in before],'blueprint_inventory_before':bp_before};save();r=api('POST','/v1/blueprints/deploy',body);x['inline_result']=r;save();assert r['status']=='200';v=json.loads(r['response']);assert [z['id'] for z in v['services']]==[sid] and all(not v.get(k) for k in ['databases','keyValues','envGroups']);x['changed_deploy_id']=v['services'][0].get('latestDeployId');save();after,bps=blueprints();x['inline_blueprint_inventory_after']=after;save();assert {v['id'] for v in bps}=={v['id'] for v in bp_rows};history(x);print(json.dumps({'case':case,'API_only_inline':'200','latest_deploy':x['changed_deploy_id'],'no_blueprint_created':True}),flush=True)
+elif mode=='register':
+ assert case=='persistent' and any(v['stage']=='initial' and v['pass'] for v in x.get('observations',[])) and not any(v.get('sweep')==343 and v.get('type')=='blueprint' for v in c['resources']);before=history(x);assert before[0]['status']=='live';bp_before,bp_rows=blueprints();assert not any(v.get('repo')==BP_REPO and v.get('branch')==BP_BRANCH and v.get('path')=='render.yaml' for v in bp_rows);text=manifest(x,False);validate(x,text,'register-unchanged');body={'ownerId':ws,'repo':BP_REPO,'branch':BP_BRANCH,'bexYaml':text};b={'sweep':343,'case':'persistent','type':'blueprint','workspace':ws,'time':now(),'repo':BP_REPO,'branch':BP_BRANCH,'path':'render.yaml','name':x['name']+'-bp','dependency_ids':[sid],'before_inventory':bp_before,'registration_body':body,'state':'automatic Blueprint registration intent persisted'};c['resources'].append(b);save();r=api('POST','/v1/blueprints/deploy',body);b['registration_result']=r;save();assert r['status']=='200';v=json.loads(r['response']);assert [z['id'] for z in v['services']]==[sid] and all(not v.get(k) for k in ['databases','keyValues','envGroups']);bp_after,bps=blueprints();b['after_inventory']=bp_after;save();fresh=[z for z in bps if z['id'] not in {q['id'] for q in bp_rows}];assert len(fresh)==1 and (fresh[0]['repo'],fresh[0]['branch'],fresh[0]['path'])==(BP_REPO,BP_BRANCH,'render.yaml');b.update(id=fresh[0]['id'],state='created: Blueprint ownership detail pending');save();detail=wire('/v1/blueprints/'+b['id']+'?ownerId='+ws);b['creation_detail']=detail;save();assert detail['status']=='200';view=json.loads(detail['response']);assert view['id']==b['id'] and view['manifest']==text and {z['id'] for z in view.get('resources',[])}<={sid};assert datetime.datetime.fromisoformat(view['createdAt'].replace('Z','+00:00'))>=datetime.datetime.fromisoformat(b['time'])-datetime.timedelta(seconds=5);b['create_response']=view;b['state']='created: exact response/manifest/time ownership recorded';save();patch={'ownerId':ws,'name':b['name'],'autoSync':False};b['update_intent']={'at':now(),'body':patch};save();b['update_result']=api('PATCH','/v1/blueprints/'+b['id'],patch);save();assert b['update_result']['status']=='200';after=history(x);b['registration_no_new_deploy']={z['id'] for z in before}=={z['id'] for z in after};save();print(json.dumps({'case':case,'owned_blueprint':b['id'],'registration_HTTP':'200','registration_no_new_deploy':b['registration_no_new_deploy'],'autoSync':False}),flush=True)
+elif mode=='sync':
+ assert case=='persistent' and 'sync_intent' not in x;b=next(v for v in c['resources'] if v.get('sweep')==343 and v.get('type')=='blueprint');assert b['registration_result']['status']=='200' and b['create_response']['id']==b['id'] and not b['state'].startswith('deleted:');detail=wire('/v1/blueprints/'+b['id']+'?ownerId='+ws);assert detail['status']=='200';assert {v['id'] for v in json.loads(detail['response']).get('resources',[])}<={sid};before=history(x);assert before[0]['status']=='live';text=manifest(x,True);validate(x,text,'persistent-change');body={'ownerId':ws,'bexYaml':text};x['sync_intent']={'at':now(),'body':body,'before_blueprint_detail':detail,'before_deploy_ids':[v['id'] for v in before]};save();r=api('POST','/v1/blueprints/'+b['id']+'/sync',body);x['sync_result']=r;save();assert r['status']=='200';after=history(x);fresh=[v for v in after if v['id'] not in x['sync_intent']['before_deploy_ids']];assert len(fresh)==1;x['changed_deploy_id']=fresh[0]['id'];save();print(json.dumps({'case':case,'API_only_provided_manifest_sync':'200','changed_deploy':x['changed_deploy_id']}),flush=True)
+elif mode=='noop':
+ assert 'noop_intent' not in x and x['observations'][-1]['pass'];before=history(x);text=manifest(x,True);body={'ownerId':ws,'bexYaml':text};path='/v1/blueprints/deploy'
+ if case=='persistent':b=next(v for v in c['resources'] if v.get('sweep')==343 and v.get('type')=='blueprint');assert not b['state'].startswith('deleted:');path='/v1/blueprints/'+b['id']+'/sync'
+ x['noop_intent']={'at':now(),'path':path,'body':body,'before_deploy_ids':[v['id'] for v in before]};save();r=api('POST',path,body);x['noop_result']=r;save();assert r['status']=='200';after=history(x);x['noop_pass']={v['id'] for v in before}=={v['id'] for v in after};save();assert x['noop_pass'];print(json.dumps({'case':case,'repeated_identical_apply':'200','new_deploys':0}),flush=True)
+elif mode=='disconnect':
+ assert case=='persistent';b=next(v for v in c['resources'] if v.get('sweep')==343 and v.get('type')=='blueprint');assert 'delete_result' not in b and b['registration_result']['status']=='200' and b['create_response']['id']==b['id'];detail=wire('/v1/blueprints/'+b['id']+'?ownerId='+ws);assert detail['status']=='200';assert {v['id'] for v in json.loads(detail['response']).get('resources',[])}<={sid};b['delete_intent']={'at':now(),'before_detail':detail,'qualification':'metadata disconnect only; separate service cleanup'};save();b['delete_result']=api('DELETE','/v1/blueprints/'+b['id']+'?ownerId='+ws);save();assert b['delete_result']['status']=='204';detail=wire('/v1/blueprints/'+b['id']+'?ownerId='+ws);after,bps=blueprints();assert detail['status']=='404' and b['id'] not in {v['id'] for v in bps};old={v.get('blueprint',v)['id'] for v in json.loads(b['before_inventory']['response'])};assert old<={v['id'] for v in bps};b.update(state='deleted: own Blueprint detail404/listabsent/baseline preserved',detail_after_delete=detail,inventory_after_delete=after);save();print(json.dumps({'own_Blueprint_disconnected':b['id'],'baseline_preserved':True}),flush=True)
+elif mode=='delete':
+ assert 'delete_result' not in x and not any(v.get('sweep')==343 and v.get('type')=='blueprint' and v.get('id') and sid in v.get('dependency_ids',[]) and not v['state'].startswith('deleted:') for v in c['resources']);rows=history(x);assert all(v['id'] in x['recorded_child_ids'] for v in rows)
+ for row in rows:
+  if row['status'] not in ('live','deactivated','canceled','build_failed','update_failed','pre_deploy_failed'):
+   r=cli(['deploys','cancel',sid,row['id'],'--confirm','-o','json']);x.setdefault('cleanup_child_cancels',[]).append({'id':row['id'],'result':r});save()
+ x['delete_intent']={'at':now(),'children':[v['id'] for v in rows]};save();x['delete_result']=cli(['services','delete',sid,'--confirm','-o','json']);save();print(json.dumps({'case':case,'delete_exit':x['delete_result']['exit'],'children':len(x['recorded_child_ids'])}),flush=True)
+elif mode=='reconcile':
+ assert 'delete_result' in x;detail=wire('/v1/services/'+sid);inv,rows=inventory();r=http(x);q=wire('/v1/owners/'+ws+'/limits');assert q['status']=='200';terminating=json.loads(q['response'])['services']['terminating'];done=detail['status']=='404' and sid not in {v['id'] for v in rows} and r['HTTP']=='404' and r['curl_exit']==0 and terminating==0;x.setdefault('cleanup_reconciliations',[]).append({'at':now(),'detail':detail,'inventory':inv,'runtime':r,'quota':q,'baseline_preserved':True});x['state']='deleted: API404/listabsent/runtime404/baseline6/quota terminating0' if done else 'delete acknowledged: bounded convergence pending';save();print(json.dumps({'case':case,'complete':done,'detail':detail['status'],'runtime':r['HTTP'],'terminating':terminating}),flush=True)
+elif mode=='readbacks':
+ assert any(z['stage']=='changed' and z['pass'] for z in x['observations'])
+ for client in ('bex','render'):
+  for kind,args in [('inventory',['services','--confirm','-o','json']),('deploys',['deploys','list',sid,'--confirm','-o','json'])]:
+   r=cli(args,client);entry={'at':now(),'client':client,'kind':kind,'result':r};x.setdefault('native_readbacks',[]).append(entry);save();assert r['native_exit']==0
+   if kind=='inventory':
+    vs=[v.get('service',v.get('postgres',v.get('keyValue',v))) for v in json.loads(r['stdout']) or []];matches=[v for v in vs if v['id']==sid];assert len(matches)==1;v=matches[0];entry['pass']=v['id']==sid and v['repo']==EXPRESS and v['branch']=='master' and v['serviceDetails']['runtime']=='node'
+   else:
+    rows=json.loads(r['stdout']);entry['pass']=rows[0]['status']=='live' and (rows[0].get('commit') or {}).get('id')==x['source_reference_express']['commit']
+   save();assert entry['pass'];print(json.dumps({'case':case,'client':client,'read':kind,'native_exit':0,'matches_declared_Git_source':True}),flush=True)
+ x['native_readback_input_removed']=True;save()
+elif mode=='children':
+ assert 'delete_result' in x and x['recorded_child_ids'];receipts=[wire('/v1/services/'+sid+'/deploys/'+did) for did in x['recorded_child_ids']];x.setdefault('child_cleanup_receipts',[]).append({'at':now(),'receipts':receipts});save();print(json.dumps({'case':case,'children_absent':all(z['status']=='404' for z in receipts),'count':len(receipts)}),flush=True)
+else:raise ValueError(mode)

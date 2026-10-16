@@ -1,0 +1,15 @@
+{
+  "case": "elixir117-default",
+  "choices": [
+    {
+      "Label": "Elixir",
+      "Line": "1.17",
+      "Image": "elixir:1.17@sha256:0bdcc080e296103b68fd5eaf0b39aa947b5c53433894c2a1af6467f9f32245c0",
+      "Source": "ELIXIR_VERSION=1.17"
+    }
+  ],
+  "generated_default_MIX_ENV_present": false,
+  "qualification": "unchanged real generator/resolver; configured env bundle is decoded at authored RUN and runtime user env is separate; no Docker execution or fixed regression asserted",
+  "user_MIX_ENV": "",
+  "user_MIX_ENV_present": false
+}

@@ -1,0 +1,86 @@
+{
+  "previous": [
+    {
+      "at": "2026-10-16T02:54:57.725023+00:00",
+      "API_only": true,
+      "result": {
+        "at": "2026-10-16T02:54:57.724903+00:00",
+        "API_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA338Export { generateBlueprint(ownerId:\"tea-daif693dqjvc73e7as3g\", serviceIds:[\"srv-db8oqrkdp0tc73djg5m0\", \"srv-db8orfd5dphc73fh8g3g\"]) { manifest filename } }"
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 1.761,
+        "response": "{\"data\":{\"generateBlueprint\":{\"filename\":\"render.yaml\",\"manifest\":\"services:\\n- autoDeployTrigger: \\\"off\\\"\\n  branch: master\\n  buildCommand: printf '%s\\\\n' QA338_2a0916_OMITTED_BRANCH \\u0026\\u0026 pnpm --version \\u0026\\u0026 node\\n    -e 'const source_bytes=require('\\\"'\\\"'node:fs'\\\"'\\\"').readFileSync('\\\"'\\\"'package.json'\\\"'\\\"'),source_package=JSON.parse(source_bytes),source_package_hash=require('\\\"'\\\"'node:crypto'\\\"'\\\"').createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(source_bytes).digest('\\\"'\\\"'hex'\\\"'\\\"');const\\n    tools={};for(const tool of ['\\\"'\\\"'pnpm'\\\"'\\\"','\\\"'\\\"'npm'\\\"'\\\"','\\\"'\\\"'yarn'\\\"'\\\"','\\\"'\\\"'corepack'\\\"'\\\"']){const\\n    r=require('\\\"'\\\"'node:child_process'\\\"'\\\"').spawnSync(tool,['\\\"'\\\"'--version'\\\"'\\\"'],{encoding:'\\\"'\\\"'utf8'\\\"'\\\"',timeout:10000});tools[tool]={error:r.error?r.error.code:null,status:r.status,stdout:r.stdout||'\\\"'\\\"''\\\"'\\\"',stderr:r.stderr||'\\\"'\\\"''\\\"'\\\"'};}require('\\\"'\\\"'node:fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa338-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA338_2a0916_OMITTED_BRANCH\\\",runtime:'\\\"'\\\"'node'\\\"'\\\"',version:process.version,requested:process.env.NODE_VERSION,tools,package_name:source_package.name,package_sha256:source_package_hash}));'\\n  envVars:\\n  - key: NODE_VERSION\\n    sync: false\\n  name: qa338-2a0916-branch\\n  plan: free\\n  repo: https://github.com/expressjs/serve-static\\n  runtime: node\\n  startCommand: node -e 'const source_bytes=require('\\\"'\\\"'node:fs'\\\"'\\\"').readFileSync('\\\"'\\\"'package.json'\\\"'\\\"'),source_package=JSON.parse(source_bytes),source_package_hash=require('\\\"'\\\"'node:crypto'\\\"'\\\"').createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(source_bytes).digest('\\\"'\\\"'hex'\\\"'\\\"');const\\n    tools={};for(const tool of ['\\\"'\\\"'pnpm'\\\"'\\\"','\\\"'\\\"'npm'\\\"'\\\"','\\\"'\\\"'yarn'\\\"'\\\"','\\\"'\\\"'corepack'\\\"'\\\"']){const\\n    r=require('\\\"'\\\"'node:child_process'\\\"'\\\"').spawnSync(tool,['\\\"'\\\"'--version'\\\"'\\\"'],{encoding:'\\\"'\\\"'utf8'\\\"'\\\"',timeout:60000});tools[tool]={elapsed_ms:Date.now()-qa_start,error:r.error?r.error.code:null,status:r.status,stdout:r.stdout||'\\\"'\\\"''\\\"'\\\"',stderr:r.stderr||'\\\"'\\\"''\\\"'\\\"'};}const\\n    built=JSON.parse(require('\\\"'\\\"'node:fs'\\\"'\\\"').readFileSync('\\\"'\\\"'/opt/render/project/src/qa338-built.json'\\\"'\\\"'));require('\\\"'\\\"'node:http'\\\"'\\\"').createServer((q,r)=\\u003e{r.setHeader('\\\"'\\\"'Content-Type'\\\"'\\\"','\\\"'\\\"'application/json'\\\"'\\\"');r.end(JSON.stringify({marker:\\\"QA338_2a0916_OMITTED_BRANCH\\\",runtime:'\\\"'\\\"'node'\\\"'\\\"',version:process.version,requested:process.env.NODE_VERSION,tools,built,package_name:source_package.name,package_sha256:source_package_hash}));}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\\n  type: web\\n- autoDeployTrigger: \\\"off\\\"\\n  branch: master\\n  buildCommand: printf '%s\\\\n' QA338_2640a4_OMITTED_BRANCH \\u0026\\u0026 pnpm --version \\u0026\\u0026 node\\n    -e 'const source_bytes=require('\\\"'\\\"'node:fs'\\\"'\\\"').readFileSync('\\\"'\\\"'package.json'\\\"'\\\"'),source_package=JSON.parse(source_bytes),source_package_hash=require('\\\"'\\\"'node:crypto'\\\"'\\\"').createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(source_bytes).digest('\\\"'\\\"'hex'\\\"'\\\"');const\\n    tools={};for(const tool of ['\\\"'\\\"'pnpm'\\\"'\\\"','\\\"'\\\"'npm'\\\"'\\\"','\\\"'\\\"'yarn'\\\"'\\\"','\\\"'\\\"'corepack'\\\"'\\\"']){const\\n    r=require('\\\"'\\\"'node:child_process'\\\"'\\\"').spawnSync(tool,['\\\"'\\\"'--version'\\\"'\\\"'],{encoding:'\\\"'\\\"'utf8'\\\"'\\\"',timeout:10000});tools[tool]={error:r.error?r.error.code:null,status:r.status,stdout:r.stdout||'\\\"'\\\"''\\\"'\\\"',stderr:r.stderr||'\\\"'\\\"''\\\"'\\\"'};}require('\\\"'\\\"'node:fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa338-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA338_2640a4_OMITTED_BRANCH\\\",runtime:'\\\"'\\\"'node'\\\"'\\\"',version:process.version,requested:process.env.NODE_VERSION,tools,package_name:source_package.name,package_sha256:source_package_hash}));'\\n  envVars:\\n  - key: NODE_VERSION\\n    sync: false\\n  name: qa338-2640a4-branch\\n  plan: free\\n  repo: https://github.com/expressjs/serve-static\\n  runtime: node\\n  startCommand: node -e 'const source_bytes=require('\\\"'\\\"'node:fs'\\\"'\\\"').readFileSync('\\\"'\\\"'package.json'\\\"'\\\"'),source_package=JSON.parse(source_bytes),source_package_hash=require('\\\"'\\\"'node:crypto'\\\"'\\\"').createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(source_bytes).digest('\\\"'\\\"'hex'\\\"'\\\"');const\\n    tools={};for(const tool of ['\\\"'\\\"'pnpm'\\\"'\\\"','\\\"'\\\"'npm'\\\"'\\\"','\\\"'\\\"'yarn'\\\"'\\\"','\\\"'\\\"'corepack'\\\"'\\\"']){const\\n    r=require('\\\"'\\\"'node:child_process'\\\"'\\\"').spawnSync(tool,['\\\"'\\\"'--version'\\\"'\\\"'],{encoding:'\\\"'\\\"'utf8'\\\"'\\\"',timeout:10000});tools[tool]={error:r.error?r.error.code:null,status:r.status,stdout:r.stdout||'\\\"'\\\"''\\\"'\\\"',stderr:r.stderr||'\\\"'\\\"''\\\"'\\\"'};}const\\n    built=JSON.parse(require('\\\"'\\\"'node:fs'\\\"'\\\"').readFileSync('\\\"'\\\"'/opt/render/project/src/qa338-built.json'\\\"'\\\"'));require('\\\"'\\\"'node:http'\\\"'\\\"').createServer((q,r)=\\u003e{r.setHeader('\\\"'\\\"'Content-Type'\\\"'\\\"','\\\"'\\\"'application/json'\\\"'\\\"');r.end(JSON.stringify({marker:\\\"QA338_2640a4_OMITTED_BRANCH\\\",runtime:'\\\"'\\\"'node'\\\"'\\\"',version:process.version,requested:process.env.NODE_VERSION,tools,built,package_name:source_package.name,package_sha256:source_package_hash}));}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\\n  type: web\\n\"}}}\n",
+        "stderr": ""
+      },
+      "projection": {
+        "filename": "render.yaml",
+        "services": [
+          {
+            "name": "qa338-2a0916-branch",
+            "repo": "https://github.com/expressjs/serve-static",
+            "branch": "master",
+            "runtime": "node"
+          },
+          {
+            "name": "qa338-2640a4-branch",
+            "repo": "https://github.com/expressjs/serve-static",
+            "branch": "master",
+            "runtime": "node"
+          }
+        ]
+      },
+      "pass": true
+    }
+  ],
+  "final": {
+    "at": "2026-10-16T03:04:30.308845+00:00",
+    "API_only": true,
+    "result": {
+      "at": "2026-10-16T03:04:30.308701+00:00",
+      "API_only": true,
+      "request": {
+        "method": "POST",
+        "path": "/graphql",
+        "body": {
+          "query": "query QA338Export { generateBlueprint(ownerId:\"tea-daif693dqjvc73e7as3g\", serviceIds:[\"srv-db8oqrkdp0tc73djg5m0\", \"srv-db8orfd5dphc73fh8g3g\"]) { manifest filename } }"
+        },
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 2.056,
+      "response": "{\"data\":{\"generateBlueprint\":{\"filename\":\"render.yaml\",\"manifest\":\"services:\\n- autoDeployTrigger: \\\"off\\\"\\n  branch: master\\n  buildCommand: printf '%s\\\\n' QA338_2a0916_OMITTED_BRANCH \\u0026\\u0026 pnpm --version \\u0026\\u0026 node\\n    -e 'const source_bytes=require('\\\"'\\\"'node:fs'\\\"'\\\"').readFileSync('\\\"'\\\"'package.json'\\\"'\\\"'),source_package=JSON.parse(source_bytes),source_package_hash=require('\\\"'\\\"'node:crypto'\\\"'\\\"').createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(source_bytes).digest('\\\"'\\\"'hex'\\\"'\\\"');const\\n    tools={};for(const tool of ['\\\"'\\\"'pnpm'\\\"'\\\"','\\\"'\\\"'npm'\\\"'\\\"','\\\"'\\\"'yarn'\\\"'\\\"','\\\"'\\\"'corepack'\\\"'\\\"']){const\\n    r=require('\\\"'\\\"'node:child_process'\\\"'\\\"').spawnSync(tool,['\\\"'\\\"'--version'\\\"'\\\"'],{encoding:'\\\"'\\\"'utf8'\\\"'\\\"',timeout:10000});tools[tool]={error:r.error?r.error.code:null,status:r.status,stdout:r.stdout||'\\\"'\\\"''\\\"'\\\"',stderr:r.stderr||'\\\"'\\\"''\\\"'\\\"'};}require('\\\"'\\\"'node:fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa338-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA338_2a0916_OMITTED_BRANCH\\\",runtime:'\\\"'\\\"'node'\\\"'\\\"',version:process.version,requested:process.env.NODE_VERSION,tools,package_name:source_package.name,package_sha256:source_package_hash}));'\\n  envVars:\\n  - key: NODE_VERSION\\n    sync: false\\n  name: qa338-2a0916-branch\\n  plan: free\\n  repo: https://github.com/expressjs/serve-static\\n  runtime: node\\n  startCommand: node -e 'const source_bytes=require('\\\"'\\\"'node:fs'\\\"'\\\"').readFileSync('\\\"'\\\"'package.json'\\\"'\\\"'),source_package=JSON.parse(source_bytes),source_package_hash=require('\\\"'\\\"'node:crypto'\\\"'\\\"').createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(source_bytes).digest('\\\"'\\\"'hex'\\\"'\\\"');const\\n    tools={};for(const tool of ['\\\"'\\\"'pnpm'\\\"'\\\"','\\\"'\\\"'npm'\\\"'\\\"','\\\"'\\\"'yarn'\\\"'\\\"','\\\"'\\\"'corepack'\\\"'\\\"']){const\\n    qa_start=Date.now();const r=require('\\\"'\\\"'node:child_process'\\\"'\\\"').spawnSync(tool,['\\\"'\\\"'--version'\\\"'\\\"'],{encoding:'\\\"'\\\"'utf8'\\\"'\\\"',timeout:60000});tools[tool]={elapsed_ms:Date.now()-qa_start,error:r.error?r.error.code:null,status:r.status,stdout:r.stdout||'\\\"'\\\"''\\\"'\\\"',stderr:r.stderr||'\\\"'\\\"''\\\"'\\\"'};}const\\n    built=JSON.parse(require('\\\"'\\\"'node:fs'\\\"'\\\"').readFileSync('\\\"'\\\"'/opt/render/project/src/qa338-built.json'\\\"'\\\"'));require('\\\"'\\\"'node:http'\\\"'\\\"').createServer((q,r)=\\u003e{r.setHeader('\\\"'\\\"'Content-Type'\\\"'\\\"','\\\"'\\\"'application/json'\\\"'\\\"');r.end(JSON.stringify({marker:\\\"QA338_2a0916_OMITTED_BRANCH\\\",runtime:'\\\"'\\\"'node'\\\"'\\\"',version:process.version,requested:process.env.NODE_VERSION,tools,built,package_name:source_package.name,package_sha256:source_package_hash}));}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\\n  type: web\\n- autoDeployTrigger: \\\"off\\\"\\n  branch: master\\n  buildCommand: printf '%s\\\\n' QA338_2640a4_OMITTED_BRANCH \\u0026\\u0026 pnpm --version \\u0026\\u0026 node\\n    -e 'const source_bytes=require('\\\"'\\\"'node:fs'\\\"'\\\"').readFileSync('\\\"'\\\"'package.json'\\\"'\\\"'),source_package=JSON.parse(source_bytes),source_package_hash=require('\\\"'\\\"'node:crypto'\\\"'\\\"').createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(source_bytes).digest('\\\"'\\\"'hex'\\\"'\\\"');const\\n    tools={};for(const tool of ['\\\"'\\\"'pnpm'\\\"'\\\"','\\\"'\\\"'npm'\\\"'\\\"','\\\"'\\\"'yarn'\\\"'\\\"','\\\"'\\\"'corepack'\\\"'\\\"']){const\\n    r=require('\\\"'\\\"'node:child_process'\\\"'\\\"').spawnSync(tool,['\\\"'\\\"'--version'\\\"'\\\"'],{encoding:'\\\"'\\\"'utf8'\\\"'\\\"',timeout:10000});tools[tool]={error:r.error?r.error.code:null,status:r.status,stdout:r.stdout||'\\\"'\\\"''\\\"'\\\"',stderr:r.stderr||'\\\"'\\\"''\\\"'\\\"'};}require('\\\"'\\\"'node:fs'\\\"'\\\"').writeFileSync('\\\"'\\\"'qa338-built.json'\\\"'\\\"',JSON.stringify({marker:\\\"QA338_2640a4_OMITTED_BRANCH\\\",runtime:'\\\"'\\\"'node'\\\"'\\\"',version:process.version,requested:process.env.NODE_VERSION,tools,package_name:source_package.name,package_sha256:source_package_hash}));'\\n  envVars:\\n  - key: NODE_VERSION\\n    sync: false\\n  name: qa338-2640a4-branch\\n  plan: free\\n  repo: https://github.com/expressjs/serve-static\\n  runtime: node\\n  startCommand: node -e 'const source_bytes=require('\\\"'\\\"'node:fs'\\\"'\\\"').readFileSync('\\\"'\\\"'package.json'\\\"'\\\"'),source_package=JSON.parse(source_bytes),source_package_hash=require('\\\"'\\\"'node:crypto'\\\"'\\\"').createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(source_bytes).digest('\\\"'\\\"'hex'\\\"'\\\"');const\\n    tools={};for(const tool of ['\\\"'\\\"'pnpm'\\\"'\\\"','\\\"'\\\"'npm'\\\"'\\\"','\\\"'\\\"'yarn'\\\"'\\\"','\\\"'\\\"'corepack'\\\"'\\\"']){const\\n    r=require('\\\"'\\\"'node:child_process'\\\"'\\\"').spawnSync(tool,['\\\"'\\\"'--version'\\\"'\\\"'],{encoding:'\\\"'\\\"'utf8'\\\"'\\\"',timeout:10000});tools[tool]={error:r.error?r.error.code:null,status:r.status,stdout:r.stdout||'\\\"'\\\"''\\\"'\\\"',stderr:r.stderr||'\\\"'\\\"''\\\"'\\\"'};}const\\n    built=JSON.parse(require('\\\"'\\\"'node:fs'\\\"'\\\"').readFileSync('\\\"'\\\"'/opt/render/project/src/qa338-built.json'\\\"'\\\"'));require('\\\"'\\\"'node:http'\\\"'\\\"').createServer((q,r)=\\u003e{r.setHeader('\\\"'\\\"'Content-Type'\\\"'\\\"','\\\"'\\\"'application/json'\\\"'\\\"');r.end(JSON.stringify({marker:\\\"QA338_2640a4_OMITTED_BRANCH\\\",runtime:'\\\"'\\\"'node'\\\"'\\\"',version:process.version,requested:process.env.NODE_VERSION,tools,built,package_name:source_package.name,package_sha256:source_package_hash}));}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\\n  type: web\\n\"}}}\n",
+      "stderr": ""
+    },
+    "projection": {
+      "filename": "render.yaml",
+      "services": [
+        {
+          "name": "qa338-2a0916-branch",
+          "repo": "https://github.com/expressjs/serve-static",
+          "branch": "master",
+          "runtime": "node"
+        },
+        {
+          "name": "qa338-2640a4-branch",
+          "repo": "https://github.com/expressjs/serve-static",
+          "branch": "master",
+          "runtime": "node"
+        }
+      ]
+    },
+    "pass": true
+  }
+}

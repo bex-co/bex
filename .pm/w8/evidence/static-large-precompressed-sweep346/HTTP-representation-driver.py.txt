@@ -1,0 +1,43 @@
+from pathlib import Path
+import sys,json,hashlib,gzip,subprocess,time
+action=sys.argv[1];assert action in ('headers-ready','probe');f=Path(__file__).with_name('sweep346-common.py');sys.argv=[str(f),'http-'+action,'bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==346);own(x);assert x['headers_intent']['pass'];url=x['create_view']['serviceDetails']['url'];etag='"QA346_'+x['nonce']+'"'
+def sha(b):return hashlib.sha256(b).hexdigest()
+def get(path,offer='br, gzip',extra=None,method='GET',bucket=None):
+ hf=P/'sweep346-response.headers';bf=P/'sweep346-response.body';assert not hf.exists() and not bf.exists();headers={'Accept-Encoding':offer,**(extra or {})};e={'at':now(),'request':{'method':method,'url':url+path,'headers':headers}};bucket.append(e);save();args=['curl','--disable','-sS','--max-time','15','-D',str(hf),'-o','/dev/null' if method=='HEAD' else str(bf),'-w','%{http_code}']
+ if method=='HEAD':args+=['--head']
+ for k,v in headers.items():args+=['-H',k+': '+v]
+ try:
+  if method!='HEAD':bf.touch(mode=0o600)
+  r=subprocess.run([*args,url+path],text=True,capture_output=True,timeout=20);raw=b'' if method=='HEAD' else bf.read_bytes();text=hf.read_text();last=text.replace('\r\n','\n').strip().split('\n\n')[-1];fields={}
+  for line in last.splitlines()[1:]:
+   k,sep,v=line.partition(':')
+   if sep:fields[k.lower()]=fields.get(k.lower(),'')+(', ' if k.lower() in fields else '')+v.strip()
+  e.update(curl_exit=r.returncode,HTTP=r.stdout,stderr=r.stderr,response_headers=text,headers=fields,wire_bytes=len(raw),wire_sha256=sha(raw));save();return e,raw,fields
+ finally:hf.unlink(missing_ok=True);bf.unlink(missing_ok=True)
+if action=='headers-ready':
+ for attempt in range(4):
+  e,raw,hs=get('/saved.txt',method='HEAD',bucket=x.setdefault('header_readiness',[]));e['ready']=e['curl_exit']==0 and e['HTTP']=='200' and hs.get('content-encoding')=='gzip' and hs.get('etag')==etag;save();print(json.dumps({'attempt':attempt+1,'authored_headers_ready':e['ready'],'HTTP':e['HTTP']}),flush=True)
+  if e['ready']:break
+  if attempt<3:time.sleep(10)
+ raise SystemExit(0)
+assert x['header_readiness'][-1]['ready'] and 'large_precompressed_HTTP' not in x;h=history(x);assert h[0]['status']=='live';e={'at':now(),'history':h,'requests':[],'intent':'finite ordinary HTTP representation tests on exact owned static fixture'};x['large_precompressed_HTTP']=e;save()
+def check(z,passed,label):z.update(check=label,pass_result=bool(passed));save();print(json.dumps({'check':label,'HTTP':z['HTTP'],'encoding':z['headers'].get('content-encoding','identity'),'wire_bytes':z['wire_bytes'],'pass':bool(passed)}),flush=True);assert passed,label
+def req(path,offer='br, gzip',extra=None,method='GET'):return get(path,offer,extra,method,e['requests'])
+expected=''.join('QA346_'+x['nonce']+'_'+str(i)+'_'+sha(('qa346:'+x['nonce']+':'+str(i)).encode())+'\n' for i in range(2048)).encode()
+z,raw,hs=req('/manifest.json','identity');manifest=json.loads(raw);e['manifest']=manifest;check(z,z['HTTP']=='200' and manifest['nonce']==x['nonce'] and manifest['identity']['bytes']==len(expected) and manifest['identity']['sha256']==sha(expected) and manifest['gzip']['bytes']>1024,'independent identity reference and eligible-size saved gzip')
+z,raw,hs=req('/plain.txt','identity');check(z,z['HTTP']=='200' and not hs.get('content-encoding') and raw==expected,'identity control')
+z,raw,hs=req('/plain.txt','br');plain=subprocess.run(['node','-e',"const fs=require('node:fs');process.stdout.write(require('node:zlib').brotliDecompressSync(fs.readFileSync(0)))"],input=raw,capture_output=True,check=True).stdout;check(z,z['HTTP']=='200' and hs.get('content-encoding')=='br' and plain==expected and len(raw)<len(expected),'actual automatic Brotli control')
+saved=None
+for offer in ('br, gzip','gzip','br;q=0, gzip;q=1'):
+ z,raw,hs=req('/saved.txt',offer);ok=z['HTTP']=='200' and hs.get('content-encoding')=='gzip' and hs.get('etag')==etag and len(raw)==manifest['gzip']['bytes'] and sha(raw)==manifest['gzip']['sha256'] and gzip.decompress(raw)==expected
+ check(z,ok,'large authored gzip kept byte-exact for '+offer)
+ if saved is None:saved=raw
+ else:assert saved==raw
+z,raw,hs=req('/saved.txt',method='HEAD');check(z,z['HTTP']=='200' and not raw and hs.get('content-encoding')=='gzip' and hs.get('etag')==etag and ('content-length' not in hs or int(hs['content-length'])==len(saved)),'authored gzip HEAD framing')
+z,raw,hs=req('/saved.txt',extra={'Range':'bytes=0-31'});check(z,z['HTTP']=='206' and hs.get('content-encoding')=='gzip' and hs.get('content-range')==f'bytes 0-31/{len(saved)}' and raw==saved[:32],'authored gzip byte range')
+z,raw,hs=req('/saved.txt',extra={'If-None-Match':etag});check(z,z['HTTP']=='304' and not raw and hs.get('etag')==etag,'strong authored gzip validator304')
+z,raw,hs=req('/saved.txt',extra={'If-Match':etag});check(z,z['HTTP']=='200' and raw==saved and hs.get('content-encoding')=='gzip' and hs.get('etag')==etag,'strong authored gzip If-Match stays valid')
+z,raw,hs=req('/saved.txt',extra={'Range':'bytes=0-31','If-Range':etag});check(z,z['HTTP']=='206' and raw==saved[:32] and hs.get('content-encoding')=='gzip','strong authored gzip If-Range')
+z,raw,hs=req('/raw.txt','br');check(z,z['HTTP']=='200' and raw==expected and not hs.get('content-encoding') and 'no-transform' in hs.get('cache-control','').lower(),'large authored no-transform control')
+z,raw,hs=req('/plain.txt','br;q=bogus');check(z,z['HTTP']=='200' and raw==expected and not hs.get('content-encoding'),'malformed offer identity control')
+assert len(e['requests'])==13 and all(z['pass_result'] for z in e['requests']);e['pass']=True;save();print(json.dumps({'HTTP_checks_pass':13,'identity_bytes':len(expected),'saved_gzip_bytes':len(saved),'no_double_compression':True}))

@@ -1,0 +1,50 @@
+[
+  {
+    "case": "default",
+    "choices": [
+      {
+        "Label": "Elixir",
+        "Line": "1.18",
+        "Image": "elixir:1.18@sha256:f3cc81b7f0f897763f7c74e8f526ddaf18b68f0cdbea6dd65b58f2c5c5629fbd",
+        "Source": ""
+      }
+    ],
+    "scope": "actual generated/resolved current-source artifact; image execution is separate"
+  },
+  {
+    "case": "1.17",
+    "choices": [
+      {
+        "Label": "Elixir",
+        "Line": "1.17",
+        "Image": "elixir:1.17@sha256:0bdcc080e296103b68fd5eaf0b39aa947b5c53433894c2a1af6467f9f32245c0",
+        "Source": "ELIXIR_VERSION=1.17"
+      }
+    ],
+    "scope": "actual generated/resolved current-source artifact; image execution is separate"
+  },
+  {
+    "case": "1.18",
+    "choices": [
+      {
+        "Label": "Elixir",
+        "Line": "1.18",
+        "Image": "elixir:1.18@sha256:f3cc81b7f0f897763f7c74e8f526ddaf18b68f0cdbea6dd65b58f2c5c5629fbd",
+        "Source": "ELIXIR_VERSION=1.18"
+      }
+    ],
+    "scope": "actual generated/resolved current-source artifact; image execution is separate"
+  },
+  {
+    "case": "1.19",
+    "choices": [
+      {
+        "Label": "Elixir",
+        "Line": "1.19",
+        "Image": "elixir:1.19@sha256:ead2215da1c6756a4cef5526e55a967e355c345ab3c6c03722618143bc9faa6a",
+        "Source": "ELIXIR_VERSION=1.19"
+      }
+    ],
+    "scope": "actual generated/resolved current-source artifact; image execution is separate"
+  }
+]

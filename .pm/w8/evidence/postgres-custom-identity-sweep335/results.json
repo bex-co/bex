@@ -1,0 +1,24 @@
+{
+  "source_head": "a1adb0cdf138a71edcaaeea58c71cd04d88ca2d3",
+  "serving_SHA": "unobserved",
+  "native_sql_identity_data_pass": 7,
+  "successful_bex_queries": 4,
+  "successful_Render_queries": 3,
+  "native_name_only_updates_pass": 2,
+  "postmaster_identities": 1,
+  "late_after_last_rename_seconds": 131.832,
+  "source_tests_pass": 2,
+  "initial_Render_local_CA_setup_exclusions": 3,
+  "initial_baseline_self_comparison_excluded": true,
+  "connection_info_payload_retained": false,
+  "owned_CA_temp_removed": true,
+  "cleanup": {
+    "postgres": 1,
+    "detail404": true,
+    "list_empty": true,
+    "postgres_quota_used": 0,
+    "postgres_quota_terminating": 0,
+    "baseline_services": 6
+  },
+  "no_new_issue": true
+}

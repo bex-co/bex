@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-16T04:13:56.872140+00:00",
+  "anonymous_containing_refs": [
+    "d1ef63f84ccbcc8f2237e545ba6c91258c27bed0\trefs/heads/v20.x",
+    "9b16463128ba6d281a5d456f0a9e132bc9bdbcbf\trefs/heads/v22.x"
+  ],
+  "source_reference_reused": "sweep343-primary-git-reference.json",
+  "Render_contract": {
+    "url": "https://render.com/docs/blueprint-spec#branch",
+    "observed": "2026-10-16",
+    "paraphrase": "A Git service using a repository different from its Blueprint defaults to its own repository default branch when branch is omitted. Same-repository services use the Blueprint branch.",
+    "scope": "documented field semantics; independent authenticated Render hosting is untested"
+  },
+  "Express_master_ref_verified_at": "2026-10-16T04:17:46.282337+00:00",
+  "Express_master_ref": "109a299c26d2d532027bb6e66e50e365eeb8fcdd\trefs/heads/master",
+  "Express_source_reference_unchanged": true
+}

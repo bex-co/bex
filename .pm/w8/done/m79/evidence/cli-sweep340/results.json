@@ -1,0 +1,20 @@
+{
+  "source_head": "7ee5a95fd1d88dd8766072f497e8e191d51a06cb",
+  "implementation": "5a39b80ff",
+  "desired_image_signal": "45d809f99 pins platform5a39b80ff05a",
+  "serving_SHA": "unobserved",
+  "fresh_native_static_creates_201_exit0": 2,
+  "base_HTTP_correct": 24,
+  "actual_automatic_Brotli_responses": 12,
+  "neighbor_HTTP_pass": 28,
+  "authored_header_API_writes_and_readbacks": 4,
+  "source_top_pass": 17,
+  "source_named_pass": 17,
+  "source_fail": 0,
+  "source_skip": 0,
+  "owned_services_deleted": 2,
+  "owned_children_404": 2,
+  "baseline_services": 6,
+  "terminating": 0,
+  "uncommitted": true
+}

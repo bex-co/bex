@@ -1,0 +1,83 @@
+{
+  "env-groups": {
+    "result": {
+      "at": "2026-10-16T04:09:42.667161+00:00",
+      "api_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups?ownerId=tea-daif693dqjvc73e7as3g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "REDACTED",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 1.112,
+      "response": "[]\n",
+      "stderr": ""
+    },
+    "pass": true
+  },
+  "projects": {
+    "result": {
+      "at": "2026-10-16T04:09:43.201318+00:00",
+      "api_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/projects?ownerId=tea-daif693dqjvc73e7as3g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "REDACTED",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.395,
+      "response": "[]\n",
+      "stderr": ""
+    },
+    "pass": true
+  },
+  "blueprints": {
+    "result": {
+      "at": "2026-10-16T04:09:43.715104+00:00",
+      "api_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/blueprints?ownerId=tea-daif693dqjvc73e7as3g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "REDACTED",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.371,
+      "response": "[{\"id\": \"blp-db136288mmqc73d4hpug\", \"name\": \"bex\", \"repo\": \"https://github.com/bex-co/bex\", \"branch\": \"main\", \"path\": \"render.yaml\", \"status\": \"in_sync\", \"autoSync\": true}]",
+      "stderr": "",
+      "projection": "baseline identity/source only; manifest/configuration omitted"
+    },
+    "pass": true
+  },
+  "quota": {
+    "result": {
+      "at": "2026-10-16T04:09:44.502367+00:00",
+      "api_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "REDACTED",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.648,
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+      "stderr": ""
+    },
+    "pass": true
+  }
+}

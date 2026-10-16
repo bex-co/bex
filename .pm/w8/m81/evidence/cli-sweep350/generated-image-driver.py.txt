@@ -1,0 +1,18 @@
+from pathlib import Path
+import subprocess,json,uuid,datetime,os
+P=Path(__file__).resolve().parent;case=P/'sweep350-source-exports/root-lock-default';meta=P/'sweep350-source-image.json';assert not meta.exists();tag='bex-native-qa350-uv:'+uuid.uuid4().hex[:12];assert subprocess.run(['docker','image','inspect',tag],capture_output=True).returncode!=0
+record={'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'source_head':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'tag':tag,'state':'exact owned generated-image build intent','case':'root-lock-default','qualification':'unmodified real resolver; diagnostic build permits missing uv; default CMD still requires uv; no installer added by QA'}
+def save():meta.write_text(json.dumps(record,indent=2))
+save()
+try:
+ cmd=['docker','build','-q','-t',tag,'--secret','id=render-env,src='+str(case/'env'),str(case/'source')];record['build_command']=cmd;save()
+ with (P/'sweep350-source-image-build.log').open('w') as log:
+  try:r=subprocess.run(cmd,stdout=log,stderr=subprocess.STDOUT,env={**os.environ,'DOCKER_BUILDKIT':'1'},timeout=240);record['build_exit']=r.returncode
+  except subprocess.TimeoutExpired:record['build_exit']=None;record['build_timeout']=True
+ save();assert record['build_exit']==0,'Generated-image build did not complete; inspect private log'
+ code="import json,platform,hashlib,shutil;from pathlib import Path;p=Path('uv.lock');print(json.dumps({'python':platform.python_version(),'architecture':platform.machine(),'uv_path':shutil.which('uv'),'uv_lock_bytes':len(p.read_bytes()),'uv_lock_sha256':hashlib.sha256(p.read_bytes()).hexdigest()}))"
+ r=subprocess.run(['docker','run','--rm','--network=none','--entrypoint','python',tag,'-c',code],text=True,capture_output=True,timeout=20);record['runtime_snapshot']={'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr};save();assert r.returncode==0;v=json.loads(r.stdout);reference=json.loads((P/'sweep350-primary-reference.json').read_text());assert v['python'].startswith('3.12.') and v['uv_lock_sha256']==reference['files']['uv.lock']['sha256'] and v['uv_lock_bytes']==reference['files']['uv.lock']['bytes']
+ r=subprocess.run(['docker','run','--rm','--network=none',tag],text=True,capture_output=True,timeout=30);record['default_CMD']={'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr};record['uv_missing_with_positive_controls']=v['uv_path'] is None and r.returncode==127 and 'uv: command not found' in r.stderr and 'Python 3.12.' in r.stdout and 'pip ' in r.stdout and 'Poetry (version 2.1.3)' in r.stdout;save();assert record['uv_missing_with_positive_controls'];record['state']='source Docker observation complete; target uv command fails127'
+finally:
+ r=subprocess.run(['docker','image','rm','-f',tag],text=True,capture_output=True,timeout=25);record['image_cleanup']={'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr};record['tag_absent_after_cleanup']=subprocess.run(['docker','image','inspect',tag],capture_output=True).returncode!=0;save()
+print(json.dumps({'build_exit':record['build_exit'],'uv_missing_with_Python_Pip_Poetry_controls':record.get('uv_missing_with_positive_controls'),'default_CMD_exit':record.get('default_CMD',{}).get('exit'),'own_tag_removed':record['tag_absent_after_cleanup']}))

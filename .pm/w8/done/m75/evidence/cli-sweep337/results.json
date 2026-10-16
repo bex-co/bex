@@ -1,0 +1,30 @@
+{
+  "source_head": "5f2ce270db6551730ceef066576eba01e6375557",
+  "implementation": "a1f1d7288",
+  "desired_image_signal": "5f2ce270d pins a1adb0cdf138; serving SHA unobserved",
+  "serving_SHA": "unobserved",
+  "main_native_calls_pass": 80,
+  "native_client_counts": {
+    "installed Bex0.2.1": 12,
+    "published Bex0.3.2": 34,
+    "unchanged Render2.27": 34
+  },
+  "retained_per_kind_name_controls": 36,
+  "qualified_implicit_documents": 9,
+  "additional_native_wire_captures_pass": 8,
+  "API_only_GraphQL_calls_pass": 17,
+  "API_only_MCP_calls_pass": 17,
+  "source_top_tests_pass": 6,
+  "source_named_passes": 40,
+  "source_failures": 0,
+  "source_skips": 0,
+  "resources_created": 0,
+  "baseline_services": 6,
+  "baseline_blueprints": 1,
+  "groups": 0,
+  "projects": 0,
+  "postgres_usage": 0,
+  "keyvalue_usage": 0,
+  "service_terminating": 0,
+  "QA_product_implementation": false
+}

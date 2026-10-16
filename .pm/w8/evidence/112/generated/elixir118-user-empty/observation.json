@@ -1,0 +1,15 @@
+{
+  "case": "elixir118-user-empty",
+  "choices": [
+    {
+      "Label": "Elixir",
+      "Line": "1.18",
+      "Image": "elixir:1.18@sha256:f3cc81b7f0f897763f7c74e8f526ddaf18b68f0cdbea6dd65b58f2c5c5629fbd",
+      "Source": "ELIXIR_VERSION=1.18"
+    }
+  ],
+  "generated_default_MIX_ENV_present": false,
+  "qualification": "unchanged real generator/resolver; configured env bundle is decoded at authored RUN and runtime user env is separate; no Docker execution or fixed regression asserted",
+  "user_MIX_ENV": "",
+  "user_MIX_ENV_present": true
+}

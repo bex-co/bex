@@ -1,0 +1,36 @@
+[
+  {
+    "stage": "bare",
+    "command": [
+      "npm",
+      "run",
+      "build-nocolor"
+    ],
+    "exit": 127,
+    "stdout": "\n> eleventy-base-blog@9.0.0 build-nocolor\n> cross-env NODE_DISABLE_COLORS=1 npx @11ty/eleventy\n\n",
+    "stderr": "sh: cross-env: command not found\n"
+  },
+  {
+    "stage": "install",
+    "command": [
+      "npm",
+      "ci",
+      "--no-audit",
+      "--no-fund"
+    ],
+    "exit": 0,
+    "stdout": "\nadded 151 packages in 1s\n",
+    "stderr": ""
+  },
+  {
+    "stage": "installed-build",
+    "command": [
+      "npm",
+      "run",
+      "build-nocolor"
+    ],
+    "exit": 0,
+    "stdout": "\n> eleventy-base-blog@9.0.0 build-nocolor\n> cross-env NODE_DISABLE_COLORS=1 npx @11ty/eleventy\n\n[11ty/image] Processing ./content/blog/fourthpost/possum.png (transform)\n[11ty] Writing ./_site/feed/feed.xml from ./content/eleventy-plugin-feed-blog-title-atom.njk (virtual)\n[11ty] Writing ./_site/sitemap.xml from ./content/sitemap.xml.njk\n[11ty/image] Processing ./content/blog/fourthpost/possum.png (transform)\n[11ty] Writing ./_site/tags/index.html from ./content/tags.njk\n[11ty] Writing ./_site/blog/index.html from ./content/blog.njk\n[11ty] Writing ./_site/tags/another-tag/index.html from ./content/tag-pages.njk\n[11ty] Writing ./_site/tags/number-2/index.html from ./content/tag-pages.njk\n[11ty] Writing ./_site/tags/second-tag/index.html from ./content/tag-pages.njk\n[11ty] Writing ./_site/tags/posts-with-two-tags/index.html from ./content/tag-pages.njk\n[11ty] Writing ./_site/index.html from ./content/index.njk\n[11ty] Writing ./_site/404.html from ./content/404.md (njk)\n[11ty] Writing ./_site/about/index.html from ./content/about.md (njk)\n[11ty] Writing ./_site/blog/firstpost/index.html from ./content/blog/firstpost.md (njk)\n[11ty] Writing ./_site/blog/secondpost/index.html from ./content/blog/secondpost.md (njk)\n[11ty] Writing ./_site/blog/thirdpost/index.html from ./content/blog/thirdpost.md (njk)\n[11ty] Writing ./_site/blog/fourthpost/index.html from ./content/blog/fourthpost/fourthpost.md (njk)\n[11ty/eleventy-img] 1 image optimized\n[11ty] Copied 2 Wrote 15 files in 0.83 seconds (v3.1.7)\n",
+    "stderr": ""
+  }
+]

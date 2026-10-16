@@ -1,0 +1,1 @@
+bex postgres create --name qa-20261016-1a5fcc-pgext --plan free --version 18 --region frankfurt --connection-pool none --database-name qa353_db_1a5fcc --database-user qa353_user_1a5fcc --confirm -o json

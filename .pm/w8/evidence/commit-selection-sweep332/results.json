@@ -1,0 +1,26 @@
+{
+  "source_head": "a1adb0cdf138a71edcaaeea58c71cd04d88ca2d3",
+  "serving_SHA": "unobserved",
+  "runtime_comparisons_pass": 3,
+  "completed_native_waits_pass": 2,
+  "short_SHA_bytes": 12,
+  "source_tests_pass": 10,
+  "full_SHA_request": "native accepted; new own row remained queued for entire 240-second harness window; native completion unknown",
+  "harness_exit": 124,
+  "interrupted_native_exit": null,
+  "pending_owned_child_canceled": true,
+  "unexecuted": [
+    "clear-cache",
+    "rollback",
+    "post-rollback deploy"
+  ],
+  "native_wire_not_intercepted": true,
+  "cleanup": {
+    "services": 1,
+    "deploy_children": 4,
+    "all_absent": true,
+    "baseline_services": 6,
+    "quota_terminating": 0
+  },
+  "no_new_confirmed_issue": true
+}

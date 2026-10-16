@@ -1,0 +1,14 @@
+[
+  {
+    "case": "persistent",
+    "stage": "sync_result",
+    "only_owned_service": true,
+    "other_resource_families": 0
+  },
+  {
+    "case": "inline",
+    "stage": "inline_result",
+    "only_owned_service": true,
+    "other_resource_families": 0
+  }
+]

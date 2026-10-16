@@ -1,0 +1,21 @@
+{
+  "source_head": "7ee5a95fd1d88dd8766072f497e8e191d51a06cb",
+  "implementation": "a83eb72ad",
+  "desired_image_signal": "45d809f99 pins platform5a39b80ff05a",
+  "serving_SHA": "unobserved",
+  "origin_cases": 9,
+  "existing_target_cases": 8,
+  "native_calls_pass": 51,
+  "native_wire_calls_pass": 8,
+  "shared_API_calls_pass": 34,
+  "source_top_tests_pass": 9,
+  "source_named_events_pass": 80,
+  "source_fail": 0,
+  "source_skip": 0,
+  "owned_services_deleted": 2,
+  "owned_child_deploys_404": 2,
+  "baseline_services": 6,
+  "terminating": 0,
+  "QA_product_edit": false,
+  "uncommitted": true
+}

@@ -1,0 +1,28 @@
+from pathlib import Path
+import sys,json,yaml,re,datetime,subprocess,shutil,time,os
+os.umask(0o077);P=Path(__file__).resolve().parent;CP=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(CP.read_text());g=c['sweep339_host_acceptance'];matrix=sys.argv[1];assert matrix in ('origin','target');assert c.get('sync339_result')==0 and not c.get('active_sync_stash')
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():c['last_updated']=now();CP.write_text(json.dumps(c,indent=2));CP.chmod(0o600)
+def locations(case):
+ root=yaml.compose(case['manifest']);out=[]
+ for path in case['expected_error_paths']:
+  node=root
+  for t in re.findall(r'[^.\[\]]+',path):node=node.value[int(t)] if t.isdigit() else next(v for k,v in node.value if k.value==t)
+  out.append({'path':path,'line':node.start_mark.line+1,'column':node.start_mark.column+1})
+ return out
+if matrix=='target':assert all(x.get('observations',[])[-1]['ready'] for x in c['resources'] if x.get('sweep')==339)
+f=P/'sweep339-validation-render.yaml';cfg=P/'render-config/cli.yaml';assert not f.exists() and not cfg.exists()
+try:
+ for client,runner,flags in [('installed Bex0.2.1','run.py',[]),('published Bex0.3.2','run.py',['--release']),('unchanged Render2.27','run-render.py',[])]:
+  cases=[z for z in g['cases'] if z['case'].startswith(matrix+'/')];before=len(g['results'])
+  for case in cases:
+   assert not any(z['case']==case['case'] and z['client']==client for z in g['results']);f.write_text(case['manifest']);args=['blueprints','validate',str(f),'--confirm','-o','json'];e={'at':now(),'client':client,'case':case['case'],'command':[client,*args],'expected_locations':locations(case),'intent':'finite native validation only, no apply'};g['results'].append(e);save()
+   try:
+    if runner=='run-render.py':assert not cfg.exists();shutil.copyfile(P/'config/cli.yaml',cfg);cfg.chmod(0o600)
+    r=json.loads(subprocess.check_output(['python3',str(P/runner),*flags,'--bound=35',*args],text=True,timeout=50));e['native']=r
+   finally:f.unlink(missing_ok=True);cfg.unlink(missing_ok=True)
+   try:v=json.loads(r['stdout'])
+   except ValueError:v=None
+   errors=(v or {}).get('errors') or [];actual=[{k:z.get(k) for k in ('path','line','column')} for z in errors];e.update(decoded=v,validity_exit_match=bool(isinstance(v,dict) and v.get('valid')==case['expected_valid'] and r['exit']==(0 if case['expected_valid'] else 1)),locations_match=actual==e['expected_locations']);e['pass']=e['validity_exit_match'] and e['locations_match'];save();assert e['pass'],{'case':case['case'],'client':client,'actual':v,'expected':e['expected_locations']};time.sleep(.4)
+  rows=g['results'][before:];print(json.dumps({'matrix':matrix,'client':client,'native_pass':len(rows),'authored_locations_pass':all(z['locations_match'] for z in rows)}),flush=True)
+finally:g['input_removed']=not f.exists();g['copied_render_config_removed']=not cfg.exists();save()

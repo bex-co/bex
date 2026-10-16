@@ -1,0 +1,48 @@
+{
+  "source_head": "f373dd508ab22da646c8eb260fd7cdf90c683305",
+  "serving_revision": "unobserved",
+  "primary_contract": [
+    {
+      "url": "https://render.com/docs/environment-variables",
+      "relevant_default": "Python GUNICORN_CMD_ARGS=--preload --access-logfile - --bind=0.0.0.0:10000 at build and runtime"
+    },
+    {
+      "url": "https://render.com/docs/deploy-flask",
+      "relevant_start": "pip install -r requirements.txt; gunicorn app:app; Render example app"
+    }
+  ],
+  "exact_observed_dependency_source": {
+    "Gunicorn": "26.2.0",
+    "source": "https://github.com/benoitc/gunicorn/tree/26.2.0",
+    "consumer_config": "gunicorn/config.py:79-82,616-626,1018-1030,1323-1334",
+    "consumer_load": "gunicorn/app/base.py:159-182",
+    "consumer_emission": "gunicorn/glogging.py:204-211,331-357"
+  },
+  "dedupe": {
+    "pattern": "gunicorn|GUNICORN_CMD_ARGS|access.logfile|preload_app",
+    "all_workstreams_non_evidence_matches": "",
+    "exit": 1,
+    "related": [
+      "w8/111 Node runtime-only default",
+      "w8/112 Elixir both-phase default",
+      "w4/m213 JS executable suppliers"
+    ],
+    "conclusion": "no existing Gunicorn default finding; distinct primary Python variable and application log producer"
+  },
+  "source_targets": {
+    "native_generator": "lego/operator/internal/build/native.go:262-284",
+    "resolver": "lego/operator/internal/build/nativeresolve.go:50-102",
+    "single_generator_call": "lego/operator/internal/build/native.go:330",
+    "preparer_buildkit": "lego/operator/internal/build/build.go:941-946,1126-1128",
+    "runtime_env": "lego/operator/internal/controller/deployment_projection.go:260-261;app_controller.go:4676-4677,4831-4886,5754-5755",
+    "log_consumer": "lego/backend/internal/logs/service.go:45-55,548-623"
+  },
+  "qualification": "both live native originals/controls/late default rereads and six shared configuration checks passed; both parents/four children cleaned; actual generated artifact not executed locally",
+  "port_qualification": {
+    "observed": "runtime Gunicorn default0.0.0.0:3000 from platform-owned PORT; normal app works",
+    "contract": "Render documents full args bind10000; Bex normal configured port3000 must be preserved",
+    "bounded_candidate": "missing preload and stdout application access logging; not port/default-CONFIG-string equality or startup failure",
+    "control": "documented preload/log settings with bind adapted to same actual configured3000; not literal full Render environment acceptance",
+    "fix_constraint": "do not hardcode10000 over actual platform port or copy that bind blindly; image default preload/access flags can leave Gunicorn PORT-derived bind intact"
+  }
+}

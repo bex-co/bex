@@ -1,0 +1,3070 @@
+[
+  {
+    "sweep": 340,
+    "client": "bex",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "name": "qa-20261016-93efae-bex-enc",
+    "nonce": "93efae",
+    "marker": "QA340_93efae_static_site\n",
+    "time": "2026-10-16T03:17:57.544481+00:00",
+    "source_head": "7ee5a95fd1d88dd8766072f497e8e191d51a06cb",
+    "type": "static_site",
+    "commands": {
+      "build": "node -e 'const fs=require('\"'\"'node:fs'\"'\"');fs.mkdirSync('\"'\"'public'\"'\"',{recursive:true});fs.writeFileSync('\"'\"'public/index.html'\"'\"',\"QA340_93efae_static_site\\n\");fs.writeFileSync('\"'\"'public/payload.txt'\"'\"',\"QA340_93efae_0123456789abcdef\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/app.js'\"'\"',\"// QA340_93efae\\nconsole.log('\"'\"'ordinary static asset'\"'\"');\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/app.css'\"'\"',\"/* QA340_93efae */\\n.example { color: blue; padding: 1px; }\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/asset.bin'\"'\"',Buffer.from([...Array(256).keys()]));const z=require('\"'\"'node:zlib'\"'\"'),h=b=>require('\"'\"'node:crypto'\"'\"').createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');const pre=Buffer.from('\"'\"'QA340_PRECOMPRESSED_ordinary_javascript\\n'\"'\"'.repeat(4096)),gz=z.gzipSync(pre),raw=Buffer.from('\"'\"'QA340_NO_TRANSFORM_ordinary_css\\n'\"'\"'.repeat(4096));fs.mkdirSync('\"'\"'public/pre'\"'\"',{recursive:true});fs.mkdirSync('\"'\"'public/raw'\"'\"',{recursive:true});fs.writeFileSync('\"'\"'public/pre/app.js'\"'\"',gz);fs.writeFileSync('\"'\"'public/raw/app.css'\"'\"',raw);fs.writeFileSync('\"'\"'public/probe-manifest.json'\"'\"',JSON.stringify({pre:{wire_sha256:h(gz),wire_bytes:gz.length,identity_sha256:h(pre),identity_bytes:pre.length},raw:{sha256:h(raw),bytes:raw.length}}));'",
+      "start": ""
+    },
+    "capacity": {
+      "at": "2026-10-16T03:17:56.430372+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.365,
+      "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+      "stderr": ""
+    },
+    "pre_inventory": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.064,
+      "stdout": "[{\"id\": \"srv-dap3v694dm7c7390q930\", \"name\": \"qa-20260922-cd9361-boundary\"}, {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"name\": \"qa-20260922-cd9361-longcronxx\"}, {\"id\": \"srv-dap3r714dm7c7390q91g\", \"name\": \"qa-20260922-cd9361-nativecron\"}, {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"name\": \"hello-go\"}, {\"id\": \"srv-db09vbgehcmc739j12i0\", \"name\": \"qa-20261003-c63833-zero-head\"}, {\"id\": \"srv-db09u90ehcmc739j12cg\", \"name\": \"qa-20261003-f592c7-zero\"}]",
+      "stderr": "",
+      "native_exit": 0,
+      "projection": "baseline identity/name only; configuration omitted"
+    },
+    "pre_ids": [
+      "srv-dap3v694dm7c7390q930",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-db09vbgehcmc739j12i0",
+      "srv-db09u90ehcmc739j12cg"
+    ],
+    "dependency_ids": [],
+    "recorded_child_ids": [
+      "dep-db8pepi9cl7s73ae46l0"
+    ],
+    "create_command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261016-93efae-bex-enc",
+      "--type",
+      "static_site",
+      "--repo",
+      "https://github.com/expressjs/serve-static",
+      "--branch",
+      "master",
+      "--build-command",
+      "node -e 'const fs=require('\"'\"'node:fs'\"'\"');fs.mkdirSync('\"'\"'public'\"'\"',{recursive:true});fs.writeFileSync('\"'\"'public/index.html'\"'\"',\"QA340_93efae_static_site\\n\");fs.writeFileSync('\"'\"'public/payload.txt'\"'\"',\"QA340_93efae_0123456789abcdef\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/app.js'\"'\"',\"// QA340_93efae\\nconsole.log('\"'\"'ordinary static asset'\"'\"');\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/app.css'\"'\"',\"/* QA340_93efae */\\n.example { color: blue; padding: 1px; }\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/asset.bin'\"'\"',Buffer.from([...Array(256).keys()]));const z=require('\"'\"'node:zlib'\"'\"'),h=b=>require('\"'\"'node:crypto'\"'\"').createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');const pre=Buffer.from('\"'\"'QA340_PRECOMPRESSED_ordinary_javascript\\n'\"'\"'.repeat(4096)),gz=z.gzipSync(pre),raw=Buffer.from('\"'\"'QA340_NO_TRANSFORM_ordinary_css\\n'\"'\"'.repeat(4096));fs.mkdirSync('\"'\"'public/pre'\"'\"',{recursive:true});fs.mkdirSync('\"'\"'public/raw'\"'\"',{recursive:true});fs.writeFileSync('\"'\"'public/pre/app.js'\"'\"',gz);fs.writeFileSync('\"'\"'public/raw/app.css'\"'\"',raw);fs.writeFileSync('\"'\"'public/probe-manifest.json'\"'\"',JSON.stringify({pre:{wire_sha256:h(gz),wire_bytes:gz.length,identity_sha256:h(pre),identity_bytes:pre.length},raw:{sha256:h(raw),bytes:raw.length}}));'",
+      "--publish-directory",
+      "public",
+      "--env-var",
+      "NODE_VERSION=24",
+      "--env-var",
+      "SKIP_INSTALL_DEPS=true",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "state": "deleted: native0/detail404/listabsent/runtime404/baseline6/quota terminating0",
+    "create_result": {
+      "binary": "published Bex 0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--name",
+        "qa-20261016-93efae-bex-enc",
+        "--type",
+        "static_site",
+        "--repo",
+        "https://github.com/expressjs/serve-static",
+        "--branch",
+        "master",
+        "--build-command",
+        "node -e 'const fs=require('\"'\"'node:fs'\"'\"');fs.mkdirSync('\"'\"'public'\"'\"',{recursive:true});fs.writeFileSync('\"'\"'public/index.html'\"'\"',\"QA340_93efae_static_site\\n\");fs.writeFileSync('\"'\"'public/payload.txt'\"'\"',\"QA340_93efae_0123456789abcdef\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/app.js'\"'\"',\"// QA340_93efae\\nconsole.log('\"'\"'ordinary static asset'\"'\"');\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/app.css'\"'\"',\"/* QA340_93efae */\\n.example { color: blue; padding: 1px; }\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/asset.bin'\"'\"',Buffer.from([...Array(256).keys()]));const z=require('\"'\"'node:zlib'\"'\"'),h=b=>require('\"'\"'node:crypto'\"'\"').createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');const pre=Buffer.from('\"'\"'QA340_PRECOMPRESSED_ordinary_javascript\\n'\"'\"'.repeat(4096)),gz=z.gzipSync(pre),raw=Buffer.from('\"'\"'QA340_NO_TRANSFORM_ordinary_css\\n'\"'\"'.repeat(4096));fs.mkdirSync('\"'\"'public/pre'\"'\"',{recursive:true});fs.mkdirSync('\"'\"'public/raw'\"'\"',{recursive:true});fs.writeFileSync('\"'\"'public/pre/app.js'\"'\"',gz);fs.writeFileSync('\"'\"'public/raw/app.css'\"'\"',raw);fs.writeFileSync('\"'\"'public/probe-manifest.json'\"'\"',JSON.stringify({pre:{wire_sha256:h(gz),wire_bytes:gz.length,identity_sha256:h(pre),identity_bytes:pre.length},raw:{sha256:h(raw),bytes:raw.length}}));'",
+        "--publish-directory",
+        "public",
+        "--env-var",
+        "NODE_VERSION=24",
+        "--env-var",
+        "SKIP_INSTALL_DEPS=true",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.165,
+      "stdout": "{\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"master\", \"createdAt\": \"2026-10-16T03:17:58Z\", \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db8pepi9cl7s73ae46kg\", \"id\": \"srv-db8pepi9cl7s73ae46kg\", \"name\": \"qa-20261016-93efae-bex-enc\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/expressjs/serve-static\", \"rootDir\": \"\", \"serviceDetails\": {\"buildCommand\": \"node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"');fs.mkdirSync('\\\"'\\\"'public'\\\"'\\\"',{recursive:true});fs.writeFileSync('\\\"'\\\"'public/index.html'\\\"'\\\"',\\\"QA340_93efae_static_site\\\\n\\\");fs.writeFileSync('\\\"'\\\"'public/payload.txt'\\\"'\\\"',\\\"QA340_93efae_0123456789abcdef\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/app.js'\\\"'\\\"',\\\"// QA340_93efae\\\\nconsole.log('\\\"'\\\"'ordinary static asset'\\\"'\\\"');\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/app.css'\\\"'\\\"',\\\"/* QA340_93efae */\\\\n.example { color: blue; padding: 1px; }\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/asset.bin'\\\"'\\\"',Buffer.from([...Array(256).keys()]));const z=require('\\\"'\\\"'node:zlib'\\\"'\\\"'),h=b=>require('\\\"'\\\"'node:crypto'\\\"'\\\"').createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');const pre=Buffer.from('\\\"'\\\"'QA340_PRECOMPRESSED_ordinary_javascript\\\\n'\\\"'\\\"'.repeat(4096)),gz=z.gzipSync(pre),raw=Buffer.from('\\\"'\\\"'QA340_NO_TRANSFORM_ordinary_css\\\\n'\\\"'\\\"'.repeat(4096));fs.mkdirSync('\\\"'\\\"'public/pre'\\\"'\\\"',{recursive:true});fs.mkdirSync('\\\"'\\\"'public/raw'\\\"'\\\"',{recursive:true});fs.writeFileSync('\\\"'\\\"'public/pre/app.js'\\\"'\\\"',gz);fs.writeFileSync('\\\"'\\\"'public/raw/app.css'\\\"'\\\"',raw);fs.writeFileSync('\\\"'\\\"'public/probe-manifest.json'\\\"'\\\"',JSON.stringify({pre:{wire_sha256:h(gz),wire_bytes:gz.length,identity_sha256:h(pre),identity_bytes:pre.length},raw:{sha256:h(raw),bytes:raw.length}}));'\", \"numInstances\": 1, \"plan\": \"free\", \"publishPath\": \"public\", \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"url\": \"https://qa-20261016-93efae-bex-enc.onbex.co\"}, \"slug\": \"qa-20261016-93efae-bex-enc\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"static_site\", \"updatedAt\": \"2026-10-16T03:17:58.573332002Z\"}",
+      "stderr": "",
+      "captures": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/v1/services",
+            "body": {
+              "autoDeploy": "no",
+              "branch": "master",
+              "envVars": [
+                {
+                  "key": "NODE_VERSION",
+                  "value": "24"
+                },
+                {
+                  "key": "SKIP_INSTALL_DEPS",
+                  "value": "true"
+                }
+              ],
+              "name": "qa-20261016-93efae-bex-enc",
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "repo": "https://github.com/expressjs/serve-static",
+              "serviceDetails": {
+                "buildCommand": "node -e 'const fs=require('\"'\"'node:fs'\"'\"');fs.mkdirSync('\"'\"'public'\"'\"',{recursive:true});fs.writeFileSync('\"'\"'public/index.html'\"'\"',\"QA340_93efae_static_site\\n\");fs.writeFileSync('\"'\"'public/payload.txt'\"'\"',\"QA340_93efae_0123456789abcdef\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/app.js'\"'\"',\"// QA340_93efae\\nconsole.log('\"'\"'ordinary static asset'\"'\"');\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/app.css'\"'\"',\"/* QA340_93efae */\\n.example { color: blue; padding: 1px; }\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/asset.bin'\"'\"',Buffer.from([...Array(256).keys()]));const z=require('\"'\"'node:zlib'\"'\"'),h=b=>require('\"'\"'node:crypto'\"'\"').createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');const pre=Buffer.from('\"'\"'QA340_PRECOMPRESSED_ordinary_javascript\\n'\"'\"'.repeat(4096)),gz=z.gzipSync(pre),raw=Buffer.from('\"'\"'QA340_NO_TRANSFORM_ordinary_css\\n'\"'\"'.repeat(4096));fs.mkdirSync('\"'\"'public/pre'\"'\"',{recursive:true});fs.mkdirSync('\"'\"'public/raw'\"'\"',{recursive:true});fs.writeFileSync('\"'\"'public/pre/app.js'\"'\"',gz);fs.writeFileSync('\"'\"'public/raw/app.css'\"'\"',raw);fs.writeFileSync('\"'\"'public/probe-manifest.json'\"'\"',JSON.stringify({pre:{wire_sha256:h(gz),wire_bytes:gz.length,identity_sha256:h(pre),identity_bytes:pre.length},raw:{sha256:h(raw),bytes:raw.length}}));'",
+                "publishPath": "public"
+              },
+              "type": "static_site"
+            },
+            "raw_body": "{\"autoDeploy\":\"no\",\"branch\":\"master\",\"envVars\":[{\"key\":\"NODE_VERSION\",\"value\":\"24\"},{\"key\":\"SKIP_INSTALL_DEPS\",\"value\":\"true\"}],\"name\":\"qa-20261016-93efae-bex-enc\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"repo\":\"https://github.com/expressjs/serve-static\",\"serviceDetails\":{\"buildCommand\":\"node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"');fs.mkdirSync('\\\"'\\\"'public'\\\"'\\\"',{recursive:true});fs.writeFileSync('\\\"'\\\"'public/index.html'\\\"'\\\"',\\\"QA340_93efae_static_site\\\\n\\\");fs.writeFileSync('\\\"'\\\"'public/payload.txt'\\\"'\\\"',\\\"QA340_93efae_0123456789abcdef\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/app.js'\\\"'\\\"',\\\"// QA340_93efae\\\\nconsole.log('\\\"'\\\"'ordinary static asset'\\\"'\\\"');\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/app.css'\\\"'\\\"',\\\"/* QA340_93efae */\\\\n.example { color: blue; padding: 1px; }\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/asset.bin'\\\"'\\\"',Buffer.from([...Array(256).keys()]));const z=require('\\\"'\\\"'node:zlib'\\\"'\\\"'),h=b=\\u003erequire('\\\"'\\\"'node:crypto'\\\"'\\\"').createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');const pre=Buffer.from('\\\"'\\\"'QA340_PRECOMPRESSED_ordinary_javascript\\\\n'\\\"'\\\"'.repeat(4096)),gz=z.gzipSync(pre),raw=Buffer.from('\\\"'\\\"'QA340_NO_TRANSFORM_ordinary_css\\\\n'\\\"'\\\"'.repeat(4096));fs.mkdirSync('\\\"'\\\"'public/pre'\\\"'\\\"',{recursive:true});fs.mkdirSync('\\\"'\\\"'public/raw'\\\"'\\\"',{recursive:true});fs.writeFileSync('\\\"'\\\"'public/pre/app.js'\\\"'\\\"',gz);fs.writeFileSync('\\\"'\\\"'public/raw/app.css'\\\"'\\\"',raw);fs.writeFileSync('\\\"'\\\"'public/probe-manifest.json'\\\"'\\\"',JSON.stringify({pre:{wire_sha256:h(gz),wire_bytes:gz.length,identity_sha256:h(pre),identity_bytes:pre.length},raw:{sha256:h(raw),bytes:raw.length}}));'\",\"publishPath\":\"public\"},\"type\":\"static_site\"}",
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "Content-Type": "application/json",
+              "X-Bex-Cli-Version": "0.3.2"
+            },
+            "authorization": "[REDACTED]"
+          },
+          "status": 201,
+          "response": "{\"service\": {\"id\": \"srv-db8pepi9cl7s73ae46kg\", \"name\": \"qa-20261016-93efae-bex-enc\", \"immutableName\": \"qa-20261016-93efae-bex-enc\", \"slug\": \"qa-20261016-93efae-bex-enc\", \"displayName\": \"\", \"type\": \"static_site\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db8pepi9cl7s73ae46kg\", \"createdAt\": \"2026-10-16T03:17:58Z\", \"updatedAt\": \"2026-10-16T03:17:58.573332002Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"buildCommand\": \"node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"');fs.mkdirSync('\\\"'\\\"'public'\\\"'\\\"',{recursive:true});fs.writeFileSync('\\\"'\\\"'public/index.html'\\\"'\\\"',\\\"QA340_93efae_static_site\\\\n\\\");fs.writeFileSync('\\\"'\\\"'public/payload.txt'\\\"'\\\"',\\\"QA340_93efae_0123456789abcdef\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/app.js'\\\"'\\\"',\\\"// QA340_93efae\\\\nconsole.log('\\\"'\\\"'ordinary static asset'\\\"'\\\"');\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/app.css'\\\"'\\\"',\\\"/* QA340_93efae */\\\\n.example { color: blue; padding: 1px; }\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/asset.bin'\\\"'\\\"',Buffer.from([...Array(256).keys()]));const z=require('\\\"'\\\"'node:zlib'\\\"'\\\"'),h=b=>require('\\\"'\\\"'node:crypto'\\\"'\\\"').createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');const pre=Buffer.from('\\\"'\\\"'QA340_PRECOMPRESSED_ordinary_javascript\\\\n'\\\"'\\\"'.repeat(4096)),gz=z.gzipSync(pre),raw=Buffer.from('\\\"'\\\"'QA340_NO_TRANSFORM_ordinary_css\\\\n'\\\"'\\\"'.repeat(4096));fs.mkdirSync('\\\"'\\\"'public/pre'\\\"'\\\"',{recursive:true});fs.mkdirSync('\\\"'\\\"'public/raw'\\\"'\\\"',{recursive:true});fs.writeFileSync('\\\"'\\\"'public/pre/app.js'\\\"'\\\"',gz);fs.writeFileSync('\\\"'\\\"'public/raw/app.css'\\\"'\\\"',raw);fs.writeFileSync('\\\"'\\\"'public/probe-manifest.json'\\\"'\\\"',JSON.stringify({pre:{wire_sha256:h(gz),wire_bytes:gz.length,identity_sha256:h(pre),identity_bytes:pre.length},raw:{sha256:h(raw),bytes:raw.length}}));'\", \"numInstances\": 1, \"plan\": \"free\", \"publishPath\": \"public\", \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"url\": \"https://qa-20261016-93efae-bex-enc.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"repo\": \"https://github.com/expressjs/serve-static\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}, \"deployId\": \"dep-db8pepi9cl7s73ae46l0\"}",
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a4b3e9dcbf168b3c-SJC"
+          }
+        }
+      ],
+      "qualification": "actual native POST forwarded unchanged to production; owned local relay and copied config cleaned",
+      "native_exit": 0
+    },
+    "id": "srv-db8pepi9cl7s73ae46kg",
+    "create_view": {
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "branch": "master",
+      "createdAt": "2026-10-16T03:17:58Z",
+      "dashboardUrl": "https://dashboard.bex.co/static/srv-db8pepi9cl7s73ae46kg",
+      "id": "srv-db8pepi9cl7s73ae46kg",
+      "name": "qa-20261016-93efae-bex-enc",
+      "notifyOnFail": "default",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/expressjs/serve-static",
+      "rootDir": "",
+      "serviceDetails": {
+        "buildCommand": "node -e 'const fs=require('\"'\"'node:fs'\"'\"');fs.mkdirSync('\"'\"'public'\"'\"',{recursive:true});fs.writeFileSync('\"'\"'public/index.html'\"'\"',\"QA340_93efae_static_site\\n\");fs.writeFileSync('\"'\"'public/payload.txt'\"'\"',\"QA340_93efae_0123456789abcdef\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/app.js'\"'\"',\"// QA340_93efae\\nconsole.log('\"'\"'ordinary static asset'\"'\"');\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/app.css'\"'\"',\"/* QA340_93efae */\\n.example { color: blue; padding: 1px; }\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/asset.bin'\"'\"',Buffer.from([...Array(256).keys()]));const z=require('\"'\"'node:zlib'\"'\"'),h=b=>require('\"'\"'node:crypto'\"'\"').createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');const pre=Buffer.from('\"'\"'QA340_PRECOMPRESSED_ordinary_javascript\\n'\"'\"'.repeat(4096)),gz=z.gzipSync(pre),raw=Buffer.from('\"'\"'QA340_NO_TRANSFORM_ordinary_css\\n'\"'\"'.repeat(4096));fs.mkdirSync('\"'\"'public/pre'\"'\"',{recursive:true});fs.mkdirSync('\"'\"'public/raw'\"'\"',{recursive:true});fs.writeFileSync('\"'\"'public/pre/app.js'\"'\"',gz);fs.writeFileSync('\"'\"'public/raw/app.css'\"'\"',raw);fs.writeFileSync('\"'\"'public/probe-manifest.json'\"'\"',JSON.stringify({pre:{wire_sha256:h(gz),wire_bytes:gz.length,identity_sha256:h(pre),identity_bytes:pre.length},raw:{sha256:h(raw),bytes:raw.length}}));'",
+        "numInstances": 1,
+        "plan": "free",
+        "publishPath": "public",
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "url": "https://qa-20261016-93efae-bex-enc.onbex.co"
+      },
+      "slug": "qa-20261016-93efae-bex-enc",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "static_site",
+      "updatedAt": "2026-10-16T03:17:58.573332002Z"
+    },
+    "history_receipts": [
+      {
+        "at": "2026-10-16T03:18:00.070398+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db8pepi9cl7s73ae46kg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.403,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\"}, \"createdAt\": \"2026-10-16T03:17:58.515679Z\", \"id\": \"dep-db8pepi9cl7s73ae46l0\", \"status\": \"created\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T03:17:58.515679Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-16T03:19:09.679761+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db8pepi9cl7s73ae46kg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.715,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\"}, \"createdAt\": \"2026-10-16T03:17:58.515679Z\", \"id\": \"dep-db8pepi9cl7s73ae46l0\", \"startedAt\": \"2026-10-16T03:19:02.477186Z\", \"status\": \"build_in_progress\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T03:19:02.477187Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-16T03:20:43.791787+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db8pepi9cl7s73ae46kg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.692,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\"}, \"createdAt\": \"2026-10-16T03:17:58.515679Z\", \"finishedAt\": \"2026-10-16T03:20:02.39861Z\", \"id\": \"dep-db8pepi9cl7s73ae46l0\", \"startedAt\": \"2026-10-16T03:19:02.477186Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T03:20:02.398611Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-16T03:20:51.974737+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db8pepi9cl7s73ae46kg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.469,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\"}, \"createdAt\": \"2026-10-16T03:17:58.515679Z\", \"finishedAt\": \"2026-10-16T03:20:02.39861Z\", \"id\": \"dep-db8pepi9cl7s73ae46l0\", \"startedAt\": \"2026-10-16T03:19:02.477186Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T03:20:02.398611Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-16T03:21:33.657579+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db8pepi9cl7s73ae46kg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.533,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\"}, \"createdAt\": \"2026-10-16T03:17:58.515679Z\", \"finishedAt\": \"2026-10-16T03:20:02.39861Z\", \"id\": \"dep-db8pepi9cl7s73ae46l0\", \"startedAt\": \"2026-10-16T03:19:02.477186Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T03:20:02.398611Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-16T03:24:06.944354+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db8pepi9cl7s73ae46kg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.715,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\"}, \"createdAt\": \"2026-10-16T03:17:58.515679Z\", \"finishedAt\": \"2026-10-16T03:20:02.39861Z\", \"id\": \"dep-db8pepi9cl7s73ae46l0\", \"startedAt\": \"2026-10-16T03:19:02.477186Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T03:20:02.398611Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-16T03:26:17.281707+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db8pepi9cl7s73ae46kg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 1.143,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\"}, \"createdAt\": \"2026-10-16T03:17:58.515679Z\", \"finishedAt\": \"2026-10-16T03:20:02.39861Z\", \"id\": \"dep-db8pepi9cl7s73ae46l0\", \"startedAt\": \"2026-10-16T03:19:02.477186Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T03:20:02.398611Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-16T03:26:44.007254+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db8pepi9cl7s73ae46kg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.826,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\"}, \"createdAt\": \"2026-10-16T03:17:58.515679Z\", \"finishedAt\": \"2026-10-16T03:20:02.39861Z\", \"id\": \"dep-db8pepi9cl7s73ae46l0\", \"startedAt\": \"2026-10-16T03:19:02.477186Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T03:20:02.398611Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      }
+    ],
+    "deploy_children": [
+      {
+        "commit": {
+          "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+          "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+        },
+        "createdAt": "2026-10-16T03:17:58.515679Z",
+        "finishedAt": "2026-10-16T03:20:02.39861Z",
+        "id": "dep-db8pepi9cl7s73ae46l0",
+        "startedAt": "2026-10-16T03:19:02.477186Z",
+        "status": "live",
+        "trigger": "other",
+        "updatedAt": "2026-10-16T03:20:02.398611Z"
+      }
+    ],
+    "static_header_control": {
+      "at": "2026-10-16T03:19:07.649988+00:00",
+      "before": {
+        "at": "2026-10-16T03:19:07.649569+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db8pepi9cl7s73ae46kg/headers",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.345,
+        "response": "[]",
+        "stderr": ""
+      },
+      "headers": [
+        {
+          "path": "/pre/*",
+          "name": "Content-Encoding",
+          "value": "gzip"
+        },
+        {
+          "path": "/raw/*",
+          "name": "Cache-Control",
+          "value": "public, max-age=60, no-transform"
+        },
+        {
+          "path": "/payload.txt",
+          "name": "Vary",
+          "value": "Origin"
+        }
+      ],
+      "intent": "API-only response-header configuration on this exact owned Free static fixture; CLI has no header flag",
+      "result": {
+        "at": "2026-10-16T03:19:08.143674+00:00",
+        "API_only": true,
+        "request": {
+          "method": "PUT",
+          "path": "/v1/services/srv-db8pepi9cl7s73ae46kg/headers",
+          "body": [
+            {
+              "path": "/pre/*",
+              "name": "Content-Encoding",
+              "value": "gzip"
+            },
+            {
+              "path": "/raw/*",
+              "name": "Cache-Control",
+              "value": "public, max-age=60, no-transform"
+            },
+            {
+              "path": "/payload.txt",
+              "name": "Vary",
+              "value": "Origin"
+            }
+          ],
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.332,
+        "response": "[{\"id\": \"hdr-sk9fol7hsh5qqvmtdl82\", \"path\": \"/pre/*\", \"name\": \"Content-Encoding\", \"value\": \"gzip\"}, {\"id\": \"hdr-euk87m4uifp26gclgnmd\", \"path\": \"/raw/*\", \"name\": \"Cache-Control\", \"value\": \"public, max-age=60, no-transform\"}, {\"id\": \"hdr-aknfdmovm7mcd5cmkf0h\", \"path\": \"/payload.txt\", \"name\": \"Vary\", \"value\": \"Origin\"}]",
+        "stderr": ""
+      },
+      "readback": {
+        "at": "2026-10-16T03:19:08.639103+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db8pepi9cl7s73ae46kg/headers",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.33,
+        "response": "[{\"header\": {\"id\": \"hdr-sk9fol7hsh5qqvmtdl82\", \"path\": \"/pre/*\", \"name\": \"Content-Encoding\", \"value\": \"gzip\"}, \"cursor\": \"hdr-sk9fol7hsh5qqvmtdl82\"}, {\"header\": {\"id\": \"hdr-euk87m4uifp26gclgnmd\", \"path\": \"/raw/*\", \"name\": \"Cache-Control\", \"value\": \"public, max-age=60, no-transform\"}, \"cursor\": \"hdr-euk87m4uifp26gclgnmd\"}, {\"header\": {\"id\": \"hdr-aknfdmovm7mcd5cmkf0h\", \"path\": \"/payload.txt\", \"name\": \"Vary\", \"value\": \"Origin\"}, \"cursor\": \"hdr-aknfdmovm7mcd5cmkf0h\"}]",
+        "stderr": ""
+      },
+      "pass": true
+    },
+    "observations": [
+      {
+        "at": "2026-10-16T03:20:46.142435+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+              "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+            },
+            "createdAt": "2026-10-16T03:17:58.515679Z",
+            "finishedAt": "2026-10-16T03:20:02.39861Z",
+            "id": "dep-db8pepi9cl7s73ae46l0",
+            "startedAt": "2026-10-16T03:19:02.477186Z",
+            "status": "live",
+            "trigger": "other",
+            "updatedAt": "2026-10-16T03:20:02.398611Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-16T03:20:45.336962+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db8pepi9cl7s73ae46kg",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 1.383,
+          "response": "{\"id\": \"srv-db8pepi9cl7s73ae46kg\", \"name\": \"qa-20261016-93efae-bex-enc\", \"immutableName\": \"qa-20261016-93efae-bex-enc\", \"slug\": \"qa-20261016-93efae-bex-enc\", \"displayName\": \"\", \"type\": \"static_site\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db8pepi9cl7s73ae46kg\", \"createdAt\": \"2026-10-16T03:17:58Z\", \"updatedAt\": \"2026-10-16T03:20:01Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"buildCommand\": \"node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"');fs.mkdirSync('\\\"'\\\"'public'\\\"'\\\"',{recursive:true});fs.writeFileSync('\\\"'\\\"'public/index.html'\\\"'\\\"',\\\"QA340_93efae_static_site\\\\n\\\");fs.writeFileSync('\\\"'\\\"'public/payload.txt'\\\"'\\\"',\\\"QA340_93efae_0123456789abcdef\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/app.js'\\\"'\\\"',\\\"// QA340_93efae\\\\nconsole.log('\\\"'\\\"'ordinary static asset'\\\"'\\\"');\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/app.css'\\\"'\\\"',\\\"/* QA340_93efae */\\\\n.example { color: blue; padding: 1px; }\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/asset.bin'\\\"'\\\"',Buffer.from([...Array(256).keys()]));const z=require('\\\"'\\\"'node:zlib'\\\"'\\\"'),h=b=>require('\\\"'\\\"'node:crypto'\\\"'\\\"').createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');const pre=Buffer.from('\\\"'\\\"'QA340_PRECOMPRESSED_ordinary_javascript\\\\n'\\\"'\\\"'.repeat(4096)),gz=z.gzipSync(pre),raw=Buffer.from('\\\"'\\\"'QA340_NO_TRANSFORM_ordinary_css\\\\n'\\\"'\\\"'.repeat(4096));fs.mkdirSync('\\\"'\\\"'public/pre'\\\"'\\\"',{recursive:true});fs.mkdirSync('\\\"'\\\"'public/raw'\\\"'\\\"',{recursive:true});fs.writeFileSync('\\\"'\\\"'public/pre/app.js'\\\"'\\\"',gz);fs.writeFileSync('\\\"'\\\"'public/raw/app.css'\\\"'\\\"',raw);fs.writeFileSync('\\\"'\\\"'public/probe-manifest.json'\\\"'\\\"',JSON.stringify({pre:{wire_sha256:h(gz),wire_bytes:gz.length,identity_sha256:h(pre),identity_bytes:pre.length},raw:{sha256:h(raw),bytes:raw.length}}));'\", \"numInstances\": 1, \"plan\": \"free\", \"publishPath\": \"public\", \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"url\": \"https://qa-20261016-93efae-bex-enc.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Running\", \"replicas\": 1, \"revision\": \"rev-1\", \"urls\": [\"https://qa-20261016-93efae-bex-enc.onbex.co\"], \"idleTTLSeconds\": 0, \"repo\": \"https://github.com/expressjs/serve-static\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+          "stderr": ""
+        },
+        "HTTP": "200",
+        "curl_exit": 0,
+        "body": "QA340_93efae_static_site\n",
+        "ready": true
+      },
+      {
+        "at": "2026-10-16T03:26:19.245054+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+              "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+            },
+            "createdAt": "2026-10-16T03:17:58.515679Z",
+            "finishedAt": "2026-10-16T03:20:02.39861Z",
+            "id": "dep-db8pepi9cl7s73ae46l0",
+            "startedAt": "2026-10-16T03:19:02.477186Z",
+            "status": "live",
+            "trigger": "other",
+            "updatedAt": "2026-10-16T03:20:02.398611Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-16T03:26:18.573463+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db8pepi9cl7s73ae46kg",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.965,
+          "response": "{\"id\": \"srv-db8pepi9cl7s73ae46kg\", \"name\": \"qa-20261016-93efae-bex-enc\", \"immutableName\": \"qa-20261016-93efae-bex-enc\", \"slug\": \"qa-20261016-93efae-bex-enc\", \"displayName\": \"\", \"type\": \"static_site\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db8pepi9cl7s73ae46kg\", \"createdAt\": \"2026-10-16T03:17:58Z\", \"updatedAt\": \"2026-10-16T03:24:04.812440199Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"buildCommand\": \"node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"');fs.mkdirSync('\\\"'\\\"'public'\\\"'\\\"',{recursive:true});fs.writeFileSync('\\\"'\\\"'public/index.html'\\\"'\\\"',\\\"QA340_93efae_static_site\\\\n\\\");fs.writeFileSync('\\\"'\\\"'public/payload.txt'\\\"'\\\"',\\\"QA340_93efae_0123456789abcdef\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/app.js'\\\"'\\\"',\\\"// QA340_93efae\\\\nconsole.log('\\\"'\\\"'ordinary static asset'\\\"'\\\"');\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/app.css'\\\"'\\\"',\\\"/* QA340_93efae */\\\\n.example { color: blue; padding: 1px; }\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/asset.bin'\\\"'\\\"',Buffer.from([...Array(256).keys()]));const z=require('\\\"'\\\"'node:zlib'\\\"'\\\"'),h=b=>require('\\\"'\\\"'node:crypto'\\\"'\\\"').createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');const pre=Buffer.from('\\\"'\\\"'QA340_PRECOMPRESSED_ordinary_javascript\\\\n'\\\"'\\\"'.repeat(4096)),gz=z.gzipSync(pre),raw=Buffer.from('\\\"'\\\"'QA340_NO_TRANSFORM_ordinary_css\\\\n'\\\"'\\\"'.repeat(4096));fs.mkdirSync('\\\"'\\\"'public/pre'\\\"'\\\"',{recursive:true});fs.mkdirSync('\\\"'\\\"'public/raw'\\\"'\\\"',{recursive:true});fs.writeFileSync('\\\"'\\\"'public/pre/app.js'\\\"'\\\"',gz);fs.writeFileSync('\\\"'\\\"'public/raw/app.css'\\\"'\\\"',raw);fs.writeFileSync('\\\"'\\\"'public/probe-manifest.json'\\\"'\\\"',JSON.stringify({pre:{wire_sha256:h(gz),wire_bytes:gz.length,identity_sha256:h(pre),identity_bytes:pre.length},raw:{sha256:h(raw),bytes:raw.length}}));'\", \"numInstances\": 1, \"plan\": \"free\", \"publishPath\": \"public\", \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"url\": \"https://qa-20261016-93efae-bex-enc.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Running\", \"replicas\": 1, \"revision\": \"rev-1\", \"urls\": [\"https://qa-20261016-93efae-bex-enc.onbex.co\"], \"idleTTLSeconds\": 0, \"repo\": \"https://github.com/expressjs/serve-static\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+          "stderr": ""
+        },
+        "HTTP": "200",
+        "curl_exit": 0,
+        "body": "QA340_93efae_static_site\n",
+        "ready": true
+      }
+    ],
+    "compression_probe": {
+      "at": "2026-10-16T03:20:52.127494+00:00",
+      "history": [
+        {
+          "commit": {
+            "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+            "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+          },
+          "createdAt": "2026-10-16T03:17:58.515679Z",
+          "finishedAt": "2026-10-16T03:20:02.39861Z",
+          "id": "dep-db8pepi9cl7s73ae46l0",
+          "startedAt": "2026-10-16T03:19:02.477186Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-16T03:20:02.398611Z"
+        }
+      ],
+      "requests": [
+        {
+          "at": "2026-10-16T03:20:52.257578+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "expected_identity_bytes": 122880,
+          "expected_identity_sha256": "a01fb60de53e951ad2edda4aa0aa02cbe1e35d6e261b87f09cfad983f65261bb",
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/plain\ndate: Fri, 16 Oct 2026 03:20:52 GMT\nvary: Origin\nvary: Accept-Encoding\ncontent-length: 122880\n\n",
+          "wire_bytes": 122880,
+          "wire_sha256": "a01fb60de53e951ad2edda4aa0aa02cbe1e35d6e261b87f09cfad983f65261bb",
+          "content_encoding": "identity",
+          "decoded_bytes": 122880,
+          "decoded_sha256": "a01fb60de53e951ad2edda4aa0aa02cbe1e35d6e261b87f09cfad983f65261bb",
+          "content_matches": true
+        },
+        {
+          "at": "2026-10-16T03:20:53.639090+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "expected_identity_bytes": 122880,
+          "expected_identity_sha256": "a01fb60de53e951ad2edda4aa0aa02cbe1e35d6e261b87f09cfad983f65261bb",
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/plain\ndate: Fri, 16 Oct 2026 03:20:54 GMT\nvary: Origin\nvary: Accept-Encoding\ncontent-length: 40\n\n",
+          "wire_bytes": 40,
+          "wire_sha256": "e28bf945187dcf3db8c6da754a0bbca4539bceb41ca7f31b6fa67b6cd6190739",
+          "content_encoding": "br",
+          "decoded_bytes": 122880,
+          "decoded_sha256": "a01fb60de53e951ad2edda4aa0aa02cbe1e35d6e261b87f09cfad983f65261bb",
+          "content_matches": true
+        },
+        {
+          "at": "2026-10-16T03:20:54.546517+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "gzip"
+            }
+          },
+          "expected_identity_bytes": 122880,
+          "expected_identity_sha256": "a01fb60de53e951ad2edda4aa0aa02cbe1e35d6e261b87f09cfad983f65261bb",
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/plain\ndate: Fri, 16 Oct 2026 03:20:55 GMT\nvary: Origin\nvary: Accept-Encoding\ncontent-length: 122880\n\n",
+          "wire_bytes": 122880,
+          "wire_sha256": "a01fb60de53e951ad2edda4aa0aa02cbe1e35d6e261b87f09cfad983f65261bb",
+          "content_encoding": "identity",
+          "decoded_bytes": 122880,
+          "decoded_sha256": "a01fb60de53e951ad2edda4aa0aa02cbe1e35d6e261b87f09cfad983f65261bb",
+          "content_matches": true
+        },
+        {
+          "at": "2026-10-16T03:20:55.901529+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "br;q=1, gzip;q=0.5"
+            }
+          },
+          "expected_identity_bytes": 122880,
+          "expected_identity_sha256": "a01fb60de53e951ad2edda4aa0aa02cbe1e35d6e261b87f09cfad983f65261bb",
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/plain\ndate: Fri, 16 Oct 2026 03:20:56 GMT\nvary: Origin\nvary: Accept-Encoding\ncontent-length: 40\n\n",
+          "wire_bytes": 40,
+          "wire_sha256": "e28bf945187dcf3db8c6da754a0bbca4539bceb41ca7f31b6fa67b6cd6190739",
+          "content_encoding": "br",
+          "decoded_bytes": 122880,
+          "decoded_sha256": "a01fb60de53e951ad2edda4aa0aa02cbe1e35d6e261b87f09cfad983f65261bb",
+          "content_matches": true
+        },
+        {
+          "at": "2026-10-16T03:20:56.811042+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "expected_identity_bytes": 221184,
+          "expected_identity_sha256": "32b4a1cba4d4b8e24f4b79b0592d6f3bb148b591b1a82f1c8b5c2176f571f5c8",
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 03:20:57 GMT\nvary: Accept-Encoding\ncontent-length: 221184\n\n",
+          "wire_bytes": 221184,
+          "wire_sha256": "32b4a1cba4d4b8e24f4b79b0592d6f3bb148b591b1a82f1c8b5c2176f571f5c8",
+          "content_encoding": "identity",
+          "decoded_bytes": 221184,
+          "decoded_sha256": "32b4a1cba4d4b8e24f4b79b0592d6f3bb148b591b1a82f1c8b5c2176f571f5c8",
+          "content_matches": true
+        },
+        {
+          "at": "2026-10-16T03:20:58.351668+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "expected_identity_bytes": 221184,
+          "expected_identity_sha256": "32b4a1cba4d4b8e24f4b79b0592d6f3bb148b591b1a82f1c8b5c2176f571f5c8",
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 03:20:58 GMT\nvary: Accept-Encoding\ncontent-length: 68\n\n",
+          "wire_bytes": 68,
+          "wire_sha256": "546c039bde370f68ec3e23d7b030426f263a7d1ca1d56a59582dfb5cc59c49e1",
+          "content_encoding": "br",
+          "decoded_bytes": 221184,
+          "decoded_sha256": "32b4a1cba4d4b8e24f4b79b0592d6f3bb148b591b1a82f1c8b5c2176f571f5c8",
+          "content_matches": true
+        },
+        {
+          "at": "2026-10-16T03:20:59.263965+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "gzip"
+            }
+          },
+          "expected_identity_bytes": 221184,
+          "expected_identity_sha256": "32b4a1cba4d4b8e24f4b79b0592d6f3bb148b591b1a82f1c8b5c2176f571f5c8",
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 03:20:59 GMT\nvary: Accept-Encoding\ncontent-length: 221184\n\n",
+          "wire_bytes": 221184,
+          "wire_sha256": "32b4a1cba4d4b8e24f4b79b0592d6f3bb148b591b1a82f1c8b5c2176f571f5c8",
+          "content_encoding": "identity",
+          "decoded_bytes": 221184,
+          "decoded_sha256": "32b4a1cba4d4b8e24f4b79b0592d6f3bb148b591b1a82f1c8b5c2176f571f5c8",
+          "content_matches": true
+        },
+        {
+          "at": "2026-10-16T03:21:00.793331+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "br;q=1, gzip;q=0.5"
+            }
+          },
+          "expected_identity_bytes": 221184,
+          "expected_identity_sha256": "32b4a1cba4d4b8e24f4b79b0592d6f3bb148b591b1a82f1c8b5c2176f571f5c8",
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 03:21:01 GMT\nvary: Accept-Encoding\ncontent-length: 68\n\n",
+          "wire_bytes": 68,
+          "wire_sha256": "546c039bde370f68ec3e23d7b030426f263a7d1ca1d56a59582dfb5cc59c49e1",
+          "content_encoding": "br",
+          "decoded_bytes": 221184,
+          "decoded_sha256": "32b4a1cba4d4b8e24f4b79b0592d6f3bb148b591b1a82f1c8b5c2176f571f5c8",
+          "content_matches": true
+        },
+        {
+          "at": "2026-10-16T03:21:01.714656+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/app.css",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "expected_identity_bytes": 241664,
+          "expected_identity_sha256": "e3813f724527a55b068fee88d295732a710e182ffd183f97e4254911bda8a07b",
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/css\ndate: Fri, 16 Oct 2026 03:21:02 GMT\nvary: Accept-Encoding\ncontent-length: 241664\n\n",
+          "wire_bytes": 241664,
+          "wire_sha256": "e3813f724527a55b068fee88d295732a710e182ffd183f97e4254911bda8a07b",
+          "content_encoding": "identity",
+          "decoded_bytes": 241664,
+          "decoded_sha256": "e3813f724527a55b068fee88d295732a710e182ffd183f97e4254911bda8a07b",
+          "content_matches": true
+        },
+        {
+          "at": "2026-10-16T03:21:03.233022+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/app.css",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "expected_identity_bytes": 241664,
+          "expected_identity_sha256": "e3813f724527a55b068fee88d295732a710e182ffd183f97e4254911bda8a07b",
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/css\ndate: Fri, 16 Oct 2026 03:21:03 GMT\nvary: Accept-Encoding\ncontent-length: 66\n\n",
+          "wire_bytes": 66,
+          "wire_sha256": "11d10a356eeb08ef43c2d087efa52a422c9ffe6b1b2925c31bca1f9245b36af5",
+          "content_encoding": "br",
+          "decoded_bytes": 241664,
+          "decoded_sha256": "e3813f724527a55b068fee88d295732a710e182ffd183f97e4254911bda8a07b",
+          "content_matches": true
+        },
+        {
+          "at": "2026-10-16T03:21:04.155206+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/app.css",
+            "headers": {
+              "Accept-Encoding": "gzip"
+            }
+          },
+          "expected_identity_bytes": 241664,
+          "expected_identity_sha256": "e3813f724527a55b068fee88d295732a710e182ffd183f97e4254911bda8a07b",
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/css\ndate: Fri, 16 Oct 2026 03:21:04 GMT\nvary: Accept-Encoding\ncontent-length: 241664\n\n",
+          "wire_bytes": 241664,
+          "wire_sha256": "e3813f724527a55b068fee88d295732a710e182ffd183f97e4254911bda8a07b",
+          "content_encoding": "identity",
+          "decoded_bytes": 241664,
+          "decoded_sha256": "e3813f724527a55b068fee88d295732a710e182ffd183f97e4254911bda8a07b",
+          "content_matches": true
+        },
+        {
+          "at": "2026-10-16T03:21:05.695201+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/app.css",
+            "headers": {
+              "Accept-Encoding": "br;q=1, gzip;q=0.5"
+            }
+          },
+          "expected_identity_bytes": 241664,
+          "expected_identity_sha256": "e3813f724527a55b068fee88d295732a710e182ffd183f97e4254911bda8a07b",
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/css\ndate: Fri, 16 Oct 2026 03:21:06 GMT\nvary: Accept-Encoding\ncontent-length: 66\n\n",
+          "wire_bytes": 66,
+          "wire_sha256": "11d10a356eeb08ef43c2d087efa52a422c9ffe6b1b2925c31bca1f9245b36af5",
+          "content_encoding": "br",
+          "decoded_bytes": 241664,
+          "decoded_sha256": "e3813f724527a55b068fee88d295732a710e182ffd183f97e4254911bda8a07b",
+          "content_matches": true
+        }
+      ],
+      "intent": "bounded ordinary GETs with advertised content encodings on own native Free static",
+      "content_pass": true
+    },
+    "neighbor_HTTP": {
+      "at": "2026-10-16T03:21:33.801281+00:00",
+      "history": [
+        {
+          "commit": {
+            "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+            "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+          },
+          "createdAt": "2026-10-16T03:17:58.515679Z",
+          "finishedAt": "2026-10-16T03:20:02.39861Z",
+          "id": "dep-db8pepi9cl7s73ae46l0",
+          "startedAt": "2026-10-16T03:19:02.477186Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-16T03:20:02.398611Z"
+        }
+      ],
+      "requests": [
+        {
+          "at": "2026-10-16T03:21:33.930821+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/probe-manifest.json",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: application/json\ndate: Fri, 16 Oct 2026 03:21:34 GMT\ncontent-length: 315\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "application/json",
+            "date": "Fri, 16 Oct 2026 03:21:34 GMT",
+            "content-length": "315"
+          },
+          "wire_bytes": 315,
+          "wire_sha256": "cdf55b574535432a748cc65469b67460de5a5dd448a8bcb91bf3d87a4195c246",
+          "check": "generated authored control manifest",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:21:35.028456+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "br;q=0, gzip;q=1"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/plain\ndate: Fri, 16 Oct 2026 03:21:35 GMT\nvary: Origin\nvary: Accept-Encoding\ncontent-length: 122880\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/plain",
+            "date": "Fri, 16 Oct 2026 03:21:35 GMT",
+            "vary": "Origin, Accept-Encoding",
+            "content-length": "122880"
+          },
+          "wire_bytes": 122880,
+          "wire_sha256": "a01fb60de53e951ad2edda4aa0aa02cbe1e35d6e261b87f09cfad983f65261bb",
+          "check": "negotiation br;q=0, gzip;q=1",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:21:36.569078+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "*;q=1"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/plain\ndate: Fri, 16 Oct 2026 03:21:37 GMT\nvary: Origin\nvary: Accept-Encoding\ncontent-length: 40\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-type": "text/plain",
+            "date": "Fri, 16 Oct 2026 03:21:37 GMT",
+            "vary": "Origin, Accept-Encoding",
+            "content-length": "40"
+          },
+          "wire_bytes": 40,
+          "wire_sha256": "e28bf945187dcf3db8c6da754a0bbca4539bceb41ca7f31b6fa67b6cd6190739",
+          "check": "negotiation *;q=1",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:21:37.552549+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "br;q=bogus"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/plain\ndate: Fri, 16 Oct 2026 03:21:38 GMT\nvary: Origin\nvary: Accept-Encoding\ncontent-length: 122880\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/plain",
+            "date": "Fri, 16 Oct 2026 03:21:38 GMT",
+            "vary": "Origin, Accept-Encoding",
+            "content-length": "122880"
+          },
+          "wire_bytes": 122880,
+          "wire_sha256": "a01fb60de53e951ad2edda4aa0aa02cbe1e35d6e261b87f09cfad983f65261bb",
+          "check": "negotiation br;q=bogus",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:24:48.733292+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/plain\ndate: Fri, 16 Oct 2026 03:24:49 GMT\netag: W/\"QA340_93efae\"\nvary: Origin\nvary: Accept-Encoding\ncontent-length: 40\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-type": "text/plain",
+            "date": "Fri, 16 Oct 2026 03:24:49 GMT",
+            "etag": "W/\"QA340_93efae\"",
+            "vary": "Origin, Accept-Encoding",
+            "content-length": "40"
+          },
+          "wire_bytes": 40,
+          "wire_sha256": "e28bf945187dcf3db8c6da754a0bbca4539bceb41ca7f31b6fa67b6cd6190739",
+          "check": "encoded GET exact body and framing",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:24:49.757450+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/plain\ndate: Fri, 16 Oct 2026 03:24:50 GMT\netag: W/\"QA340_93efae\"\nvary: Origin\nvary: Accept-Encoding\ncontent-length: 40\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-type": "text/plain",
+            "date": "Fri, 16 Oct 2026 03:24:50 GMT",
+            "etag": "W/\"QA340_93efae\"",
+            "vary": "Origin, Accept-Encoding",
+            "content-length": "40"
+          },
+          "wire_bytes": 0,
+          "wire_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "check": "encoded HEAD representation length",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:24:50.726999+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "br",
+              "Range": "bytes=0-9"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "206",
+          "stderr": "",
+          "response_headers": "HTTP/2 206 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-range: bytes 0-9/40\ncontent-type: text/plain\ndate: Fri, 16 Oct 2026 03:24:51 GMT\netag: W/\"QA340_93efae\"\nvary: Origin\nvary: Accept-Encoding\ncontent-length: 10\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-range": "bytes 0-9/40",
+            "content-type": "text/plain",
+            "date": "Fri, 16 Oct 2026 03:24:51 GMT",
+            "etag": "W/\"QA340_93efae\"",
+            "vary": "Origin, Accept-Encoding",
+            "content-length": "10"
+          },
+          "wire_bytes": 10,
+          "wire_sha256": "c1ab4ea3c4bf1092e57432a1bb93ecd6703a3ec843a904de12a84e7cd9d7f814",
+          "check": "range of encoded representation",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:24:51.675112+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "identity",
+              "Range": "bytes=0-9"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "206",
+          "stderr": "",
+          "response_headers": "HTTP/2 206 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-range: bytes 0-9/122880\ncontent-type: text/plain\ndate: Fri, 16 Oct 2026 03:24:52 GMT\netag: \"QA340_93efae\"\nvary: Origin\nvary: Accept-Encoding\ncontent-length: 10\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-range": "bytes 0-9/122880",
+            "content-type": "text/plain",
+            "date": "Fri, 16 Oct 2026 03:24:52 GMT",
+            "etag": "\"QA340_93efae\"",
+            "vary": "Origin, Accept-Encoding",
+            "content-length": "10"
+          },
+          "wire_bytes": 10,
+          "wire_sha256": "a29e0eda46cc651a6901a3d3bf30af28b7713ab36974c5ea691f3b7dcdacc6c9",
+          "check": "identity representation range",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:24:52.662628+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "br",
+              "Range": "bytes=245760-"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "416",
+          "stderr": "",
+          "response_headers": "HTTP/2 416 \ncontent-range: bytes */40\ncontent-type: text/plain; charset=utf-8\ndate: Fri, 16 Oct 2026 03:24:53 GMT\nvary: Origin\nvary: Accept-Encoding\nx-content-type-options: nosniff\ncontent-length: 33\n\n",
+          "headers": {
+            "content-range": "bytes */40",
+            "content-type": "text/plain; charset=utf-8",
+            "date": "Fri, 16 Oct 2026 03:24:53 GMT",
+            "vary": "Origin, Accept-Encoding",
+            "x-content-type-options": "nosniff",
+            "content-length": "33"
+          },
+          "wire_bytes": 33,
+          "wire_sha256": "b5d780567c43a2b5d8473d84a136e7dc62ee9c494108d282cbff4801d199cf32",
+          "check": "unsatisfiable range has no content coding",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:25:41.721949+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "br",
+              "If-None-Match": "W/\"QA340_93efae\""
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "304",
+          "stderr": "",
+          "response_headers": "HTTP/2 304 \ncache-control: public, max-age=0, must-revalidate\ndate: Fri, 16 Oct 2026 03:25:42 GMT\netag: W/\"QA340_93efae\"\nvary: Origin\nvary: Accept-Encoding\n\n",
+          "headers": {
+            "cache-control": "public, max-age=0, must-revalidate",
+            "date": "Fri, 16 Oct 2026 03:25:42 GMT",
+            "etag": "W/\"QA340_93efae\"",
+            "vary": "Origin, Accept-Encoding"
+          },
+          "wire_bytes": 0,
+          "wire_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "check": "encoded validator bodyless304",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:25:42.678446+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/index.html",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/html\ndate: Fri, 16 Oct 2026 03:25:43 GMT\ncontent-length: 25\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/html",
+            "date": "Fri, 16 Oct 2026 03:25:43 GMT",
+            "content-length": "25"
+          },
+          "wire_bytes": 25,
+          "wire_sha256": "6c18f17ace2b9c628caaeaff81067260943174c5d3d45eb3cd5bdc0865a609e5",
+          "check": "tiny asset unchanged",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:25:43.702432+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/asset.bin",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: application/octet-stream\ndate: Fri, 16 Oct 2026 03:25:44 GMT\ncontent-length: 256\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "application/octet-stream",
+            "date": "Fri, 16 Oct 2026 03:25:44 GMT",
+            "content-length": "256"
+          },
+          "wire_bytes": 256,
+          "wire_sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880",
+          "check": "binary asset unchanged",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:25:44.900284+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/pre/app.js",
+            "headers": {
+              "Accept-Encoding": "br, gzip"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: gzip\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 03:25:45 GMT\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "gzip",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 03:25:45 GMT"
+          },
+          "wire_bytes": 559,
+          "wire_sha256": "3157d60465e87ac2ef069624e8a205c4491174ba07857517b64e2a802db16d01",
+          "check": "authored gzip bytes and coding retained",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:25:46.039536+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/raw/app.css",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=60, no-transform\ncontent-type: text/css\ndate: Fri, 16 Oct 2026 03:25:46 GMT\ncontent-length: 131072\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=60, no-transform",
+            "content-type": "text/css",
+            "date": "Fri, 16 Oct 2026 03:25:46 GMT",
+            "content-length": "131072"
+          },
+          "wire_bytes": 131072,
+          "wire_sha256": "019e81884b764467d08c5634f16d5a4a424ff498a5c86c29a044772349133efd",
+          "check": "authored no-transform retained",
+          "pass": true
+        }
+      ],
+      "intent": "finite ordinary GET/HEAD/conditional/range checks on exact owned static assets; no native CLI HTTP command claimed",
+      "manifest": {
+        "pre": {
+          "wire_sha256": "3157d60465e87ac2ef069624e8a205c4491174ba07857517b64e2a802db16d01",
+          "wire_bytes": 559,
+          "identity_sha256": "294ab54336ff5821db8b895bbbc1981f83eea420fc03837495cbb0484ed3e30c",
+          "identity_bytes": 163840
+        },
+        "raw": {
+          "sha256": "019e81884b764467d08c5634f16d5a4a424ff498a5c86c29a044772349133efd",
+          "bytes": 131072
+        }
+      },
+      "excluded_ETag_setup": [
+        {
+          "at": "2026-10-16T03:21:39.029616+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/plain\ndate: Fri, 16 Oct 2026 03:21:39 GMT\nvary: Origin\nvary: Accept-Encoding\ncontent-length: 40\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-type": "text/plain",
+            "date": "Fri, 16 Oct 2026 03:21:39 GMT",
+            "vary": "Origin, Accept-Encoding",
+            "content-length": "40"
+          },
+          "wire_bytes": 40,
+          "wire_sha256": "e28bf945187dcf3db8c6da754a0bbca4539bceb41ca7f31b6fa67b6cd6190739",
+          "check": "encoded GET exact body and framing",
+          "pass": false
+        }
+      ],
+      "ETag_setup_disposition": "Initial helper assumed an automatic ETag; platform validators are authored. Preserve failed assumption; add harmless owned ETag header, resume remaining ten reads without repeating the four valid early controls.",
+      "excluded_bodyless_capture": [
+        {
+          "at": "2026-10-16T03:24:53.695542+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-93efae-bex-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "br",
+              "If-None-Match": "W/\"QA340_93efae\""
+            }
+          }
+        }
+      ],
+      "bodyless_capture_disposition": "curl may omit an output file for304; first attempt ended before durable HTTP/body receipt, excluded. Initialize a private empty output file before the corrected read.",
+      "authored_precompressed_scope": "gzip fixture size recorded in manifest; large precompressed variant not separately hosted",
+      "pass": true
+    },
+    "static_ETag_control": {
+      "at": "2026-10-16T03:24:04.406423+00:00",
+      "headers": [
+        {
+          "path": "/pre/*",
+          "name": "Content-Encoding",
+          "value": "gzip"
+        },
+        {
+          "path": "/raw/*",
+          "name": "Cache-Control",
+          "value": "public, max-age=60, no-transform"
+        },
+        {
+          "path": "/payload.txt",
+          "name": "Vary",
+          "value": "Origin"
+        },
+        {
+          "path": "/payload.txt",
+          "name": "ETag",
+          "value": "\"QA340_93efae\""
+        }
+      ],
+      "intent": "API-only authored validator fixture; existing three response-header rules retained. Automatic ETags are not a platform contract.",
+      "result": {
+        "at": "2026-10-16T03:24:04.951192+00:00",
+        "API_only": true,
+        "request": {
+          "method": "PUT",
+          "path": "/v1/services/srv-db8pepi9cl7s73ae46kg/headers",
+          "body": [
+            {
+              "path": "/pre/*",
+              "name": "Content-Encoding",
+              "value": "gzip"
+            },
+            {
+              "path": "/raw/*",
+              "name": "Cache-Control",
+              "value": "public, max-age=60, no-transform"
+            },
+            {
+              "path": "/payload.txt",
+              "name": "Vary",
+              "value": "Origin"
+            },
+            {
+              "path": "/payload.txt",
+              "name": "ETag",
+              "value": "\"QA340_93efae\""
+            }
+          ],
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.391,
+        "response": "[{\"id\": \"hdr-sk9fol7hsh5qqvmtdl82\", \"path\": \"/pre/*\", \"name\": \"Content-Encoding\", \"value\": \"gzip\"}, {\"id\": \"hdr-euk87m4uifp26gclgnmd\", \"path\": \"/raw/*\", \"name\": \"Cache-Control\", \"value\": \"public, max-age=60, no-transform\"}, {\"id\": \"hdr-aknfdmovm7mcd5cmkf0h\", \"path\": \"/payload.txt\", \"name\": \"Vary\", \"value\": \"Origin\"}, {\"id\": \"hdr-794btk7rvoek2jf91v1i\", \"path\": \"/payload.txt\", \"name\": \"ETag\", \"value\": \"\\\"QA340_93efae\\\"\"}]",
+        "stderr": ""
+      },
+      "readback": {
+        "at": "2026-10-16T03:24:05.889186+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db8pepi9cl7s73ae46kg/headers",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.778,
+        "response": "[{\"header\": {\"id\": \"hdr-sk9fol7hsh5qqvmtdl82\", \"path\": \"/pre/*\", \"name\": \"Content-Encoding\", \"value\": \"gzip\"}, \"cursor\": \"hdr-sk9fol7hsh5qqvmtdl82\"}, {\"header\": {\"id\": \"hdr-euk87m4uifp26gclgnmd\", \"path\": \"/raw/*\", \"name\": \"Cache-Control\", \"value\": \"public, max-age=60, no-transform\"}, \"cursor\": \"hdr-euk87m4uifp26gclgnmd\"}, {\"header\": {\"id\": \"hdr-aknfdmovm7mcd5cmkf0h\", \"path\": \"/payload.txt\", \"name\": \"Vary\", \"value\": \"Origin\"}, \"cursor\": \"hdr-aknfdmovm7mcd5cmkf0h\"}, {\"header\": {\"id\": \"hdr-794btk7rvoek2jf91v1i\", \"path\": \"/payload.txt\", \"name\": \"ETag\", \"value\": \"\\\"QA340_93efae\\\"\"}, \"cursor\": \"hdr-794btk7rvoek2jf91v1i\"}]",
+        "stderr": ""
+      },
+      "pass": true
+    },
+    "delete_intent": {
+      "at": "2026-10-16T03:26:44.175998+00:00",
+      "children": [
+        {
+          "commit": {
+            "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+            "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+          },
+          "createdAt": "2026-10-16T03:17:58.515679Z",
+          "finishedAt": "2026-10-16T03:20:02.39861Z",
+          "id": "dep-db8pepi9cl7s73ae46l0",
+          "startedAt": "2026-10-16T03:19:02.477186Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-16T03:20:02.398611Z"
+        }
+      ]
+    },
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db8pepi9cl7s73ae46kg",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.645,
+      "stdout": "{\"data\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"master\", \"createdAt\": \"2026-10-16T03:17:58Z\", \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db8pepi9cl7s73ae46kg\", \"id\": \"srv-db8pepi9cl7s73ae46kg\", \"name\": \"qa-20261016-93efae-bex-enc\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/expressjs/serve-static\", \"rootDir\": \"\", \"serviceDetails\": {\"buildCommand\": \"node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"');fs.mkdirSync('\\\"'\\\"'public'\\\"'\\\"',{recursive:true});fs.writeFileSync('\\\"'\\\"'public/index.html'\\\"'\\\"',\\\"QA340_93efae_static_site\\\\n\\\");fs.writeFileSync('\\\"'\\\"'public/payload.txt'\\\"'\\\"',\\\"QA340_93efae_0123456789abcdef\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/app.js'\\\"'\\\"',\\\"// QA340_93efae\\\\nconsole.log('\\\"'\\\"'ordinary static asset'\\\"'\\\"');\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/app.css'\\\"'\\\"',\\\"/* QA340_93efae */\\\\n.example { color: blue; padding: 1px; }\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/asset.bin'\\\"'\\\"',Buffer.from([...Array(256).keys()]));const z=require('\\\"'\\\"'node:zlib'\\\"'\\\"'),h=b=>require('\\\"'\\\"'node:crypto'\\\"'\\\"').createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');const pre=Buffer.from('\\\"'\\\"'QA340_PRECOMPRESSED_ordinary_javascript\\\\n'\\\"'\\\"'.repeat(4096)),gz=z.gzipSync(pre),raw=Buffer.from('\\\"'\\\"'QA340_NO_TRANSFORM_ordinary_css\\\\n'\\\"'\\\"'.repeat(4096));fs.mkdirSync('\\\"'\\\"'public/pre'\\\"'\\\"',{recursive:true});fs.mkdirSync('\\\"'\\\"'public/raw'\\\"'\\\"',{recursive:true});fs.writeFileSync('\\\"'\\\"'public/pre/app.js'\\\"'\\\"',gz);fs.writeFileSync('\\\"'\\\"'public/raw/app.css'\\\"'\\\"',raw);fs.writeFileSync('\\\"'\\\"'public/probe-manifest.json'\\\"'\\\"',JSON.stringify({pre:{wire_sha256:h(gz),wire_bytes:gz.length,identity_sha256:h(pre),identity_bytes:pre.length},raw:{sha256:h(raw),bytes:raw.length}}));'\", \"numInstances\": 1, \"plan\": \"free\", \"publishPath\": \"public\", \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"url\": \"https://qa-20261016-93efae-bex-enc.onbex.co\"}, \"slug\": \"qa-20261016-93efae-bex-enc\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"static_site\", \"updatedAt\": \"2026-10-16T03:24:04.812440199Z\", \"environmentId\": null, \"projectId\": null}, \"meta\": {\"deleted\": true}}",
+      "stderr": "",
+      "native_exit": 0
+    },
+    "cleanup_receipts": [
+      {
+        "at": "2026-10-16T03:26:51.565584+00:00",
+        "detail": {
+          "at": "2026-10-16T03:26:49.991750+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db8pepi9cl7s73ae46kg",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "404",
+          "curl_exit": 0,
+          "elapsed": 0.551,
+          "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+          "stderr": ""
+        },
+        "inventory": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "services",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.577,
+          "stdout": "[{\"id\": \"srv-dap3v694dm7c7390q930\", \"name\": \"qa-20260922-cd9361-boundary\"}, {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"name\": \"qa-20260922-cd9361-longcronxx\"}, {\"id\": \"srv-dap3r714dm7c7390q91g\", \"name\": \"qa-20260922-cd9361-nativecron\"}, {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"name\": \"hello-go\"}, {\"id\": \"srv-db09vbgehcmc739j12i0\", \"name\": \"qa-20261003-c63833-zero-head\"}, {\"id\": \"srv-db09u90ehcmc739j12cg\", \"name\": \"qa-20261003-f592c7-zero\"}]",
+          "stderr": "",
+          "native_exit": 0,
+          "projection": "baseline identity/name only; configuration omitted"
+        },
+        "runtime_HTTP": "404",
+        "runtime_exit": 0,
+        "quota": {
+          "at": "2026-10-16T03:26:51.565439+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.338,
+          "response": "{\"services\": {\"used\": 8, \"terminating\": 2, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+          "stderr": ""
+        },
+        "baseline_preserved": true
+      },
+      {
+        "at": "2026-10-16T03:27:24.613604+00:00",
+        "detail": {
+          "at": "2026-10-16T03:27:22.858373+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db8pepi9cl7s73ae46kg",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "404",
+          "curl_exit": 0,
+          "elapsed": 0.608,
+          "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+          "stderr": ""
+        },
+        "inventory": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "services",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.697,
+          "stdout": "[{\"id\": \"srv-dap3v694dm7c7390q930\", \"name\": \"qa-20260922-cd9361-boundary\"}, {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"name\": \"qa-20260922-cd9361-longcronxx\"}, {\"id\": \"srv-dap3r714dm7c7390q91g\", \"name\": \"qa-20260922-cd9361-nativecron\"}, {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"name\": \"hello-go\"}, {\"id\": \"srv-db09vbgehcmc739j12i0\", \"name\": \"qa-20261003-c63833-zero-head\"}, {\"id\": \"srv-db09u90ehcmc739j12cg\", \"name\": \"qa-20261003-f592c7-zero\"}]",
+          "stderr": "",
+          "native_exit": 0,
+          "projection": "baseline identity/name only; configuration omitted"
+        },
+        "runtime_HTTP": "404",
+        "runtime_exit": 0,
+        "quota": {
+          "at": "2026-10-16T03:27:24.613488+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.347,
+          "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+          "stderr": ""
+        },
+        "baseline_preserved": true
+      }
+    ],
+    "child_cleanup_receipts": [
+      {
+        "at": "2026-10-16T03:26:52.356905+00:00",
+        "receipts": [
+          {
+            "at": "2026-10-16T03:26:52.356595+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/services/srv-db8pepi9cl7s73ae46kg/deploys/dep-db8pepi9cl7s73ae46l0",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "404",
+            "curl_exit": 0,
+            "elapsed": 0.36,
+            "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+            "stderr": ""
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "sweep": 340,
+    "client": "render",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "name": "qa-20261016-2e867e-render-enc",
+    "nonce": "2e867e",
+    "marker": "QA340_2e867e_static_site\n",
+    "time": "2026-10-16T03:18:15.677656+00:00",
+    "source_head": "7ee5a95fd1d88dd8766072f497e8e191d51a06cb",
+    "type": "static_site",
+    "commands": {
+      "build": "node -e 'const fs=require('\"'\"'node:fs'\"'\"');fs.mkdirSync('\"'\"'public'\"'\"',{recursive:true});fs.writeFileSync('\"'\"'public/index.html'\"'\"',\"QA340_2e867e_static_site\\n\");fs.writeFileSync('\"'\"'public/payload.txt'\"'\"',\"QA340_2e867e_0123456789abcdef\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/app.js'\"'\"',\"// QA340_2e867e\\nconsole.log('\"'\"'ordinary static asset'\"'\"');\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/app.css'\"'\"',\"/* QA340_2e867e */\\n.example { color: blue; padding: 1px; }\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/asset.bin'\"'\"',Buffer.from([...Array(256).keys()]));const z=require('\"'\"'node:zlib'\"'\"'),h=b=>require('\"'\"'node:crypto'\"'\"').createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');const pre=Buffer.from('\"'\"'QA340_PRECOMPRESSED_ordinary_javascript\\n'\"'\"'.repeat(4096)),gz=z.gzipSync(pre),raw=Buffer.from('\"'\"'QA340_NO_TRANSFORM_ordinary_css\\n'\"'\"'.repeat(4096));fs.mkdirSync('\"'\"'public/pre'\"'\"',{recursive:true});fs.mkdirSync('\"'\"'public/raw'\"'\"',{recursive:true});fs.writeFileSync('\"'\"'public/pre/app.js'\"'\"',gz);fs.writeFileSync('\"'\"'public/raw/app.css'\"'\"',raw);fs.writeFileSync('\"'\"'public/probe-manifest.json'\"'\"',JSON.stringify({pre:{wire_sha256:h(gz),wire_bytes:gz.length,identity_sha256:h(pre),identity_bytes:pre.length},raw:{sha256:h(raw),bytes:raw.length}}));'",
+      "start": ""
+    },
+    "capacity": {
+      "at": "2026-10-16T03:18:14.921917+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.426,
+      "response": "{\"services\": {\"used\": 7, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+      "stderr": ""
+    },
+    "pre_inventory": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.714,
+      "stdout": "[{\"id\": \"srv-dap3v694dm7c7390q930\", \"name\": \"qa-20260922-cd9361-boundary\"}, {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"name\": \"qa-20260922-cd9361-longcronxx\"}, {\"id\": \"srv-dap3r714dm7c7390q91g\", \"name\": \"qa-20260922-cd9361-nativecron\"}, {\"id\": \"srv-db8pepi9cl7s73ae46kg\", \"name\": \"qa-20261016-93efae-bex-enc\"}, {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"name\": \"hello-go\"}, {\"id\": \"srv-db09vbgehcmc739j12i0\", \"name\": \"qa-20261003-c63833-zero-head\"}, {\"id\": \"srv-db09u90ehcmc739j12cg\", \"name\": \"qa-20261003-f592c7-zero\"}]",
+      "stderr": "",
+      "projection": "baseline identity/name only; configuration omitted"
+    },
+    "pre_ids": [
+      "srv-dap3v694dm7c7390q930",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-db8pepi9cl7s73ae46kg",
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-db09vbgehcmc739j12i0",
+      "srv-db09u90ehcmc739j12cg"
+    ],
+    "dependency_ids": [],
+    "recorded_child_ids": [
+      "dep-db8peu7dbg8c73dgh8i0"
+    ],
+    "create_command": [
+      "render",
+      "services",
+      "create",
+      "--name",
+      "qa-20261016-2e867e-render-enc",
+      "--type",
+      "static_site",
+      "--repo",
+      "https://github.com/expressjs/serve-static",
+      "--branch",
+      "master",
+      "--build-command",
+      "node -e 'const fs=require('\"'\"'node:fs'\"'\"');fs.mkdirSync('\"'\"'public'\"'\"',{recursive:true});fs.writeFileSync('\"'\"'public/index.html'\"'\"',\"QA340_2e867e_static_site\\n\");fs.writeFileSync('\"'\"'public/payload.txt'\"'\"',\"QA340_2e867e_0123456789abcdef\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/app.js'\"'\"',\"// QA340_2e867e\\nconsole.log('\"'\"'ordinary static asset'\"'\"');\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/app.css'\"'\"',\"/* QA340_2e867e */\\n.example { color: blue; padding: 1px; }\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/asset.bin'\"'\"',Buffer.from([...Array(256).keys()]));const z=require('\"'\"'node:zlib'\"'\"'),h=b=>require('\"'\"'node:crypto'\"'\"').createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');const pre=Buffer.from('\"'\"'QA340_PRECOMPRESSED_ordinary_javascript\\n'\"'\"'.repeat(4096)),gz=z.gzipSync(pre),raw=Buffer.from('\"'\"'QA340_NO_TRANSFORM_ordinary_css\\n'\"'\"'.repeat(4096));fs.mkdirSync('\"'\"'public/pre'\"'\"',{recursive:true});fs.mkdirSync('\"'\"'public/raw'\"'\"',{recursive:true});fs.writeFileSync('\"'\"'public/pre/app.js'\"'\"',gz);fs.writeFileSync('\"'\"'public/raw/app.css'\"'\"',raw);fs.writeFileSync('\"'\"'public/probe-manifest.json'\"'\"',JSON.stringify({pre:{wire_sha256:h(gz),wire_bytes:gz.length,identity_sha256:h(pre),identity_bytes:pre.length},raw:{sha256:h(raw),bytes:raw.length}}));'",
+      "--publish-directory",
+      "public",
+      "--env-var",
+      "NODE_VERSION=24",
+      "--env-var",
+      "SKIP_INSTALL_DEPS=true",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "state": "deleted: native0/detail404/listabsent/runtime404/baseline6/quota terminating0",
+    "create_result": {
+      "binary": "unmodified Render 2.27.0/a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "create",
+        "--name",
+        "qa-20261016-2e867e-render-enc",
+        "--type",
+        "static_site",
+        "--repo",
+        "https://github.com/expressjs/serve-static",
+        "--branch",
+        "master",
+        "--build-command",
+        "node -e 'const fs=require('\"'\"'node:fs'\"'\"');fs.mkdirSync('\"'\"'public'\"'\"',{recursive:true});fs.writeFileSync('\"'\"'public/index.html'\"'\"',\"QA340_2e867e_static_site\\n\");fs.writeFileSync('\"'\"'public/payload.txt'\"'\"',\"QA340_2e867e_0123456789abcdef\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/app.js'\"'\"',\"// QA340_2e867e\\nconsole.log('\"'\"'ordinary static asset'\"'\"');\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/app.css'\"'\"',\"/* QA340_2e867e */\\n.example { color: blue; padding: 1px; }\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/asset.bin'\"'\"',Buffer.from([...Array(256).keys()]));const z=require('\"'\"'node:zlib'\"'\"'),h=b=>require('\"'\"'node:crypto'\"'\"').createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');const pre=Buffer.from('\"'\"'QA340_PRECOMPRESSED_ordinary_javascript\\n'\"'\"'.repeat(4096)),gz=z.gzipSync(pre),raw=Buffer.from('\"'\"'QA340_NO_TRANSFORM_ordinary_css\\n'\"'\"'.repeat(4096));fs.mkdirSync('\"'\"'public/pre'\"'\"',{recursive:true});fs.mkdirSync('\"'\"'public/raw'\"'\"',{recursive:true});fs.writeFileSync('\"'\"'public/pre/app.js'\"'\"',gz);fs.writeFileSync('\"'\"'public/raw/app.css'\"'\"',raw);fs.writeFileSync('\"'\"'public/probe-manifest.json'\"'\"',JSON.stringify({pre:{wire_sha256:h(gz),wire_bytes:gz.length,identity_sha256:h(pre),identity_bytes:pre.length},raw:{sha256:h(raw),bytes:raw.length}}));'",
+        "--publish-directory",
+        "public",
+        "--env-var",
+        "NODE_VERSION=24",
+        "--env-var",
+        "SKIP_INSTALL_DEPS=true",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.267,
+      "stdout": "{\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"master\", \"createdAt\": \"2026-10-16T03:18:16Z\", \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db8peu7dbg8c73dgh8hg\", \"id\": \"srv-db8peu7dbg8c73dgh8hg\", \"name\": \"qa-20261016-2e867e-render-enc\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/expressjs/serve-static\", \"rootDir\": \"\", \"serviceDetails\": {\"buildCommand\": \"node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"');fs.mkdirSync('\\\"'\\\"'public'\\\"'\\\"',{recursive:true});fs.writeFileSync('\\\"'\\\"'public/index.html'\\\"'\\\"',\\\"QA340_2e867e_static_site\\\\n\\\");fs.writeFileSync('\\\"'\\\"'public/payload.txt'\\\"'\\\"',\\\"QA340_2e867e_0123456789abcdef\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/app.js'\\\"'\\\"',\\\"// QA340_2e867e\\\\nconsole.log('\\\"'\\\"'ordinary static asset'\\\"'\\\"');\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/app.css'\\\"'\\\"',\\\"/* QA340_2e867e */\\\\n.example { color: blue; padding: 1px; }\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/asset.bin'\\\"'\\\"',Buffer.from([...Array(256).keys()]));const z=require('\\\"'\\\"'node:zlib'\\\"'\\\"'),h=b=>require('\\\"'\\\"'node:crypto'\\\"'\\\"').createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');const pre=Buffer.from('\\\"'\\\"'QA340_PRECOMPRESSED_ordinary_javascript\\\\n'\\\"'\\\"'.repeat(4096)),gz=z.gzipSync(pre),raw=Buffer.from('\\\"'\\\"'QA340_NO_TRANSFORM_ordinary_css\\\\n'\\\"'\\\"'.repeat(4096));fs.mkdirSync('\\\"'\\\"'public/pre'\\\"'\\\"',{recursive:true});fs.mkdirSync('\\\"'\\\"'public/raw'\\\"'\\\"',{recursive:true});fs.writeFileSync('\\\"'\\\"'public/pre/app.js'\\\"'\\\"',gz);fs.writeFileSync('\\\"'\\\"'public/raw/app.css'\\\"'\\\"',raw);fs.writeFileSync('\\\"'\\\"'public/probe-manifest.json'\\\"'\\\"',JSON.stringify({pre:{wire_sha256:h(gz),wire_bytes:gz.length,identity_sha256:h(pre),identity_bytes:pre.length},raw:{sha256:h(raw),bytes:raw.length}}));'\", \"numInstances\": 1, \"plan\": \"free\", \"publishPath\": \"public\", \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"url\": \"https://qa-20261016-2e867e-render-enc.onbex.co\"}, \"slug\": \"qa-20261016-2e867e-render-enc\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"static_site\", \"updatedAt\": \"2026-10-16T03:18:16.776135214Z\"}",
+      "stderr": "",
+      "captures": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/v1/services",
+            "body": {
+              "autoDeploy": "no",
+              "branch": "master",
+              "envVars": [
+                {
+                  "key": "NODE_VERSION",
+                  "value": "24"
+                },
+                {
+                  "key": "SKIP_INSTALL_DEPS",
+                  "value": "true"
+                }
+              ],
+              "name": "qa-20261016-2e867e-render-enc",
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "repo": "https://github.com/expressjs/serve-static",
+              "serviceDetails": {
+                "buildCommand": "node -e 'const fs=require('\"'\"'node:fs'\"'\"');fs.mkdirSync('\"'\"'public'\"'\"',{recursive:true});fs.writeFileSync('\"'\"'public/index.html'\"'\"',\"QA340_2e867e_static_site\\n\");fs.writeFileSync('\"'\"'public/payload.txt'\"'\"',\"QA340_2e867e_0123456789abcdef\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/app.js'\"'\"',\"// QA340_2e867e\\nconsole.log('\"'\"'ordinary static asset'\"'\"');\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/app.css'\"'\"',\"/* QA340_2e867e */\\n.example { color: blue; padding: 1px; }\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/asset.bin'\"'\"',Buffer.from([...Array(256).keys()]));const z=require('\"'\"'node:zlib'\"'\"'),h=b=>require('\"'\"'node:crypto'\"'\"').createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');const pre=Buffer.from('\"'\"'QA340_PRECOMPRESSED_ordinary_javascript\\n'\"'\"'.repeat(4096)),gz=z.gzipSync(pre),raw=Buffer.from('\"'\"'QA340_NO_TRANSFORM_ordinary_css\\n'\"'\"'.repeat(4096));fs.mkdirSync('\"'\"'public/pre'\"'\"',{recursive:true});fs.mkdirSync('\"'\"'public/raw'\"'\"',{recursive:true});fs.writeFileSync('\"'\"'public/pre/app.js'\"'\"',gz);fs.writeFileSync('\"'\"'public/raw/app.css'\"'\"',raw);fs.writeFileSync('\"'\"'public/probe-manifest.json'\"'\"',JSON.stringify({pre:{wire_sha256:h(gz),wire_bytes:gz.length,identity_sha256:h(pre),identity_bytes:pre.length},raw:{sha256:h(raw),bytes:raw.length}}));'",
+                "publishPath": "public"
+              },
+              "type": "static_site"
+            },
+            "raw_body": "{\"autoDeploy\":\"no\",\"branch\":\"master\",\"envVars\":[{\"key\":\"NODE_VERSION\",\"value\":\"24\"},{\"key\":\"SKIP_INSTALL_DEPS\",\"value\":\"true\"}],\"name\":\"qa-20261016-2e867e-render-enc\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"repo\":\"https://github.com/expressjs/serve-static\",\"serviceDetails\":{\"buildCommand\":\"node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"');fs.mkdirSync('\\\"'\\\"'public'\\\"'\\\"',{recursive:true});fs.writeFileSync('\\\"'\\\"'public/index.html'\\\"'\\\"',\\\"QA340_2e867e_static_site\\\\n\\\");fs.writeFileSync('\\\"'\\\"'public/payload.txt'\\\"'\\\"',\\\"QA340_2e867e_0123456789abcdef\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/app.js'\\\"'\\\"',\\\"// QA340_2e867e\\\\nconsole.log('\\\"'\\\"'ordinary static asset'\\\"'\\\"');\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/app.css'\\\"'\\\"',\\\"/* QA340_2e867e */\\\\n.example { color: blue; padding: 1px; }\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/asset.bin'\\\"'\\\"',Buffer.from([...Array(256).keys()]));const z=require('\\\"'\\\"'node:zlib'\\\"'\\\"'),h=b=\\u003erequire('\\\"'\\\"'node:crypto'\\\"'\\\"').createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');const pre=Buffer.from('\\\"'\\\"'QA340_PRECOMPRESSED_ordinary_javascript\\\\n'\\\"'\\\"'.repeat(4096)),gz=z.gzipSync(pre),raw=Buffer.from('\\\"'\\\"'QA340_NO_TRANSFORM_ordinary_css\\\\n'\\\"'\\\"'.repeat(4096));fs.mkdirSync('\\\"'\\\"'public/pre'\\\"'\\\"',{recursive:true});fs.mkdirSync('\\\"'\\\"'public/raw'\\\"'\\\"',{recursive:true});fs.writeFileSync('\\\"'\\\"'public/pre/app.js'\\\"'\\\"',gz);fs.writeFileSync('\\\"'\\\"'public/raw/app.css'\\\"'\\\"',raw);fs.writeFileSync('\\\"'\\\"'public/probe-manifest.json'\\\"'\\\"',JSON.stringify({pre:{wire_sha256:h(gz),wire_bytes:gz.length,identity_sha256:h(pre),identity_bytes:pre.length},raw:{sha256:h(raw),bytes:raw.length}}));'\",\"publishPath\":\"public\"},\"type\":\"static_site\"}",
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "Content-Type": "application/json"
+            },
+            "authorization": "[REDACTED]"
+          },
+          "status": 201,
+          "response": "{\"service\": {\"id\": \"srv-db8peu7dbg8c73dgh8hg\", \"name\": \"qa-20261016-2e867e-render-enc\", \"immutableName\": \"qa-20261016-2e867e-render-enc\", \"slug\": \"qa-20261016-2e867e-render-enc\", \"displayName\": \"\", \"type\": \"static_site\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db8peu7dbg8c73dgh8hg\", \"createdAt\": \"2026-10-16T03:18:16Z\", \"updatedAt\": \"2026-10-16T03:18:16.776135214Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"buildCommand\": \"node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"');fs.mkdirSync('\\\"'\\\"'public'\\\"'\\\"',{recursive:true});fs.writeFileSync('\\\"'\\\"'public/index.html'\\\"'\\\"',\\\"QA340_2e867e_static_site\\\\n\\\");fs.writeFileSync('\\\"'\\\"'public/payload.txt'\\\"'\\\"',\\\"QA340_2e867e_0123456789abcdef\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/app.js'\\\"'\\\"',\\\"// QA340_2e867e\\\\nconsole.log('\\\"'\\\"'ordinary static asset'\\\"'\\\"');\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/app.css'\\\"'\\\"',\\\"/* QA340_2e867e */\\\\n.example { color: blue; padding: 1px; }\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/asset.bin'\\\"'\\\"',Buffer.from([...Array(256).keys()]));const z=require('\\\"'\\\"'node:zlib'\\\"'\\\"'),h=b=>require('\\\"'\\\"'node:crypto'\\\"'\\\"').createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');const pre=Buffer.from('\\\"'\\\"'QA340_PRECOMPRESSED_ordinary_javascript\\\\n'\\\"'\\\"'.repeat(4096)),gz=z.gzipSync(pre),raw=Buffer.from('\\\"'\\\"'QA340_NO_TRANSFORM_ordinary_css\\\\n'\\\"'\\\"'.repeat(4096));fs.mkdirSync('\\\"'\\\"'public/pre'\\\"'\\\"',{recursive:true});fs.mkdirSync('\\\"'\\\"'public/raw'\\\"'\\\"',{recursive:true});fs.writeFileSync('\\\"'\\\"'public/pre/app.js'\\\"'\\\"',gz);fs.writeFileSync('\\\"'\\\"'public/raw/app.css'\\\"'\\\"',raw);fs.writeFileSync('\\\"'\\\"'public/probe-manifest.json'\\\"'\\\"',JSON.stringify({pre:{wire_sha256:h(gz),wire_bytes:gz.length,identity_sha256:h(pre),identity_bytes:pre.length},raw:{sha256:h(raw),bytes:raw.length}}));'\", \"numInstances\": 1, \"plan\": \"free\", \"publishPath\": \"public\", \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"url\": \"https://qa-20261016-2e867e-render-enc.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"repo\": \"https://github.com/expressjs/serve-static\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}, \"deployId\": \"dep-db8peu7dbg8c73dgh8i0\"}",
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a4b3ea4dcfcc5ec6-PDX"
+          }
+        }
+      ],
+      "qualification": "actual native POST forwarded unchanged to production; owned local relay and copied config cleaned",
+      "native_exit": 0
+    },
+    "id": "srv-db8peu7dbg8c73dgh8hg",
+    "create_view": {
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "branch": "master",
+      "createdAt": "2026-10-16T03:18:16Z",
+      "dashboardUrl": "https://dashboard.bex.co/static/srv-db8peu7dbg8c73dgh8hg",
+      "id": "srv-db8peu7dbg8c73dgh8hg",
+      "name": "qa-20261016-2e867e-render-enc",
+      "notifyOnFail": "default",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/expressjs/serve-static",
+      "rootDir": "",
+      "serviceDetails": {
+        "buildCommand": "node -e 'const fs=require('\"'\"'node:fs'\"'\"');fs.mkdirSync('\"'\"'public'\"'\"',{recursive:true});fs.writeFileSync('\"'\"'public/index.html'\"'\"',\"QA340_2e867e_static_site\\n\");fs.writeFileSync('\"'\"'public/payload.txt'\"'\"',\"QA340_2e867e_0123456789abcdef\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/app.js'\"'\"',\"// QA340_2e867e\\nconsole.log('\"'\"'ordinary static asset'\"'\"');\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/app.css'\"'\"',\"/* QA340_2e867e */\\n.example { color: blue; padding: 1px; }\\n\".repeat(4096));fs.writeFileSync('\"'\"'public/asset.bin'\"'\"',Buffer.from([...Array(256).keys()]));const z=require('\"'\"'node:zlib'\"'\"'),h=b=>require('\"'\"'node:crypto'\"'\"').createHash('\"'\"'sha256'\"'\"').update(b).digest('\"'\"'hex'\"'\"');const pre=Buffer.from('\"'\"'QA340_PRECOMPRESSED_ordinary_javascript\\n'\"'\"'.repeat(4096)),gz=z.gzipSync(pre),raw=Buffer.from('\"'\"'QA340_NO_TRANSFORM_ordinary_css\\n'\"'\"'.repeat(4096));fs.mkdirSync('\"'\"'public/pre'\"'\"',{recursive:true});fs.mkdirSync('\"'\"'public/raw'\"'\"',{recursive:true});fs.writeFileSync('\"'\"'public/pre/app.js'\"'\"',gz);fs.writeFileSync('\"'\"'public/raw/app.css'\"'\"',raw);fs.writeFileSync('\"'\"'public/probe-manifest.json'\"'\"',JSON.stringify({pre:{wire_sha256:h(gz),wire_bytes:gz.length,identity_sha256:h(pre),identity_bytes:pre.length},raw:{sha256:h(raw),bytes:raw.length}}));'",
+        "numInstances": 1,
+        "plan": "free",
+        "publishPath": "public",
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "url": "https://qa-20261016-2e867e-render-enc.onbex.co"
+      },
+      "slug": "qa-20261016-2e867e-render-enc",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "static_site",
+      "updatedAt": "2026-10-16T03:18:16.776135214Z"
+    },
+    "history_receipts": [
+      {
+        "at": "2026-10-16T03:18:18.127262+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db8peu7dbg8c73dgh8hg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.436,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\"}, \"createdAt\": \"2026-10-16T03:18:16.681417Z\", \"id\": \"dep-db8peu7dbg8c73dgh8i0\", \"status\": \"created\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T03:18:16.681417Z\"}]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-16T03:19:55.538075+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db8peu7dbg8c73dgh8hg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.433,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\"}, \"createdAt\": \"2026-10-16T03:18:16.681417Z\", \"id\": \"dep-db8peu7dbg8c73dgh8i0\", \"startedAt\": \"2026-10-16T03:19:02.526664Z\", \"status\": \"build_in_progress\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T03:19:02.526677Z\"}]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-16T03:20:46.995478+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db8peu7dbg8c73dgh8hg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.382,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\"}, \"createdAt\": \"2026-10-16T03:18:16.681417Z\", \"finishedAt\": \"2026-10-16T03:20:02.475627Z\", \"id\": \"dep-db8peu7dbg8c73dgh8i0\", \"startedAt\": \"2026-10-16T03:19:02.526664Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T03:20:02.475628Z\"}]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-16T03:21:13.710004+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db8peu7dbg8c73dgh8hg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.382,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\"}, \"createdAt\": \"2026-10-16T03:18:16.681417Z\", \"finishedAt\": \"2026-10-16T03:20:02.475627Z\", \"id\": \"dep-db8peu7dbg8c73dgh8i0\", \"startedAt\": \"2026-10-16T03:19:02.526664Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T03:20:02.475628Z\"}]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-16T03:22:57.045496+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db8peu7dbg8c73dgh8hg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.388,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\"}, \"createdAt\": \"2026-10-16T03:18:16.681417Z\", \"finishedAt\": \"2026-10-16T03:20:02.475627Z\", \"id\": \"dep-db8peu7dbg8c73dgh8i0\", \"startedAt\": \"2026-10-16T03:19:02.526664Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T03:20:02.475628Z\"}]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-16T03:24:39.839355+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db8peu7dbg8c73dgh8hg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.395,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\"}, \"createdAt\": \"2026-10-16T03:18:16.681417Z\", \"finishedAt\": \"2026-10-16T03:20:02.475627Z\", \"id\": \"dep-db8peu7dbg8c73dgh8i0\", \"startedAt\": \"2026-10-16T03:19:02.526664Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T03:20:02.475628Z\"}]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-16T03:26:20.529819+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db8peu7dbg8c73dgh8hg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.588,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\"}, \"createdAt\": \"2026-10-16T03:18:16.681417Z\", \"finishedAt\": \"2026-10-16T03:20:02.475627Z\", \"id\": \"dep-db8peu7dbg8c73dgh8i0\", \"startedAt\": \"2026-10-16T03:19:02.526664Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T03:20:02.475628Z\"}]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-16T03:26:46.876909+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db8peu7dbg8c73dgh8hg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.397,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\"}, \"createdAt\": \"2026-10-16T03:18:16.681417Z\", \"finishedAt\": \"2026-10-16T03:20:02.475627Z\", \"id\": \"dep-db8peu7dbg8c73dgh8i0\", \"startedAt\": \"2026-10-16T03:19:02.526664Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T03:20:02.475628Z\"}]",
+          "stderr": ""
+        }
+      }
+    ],
+    "deploy_children": [
+      {
+        "commit": {
+          "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+          "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+        },
+        "createdAt": "2026-10-16T03:18:16.681417Z",
+        "finishedAt": "2026-10-16T03:20:02.475627Z",
+        "id": "dep-db8peu7dbg8c73dgh8i0",
+        "startedAt": "2026-10-16T03:19:02.526664Z",
+        "status": "live",
+        "trigger": "other",
+        "updatedAt": "2026-10-16T03:20:02.475628Z"
+      }
+    ],
+    "static_header_control": {
+      "at": "2026-10-16T03:19:53.753523+00:00",
+      "before": {
+        "at": "2026-10-16T03:19:53.753115+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db8peu7dbg8c73dgh8hg/headers",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.315,
+        "response": "[]",
+        "stderr": ""
+      },
+      "headers": [
+        {
+          "path": "/pre/*",
+          "name": "Content-Encoding",
+          "value": "gzip"
+        },
+        {
+          "path": "/raw/*",
+          "name": "Cache-Control",
+          "value": "public, max-age=60, no-transform"
+        },
+        {
+          "path": "/payload.txt",
+          "name": "Vary",
+          "value": "Origin"
+        }
+      ],
+      "intent": "API-only response-header configuration on this exact owned Free static fixture; CLI has no header flag",
+      "result": {
+        "at": "2026-10-16T03:19:54.304847+00:00",
+        "API_only": true,
+        "request": {
+          "method": "PUT",
+          "path": "/v1/services/srv-db8peu7dbg8c73dgh8hg/headers",
+          "body": [
+            {
+              "path": "/pre/*",
+              "name": "Content-Encoding",
+              "value": "gzip"
+            },
+            {
+              "path": "/raw/*",
+              "name": "Cache-Control",
+              "value": "public, max-age=60, no-transform"
+            },
+            {
+              "path": "/payload.txt",
+              "name": "Vary",
+              "value": "Origin"
+            }
+          ],
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.385,
+        "response": "[{\"id\": \"hdr-2t7husaeohormf371inc\", \"path\": \"/pre/*\", \"name\": \"Content-Encoding\", \"value\": \"gzip\"}, {\"id\": \"hdr-ftcoft1pkc80ge2inroc\", \"path\": \"/raw/*\", \"name\": \"Cache-Control\", \"value\": \"public, max-age=60, no-transform\"}, {\"id\": \"hdr-et189vg7gv7aqvsu8lcl\", \"path\": \"/payload.txt\", \"name\": \"Vary\", \"value\": \"Origin\"}]",
+        "stderr": ""
+      },
+      "readback": {
+        "at": "2026-10-16T03:19:54.776831+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db8peu7dbg8c73dgh8hg/headers",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.312,
+        "response": "[{\"header\": {\"id\": \"hdr-2t7husaeohormf371inc\", \"path\": \"/pre/*\", \"name\": \"Content-Encoding\", \"value\": \"gzip\"}, \"cursor\": \"hdr-2t7husaeohormf371inc\"}, {\"header\": {\"id\": \"hdr-ftcoft1pkc80ge2inroc\", \"path\": \"/raw/*\", \"name\": \"Cache-Control\", \"value\": \"public, max-age=60, no-transform\"}, \"cursor\": \"hdr-ftcoft1pkc80ge2inroc\"}, {\"header\": {\"id\": \"hdr-et189vg7gv7aqvsu8lcl\", \"path\": \"/payload.txt\", \"name\": \"Vary\", \"value\": \"Origin\"}, \"cursor\": \"hdr-et189vg7gv7aqvsu8lcl\"}]",
+        "stderr": ""
+      },
+      "pass": true
+    },
+    "observations": [
+      {
+        "at": "2026-10-16T03:20:48.145579+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+              "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+            },
+            "createdAt": "2026-10-16T03:18:16.681417Z",
+            "finishedAt": "2026-10-16T03:20:02.475627Z",
+            "id": "dep-db8peu7dbg8c73dgh8i0",
+            "startedAt": "2026-10-16T03:19:02.526664Z",
+            "status": "live",
+            "trigger": "other",
+            "updatedAt": "2026-10-16T03:20:02.475628Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-16T03:20:47.560715+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db8peu7dbg8c73dgh8hg",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.404,
+          "response": "{\"id\": \"srv-db8peu7dbg8c73dgh8hg\", \"name\": \"qa-20261016-2e867e-render-enc\", \"immutableName\": \"qa-20261016-2e867e-render-enc\", \"slug\": \"qa-20261016-2e867e-render-enc\", \"displayName\": \"\", \"type\": \"static_site\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db8peu7dbg8c73dgh8hg\", \"createdAt\": \"2026-10-16T03:18:16Z\", \"updatedAt\": \"2026-10-16T03:20:00Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"buildCommand\": \"node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"');fs.mkdirSync('\\\"'\\\"'public'\\\"'\\\"',{recursive:true});fs.writeFileSync('\\\"'\\\"'public/index.html'\\\"'\\\"',\\\"QA340_2e867e_static_site\\\\n\\\");fs.writeFileSync('\\\"'\\\"'public/payload.txt'\\\"'\\\"',\\\"QA340_2e867e_0123456789abcdef\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/app.js'\\\"'\\\"',\\\"// QA340_2e867e\\\\nconsole.log('\\\"'\\\"'ordinary static asset'\\\"'\\\"');\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/app.css'\\\"'\\\"',\\\"/* QA340_2e867e */\\\\n.example { color: blue; padding: 1px; }\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/asset.bin'\\\"'\\\"',Buffer.from([...Array(256).keys()]));const z=require('\\\"'\\\"'node:zlib'\\\"'\\\"'),h=b=>require('\\\"'\\\"'node:crypto'\\\"'\\\"').createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');const pre=Buffer.from('\\\"'\\\"'QA340_PRECOMPRESSED_ordinary_javascript\\\\n'\\\"'\\\"'.repeat(4096)),gz=z.gzipSync(pre),raw=Buffer.from('\\\"'\\\"'QA340_NO_TRANSFORM_ordinary_css\\\\n'\\\"'\\\"'.repeat(4096));fs.mkdirSync('\\\"'\\\"'public/pre'\\\"'\\\"',{recursive:true});fs.mkdirSync('\\\"'\\\"'public/raw'\\\"'\\\"',{recursive:true});fs.writeFileSync('\\\"'\\\"'public/pre/app.js'\\\"'\\\"',gz);fs.writeFileSync('\\\"'\\\"'public/raw/app.css'\\\"'\\\"',raw);fs.writeFileSync('\\\"'\\\"'public/probe-manifest.json'\\\"'\\\"',JSON.stringify({pre:{wire_sha256:h(gz),wire_bytes:gz.length,identity_sha256:h(pre),identity_bytes:pre.length},raw:{sha256:h(raw),bytes:raw.length}}));'\", \"numInstances\": 1, \"plan\": \"free\", \"publishPath\": \"public\", \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"url\": \"https://qa-20261016-2e867e-render-enc.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Running\", \"replicas\": 1, \"revision\": \"rev-1\", \"urls\": [\"https://qa-20261016-2e867e-render-enc.onbex.co\"], \"idleTTLSeconds\": 0, \"repo\": \"https://github.com/expressjs/serve-static\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+          "stderr": ""
+        },
+        "HTTP": "200",
+        "curl_exit": 0,
+        "body": "QA340_2e867e_static_site\n",
+        "ready": true
+      },
+      {
+        "at": "2026-10-16T03:26:22.031182+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+              "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+            },
+            "createdAt": "2026-10-16T03:18:16.681417Z",
+            "finishedAt": "2026-10-16T03:20:02.475627Z",
+            "id": "dep-db8peu7dbg8c73dgh8i0",
+            "startedAt": "2026-10-16T03:19:02.526664Z",
+            "status": "live",
+            "trigger": "other",
+            "updatedAt": "2026-10-16T03:20:02.475628Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-16T03:26:21.448061+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db8peu7dbg8c73dgh8hg",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.67,
+          "response": "{\"id\": \"srv-db8peu7dbg8c73dgh8hg\", \"name\": \"qa-20261016-2e867e-render-enc\", \"immutableName\": \"qa-20261016-2e867e-render-enc\", \"slug\": \"qa-20261016-2e867e-render-enc\", \"displayName\": \"\", \"type\": \"static_site\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db8peu7dbg8c73dgh8hg\", \"createdAt\": \"2026-10-16T03:18:16Z\", \"updatedAt\": \"2026-10-16T03:24:38.097253314Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"buildCommand\": \"node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"');fs.mkdirSync('\\\"'\\\"'public'\\\"'\\\"',{recursive:true});fs.writeFileSync('\\\"'\\\"'public/index.html'\\\"'\\\"',\\\"QA340_2e867e_static_site\\\\n\\\");fs.writeFileSync('\\\"'\\\"'public/payload.txt'\\\"'\\\"',\\\"QA340_2e867e_0123456789abcdef\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/app.js'\\\"'\\\"',\\\"// QA340_2e867e\\\\nconsole.log('\\\"'\\\"'ordinary static asset'\\\"'\\\"');\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/app.css'\\\"'\\\"',\\\"/* QA340_2e867e */\\\\n.example { color: blue; padding: 1px; }\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/asset.bin'\\\"'\\\"',Buffer.from([...Array(256).keys()]));const z=require('\\\"'\\\"'node:zlib'\\\"'\\\"'),h=b=>require('\\\"'\\\"'node:crypto'\\\"'\\\"').createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');const pre=Buffer.from('\\\"'\\\"'QA340_PRECOMPRESSED_ordinary_javascript\\\\n'\\\"'\\\"'.repeat(4096)),gz=z.gzipSync(pre),raw=Buffer.from('\\\"'\\\"'QA340_NO_TRANSFORM_ordinary_css\\\\n'\\\"'\\\"'.repeat(4096));fs.mkdirSync('\\\"'\\\"'public/pre'\\\"'\\\"',{recursive:true});fs.mkdirSync('\\\"'\\\"'public/raw'\\\"'\\\"',{recursive:true});fs.writeFileSync('\\\"'\\\"'public/pre/app.js'\\\"'\\\"',gz);fs.writeFileSync('\\\"'\\\"'public/raw/app.css'\\\"'\\\"',raw);fs.writeFileSync('\\\"'\\\"'public/probe-manifest.json'\\\"'\\\"',JSON.stringify({pre:{wire_sha256:h(gz),wire_bytes:gz.length,identity_sha256:h(pre),identity_bytes:pre.length},raw:{sha256:h(raw),bytes:raw.length}}));'\", \"numInstances\": 1, \"plan\": \"free\", \"publishPath\": \"public\", \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"url\": \"https://qa-20261016-2e867e-render-enc.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Running\", \"replicas\": 1, \"revision\": \"rev-1\", \"urls\": [\"https://qa-20261016-2e867e-render-enc.onbex.co\"], \"idleTTLSeconds\": 0, \"repo\": \"https://github.com/expressjs/serve-static\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+          "stderr": ""
+        },
+        "HTTP": "200",
+        "curl_exit": 0,
+        "body": "QA340_2e867e_static_site\n",
+        "ready": true
+      }
+    ],
+    "compression_probe": {
+      "at": "2026-10-16T03:21:13.849400+00:00",
+      "history": [
+        {
+          "commit": {
+            "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+            "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+          },
+          "createdAt": "2026-10-16T03:18:16.681417Z",
+          "finishedAt": "2026-10-16T03:20:02.475627Z",
+          "id": "dep-db8peu7dbg8c73dgh8i0",
+          "startedAt": "2026-10-16T03:19:02.526664Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-16T03:20:02.475628Z"
+        }
+      ],
+      "requests": [
+        {
+          "at": "2026-10-16T03:21:13.980037+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "expected_identity_bytes": 122880,
+          "expected_identity_sha256": "e5b33c8abfda42c1a804ae89a945980c88301f8ea37919a851f5ffa74ef3cbc6",
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/plain\ndate: Fri, 16 Oct 2026 03:21:14 GMT\nvary: Origin\nvary: Accept-Encoding\ncontent-length: 122880\n\n",
+          "wire_bytes": 122880,
+          "wire_sha256": "e5b33c8abfda42c1a804ae89a945980c88301f8ea37919a851f5ffa74ef3cbc6",
+          "content_encoding": "identity",
+          "decoded_bytes": 122880,
+          "decoded_sha256": "e5b33c8abfda42c1a804ae89a945980c88301f8ea37919a851f5ffa74ef3cbc6",
+          "content_matches": true
+        },
+        {
+          "at": "2026-10-16T03:21:15.336121+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "expected_identity_bytes": 122880,
+          "expected_identity_sha256": "e5b33c8abfda42c1a804ae89a945980c88301f8ea37919a851f5ffa74ef3cbc6",
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/plain\ndate: Fri, 16 Oct 2026 03:21:15 GMT\nvary: Origin\nvary: Accept-Encoding\ncontent-length: 41\n\n",
+          "wire_bytes": 41,
+          "wire_sha256": "443e0a3739ed27b016f903bc598c0de9871b87afb8ce29fa76182463352796bd",
+          "content_encoding": "br",
+          "decoded_bytes": 122880,
+          "decoded_sha256": "e5b33c8abfda42c1a804ae89a945980c88301f8ea37919a851f5ffa74ef3cbc6",
+          "content_matches": true
+        },
+        {
+          "at": "2026-10-16T03:21:16.207472+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "gzip"
+            }
+          },
+          "expected_identity_bytes": 122880,
+          "expected_identity_sha256": "e5b33c8abfda42c1a804ae89a945980c88301f8ea37919a851f5ffa74ef3cbc6",
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/plain\ndate: Fri, 16 Oct 2026 03:21:16 GMT\nvary: Origin\nvary: Accept-Encoding\ncontent-length: 122880\n\n",
+          "wire_bytes": 122880,
+          "wire_sha256": "e5b33c8abfda42c1a804ae89a945980c88301f8ea37919a851f5ffa74ef3cbc6",
+          "content_encoding": "identity",
+          "decoded_bytes": 122880,
+          "decoded_sha256": "e5b33c8abfda42c1a804ae89a945980c88301f8ea37919a851f5ffa74ef3cbc6",
+          "content_matches": true
+        },
+        {
+          "at": "2026-10-16T03:21:17.552958+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "br;q=1, gzip;q=0.5"
+            }
+          },
+          "expected_identity_bytes": 122880,
+          "expected_identity_sha256": "e5b33c8abfda42c1a804ae89a945980c88301f8ea37919a851f5ffa74ef3cbc6",
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/plain\ndate: Fri, 16 Oct 2026 03:21:18 GMT\nvary: Origin\nvary: Accept-Encoding\ncontent-length: 41\n\n",
+          "wire_bytes": 41,
+          "wire_sha256": "443e0a3739ed27b016f903bc598c0de9871b87afb8ce29fa76182463352796bd",
+          "content_encoding": "br",
+          "decoded_bytes": 122880,
+          "decoded_sha256": "e5b33c8abfda42c1a804ae89a945980c88301f8ea37919a851f5ffa74ef3cbc6",
+          "content_matches": true
+        },
+        {
+          "at": "2026-10-16T03:21:18.485063+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "expected_identity_bytes": 221184,
+          "expected_identity_sha256": "57a98a3e7bd48516d9d471d9c7aaf4bbb54154c4b83af996d638654ebbeeac88",
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 03:21:19 GMT\nvary: Accept-Encoding\ncontent-length: 221184\n\n",
+          "wire_bytes": 221184,
+          "wire_sha256": "57a98a3e7bd48516d9d471d9c7aaf4bbb54154c4b83af996d638654ebbeeac88",
+          "content_encoding": "identity",
+          "decoded_bytes": 221184,
+          "decoded_sha256": "57a98a3e7bd48516d9d471d9c7aaf4bbb54154c4b83af996d638654ebbeeac88",
+          "content_matches": true
+        },
+        {
+          "at": "2026-10-16T03:21:20.013355+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "expected_identity_bytes": 221184,
+          "expected_identity_sha256": "57a98a3e7bd48516d9d471d9c7aaf4bbb54154c4b83af996d638654ebbeeac88",
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 03:21:20 GMT\nvary: Accept-Encoding\ncontent-length: 69\n\n",
+          "wire_bytes": 69,
+          "wire_sha256": "3f9a928e496df952af78812688a056d373692a1ced7d5dc488eb9d933dc61c27",
+          "content_encoding": "br",
+          "decoded_bytes": 221184,
+          "decoded_sha256": "57a98a3e7bd48516d9d471d9c7aaf4bbb54154c4b83af996d638654ebbeeac88",
+          "content_matches": true
+        },
+        {
+          "at": "2026-10-16T03:21:20.924114+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "gzip"
+            }
+          },
+          "expected_identity_bytes": 221184,
+          "expected_identity_sha256": "57a98a3e7bd48516d9d471d9c7aaf4bbb54154c4b83af996d638654ebbeeac88",
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 03:21:21 GMT\nvary: Accept-Encoding\ncontent-length: 221184\n\n",
+          "wire_bytes": 221184,
+          "wire_sha256": "57a98a3e7bd48516d9d471d9c7aaf4bbb54154c4b83af996d638654ebbeeac88",
+          "content_encoding": "identity",
+          "decoded_bytes": 221184,
+          "decoded_sha256": "57a98a3e7bd48516d9d471d9c7aaf4bbb54154c4b83af996d638654ebbeeac88",
+          "content_matches": true
+        },
+        {
+          "at": "2026-10-16T03:21:22.467153+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/app.js",
+            "headers": {
+              "Accept-Encoding": "br;q=1, gzip;q=0.5"
+            }
+          },
+          "expected_identity_bytes": 221184,
+          "expected_identity_sha256": "57a98a3e7bd48516d9d471d9c7aaf4bbb54154c4b83af996d638654ebbeeac88",
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 03:21:23 GMT\nvary: Accept-Encoding\ncontent-length: 69\n\n",
+          "wire_bytes": 69,
+          "wire_sha256": "3f9a928e496df952af78812688a056d373692a1ced7d5dc488eb9d933dc61c27",
+          "content_encoding": "br",
+          "decoded_bytes": 221184,
+          "decoded_sha256": "57a98a3e7bd48516d9d471d9c7aaf4bbb54154c4b83af996d638654ebbeeac88",
+          "content_matches": true
+        },
+        {
+          "at": "2026-10-16T03:21:23.369364+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/app.css",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "expected_identity_bytes": 241664,
+          "expected_identity_sha256": "420ff871a0fe766acb16bac321b33f0e860d571877e8d9a0ab883df6e822d991",
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/css\ndate: Fri, 16 Oct 2026 03:21:24 GMT\nvary: Accept-Encoding\ncontent-length: 241664\n\n",
+          "wire_bytes": 241664,
+          "wire_sha256": "420ff871a0fe766acb16bac321b33f0e860d571877e8d9a0ab883df6e822d991",
+          "content_encoding": "identity",
+          "decoded_bytes": 241664,
+          "decoded_sha256": "420ff871a0fe766acb16bac321b33f0e860d571877e8d9a0ab883df6e822d991",
+          "content_matches": true
+        },
+        {
+          "at": "2026-10-16T03:21:24.938223+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/app.css",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "expected_identity_bytes": 241664,
+          "expected_identity_sha256": "420ff871a0fe766acb16bac321b33f0e860d571877e8d9a0ab883df6e822d991",
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/css\ndate: Fri, 16 Oct 2026 03:21:25 GMT\nvary: Accept-Encoding\ncontent-length: 65\n\n",
+          "wire_bytes": 65,
+          "wire_sha256": "6733b6b561d11824a0f24d2ffb3c19d249eb6a4059915412c7c8da1341ca2137",
+          "content_encoding": "br",
+          "decoded_bytes": 241664,
+          "decoded_sha256": "420ff871a0fe766acb16bac321b33f0e860d571877e8d9a0ab883df6e822d991",
+          "content_matches": true
+        },
+        {
+          "at": "2026-10-16T03:21:25.822395+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/app.css",
+            "headers": {
+              "Accept-Encoding": "gzip"
+            }
+          },
+          "expected_identity_bytes": 241664,
+          "expected_identity_sha256": "420ff871a0fe766acb16bac321b33f0e860d571877e8d9a0ab883df6e822d991",
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/css\ndate: Fri, 16 Oct 2026 03:21:26 GMT\nvary: Accept-Encoding\ncontent-length: 241664\n\n",
+          "wire_bytes": 241664,
+          "wire_sha256": "420ff871a0fe766acb16bac321b33f0e860d571877e8d9a0ab883df6e822d991",
+          "content_encoding": "identity",
+          "decoded_bytes": 241664,
+          "decoded_sha256": "420ff871a0fe766acb16bac321b33f0e860d571877e8d9a0ab883df6e822d991",
+          "content_matches": true
+        },
+        {
+          "at": "2026-10-16T03:21:27.358370+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/app.css",
+            "headers": {
+              "Accept-Encoding": "br;q=1, gzip;q=0.5"
+            }
+          },
+          "expected_identity_bytes": 241664,
+          "expected_identity_sha256": "420ff871a0fe766acb16bac321b33f0e860d571877e8d9a0ab883df6e822d991",
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/css\ndate: Fri, 16 Oct 2026 03:21:27 GMT\nvary: Accept-Encoding\ncontent-length: 65\n\n",
+          "wire_bytes": 65,
+          "wire_sha256": "6733b6b561d11824a0f24d2ffb3c19d249eb6a4059915412c7c8da1341ca2137",
+          "content_encoding": "br",
+          "decoded_bytes": 241664,
+          "decoded_sha256": "420ff871a0fe766acb16bac321b33f0e860d571877e8d9a0ab883df6e822d991",
+          "content_matches": true
+        }
+      ],
+      "intent": "bounded ordinary GETs with advertised content encodings on own native Free static",
+      "content_pass": true
+    },
+    "neighbor_HTTP": {
+      "at": "2026-10-16T03:22:57.198101+00:00",
+      "history": [
+        {
+          "commit": {
+            "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+            "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+          },
+          "createdAt": "2026-10-16T03:18:16.681417Z",
+          "finishedAt": "2026-10-16T03:20:02.475627Z",
+          "id": "dep-db8peu7dbg8c73dgh8i0",
+          "startedAt": "2026-10-16T03:19:02.526664Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-16T03:20:02.475628Z"
+        }
+      ],
+      "requests": [
+        {
+          "at": "2026-10-16T03:22:57.332293+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/probe-manifest.json",
+            "headers": {
+              "Accept-Encoding": "identity"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: application/json\ndate: Fri, 16 Oct 2026 03:22:58 GMT\ncontent-length: 315\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "application/json",
+            "date": "Fri, 16 Oct 2026 03:22:58 GMT",
+            "content-length": "315"
+          },
+          "wire_bytes": 315,
+          "wire_sha256": "cdf55b574535432a748cc65469b67460de5a5dd448a8bcb91bf3d87a4195c246",
+          "check": "generated authored control manifest",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:22:58.678635+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "br;q=0, gzip;q=1"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/plain\ndate: Fri, 16 Oct 2026 03:22:59 GMT\nvary: Origin\nvary: Accept-Encoding\ncontent-length: 122880\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/plain",
+            "date": "Fri, 16 Oct 2026 03:22:59 GMT",
+            "vary": "Origin, Accept-Encoding",
+            "content-length": "122880"
+          },
+          "wire_bytes": 122880,
+          "wire_sha256": "e5b33c8abfda42c1a804ae89a945980c88301f8ea37919a851f5ffa74ef3cbc6",
+          "check": "negotiation br;q=0, gzip;q=1",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:23:00.148438+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "*;q=1"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/plain\ndate: Fri, 16 Oct 2026 03:23:00 GMT\nvary: Origin\nvary: Accept-Encoding\ncontent-length: 41\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-type": "text/plain",
+            "date": "Fri, 16 Oct 2026 03:23:00 GMT",
+            "vary": "Origin, Accept-Encoding",
+            "content-length": "41"
+          },
+          "wire_bytes": 41,
+          "wire_sha256": "443e0a3739ed27b016f903bc598c0de9871b87afb8ce29fa76182463352796bd",
+          "check": "negotiation *;q=1",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:23:01.214786+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "br;q=bogus"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/plain\ndate: Fri, 16 Oct 2026 03:23:01 GMT\nvary: Origin\nvary: Accept-Encoding\ncontent-length: 122880\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/plain",
+            "date": "Fri, 16 Oct 2026 03:23:01 GMT",
+            "vary": "Origin, Accept-Encoding",
+            "content-length": "122880"
+          },
+          "wire_bytes": 122880,
+          "wire_sha256": "e5b33c8abfda42c1a804ae89a945980c88301f8ea37919a851f5ffa74ef3cbc6",
+          "check": "negotiation br;q=bogus",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:25:06.736390+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/plain\ndate: Fri, 16 Oct 2026 03:25:07 GMT\netag: W/\"QA340_2e867e\"\nvary: Origin\nvary: Accept-Encoding\ncontent-length: 41\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-type": "text/plain",
+            "date": "Fri, 16 Oct 2026 03:25:07 GMT",
+            "etag": "W/\"QA340_2e867e\"",
+            "vary": "Origin, Accept-Encoding",
+            "content-length": "41"
+          },
+          "wire_bytes": 41,
+          "wire_sha256": "443e0a3739ed27b016f903bc598c0de9871b87afb8ce29fa76182463352796bd",
+          "check": "encoded GET exact body and framing",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:25:07.732258+00:00",
+          "request": {
+            "method": "HEAD",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/plain\ndate: Fri, 16 Oct 2026 03:25:08 GMT\netag: W/\"QA340_2e867e\"\nvary: Origin\nvary: Accept-Encoding\ncontent-length: 41\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-type": "text/plain",
+            "date": "Fri, 16 Oct 2026 03:25:08 GMT",
+            "etag": "W/\"QA340_2e867e\"",
+            "vary": "Origin, Accept-Encoding",
+            "content-length": "41"
+          },
+          "wire_bytes": 0,
+          "wire_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "check": "encoded HEAD representation length",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:25:08.747033+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "br",
+              "Range": "bytes=0-9"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "206",
+          "stderr": "",
+          "response_headers": "HTTP/2 206 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-range: bytes 0-9/41\ncontent-type: text/plain\ndate: Fri, 16 Oct 2026 03:25:09 GMT\netag: W/\"QA340_2e867e\"\nvary: Origin\nvary: Accept-Encoding\ncontent-length: 10\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-range": "bytes 0-9/41",
+            "content-type": "text/plain",
+            "date": "Fri, 16 Oct 2026 03:25:09 GMT",
+            "etag": "W/\"QA340_2e867e\"",
+            "vary": "Origin, Accept-Encoding",
+            "content-length": "10"
+          },
+          "wire_bytes": 10,
+          "wire_sha256": "f1aef332e95578d830b166d7945c79702c0cf888a50a25efae80817683e17196",
+          "check": "range of encoded representation",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:25:09.785434+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "identity",
+              "Range": "bytes=0-9"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "206",
+          "stderr": "",
+          "response_headers": "HTTP/2 206 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-range: bytes 0-9/122880\ncontent-type: text/plain\ndate: Fri, 16 Oct 2026 03:25:10 GMT\netag: \"QA340_2e867e\"\nvary: Origin\nvary: Accept-Encoding\ncontent-length: 10\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-range": "bytes 0-9/122880",
+            "content-type": "text/plain",
+            "date": "Fri, 16 Oct 2026 03:25:10 GMT",
+            "etag": "\"QA340_2e867e\"",
+            "vary": "Origin, Accept-Encoding",
+            "content-length": "10"
+          },
+          "wire_bytes": 10,
+          "wire_sha256": "5981eeb33a711f8a871e61f000a253dc2a93be7b58333f72f75c5e9616458113",
+          "check": "identity representation range",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:25:10.846729+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "br",
+              "Range": "bytes=245760-"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "416",
+          "stderr": "",
+          "response_headers": "HTTP/2 416 \ncontent-range: bytes */41\ncontent-type: text/plain; charset=utf-8\ndate: Fri, 16 Oct 2026 03:25:11 GMT\nvary: Origin\nvary: Accept-Encoding\nx-content-type-options: nosniff\ncontent-length: 33\n\n",
+          "headers": {
+            "content-range": "bytes */41",
+            "content-type": "text/plain; charset=utf-8",
+            "date": "Fri, 16 Oct 2026 03:25:11 GMT",
+            "vary": "Origin, Accept-Encoding",
+            "x-content-type-options": "nosniff",
+            "content-length": "33"
+          },
+          "wire_bytes": 33,
+          "wire_sha256": "b5d780567c43a2b5d8473d84a136e7dc62ee9c494108d282cbff4801d199cf32",
+          "check": "unsatisfiable range has no content coding",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:26:06.073139+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "br",
+              "If-None-Match": "W/\"QA340_2e867e\""
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "304",
+          "stderr": "",
+          "response_headers": "HTTP/2 304 \ncache-control: public, max-age=0, must-revalidate\ndate: Fri, 16 Oct 2026 03:26:06 GMT\netag: W/\"QA340_2e867e\"\nvary: Origin\nvary: Accept-Encoding\n\n",
+          "headers": {
+            "cache-control": "public, max-age=0, must-revalidate",
+            "date": "Fri, 16 Oct 2026 03:26:06 GMT",
+            "etag": "W/\"QA340_2e867e\"",
+            "vary": "Origin, Accept-Encoding"
+          },
+          "wire_bytes": 0,
+          "wire_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "check": "encoded validator bodyless304",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:26:07.137094+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/index.html",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: text/html\ndate: Fri, 16 Oct 2026 03:26:07 GMT\ncontent-length: 25\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "text/html",
+            "date": "Fri, 16 Oct 2026 03:26:07 GMT",
+            "content-length": "25"
+          },
+          "wire_bytes": 25,
+          "wire_sha256": "14fa1c68072c5edce4d29b278127017e9abe2b1ab048a3247afd8daecae29e41",
+          "check": "tiny asset unchanged",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:26:08.222488+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/asset.bin",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-type: application/octet-stream\ndate: Fri, 16 Oct 2026 03:26:08 GMT\ncontent-length: 256\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-type": "application/octet-stream",
+            "date": "Fri, 16 Oct 2026 03:26:08 GMT",
+            "content-length": "256"
+          },
+          "wire_bytes": 256,
+          "wire_sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880",
+          "check": "binary asset unchanged",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:26:09.343714+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/pre/app.js",
+            "headers": {
+              "Accept-Encoding": "br, gzip"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: gzip\ncontent-type: text/javascript\ndate: Fri, 16 Oct 2026 03:26:10 GMT\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "gzip",
+            "content-type": "text/javascript",
+            "date": "Fri, 16 Oct 2026 03:26:10 GMT"
+          },
+          "wire_bytes": 559,
+          "wire_sha256": "3157d60465e87ac2ef069624e8a205c4491174ba07857517b64e2a802db16d01",
+          "check": "authored gzip bytes and coding retained",
+          "pass": true
+        },
+        {
+          "at": "2026-10-16T03:26:10.684505+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/raw/app.css",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=60, no-transform\ncontent-type: text/css\ndate: Fri, 16 Oct 2026 03:26:11 GMT\ncontent-length: 131072\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=60, no-transform",
+            "content-type": "text/css",
+            "date": "Fri, 16 Oct 2026 03:26:11 GMT",
+            "content-length": "131072"
+          },
+          "wire_bytes": 131072,
+          "wire_sha256": "019e81884b764467d08c5634f16d5a4a424ff498a5c86c29a044772349133efd",
+          "check": "authored no-transform retained",
+          "pass": true
+        }
+      ],
+      "intent": "finite ordinary GET/HEAD/conditional/range checks on exact owned static assets; no native CLI HTTP command claimed",
+      "manifest": {
+        "pre": {
+          "wire_sha256": "3157d60465e87ac2ef069624e8a205c4491174ba07857517b64e2a802db16d01",
+          "wire_bytes": 559,
+          "identity_sha256": "294ab54336ff5821db8b895bbbc1981f83eea420fc03837495cbb0484ed3e30c",
+          "identity_bytes": 163840
+        },
+        "raw": {
+          "sha256": "019e81884b764467d08c5634f16d5a4a424ff498a5c86c29a044772349133efd",
+          "bytes": 131072
+        }
+      },
+      "excluded_ETag_setup": [
+        {
+          "at": "2026-10-16T03:23:02.743910+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "br"
+            }
+          },
+          "curl_exit": 0,
+          "HTTP": "200",
+          "stderr": "",
+          "response_headers": "HTTP/2 200 \naccept-ranges: bytes\ncache-control: public, max-age=0, must-revalidate\ncontent-encoding: br\ncontent-type: text/plain\ndate: Fri, 16 Oct 2026 03:23:03 GMT\nvary: Origin\nvary: Accept-Encoding\ncontent-length: 41\n\n",
+          "headers": {
+            "accept-ranges": "bytes",
+            "cache-control": "public, max-age=0, must-revalidate",
+            "content-encoding": "br",
+            "content-type": "text/plain",
+            "date": "Fri, 16 Oct 2026 03:23:03 GMT",
+            "vary": "Origin, Accept-Encoding",
+            "content-length": "41"
+          },
+          "wire_bytes": 41,
+          "wire_sha256": "443e0a3739ed27b016f903bc598c0de9871b87afb8ce29fa76182463352796bd",
+          "check": "encoded GET exact body and framing",
+          "pass": false
+        }
+      ],
+      "ETag_setup_disposition": "Initial helper assumed an automatic ETag; platform validators are authored. Preserve failed assumption; add harmless owned ETag header, resume remaining ten reads without repeating the four valid early controls.",
+      "excluded_bodyless_capture": [
+        {
+          "at": "2026-10-16T03:25:11.909411+00:00",
+          "request": {
+            "method": "GET",
+            "url": "https://qa-20261016-2e867e-render-enc.onbex.co/payload.txt",
+            "headers": {
+              "Accept-Encoding": "br",
+              "If-None-Match": "W/\"QA340_2e867e\""
+            }
+          }
+        }
+      ],
+      "bodyless_capture_disposition": "curl may omit an output file for304; first attempt ended before durable HTTP/body receipt, excluded. Initialize a private empty output file before the corrected read.",
+      "authored_precompressed_scope": "gzip fixture size recorded in manifest; large precompressed variant not separately hosted",
+      "pass": true
+    },
+    "static_ETag_control": {
+      "at": "2026-10-16T03:24:37.677125+00:00",
+      "headers": [
+        {
+          "path": "/pre/*",
+          "name": "Content-Encoding",
+          "value": "gzip"
+        },
+        {
+          "path": "/raw/*",
+          "name": "Cache-Control",
+          "value": "public, max-age=60, no-transform"
+        },
+        {
+          "path": "/payload.txt",
+          "name": "Vary",
+          "value": "Origin"
+        },
+        {
+          "path": "/payload.txt",
+          "name": "ETag",
+          "value": "\"QA340_2e867e\""
+        }
+      ],
+      "intent": "API-only authored validator fixture; existing three response-header rules retained. Automatic ETags are not a platform contract.",
+      "result": {
+        "at": "2026-10-16T03:24:38.241480+00:00",
+        "API_only": true,
+        "request": {
+          "method": "PUT",
+          "path": "/v1/services/srv-db8peu7dbg8c73dgh8hg/headers",
+          "body": [
+            {
+              "path": "/pre/*",
+              "name": "Content-Encoding",
+              "value": "gzip"
+            },
+            {
+              "path": "/raw/*",
+              "name": "Cache-Control",
+              "value": "public, max-age=60, no-transform"
+            },
+            {
+              "path": "/payload.txt",
+              "name": "Vary",
+              "value": "Origin"
+            },
+            {
+              "path": "/payload.txt",
+              "name": "ETag",
+              "value": "\"QA340_2e867e\""
+            }
+          ],
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.412,
+        "response": "[{\"id\": \"hdr-2t7husaeohormf371inc\", \"path\": \"/pre/*\", \"name\": \"Content-Encoding\", \"value\": \"gzip\"}, {\"id\": \"hdr-ftcoft1pkc80ge2inroc\", \"path\": \"/raw/*\", \"name\": \"Cache-Control\", \"value\": \"public, max-age=60, no-transform\"}, {\"id\": \"hdr-et189vg7gv7aqvsu8lcl\", \"path\": \"/payload.txt\", \"name\": \"Vary\", \"value\": \"Origin\"}, {\"id\": \"hdr-gd61jl7aglbqhc4cqbjt\", \"path\": \"/payload.txt\", \"name\": \"ETag\", \"value\": \"\\\"QA340_2e867e\\\"\"}]",
+        "stderr": ""
+      },
+      "readback": {
+        "at": "2026-10-16T03:24:39.123555+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db8peu7dbg8c73dgh8hg/headers",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.719,
+        "response": "[{\"header\": {\"id\": \"hdr-2t7husaeohormf371inc\", \"path\": \"/pre/*\", \"name\": \"Content-Encoding\", \"value\": \"gzip\"}, \"cursor\": \"hdr-2t7husaeohormf371inc\"}, {\"header\": {\"id\": \"hdr-ftcoft1pkc80ge2inroc\", \"path\": \"/raw/*\", \"name\": \"Cache-Control\", \"value\": \"public, max-age=60, no-transform\"}, \"cursor\": \"hdr-ftcoft1pkc80ge2inroc\"}, {\"header\": {\"id\": \"hdr-et189vg7gv7aqvsu8lcl\", \"path\": \"/payload.txt\", \"name\": \"Vary\", \"value\": \"Origin\"}, \"cursor\": \"hdr-et189vg7gv7aqvsu8lcl\"}, {\"header\": {\"id\": \"hdr-gd61jl7aglbqhc4cqbjt\", \"path\": \"/payload.txt\", \"name\": \"ETag\", \"value\": \"\\\"QA340_2e867e\\\"\"}, \"cursor\": \"hdr-gd61jl7aglbqhc4cqbjt\"}]",
+        "stderr": ""
+      },
+      "pass": true
+    },
+    "delete_intent": {
+      "at": "2026-10-16T03:26:47.028053+00:00",
+      "children": [
+        {
+          "commit": {
+            "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+            "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+          },
+          "createdAt": "2026-10-16T03:18:16.681417Z",
+          "finishedAt": "2026-10-16T03:20:02.475627Z",
+          "id": "dep-db8peu7dbg8c73dgh8i0",
+          "startedAt": "2026-10-16T03:19:02.526664Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-16T03:20:02.475628Z"
+        }
+      ]
+    },
+    "delete_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "delete",
+        "srv-db8peu7dbg8c73dgh8hg",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 1.793,
+      "stdout": "{\"data\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"master\", \"createdAt\": \"2026-10-16T03:18:16Z\", \"dashboardUrl\": \"https://dashboard.bex.co/static/srv-db8peu7dbg8c73dgh8hg\", \"id\": \"srv-db8peu7dbg8c73dgh8hg\", \"name\": \"qa-20261016-2e867e-render-enc\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/expressjs/serve-static\", \"rootDir\": \"\", \"serviceDetails\": {\"buildCommand\": \"node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"');fs.mkdirSync('\\\"'\\\"'public'\\\"'\\\"',{recursive:true});fs.writeFileSync('\\\"'\\\"'public/index.html'\\\"'\\\"',\\\"QA340_2e867e_static_site\\\\n\\\");fs.writeFileSync('\\\"'\\\"'public/payload.txt'\\\"'\\\"',\\\"QA340_2e867e_0123456789abcdef\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/app.js'\\\"'\\\"',\\\"// QA340_2e867e\\\\nconsole.log('\\\"'\\\"'ordinary static asset'\\\"'\\\"');\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/app.css'\\\"'\\\"',\\\"/* QA340_2e867e */\\\\n.example { color: blue; padding: 1px; }\\\\n\\\".repeat(4096));fs.writeFileSync('\\\"'\\\"'public/asset.bin'\\\"'\\\"',Buffer.from([...Array(256).keys()]));const z=require('\\\"'\\\"'node:zlib'\\\"'\\\"'),h=b=>require('\\\"'\\\"'node:crypto'\\\"'\\\"').createHash('\\\"'\\\"'sha256'\\\"'\\\"').update(b).digest('\\\"'\\\"'hex'\\\"'\\\"');const pre=Buffer.from('\\\"'\\\"'QA340_PRECOMPRESSED_ordinary_javascript\\\\n'\\\"'\\\"'.repeat(4096)),gz=z.gzipSync(pre),raw=Buffer.from('\\\"'\\\"'QA340_NO_TRANSFORM_ordinary_css\\\\n'\\\"'\\\"'.repeat(4096));fs.mkdirSync('\\\"'\\\"'public/pre'\\\"'\\\"',{recursive:true});fs.mkdirSync('\\\"'\\\"'public/raw'\\\"'\\\"',{recursive:true});fs.writeFileSync('\\\"'\\\"'public/pre/app.js'\\\"'\\\"',gz);fs.writeFileSync('\\\"'\\\"'public/raw/app.css'\\\"'\\\"',raw);fs.writeFileSync('\\\"'\\\"'public/probe-manifest.json'\\\"'\\\"',JSON.stringify({pre:{wire_sha256:h(gz),wire_bytes:gz.length,identity_sha256:h(pre),identity_bytes:pre.length},raw:{sha256:h(raw),bytes:raw.length}}));'\", \"numInstances\": 1, \"plan\": \"free\", \"publishPath\": \"public\", \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"url\": \"https://qa-20261016-2e867e-render-enc.onbex.co\"}, \"slug\": \"qa-20261016-2e867e-render-enc\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"static_site\", \"updatedAt\": \"2026-10-16T03:24:38.097253314Z\", \"environmentId\": null, \"projectId\": null}, \"meta\": {\"deleted\": true}}",
+      "stderr": ""
+    },
+    "cleanup_receipts": [
+      {
+        "at": "2026-10-16T03:26:54.724541+00:00",
+        "detail": {
+          "at": "2026-10-16T03:26:53.139991+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db8peu7dbg8c73dgh8hg",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "404",
+          "curl_exit": 0,
+          "elapsed": 0.358,
+          "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+          "stderr": ""
+        },
+        "inventory": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "services",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.569,
+          "stdout": "[{\"id\": \"srv-dap3v694dm7c7390q930\", \"name\": \"qa-20260922-cd9361-boundary\"}, {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"name\": \"qa-20260922-cd9361-longcronxx\"}, {\"id\": \"srv-dap3r714dm7c7390q91g\", \"name\": \"qa-20260922-cd9361-nativecron\"}, {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"name\": \"hello-go\"}, {\"id\": \"srv-db09vbgehcmc739j12i0\", \"name\": \"qa-20261003-c63833-zero-head\"}, {\"id\": \"srv-db09u90ehcmc739j12cg\", \"name\": \"qa-20261003-f592c7-zero\"}]",
+          "stderr": "",
+          "projection": "baseline identity/name only; configuration omitted"
+        },
+        "runtime_HTTP": "404",
+        "runtime_exit": 0,
+        "quota": {
+          "at": "2026-10-16T03:26:54.724307+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.35,
+          "response": "{\"services\": {\"used\": 8, \"terminating\": 2, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+          "stderr": ""
+        },
+        "baseline_preserved": true
+      },
+      {
+        "at": "2026-10-16T03:27:27.467710+00:00",
+        "detail": {
+          "at": "2026-10-16T03:27:25.465726+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db8peu7dbg8c73dgh8hg",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "404",
+          "curl_exit": 0,
+          "elapsed": 0.416,
+          "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+          "stderr": ""
+        },
+        "inventory": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "services",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.688,
+          "stdout": "[{\"id\": \"srv-dap3v694dm7c7390q930\", \"name\": \"qa-20260922-cd9361-boundary\"}, {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"name\": \"qa-20260922-cd9361-longcronxx\"}, {\"id\": \"srv-dap3r714dm7c7390q91g\", \"name\": \"qa-20260922-cd9361-nativecron\"}, {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"name\": \"hello-go\"}, {\"id\": \"srv-db09vbgehcmc739j12i0\", \"name\": \"qa-20261003-c63833-zero-head\"}, {\"id\": \"srv-db09u90ehcmc739j12cg\", \"name\": \"qa-20261003-f592c7-zero\"}]",
+          "stderr": "",
+          "projection": "baseline identity/name only; configuration omitted"
+        },
+        "runtime_HTTP": "404",
+        "runtime_exit": 0,
+        "quota": {
+          "at": "2026-10-16T03:27:27.467547+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.727,
+          "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+          "stderr": ""
+        },
+        "baseline_preserved": true
+      }
+    ],
+    "child_cleanup_receipts": [
+      {
+        "at": "2026-10-16T03:26:55.479878+00:00",
+        "receipts": [
+          {
+            "at": "2026-10-16T03:26:55.479562+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/services/srv-db8peu7dbg8c73dgh8hg/deploys/dep-db8peu7dbg8c73dgh8i0",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "404",
+            "curl_exit": 0,
+            "elapsed": 0.313,
+            "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+            "stderr": ""
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "source_head": "779c825e2b6b99c8e3b697b20355781880da7fc8",
+  "fetched_origin_main": "779c825e2b6b99c8e3b697b20355781880da7fc8",
+  "product_delta_paths": [],
+  "targeted_hits": [
+    "779c825e2b6b99c8e3b697b20355781880da7fc8:.pm/w8/blocked/m77/finding.md:24:Supply a reviewed, pinned secondary Node/npm/Yarn toolchain in native Ruby images before the authored build, and retain it in the deployed image. Reuse the existing image/version inventory and freshness discipline; do not substitute the primary Node runtime for Ruby, execute an unreviewed floating installer, require a user shim, or patch the imported CLI. Decide and document the secondary tool versions and handle pnpm consistently with [m73](../m73/README.md); the Ruby Node/npm/Yarn availability contract remains its own fix.",
+    "779c825e2b6b99c8e3b697b20355781880da7fc8:.pm/w8/done/m51/done/t001.md:18:- Render docs: render.com/docs/python-version, /node-version (precedence in the milestone README); read the Go, Ruby, Rust and Elixir pages for their mechanisms (e.g. `go.mod` `go`/`toolchain`, `.ruby-version`/`Gemfile` `ruby`, `rust-toolchain(.toml)`, `.tool-versions`)."
+  ],
+  "new_Ruby_selector_owner_or_fix": false,
+  "recorded_prior_policy": "m51 accepted Gemfile/ruby-version subset; ADR060 priority/table revised by proposed fix against current specialized Ruby contract",
+  "serving_revision": "unobserved"
+}

@@ -1,0 +1,19 @@
+{
+  "source_head": "a1adb0cdf138a71edcaaeea58c71cd04d88ca2d3",
+  "serving_SHA": "unobserved",
+  "cases": 24,
+  "native_clients": [
+    "published Bex0.3.2",
+    "unchanged Render2.27/a764810a7682"
+  ],
+  "native_calls_pass": 48,
+  "source_top_tests_pass": 3,
+  "source_named_events_pass": 17,
+  "source_failures": 0,
+  "source_skips": 0,
+  "resources_created": 0,
+  "all_authored_names_absent": true,
+  "baseline_services": 6,
+  "quota_terminating": 0,
+  "no_new_issue": true
+}

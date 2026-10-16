@@ -1,0 +1,49 @@
+from pathlib import Path
+import sys,os,json,time,pty,termios,subprocess,select,signal,re,hashlib
+P=Path(__file__).resolve().parent;sys.path.insert(0,str(P));from evidence258_sanitizer import safe
+from importlib.machinery import SourceFileLoader
+data_module=SourceFileLoader('qa349_pipe_data',str(P/'sweep349-pipe-data.py')).load_module()
+actor,sid,nonce=sys.argv[1:4];assert actor in ('bex','render','preflight');payload=data_module.data(nonce,'bex' if actor=='preflight' else actor);cfg=P/('render-config/cli.yaml' if actor=='render' else 'config/cli.yaml');assert cfg.exists();env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_'))};prefix='RENDER' if actor=='render' else 'BEX';env.update({prefix+'_HOST':'https://api.bex.co/v1/',prefix+'_CLI_CONFIG_PATH':str(cfg),prefix+'_CLI_CONFIG_DIR':str(cfg.parent),prefix+'_WORKSPACE':(P/'workspace.txt').read_text().strip(),prefix+'_NO_UPDATE_NOTIFIER':'1','BEX_CLI_DISABLE_ANALYTICS':'1','DO_NOT_TRACK':'1','BROWSER':'/usr/bin/true'})
+command=[str(P/('render-pin' if actor=='render' else 'release/bex')),'kv-cli',sid,'-o','interactive','--','--pipe','--pipe-timeout','10']
+if actor=='preflight':command=['python3','-c',"import os,sys,hashlib;print('QA349_STDIN_READY',flush=True);b=sys.stdin.buffer.read();print('QA349_SHA256='+hashlib.sha256(b).hexdigest(),flush=True)"]
+master,slave=pty.openpty();a=termios.tcgetattr(slave);a[0]&=~(termios.ICRNL|termios.INLCR|termios.IGNCR|termios.IXON|termios.IXOFF);a[1]&=~termios.OPOST;a[3]&=~(termios.ECHO|termios.ISIG);a[3]|=termios.ICANON;termios.tcsetattr(slave,termios.TCSANOW,a);start=time.monotonic();proc=subprocess.Popen(command,stdin=slave,stdout=slave,stderr=slave,env=env,start_new_session=True);os.close(slave);os.set_blocking(master,False);raw=bytearray();sent=False;child=None;timedout=False;pending=None;written=0
+def child_client():
+ r=subprocess.run(['ps','-axo','pid=,ppid=,comm='],text=True,capture_output=True,timeout=3);rows=[]
+ for line in r.stdout.splitlines():
+  fields=line.strip().split(None,2)
+  if len(fields)==3:
+   try:rows.append((int(fields[0]),int(fields[1]),fields[2]))
+   except ValueError:pass
+ family={proc.pid}
+ for _ in range(6):family|={pid for pid,parent,_ in rows if parent in family}
+ return next((pid for pid,_,name in rows if pid in family and Path(name).name in ('redis-cli','valkey-cli')),None)
+try:
+ while True:
+  if time.monotonic()-start>35:
+   timedout=True;os.killpg(proc.pid,signal.SIGTERM)
+   try:proc.wait(timeout=2)
+   except subprocess.TimeoutExpired:os.killpg(proc.pid,signal.SIGKILL);proc.wait(timeout=2)
+   break
+  ready,writable,_=select.select([master],[master] if pending is not None else [],[],0.1)
+  if ready:
+   try:b=os.read(master,65536)
+   except OSError:break
+   if not b:break
+   raw.extend(b);assert len(raw)<1024*1024
+  if not sent and pending is None:
+   child=proc.pid if actor=='preflight' and b'QA349_STDIN_READY' in raw else child_client() if actor!='preflight' else None
+   if child:
+    attrs=termios.tcgetattr(master);attrs[0]&=~(termios.ICRNL|termios.INLCR|termios.IGNCR|termios.IXON|termios.IXOFF);attrs[3]&=~(termios.ECHO|termios.ISIG);attrs[3]|=termios.ICANON;termios.tcsetattr(master,termios.TCSANOW,attrs)
+    pending=payload+b'\x04'
+  if pending is not None and writable:
+   try:written+=os.write(master,pending[written:])
+   except BlockingIOError:pass
+   if written==len(pending):sent=True;pending=None
+  if proc.poll() is not None:break
+ proc.wait(timeout=2)
+finally:
+ os.close(master)
+ if proc.poll() is None:os.killpg(proc.pid,signal.SIGTERM);proc.wait(timeout=2)
+ try:os.killpg(proc.pid,signal.SIGTERM)
+ except ProcessLookupError:pass
+text=re.sub(r'(?:postgres(?:ql)?|rediss?)://[^\s"<>]+','[CONNECTION URI REDACTED]',safe(raw.decode(errors='replace')));record={'at':time.time(),'actor':actor,'command':['bex' if actor=='bex' else actor,'kv-cli',sid,'-o','interactive','--','--pipe','--pipe-timeout','10'],'stdin_TTY':True,'streams_merged_PTY':True,'payload_bytes':len(payload),'payload_sha256':hashlib.sha256(payload).hexdigest(),'payload_sent':sent,'input_bytes_written':written,'exact_process_group_cleanup':True,'child_PID':child,'native_exit':None if timedout else proc.returncode,'harness_timeout':timedout,'elapsed':round(time.monotonic()-start,3),'output':text};print(json.dumps(record))

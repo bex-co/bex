@@ -1,0 +1,84 @@
+from pathlib import Path
+import datetime, json, os, secrets, shutil, subprocess, sys, time, re, yaml, hashlib
+os.umask(0o077)
+P=Path(__file__).resolve().parent
+ROOT=Path('/Volumes/nvme4tbfish/projects/bex8');CP=ROOT/'.playwright-mcp/cli-qa-w8-checkpoint.json'
+c=json.loads(CP.read_text());assert c.get('sync335_result')==0 and not c.get('active_sync_stash')
+mode=sys.argv[1];client=sys.argv[2] if len(sys.argv)>2 else 'bex';assert client in ('bex','render')
+WS='tea-daif693dqjvc73e7as3g'
+def unwrap(v):
+ for key in ('service','postgres','keyValue'):
+  if isinstance(v.get(key),dict):return v[key]
+ return v
+BASE={v if isinstance(v,str) else unwrap(v)['id'] for v in c['baseline']['services']}
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():
+ c['last_updated']=now();f=CP.with_name('.'+CP.name+'.qa335.tmp');f.write_text(json.dumps(c,indent=2,ensure_ascii=False));f.chmod(0o600);f.replace(CP)
+def cli(args,bound=40):
+ cfg=P/'render-config/cli.yaml';ca_file=P/'sweep335-owned-pg-ca.pem';client_setup=None
+ try:
+  if client=='render':assert not cfg.exists();shutil.copyfile(P/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  env={k:v for k,v in os.environ.items() if not k.startswith(('RENDER_','BEX_','QA_','PG'))}
+  prefix='BEX' if client=='bex' else 'RENDER';directory=P/('config' if client=='bex' else 'render-config')
+  env.update({prefix+'_HOST':'https://api.bex.co/v1/',prefix+'_CLI_CONFIG_DIR':str(directory),prefix+'_CLI_CONFIG_PATH':str(directory/'cli.yaml'),prefix+'_WORKSPACE':WS,prefix+'_NO_UPDATE_NOTIFIER':'1','BEX_CLI_DISABLE_ANALYTICS':'1','DO_NOT_TRACK':'1','BROWSER':'/usr/bin/true','PGCONNECT_TIMEOUT':'10','PGCLIENTENCODING':'UTF8'})
+  if client=='render' and args[0]=='psql':
+   owned=next(v for v in c['resources'] if v.get('sweep')==335);assert owned['create_result']['native_exit']==0 and owned['workspace']==WS and owned['create_response']['id']==owned['id'] and not owned['state'].startswith('deleted:');assert not ca_file.exists()
+   private=yaml.safe_load((P/'config/cli.yaml').read_text())['api'];token=private.get('token') or private.get('key') or private.get('access_token');assert token
+   path='/v1/postgres/'+owned['id']+'/connection-info';auth='header = "Authorization: Bearer '+token+'"\nheader = "X-Bex-Workspace: '+WS+'"\n';request=subprocess.run(['curl','--disable','-sS','--max-time','25','--config','-','-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=30);raw,_,status=request.stdout.rpartition('\n');assert request.returncode==0 and status=='200';info=json.loads(raw);ca=info['serverCaCertificate'];assert ca.startswith('-----BEGIN CERTIFICATE-----');ca_file.write_text(ca);ca_file.chmod(0o600);env['PGSSLROOTCERT']=str(ca_file);client_setup={'API_only_CA_preparation':True,'path':path,'HTTP':status,'certificate_sha256':hashlib.sha256(ca.encode()).hexdigest(),'PGSSLROOTCERT':'<owned-temp>/sweep335-owned-pg-ca.pem','connection_info_payload_not_retained':True};del info,raw,auth,token
+  start=time.monotonic();timedout=False
+  try:r=subprocess.run([str(P/('release/bex' if client=='bex' else 'render-pin')),*args],env=env,text=True,capture_output=True,timeout=bound);code=r.returncode;out=r.stdout;err=r.stderr
+  except subprocess.TimeoutExpired as e:
+   timedout=True;code=None;out=e.stdout or '';err=e.stderr or ''
+   if isinstance(out,bytes):out=out.decode(errors='replace')
+   if isinstance(err,bytes):err=err.decode(errors='replace')
+  private=yaml.safe_load((P/'config/cli.yaml').read_text())['api'];token=private.get('token') or private.get('key') or private.get('access_token');assert token
+  out=out.replace(token,'QA_TOKEN_REDACTED');err=err.replace(token,'QA_TOKEN_REDACTED')
+  for line in (ROOT/'muse.env').read_text().splitlines():
+   k,sep,v=line.partition('=')
+   if sep and k.strip() in ('QA_EMAIL','QA_PASSWORD') and v.strip().strip('\"\''):
+    secret=v.strip().strip('\"\'');out=out.replace(secret,'QA_PRIVATE_REDACTED');err=err.replace(secret,'QA_PRIVATE_REDACTED')
+  out=re.sub(r'(?:postgres(?:ql)?|rediss?)://[^\s\"\']+','[CONNECTION URI REDACTED]',out);err=re.sub(r'(?:postgres(?:ql)?|rediss?)://[^\s\"\']+','[CONNECTION URI REDACTED]',err)
+  return {'at':now(),'binary':'released Bex0.3.2' if client=='bex' else 'unchanged Render2.27.0/a764810a7682','command':[client,*args],'client_setup':client_setup,'native_exit':code,'harness_timeout':timedout,'elapsed':round(time.monotonic()-start,3),'stdout':out,'stderr':err}
+ finally:
+  if client=='render':cfg.unlink(missing_ok=True)
+  ca_file.unlink(missing_ok=True)
+def api(method,path):
+ cfg=yaml.safe_load((P/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token
+ ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')';auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+WS+'"\n'
+ start=time.monotonic();r=subprocess.run(['curl','--disable','-sS','--max-time','25','--config','-','-X',method,'-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=30);raw,_,status=r.stdout.rpartition('\n');out={'at':now(),'API_only':True,'request':{'method':method,'path':path,'workspace':WS,'user_agent':ua,'authorization':'REDACTED'},'status':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-start,3),'response':raw,'stderr':r.stderr};assert token not in json.dumps(out);return out
+def rows(args):
+ r=cli([*args,'--confirm','-o','json']);assert r['native_exit']==0,r['stderr'];v=json.loads(r['stdout']);v=v.get('data',v) if isinstance(v,dict) else v;return r,[unwrap(z) for z in (v or [])]
+def pgval(r):
+ v=json.loads(r['stdout']);v=v.get('data',v);return unwrap(v)
+def detail():
+ r=api('GET','/v1/postgres/'+x['id']);x.setdefault('details',[]).append(r);save();assert r['status']=='200';v=json.loads(r['response']);assert v['id']==x['id'] and (v.get('ownerId') or v.get('owner',{}).get('id'))==WS and v['plan']=='free' and v['version']=='13';return r,v
+def sql(label,command,selector=None):
+ event={'at':now(),'label':label,'intent':'SQL on own fresh Free database','selector':selector or x['id'],'command':command};x.setdefault('sql_events',[]).append(event);save()
+ r=cli(['psql',selector or x['id'],'--command',command,'--confirm','-o','json','--','-X','-q','-t','-A','-v','ON_ERROR_STOP=1']);event['result']=r;save()
+ print(json.dumps({'SQL':label,'native_exit':r['native_exit'],'harness_timeout':r['harness_timeout'],'stderr':r['stderr'],'stdout':r['stdout'][:2200]}),flush=True)
+ return event
+if mode=='create':
+ assert client=='bex' and not any(v.get('sweep')==335 for v in c['resources']);q=api('GET','/v1/owners/'+WS+'/limits');assert q['status']=='200';lim=json.loads(q['response'])['postgres'];assert lim['used']==0 and lim['terminating']==0 and lim['limit']>=1;inv,pgs=rows(['postgres','list']);assert not pgs;sr,svcs=rows(['services']);assert {v['id'] for v in svcs}==BASE
+ nonce=secrets.token_hex(3);name='qa335-'+nonce+'-pgcustom';dbname='qa335_db_'+nonce;dbuser='qa335_user_'+nonce;args=['postgres','create','--name',name,'--plan','free','--version','13','--region','frankfurt','--connection-pool','none','--database-name',dbname,'--database-user',dbuser,'--confirm','-o','json'];x={'sweep':335,'client':'bex','workspace':WS,'type':'postgres','name':name,'nonce':nonce,'time':now(),'source_head':c['head'],'capacity':q,'pre_inventory':inv,'pre_service_inventory':sr,'pre_ids':[],'dependency_ids':[],'recorded_child_ids':[],'table':'qa335_'+nonce,'database_name':dbname,'database_user':dbuser,'create_command':['bex',*args],'state':'native explicit Free PG13 custom identity create intent persisted'};c['resources'].append(x);save();r=cli(args);x.update(create_result=r,state='create response received; reconcile before retry');save();assert r['native_exit']==0;v=pgval(r);assert v['id'] not in x['pre_ids'] and v['name']==name and v['plan']=='free' and v['version']=='13' and (v.get('ownerId') or v.get('owner',{}).get('id'))==WS;x.update(id=v['id'],create_response=v,state='created: native0/ID/workspace/Free ownership proved');save();print(json.dumps({'native_exit':0,'id':x['id'],'version':v['version'],'custom_database_name':dbname,'custom_database_user':dbuser}));raise SystemExit(0)
+x=next(v for v in c['resources'] if v.get('sweep')==335);sid=x['id'];v=x['create_response'];assert x['workspace']==WS and x['create_result']['native_exit']==0 and v['id']==sid and sid not in x['pre_ids'] and v['plan']=='free' and (v.get('ownerId') or v.get('owner',{}).get('id'))==WS and (mode=='reconcile' or not x['state'].startswith('deleted:'));t=x['table'];assert re.fullmatch('qa335_[a-f0-9]{6}',t)
+if mode=='ready':
+ r=cli(['postgres','get',sid,'--confirm','-o','json']);d,v=detail();x.setdefault('readiness',[]).append({'at':now(),'client':client,'native':r,'detail':d});save();print(json.dumps({'client':client,'native_exit':r['native_exit'],'status':v['status'],'metadata_database_name':v.get('databaseName'),'metadata_database_user':v.get('databaseUser')}),flush=True)
+elif mode=='seed':
+ assert client=='bex' and not x.get('sql_events');d,v=detail();assert v['status']=='available';e=sql('seed-own-row',f"CREATE TABLE {t}(id integer PRIMARY KEY,v text,payload jsonb); INSERT INTO {t} VALUES (1,E'own-{x['nonce']}\\n日本語 café 🐟','{{\"ok\":true,\"empty\":\"\",\"nil\":null}}');");assert e['result']['native_exit']==0
+elif mode=='probe':
+ label=sys.argv[3];byname=len(sys.argv)>4 and sys.argv[4]=='name'
+ if byname:
+  inv,vs=rows(['postgres','list']);x.setdefault('selector_inventories',[]).append({'at':now(),'label':label,'result':inv});save();assert [v['id'] for v in vs if v['name']==x['name']]==[sid]
+ command=f"SELECT jsonb_build_object('database',current_database(),'user',current_user,'server_major',current_setting('server_version_num')::int/10000,'encoding',current_setting('server_encoding'),'postmaster_start',pg_postmaster_start_time()::text,'rows',(SELECT jsonb_agg(jsonb_build_object('id',id,'v',v,'payload',payload) ORDER BY id) FROM {t}))::text;";e=sql(label,command,x['name'] if byname else sid)
+ if e['result']['native_exit']==0:
+  value=json.loads(json.loads(e['result']['stdout'])['output'].strip());expected=[{'id':1,'v':'own-'+x['nonce']+'\n日本語 café 🐟','payload':{'ok':True,'empty':'','nil':None}}];e['observed']=value;e['identity_and_data_pass']=value['database']==x['database_name'] and value['user']==x['database_user'] and value['server_major']==13 and value['encoding']=='UTF8' and value['rows']==expected;prior=next((z['observed'] for z in x['sql_events'] if z is not e and z.get('identity_and_data_pass')),None);e['same_postmaster']=None if prior is None else value['postmaster_start']==prior['postmaster_start'];save();print(json.dumps({'client':client,'label':label,'identity_and_data_pass':e['identity_and_data_pass'],'same_postmaster':e['same_postmaster']}),flush=True)
+elif mode=='rename':
+ assert any(z.get('identity_and_data_pass') for z in x.get('sql_events',[]));assert not any(z['client']==client for z in x.get('renames',[]));d,v=detail();assert v['status']=='available';new='qa335-'+x['nonce']+'-'+client;selector=sid if client=='bex' else x['name']
+ if client=='render':
+  inv,vs=rows(['postgres','list']);assert [v['id'] for v in vs if v['name']==x['name']]==[sid]
+ e={'at':now(),'client':client,'before':d,'selector':selector,'name':new,'command':[client,'postgres','update',selector,'--name',new,'--confirm','-o','json']};x.setdefault('renames',[]).append(e);save();e['result']=cli(e['command'][1:]);save();assert e['result']['native_exit']==0;x['name']=new;save();d,v=detail();e['after']=d;e['pass']=v['name']==new and v.get('databaseName')==x['database_name'] and v.get('databaseUser')==x['database_user'];save();print(json.dumps({'client':client,'native_rename_exit':e['result']['native_exit'],'identity_metadata_preserved':e['pass']}),flush=True)
+elif mode=='delete':
+ assert 'delete_intent' not in x;d,v=detail();assert not v['readReplicas'] and v['connectionPool']=='none';assert not any(sid in z.get('dependency_ids',[]) and not z['state'].startswith('deleted:') for z in c['resources']);x['dependent_inventory']=d;x['delete_intent']={'at':now(),'client':client,'id':sid};save();x['delete_result']=cli(['postgres','delete',sid,'--confirm','-o','json']);save();print(json.dumps({'native_delete_exit':x['delete_result']['native_exit']}),flush=True)
+elif mode=='reconcile':
+ assert 'delete_result' in x;d=api('GET','/v1/postgres/'+sid);inv,pgs=rows(['postgres','list']);sr,svcs=rows(['services']);q=api('GET','/v1/owners/'+WS+'/limits');e={'at':now(),'detail':d,'inventory':inv,'service_inventory':sr,'quota':q,'baseline_preserved':BASE<={v['id'] for v in svcs}};x.setdefault('cleanup_receipts',[]).append(e);save();assert q['status']=='200';lim=json.loads(q['response'])['postgres'];done=d['status']=='404' and not pgs and e['baseline_preserved'] and lim['used']==0 and lim['terminating']==0;x['state']='deleted: parent404/listempty/baseline6/PGquota0/terminating0' if done else 'cleanup pending';save();print(json.dumps({'cleanup_complete':done,'detail':d['status'],'used':lim['used'],'terminating':lim['terminating']}),flush=True)
+else:raise ValueError(mode)

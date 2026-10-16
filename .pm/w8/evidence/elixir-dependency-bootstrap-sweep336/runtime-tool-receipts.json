@@ -1,0 +1,58 @@
+[
+  {
+    "command": [
+      "docker",
+      "run",
+      "--rm",
+      "--network",
+      "none",
+      "--cpus",
+      "1",
+      "--memory",
+      "512m",
+      "--pids-limit",
+      "128",
+      "-e",
+      "ERL_FLAGS=+S 2:2",
+      "-e",
+      "HEX_OFFLINE=1",
+      "bex-qa336-elixir-hex:95352",
+      "mix",
+      "help",
+      "hex.info"
+    ],
+    "exit": 0,
+    "output_bytes": 623,
+    "output_sha256": "7aa5133d02e6aa7bab0b8ca3d6490c29b0f7775dd4afc4ec0d0e6a09f458ca27",
+    "qualification": "actual generated image runtime; no network, no package installation; vendor help text omitted",
+    "tool": "Hex"
+  },
+  {
+    "command": [
+      "docker",
+      "run",
+      "--rm",
+      "--network",
+      "none",
+      "--cpus",
+      "1",
+      "--memory",
+      "512m",
+      "--pids-limit",
+      "128",
+      "-e",
+      "ERL_FLAGS=+S 2:2",
+      "-e",
+      "HEX_OFFLINE=1",
+      "bex-qa336-elixir-hex:95352",
+      "/bin/bash",
+      "-c",
+      "for qa_rebar in /root/.mix/elixir/*/rebar3; do if [ -x \"$qa_rebar\" ]; then \"$qa_rebar\" --version; exit \"$?\"; fi; done; exit 1"
+    ],
+    "exit": 0,
+    "output_bytes": 44,
+    "output_sha256": "30ce89edb362b1990c443edd9d2462f1b1a177bde964e76a922773d06c6f7cc1",
+    "qualification": "actual generated image runtime; no network, no package installation; vendor help text omitted",
+    "tool": "Rebar"
+  }
+]

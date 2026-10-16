@@ -1,0 +1,302 @@
+{
+  "qualification": "local installed redis-server/redis-cli PTY/quoted-input/JSON harness preflight; not Bex product evidence",
+  "rounds": [
+    {
+      "subscriber": "bex",
+      "publisher": "render",
+      "kind": "SUBSCRIBE",
+      "channel": "qa356_preflight:bex:payload",
+      "selector": "qa356_preflight:bex:payload",
+      "expected_payloads": [
+        "Render CLI on Render at https://render.com/docs / render.yaml / bex.yml",
+        "line1\r\nline2 café 日本 😀\u0000tail",
+        ""
+      ],
+      "expected_payload_utf8_sha256": [
+        "d842e9652789f921bea15786273f7f2556192471d6a63967f4b261a73fd6f17a",
+        "35c4256757aaf6eea304e1ba414fbb090383da712b6cac4971cbac3d9089805d",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "publications": [
+        {
+          "command": [
+            "local-redis-cli",
+            "-s",
+            "<own-local-socket>",
+            "--json",
+            "-2",
+            "--quoted-input",
+            "PUBLISH",
+            "qa356_preflight:bex:payload",
+            "\"\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x43\\x4c\\x49\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x61\\x74\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x64\\x6f\\x63\\x73\\x20\\x2f\\x20\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x79\\x61\\x6d\\x6c\\x20\\x2f\\x20\\x62\\x65\\x78\\x2e\\x79\\x6d\\x6c\""
+          ],
+          "stdin_TTY": true,
+          "streams_merged_PTY": true,
+          "native_exit": 0,
+          "intentional_stop": null,
+          "elapsed": 0.006,
+          "decoded_JSON": [
+            1
+          ],
+          "arrival_seconds": [
+            0.005
+          ],
+          "output": "1\n",
+          "own_process_group_cleaned": true
+        },
+        {
+          "command": [
+            "local-redis-cli",
+            "-s",
+            "<own-local-socket>",
+            "--json",
+            "-2",
+            "--quoted-input",
+            "PUBLISH",
+            "qa356_preflight:bex:payload",
+            "\"\\x6c\\x69\\x6e\\x65\\x31\\x0d\\x0a\\x6c\\x69\\x6e\\x65\\x32\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x00\\x74\\x61\\x69\\x6c\""
+          ],
+          "stdin_TTY": true,
+          "streams_merged_PTY": true,
+          "native_exit": 0,
+          "intentional_stop": null,
+          "elapsed": 0.005,
+          "decoded_JSON": [
+            1
+          ],
+          "arrival_seconds": [
+            0.005
+          ],
+          "output": "1\n",
+          "own_process_group_cleaned": true
+        },
+        {
+          "command": [
+            "local-redis-cli",
+            "-s",
+            "<own-local-socket>",
+            "--json",
+            "-2",
+            "--quoted-input",
+            "PUBLISH",
+            "qa356_preflight:bex:payload",
+            "\"\""
+          ],
+          "stdin_TTY": true,
+          "streams_merged_PTY": true,
+          "native_exit": 0,
+          "intentional_stop": null,
+          "elapsed": 0.005,
+          "decoded_JSON": [
+            1
+          ],
+          "arrival_seconds": [
+            0.005
+          ],
+          "output": "1\n",
+          "own_process_group_cleaned": true
+        }
+      ],
+      "acknowledged_before_first_publish": true,
+      "pass": true,
+      "received_exact_payloads_in_order": true,
+      "subscription": {
+        "command": [
+          "local-redis-cli",
+          "-s",
+          "<own-local-socket>",
+          "--json",
+          "-2",
+          "SUBSCRIBE",
+          "qa356_preflight:bex:payload"
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": -15,
+        "intentional_stop": "bounded QA stop after all expected frames",
+        "elapsed": 0.024,
+        "decoded_JSON": [
+          [
+            "subscribe",
+            "qa356_preflight:bex:payload",
+            1
+          ],
+          [
+            "message",
+            "qa356_preflight:bex:payload",
+            "Render CLI on Render at https://render.com/docs / render.yaml / bex.yml"
+          ],
+          [
+            "message",
+            "qa356_preflight:bex:payload",
+            "line1\r\nline2 café 日本 😀\u0000tail"
+          ],
+          [
+            "message",
+            "qa356_preflight:bex:payload",
+            ""
+          ]
+        ],
+        "arrival_seconds": [
+          0.006,
+          0.012,
+          0.017,
+          0.023
+        ],
+        "output": "[\"subscribe\",\"qa356_preflight:bex:payload\",1]\n[\"message\",\"qa356_preflight:bex:payload\",\"Render CLI on Render at https://render.com/docs / render.yaml / bex.yml\"]\n[\"message\",\"qa356_preflight:bex:payload\",\"line1\\r\\nline2 café 日本 😀\\u0000tail\"]\n[\"message\",\"qa356_preflight:bex:payload\",\"\"]\n",
+        "own_process_group_cleaned": true
+      }
+    },
+    {
+      "subscriber": "render",
+      "publisher": "bex",
+      "kind": "PSUBSCRIBE",
+      "channel": "qa356_preflight:render:payload",
+      "selector": "qa356_preflight:render:*",
+      "expected_payloads": [
+        "Render CLI on Render at https://render.com/docs / render.yaml / bex.yml",
+        "line1\r\nline2 café 日本 😀\u0000tail",
+        ""
+      ],
+      "expected_payload_utf8_sha256": [
+        "d842e9652789f921bea15786273f7f2556192471d6a63967f4b261a73fd6f17a",
+        "35c4256757aaf6eea304e1ba414fbb090383da712b6cac4971cbac3d9089805d",
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "publications": [
+        {
+          "command": [
+            "local-redis-cli",
+            "-s",
+            "<own-local-socket>",
+            "--json",
+            "-2",
+            "--quoted-input",
+            "PUBLISH",
+            "qa356_preflight:render:payload",
+            "\"\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x43\\x4c\\x49\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x61\\x74\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x64\\x6f\\x63\\x73\\x20\\x2f\\x20\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x79\\x61\\x6d\\x6c\\x20\\x2f\\x20\\x62\\x65\\x78\\x2e\\x79\\x6d\\x6c\""
+          ],
+          "stdin_TTY": true,
+          "streams_merged_PTY": true,
+          "native_exit": 0,
+          "intentional_stop": null,
+          "elapsed": 0.006,
+          "decoded_JSON": [
+            1
+          ],
+          "arrival_seconds": [
+            0.005
+          ],
+          "output": "1\n",
+          "own_process_group_cleaned": true
+        },
+        {
+          "command": [
+            "local-redis-cli",
+            "-s",
+            "<own-local-socket>",
+            "--json",
+            "-2",
+            "--quoted-input",
+            "PUBLISH",
+            "qa356_preflight:render:payload",
+            "\"\\x6c\\x69\\x6e\\x65\\x31\\x0d\\x0a\\x6c\\x69\\x6e\\x65\\x32\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x00\\x74\\x61\\x69\\x6c\""
+          ],
+          "stdin_TTY": true,
+          "streams_merged_PTY": true,
+          "native_exit": 0,
+          "intentional_stop": null,
+          "elapsed": 0.006,
+          "decoded_JSON": [
+            1
+          ],
+          "arrival_seconds": [
+            0.005
+          ],
+          "output": "1\n",
+          "own_process_group_cleaned": true
+        },
+        {
+          "command": [
+            "local-redis-cli",
+            "-s",
+            "<own-local-socket>",
+            "--json",
+            "-2",
+            "--quoted-input",
+            "PUBLISH",
+            "qa356_preflight:render:payload",
+            "\"\""
+          ],
+          "stdin_TTY": true,
+          "streams_merged_PTY": true,
+          "native_exit": 0,
+          "intentional_stop": null,
+          "elapsed": 0.005,
+          "decoded_JSON": [
+            1
+          ],
+          "arrival_seconds": [
+            0.005
+          ],
+          "output": "1\n",
+          "own_process_group_cleaned": true
+        }
+      ],
+      "acknowledged_before_first_publish": true,
+      "pass": true,
+      "received_exact_payloads_in_order": true,
+      "subscription": {
+        "command": [
+          "local-redis-cli",
+          "-s",
+          "<own-local-socket>",
+          "--json",
+          "-2",
+          "PSUBSCRIBE",
+          "qa356_preflight:render:*"
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": -15,
+        "intentional_stop": "bounded QA stop after all expected frames",
+        "elapsed": 0.023,
+        "decoded_JSON": [
+          [
+            "psubscribe",
+            "qa356_preflight:render:*",
+            1
+          ],
+          [
+            "pmessage",
+            "qa356_preflight:render:*",
+            "qa356_preflight:render:payload",
+            "Render CLI on Render at https://render.com/docs / render.yaml / bex.yml"
+          ],
+          [
+            "pmessage",
+            "qa356_preflight:render:*",
+            "qa356_preflight:render:payload",
+            "line1\r\nline2 café 日本 😀\u0000tail"
+          ],
+          [
+            "pmessage",
+            "qa356_preflight:render:*",
+            "qa356_preflight:render:payload",
+            ""
+          ]
+        ],
+        "arrival_seconds": [
+          0.005,
+          0.011,
+          0.017,
+          0.022
+        ],
+        "output": "[\"psubscribe\",\"qa356_preflight:render:*\",1]\n[\"pmessage\",\"qa356_preflight:render:*\",\"qa356_preflight:render:payload\",\"Render CLI on Render at https://render.com/docs / render.yaml / bex.yml\"]\n[\"pmessage\",\"qa356_preflight:render:*\",\"qa356_preflight:render:payload\",\"line1\\r\\nline2 café 日本 😀\\u0000tail\"]\n[\"pmessage\",\"qa356_preflight:render:*\",\"qa356_preflight:render:payload\",\"\"]\n",
+        "own_process_group_cleaned": true
+      }
+    }
+  ],
+  "local_server_stopped": true,
+  "local_socket_removed": true
+}

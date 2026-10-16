@@ -1,0 +1,18 @@
+{
+  "scope": "targeted open/blocked/done across all .pm workstreams, build source, ADR018/ADR060 and freshly fetched origin/main",
+  "queries": [
+    "UV_VERSION",
+    "uv.lock",
+    "uv sync",
+    "word-boundary uv, case-sensitive and case-folded"
+  ],
+  "semantic_matching_board_item": false,
+  "source_UV_VERSION_or_uv_lock_history": false,
+  "casefold_exclusion": "one unrelated encoded fixture blob at w4/m200 matches letters only; no semantic uv item. Its bytes are not copied.",
+  "distinct_completed_neighbors": [
+    "w8/m72 Poetry",
+    "w8/m77 Python/Ruby JavaScript companions"
+  ],
+  "other_tool_gap": "w4/320 is primary Node26 Yarn",
+  "no_prior_UV_implementation_on_fetched_main": true
+}

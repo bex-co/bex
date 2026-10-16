@@ -1,0 +1,13 @@
+from pathlib import Path
+import sys,json
+f=Path(__file__).with_name('sweep342-ruby-acceptance.py');sys.argv=[str(f),'shared-source-reads','bex'];exec(compile(f.read_text().split("if mode=='create':")[0],str(f),'exec'));xs=[v for v in c['resources'] if v.get('sweep')==342];assert len(xs)==2
+for x in xs:
+ CLIENT=x['client'];own(x);sid=x['id'];cmd=x['commands']['js-tools'];query='query QA342 { service(id:'+json.dumps(sid)+') { id repo branch imagePath runtime buildCommand startCommand autoDeploy } }'
+ for surface,method,path,body in [('REST','GET','/v1/services/'+sid,None),('GraphQL','POST','/graphql',{'query':query}),('MCP','POST','/mcp',{'jsonrpc':'2.0','id':342,'method':'tools/call','params':{'name':'get_service','arguments':{'serviceId':sid,'workspaceId':ws}}})]:
+  assert not any(z['surface']==surface for z in x.get('shared_readbacks',[]));r=api(method,path,body);e={'at':now(),'surface':surface,'result':r};x.setdefault('shared_readbacks',[]).append(e);save();assert r['status']=='200';v=decode(r)
+  if surface=='GraphQL':assert not v.get('errors');v=v['data']['service']
+  elif surface=='MCP':
+   assert not v.get('error') and not v['result'].get('isError');z=v['result'];v=z.get('structuredContent')
+   if v is None:v=json.loads(next(a['text'] for a in z['content'] if a['type']=='text'))
+   v=v.get('service',v)
+  d=v.get('serviceDetails',{});ec=d.get('envSpecificDetails',{});runtime=v.get('runtime') or d.get('runtime');build=v.get('buildCommand') if surface=='GraphQL' else ec.get('buildCommand');start=v.get('startCommand') if surface=='GraphQL' else ec.get('startCommand');e['projection']={'id':v['id'],'repo':v.get('repo'),'branch':v.get('branch'),'imagePath':v.get('imagePath'),'runtime':runtime,'autoDeploy':v.get('autoDeploy'),'build_matches':build==cmd['build'],'start_matches':start==cmd['start']};e['pass']=v['id']==sid and v['repo']=='https://github.com/bex-co/bex' and v['branch']=='main' and not v.get('imagePath') and runtime=='ruby' and v.get('autoDeploy') in (False,'no') and build==cmd['build'] and start==cmd['start'];save();print(json.dumps({'client':CLIENT,'surface':surface,'pass':e['pass']}),flush=True);assert e['pass']

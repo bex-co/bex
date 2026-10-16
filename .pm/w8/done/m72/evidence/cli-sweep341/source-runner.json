@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-16T03:32:07.885381+00:00",
+  "source_head": "7ee5a95fd1d88dd8766072f497e8e191d51a06cb",
+  "command": [
+    "go",
+    "test",
+    "-json",
+    "./internal/build",
+    "-run",
+    "^(TestResolveNativePoetry|TestResolveNativeBuildAddsPoetryToPython|TestResolveNativeBuildAddsJSToolsToRubyAndPython|TestNativeImageRunsPoetry|TestNativeImageRunsJSToolsBesideRubyAndPython)$",
+    "-count=1",
+    "-timeout=9m"
+  ],
+  "BEX_BUILDKIT_INTEGRATION": "1",
+  "runner_pid": 37418,
+  "exit": 0,
+  "harness_timeout": false
+}

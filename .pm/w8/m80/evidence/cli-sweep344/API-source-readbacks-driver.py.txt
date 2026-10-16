@@ -1,0 +1,22 @@
+from pathlib import Path
+import sys,json
+stage=sys.argv[1];assert stage in ('bad','control');f=Path(__file__).with_name('sweep344-omitted-branch.py');sys.argv=[str(f),'capture-source-state','render-born'];exec(compile(f.read_text().split("if mode=='create':")[0],str(f),'exec'));xs=[v for v in c['resources'] if v.get('sweep')==344 and v.get('type')=='web_service'];assert len(xs)==2
+
+def decoded(r):
+ raw=r['response']
+ if not raw.lstrip().startswith(('{','[')):
+  vals=[z[5:].strip() for z in raw.splitlines() if z.startswith('data:')];assert len(vals)==1;raw=vals[0]
+ return json.loads(raw)
+for x in xs:
+ case=x['case'];own(x);sid=x['id'];rows=history(x);target=x['changed_deploy_id'] if stage=='bad' else x['branch_control']['deploy_id'];assert rows[0]['id']==target and rows[0]['status']==('build_failed' if stage=='bad' else 'live');expected='main' if stage=='bad' else 'master';query='query QA344 {service(id:'+json.dumps(sid)+'){id repo branch imagePath runtime buildCommand startCommand autoDeploy}}'
+ for surface,method,path,body in [('REST','GET','/v1/services/'+sid,None),('GraphQL','POST','/graphql',{'query':query}),('MCP','POST','/mcp',{'jsonrpc':'2.0','id':344,'method':'tools/call','params':{'name':'get_service','arguments':{'serviceId':sid,'workspaceId':ws}}})]:
+  assert not any(z['surface']==surface and z['stage']==stage for z in x.get('source_state_captures',[]));r=api(method,path,body);e={'at':now(),'stage':stage,'surface':surface,'receipt':r};x.setdefault('source_state_captures',[]).append(e);save();assert r['status']=='200';v=decoded(r)
+  if surface=='GraphQL':assert not v.get('errors');v=v['data']['service']
+  elif surface=='MCP':
+   assert not v.get('error') and not v['result'].get('isError');z=v['result'];v=z.get('structuredContent')
+   if v is None:v=json.loads(next(a['text'] for a in z['content'] if a['type']=='text'))
+   v=v.get('service',v)
+  d=v.get('serviceDetails',{});ec=d.get('envSpecificDetails',{});runtime=v.get('runtime') or d.get('runtime');build=v.get('buildCommand') if surface=='GraphQL' else ec.get('buildCommand');start=v.get('startCommand') if surface=='GraphQL' else ec.get('startCommand');e['projection']={'id':v['id'],'repo':v.get('repo'),'branch':v.get('branch'),'runtime':runtime,'imagePath':v.get('imagePath'),'commands_match':build==x['build_command'] and start==x['start_command'],'autoDeploy':v.get('autoDeploy')};e['same_observed_source_across_surface']=v['id']==sid and v['repo']==EXPRESS and v['branch']==expected and runtime=='node' and not v.get('imagePath') and e['projection']['commands_match'] and v.get('autoDeploy') in (False,'no');e['documented_default_branch_matches']=v.get('branch')=='master';save();assert e['same_observed_source_across_surface'];print(json.dumps({'case':case,'stage':stage,'surface':surface,'actual_branch':v.get('branch'),'contract_branch_matches':e['documented_default_branch_matches']}),flush=True)
+ b=next(v for v in c['resources'] if v.get('sweep')==344 and v.get('type')=='blueprint' and v.get('case')==case);r=api('GET','/v1/blueprints/'+b['id']+'?ownerId='+ws);e={'at':now(),'stage':stage,'receipt':r};b.setdefault('manifest_captures',[]).append(e);save();assert r['status']=='200';v=decoded(r);text=x['sync_intent']['body']['bexYaml'] if stage=='bad' else x['branch_control']['body']['bexYaml'];entry=yaml.safe_load(text)['services'][0];e['exact_manifest_and_containing_source']=v['id']==b['id'] and v['repo']==b['repo'] and v['branch']==b['branch'] and v['manifest']==text;e['authored_branch_present']='branch' in entry;e['authored_branch']=entry.get('branch');save();assert e['exact_manifest_and_containing_source'] and e['authored_branch_present']==(stage=='control')
+ if stage=='bad':
+  x['negative_branch_failure']={'at':now(),'first_Git_deploy':x['changed_deploy_id'],'status':'build_failed','actual_branch':'main','verified_repository_default':'master','exact_manifest_omits_branch':True,'native_missing_main_ref_observed':any(z['missing_main_ref_observed'] for z in x['native_build_logs']),'old_image_HTTP':http(x)};save();assert x['negative_branch_failure']['native_missing_main_ref_observed']

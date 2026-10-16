@@ -1,0 +1,9 @@
+{
+  "source_head": "779c825e2b6b99c8e3b697b20355781880da7fc8",
+  "fetched_origin_main": "779c825e2b6b99c8e3b697b20355781880da7fc8",
+  "pg_dump_version": "pg_dump (PostgreSQL) 18.6",
+  "pg_restore_version": "pg_restore (PostgreSQL) 18.6",
+  "deployed_revision": "unobserved",
+  "external_tools": "API/data-plane diagnostics, not native Bex/Render commands",
+  "new_findings": 0
+}

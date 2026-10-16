@@ -1,0 +1,19 @@
+from pathlib import Path
+import sys,json
+f=Path(__file__).with_name('sweep347-common.py');sys.argv=[str(f),'readbacks','inline'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==347 and v.get('type')=='web_service');y=next(v for v in c['resources'] if v.get('sweep')==347 and v.get('type')=='env_group');assert x['observations'][-1]['pass'];sid=x['id'];did=x['first_deploy_id'];ref=(P/'sweep347-primary-ref.txt').read_text().strip().split();assert len(ref)==2 and ref[1]=='refs/heads/master' and len(ref[0])==40;x['independent_source_ref']={'repo':EXPRESS,'branch':'master','commit':ref[0],'qualification':'anonymous primary Git ref read during this journey'};save()
+for actor in ('bex','render'):
+ assert not any(z['client']==actor for z in x.get('native_first_deploy_readbacks',[]));r=cli(['deploys','list',sid,'--confirm','-o','json'],actor);e={'at':now(),'client':actor,'native':r};x.setdefault('native_first_deploy_readbacks',[]).append(e);save();assert r['exit']==0;rows=json.loads(r['stdout']);e['pass']=len(rows)==1 and rows[0]['id']==did and rows[0]['status']=='live' and (rows[0].get('commit') or {}).get('id')==ref[0];save();print(json.dumps({'client':actor,'only_initial_deploy_Live_exact_commit':e['pass']}),flush=True);assert e['pass']
+query='query QA347 {deploy(serviceId:'+json.dumps(sid)+',deployId:'+json.dumps(did)+'){id status}}'
+def decoded(r):
+ raw=r['response']
+ if not raw.lstrip().startswith(('{','[')):
+  vals=[z[5:].strip() for z in raw.splitlines() if z.startswith('data:')];assert len(vals)==1;raw=vals[0]
+ return json.loads(raw)
+for surface,method,path,body in [('REST','GET','/v1/services/'+sid+'/deploys/'+did,None),('GraphQL','POST','/graphql',{'query':query}),('MCP','POST','/mcp',{'jsonrpc':'2.0','id':347,'method':'tools/call','params':{'name':'get_deploy','arguments':{'serviceId':sid,'deployId':did,'workspaceId':ws}}})]:
+ assert not any(z['surface']==surface for z in x.get('shared_deploy_readbacks',[]));e={'at':now(),'surface':surface};x.setdefault('shared_deploy_readbacks',[]).append(e);save();r=api(method,path,body);e['receipt']=r;save();assert r['status']=='200';v=decoded(r)
+ if surface=='GraphQL':assert not v.get('errors');v=v['data']['deploy']
+ elif surface=='MCP':
+  assert not v.get('error') and not v['result'].get('isError');z=v['result'];v=z.get('structuredContent')
+  if v is None:v=json.loads(next(a['text'] for a in z['content'] if a['type']=='text'))
+ v=v.get('deploy',v);e['pass']=v['id']==did and v['status']=='live';save();print(json.dumps({'surface':surface,'first_deploy_Live':e['pass']}),flush=True);assert e['pass']
+d=wire('/v1/env-groups/'+y['id']);y['live_detail']=d;save();assert d['status']=='200';v=json.loads(d['response']);assert v['id']==y['id'] and v['ownerId']==ws and {z['id'] for z in v['serviceLinks']}=={sid};y['only_owned_service_link_pass']=True;save();print('Own group links exactly the owned service')

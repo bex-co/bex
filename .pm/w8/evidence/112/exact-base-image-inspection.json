@@ -1,0 +1,13 @@
+{
+  "image": "elixir:1.18@sha256:f3cc81b7f0f897763f7c74e8f526ddaf18b68f0cdbea6dd65b58f2c5c5629fbd",
+  "local_inspect_exit": 0,
+  "qualification": "public pinned base only; no pull or product fixture",
+  "env": [
+    "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "OTP_VERSION=28.5.0.7",
+    "REBAR3_VERSION=3.27.0",
+    "REBAR_VERSION=2.6.4",
+    "ELIXIR_VERSION=v1.18.4",
+    "LANG=C.UTF-8"
+  ]
+}

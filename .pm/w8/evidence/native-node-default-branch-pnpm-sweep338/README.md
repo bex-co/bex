@@ -1,0 +1,33 @@
+# Default GitHub branch and pnpm hosted acceptance — sweep338
+
+[Results](results.json) · [complete native creates, unchanged wire, runtime, readback and cleanup receipts](native-wire-runtime-cleanup.json) · [selected-service export](shared-export.json) · [independent public source](public-source-reference.json) · [final baseline](cleanup-inventory.json).
+
+Source5a39b80ff05a1e6c2b58458e99c0d455d58b730a and desired image pina1adb0cdf138 contain the m73/f5b6c6e29 and m76/4ae5ae08e implementations. Serving SHA is unobserved. QA uses the existing isolated human session in bex-canary and supplies no implementation, release or platform deployment.
+
+## First omitted-branch deployments
+
+Published Bex0.3.2/a6350da0 and unmodified Render2.27.0/a764810a7682 each create a fresh explicit Free Node24 web service. A finite local relay forwards the actual native POST body unchanged. Both requests omit branch; both201/native0 responses already select master. Anonymous public Git reference and package.json establish master, full commit109a299c26d2d532027bb6e66e50e365eeb8fcdd and the independent serve-static package hash. Both first automatic deployments reach Live/HTTP200 with that commit, matching authored build/runtime markers, Node24 and package hashes before any later edit. No branch correction occurs.
+
+After recording first-deployment acceptance, each client writes the identical explicit master value with autoDeploy off. Native exit0, branch/master and unchanged single-child histories prove both edits are no-ops. Subsequent Bex observer edits are separate and do not count as first-deployment proof.
+
+## pnpm execution and observer exclusions
+
+Both builds execute authored pnpm --version successfully. Render's first runtime snapshot also passes pnpm/npm/Yarn with matching build/runtime versions. Bex's first snapshot records pnpm ETIMEDOUT at the authored10-second bound, while Node/npm/Yarn and source checks pass. It is an interrupted observation, not an ENOENT finding; no specific CPU or network cause is asserted.
+
+A Bex start-only timing observer initially references undeclared qa_start because the helper edited shell-quoted code incorrectly. Native app logs identify that ReferenceError; this exact owned child is canceled with native0 and retained as excluded QA evidence. The original healthy service continues HTTP200. The corrected helper parses the command argv before changing its JS, executes the exact new JS locally with stubbed I/O to check the timer, and updates only the runtime observer to a60-second per-tool bound. Build command, source/master, Node selection, installations and PATH are unchanged. The corrected deployment reaches Live and real HTTP snapshots show pnpm/npm/Yarn all0 with matching build/runtime versions; actual per-tool timings are retained. No user-install workaround is added. An earlier optional GraphQL read used unsupported ID/image names and returned validation errors; it supplies no artifact/image-equality evidence. A separate local Node syntax-check invocation also used incompatible --check/--eval options and is excluded. These harness failures do not become product findings.
+
+Bex's delayed fresh history/detail/HTTP check passes72.833s after its first complete runtime snapshot, retaining exact source/commit/package/markers and no unexpected children. Render's earlier first-deployment runtime proof remains valid; its late check1274.972s later finds metadata Hibernated and HTTP503 with service-not-ready/retryAfter5. That is the documented Free idle-wake state, not pnpm/default-branch failure. Cleanup had already begun before a wake-recovery check, so recovery is explicitly unmeasured and no two-client delayed-availability pass is claimed. The custom late helper's all-pass assertion therefore fails and is retained as a qualified observation, not a passing check. HTTP repeats read cached startup snapshots; they do not re-execute tools.
+
+## Shared consumers and maintained execution
+
+Native inventories/history select the exact owned IDs. REST, GraphQL and MCP each read both services and agree on master, Git source, Node runtime, effective build/start and autoDeploy off. API-only GraphQL GenerateBlueprint exports exactly those two services with explicit master. The two batches total12 successful API service reads and two selected-service exports. These are API-only coverage, not native CLI commands or browser coverage. Readback receipts from before and after the corrected observer are distinguished by time/commands.
+
+[Branch and m75 neighbor tests](sweep338-branch-and-m75-neighbors.jsonl) pass9 top/53 named events: main/master/trunk, explicit branches, unavailable metadata, row/spec/first-commit preparation and preserved implicit-context controls. [Export source tests](sweep338-export-source.jsonl) pass1 top/4 named events, including explicit main on a non-main-default repo. [pnpm execution](sweep338-pnpm-source-execution.jsonl) passes3 top/7 named events with BEX_BUILDKIT_INTEGRATION=1: actual generated Node22/24/26 builds/runtime pnpm commands, npm and provided Yarn controls, default/narrow PATH, static extraction and cache/non-Node exclusions. Overall13 top/64 named passes,0 failures/skips; [bounded runner](pnpm-source-runner.json) and [toolchain inventory](toolchain-validate.txt) pass. These are focused reruns; implementation tasks retain their own full-suite/lint/simplify records. Newer m77 companion assembly changes are not certified as hosted by this older desired pin.
+
+Shared Create adapters/dashboard defaults and deliberately unchanged legacy/Blueprint/source-switch policies are audited in m76/t002. New provider integrations and authenticated Render production remain untested. No browser interaction or live explicit-main/trunk fixture is claimed.
+
+## Exact cleanup
+
+The two exact owned Free services and all four recorded deployment children are absent: native delete0, parent/detail/list404/absence, former URLs404 and every child404. The original six service IDs remain, service quota is used6/terminating0, PostgreSQL/Key Value usage0, groups/projects empty and the original Blueprint alone remains. Baseline Blueprint configuration is omitted from evidence. Relay/config/request files are removed; bounded processes terminate; private login remains only for the continuing authorized hunt. No cron or paid resource is created.
+
+Finite helpers: [native/HTTP driver](sweep338-joint-node-acceptance.py.txt), [shared reads/export](sweep338-readbacks.py.txt), [observer recovery](sweep338-correct-observer.py.txt), [native diagnostic logs](sweep338-diagnostic-logs.py.txt). Original315 and319 negative receipts remain in the completed milestones.

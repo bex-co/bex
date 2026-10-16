@@ -1,0 +1,16 @@
+from pathlib import Path
+import sys,json
+f=Path(__file__).with_name('sweep345-common.py');sys.argv=[str(f),'shared-state','bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==345);sid=x['id'];assert x['workspace']==WS and x['create_response']['id']==sid;query='query QA345 {keyValue(id:'+json.dumps(sid)+'){id name status persistenceMode plan}}'
+def decode(r):
+ raw=r['response']
+ if not raw.lstrip().startswith(('{','[')):
+  vals=[l[5:].strip() for l in raw.splitlines() if l.startswith('data:')];assert len(vals)==1;raw=vals[0]
+ return json.loads(raw)
+for surface,method,path,body in [('REST','GET','/v1/key-value/'+sid,None),('GraphQL','POST','/graphql',{'query':query}),('MCP','POST','/mcp',{'jsonrpc':'2.0','id':345,'method':'tools/call','params':{'name':'get_key_value','arguments':{'keyValueId':sid,'workspaceId':WS}}})]:
+ assert not any(z['surface']==surface for z in x.get('shared_state',[]));e={'at':now(),'surface':surface};x.setdefault('shared_state',[]).append(e);save();r=api(method,path,body);e['receipt']=r;save();assert r['status']=='200';v=decode(r)
+ if surface=='REST':v={**v,**v.get('options',{})}
+ elif surface=='GraphQL':assert not v.get('errors');v=v['data']['keyValue']
+ else:
+  assert not v.get('error') and not v['result'].get('isError');result=v['result'];v=result.get('structuredContent')
+  if v is None:v=json.loads(next(z['text'] for z in result['content'] if z['type']=='text'))
+ e['pass']=v['id']==sid and v['name']==x['name'] and v['status']=='available' and v['persistenceMode']=='snapshot' and v['plan']=='free';save();print(json.dumps({'surface':surface,'pass':e['pass']}),flush=True);assert e['pass']

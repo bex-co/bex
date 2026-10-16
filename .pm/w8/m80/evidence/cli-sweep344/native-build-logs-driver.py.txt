@@ -1,0 +1,6 @@
+from pathlib import Path
+import sys,json
+which=sys.argv[1];f=Path(__file__).with_name('sweep344-omitted-branch.py');sys.argv=[str(f),'native-build-logs',which];exec(compile(f.read_text().split("if mode=='create':")[0],str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==344 and v.get('type')=='web_service' and v.get('case')==which);own(x);r=cli(['logs','--resources',x['id'],'--type','build','--start',x['sync_intent']['at'],'--direction','forward','--limit','100','--confirm','-o','json']);e={'at':now(),'window':'omitted-branch first Git deployment before explicit branch control','result':r};x.setdefault('native_build_logs',[]).append(e);save();assert r['native_exit']==0;raw=r['stdout'];dec=json.JSONDecoder();rows=[]
+while raw.strip():
+ v,end=dec.raw_decode(raw.lstrip());rows.extend(v if isinstance(v,list) else [v]);raw=raw.lstrip()[end:]
+msgs=[z.get('message','') for z in rows];e['missing_main_ref_observed']=any('main' in v and any(s in v.lower() for s in ('remote branch','remote ref','not found','couldn\'t find')) for v in msgs);save();print(json.dumps({'case':which,'native_log_exit':0,'missing_main_ref_observed':e['missing_main_ref_observed'],'last_messages':msgs[-6:]}),flush=True)

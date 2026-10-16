@@ -1,0 +1,61 @@
+[
+  {
+    "label": "primary-version",
+    "command": [
+      "docker",
+      "run",
+      "--rm",
+      "--network",
+      "none",
+      "--cpus",
+      "1",
+      "--memory",
+      "512m",
+      "--pids-limit",
+      "128",
+      "--label",
+      "bex.qa=sweep336",
+      "-e",
+      "HEX_OFFLINE=1",
+      "-e",
+      "ERL_FLAGS=+S 2:2",
+      "elixir:1.18@sha256:f3cc81b7f0f897763f7c74e8f526ddaf18b68f0cdbea6dd65b58f2c5c5629fbd",
+      "mix",
+      "--version"
+    ],
+    "exit": 0,
+    "elapsed": 0.652,
+    "stdout": "Erlang/OTP 28 [erts-16.4.0.6] [source] [64-bit] [smp:2:2] [ds:2:1:10] [async-threads:1] [jit]\n\nMix 1.18.4 (compiled with Erlang/OTP 28)\n",
+    "stderr": ""
+  },
+  {
+    "label": "hex-task",
+    "command": [
+      "docker",
+      "run",
+      "--rm",
+      "--network",
+      "none",
+      "--cpus",
+      "1",
+      "--memory",
+      "512m",
+      "--pids-limit",
+      "128",
+      "--label",
+      "bex.qa=sweep336",
+      "-e",
+      "HEX_OFFLINE=1",
+      "-e",
+      "ERL_FLAGS=+S 2:2",
+      "elixir:1.18@sha256:f3cc81b7f0f897763f7c74e8f526ddaf18b68f0cdbea6dd65b58f2c5c5629fbd",
+      "mix",
+      "help",
+      "hex.info"
+    ],
+    "exit": 1,
+    "elapsed": 0.575,
+    "stdout": "",
+    "stderr": "** (Mix) The task \"hex.info\" could not be found\nNote no mix.exs was found in the current directory\n"
+  }
+]

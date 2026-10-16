@@ -1,0 +1,66 @@
+package build
+
+import (
+ "context"
+ "crypto/sha256"
+ "encoding/json"
+ "fmt"
+ "os"
+ "os/exec"
+ "path/filepath"
+ "strings"
+ "testing"
+ "time"
+)
+
+func TestQA336ElixirGeneratedToolchainObservation(t *testing.T) {
+ out:=os.Getenv("QA336_OUTPUT");if out=="" {t.Fatal("private output required")}
+ observations:=[]map[string]any{}
+ for _,line:=range []string{"default","1.17","1.18","1.19"} {
+  t.Run(line,func(t *testing.T){
+   o:=nativeOptions();o.Runtime="elixir";o.BuildCommand="mix deps.get --only prod";o.StartCommand="mix --version"
+   env:=map[string]string{};want:=line
+   if line=="default" {want="1.18"} else {env["ELIXIR_VERSION"]=line}
+   bundle,dockerfile,src:=writeResolveFixture(t,o,env,nil)
+   choices,err:=ResolveNativeBuild("elixir",bundle,dockerfile,src);if err!=nil{t.Fatal(err)}
+   if len(choices)!=1 || choices[0].Line!=want{t.Fatalf("choices=%+v",choices)}
+   content,err:=os.ReadFile(dockerfile);if err!=nil{t.Fatal(err)}
+   if err=os.WriteFile(filepath.Join(out,line+".Dockerfile"),content,0600);err!=nil{t.Fatal(err)}
+   observations=append(observations,map[string]any{"case":line,"choices":choices,"scope":"actual generated/resolved current-source artifact; image execution is separate"})
+  })
+ }
+ b,err:=json.MarshalIndent(observations,"","  ");if err!=nil{t.Fatal(err)}
+ if err=os.WriteFile(filepath.Join(out,"observations.json"),b,0600);err!=nil{t.Fatal(err)}
+}
+
+func TestQA336ElixirHexDependencyBuildExecution(t *testing.T) {
+ o:=nativeOptions();o.Runtime="elixir";o.BuildCommand="mix deps.get --only prod";o.StartCommand="mix --version"
+ bundle,dockerfile,src:=writeResolveFixture(t,o,map[string]string{"ELIXIR_VERSION":"1.18","ERL_FLAGS":"+S 2:2"},nil)
+ for _,name:=range []string{"mix.exs","mix.lock"} {data,err:=os.ReadFile(filepath.Join(os.Getenv("QA336_SOURCE"),name));if err!=nil{t.Fatal(err)};if err=os.WriteFile(filepath.Join(src,name),data,0600);err!=nil{t.Fatal(err)}}
+ if _,err:=ResolveNativeBuild("elixir",bundle,dockerfile,src);err!=nil{t.Fatal(err)}
+ if err:=os.Rename(dockerfile,filepath.Join(src,"Dockerfile"));err!=nil{t.Fatal(err)}
+ tag:=fmt.Sprintf("bex-qa336-elixir-hex:%d",os.Getpid());t.Cleanup(func(){_ = exec.Command("docker","image","rm","-f",tag).Run()})
+ ctx,cancel:=context.WithTimeout(context.Background(),3*time.Minute);defer cancel()
+ build:=exec.CommandContext(ctx,"docker","build","--no-cache","--progress=plain","-t",tag,"--secret","id=render-env,src="+bundle,src);build.Env=append(os.Environ(),"DOCKER_BUILDKIT=1")
+ output,err:=build.CombinedOutput()
+ if err=os.WriteFile(filepath.Join(os.Getenv("QA336_OUTPUT"),"dependency-build-output.txt"),output,0600);err!=nil{t.Fatal(err)}
+ if ctx.Err()!=nil{t.Fatalf("HARNESS bounded build timeout: %v",ctx.Err())}
+ if build.ProcessState.ExitCode()!=0 {
+  if strings.Contains(string(output),"Could not find Hex") || strings.Contains(string(output),"Could not find an SCM") {t.Fatalf("actual generated default Elixir image cannot execute the documented dependency build without Hex: exit=%d\n%s",build.ProcessState.ExitCode(),output)}
+  t.Fatalf("unclassified builder failure, not a missing-Hex finding: exit=%d\n%s",build.ProcessState.ExitCode(),output)
+ }
+ runtime:=[]struct{name string;args []string}{
+  {"Hex",[]string{"mix","help","hex.info"}},
+  {"Rebar",[]string{"/bin/bash","-c",`for qa_rebar in /root/.mix/elixir/*/rebar3; do if [ -x "$qa_rebar" ]; then "$qa_rebar" --version; exit "$?"; fi; done; exit 1`}},
+ }
+ receipts:=[]map[string]any{}
+ for _,probe:=range runtime {
+  args:=append([]string{"run","--rm","--network","none","--cpus","1","--memory","512m","--pids-limit","128","-e","ERL_FLAGS=+S 2:2","-e","HEX_OFFLINE=1",tag},probe.args...)
+  raw,runErr:=exec.CommandContext(ctx,"docker",args...).CombinedOutput()
+  code:=0;if runErr!=nil {code=1}
+  receipts=append(receipts,map[string]any{"tool":probe.name,"command":append([]string{"docker"},args...),"exit":code,"output_bytes":len(raw),"output_sha256":fmt.Sprintf("%x",sha256.Sum256(raw)),"qualification":"actual generated image runtime; no network, no package installation; vendor help text omitted"})
+  if runErr!=nil {t.Fatalf("runtime %s missing after successful dependency build: %v\n%s",probe.name,runErr,raw)}
+ }
+ data,err:=json.MarshalIndent(receipts,"","  ");if err!=nil{t.Fatal(err)}
+ if err=os.WriteFile(filepath.Join(os.Getenv("QA336_OUTPUT"),"runtime-tool-receipts.json"),data,0600);err!=nil{t.Fatal(err)}
+}

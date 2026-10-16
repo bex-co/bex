@@ -1,0 +1,20 @@
+{
+  "at": "2026-10-16T09:00:03.189337+00:00",
+  "source_head": "71ce7fa28df475ea23fc2a5b0fbb591fc847edb1",
+  "serving_revision": "unobserved",
+  "contract": "https://render.com/docs/environment-variables : MIX_ENV=prod applies at build/runtime; Node NODE_ENV is runtime-only",
+  "source_named_pass_events": 15,
+  "source_top_tests_pass": 4,
+  "source_fail": 0,
+  "source_skip": 0,
+  "real_generator_resolver_cases": 5,
+  "generated_Docker_execution": false,
+  "local_pinned_base_executions": "default project build fails on missing dev-only dependency; explicit prod compiles same project; no-project Mix env before/after is dev/prod; observer preflight passes",
+  "source_fix_target": "primary Elixir ENV MIX_ENV=prod before authored build RUN, retained as runtime image default; configured literal/Secret env overrides including empty remain exact",
+  "related": "w8/111 is explicitly primary Node runtime-only; Elixir requires a build-phase default too, and was outside that note\u2019s accepted scope",
+  "full_Phoenix_runtime": "not started; actual project is compiled, then a no-project Mix standard-library observer serves environment/source evidence",
+  "fresh_origin": "f373dd508ab22da646c8eb260fd7cdf90c683305",
+  "fresh_source_comparison_at": "2026-10-16T09:02:33.236255+00:00",
+  "new_product_diff": "",
+  "new_history": "f373dd508 docs(pm): consolidate native JavaScript companion fixes\n"
+}

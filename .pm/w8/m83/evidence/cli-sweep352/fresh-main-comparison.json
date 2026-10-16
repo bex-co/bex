@@ -1,0 +1,8 @@
+{
+  "head": "bd0ffac525f2ff1dfb4d7c7add9f81000fed8036",
+  "fetched_origin_main": "bd0ffac525f2ff1dfb4d7c7add9f81000fed8036",
+  "product_delta_paths": [],
+  "dedupe": "m79 completed static-handler scope explicitly excludes unrelated API compression; no dynamic-web compression owner found",
+  "live_scope": "two native Free Node24 web services; HTTP1.1 and negotiated HTTP2",
+  "serving_SHA": "unobserved"
+}

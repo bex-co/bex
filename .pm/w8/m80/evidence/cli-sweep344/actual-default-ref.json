@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-16T04:29:07.241301+00:00",
+  "command": [
+    "git",
+    "-c",
+    "credential.helper=",
+    "-c",
+    "core.askpass=",
+    "ls-remote",
+    "--symref",
+    "https://github.com/expressjs/serve-static",
+    "HEAD"
+  ],
+  "exit": 0,
+  "stdout": "ref: refs/heads/master\tHEAD\n109a299c26d2d532027bb6e66e50e365eeb8fcdd\tHEAD\n",
+  "stderr": "",
+  "repository_default_branch": "master",
+  "qualification": "fresh anonymous remote HEAD symbolic ref; verifies default branch, not merely existence of master"
+}

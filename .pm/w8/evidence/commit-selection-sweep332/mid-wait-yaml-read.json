@@ -1,0 +1,16 @@
+{
+  "binary": "released v0.3.2",
+  "command": [
+    "bex",
+    "deploys",
+    "list",
+    "srv-db8nm8u7925c73etgqt0",
+    "--confirm",
+    "-o",
+    "yaml"
+  ],
+  "exit": 0,
+  "elapsed": 1.061,
+  "stdout": "- commit:\n    createdAt: \"2025-06-06T13:21:46Z\"\n    id: c03a88b2e88b927fec69a72982fe92d2abc5a99e\n    message: '[PUBLIC COMMIT MESSAGE OMITTED; ID/TIME RETAINED]'\n  createdAt: \"2026-10-16T01:24:17.593041Z\"\n  id: dep-db8npge7925c73etgr4g\n  status: queued\n  trigger: api\n  updatedAt: \"2026-10-16T01:24:20.160914Z\"\n- commit:\n    createdAt: \"2025-12-01T11:43:06Z\"\n    id: 1d9a8e7261557ec9a40463fd54e99b601016598c\n    message: |-\n        build(deps): bump actions/checkout from 4.2.2 to 6.0.0 (#83)\n\n        Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>\n  createdAt: \"2026-10-16T01:22:21.42598Z\"\n  finishedAt: \"2026-10-16T01:23:49.933587Z\"\n  id: dep-db8noje7925c73etgr30\n  startedAt: \"2026-10-16T01:23:06.343579Z\"\n  status: live\n  trigger: api\n  updatedAt: \"2026-10-16T01:23:49.933588Z\"\n- commit:\n    createdAt: \"2025-06-06T13:21:46Z\"\n    id: c03a88b2e88b927fec69a72982fe92d2abc5a99e\n    message: '[PUBLIC COMMIT MESSAGE OMITTED; ID/TIME RETAINED]'\n  createdAt: \"2026-10-16T01:20:41.809684Z\"\n  finishedAt: \"2026-10-16T01:21:36.164128Z\"\n  id: dep-db8nnqad4sfs7388qktg\n  startedAt: \"2026-10-16T01:20:49.985958Z\"\n  status: deactivated\n  trigger: api\n  updatedAt: \"2026-10-16T01:23:49.939273Z\"\n- commit:\n    id: 1d9a8e7261557ec9a40463fd54e99b601016598c\n    message: |-\n        build(deps): bump actions/checkout from 4.2.2 to 6.0.0 (#83)\n\n        Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>\n  createdAt: \"2026-10-16T01:17:23.887574Z\"\n  finishedAt: \"2026-10-16T01:19:36.137968Z\"\n  id: dep-db8nm8u7925c73etgqtg\n  startedAt: \"2026-10-16T01:18:36.161329Z\"\n  status: deactivated\n  trigger: other\n  updatedAt: \"2026-10-16T01:21:36.166189Z\"\n",
+  "stderr": ""
+}

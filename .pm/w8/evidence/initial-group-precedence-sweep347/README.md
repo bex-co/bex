@@ -1,0 +1,27 @@
+# First Blueprint deployment with group precedence and empty values — sweep347
+
+[Results](results.json) · [native validation/API/runtime/cleanup receipts](native-API-runtime-cleanup.json) · [exact qualified manifest](render.yaml) · [local execution](local-preflight.json) · [source events](source-events.jsonl) · [anonymous primary Git ref](primary-public-ref.txt).
+
+Source c84c348b0e4a2248ee0f80a09cc15165275e14d7 equals refreshed main; serving SHA unobserved. Published Bex0.3.2/a6350da0 and unchanged Render2.27.0/a764810a7682 each validate the corrected manifest, native0/valid:true. The pinned CLI has no apply. One API-only inline POST /v1/blueprints/deploy creates exactly one explicit Free Node24 web service and one new environment group in bex-canary, autoDeploy off, Express/master and dependency-free authored commands. Full body/HTTP200/response are retained. Returned names/IDs/workspace/Free, absent pre-inventories and exact group-owner/link readbacks prove ownership; no Blueprint metadata, database or Key Value is created.
+
+## Actual first build and runtime
+
+The group's harmless multiline/Unicode value is visible unchanged in the build artifact and the running process. A service literal wins over the group's nonempty same-key literal. A **present service empty string** wins over a group's nonempty fallback; a separate group-provided empty value remains present; an absent control remains absent/null. The probe reads only these five authored keys, never the process environment as a whole. Its exact build JavaScript executes locally against the expected composed values and its start JavaScript passes syntax checking before apply.
+
+The one returned first deployment reaches Live/HTTP200 with both projections exactly equal to the independent authored expectation. Both native clients list only that same Live child and the independently read master commit. REST, GraphQL and MCP each read the exact first child as Live; MCP names the existing QA workspace. The group links exactly this owned service. A later successful runtime/history read spans73.852seconds from the first full pass and preserves the same first deployment, exact selected values and process boot. There is no manual deploy, configuration recovery, cancel or identical reapply in this first-create acceptance. An early200 while status is update_in_progress is retained as an intermediate state, not prematurely counted as terminal success.
+
+[Render guarantees service-over-group variable precedence](https://render.com/docs/configure-environment-variables#linking-a-group-to-a-service). Only one group is used, so no ordering claim is made for multiple groups. This adds Node/native-validation and explicit-empty/absence first-build controls to the earlier [w4/m148 initial composition acceptance](../../../w4/done/m148/README.md), and retains the [w8/095 empty group contract](../../done/095.md). It does not replay their complete original DoDs or reopen them. No authenticated Render account/browser comparison is claimed.
+
+Five maintained source tests/19 named events pass,0fail/0skip: group literal/empty/local override copies, generated source precedence and initial composition failure compensation. This focused test set uses existing package fixtures; the real-Postgres first-deploy lifecycle suite and a full backend suite are not run here. No product Go or test implementation changes.
+
+## Retained local exclusions
+
+The initial fixture accidentally included per-resource region, a documented unsupported Blueprint field. Native validation correctly refuses only services[0].region (exit1, located error). That [exact input](excluded-region-input.yaml) and receipt remain; only region is removed before the two qualified calls, and no apply occurred for it. This is a local setup exclusion, not a product finding.
+
+The accepted apply returns a StackResult containing an AppView with top-level plan/url. The local observer initially expected the native REST serviceDetails shape. HTTP200 and both newly returned IDs were persisted before that assertion; read-only detail qualification establishes canonical views and ownership without repeating apply. Both original response and qualification receipts remain. The current finite helper handles that response shape for future fresh runs; no published client or backend change is made.
+
+## Cleanup and scope
+
+Exact native Bex service delete exits0. After service404 and no group service links remain, exact own group DELETE returns204. Parent/group details, former HTTP URL and the one child deployment are404; native services match the original6, group list is empty, original Blueprint remains, quota services used6/terminating0 and PostgreSQL/KeyValue0. No paid fixture, cron, foreign resource or remote Git source is changed. Baseline configuration is projected out, credentials masked, temporary validation files/copied configs removed and the isolated login retained for the continuing loop.
+
+No new confirmed bug. Existing-group later updates, auto-deploy-on changes, multiple-group precedence, connected Blueprint sync, other runtimes, browser interactions and physical cluster cleanup are unverified here. [Finite native/API journey](finite-native-API-journey.py.txt), [client helpers](isolated-client-helpers.py.txt), [qualified input](qualify-input.py.txt), [read-only response qualification](qualify-response.py.txt), [native/shared reads](native-and-API-readbacks.py.txt). Uncommitted.

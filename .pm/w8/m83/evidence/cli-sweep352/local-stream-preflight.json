@@ -1,0 +1,62 @@
+{
+  "url": "http://127.0.0.1:52945/stream",
+  "offer": "identity",
+  "status": 200,
+  "headers": {
+    "x-qa-marker": "QA352_74eb6c_bex",
+    "content-type": "text/event-stream; charset=utf-8",
+    "cache-control": "no-cache",
+    "date": "Fri, 16 Oct 2026 06:10:41 GMT",
+    "connection": "keep-alive",
+    "keep-alive": "timeout=5",
+    "transfer-encoding": "chunked"
+  },
+  "headers_ms": 7,
+  "error": null,
+  "elapsed_ms": 3313,
+  "text": "id: 0\nevent: tick\ndata: {\"marker\":\"QA352_74eb6c_bex\",\"seq\":0,\"text\":\"caf\u00e9 \u65e5\u672c\u8a9e\",\"emitted\":1792131041361}\n\nid: 1\nevent: tick\ndata: {\"marker\":\"QA352_74eb6c_bex\",\"seq\":1,\"text\":\"caf\u00e9 \u65e5\u672c\u8a9e\",\"emitted\":1792131042463}\n\nid: 2\nevent: tick\ndata: {\"marker\":\"QA352_74eb6c_bex\",\"seq\":2,\"text\":\"caf\u00e9 \u65e5\u672c\u8a9e\",\"emitted\":1792131043565}\n\n",
+  "events": [
+    {
+      "at_ms": 8,
+      "value": {
+        "marker": "QA352_74eb6c_bex",
+        "seq": 0,
+        "text": "caf\u00e9 \u65e5\u672c\u8a9e",
+        "emitted": 1792131041361
+      }
+    },
+    {
+      "at_ms": 1109,
+      "value": {
+        "marker": "QA352_74eb6c_bex",
+        "seq": 1,
+        "text": "caf\u00e9 \u65e5\u672c\u8a9e",
+        "emitted": 1792131042463
+      }
+    },
+    {
+      "at_ms": 2211,
+      "value": {
+        "marker": "QA352_74eb6c_bex",
+        "seq": 2,
+        "text": "caf\u00e9 \u65e5\u672c\u8a9e",
+        "emitted": 1792131043565
+      }
+    }
+  ],
+  "chunks": [
+    {
+      "at_ms": 8,
+      "chars": 105
+    },
+    {
+      "at_ms": 1109,
+      "chars": 105
+    },
+    {
+      "at_ms": 2211,
+      "chars": 105
+    }
+  ],
+  "pass": true
+}

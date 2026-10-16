@@ -1,0 +1,71 @@
+from pathlib import Path
+import sys,os,json,subprocess,time,signal,shutil,re,hashlib
+from importlib.machinery import SourceFileLoader
+P=Path(__file__).resolve().parent
+pty_module=SourceFileLoader('qa359_pty',str(P/'sweep356-pubsub.py')).load_module()
+Session=pty_module.Session;quoted=pty_module.quoted;ANSI=pty_module.ANSI
+WRITE="for _,k in ipairs(KEYS) do if redis.call('EXISTS',k)~=0 then return redis.error_reply('own fresh key already exists') end end;local out={};for i,k in ipairs(KEYS) do redis.call('SET',k,ARGV[i]);out[i]=redis.sha1hex(redis.call('GET',k)) end;return out"
+READ="local out={};for i,k in ipairs(KEYS) do local v=redis.call('GET',k);out[i]=v and redis.sha1hex(v) or 'MISSING' end;return out"
+ZERO="local count=0;for _,k in ipairs(KEYS) do count=count+redis.call('EXISTS',k) end;return {count}"
+CAS="local v=redis.call('GET',KEYS[1]);if v==ARGV[1] then redis.call('SET',KEYS[1],ARGV[2]);return {1,redis.sha1hex(redis.call('GET',KEYS[1]))} end;return {0,v and redis.sha1hex(v) or 'MISSING'}"
+def values(nonce,db):return {f'qa359_{nonce}:item{i:02}':('' if i%5==0 else f'DB{db} item{i} Render on Render https://render.com/ café 日本 😀\r\n\x00tail') for i in range(20)}
+def hashes(v):return [hashlib.sha1(s.encode()).hexdigest() for s in v.values()]
+def decode(raw):
+ out=[]
+ for line in ANSI.sub('',raw.decode(errors='replace')).splitlines():
+  try:v=json.loads(line)
+  except ValueError:continue
+  if isinstance(v,(dict,list,str,int)):out.append(v)
+ return out
+
+def journey(nonce,build,persist,events):
+ data={db:values(nonce,db) for db in (1,2)};keys=list(data[1]);prefix='qa359_'+nonce+':'
+ def call(label,actor,db,args,expected=None,hello=False,scan=False):
+  flags=['-n',str(db),'--json','-3']
+  if scan:flags+=['--scan','--pattern',prefix+'*']
+  else:flags+=['--quoted-input',*(quoted(a) for a in args)]
+  e={'label':label,'actor':actor,'database_index':db,'intent':'ordinary owned nonce data operation; no replay after ambiguous outcome','expected':'HELLO proto3' if hello else 'own key set' if scan else expected};events.append(e);persist();session=None;cleanup=lambda:None
+  try:
+   cmd,env,logical,cleanup=build(actor,flags);session=Session(cmd,env);code=session.finish();e['observed_JSON']=decode(session.raw)
+   if scan:
+    lines=ANSI.sub('',session.raw.decode(errors='replace')).splitlines();observed=[s.strip() for s in lines if s.strip().startswith(prefix)];e['observed_scan_keys']=observed;e['pass']=code==0 and set(observed)==set(keys)
+   elif hello:e['pass']=code==0 and len(e['observed_JSON'])==1 and isinstance(e['observed_JSON'][0],dict) and e['observed_JSON'][0].get('proto')==3
+   else:e['pass']=code==0 and e['observed_JSON']==[expected]
+  except Exception as err:e['error']=str(err);e['pass']=False
+  finally:
+   if session:session.close();e['native']=session.record(logical)
+   cleanup();persist()
+  print(json.dumps({'label':label,'actor':actor,'db':db,'pass':e['pass']}),flush=True);assert e['pass'],e.get('error','native response differs')
+ for actor in ('bex','render'):call('HELLO-protocol3-'+actor,actor,0,['HELLO','3'],hello=True)
+ for db,actor in [(1,'bex'),(2,'render')]:call('write-db'+str(db),actor,db,['EVAL',WRITE,'20',*keys,*data[db].values()],hashes(data[db]))
+ for db,actor in [(1,'render'),(2,'bex')]:call('cross-read-db'+str(db),actor,db,['EVAL',READ,'20',*keys],hashes(data[db]))
+ for db,actor,other in [(1,'render','bex'),(2,'bex','render')]:
+  k=keys[1];old=data[db][k];new=old+'|updated-db'+str(db);digest=hashlib.sha1(new.encode()).hexdigest();call('CAS-match-db'+str(db),actor,db,['EVAL',CAS,'1',k,old,new],[1,digest]);call('CAS-stale-db'+str(db),other,db,['EVAL',CAS,'1',k,old,old+'|must-not-write'],[0,digest]);data[db][k]=new
+ for db,actor in [(1,'bex'),(2,'render')]:call('post-CAS-read-db'+str(db),actor,db,['EVAL',READ,'20',*keys],hashes(data[db]))
+ for actor in ('bex','render'):call('default-db0-untouched-'+actor,actor,0,['EVAL',ZERO,'20',*keys],[0])
+ for db,actor in [(1,'render'),(2,'bex')]:call('native-scan-db'+str(db),actor,db,[],scan=True)
+ return {'logical_key_values':40,'keys_per_database':20,'databases':[1,2],'events_pass':len(events),'distinct_scan_keys':[len(set(e['observed_scan_keys'])) for e in events if 'observed_scan_keys' in e],'explicit_protocol3_confirmations':2,'matched_CAS_updates':2,'stale_CAS_preserved_new_value':2,'default_database0_no_own_keys':2}
+if __name__=='__main__':
+ os.umask(0o077);mode=sys.argv[1];assert mode in ('preflight','live')
+ if mode=='preflight':
+  sock=P/'sweep359-preflight.sock';assert not sock.exists();out=(P/'sweep359-local-server.log').open('wb');proc=subprocess.Popen([shutil.which('redis-server'),'--port','0','--unixsocket',str(sock),'--unixsocketperm','700','--save','','--appendonly','no','--loglevel','warning'],stdout=out,stderr=out,start_new_session=True);result={'qualification':'local redis-server/redis-cli data and PTY prerequisite; not Bex product evidence','local_server_pid':proc.pid,'events':[]}
+  def persist():(P/'sweep359-local-preflight.json').write_text(json.dumps(result,indent=2,ensure_ascii=False))
+  persist()
+  try:
+   for _ in range(60):
+    if sock.exists():break
+    time.sleep(.04)
+   assert sock.exists()
+   def build(actor,flags):return [shutil.which('redis-cli'),'-s',str(sock),*flags],None,['local-redis-cli','-s','<own-local-socket>',*flags],lambda:None
+   result['summary']=journey('local359',build,persist,result['events'])
+  finally:
+   os.killpg(proc.pid,signal.SIGTERM);proc.wait(timeout=3);out.close();sock.unlink(missing_ok=True);result['server_stopped']=True;result['socket_removed']=not sock.exists();persist()
+  print(json.dumps({'local_preflight_summary':result['summary'],'server_stopped':True}))
+ else:
+  f=P/'sweep359-common.py';sys.argv=[str(f),'db-journey','bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(x for x in c['resources'] if x.get('sweep')==359 and x.get('id'));sid=x['id'];assert x['workspace']==WS and x['create_result']['native_exit']==0 and x['create_response']['id']==sid and not x.get('db_events');d,v=detail();assert v['status']=='available' and v['public'];cfg=P/'render-config/cli.yaml';assert not cfg.exists();x['db_events']=[];save()
+  def build(actor,flags):
+   config=P/('config/cli.yaml' if actor=='bex' else 'render-config/cli.yaml');prefix='BEX' if actor=='bex' else 'RENDER'
+   if actor=='render':assert not config.exists();shutil.copyfile(P/'config/cli.yaml',config);config.chmod(0o600)
+   cleanup=(lambda:config.unlink(missing_ok=True)) if actor=='render' else (lambda:None);env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_','REDIS'))};env.update({prefix+'_HOST':'https://api.bex.co/v1/',prefix+'_CLI_CONFIG_PATH':str(config),prefix+'_CLI_CONFIG_DIR':str(config.parent),prefix+'_WORKSPACE':WS,prefix+'_NO_UPDATE_NOTIFIER':'1','BEX_CLI_DISABLE_ANALYTICS':'1','DO_NOT_TRACK':'1','BROWSER':'/usr/bin/true'});args=['kv-cli',sid,'-o','interactive','--',*flags];return [str(P/('release/bex' if actor=='bex' else 'render-pin')),*args],env,[actor,*args],cleanup
+  try:x['db_summary']=journey(x['nonce'],build,save,x['db_events']);save()
+  finally:cfg.unlink(missing_ok=True);x['db_copied_Render_config_removed']=not cfg.exists();save()

@@ -1,0 +1,59 @@
+from pathlib import Path
+import datetime, json, os, secrets, shutil, subprocess, sys, time, re, yaml, hashlib
+os.umask(0o077)
+P=Path(__file__).resolve().parent
+ROOT=Path('/Volumes/nvme4tbfish/projects/bex8');CP=ROOT/'.playwright-mcp/cli-qa-w8-checkpoint.json'
+c=json.loads(CP.read_text());assert c.get('sync353_result')==0 and not c.get('active_sync_stash')
+mode=sys.argv[1];client=sys.argv[2] if len(sys.argv)>2 else 'bex';assert client in ('bex','render')
+WS='tea-daif693dqjvc73e7as3g'
+def unwrap(v):
+ for key in ('service','postgres','keyValue'):
+  if isinstance(v.get(key),dict):return v[key]
+ return v
+BASE={v if isinstance(v,str) else unwrap(v)['id'] for v in c['baseline']['services']}
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():
+ c['last_updated']=now();f=CP.with_name('.'+CP.name+'.qa353.tmp');f.write_text(json.dumps(c,indent=2,ensure_ascii=False));f.chmod(0o600);f.replace(CP)
+def cli(args,bound=40):
+ cfg=P/'render-config/cli.yaml';ca_file=P/'sweep353-owned-pg-ca.pem';client_setup=None
+ try:
+  if client=='render':assert not cfg.exists();shutil.copyfile(P/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  env={k:v for k,v in os.environ.items() if not k.startswith(('RENDER_','BEX_','QA_','PG'))}
+  prefix='BEX' if client=='bex' else 'RENDER';directory=P/('config' if client=='bex' else 'render-config')
+  env.update({prefix+'_HOST':'https://api.bex.co/v1/',prefix+'_CLI_CONFIG_DIR':str(directory),prefix+'_CLI_CONFIG_PATH':str(directory/'cli.yaml'),prefix+'_WORKSPACE':WS,prefix+'_NO_UPDATE_NOTIFIER':'1','BEX_CLI_DISABLE_ANALYTICS':'1','DO_NOT_TRACK':'1','BROWSER':'/usr/bin/true','PGCONNECT_TIMEOUT':'10','PGCLIENTENCODING':'UTF8'})
+  if client=='render' and args[0]=='psql':
+   owned=next(v for v in c['resources'] if v.get('sweep')==353 and v.get('id'));assert owned['create_result']['native_exit']==0 and owned['workspace']==WS and owned['create_response']['id']==owned['id'] and not owned['state'].startswith('deleted:');assert not ca_file.exists()
+   private=yaml.safe_load((P/'config/cli.yaml').read_text())['api'];token=private.get('token') or private.get('key') or private.get('access_token');assert token
+   path='/v1/postgres/'+owned['id']+'/connection-info';auth='header = "Authorization: Bearer '+token+'"\nheader = "X-Bex-Workspace: '+WS+'"\n';request=subprocess.run(['curl','--disable','-sS','--max-time','25','--config','-','-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=30);raw,_,status=request.stdout.rpartition('\n');assert request.returncode==0 and status=='200';info=json.loads(raw);ca=info['serverCaCertificate'];assert ca.startswith('-----BEGIN CERTIFICATE-----');ca_file.write_text(ca);ca_file.chmod(0o600);env['PGSSLROOTCERT']=str(ca_file);client_setup={'API_only_CA_preparation':True,'path':path,'HTTP':status,'certificate_sha256':hashlib.sha256(ca.encode()).hexdigest(),'PGSSLROOTCERT':'<owned-temp>/sweep353-owned-pg-ca.pem','connection_info_payload_not_retained':True};del info,raw,auth,token
+  start=time.monotonic();timedout=False
+  try:r=subprocess.run([str(P/('release/bex' if client=='bex' else 'render-pin')),*args],env=env,text=True,capture_output=True,timeout=bound);code=r.returncode;out=r.stdout;err=r.stderr
+  except subprocess.TimeoutExpired as e:
+   timedout=True;code=None;out=e.stdout or '';err=e.stderr or ''
+   if isinstance(out,bytes):out=out.decode(errors='replace')
+   if isinstance(err,bytes):err=err.decode(errors='replace')
+  private=yaml.safe_load((P/'config/cli.yaml').read_text())['api'];token=private.get('token') or private.get('key') or private.get('access_token');assert token
+  out=out.replace(token,'QA_TOKEN_REDACTED');err=err.replace(token,'QA_TOKEN_REDACTED')
+  for line in (ROOT/'muse.env').read_text().splitlines():
+   k,sep,v=line.partition('=')
+   if sep and k.strip() in ('QA_EMAIL','QA_PASSWORD') and v.strip().strip('\"\''):
+    secret=v.strip().strip('\"\'');out=out.replace(secret,'QA_PRIVATE_REDACTED');err=err.replace(secret,'QA_PRIVATE_REDACTED')
+  out=re.sub(r'(?:postgres(?:ql)?|rediss?)://[^\s\"\']+','[CONNECTION URI REDACTED]',out);err=re.sub(r'(?:postgres(?:ql)?|rediss?)://[^\s\"\']+','[CONNECTION URI REDACTED]',err)
+  return {'at':now(),'binary':'released Bex0.3.2' if client=='bex' else 'unchanged Render2.27.0/a764810a7682','command':[client,*args],'client_setup':client_setup,'native_exit':code,'harness_timeout':timedout,'elapsed':round(time.monotonic()-start,3),'stdout':out,'stderr':err}
+ finally:
+  if client=='render':cfg.unlink(missing_ok=True)
+  ca_file.unlink(missing_ok=True)
+def api(method,path):
+ cfg=yaml.safe_load((P/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token
+ ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')';auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+WS+'"\n'
+ start=time.monotonic();r=subprocess.run(['curl','--disable','-sS','--max-time','25','--config','-','-X',method,'-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=30);raw,_,status=r.stdout.rpartition('\n');out={'at':now(),'API_only':True,'request':{'method':method,'path':path,'workspace':WS,'user_agent':ua,'authorization':'REDACTED'},'status':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-start,3),'response':raw,'stderr':r.stderr};assert token not in json.dumps(out);return out
+def rows(args):
+ r=cli([*args,'--confirm','-o','json']);assert r['native_exit']==0,r['stderr'];v=json.loads(r['stdout']);v=v.get('data',v) if isinstance(v,dict) else v;return r,[unwrap(z) for z in (v or [])]
+def pgval(r):
+ v=json.loads(r['stdout']);v=v.get('data',v);return unwrap(v)
+def detail():
+ r=api('GET','/v1/postgres/'+x['id']);x.setdefault('details',[]).append(r);save();assert r['status']=='200';v=json.loads(r['response']);assert v['id']==x['id'] and (v.get('ownerId') or v.get('owner',{}).get('id'))==WS and v['plan']=='free' and v['version']=='18';return r,v
+def sql(label,command,selector=None):
+ event={'at':now(),'label':label,'intent':'SQL on own fresh Free database','selector':selector or x['id'],'command':command};x.setdefault('sql_events',[]).append(event);save()
+ r=cli(['psql',selector or x['id'],'--command',command,'--confirm','-o','json','--','-X','-q','-t','-A','-v','ON_ERROR_STOP=1']);event['result']=r;save()
+ print(json.dumps({'SQL':label,'native_exit':r['native_exit'],'harness_timeout':r['harness_timeout'],'stderr':r['stderr'],'stdout':r['stdout'][:2200]}),flush=True)
+ return event

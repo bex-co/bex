@@ -1,0 +1,33 @@
+from pathlib import Path
+import sys,json,hashlib,gzip,subprocess
+client=sys.argv[1];f=Path(__file__).with_name('sweep340-static-encoding.py');sys.argv=[str(f),'http-neighbors',client];exec(compile(f.read_text().split("if mode=='create':")[0],str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==340 and v['client']==client);own(x);assert x['static_header_control']['pass'] and x['static_ETag_control']['pass'] and x['observations'][-1]['ready'];e=x['neighbor_HTTP'];assert len(e['requests'])==5 and e['requests'][-1]['pass'] is False and not e.get('excluded_ETag_setup');e['excluded_ETag_setup']=[e['requests'].pop()];e['ETag_setup_disposition']='Initial helper assumed an automatic ETag; platform validators are authored. Preserve failed assumption; add harmless owned ETag header, resume remaining ten reads without repeating the four valid early controls.';save();url=x['create_view']['serviceDetails']['url']
+def sha(b):return hashlib.sha256(b).hexdigest()
+def get(path,offer='br',extra=None,method='GET'):
+ hf=P/'sweep340-neighbor-headers';bf=P/'sweep340-neighbor-body';assert not hf.exists() and not bf.exists();headers={'Accept-Encoding':offer,**(extra or {})};z={'at':now(),'request':{'method':method,'url':url+path,'headers':headers}};e['requests'].append(z);save();args=['curl','--disable','-sS','--max-time','20','-D',str(hf),'-o','/dev/null' if method=='HEAD' else str(bf),'-w','%{http_code}']
+ if method=='HEAD':args+=['--head']
+ for k,v in headers.items():args+=['-H',k+': '+v]
+ try:
+  r=subprocess.run([*args,url+path],text=True,capture_output=True,timeout=25);raw=b'' if method=='HEAD' else bf.read_bytes();text=hf.read_text();last=text.replace('\r\n','\n').strip().split('\n\n')[-1];fields={}
+  for line in last.splitlines()[1:]:
+   k,sep,v=line.partition(':')
+   if sep:fields[k.lower()]=v.strip() if k.lower() not in fields else fields[k.lower()]+', '+v.strip()
+  z.update(curl_exit=r.returncode,HTTP=r.stdout,stderr=r.stderr,response_headers=text,headers=fields,wire_bytes=len(raw),wire_sha256=sha(raw));save();assert r.returncode==0
+  return z,raw,fields
+ finally:hf.unlink(missing_ok=True);bf.unlink(missing_ok=True)
+def check(z,ok,label):z.update({'check':label,'pass':bool(ok)});save();assert ok,{'check':label,'HTTP':z['HTTP'],'headers':z['headers'],'bytes':z['wire_bytes']}
+def decode(raw,kind):
+ if kind=='br':return subprocess.run(['node','-e',"const fs=require('node:fs');process.stdout.write(require('node:zlib').brotliDecompressSync(fs.readFileSync(0)))"],input=raw,capture_output=True,check=True).stdout
+ if kind=='gzip':return gzip.decompress(raw)
+ assert kind in ('','identity');return raw
+body=('QA340_'+x['nonce']+'_0123456789abcdef\n').encode()*4096;manifest=e['manifest'];pre=b'QA340_PRECOMPRESSED_ordinary_javascript\n'*4096;rawcss=b'QA340_NO_TRANSFORM_ordinary_css\n'*4096
+z,encoded,hs=get('/payload.txt');etag=hs.get('etag');length=len(encoded);check(z,z['HTTP']=='200' and hs.get('content-encoding')=='br' and decode(encoded,'br')==body and length<len(body) and int(hs['content-length'])==length and etag=='W/\"QA340_'+x['nonce']+'\"','encoded GET exact body and framing')
+z,raw,h2=get('/payload.txt',method='HEAD');check(z,z['HTTP']=='200' and not raw and h2.get('content-encoding')=='br' and int(h2['content-length'])==length and h2.get('etag')==etag,'encoded HEAD representation length')
+z,raw,h2=get('/payload.txt',extra={'Range':'bytes=0-9'});check(z,z['HTTP']=='206' and h2.get('content-encoding')=='br' and h2.get('content-range')==f'bytes 0-9/{length}' and raw==encoded[:10],'range of encoded representation')
+z,raw,h2=get('/payload.txt','identity',{'Range':'bytes=0-9'});check(z,z['HTTP']=='206' and not h2.get('content-encoding') and h2.get('content-range')==f'bytes 0-9/{len(body)}' and raw==body[:10],'identity representation range')
+z,raw,h2=get('/payload.txt',extra={'Range':f'bytes={len(body)*2}-'});check(z,z['HTTP']=='416' and not h2.get('content-encoding'),'unsatisfiable range has no content coding')
+z,raw,h2=get('/payload.txt',extra={'If-None-Match':etag});check(z,z['HTTP']=='304' and not raw,'encoded validator bodyless304')
+z,raw,h2=get('/index.html');check(z,z['HTTP']=='200' and not h2.get('content-encoding') and raw==x['marker'].encode(),'tiny asset unchanged')
+z,raw,h2=get('/asset.bin');check(z,z['HTTP']=='200' and not h2.get('content-encoding') and raw==bytes(range(256)),'binary asset unchanged')
+z,raw,h2=get('/pre/app.js','br, gzip');check(z,z['HTTP']=='200' and h2.get('content-encoding')=='gzip' and sha(raw)==manifest['pre']['wire_sha256'] and len(raw)==manifest['pre']['wire_bytes'] and gzip.decompress(raw)==pre,'authored gzip bytes and coding retained');e['authored_precompressed_scope']='gzip fixture size recorded in manifest; large precompressed variant not separately hosted';save()
+z,raw,h2=get('/raw/app.css');check(z,z['HTTP']=='200' and not h2.get('content-encoding') and 'no-transform' in h2.get('cache-control','').lower() and raw==rawcss,'authored no-transform retained')
+assert len(e['requests'])==14 and all(z['pass'] for z in e['requests']);e['pass']=True;save();print(json.dumps({'client':client,'neighbor_HTTP_checks_pass':14,'authored_gzip_wire_bytes':manifest['pre']['wire_bytes'],'encoded_payload_wire_bytes':length,'identity_payload_bytes':len(body)}),flush=True)

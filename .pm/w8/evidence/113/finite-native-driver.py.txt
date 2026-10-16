@@ -1,0 +1,50 @@
+from pathlib import Path
+import sys,json,shlex,re
+f=Path(__file__).with_name('sweep362-common.py');exec(compile(f.read_text(),str(f),'exec'));assert client in ('bex','render');reference=json.loads((P/'sweep362-primary-reference.json').read_text());default='--preload --access-logfile - --bind=0.0.0.0:3000'
+def commands(marker):
+ program=(P/'sweep362-observer.py').read_text();build="set -e\ncat > qa362-observer.py <<'QA362_OBSERVER_SOURCE'\n"+program+"\nQA362_OBSERVER_SOURCE\ncat > qa362-reference.json <<'QA362_REFERENCE'\n"+json.dumps(reference)+"\nQA362_REFERENCE\ncat > qa362-marker.json <<'QA362_MARKER'\n"+json.dumps(marker)+"\nQA362_MARKER\npip install --disable-pip-version-check -r requirements.txt\npython qa362-observer.py build"
+ return {'build':build,'start':'python qa362-observer.py runtime && exec gunicorn app:app','observer':program}
+def objects(raw):
+ out=[];decoder=json.JSONDecoder()
+ while raw.strip():
+  raw=raw.lstrip();v,n=decoder.raw_decode(raw);out.extend(v if isinstance(v,list) else [v]);raw=raw[n:]
+ return out
+if mode=='create':
+ assert not any(v.get('sweep')==362 and v.get('client')==client for v in c['resources']);q=api('GET','/v1/owners/'+ws+'/limits');assert q['status']=='200';limit=decode(q)['services'];assert limit['used']+limit['terminating']<limit['limit'];inv,ss=inventory();nonce=secrets.token_hex(3);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-gunicorn';marker='QA362_'+nonce+'_'+client;cmd=commands(marker);args=['services','create','--name',name,'--type','web_service','--runtime','python','--repo',reference['repo'],'--branch',reference['branch'],'--build-command',cmd['build'],'--start-command',cmd['start'],'--env-var','PYTHON_VERSION=3.12','--plan','free','--region','frankfurt','--health-check-path','/','--auto-deploy=false','--confirm','-o','json'];x={'sweep':362,'client':client,'workspace':ws,'type':'web_service','name':name,'nonce':nonce,'marker':marker,'time':now(),'source_head':c['head'],'primary_reference':reference,'commands':{'initial':cmd},'pre_ids':[v['id'] for v in ss],'pre_inventory':inv,'capacity':q,'dependency_ids':[],'recorded_child_ids':[],'create_command':[client,*args],'state':'native explicit Free Python create intent persisted'};c['resources'].append(x);save();r=captured_create(args) if client=='bex' else cli(args);r['native_exit']=None if r['exit']==124 else r['exit'];x.update(create_result=r,state='native create received; reconcile before retry');save();assert r['native_exit']==0 and (client=='render' or len(r['captures'])==1 and r['captures'][0]['status']==201);v=json.loads(r['stdout']);v=v.get('data',v);v=v.get('service',v);assert v['name']==name and v['ownerId']==ws and v['serviceDetails']['plan']=='free' and v['serviceDetails']['runtime']=='python' and v['id'] not in x['pre_ids'];x.update(id=v['id'],create_view=v,state='created: native0/exact owned workspace/Free proved');save();h=history(x);x['first_deploy_id']=h[0]['id'];save();print(json.dumps({'client':client,'id':v['id'],'native_exit':0,'captured_HTTP':201 if client=='bex' else 'not captured','first_deploy':h[0]['id']}));raise SystemExit(0)
+x=next(v for v in c['resources'] if v.get('sweep')==362 and v.get('client')==client);own(x);sid=x['id'];phase='default' if mode=='recheck-default' else ('control' if 'control_intent' in x else 'default')
+if mode=='observe':
+ h=history(x);d=api('GET','/v1/services/'+sid);x.setdefault('observations',[]).append({'at':now(),'history':h,'detail':d});save();print(json.dumps({'client':client,'status':h[0]['status'],'children':len(h),'first':h[0]['id']==x['first_deploy_id']}))
+elif mode=='build-logs':
+ r=cli(['logs','--resources',sid,'--type','build','--text','QA362_OBSERVER','--limit','100','--confirm','-o','json']);e={'at':now(),'native':r};x.setdefault('build_observations',[]).append(e);save();assert r['native_exit']==0;proofs=[]
+ for z in objects(r['stdout']):
+  for m in re.finditer(r'QA362_OBSERVER (\{[^\n]+\})',z.get('message','')):
+   try:v=json.loads(m.group(1))
+   except ValueError:continue
+   if v.get('marker')==x['marker'] and v.get('phase')=='build':proofs.append(v)
+ e['proofs']=proofs;e['default_absent_proved']=any(v['files']==reference['files'] and v['python'].startswith('3.12.') and not v['gunicorn_cmd_args_present'] and v['gunicorn_cmd_args']==None and v['accesslog']==None and v['preload_app']==False for v in proofs);save();print(json.dumps({'client':client,'build_default_absent':e['default_absent_proved'],'build_proofs':len(proofs)}))
+elif mode=='request':
+ h=history(x);assert h[0]['status']=='live' and h[0].get('commit',{}).get('id')==reference['commit'];assert not any(z['phase']==phase for z in x.get('request_rounds',[]));e={'at':now(),'phase':phase,'history':h,'requests':[]};x.setdefault('request_rounds',[]).append(e);save()
+ for i in range(3):
+  path='/?qa362_'+x['nonce']+'_'+phase+'_'+str(i);r=subprocess.run(['curl','--disable','-sS','--max-time','15','-w','\n%{http_code}',x['create_view']['serviceDetails']['url']+path],capture_output=True,text=True,timeout=20);body,_,status=r.stdout.rpartition('\n');z={'at':now(),'path':path,'HTTP':status,'body':body,'curl_exit':r.returncode,'stderr':r.stderr};e['requests'].append(z);save();assert r.returncode==0 and status=='200' and body=='Hello, World!'
+ e['pass']=True;save();print(json.dumps({'client':client,'phase':phase,'HTTP200_original_app':len(e['requests'])}))
+elif mode in ('logs','recheck-default'):
+ h=history(x);rounds=[z for z in x.get('request_rounds',[]) if z['phase']==phase and z.get('pass')];assert len(rounds)==1;e={'at':now(),'phase':phase,'recheck_after_control':mode=='recheck-default','history':h,'queries':[]};x.setdefault('log_receipts',[]).append(e);save();messages=[]
+ for text in [None,'QA362_OBSERVER','qa362_'+x['nonce']+'_'+phase]:
+  args=['logs','--resources',sid,'--type','app','--limit','100','--confirm','-o','json']
+  if text:args+=['--text',text]
+  r=cli(args);e['queries'].append({'text':text,'native':r});save();assert r['native_exit']==0;messages.extend(z.get('message','') for z in objects(r['stdout']))
+ proofs=[]
+ for message in messages:
+  for m in re.finditer(r'QA362_OBSERVER (\{[^\n]+\})',message):
+   try:v=json.loads(m.group(1))
+   except ValueError:continue
+   if v.get('marker')==x['marker'] and v.get('phase')=='runtime':proofs.append(v)
+ paths=[z['path'] for z in rounds[0]['requests']];counts={path:sum(('"GET '+path+' HTTP/' in m and '" 200 ' in m) for m in set(messages)) for path in paths};target=default if phase=='control' else None
+ observer=any(v['files']==reference['files'] and v['python'].startswith('3.12.') and v['gunicorn_cmd_args']==target and v['gunicorn_cmd_args_present']==(phase=='control') and v['accesslog']==('-' if phase=='control' else None) and v['preload_app']==(phase=='control') and v['bind']==['0.0.0.0:3000'] for v in proofs);e.update(runtime_proofs=proofs,access_line_counts=counts,observer_matches=observer,all_requests_logged=all(v>0 for v in counts.values()),no_requests_logged=all(v==0 for v in counts.values()));e['phase_proved']=observer and (e['all_requests_logged'] if phase=='control' else e['no_requests_logged']);save();print(json.dumps({'client':client,'phase':phase,'observer':observer,'access_counts':counts,'phase_proved':e['phase_proved'],'versions':list({(v['python'],v['gunicorn'],v['flask']) for v in proofs})}))
+elif mode=='control':
+ assert 'control_intent' not in x and any(z.get('phase_proved') and z['phase']=='default' for z in x.get('log_receipts',[]));h=history(x);start='export GUNICORN_CMD_ARGS='+shlex.quote(default)+'\n'+x['commands']['initial']['start'];x['commands']['control']={**x['commands']['initial'],'start':start};x['control_intent']={'at':now(),'before_ids':[z['id'] for z in h],'only_change':'start command prefix exporting documented Python GUNICORN_CMD_ARGS default; original app/files/env unchanged'};save();x['control_update']=cli(['services','update',sid,'--start-command',start,'--confirm','-o','json']);save();assert x['control_update']['native_exit']==0;h=history(x);print(json.dumps({'client':client,'native_control_update_exit':0,'children':len(h)}))
+elif mode=='delete':
+ assert 'delete_intent' not in x;h=history(x);assert all(z['id'] in x['recorded_child_ids'] and z['status'] in ('live','deactivated','canceled','build_failed','update_failed','pre_deploy_failed') for z in h) and not any(sid in z.get('dependency_ids',[]) and not z['state'].startswith('deleted:') for z in c['resources']);x['delete_intent']={'at':now(),'children':h};save();x['delete_result']=cli(['services','delete',sid,'--confirm','-o','json']);save();assert x['delete_result']['native_exit']==0;print(json.dumps({'client':client,'native_delete_exit':0,'children':len(h)}))
+elif mode=='reconcile':
+ assert 'delete_result' in x;d=api('GET','/v1/services/'+sid);inv,ss=inventory();r=subprocess.run(['curl','--disable','-sS','--max-time','10','-o','/dev/null','-w','%{http_code}',x['create_view']['serviceDetails']['url']],text=True,capture_output=True,timeout=15);q=api('GET','/v1/owners/'+ws+'/limits');assert q['status']=='200';limits=decode(q);children=[api('GET','/v1/services/'+sid+'/deploys/'+did) for did in x['recorded_child_ids']];passed=d['status']=='404' and sid not in {z['id'] for z in ss} and baseline<={z['id'] for z in ss} and r.returncode==0 and r.stdout=='404' and limits['services']['terminating']==0 and all(z['status']=='404' for z in children);e={'at':now(),'detail':d,'inventory':inv,'runtime_HTTP':r.stdout,'runtime_exit':r.returncode,'quota':q,'children':children,'pass':passed};x.setdefault('cleanup_receipts',[]).append(e);x['state']='deleted: native0/detail404/listabsent/runtime404/children404/baseline6/quota terminating0' if passed else 'delete acknowledged: convergence pending';save();print(json.dumps({'client':client,'cleanup_pass':passed,'terminating':limits['services']['terminating']}))
+else:raise ValueError(mode)

@@ -1,0 +1,10 @@
+package build
+import("encoding/base64";"encoding/json";"os";"path/filepath";"strings";"testing")
+func TestQA357RuntimeDefaultObservation(t *testing.T){
+ out:=os.Getenv("QA357_OUTPUT");if out==""{t.Fatal("private output required")}
+ for _,tc:=range []struct{name,line string;static bool}{{"web22","22",false},{"web24","24",false},{"web26","26",false},{"static24","24",true}}{t.Run(tc.name,func(t *testing.T){
+  d:=t.TempDir();src:=filepath.Join(d,"source");must(t,os.Mkdir(src,0700));o:=nativeOptions();o.BuildEnv=nil;o.StaticSite=tc.static;o.BuildCommand=`node -e 'console.log(JSON.stringify({phase:"build",present:Object.hasOwn(process.env,"NODE_ENV"),value:process.env.NODE_ENV??null}))'`;o.StartCommand=`node -e 'console.log(JSON.stringify({phase:"runtime",present:Object.hasOwn(process.env,"NODE_ENV"),value:process.env.NODE_ENV??null}))'`
+  bundle:=filepath.Join(d,"env");must(t,os.WriteFile(bundle,[]byte("NODE_VERSION="+base64.StdEncoding.EncodeToString([]byte(tc.line))+"\n"),0600));df:=filepath.Join(d,"Dockerfile");must(t,os.WriteFile(df,[]byte(nativeDockerfile(o)),0600));choices,err:=ResolveNativeBuild("node",bundle,df,src);if err!=nil{t.Fatal(err)};resolved,err:=os.ReadFile(df);if err!=nil{t.Fatal(err)}
+  if len(choices)!=1||choices[0].Line!=tc.line{t.Fatalf("wrong selection %+v",choices)};hasDefault:=strings.Contains(string(resolved),"ENV NODE_ENV=production");dest:=filepath.Join(out,tc.name);must(t,os.MkdirAll(dest,0700));must(t,os.WriteFile(filepath.Join(dest,"Dockerfile"),resolved,0600));record:=map[string]any{"case":tc.name,"choices":choices,"static":tc.static,"actual_generator_runtime_NODE_ENV_default_present":hasDefault,"CMD_present":strings.Contains(string(resolved),"\nCMD "),"qualification":"unchanged real generator and resolver observation; no Docker execution or passing fixed regression claimed"};b,err:=json.MarshalIndent(record,"","  ");if err!=nil{t.Fatal(err)};must(t,os.WriteFile(filepath.Join(dest,"observation.json"),b,0600));t.Logf("%s",b)
+ })}
+}

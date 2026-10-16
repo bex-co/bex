@@ -1,0 +1,13 @@
+{
+  "actual_line": "4.0",
+  "case": "equivalent-gems-locked",
+  "choice": {
+    "Label": "Ruby",
+    "Line": "4.0",
+    "Image": "ruby:4.0-bookworm@sha256:7671dc16cd740b9d8d653a568d8bd2df00e24a32c53a7b7a3fc39a0a194bb9ad",
+    "Source": "Gemfile"
+  },
+  "expected_line": "3.4",
+  "pass": false,
+  "qualification": "unchanged actual resolver; public root lock plus authored contract neighbors/positive controls; not a fixed regression"
+}

@@ -1,0 +1,23 @@
+{
+  "source_head": "c84c348b0e4a2248ee0f80a09cc15165275e14d7",
+  "serving_revision": "unobserved",
+  "severity": "major",
+  "native_create_HTTP201_exit0": 2,
+  "first_builds_failed_uv_missing_exit127_after_exact_root_lock_proof": 2,
+  "diagnostic_native_build_command_updates_exit0": 2,
+  "diagnostic_Live_HTTP200_exact_marker_files_and_Python_Pip_Poetry_controls": 2,
+  "uv_ENOENT_in_diagnostic_build_and_runtime": 2,
+  "shared_API_service_reads_pass": 6,
+  "resolver_observation_cases": 4,
+  "resolver_named_observation_events_pass": 5,
+  "source_generated_image_build_exit": 0,
+  "source_default_CMD_uv_requirement_exit": 127,
+  "source_image_tag_removed": true,
+  "owned_services_deleted": 2,
+  "deployment_children_404": 4,
+  "baseline_services": 6,
+  "baseline_Blueprints": 1,
+  "terminating": 0,
+  "new_issue": "w8/m81",
+  "uncommitted": true
+}

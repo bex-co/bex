@@ -1,0 +1,25 @@
+services:
+- type: web
+  name: qa339-0d2075-consumer
+  runtime: image
+  image:
+    url: nginx:1.27
+  plan: free
+  envVars:
+  - key: MISSING_HOST
+    fromService:
+      type: web
+      name: qa339-0d2075-missing
+      property: host
+- type: web
+  name: qa339-0d2075-consumer-two
+  runtime: image
+  image:
+    url: nginx:1.27
+  plan: free
+  envVars:
+  - key: MISSING_HOST
+    fromService:
+      type: web
+      name: qa339-0d2075-missing
+      property: host

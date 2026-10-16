@@ -1,0 +1,36 @@
+{
+  "at": "2026-10-16T07:56:34.880994+00:00",
+  "source_head": "013418ce3cae21b318d66b39549f65ae502f8e7e",
+  "serving_revision": "unobserved",
+  "contract": [
+    {
+      "url": "https://render.com/docs/environment-variables",
+      "observed": "Node NODE_ENV production runtime only; no build default"
+    },
+    {
+      "url": "https://expressjs.com/en/5x/api/application/",
+      "observed": "env follows NODE_ENV or development; view cache enabled in production"
+    }
+  ],
+  "dedupe": {
+    "open_done_all_PM_NODE_ENV_markdown_matches": 0,
+    "production_NODE_ENV_matches_only_tests": true,
+    "history_NODE_ENV_matches_only_authored_literal_tests": true,
+    "current_source_recent_product_change": "69b74a192 Ruby/Python JavaScript companion; no Node default fix"
+  },
+  "source_observation": {
+    "top_tests_pass": 4,
+    "named_pass_events": 14,
+    "fail": 0,
+    "skip": 0,
+    "actual_generator_resolver_cases": 4,
+    "primary_Node_web_lines": [
+      "22",
+      "24",
+      "26"
+    ],
+    "static_control": "24; no CMD, no runtime ENV appropriate",
+    "Docker_execution": false
+  },
+  "fix_target": "native.go:278\u2013284 runtime tail, after authored build RUN and static return; primary node only ENV NODE_ENV=production; image env remains lower precedence than own configured env even empty; preserve exact authored CMD and all primary/companion selection"
+}

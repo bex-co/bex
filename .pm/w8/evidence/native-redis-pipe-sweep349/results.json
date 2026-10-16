@@ -1,0 +1,26 @@
+{
+  "source_head": "c84c348b0e4a2248ee0f80a09cc15165275e14d7",
+  "serving_revision": "unobserved",
+  "native_Free_off_create_exit0": true,
+  "native_PING_controls_pass": 2,
+  "native_pipe_imports_exit0": 2,
+  "total_SET_commands_acknowledged": 100,
+  "each_import_errors0_replies50": true,
+  "cross_client_value_hash_checks_pass": 2,
+  "exact_values_verified": 100,
+  "empty_values_CRLF_NUL_Unicode_preserved": true,
+  "pipe_elapsed_seconds": {
+    "bex": 1.578,
+    "render": 1.752
+  },
+  "no_native_timeouts": true,
+  "local_PTY_full_payload_hash_pass": true,
+  "owned_KeyValue_deleted": "red-db8r79a9cl7s73ae49kg",
+  "baseline_services": 6,
+  "KV_used": 0,
+  "KV_terminating": 0,
+  "cached_TLS_positive_then_no_PONG_after_delete": true,
+  "private_connection_file_removed": true,
+  "new_issue": false,
+  "uncommitted": true
+}
