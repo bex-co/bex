@@ -255,7 +255,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "get_env_group_secret_file",
 		Description: "Reveal one secret file's contents in an environment group.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envGroupFileArgs) (*mcp.CallToolResult, SecretFileContent, error) {
-		f, err := s.RevealEnvGroupFile(ctx, in.ID, in.Name)
+		f, err := s.revealEnvGroupFile(ctx, in.ID, in.Name)
 		return nil, f, err
 	})
 
