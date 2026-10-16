@@ -298,6 +298,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **326** — [Empty environment-group file reads omit their content](326.md) (55m) ← functional QA a725, 2026-10-16: native source/clone and fresh REST reads omit the empty content field, while GraphQL and nonempty/missing controls pass. Use a read-specific REST/MCP response; preserve metadata/write masking. Both groups and the exact session are cleaned up.
+
 - [ ] **325** — [Postgres environment changes publish stale membership after completion](325.md) (55m) ← functional QA a720, 2026-10-16: fresh inverse bulk move and mobile Manage resources removal retain an old row/count after success; stored placement and seeded data are correct. Reuse ordered publication already shipped for Key Value; both Postgres consumers are traced and all fixtures/session cleaned up.
 
 - [ ] **324** — [Keep a log filter's remove button visible on mobile](blocked/324.md) — **BLOCKED (release pipeline deploys the dashboard; QA replays the a690 Free web Logs journey at fresh 360/390: the discovered Instance chip and its remove button stay inside the row, the full ID is inspectable, and removing Instance keeps Level; desktop and a deploy-detail chip still work; then cleans up)**. Implementation done 2026-10-16: RemovableChip caps at its row with an ellipsized, titled label and a fixed-size remove button. A Chromium check with the compiled CSS measured 406 → 358px at 390 (button x401–417 → x353–369), with desktop unchanged. Dashboard suite and lint pass.
