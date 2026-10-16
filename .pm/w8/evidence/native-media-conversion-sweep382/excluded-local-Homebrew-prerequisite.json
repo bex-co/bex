@@ -1,0 +1,18 @@
+{
+  "qualification": "excluded local Homebrew prerequisite attempt: valid source/WAV; original MP3 conversion fails before observer because local ffmpeg cannot load libx265.216.dylib; not hosted product evidence",
+  "public_ref": "103e339d3bc7a9a58a9f1de65f7d8074659b5f5a\trefs/heads/master\n",
+  "marker": "QA382_LOCAL",
+  "commands": [
+    [
+      "/opt/homebrew/opt/python@3.12/bin/python3.12",
+      "qa382-probe.py",
+      "--prepare"
+    ],
+    [
+      "/opt/homebrew/opt/python@3.12/bin/python3.12",
+      "-c",
+      "from pydub import AudioSegment; audio=AudioSegment.from_wav('qa382-input.wav'); assert len(audio)==100; audio.export('qa382-output.mp3',format='mp3')"
+    ]
+  ],
+  "scratch_removed": true
+}

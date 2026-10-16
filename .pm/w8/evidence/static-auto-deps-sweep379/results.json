@@ -1,0 +1,29 @@
+{
+  "sweep": 379,
+  "source_head": "430e0673e77a970b0aa40af64a9762b28b9eaaa6",
+  "serving_revision": "unknown",
+  "existing_finding": "w8/m86",
+  "published_Bex": "0.3.2/a6350da0",
+  "unchanged_Render": "2.27.0/a764810a7682",
+  "public_commit": "cf0cc1f1b5972d9d7d06b9a0f0488e61839f3207",
+  "native_first_creates": 3,
+  "actual_unchanged_POST201": 3,
+  "native_create_exit0": 3,
+  "fresh_original_default_clients": [
+    "bex",
+    "render"
+  ],
+  "explicit_true_manual_control": "bex",
+  "native_build_deploys": 3,
+  "first_deploy_live_and_HTTP_hash_pass": 3,
+  "native_config_readbacks": 9,
+  "all_readbacks_pass": true,
+  "own_native_deletes_exit0": 3,
+  "parents_children_URLs_absent": true,
+  "original_six_services_one_Blueprint_preserved": true,
+  "groups_projects_managed_data_empty": true,
+  "all_terminating_zero": true,
+  "new_issue": null,
+  "m86_closeout": "definition of done met using inherited source execution plus three fresh hosted replays; move through PM to done",
+  "uncommitted": true
+}

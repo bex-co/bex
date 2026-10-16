@@ -1,0 +1,100 @@
+from pathlib import Path
+import os,sys,json,time,subprocess,shutil,signal,re,tempfile,importlib.util
+P=Path(__file__).resolve().parent;spec=importlib.util.spec_from_file_location('qa378pty',P/'sweep365-pty.py');mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod);Session=mod.Session
+
+def literal(s):return "'"+s.replace("'","''")+"'"
+def journey(nonce,major,dbname,user,build,persist,e):
+ schema='qa378_'+nonce;table=schema+'.items';sessions={};n=0;began=time.monotonic();hold='qa378_'+nonce+'_hold';normal='qa378_'+nonce+'_normal';rolled='qa378_'+nonce+'_rolled';noscroll='qa378_'+nonce+'_noscroll';fresh='qa378_'+nonce+'_fresh';prepared='qa378_'+nonce+'_prepared';names=[hold,normal,rolled,noscroll,fresh];original=[{'id':i,'label':'item '+str(i)+' café 日本 😀'} for i in range(1,11)];current=[dict(z) for z in original];current[1]['label']='updated two café 日本 😀';current.append({'id':11,'label':'new eleven café 日本 😀'});e.update(schema=schema,steps=[],sessions={},original_rows=original,current_rows=current,cursor_names=names,prepared_name=prepared);persist()
+ def token(actor):return 'QA378_'+nonce+'_ROWS_'+actor
+ def select(actor,where=''):return "SELECT jsonb_build_object('cursor_token',"+literal(token(actor))+",'id',id,'label',label)::text FROM "+table+(' WHERE '+where if where else '')+' ORDER BY id'
+ def allrows():return "(SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'label',label) ORDER BY id),'[]'::jsonb) FROM "+table+')'
+ def curinfo(name):return "jsonb_build_object('exists',EXISTS(SELECT 1 FROM pg_cursors WHERE name="+literal(name)+"),'hold',coalesce((SELECT is_holdable FROM pg_cursors WHERE name="+literal(name)+"),false),'scroll',coalesce((SELECT is_scrollable FROM pg_cursors WHERE name="+literal(name)+"),false))"
+ gone={'exists':False,'hold':False,'scroll':False}
+ def query(actor,label,statement='',payload="'{}'::jsonb",expected=None,expected_rows=None,error_state=None,recovery=''):
+  nonlocal n
+  assert time.monotonic()-began<210,'finite cursor journey deadline';n+=1;mark='QA378_'+nonce+'_'+str(n);done=mark+'_END';errmark=mark+'_STATE';s=sessions[actor][0];offset=len(s.text());script=statement.rstrip('; \n')+';\n' if statement else ''
+  if error_state:script+='\\echo '+errmark+' :SQLSTATE\n'+recovery.rstrip('; \n')+';\n'
+  script+="SELECT jsonb_build_object('frame',"+literal(mark)+",'pid',pg_backend_pid(),'payload',"+payload+")::text;\n\\echo "+done+'\n';v={'actor':actor,'label':label,'stdin':script,'expected_payload':expected,'expected_rows':expected_rows,'expected_SQLSTATE':error_state};e['steps'].append(v);persist();s.send(script);assert s.wait_since(done+'\n',offset,14),'query fence absent: '+label;raw=s.text()[offset:];frames=[];observed_rows=[]
+  for line in raw.splitlines():
+   at=line.find('{')
+   if at<0:continue
+   try:f=json.loads(line[at:])
+   except ValueError:continue
+   if isinstance(f,dict) and f.get('frame')==mark:frames.append(f)
+   if isinstance(f,dict) and f.get('cursor_token')==token(actor):observed_rows.append({'id':f['id'],'label':f['label']})
+  assert len(frames)==1,'exact one SQL frame required';f=frames[0];v.update(frame=f,observed_rows=observed_rows,native_output=raw)
+  if 'backend_pid' in e['sessions'][actor]:assert f['pid']==e['sessions'][actor]['backend_pid'],'native backend connection changed'
+  if error_state:
+   match=re.search(re.escape(errmark)+r'\s+([A-Z0-9]{5})\b',raw);v['observed_SQLSTATE']=match.group(1) if match else None
+  v['pass']=(expected is None or f['payload']==expected) and (expected_rows is None or observed_rows==expected_rows) and (not error_state or v['observed_SQLSTATE']==error_state);persist();print(json.dumps({'stage':label,'actor':actor,'rows':len(observed_rows),'pass':v['pass'],'SQLSTATE':v.get('observed_SQLSTATE')}),flush=True);assert v['pass'],label;return f
+ try:
+  for actor in ('bex','render'):
+   cmd,env,logical,prompt,cleanup=build(actor);e['sessions'][actor]={'intent':'finite native persistent psql client with private config/history','command':logical};persist();s=Session(cmd,env);sessions[actor]=(s,logical,cleanup);e['sessions'][actor].update(PID=s.pid,PGID=s.pid);persist();assert s.wait(prompt,25),'native psql prompt absent';metadata="jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'encoding',current_setting('server_encoding'),'statement_timeout',current_setting('statement_timeout'),'idle_in_transaction_session_timeout',current_setting('idle_in_transaction_session_timeout'),'lock_timeout',current_setting('lock_timeout'))";f=query(actor,'native physical identity and session limits',"SET statement_timeout='10s';SET idle_in_transaction_session_timeout='30s';SET lock_timeout='500ms'",metadata,{'database':dbname,'user':user,'major':major,'encoding':'UTF8','statement_timeout':'10s','idle_in_transaction_session_timeout':'30s','lock_timeout':'500ms'});e['sessions'][actor]['backend_pid']=f['pid'];persist()
+  assert e['sessions']['bex']['backend_pid']!=e['sessions']['render']['backend_pid']
+  query('render','fresh own schema absence','',"to_regnamespace("+literal(schema)+") IS NULL",True)
+  e['owned_schema_intent']={'schema':schema,'before_absent':True};persist();seed='BEGIN;CREATE SCHEMA '+schema+';CREATE TABLE '+table+'(id int PRIMARY KEY,label text NOT NULL);INSERT INTO '+table+' VALUES'+','.join('('+str(z['id'])+','+literal(z['label'])+')' for z in original)+';COMMIT';query('bex','commit own ten row baseline',seed,allrows(),original)
+  query('bex','held scroll cursor fetch and commit','BEGIN;DECLARE '+hold+' SCROLL CURSOR WITH HOLD FOR '+select('bex')+';FETCH FORWARD 3 FROM '+hold+';COMMIT',curinfo(hold),{'exists':True,'hold':True,'scroll':True},original[:3])
+  query('render','other client commits changed and additional data','BEGIN;UPDATE '+table+' SET label='+literal(current[1]['label'])+' WHERE id=2;INSERT INTO '+table+' VALUES(11,'+literal(current[-1]['label'])+');COMMIT',allrows(),current)
+  query('bex','held remainder preserves original ten row snapshot','FETCH FORWARD ALL FROM '+hold,expected_rows=original[3:])
+  query('bex','held absolute lookup preserves old changed row','FETCH ABSOLUTE 2 FROM '+hold,expected_rows=[original[1]])
+  query('bex','held backward one row','FETCH BACKWARD 1 FROM '+hold,expected_rows=[original[0]])
+  query('bex','held last row','FETCH LAST FROM '+hold,expected_rows=[original[-1]])
+  query('bex','held next beyond end is empty','FETCH NEXT FROM '+hold,expected_rows=[])
+  query('bex','held prior after end returns last','FETCH PRIOR FROM '+hold,expected_rows=[original[-1]])
+  query('bex','move backward has no data rows','MOVE BACKWARD 3 FROM '+hold,expected_rows=[])
+  query('bex','fetch after move has correct position','FETCH NEXT FROM '+hold,expected_rows=[original[7]])
+  query('bex','forward zero repeats current row','FETCH FORWARD 0 FROM '+hold,expected_rows=[original[7]])
+  query('bex','relative fetch moves two rows backward','FETCH RELATIVE -2 FROM '+hold,expected_rows=[original[5]])
+  query('bex','close held cursor removes portal','CLOSE '+hold,curinfo(hold),gone,[])
+  query('bex','closed held cursor returns34000','FETCH NEXT FROM '+hold,allrows(),current,[],error_state='34000')
+  query('bex','nonheld cursor closes at commit','BEGIN;DECLARE '+normal+' NO SCROLL CURSOR WITHOUT HOLD FOR '+select('bex')+';FETCH FORWARD 2 FROM '+normal+';COMMIT',curinfo(normal),gone,current[:2])
+  query('bex','committed nonheld cursor returns34000','FETCH NEXT FROM '+normal,allrows(),current,[],error_state='34000')
+  query('render','rollback also removes a holdable cursor','BEGIN;DECLARE '+rolled+' SCROLL CURSOR WITH HOLD FOR '+select('render')+';FETCH FORWARD 1 FROM '+rolled+';ROLLBACK',curinfo(rolled),gone,current[:1])
+  query('render','rolled back holdable cursor returns34000','FETCH NEXT FROM '+rolled,allrows(),current,[],error_state='34000')
+  query('render','explicit no scroll cursor reads forward','BEGIN;DECLARE '+noscroll+' NO SCROLL CURSOR WITHOUT HOLD FOR '+select('render')+';FETCH FORWARD 3 FROM '+noscroll,curinfo(noscroll),{'exists':True,'hold':False,'scroll':False},current[:3])
+  query('render','no scroll backward error recovers by rollback','FETCH BACKWARD 1 FROM '+noscroll,curinfo(noscroll),gone,[],error_state='55000',recovery='ROLLBACK')
+  query('bex','fresh cursor sees current committed data','BEGIN;DECLARE '+fresh+' SCROLL CURSOR FOR '+select('bex')+';FETCH ALL FROM '+fresh+';CLOSE '+fresh+';COMMIT',curinfo(fresh),gone,current)
+  prepinfo="EXISTS(SELECT 1 FROM pg_prepared_statements WHERE name="+literal(prepared)+')'
+  query('bex','prepared parameter returns exact current row','PREPARE '+prepared+'(integer) AS '+select('bex','id=$1')+';EXECUTE '+prepared+'(2)',prepinfo,True,[current[1]])
+  query('bex','deallocate removes prepared statement','DEALLOCATE '+prepared,prepinfo,False,[])
+  query('bex','deallocated execution returns26000','EXECUTE '+prepared+'(2)',allrows(),current,[],error_state='26000')
+  counts="jsonb_build_object('cursors',(SELECT count(*) FROM pg_cursors WHERE name IN ("+','.join(literal(z) for z in names)+")),'prepared',(SELECT count(*) FROM pg_prepared_statements WHERE name="+literal(prepared)+'))'
+  for actor in ('bex','render'):query(actor,'same connection has no remaining owned portals','',counts,{'cursors':0,'prepared':0},[])
+  query('bex','drop exact own cursor schema','DROP SCHEMA '+schema+' CASCADE',"to_regnamespace("+literal(schema)+") IS NULL",True)
+  query('render','independent final own schema absence','',"to_regnamespace("+literal(schema)+") IS NULL",True)
+  for actor,(s,logical,cleanup) in sessions.items():
+   s.send('\\q\n');deadline=time.monotonic()+12
+   while s.poll() is None and time.monotonic()<deadline:s.step()
+   e['sessions'][actor]['natural_exit']=s.poll();persist();assert s.poll()==0
+  e.update({'pass':True,'schema_removed':True});persist()
+ except BaseException as error:e.update({'pass':False,'error':type(error).__name__+': '+str(error)});persist();raise
+ finally:
+  for actor,(s,logical,cleanup) in sessions.items():s.close();e['sessions'][actor]['PTY']=s.record();cleanup();persist()
+ print(json.dumps({'cursor_journey_pass':e.get('pass',False),'stages':len(e['steps']),'expected_SQLSTATEs':[v['observed_SQLSTATE'] for v in e['steps'] if v.get('expected_SQLSTATE')],'same_connections':True}),flush=True)
+
+if __name__=='__main__':
+ os.umask(0o077);mode=sys.argv[1];assert mode in ('preflight','live')
+ if mode=='preflight':
+  D=Path(tempfile.mkdtemp(prefix='bex378-',dir='/tmp'));D.chmod(0o700);sock=D/'socket';sock.mkdir(mode=0o700);data=D/'data';bin=Path('/opt/homebrew/opt/postgresql@18/bin');psql=Path('/opt/homebrew/opt/libpq/bin/psql');log=(P/'sweep378-local-pg.log').open('wb');server=None;e={'qualification':'own local PostgreSQL18.6/psql18.6 prerequisite, not hosted PG17 or native wrappers'}
+  def persist():(P/'sweep378-local-preflight.json').write_text(json.dumps(e,indent=2,ensure_ascii=False))
+  try:
+   subprocess.run([str(bin/'initdb'),'-D',str(data),'-U','qa378','--auth=trust','--no-locale','--encoding=UTF8'],stdout=log,stderr=log,timeout=20,check=True);server=subprocess.Popen([str(bin/'postgres'),'-D',str(data),'-k',str(sock),'-p','16432','-h',''],stdout=log,stderr=log,start_new_session=True)
+   for _ in range(100):
+    if (sock/'.s.PGSQL.16432').exists():break
+    time.sleep(.05)
+   assert (sock/'.s.PGSQL.16432').exists()
+   def build(actor):
+    prompt='LOCAL378_'+actor+'> ';env={k:v for k,v in os.environ.items() if not k.startswith(('PG','PSQL','QA_','BEX_','RENDER_'))};env.update(PSQL_HISTORY=str(D/('history-'+actor)),PGCLIENTENCODING='UTF8',PGCONNECT_TIMEOUT='5');args=[str(psql),'-h',str(sock),'-p','16432','-U','qa378','-d','postgres','-X','-n','-q','-t','-A','-P','pager=off','-v','ON_ERROR_STOP=off','-v','PROMPT1='+prompt,'-v','PROMPT2=LOCAL378_CONT> '];return args,env,['local-psql','<own-unix-socket>'],prompt,lambda:None
+   journey('local378',18,'postgres','qa378',build,persist,e)
+  finally:
+   if server:os.killpg(server.pid,signal.SIGTERM);server.wait(timeout=10)
+   log.close();shutil.rmtree(D);e.update(local_server_stopped=True,local_data_socket_history_removed=not D.exists());persist()
+ else:
+  f=P/'sweep378-common.py';sys.argv=[str(f),'cursor-live','bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==378 and v.get('id'));sid=x['id'];assert x['workspace']==WS and x['create_result']['native_exit']==0 and x['create_response']['id']==sid and not x.get('cursor_journey');_,v=detail();assert v['status']=='available' and x['create_response']['version']=='17' and (P/'sweep378-session-ca.pem').exists();e={'at':now(),'state':'finite two-native-client SQL cursor/prepared-statement intent'};x['cursor_journey']=e;save()
+  def persist():save()
+  def build(actor):
+   D=P/('sweep378-session-'+actor);assert not D.exists();D.mkdir(mode=0o700);cfg=D/'cli.yaml';shutil.copyfile(P/'config/cli.yaml',cfg);cfg.chmod(0o600);tmp=D/'tmp';tmp.mkdir(mode=0o700);prefix='BEX' if actor=='bex' else 'RENDER';env={k:v for k,v in os.environ.items() if not k.startswith(('PG','PSQL','QA_','BEX_','RENDER_'))};env.update({prefix+'_HOST':'https://api.bex.co/v1/',prefix+'_CLI_CONFIG_PATH':str(cfg),prefix+'_CLI_CONFIG_DIR':str(D),prefix+'_WORKSPACE':WS,prefix+'_NO_UPDATE_NOTIFIER':'1','BEX_CLI_DISABLE_ANALYTICS':'1','DO_NOT_TRACK':'1','BROWSER':'/usr/bin/true','TERM':'xterm-256color','PSQL_HISTORY':str(D/'history'),'PGCONNECT_TIMEOUT':'10','PGCLIENTENCODING':'UTF8','TMPDIR':str(tmp)})
+   if actor=='render':env['PGSSLROOTCERT']=str(P/'sweep378-session-ca.pem')
+   prompt='QA378_'+x['nonce']+'_'+actor+'> ';args=['psql',sid,'--confirm','-o','interactive','--','-X','-n','-q','-t','-A','-P','pager=off','-v','ON_ERROR_STOP=off','-v','PROMPT1='+prompt,'-v','PROMPT2=QA378_CONT> '];return [str(P/('release/bex' if actor=='bex' else 'render-pin')),*args],env,[actor,*args],prompt,lambda:shutil.rmtree(D)
+  try:journey(x['nonce'],17,x['database_name'],x['database_user'],build,persist,e)
+  finally:e['owned_actor_config_history_tmp_removed']=all(not (P/('sweep378-session-'+actor)).exists() for actor in ('bex','render'));save()

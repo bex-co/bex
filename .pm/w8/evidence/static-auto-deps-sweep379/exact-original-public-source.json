@@ -1,0 +1,26 @@
+{
+  "repo": "https://github.com/11ty/eleventy-base-blog",
+  "branch": "main",
+  "commit": "cf0cc1f1b5972d9d7d06b9a0f0488e61839f3207",
+  "files": {
+    "package.json": {
+      "bytes": 1529,
+      "sha256": "3ed35bee96a89ac437b2f17d235938a2e685faaa49498e960f4cec6daeaad7a1"
+    },
+    "package-lock.json": {
+      "bytes": 77010,
+      "sha256": "ed2178b4a8c717b332f876e59956b23f3611e9344bfa6f3e432b0956e58b95f8"
+    },
+    "eleventy.config.js": {
+      "bytes": 5222,
+      "sha256": "17f8f92e126087d6cd52716a5b9ceaba38a47805edb0b61f32d94ab7b36a98c4"
+    },
+    ".nvmrc": {
+      "bytes": 3,
+      "sha256": "f14b4987904bcb5814e4459a057ed4d20f58a633152288a761214dcd28780b56"
+    },
+    ".node-version": {
+      "absent": true
+    }
+  }
+}

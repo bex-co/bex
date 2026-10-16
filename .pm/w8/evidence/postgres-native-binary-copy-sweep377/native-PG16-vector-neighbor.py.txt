@@ -1,0 +1,29 @@
+from pathlib import Path
+import sys,json
+f=Path(__file__).with_name('sweep377-common.py');exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==377 and v.get('id'));assert x['create_result']['native_exit']==0 and x['workspace']==WS and not x['state'].startswith('deleted:');sid=x['id'];schema='qa377_'+x['nonce']+'_'+client;assert client in ('bex','render')
+def parsed(event):
+ r=event['result'];assert r['native_exit']==0 and not r['harness_timeout'];return json.loads(json.loads(r['stdout'])['output'].strip())
+def receipt(kind,event,expected=None):
+ out={'at':now(),'kind':kind,'client':client,'event':event}
+ if event['result']['native_exit']==0:
+  out['observed']=parsed(event);out['pass']=out['observed']==expected if expected is not None else True
+ else:out['pass']=False;out['observed']=None
+ x.setdefault('vector_checks',[]).append(out);save();print(json.dumps({'kind':kind,'client':client,'native_exit':event['result']['native_exit'],'pass':out['pass'],'observed':out['observed']}),flush=True);return out
+catalog="SELECT jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'),'vector_version',(SELECT extversion FROM pg_extension WHERE extname='vector'),'available_vector',(SELECT default_version FROM pg_available_extensions WHERE name='vector'),'pg_stat_statements_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='pg_stat_statements'),'hstore_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='hstore'))::text;"
+if mode=='catalog':
+ o=receipt(mode,sql('own vector extension catalog '+client,catalog));assert o['observed']['database']==x['database_name'] and o['observed']['user']==x['database_user'] and o['observed']['major']==int(x['create_response']['version'])
+elif mode=='migration':
+ receipt(mode,sql('ordinary original IF NOT EXISTS vector migration '+client,"CREATE EXTENSION IF NOT EXISTS vector; SELECT jsonb_build_object('vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'))::text;"),{'vector_installed':True})
+elif mode=='use':
+ assert any(z['kind']=='migration' and z['client']==client and z['pass'] for z in x['vector_checks']);assert not any(z['kind']=='use' and z['client']==client for z in x['vector_checks']);x.setdefault('owned_vector_schemas',[]).append({'at':now(),'client':client,'name':schema,'intent':'ordinary own application table/index and three vector rows'});save()
+ command="BEGIN; CREATE SCHEMA "+schema+"; CREATE TABLE "+schema+".items(id int PRIMARY KEY, embedding public.vector(3)); INSERT INTO "+schema+".items VALUES(1,'[1,2,3]'),(2,'[4,5,6]'),(3,'[1,1,1]'); CREATE INDEX items_embedding_hnsw ON "+schema+".items USING hnsw(embedding public.vector_l2_ops); COMMIT; SELECT jsonb_build_object('rows',(SELECT count(*) FROM "+schema+".items),'nearest',(SELECT id FROM "+schema+".items ORDER BY embedding <-> '[1,1,2]' LIMIT 1),'cosine',(SELECT round((embedding <=> '[2,4,6]')::numeric,6) FROM "+schema+".items WHERE id=1),'index_method',(SELECT am.amname FROM pg_class i JOIN pg_namespace n ON n.oid=i.relnamespace JOIN pg_am am ON am.oid=i.relam WHERE n.nspname='"+schema+"' AND i.relname='items_embedding_hnsw'))::text;"
+ o=receipt(mode,sql('own real vector rows distance and HNSW '+client,command),{'rows':3,'nearest':3,'cosine':0,'index_method':'hnsw'});assert o['pass']
+elif mode=='negative':
+ assert any(z['kind']=='use' and z['client']==client and z['pass'] for z in x['vector_checks']);event=sql('own invalid vector dimension rolls back entire new transaction '+client,"BEGIN; INSERT INTO "+schema+".items VALUES(4,'[2,2,2]'); INSERT INTO "+schema+".items VALUES(5,'[1,2]'); COMMIT;");r=event['result'];text=r['stdout']+'\n'+r['stderr'];o={'at':now(),'kind':mode,'client':client,'event':event,'expected_native_exit':1,'expected_error':'expected 3 dimensions, not 2','pass':r['native_exit']==1 and 'expected 3 dimensions, not 2' in text and not r['harness_timeout']};x['vector_checks'].append(o);save();print(json.dumps({'kind':mode,'client':client,'native_exit':r['native_exit'],'pass':o['pass']}));assert o['pass']
+elif mode=='cross-read':
+ other='render' if client=='bex' else 'bex';target='qa377_'+x['nonce']+'_'+other;assert any(z['kind']=='negative' and z['client']==other and z['pass'] for z in x['vector_checks']);o=receipt(mode,sql('independent opposite client checks vector data and invalid transaction rollback '+client,"SELECT jsonb_build_object('rows',(SELECT count(*) FROM "+target+".items),'rejected_transaction_rows',(SELECT count(*) FROM "+target+".items WHERE id>=4),'nearest',(SELECT id FROM "+target+".items ORDER BY embedding <-> '[1,1,2]' LIMIT 1))::text;"),{'rows':3,'rejected_transaction_rows':0,'nearest':3});assert o['pass']
+elif mode=='hstore':
+ o=receipt(mode,sql('ordinary hstore neighbor transaction '+client,"BEGIN; CREATE EXTENSION IF NOT EXISTS hstore; SELECT jsonb_build_object('hstore',('a=>1'::hstore)->'a')::text; ROLLBACK;"),{'hstore':'1'});assert o['pass']
+elif mode=='drop-own':
+ schemas=x.get('owned_vector_schemas',[]);assert schemas;assert all(z['name'].startswith('qa377_'+x['nonce']+'_') for z in schemas);command='BEGIN; '+''.join('DROP SCHEMA '+z['name']+' CASCADE; ' for z in schemas)+"COMMIT; SELECT jsonb_build_object('remaining_own_schemas',(SELECT count(*) FROM pg_namespace WHERE nspname LIKE 'qa377_"+x['nonce']+"_%'),'vector_installed',EXISTS(SELECT 1 FROM pg_extension WHERE extname='vector'))::text;";o=receipt(mode,sql('remove exact own vector test schemas',command),{'remaining_own_schemas':0,'vector_installed':True});assert o['pass']
+else:raise ValueError(mode)

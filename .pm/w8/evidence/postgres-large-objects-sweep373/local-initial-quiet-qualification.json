@@ -1,0 +1,109 @@
+{
+  "qualification": "ordinary client-side psql large-object import/export, application-owned SQL byte patches and rollback; no server filesystem operation",
+  "steps": [
+    {
+      "actor_label": "bex",
+      "label": "initial large-object catalog",
+      "command": "SELECT jsonb_build_object('count',(SELECT count(*) FROM pg_largeobject_metadata))::text;",
+      "native_exit": 0,
+      "stdout": "{\"count\": 0}\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "render",
+      "label": "missing local file",
+      "command": "\\lo_import '/tmp/bex373-5krze9t9/own transfer λ/never-created λ.bin'",
+      "native_exit": 1,
+      "stdout": "",
+      "stderr": "could not open file \"/tmp/bex373-5krze9t9/own transfer λ/never-created λ.bin\": No such file or directory\n"
+    },
+    {
+      "actor_label": "bex",
+      "label": "failed import allocated no object",
+      "command": "SELECT jsonb_build_object('count',(SELECT count(*) FROM pg_largeobject_metadata))::text;",
+      "native_exit": 0,
+      "stdout": "{\"count\": 0}\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "bex",
+      "label": "bex import",
+      "command": "\\lo_import '/tmp/bex373-5krze9t9/own transfer λ/bex upload λ.bin' 'qa373_local373_bex'",
+      "native_exit": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "owned_objects": [],
+  "checks": [
+    {
+      "name": "initial large-object catalog exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "initial large-object catalog values",
+      "observed": {
+        "count": 0
+      },
+      "expected": {
+        "count": 0
+      },
+      "pass": true
+    },
+    {
+      "name": "missing local file exit",
+      "observed": 1,
+      "expected": 1,
+      "pass": true
+    },
+    {
+      "name": "missing file diagnostic",
+      "observed": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "name": "failed import allocated no object exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "failed import allocated no object values",
+      "observed": {
+        "count": 0
+      },
+      "expected": {
+        "count": 0
+      },
+      "pass": true
+    },
+    {
+      "name": "bex import exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    }
+  ],
+  "files": [
+    {
+      "role": "deterministic own input",
+      "path": "/tmp/bex373-5krze9t9/own transfer λ/bex upload λ.bin",
+      "actor": "bex",
+      "formula": "(i*31+7)%256",
+      "bytes": 2097409,
+      "sha256": "cd83b495c2993a67c98e5d2c8852ee5c0e8c1e027ecd9f1b379d0292b9b26a81",
+      "md5": "46b039fb7c1f00a60d39738084a176c4"
+    }
+  ],
+  "pass": false,
+  "error": "AssertionError: native LO import receipt missing",
+  "own_synthetic_file_cleanup": {
+    "files_removed": 1,
+    "all_absent": true
+  },
+  "server_stopped": true,
+  "own_data_socket_transfer_history_removed": true
+}

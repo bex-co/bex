@@ -1,0 +1,168 @@
+{
+  "public_remote_commit_verified": "85319a7297318e4c16dd1b0a3c4d8a69b1b55f17",
+  "local_node": "v22.17.1",
+  "client_exit": 0,
+  "client": [
+    {
+      "at": "2026-10-16T20:38:07.918Z",
+      "elapsed_ms": 1,
+      "event": "INTENT",
+      "url": "ws://127.0.0.1:61999/ingest",
+      "id": "qa372-local",
+      "duration_seconds": 5,
+      "interval_seconds": 1,
+      "PID": 5286
+    },
+    {
+      "at": "2026-10-16T20:38:07.925Z",
+      "elapsed_ms": 7,
+      "event": "OPEN"
+    },
+    {
+      "at": "2026-10-16T20:38:07.925Z",
+      "elapsed_ms": 7,
+      "event": "SEND",
+      "seq": 0,
+      "bytes": 224,
+      "sha256": "69163d7b2731a618ad5243c3d8c03049957942c6a524e1b437aa5ba7a6eec465",
+      "error": null
+    },
+    {
+      "at": "2026-10-16T20:38:08.926Z",
+      "elapsed_ms": 1008,
+      "event": "SEND",
+      "seq": 1,
+      "bytes": 224,
+      "sha256": "f63671df70a5d5ccce474d020843a7d9376b27c33c37a08fb1094390d1f04f69",
+      "error": null
+    },
+    {
+      "at": "2026-10-16T20:38:09.928Z",
+      "elapsed_ms": 2010,
+      "event": "SEND",
+      "seq": 2,
+      "bytes": 224,
+      "sha256": "78f0fedf6df19b5f2915a00a6732d4c1ee7f49e1fee009215d92e0bf9377660c",
+      "error": null
+    },
+    {
+      "at": "2026-10-16T20:38:10.929Z",
+      "elapsed_ms": 3011,
+      "event": "SEND",
+      "seq": 3,
+      "bytes": 224,
+      "sha256": "97a090e368acfed7ed1cecb703dcf139a68c73eb81c4b0c4fb9825431db1d351",
+      "error": null
+    },
+    {
+      "at": "2026-10-16T20:38:11.929Z",
+      "elapsed_ms": 4011,
+      "event": "SEND",
+      "seq": 4,
+      "bytes": 224,
+      "sha256": "66151abb2cd9109e5709585310a1c76441f1a1853d26e4cfbf6b0ef35a0b6836",
+      "error": null
+    },
+    {
+      "at": "2026-10-16T20:38:12.925Z",
+      "elapsed_ms": 5007,
+      "event": "NORMAL_CLOSE_INTENT",
+      "sent": 5
+    },
+    {
+      "at": "2026-10-16T20:38:12.927Z",
+      "elapsed_ms": 5009,
+      "event": "CLOSE",
+      "code": 1000,
+      "reason": "qa372 complete",
+      "normal_close_intent": true
+    },
+    {
+      "at": "2026-10-16T20:38:12.928Z",
+      "elapsed_ms": 5010,
+      "event": "FINAL",
+      "code": 0,
+      "reason": "socket closed",
+      "opened": true,
+      "sent": 5,
+      "received": 0,
+      "pings": 0,
+      "pongs": 0,
+      "active_ms": 5003
+    }
+  ],
+  "server": [
+    {
+      "at": "2026-10-16T20:38:07.812Z",
+      "marker": "QA372_LOCAL",
+      "event": "QA372_LISTEN",
+      "port": 61999
+    },
+    {
+      "at": "2026-10-16T20:38:07.924Z",
+      "marker": "QA372_LOCAL",
+      "event": "QA372_WS_OPEN",
+      "id": "qa372-local"
+    },
+    {
+      "at": "2026-10-16T20:38:07.925Z",
+      "marker": "QA372_LOCAL",
+      "event": "QA372_WS_RECEIVE",
+      "id": "qa372-local",
+      "seq": 0,
+      "binary": false,
+      "bytes": 224,
+      "sha256": "69163d7b2731a618ad5243c3d8c03049957942c6a524e1b437aa5ba7a6eec465"
+    },
+    {
+      "at": "2026-10-16T20:38:08.926Z",
+      "marker": "QA372_LOCAL",
+      "event": "QA372_WS_RECEIVE",
+      "id": "qa372-local",
+      "seq": 1,
+      "binary": false,
+      "bytes": 224,
+      "sha256": "f63671df70a5d5ccce474d020843a7d9376b27c33c37a08fb1094390d1f04f69"
+    },
+    {
+      "at": "2026-10-16T20:38:09.928Z",
+      "marker": "QA372_LOCAL",
+      "event": "QA372_WS_RECEIVE",
+      "id": "qa372-local",
+      "seq": 2,
+      "binary": false,
+      "bytes": 224,
+      "sha256": "78f0fedf6df19b5f2915a00a6732d4c1ee7f49e1fee009215d92e0bf9377660c"
+    },
+    {
+      "at": "2026-10-16T20:38:10.929Z",
+      "marker": "QA372_LOCAL",
+      "event": "QA372_WS_RECEIVE",
+      "id": "qa372-local",
+      "seq": 3,
+      "binary": false,
+      "bytes": 224,
+      "sha256": "97a090e368acfed7ed1cecb703dcf139a68c73eb81c4b0c4fb9825431db1d351"
+    },
+    {
+      "at": "2026-10-16T20:38:11.929Z",
+      "marker": "QA372_LOCAL",
+      "event": "QA372_WS_RECEIVE",
+      "id": "qa372-local",
+      "seq": 4,
+      "binary": false,
+      "bytes": 224,
+      "sha256": "66151abb2cd9109e5709585310a1c76441f1a1853d26e4cfbf6b0ef35a0b6836"
+    },
+    {
+      "at": "2026-10-16T20:38:12.927Z",
+      "marker": "QA372_LOCAL",
+      "event": "QA372_WS_CLOSE",
+      "id": "qa372-local",
+      "code": 1000,
+      "reason": "qa372 complete"
+    }
+  ],
+  "exact_received_match": true,
+  "pass": true
+}

@@ -1,0 +1,51 @@
+{
+  "sweep": 378,
+  "source_head": "4052136f34445debd5391828d99995a790552d1c",
+  "serving_revision": "unknown",
+  "fixture": "dpg-db9a3i1c8a2c73cevts0",
+  "native_create": "published Bex0.3.2/native0 explicit Free PG17 custom database/user/no pool/no replicas",
+  "physical_major_observed": 17,
+  "external_psql": "18.6",
+  "native_SQL_readiness": 2,
+  "persistent_native_sessions": 2,
+  "native_session_natural_exit0": 2,
+  "same_distinct_backend_PIDs": {
+    "bex": 257,
+    "render": 260
+  },
+  "native_interactive_stages": 32,
+  "all_stage_results_pass": true,
+  "actual_session_limits_verified": {
+    "statement_timeout": "10s",
+    "idle_in_transaction_session_timeout": "30s",
+    "lock_timeout": "500ms"
+  },
+  "held_cursor_survives_commit_and_retains_snapshot": true,
+  "scroll_position_move_zero_relative_end_and_prior_correct": true,
+  "close_commit_and_rollback_portal_lifecycles_correct": true,
+  "NO_SCROLL_backward_error_recovers": true,
+  "SQL_PREPARE_execute_deallocate_lifecycle_correct": true,
+  "expected_error_SQLSTATEs": [
+    "34000",
+    "34000",
+    "34000",
+    "55000",
+    "26000"
+  ],
+  "same_connection_owned_portal_counts_zero": true,
+  "own_core_schema_removed": true,
+  "owned_config_history_tmp_removed": true,
+  "PG17_vector_checks": 15,
+  "vector_versions_observed": [
+    "0.8.6"
+  ],
+  "cached_original_SELECT1_before_after_exit": [
+    0,
+    2
+  ],
+  "cached_credentials_and_CA_removed": true,
+  "cleanup_pass": true,
+  "existing_m84_remaining_gate": "hosted pre-fix existing-parent backfill; status blocked/t006 todo; fresh majors13 through18 accepted",
+  "new_issue": null,
+  "uncommitted": true
+}

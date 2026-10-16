@@ -1,0 +1,38 @@
+from pathlib import Path
+import sys,json,time,subprocess
+P=Path(__file__).resolve().parent;CP=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json')
+def resource():return next(v for v in json.loads(CP.read_text())['resources'] if v.get('sweep')==371 and v.get('id'))
+def run(file,*args):
+ r=subprocess.run([sys.executable,str(P/file),*args],capture_output=True,text=True,timeout=85);(P/('sweep371-sequence-'+file+'-'+('-'.join(args) or 'run')+'.log')).write_text(r.stdout+r.stderr);print(json.dumps({'file':file,'args':args,'exit':r.returncode,'progress':r.stdout.strip()[-700:]}),flush=True);assert r.returncode==0
+for attempt in range(2):
+ run('sweep371-native-pg.py','wait-ready','bex')
+ if json.loads(resource()['native_readiness'][-1]['detail']['response'])['status']=='available':break
+assert json.loads(resource()['native_readiness'][-1]['detail']['response'])['status']=='available'
+for actor in ['bex','render']:run('sweep371-native-pg.py','ping',actor)
+assert all(v['pass'] for v in resource()['native_SQL_readiness'])
+run('sweep371-prepare.py');run('sweep371-cached-connection.py','before')
+for mode in ['catalog','migration']:
+ for actor in ['bex','render']:run('sweep371-vector.py',mode,actor)
+assert all(v['pass'] for v in resource()['vector_checks'])
+for actor in ['bex','render']:run('sweep371-vector.py','use',actor);run('sweep371-vector.py','negative',actor)
+for mode in ['cross-read','hstore','catalog']:
+ for actor in ['bex','render']:run('sweep371-vector.py',mode,actor)
+run('sweep371-lifecycle.py','preview','bex');run('sweep371-lifecycle.py','suspend','bex')
+for attempt in range(6):
+ run('sweep371-lifecycle.py','observe-suspended','bex')
+ if resource()['suspend_observations'][-1]['public_suspended']:
+  run('sweep371-cached-connection.py','suspended')
+  if resource()['cached_connection_checks'][-1]['pass']:break
+ if attempt<5:time.sleep(10)
+assert resource()['cached_connection_checks'][-1]['phase']=='suspended' and resource()['cached_connection_checks'][-1]['pass'],'bounded suspension has not converged'
+run('sweep371-lifecycle.py','resume','render')
+for attempt in range(8):
+ run('sweep371-lifecycle.py','observe-resumed','bex')
+ if resource()['resume_observations'][-1]['public_available']:
+  run('sweep371-cached-connection.py','resumed')
+  if resource()['cached_connection_checks'][-1]['pass']:break
+ if attempt<7:time.sleep(10)
+assert resource()['cached_connection_checks'][-1]['phase']=='resumed' and resource()['cached_connection_checks'][-1]['pass'],'bounded resumption has not converged'
+for mode in ['persisted','catalog']:
+ for actor in ['bex','render']:run('sweep371-vector.py',mode,actor)
+run('sweep371-vector.py','drop-own','bex');print('PG13 native SQL/vector and suspend-resume persistence checks complete',flush=True)

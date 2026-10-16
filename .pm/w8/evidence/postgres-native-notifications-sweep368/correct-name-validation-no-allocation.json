@@ -1,0 +1,151 @@
+{
+  "sweep": 368,
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "type": "postgres",
+  "name": "qa-20261016-a94aca-notifications",
+  "nonce": "a94aca",
+  "time": "2026-10-16T19:32:00.345988+00:00",
+  "source_head": "cf91746da33467dc7086b2d98e40bd7b354fc83d",
+  "capacity": {
+    "at": "2026-10-16T19:31:58.571919+00:00",
+    "API_only": true,
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "status": "200",
+    "curl_exit": 0,
+    "elapsed": 0.511,
+    "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+    "stderr": ""
+  },
+  "pre_inventory": {
+    "at": "2026-10-16T19:31:59.678992+00:00",
+    "binary": "unchanged Render2.27.0/a764810a7682",
+    "command": [
+      "render",
+      "postgres",
+      "list",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "client_setup": null,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 1.106,
+    "stdout": "{\"data\": []}",
+    "stderr": ""
+  },
+  "pre_service_inventory": {
+    "at": "2026-10-16T19:32:00.345553+00:00",
+    "binary": "unchanged Render2.27.0/a764810a7682",
+    "command": [
+      "render",
+      "services",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "client_setup": null,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.666,
+    "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}]",
+    "stderr": ""
+  },
+  "pre_ids": [],
+  "dependency_ids": [],
+  "recorded_child_ids": [],
+  "identity_intent": "omit database-name and database-user; preserve actual server defaults",
+  "create_command": [
+    "render",
+    "postgres",
+    "create",
+    "--name",
+    "qa-20261016-a94aca-notifications",
+    "--plan",
+    "free",
+    "--version",
+    "18",
+    "--region",
+    "frankfurt",
+    "--connection-pool",
+    "none",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "state": "not created: native invalid-name400; native PG list empty/PG used0 terminating0",
+  "create_result": {
+    "at": "2026-10-16T19:32:01.273096+00:00",
+    "binary": "unchanged Render2.27.0/a764810a7682",
+    "command": [
+      "render",
+      "postgres",
+      "create",
+      "--name",
+      "qa-20261016-a94aca-notifications",
+      "--plan",
+      "free",
+      "--version",
+      "18",
+      "--region",
+      "frankfurt",
+      "--connection-pool",
+      "none",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "client_setup": null,
+    "native_exit": 1,
+    "harness_timeout": false,
+    "elapsed": 0.471,
+    "stdout": "",
+    "stderr": "Error: received response code 400 (RESOURCE_NAME_INVALID): name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\n"
+  },
+  "excluded_setup": true,
+  "allocation_absence": {
+    "at": "2026-10-16T19:34:11.162223+00:00",
+    "inventory": {
+      "at": "2026-10-16T19:34:10.807737+00:00",
+      "binary": "released Bex0.3.2",
+      "command": [
+        "bex",
+        "postgres",
+        "list",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "client_setup": null,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 1.002,
+      "stdout": "{\"data\": []}",
+      "stderr": ""
+    },
+    "quota": {
+      "at": "2026-10-16T19:34:11.162056+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.341,
+      "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+      "stderr": ""
+    },
+    "pass": true
+  },
+  "qualification": "The authored fixture suffix exceeded the documented30-character Bex resource name limit; expected ordinary validation, not a product defect. No create retry until list/quota absence proved."
+}

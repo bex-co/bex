@@ -1,0 +1,1618 @@
+{
+  "qualification": "own local PostgreSQL18.6/psql18.6 prerequisite, not hosted PG17 or native wrappers",
+  "schema": "qa378_local378",
+  "steps": [
+    {
+      "actor": "bex",
+      "label": "native physical identity and session limits",
+      "stdin": "SET statement_timeout='10s';SET idle_in_transaction_session_timeout='30s';SET lock_timeout='500ms';\nSELECT jsonb_build_object('frame','QA378_local378_1','pid',pg_backend_pid(),'payload',jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'encoding',current_setting('server_encoding'),'statement_timeout',current_setting('statement_timeout'),'idle_in_transaction_session_timeout',current_setting('idle_in_transaction_session_timeout'),'lock_timeout',current_setting('lock_timeout')))::text;\n\\echo QA378_local378_1_END\n",
+      "expected_payload": {
+        "database": "postgres",
+        "user": "qa378",
+        "major": 18,
+        "encoding": "UTF8",
+        "statement_timeout": "10s",
+        "idle_in_transaction_session_timeout": "30s",
+        "lock_timeout": "500ms"
+      },
+      "expected_rows": null,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23437,
+        "frame": "QA378_local378_1",
+        "payload": {
+          "user": "qa378",
+          "major": 18,
+          "database": "postgres",
+          "encoding": "UTF8",
+          "lock_timeout": "500ms",
+          "statement_timeout": "10s",
+          "idle_in_transaction_session_timeout": "30s"
+        }
+      },
+      "observed_rows": [],
+      "native_output": "LOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_1\", \"payload\": {\"user\": \"qa378\", \"major\": 18, \"database\": \"postgres\", \"encoding\": \"UTF8\", \"lock_timeout\": \"500ms\", \"statement_timeout\": \"10s\", \"idle_in_transaction_session_timeout\": \"30s\"}}\nLOCAL378_bex> QA378_local378_1_END\nLOCAL378_bex> ",
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "native physical identity and session limits",
+      "stdin": "SET statement_timeout='10s';SET idle_in_transaction_session_timeout='30s';SET lock_timeout='500ms';\nSELECT jsonb_build_object('frame','QA378_local378_2','pid',pg_backend_pid(),'payload',jsonb_build_object('database',current_database(),'user',current_user,'major',current_setting('server_version_num')::int/10000,'encoding',current_setting('server_encoding'),'statement_timeout',current_setting('statement_timeout'),'idle_in_transaction_session_timeout',current_setting('idle_in_transaction_session_timeout'),'lock_timeout',current_setting('lock_timeout')))::text;\n\\echo QA378_local378_2_END\n",
+      "expected_payload": {
+        "database": "postgres",
+        "user": "qa378",
+        "major": 18,
+        "encoding": "UTF8",
+        "statement_timeout": "10s",
+        "idle_in_transaction_session_timeout": "30s",
+        "lock_timeout": "500ms"
+      },
+      "expected_rows": null,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23439,
+        "frame": "QA378_local378_2",
+        "payload": {
+          "user": "qa378",
+          "major": 18,
+          "database": "postgres",
+          "encoding": "UTF8",
+          "lock_timeout": "500ms",
+          "statement_timeout": "10s",
+          "idle_in_transaction_session_timeout": "30s"
+        }
+      },
+      "observed_rows": [],
+      "native_output": "LOCAL378_render> {\"pid\": 23439, \"frame\": \"QA378_local378_2\", \"payload\": {\"user\": \"qa378\", \"major\": 18, \"database\": \"postgres\", \"encoding\": \"UTF8\", \"lock_timeout\": \"500ms\", \"statement_timeout\": \"10s\", \"idle_in_transaction_session_timeout\": \"30s\"}}\nLOCAL378_render> QA378_local378_2_END\n",
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "fresh own schema absence",
+      "stdin": "SELECT jsonb_build_object('frame','QA378_local378_3','pid',pg_backend_pid(),'payload',to_regnamespace('qa378_local378') IS NULL)::text;\n\\echo QA378_local378_3_END\n",
+      "expected_payload": true,
+      "expected_rows": null,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23439,
+        "frame": "QA378_local378_3",
+        "payload": true
+      },
+      "observed_rows": [],
+      "native_output": "LOCAL378_render> {\"pid\": 23439, \"frame\": \"QA378_local378_3\", \"payload\": true}\nLOCAL378_render> QA378_local378_3_END\n",
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "commit own ten row baseline",
+      "stdin": "BEGIN;CREATE SCHEMA qa378_local378;CREATE TABLE qa378_local378.items(id int PRIMARY KEY,label text NOT NULL);INSERT INTO qa378_local378.items VALUES(1,'item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00'),(2,'item 2 caf\u00e9 \u65e5\u672c \ud83d\ude00'),(3,'item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00'),(4,'item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00'),(5,'item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00'),(6,'item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00'),(7,'item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00'),(8,'item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00'),(9,'item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00'),(10,'item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00');COMMIT;\nSELECT jsonb_build_object('frame','QA378_local378_4','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'label',label) ORDER BY id),'[]'::jsonb) FROM qa378_local378.items))::text;\n\\echo QA378_local378_4_END\n",
+      "expected_payload": [
+        {
+          "id": 1,
+          "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 2,
+          "label": "item 2 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 3,
+          "label": "item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 4,
+          "label": "item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 5,
+          "label": "item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 6,
+          "label": "item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 7,
+          "label": "item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 8,
+          "label": "item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 9,
+          "label": "item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 10,
+          "label": "item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "expected_rows": null,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23437,
+        "frame": "QA378_local378_4",
+        "payload": [
+          {
+            "id": 1,
+            "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 2,
+            "label": "item 2 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 3,
+            "label": "item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 4,
+            "label": "item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 5,
+            "label": "item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 6,
+            "label": "item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 7,
+            "label": "item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 8,
+            "label": "item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 9,
+            "label": "item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 10,
+            "label": "item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          }
+        ]
+      },
+      "observed_rows": [],
+      "native_output": "LOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_4\", \"payload\": [{\"id\": 1, \"label\": \"item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 2, \"label\": \"item 2 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 3, \"label\": \"item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 4, \"label\": \"item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 5, \"label\": \"item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 6, \"label\": \"item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 7, \"label\": \"item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 8, \"label\": \"item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 9, \"label\": \"item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 10, \"label\": \"item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}]}\nLOCAL378_bex> QA378_local378_4_END\nLOCAL378_bex> ",
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "held scroll cursor fetch and commit",
+      "stdin": "BEGIN;DECLARE qa378_local378_hold SCROLL CURSOR WITH HOLD FOR SELECT jsonb_build_object('cursor_token','QA378_local378_ROWS_bex','id',id,'label',label)::text FROM qa378_local378.items ORDER BY id;FETCH FORWARD 3 FROM qa378_local378_hold;COMMIT;\nSELECT jsonb_build_object('frame','QA378_local378_5','pid',pg_backend_pid(),'payload',jsonb_build_object('exists',EXISTS(SELECT 1 FROM pg_cursors WHERE name='qa378_local378_hold'),'hold',coalesce((SELECT is_holdable FROM pg_cursors WHERE name='qa378_local378_hold'),false),'scroll',coalesce((SELECT is_scrollable FROM pg_cursors WHERE name='qa378_local378_hold'),false)))::text;\n\\echo QA378_local378_5_END\n",
+      "expected_payload": {
+        "exists": true,
+        "hold": true,
+        "scroll": true
+      },
+      "expected_rows": [
+        {
+          "id": 1,
+          "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 2,
+          "label": "item 2 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 3,
+          "label": "item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23437,
+        "frame": "QA378_local378_5",
+        "payload": {
+          "hold": true,
+          "exists": true,
+          "scroll": true
+        }
+      },
+      "observed_rows": [
+        {
+          "id": 1,
+          "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 2,
+          "label": "item 2 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 3,
+          "label": "item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "native_output": "{\"id\": 1, \"label\": \"item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 2, \"label\": \"item 2 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 3, \"label\": \"item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_5\", \"payload\": {\"hold\": true, \"exists\": true, \"scroll\": true}}\nLOCAL378_bex> QA378_local378_5_END\nLOCAL378_bex> ",
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "other client commits changed and additional data",
+      "stdin": "BEGIN;UPDATE qa378_local378.items SET label='updated two caf\u00e9 \u65e5\u672c \ud83d\ude00' WHERE id=2;INSERT INTO qa378_local378.items VALUES(11,'new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00');COMMIT;\nSELECT jsonb_build_object('frame','QA378_local378_6','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'label',label) ORDER BY id),'[]'::jsonb) FROM qa378_local378.items))::text;\n\\echo QA378_local378_6_END\n",
+      "expected_payload": [
+        {
+          "id": 1,
+          "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 2,
+          "label": "updated two caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 3,
+          "label": "item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 4,
+          "label": "item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 5,
+          "label": "item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 6,
+          "label": "item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 7,
+          "label": "item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 8,
+          "label": "item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 9,
+          "label": "item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 10,
+          "label": "item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 11,
+          "label": "new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "expected_rows": null,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23439,
+        "frame": "QA378_local378_6",
+        "payload": [
+          {
+            "id": 1,
+            "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 2,
+            "label": "updated two caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 3,
+            "label": "item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 4,
+            "label": "item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 5,
+            "label": "item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 6,
+            "label": "item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 7,
+            "label": "item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 8,
+            "label": "item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 9,
+            "label": "item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 10,
+            "label": "item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 11,
+            "label": "new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          }
+        ]
+      },
+      "observed_rows": [],
+      "native_output": "LOCAL378_render> LOCAL378_render> {\"pid\": 23439, \"frame\": \"QA378_local378_6\", \"payload\": [{\"id\": 1, \"label\": \"item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 2, \"label\": \"updated two caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 3, \"label\": \"item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 4, \"label\": \"item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 5, \"label\": \"item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 6, \"label\": \"item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 7, \"label\": \"item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 8, \"label\": \"item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 9, \"label\": \"item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 10, \"label\": \"item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 11, \"label\": \"new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00\"}]}\nLOCAL378_render> QA378_local378_6_END\nLOCAL378_render> ",
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "held remainder preserves original ten row snapshot",
+      "stdin": "FETCH FORWARD ALL FROM qa378_local378_hold;\nSELECT jsonb_build_object('frame','QA378_local378_7','pid',pg_backend_pid(),'payload','{}'::jsonb)::text;\n\\echo QA378_local378_7_END\n",
+      "expected_payload": null,
+      "expected_rows": [
+        {
+          "id": 4,
+          "label": "item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 5,
+          "label": "item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 6,
+          "label": "item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 7,
+          "label": "item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 8,
+          "label": "item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 9,
+          "label": "item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 10,
+          "label": "item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23437,
+        "frame": "QA378_local378_7",
+        "payload": {}
+      },
+      "observed_rows": [
+        {
+          "id": 4,
+          "label": "item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 5,
+          "label": "item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 6,
+          "label": "item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 7,
+          "label": "item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 8,
+          "label": "item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 9,
+          "label": "item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 10,
+          "label": "item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "native_output": "{\"id\": 4, \"label\": \"item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 5, \"label\": \"item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 6, \"label\": \"item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 7, \"label\": \"item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 8, \"label\": \"item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 9, \"label\": \"item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 10, \"label\": \"item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_7\", \"payload\": {}}\nLOCAL378_bex> QA378_local378_7_END\nLOCAL378_bex> ",
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "held absolute lookup preserves old changed row",
+      "stdin": "FETCH ABSOLUTE 2 FROM qa378_local378_hold;\nSELECT jsonb_build_object('frame','QA378_local378_8','pid',pg_backend_pid(),'payload','{}'::jsonb)::text;\n\\echo QA378_local378_8_END\n",
+      "expected_payload": null,
+      "expected_rows": [
+        {
+          "id": 2,
+          "label": "item 2 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23437,
+        "frame": "QA378_local378_8",
+        "payload": {}
+      },
+      "observed_rows": [
+        {
+          "id": 2,
+          "label": "item 2 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "native_output": "{\"id\": 2, \"label\": \"item 2 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_8\", \"payload\": {}}\nLOCAL378_bex> QA378_local378_8_END\nLOCAL378_bex> ",
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "held backward one row",
+      "stdin": "FETCH BACKWARD 1 FROM qa378_local378_hold;\nSELECT jsonb_build_object('frame','QA378_local378_9','pid',pg_backend_pid(),'payload','{}'::jsonb)::text;\n\\echo QA378_local378_9_END\n",
+      "expected_payload": null,
+      "expected_rows": [
+        {
+          "id": 1,
+          "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23437,
+        "frame": "QA378_local378_9",
+        "payload": {}
+      },
+      "observed_rows": [
+        {
+          "id": 1,
+          "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "native_output": "{\"id\": 1, \"label\": \"item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_9\", \"payload\": {}}\nLOCAL378_bex> QA378_local378_9_END\nLOCAL378_bex> ",
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "held last row",
+      "stdin": "FETCH LAST FROM qa378_local378_hold;\nSELECT jsonb_build_object('frame','QA378_local378_10','pid',pg_backend_pid(),'payload','{}'::jsonb)::text;\n\\echo QA378_local378_10_END\n",
+      "expected_payload": null,
+      "expected_rows": [
+        {
+          "id": 10,
+          "label": "item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23437,
+        "frame": "QA378_local378_10",
+        "payload": {}
+      },
+      "observed_rows": [
+        {
+          "id": 10,
+          "label": "item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "native_output": "{\"id\": 10, \"label\": \"item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_10\", \"payload\": {}}\nLOCAL378_bex> QA378_local378_10_END\nLOCAL378_bex> ",
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "held next beyond end is empty",
+      "stdin": "FETCH NEXT FROM qa378_local378_hold;\nSELECT jsonb_build_object('frame','QA378_local378_11','pid',pg_backend_pid(),'payload','{}'::jsonb)::text;\n\\echo QA378_local378_11_END\n",
+      "expected_payload": null,
+      "expected_rows": [],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23437,
+        "frame": "QA378_local378_11",
+        "payload": {}
+      },
+      "observed_rows": [],
+      "native_output": "LOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_11\", \"payload\": {}}\nLOCAL378_bex> QA378_local378_11_END\nLOCAL378_bex> ",
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "held prior after end returns last",
+      "stdin": "FETCH PRIOR FROM qa378_local378_hold;\nSELECT jsonb_build_object('frame','QA378_local378_12','pid',pg_backend_pid(),'payload','{}'::jsonb)::text;\n\\echo QA378_local378_12_END\n",
+      "expected_payload": null,
+      "expected_rows": [
+        {
+          "id": 10,
+          "label": "item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23437,
+        "frame": "QA378_local378_12",
+        "payload": {}
+      },
+      "observed_rows": [
+        {
+          "id": 10,
+          "label": "item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "native_output": "{\"id\": 10, \"label\": \"item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_12\", \"payload\": {}}\nLOCAL378_bex> QA378_local378_12_END\nLOCAL378_bex> ",
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "move backward has no data rows",
+      "stdin": "MOVE BACKWARD 3 FROM qa378_local378_hold;\nSELECT jsonb_build_object('frame','QA378_local378_13','pid',pg_backend_pid(),'payload','{}'::jsonb)::text;\n\\echo QA378_local378_13_END\n",
+      "expected_payload": null,
+      "expected_rows": [],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23437,
+        "frame": "QA378_local378_13",
+        "payload": {}
+      },
+      "observed_rows": [],
+      "native_output": "LOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_13\", \"payload\": {}}\nLOCAL378_bex> QA378_local378_13_END\nLOCAL378_bex> ",
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "fetch after move has correct position",
+      "stdin": "FETCH NEXT FROM qa378_local378_hold;\nSELECT jsonb_build_object('frame','QA378_local378_14','pid',pg_backend_pid(),'payload','{}'::jsonb)::text;\n\\echo QA378_local378_14_END\n",
+      "expected_payload": null,
+      "expected_rows": [
+        {
+          "id": 8,
+          "label": "item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23437,
+        "frame": "QA378_local378_14",
+        "payload": {}
+      },
+      "observed_rows": [
+        {
+          "id": 8,
+          "label": "item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "native_output": "{\"id\": 8, \"label\": \"item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_14\", \"payload\": {}}\nLOCAL378_bex> QA378_local378_14_END\nLOCAL378_bex> ",
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "forward zero repeats current row",
+      "stdin": "FETCH FORWARD 0 FROM qa378_local378_hold;\nSELECT jsonb_build_object('frame','QA378_local378_15','pid',pg_backend_pid(),'payload','{}'::jsonb)::text;\n\\echo QA378_local378_15_END\n",
+      "expected_payload": null,
+      "expected_rows": [
+        {
+          "id": 8,
+          "label": "item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23437,
+        "frame": "QA378_local378_15",
+        "payload": {}
+      },
+      "observed_rows": [
+        {
+          "id": 8,
+          "label": "item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "native_output": "{\"id\": 8, \"label\": \"item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_15\", \"payload\": {}}\nLOCAL378_bex> QA378_local378_15_END\nLOCAL378_bex> ",
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "relative fetch moves two rows backward",
+      "stdin": "FETCH RELATIVE -2 FROM qa378_local378_hold;\nSELECT jsonb_build_object('frame','QA378_local378_16','pid',pg_backend_pid(),'payload','{}'::jsonb)::text;\n\\echo QA378_local378_16_END\n",
+      "expected_payload": null,
+      "expected_rows": [
+        {
+          "id": 6,
+          "label": "item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23437,
+        "frame": "QA378_local378_16",
+        "payload": {}
+      },
+      "observed_rows": [
+        {
+          "id": 6,
+          "label": "item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "native_output": "{\"id\": 6, \"label\": \"item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_16\", \"payload\": {}}\nLOCAL378_bex> QA378_local378_16_END\nLOCAL378_bex> ",
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "close held cursor removes portal",
+      "stdin": "CLOSE qa378_local378_hold;\nSELECT jsonb_build_object('frame','QA378_local378_17','pid',pg_backend_pid(),'payload',jsonb_build_object('exists',EXISTS(SELECT 1 FROM pg_cursors WHERE name='qa378_local378_hold'),'hold',coalesce((SELECT is_holdable FROM pg_cursors WHERE name='qa378_local378_hold'),false),'scroll',coalesce((SELECT is_scrollable FROM pg_cursors WHERE name='qa378_local378_hold'),false)))::text;\n\\echo QA378_local378_17_END\n",
+      "expected_payload": {
+        "exists": false,
+        "hold": false,
+        "scroll": false
+      },
+      "expected_rows": [],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23437,
+        "frame": "QA378_local378_17",
+        "payload": {
+          "hold": false,
+          "exists": false,
+          "scroll": false
+        }
+      },
+      "observed_rows": [],
+      "native_output": "LOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_17\", \"payload\": {\"hold\": false, \"exists\": false, \"scroll\": false}}\nLOCAL378_bex> QA378_local378_17_END\nLOCAL378_bex> ",
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "closed held cursor returns34000",
+      "stdin": "FETCH NEXT FROM qa378_local378_hold;\n\\echo QA378_local378_18_STATE :SQLSTATE\n;\nSELECT jsonb_build_object('frame','QA378_local378_18','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'label',label) ORDER BY id),'[]'::jsonb) FROM qa378_local378.items))::text;\n\\echo QA378_local378_18_END\n",
+      "expected_payload": [
+        {
+          "id": 1,
+          "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 2,
+          "label": "updated two caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 3,
+          "label": "item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 4,
+          "label": "item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 5,
+          "label": "item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 6,
+          "label": "item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 7,
+          "label": "item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 8,
+          "label": "item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 9,
+          "label": "item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 10,
+          "label": "item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 11,
+          "label": "new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "expected_rows": [],
+      "expected_SQLSTATE": "34000",
+      "frame": {
+        "pid": 23437,
+        "frame": "QA378_local378_18",
+        "payload": [
+          {
+            "id": 1,
+            "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 2,
+            "label": "updated two caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 3,
+            "label": "item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 4,
+            "label": "item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 5,
+            "label": "item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 6,
+            "label": "item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 7,
+            "label": "item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 8,
+            "label": "item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 9,
+            "label": "item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 10,
+            "label": "item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 11,
+            "label": "new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          }
+        ]
+      },
+      "observed_rows": [],
+      "native_output": "ERROR:  cursor \"qa378_local378_hold\" does not exist\nLOCAL378_bex> QA378_local378_18_STATE 34000\nLOCAL378_bex> LOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_18\", \"payload\": [{\"id\": 1, \"label\": \"item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 2, \"label\": \"updated two caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 3, \"label\": \"item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 4, \"label\": \"item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 5, \"label\": \"item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 6, \"label\": \"item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 7, \"label\": \"item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 8, \"label\": \"item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 9, \"label\": \"item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 10, \"label\": \"item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 11, \"label\": \"new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00\"}]}\nLOCAL378_bex> QA378_local378_18_END\nLOCAL378_bex> ",
+      "observed_SQLSTATE": "34000",
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "nonheld cursor closes at commit",
+      "stdin": "BEGIN;DECLARE qa378_local378_normal NO SCROLL CURSOR WITHOUT HOLD FOR SELECT jsonb_build_object('cursor_token','QA378_local378_ROWS_bex','id',id,'label',label)::text FROM qa378_local378.items ORDER BY id;FETCH FORWARD 2 FROM qa378_local378_normal;COMMIT;\nSELECT jsonb_build_object('frame','QA378_local378_19','pid',pg_backend_pid(),'payload',jsonb_build_object('exists',EXISTS(SELECT 1 FROM pg_cursors WHERE name='qa378_local378_normal'),'hold',coalesce((SELECT is_holdable FROM pg_cursors WHERE name='qa378_local378_normal'),false),'scroll',coalesce((SELECT is_scrollable FROM pg_cursors WHERE name='qa378_local378_normal'),false)))::text;\n\\echo QA378_local378_19_END\n",
+      "expected_payload": {
+        "exists": false,
+        "hold": false,
+        "scroll": false
+      },
+      "expected_rows": [
+        {
+          "id": 1,
+          "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 2,
+          "label": "updated two caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23437,
+        "frame": "QA378_local378_19",
+        "payload": {
+          "hold": false,
+          "exists": false,
+          "scroll": false
+        }
+      },
+      "observed_rows": [
+        {
+          "id": 1,
+          "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 2,
+          "label": "updated two caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "native_output": "{\"id\": 1, \"label\": \"item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 2, \"label\": \"updated two caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_19\", \"payload\": {\"hold\": false, \"exists\": false, \"scroll\": false}}\nLOCAL378_bex> QA378_local378_19_END\nLOCAL378_bex> ",
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "committed nonheld cursor returns34000",
+      "stdin": "FETCH NEXT FROM qa378_local378_normal;\n\\echo QA378_local378_20_STATE :SQLSTATE\n;\nSELECT jsonb_build_object('frame','QA378_local378_20','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'label',label) ORDER BY id),'[]'::jsonb) FROM qa378_local378.items))::text;\n\\echo QA378_local378_20_END\n",
+      "expected_payload": [
+        {
+          "id": 1,
+          "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 2,
+          "label": "updated two caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 3,
+          "label": "item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 4,
+          "label": "item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 5,
+          "label": "item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 6,
+          "label": "item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 7,
+          "label": "item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 8,
+          "label": "item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 9,
+          "label": "item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 10,
+          "label": "item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 11,
+          "label": "new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "expected_rows": [],
+      "expected_SQLSTATE": "34000",
+      "frame": {
+        "pid": 23437,
+        "frame": "QA378_local378_20",
+        "payload": [
+          {
+            "id": 1,
+            "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 2,
+            "label": "updated two caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 3,
+            "label": "item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 4,
+            "label": "item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 5,
+            "label": "item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 6,
+            "label": "item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 7,
+            "label": "item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 8,
+            "label": "item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 9,
+            "label": "item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 10,
+            "label": "item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 11,
+            "label": "new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          }
+        ]
+      },
+      "observed_rows": [],
+      "native_output": "ERROR:  cursor \"qa378_local378_normal\" does not exist\nLOCAL378_bex> QA378_local378_20_STATE 34000\nLOCAL378_bex> LOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_20\", \"payload\": [{\"id\": 1, \"label\": \"item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 2, \"label\": \"updated two caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 3, \"label\": \"item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 4, \"label\": \"item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 5, \"label\": \"item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 6, \"label\": \"item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 7, \"label\": \"item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 8, \"label\": \"item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 9, \"label\": \"item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 10, \"label\": \"item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 11, \"label\": \"new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00\"}]}\nLOCAL378_bex> QA378_local378_20_END\nLOCAL378_bex> ",
+      "observed_SQLSTATE": "34000",
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "rollback also removes a holdable cursor",
+      "stdin": "BEGIN;DECLARE qa378_local378_rolled SCROLL CURSOR WITH HOLD FOR SELECT jsonb_build_object('cursor_token','QA378_local378_ROWS_render','id',id,'label',label)::text FROM qa378_local378.items ORDER BY id;FETCH FORWARD 1 FROM qa378_local378_rolled;ROLLBACK;\nSELECT jsonb_build_object('frame','QA378_local378_21','pid',pg_backend_pid(),'payload',jsonb_build_object('exists',EXISTS(SELECT 1 FROM pg_cursors WHERE name='qa378_local378_rolled'),'hold',coalesce((SELECT is_holdable FROM pg_cursors WHERE name='qa378_local378_rolled'),false),'scroll',coalesce((SELECT is_scrollable FROM pg_cursors WHERE name='qa378_local378_rolled'),false)))::text;\n\\echo QA378_local378_21_END\n",
+      "expected_payload": {
+        "exists": false,
+        "hold": false,
+        "scroll": false
+      },
+      "expected_rows": [
+        {
+          "id": 1,
+          "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23439,
+        "frame": "QA378_local378_21",
+        "payload": {
+          "hold": false,
+          "exists": false,
+          "scroll": false
+        }
+      },
+      "observed_rows": [
+        {
+          "id": 1,
+          "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "native_output": "{\"id\": 1, \"label\": \"item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_render\"}\nLOCAL378_render> {\"pid\": 23439, \"frame\": \"QA378_local378_21\", \"payload\": {\"hold\": false, \"exists\": false, \"scroll\": false}}\nLOCAL378_render> QA378_local378_21_END\nLOCAL378_render> ",
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "rolled back holdable cursor returns34000",
+      "stdin": "FETCH NEXT FROM qa378_local378_rolled;\n\\echo QA378_local378_22_STATE :SQLSTATE\n;\nSELECT jsonb_build_object('frame','QA378_local378_22','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'label',label) ORDER BY id),'[]'::jsonb) FROM qa378_local378.items))::text;\n\\echo QA378_local378_22_END\n",
+      "expected_payload": [
+        {
+          "id": 1,
+          "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 2,
+          "label": "updated two caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 3,
+          "label": "item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 4,
+          "label": "item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 5,
+          "label": "item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 6,
+          "label": "item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 7,
+          "label": "item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 8,
+          "label": "item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 9,
+          "label": "item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 10,
+          "label": "item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 11,
+          "label": "new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "expected_rows": [],
+      "expected_SQLSTATE": "34000",
+      "frame": {
+        "pid": 23439,
+        "frame": "QA378_local378_22",
+        "payload": [
+          {
+            "id": 1,
+            "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 2,
+            "label": "updated two caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 3,
+            "label": "item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 4,
+            "label": "item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 5,
+            "label": "item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 6,
+            "label": "item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 7,
+            "label": "item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 8,
+            "label": "item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 9,
+            "label": "item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 10,
+            "label": "item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 11,
+            "label": "new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          }
+        ]
+      },
+      "observed_rows": [],
+      "native_output": "ERROR:  cursor \"qa378_local378_rolled\" does not exist\nLOCAL378_render> QA378_local378_22_STATE 34000\nLOCAL378_render> LOCAL378_render> {\"pid\": 23439, \"frame\": \"QA378_local378_22\", \"payload\": [{\"id\": 1, \"label\": \"item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 2, \"label\": \"updated two caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 3, \"label\": \"item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 4, \"label\": \"item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 5, \"label\": \"item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 6, \"label\": \"item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 7, \"label\": \"item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 8, \"label\": \"item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 9, \"label\": \"item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 10, \"label\": \"item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 11, \"label\": \"new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00\"}]}\nLOCAL378_render> QA378_local378_22_END\nLOCAL378_render> ",
+      "observed_SQLSTATE": "34000",
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "explicit no scroll cursor reads forward",
+      "stdin": "BEGIN;DECLARE qa378_local378_noscroll NO SCROLL CURSOR WITHOUT HOLD FOR SELECT jsonb_build_object('cursor_token','QA378_local378_ROWS_render','id',id,'label',label)::text FROM qa378_local378.items ORDER BY id;FETCH FORWARD 3 FROM qa378_local378_noscroll;\nSELECT jsonb_build_object('frame','QA378_local378_23','pid',pg_backend_pid(),'payload',jsonb_build_object('exists',EXISTS(SELECT 1 FROM pg_cursors WHERE name='qa378_local378_noscroll'),'hold',coalesce((SELECT is_holdable FROM pg_cursors WHERE name='qa378_local378_noscroll'),false),'scroll',coalesce((SELECT is_scrollable FROM pg_cursors WHERE name='qa378_local378_noscroll'),false)))::text;\n\\echo QA378_local378_23_END\n",
+      "expected_payload": {
+        "exists": true,
+        "hold": false,
+        "scroll": false
+      },
+      "expected_rows": [
+        {
+          "id": 1,
+          "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 2,
+          "label": "updated two caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 3,
+          "label": "item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23439,
+        "frame": "QA378_local378_23",
+        "payload": {
+          "hold": false,
+          "exists": true,
+          "scroll": false
+        }
+      },
+      "observed_rows": [
+        {
+          "id": 1,
+          "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 2,
+          "label": "updated two caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 3,
+          "label": "item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "native_output": "{\"id\": 1, \"label\": \"item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_render\"}\n{\"id\": 2, \"label\": \"updated two caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_render\"}\n{\"id\": 3, \"label\": \"item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_render\"}\nLOCAL378_render> {\"pid\": 23439, \"frame\": \"QA378_local378_23\", \"payload\": {\"hold\": false, \"exists\": true, \"scroll\": false}}\nLOCAL378_render> QA378_local378_23_END\nLOCAL378_render> ",
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "no scroll backward error recovers by rollback",
+      "stdin": "FETCH BACKWARD 1 FROM qa378_local378_noscroll;\n\\echo QA378_local378_24_STATE :SQLSTATE\nROLLBACK;\nSELECT jsonb_build_object('frame','QA378_local378_24','pid',pg_backend_pid(),'payload',jsonb_build_object('exists',EXISTS(SELECT 1 FROM pg_cursors WHERE name='qa378_local378_noscroll'),'hold',coalesce((SELECT is_holdable FROM pg_cursors WHERE name='qa378_local378_noscroll'),false),'scroll',coalesce((SELECT is_scrollable FROM pg_cursors WHERE name='qa378_local378_noscroll'),false)))::text;\n\\echo QA378_local378_24_END\n",
+      "expected_payload": {
+        "exists": false,
+        "hold": false,
+        "scroll": false
+      },
+      "expected_rows": [],
+      "expected_SQLSTATE": "55000",
+      "frame": {
+        "pid": 23439,
+        "frame": "QA378_local378_24",
+        "payload": {
+          "hold": false,
+          "exists": false,
+          "scroll": false
+        }
+      },
+      "observed_rows": [],
+      "native_output": "ERROR:  cursor can only scan forward\nHINT:  Declare it with SCROLL option to enable backward scan.\nLOCAL378_render> QA378_local378_24_STATE 55000\nLOCAL378_render> LOCAL378_render> {\"pid\": 23439, \"frame\": \"QA378_local378_24\", \"payload\": {\"hold\": false, \"exists\": false, \"scroll\": false}}\nLOCAL378_render> QA378_local378_24_END\nLOCAL378_render> ",
+      "observed_SQLSTATE": "55000",
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "fresh cursor sees current committed data",
+      "stdin": "BEGIN;DECLARE qa378_local378_fresh SCROLL CURSOR FOR SELECT jsonb_build_object('cursor_token','QA378_local378_ROWS_bex','id',id,'label',label)::text FROM qa378_local378.items ORDER BY id;FETCH ALL FROM qa378_local378_fresh;CLOSE qa378_local378_fresh;COMMIT;\nSELECT jsonb_build_object('frame','QA378_local378_25','pid',pg_backend_pid(),'payload',jsonb_build_object('exists',EXISTS(SELECT 1 FROM pg_cursors WHERE name='qa378_local378_fresh'),'hold',coalesce((SELECT is_holdable FROM pg_cursors WHERE name='qa378_local378_fresh'),false),'scroll',coalesce((SELECT is_scrollable FROM pg_cursors WHERE name='qa378_local378_fresh'),false)))::text;\n\\echo QA378_local378_25_END\n",
+      "expected_payload": {
+        "exists": false,
+        "hold": false,
+        "scroll": false
+      },
+      "expected_rows": [
+        {
+          "id": 1,
+          "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 2,
+          "label": "updated two caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 3,
+          "label": "item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 4,
+          "label": "item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 5,
+          "label": "item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 6,
+          "label": "item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 7,
+          "label": "item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 8,
+          "label": "item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 9,
+          "label": "item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 10,
+          "label": "item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 11,
+          "label": "new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23437,
+        "frame": "QA378_local378_25",
+        "payload": {
+          "hold": false,
+          "exists": false,
+          "scroll": false
+        }
+      },
+      "observed_rows": [
+        {
+          "id": 1,
+          "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 2,
+          "label": "updated two caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 3,
+          "label": "item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 4,
+          "label": "item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 5,
+          "label": "item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 6,
+          "label": "item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 7,
+          "label": "item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 8,
+          "label": "item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 9,
+          "label": "item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 10,
+          "label": "item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 11,
+          "label": "new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "native_output": "{\"id\": 1, \"label\": \"item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 2, \"label\": \"updated two caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 3, \"label\": \"item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 4, \"label\": \"item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 5, \"label\": \"item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 6, \"label\": \"item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 7, \"label\": \"item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 8, \"label\": \"item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 9, \"label\": \"item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 10, \"label\": \"item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 11, \"label\": \"new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_25\", \"payload\": {\"hold\": false, \"exists\": false, \"scroll\": false}}\nLOCAL378_bex> QA378_local378_25_END\nLOCAL378_bex> ",
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "prepared parameter returns exact current row",
+      "stdin": "PREPARE qa378_local378_prepared(integer) AS SELECT jsonb_build_object('cursor_token','QA378_local378_ROWS_bex','id',id,'label',label)::text FROM qa378_local378.items WHERE id=$1 ORDER BY id;EXECUTE qa378_local378_prepared(2);\nSELECT jsonb_build_object('frame','QA378_local378_26','pid',pg_backend_pid(),'payload',EXISTS(SELECT 1 FROM pg_prepared_statements WHERE name='qa378_local378_prepared'))::text;\n\\echo QA378_local378_26_END\n",
+      "expected_payload": true,
+      "expected_rows": [
+        {
+          "id": 2,
+          "label": "updated two caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23437,
+        "frame": "QA378_local378_26",
+        "payload": true
+      },
+      "observed_rows": [
+        {
+          "id": 2,
+          "label": "updated two caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "native_output": "{\"id\": 2, \"label\": \"updated two caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_26\", \"payload\": true}\nLOCAL378_bex> QA378_local378_26_END\nLOCAL378_bex> ",
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "deallocate removes prepared statement",
+      "stdin": "DEALLOCATE qa378_local378_prepared;\nSELECT jsonb_build_object('frame','QA378_local378_27','pid',pg_backend_pid(),'payload',EXISTS(SELECT 1 FROM pg_prepared_statements WHERE name='qa378_local378_prepared'))::text;\n\\echo QA378_local378_27_END\n",
+      "expected_payload": false,
+      "expected_rows": [],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23437,
+        "frame": "QA378_local378_27",
+        "payload": false
+      },
+      "observed_rows": [],
+      "native_output": "LOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_27\", \"payload\": false}\nLOCAL378_bex> QA378_local378_27_END\nLOCAL378_bex> ",
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "deallocated execution returns26000",
+      "stdin": "EXECUTE qa378_local378_prepared(2);\n\\echo QA378_local378_28_STATE :SQLSTATE\n;\nSELECT jsonb_build_object('frame','QA378_local378_28','pid',pg_backend_pid(),'payload',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'label',label) ORDER BY id),'[]'::jsonb) FROM qa378_local378.items))::text;\n\\echo QA378_local378_28_END\n",
+      "expected_payload": [
+        {
+          "id": 1,
+          "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 2,
+          "label": "updated two caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 3,
+          "label": "item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 4,
+          "label": "item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 5,
+          "label": "item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 6,
+          "label": "item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 7,
+          "label": "item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 8,
+          "label": "item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 9,
+          "label": "item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 10,
+          "label": "item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        },
+        {
+          "id": 11,
+          "label": "new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00"
+        }
+      ],
+      "expected_rows": [],
+      "expected_SQLSTATE": "26000",
+      "frame": {
+        "pid": 23437,
+        "frame": "QA378_local378_28",
+        "payload": [
+          {
+            "id": 1,
+            "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 2,
+            "label": "updated two caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 3,
+            "label": "item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 4,
+            "label": "item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 5,
+            "label": "item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 6,
+            "label": "item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 7,
+            "label": "item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 8,
+            "label": "item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 9,
+            "label": "item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 10,
+            "label": "item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          },
+          {
+            "id": 11,
+            "label": "new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00"
+          }
+        ]
+      },
+      "observed_rows": [],
+      "native_output": "ERROR:  prepared statement \"qa378_local378_prepared\" does not exist\nLOCAL378_bex> QA378_local378_28_STATE 26000\nLOCAL378_bex> LOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_28\", \"payload\": [{\"id\": 1, \"label\": \"item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 2, \"label\": \"updated two caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 3, \"label\": \"item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 4, \"label\": \"item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 5, \"label\": \"item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 6, \"label\": \"item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 7, \"label\": \"item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 8, \"label\": \"item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 9, \"label\": \"item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 10, \"label\": \"item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 11, \"label\": \"new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00\"}]}\nLOCAL378_bex> QA378_local378_28_END\nLOCAL378_bex> ",
+      "observed_SQLSTATE": "26000",
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "same connection has no remaining owned portals",
+      "stdin": "SELECT jsonb_build_object('frame','QA378_local378_29','pid',pg_backend_pid(),'payload',jsonb_build_object('cursors',(SELECT count(*) FROM pg_cursors WHERE name IN ('qa378_local378_hold','qa378_local378_normal','qa378_local378_rolled','qa378_local378_noscroll','qa378_local378_fresh')),'prepared',(SELECT count(*) FROM pg_prepared_statements WHERE name='qa378_local378_prepared')))::text;\n\\echo QA378_local378_29_END\n",
+      "expected_payload": {
+        "cursors": 0,
+        "prepared": 0
+      },
+      "expected_rows": [],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23437,
+        "frame": "QA378_local378_29",
+        "payload": {
+          "cursors": 0,
+          "prepared": 0
+        }
+      },
+      "observed_rows": [],
+      "native_output": "{\"pid\": 23437, \"frame\": \"QA378_local378_29\", \"payload\": {\"cursors\": 0, \"prepared\": 0}}\nLOCAL378_bex> QA378_local378_29_END\nLOCAL378_bex> ",
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "same connection has no remaining owned portals",
+      "stdin": "SELECT jsonb_build_object('frame','QA378_local378_30','pid',pg_backend_pid(),'payload',jsonb_build_object('cursors',(SELECT count(*) FROM pg_cursors WHERE name IN ('qa378_local378_hold','qa378_local378_normal','qa378_local378_rolled','qa378_local378_noscroll','qa378_local378_fresh')),'prepared',(SELECT count(*) FROM pg_prepared_statements WHERE name='qa378_local378_prepared')))::text;\n\\echo QA378_local378_30_END\n",
+      "expected_payload": {
+        "cursors": 0,
+        "prepared": 0
+      },
+      "expected_rows": [],
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23439,
+        "frame": "QA378_local378_30",
+        "payload": {
+          "cursors": 0,
+          "prepared": 0
+        }
+      },
+      "observed_rows": [],
+      "native_output": "{\"pid\": 23439, \"frame\": \"QA378_local378_30\", \"payload\": {\"cursors\": 0, \"prepared\": 0}}\nLOCAL378_render> QA378_local378_30_END\nLOCAL378_render> ",
+      "pass": true
+    },
+    {
+      "actor": "bex",
+      "label": "drop exact own cursor schema",
+      "stdin": "DROP SCHEMA qa378_local378 CASCADE;\nSELECT jsonb_build_object('frame','QA378_local378_31','pid',pg_backend_pid(),'payload',to_regnamespace('qa378_local378') IS NULL)::text;\n\\echo QA378_local378_31_END\n",
+      "expected_payload": true,
+      "expected_rows": null,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23437,
+        "frame": "QA378_local378_31",
+        "payload": true
+      },
+      "observed_rows": [],
+      "native_output": "NOTICE:  drop cascades to table qa378_local378.items\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_31\", \"payload\": true}\nLOCAL378_bex> QA378_local378_31_END\nLOCAL378_bex> ",
+      "pass": true
+    },
+    {
+      "actor": "render",
+      "label": "independent final own schema absence",
+      "stdin": "SELECT jsonb_build_object('frame','QA378_local378_32','pid',pg_backend_pid(),'payload',to_regnamespace('qa378_local378') IS NULL)::text;\n\\echo QA378_local378_32_END\n",
+      "expected_payload": true,
+      "expected_rows": null,
+      "expected_SQLSTATE": null,
+      "frame": {
+        "pid": 23439,
+        "frame": "QA378_local378_32",
+        "payload": true
+      },
+      "observed_rows": [],
+      "native_output": "{\"pid\": 23439, \"frame\": \"QA378_local378_32\", \"payload\": true}\nLOCAL378_render> QA378_local378_32_END\nLOCAL378_render> ",
+      "pass": true
+    }
+  ],
+  "sessions": {
+    "bex": {
+      "intent": "finite native persistent psql client with private config/history",
+      "command": [
+        "local-psql",
+        "<own-unix-socket>"
+      ],
+      "PID": 23436,
+      "PGID": 23436,
+      "backend_pid": 23437,
+      "natural_exit": 0,
+      "PTY": {
+        "stdin_stdout_TTY": true,
+        "controlling_terminal": true,
+        "terminal_ISIG_enabled": true,
+        "terminal_echo_disabled": true,
+        "rows": 40,
+        "columns": 140,
+        "elapsed": 0.058,
+        "native_exit": 0,
+        "output": "LOCAL378_bex> LOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_1\", \"payload\": {\"user\": \"qa378\", \"major\": 18, \"database\": \"postgres\", \"encoding\": \"UTF8\", \"lock_timeout\": \"500ms\", \"statement_timeout\": \"10s\", \"idle_in_transaction_session_timeout\": \"30s\"}}\nLOCAL378_bex> QA378_local378_1_END\nLOCAL378_bex> LOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_4\", \"payload\": [{\"id\": 1, \"label\": \"item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 2, \"label\": \"item 2 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 3, \"label\": \"item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 4, \"label\": \"item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 5, \"label\": \"item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 6, \"label\": \"item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 7, \"label\": \"item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 8, \"label\": \"item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 9, \"label\": \"item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 10, \"label\": \"item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}]}\nLOCAL378_bex> QA378_local378_4_END\nLOCAL378_bex> {\"id\": 1, \"label\": \"item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 2, \"label\": \"item 2 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 3, \"label\": \"item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_5\", \"payload\": {\"hold\": true, \"exists\": true, \"scroll\": true}}\nLOCAL378_bex> QA378_local378_5_END\nLOCAL378_bex> {\"id\": 4, \"label\": \"item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 5, \"label\": \"item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 6, \"label\": \"item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 7, \"label\": \"item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 8, \"label\": \"item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 9, \"label\": \"item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 10, \"label\": \"item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_7\", \"payload\": {}}\nLOCAL378_bex> QA378_local378_7_END\nLOCAL378_bex> {\"id\": 2, \"label\": \"item 2 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_8\", \"payload\": {}}\nLOCAL378_bex> QA378_local378_8_END\nLOCAL378_bex> {\"id\": 1, \"label\": \"item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_9\", \"payload\": {}}\nLOCAL378_bex> QA378_local378_9_END\nLOCAL378_bex> {\"id\": 10, \"label\": \"item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_10\", \"payload\": {}}\nLOCAL378_bex> QA378_local378_10_END\nLOCAL378_bex> LOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_11\", \"payload\": {}}\nLOCAL378_bex> QA378_local378_11_END\nLOCAL378_bex> {\"id\": 10, \"label\": \"item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_12\", \"payload\": {}}\nLOCAL378_bex> QA378_local378_12_END\nLOCAL378_bex> LOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_13\", \"payload\": {}}\nLOCAL378_bex> QA378_local378_13_END\nLOCAL378_bex> {\"id\": 8, \"label\": \"item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_14\", \"payload\": {}}\nLOCAL378_bex> QA378_local378_14_END\nLOCAL378_bex> {\"id\": 8, \"label\": \"item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_15\", \"payload\": {}}\nLOCAL378_bex> QA378_local378_15_END\nLOCAL378_bex> {\"id\": 6, \"label\": \"item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_16\", \"payload\": {}}\nLOCAL378_bex> QA378_local378_16_END\nLOCAL378_bex> LOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_17\", \"payload\": {\"hold\": false, \"exists\": false, \"scroll\": false}}\nLOCAL378_bex> QA378_local378_17_END\nLOCAL378_bex> ERROR:  cursor \"qa378_local378_hold\" does not exist\nLOCAL378_bex> QA378_local378_18_STATE 34000\nLOCAL378_bex> LOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_18\", \"payload\": [{\"id\": 1, \"label\": \"item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 2, \"label\": \"updated two caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 3, \"label\": \"item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 4, \"label\": \"item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 5, \"label\": \"item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 6, \"label\": \"item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 7, \"label\": \"item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 8, \"label\": \"item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 9, \"label\": \"item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 10, \"label\": \"item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 11, \"label\": \"new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00\"}]}\nLOCAL378_bex> QA378_local378_18_END\nLOCAL378_bex> {\"id\": 1, \"label\": \"item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 2, \"label\": \"updated two caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_19\", \"payload\": {\"hold\": false, \"exists\": false, \"scroll\": false}}\nLOCAL378_bex> QA378_local378_19_END\nLOCAL378_bex> ERROR:  cursor \"qa378_local378_normal\" does not exist\nLOCAL378_bex> QA378_local378_20_STATE 34000\nLOCAL378_bex> LOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_20\", \"payload\": [{\"id\": 1, \"label\": \"item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 2, \"label\": \"updated two caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 3, \"label\": \"item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 4, \"label\": \"item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 5, \"label\": \"item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 6, \"label\": \"item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 7, \"label\": \"item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 8, \"label\": \"item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 9, \"label\": \"item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 10, \"label\": \"item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 11, \"label\": \"new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00\"}]}\nLOCAL378_bex> QA378_local378_20_END\nLOCAL378_bex> {\"id\": 1, \"label\": \"item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 2, \"label\": \"updated two caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 3, \"label\": \"item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 4, \"label\": \"item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 5, \"label\": \"item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 6, \"label\": \"item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 7, \"label\": \"item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 8, \"label\": \"item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 9, \"label\": \"item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 10, \"label\": \"item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\n{\"id\": 11, \"label\": \"new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_25\", \"payload\": {\"hold\": false, \"exists\": false, \"scroll\": false}}\nLOCAL378_bex> QA378_local378_25_END\nLOCAL378_bex> {\"id\": 2, \"label\": \"updated two caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_bex\"}\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_26\", \"payload\": true}\nLOCAL378_bex> QA378_local378_26_END\nLOCAL378_bex> LOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_27\", \"payload\": false}\nLOCAL378_bex> QA378_local378_27_END\nLOCAL378_bex> ERROR:  prepared statement \"qa378_local378_prepared\" does not exist\nLOCAL378_bex> QA378_local378_28_STATE 26000\nLOCAL378_bex> LOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_28\", \"payload\": [{\"id\": 1, \"label\": \"item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 2, \"label\": \"updated two caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 3, \"label\": \"item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 4, \"label\": \"item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 5, \"label\": \"item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 6, \"label\": \"item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 7, \"label\": \"item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 8, \"label\": \"item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 9, \"label\": \"item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 10, \"label\": \"item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 11, \"label\": \"new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00\"}]}\nLOCAL378_bex> QA378_local378_28_END\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_29\", \"payload\": {\"cursors\": 0, \"prepared\": 0}}\nLOCAL378_bex> QA378_local378_29_END\nLOCAL378_bex> NOTICE:  drop cascades to table qa378_local378.items\nLOCAL378_bex> {\"pid\": 23437, \"frame\": \"QA378_local378_31\", \"payload\": true}\nLOCAL378_bex> QA378_local378_31_END\nLOCAL378_bex> ",
+        "own_process_group_cleaned": true,
+        "events": []
+      }
+    },
+    "render": {
+      "intent": "finite native persistent psql client with private config/history",
+      "command": [
+        "local-psql",
+        "<own-unix-socket>"
+      ],
+      "PID": 23438,
+      "PGID": 23438,
+      "backend_pid": 23439,
+      "natural_exit": 0,
+      "PTY": {
+        "stdin_stdout_TTY": true,
+        "controlling_terminal": true,
+        "terminal_ISIG_enabled": true,
+        "terminal_echo_disabled": true,
+        "rows": 40,
+        "columns": 140,
+        "elapsed": 0.04,
+        "native_exit": 0,
+        "output": "LOCAL378_render> LOCAL378_render> {\"pid\": 23439, \"frame\": \"QA378_local378_2\", \"payload\": {\"user\": \"qa378\", \"major\": 18, \"database\": \"postgres\", \"encoding\": \"UTF8\", \"lock_timeout\": \"500ms\", \"statement_timeout\": \"10s\", \"idle_in_transaction_session_timeout\": \"30s\"}}\nLOCAL378_render> QA378_local378_2_END\nLOCAL378_render> {\"pid\": 23439, \"frame\": \"QA378_local378_3\", \"payload\": true}\nLOCAL378_render> QA378_local378_3_END\nLOCAL378_render> LOCAL378_render> {\"pid\": 23439, \"frame\": \"QA378_local378_6\", \"payload\": [{\"id\": 1, \"label\": \"item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 2, \"label\": \"updated two caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 3, \"label\": \"item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 4, \"label\": \"item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 5, \"label\": \"item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 6, \"label\": \"item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 7, \"label\": \"item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 8, \"label\": \"item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 9, \"label\": \"item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 10, \"label\": \"item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 11, \"label\": \"new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00\"}]}\nLOCAL378_render> QA378_local378_6_END\nLOCAL378_render> {\"id\": 1, \"label\": \"item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_render\"}\nLOCAL378_render> {\"pid\": 23439, \"frame\": \"QA378_local378_21\", \"payload\": {\"hold\": false, \"exists\": false, \"scroll\": false}}\nLOCAL378_render> QA378_local378_21_END\nLOCAL378_render> ERROR:  cursor \"qa378_local378_rolled\" does not exist\nLOCAL378_render> QA378_local378_22_STATE 34000\nLOCAL378_render> LOCAL378_render> {\"pid\": 23439, \"frame\": \"QA378_local378_22\", \"payload\": [{\"id\": 1, \"label\": \"item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 2, \"label\": \"updated two caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 3, \"label\": \"item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 4, \"label\": \"item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 5, \"label\": \"item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 6, \"label\": \"item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 7, \"label\": \"item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 8, \"label\": \"item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 9, \"label\": \"item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 10, \"label\": \"item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00\"}, {\"id\": 11, \"label\": \"new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00\"}]}\nLOCAL378_render> QA378_local378_22_END\nLOCAL378_render> {\"id\": 1, \"label\": \"item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_render\"}\n{\"id\": 2, \"label\": \"updated two caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_render\"}\n{\"id\": 3, \"label\": \"item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00\", \"cursor_token\": \"QA378_local378_ROWS_render\"}\nLOCAL378_render> {\"pid\": 23439, \"frame\": \"QA378_local378_23\", \"payload\": {\"hold\": false, \"exists\": true, \"scroll\": false}}\nLOCAL378_render> QA378_local378_23_END\nLOCAL378_render> ERROR:  cursor can only scan forward\nHINT:  Declare it with SCROLL option to enable backward scan.\nLOCAL378_render> QA378_local378_24_STATE 55000\nLOCAL378_render> LOCAL378_render> {\"pid\": 23439, \"frame\": \"QA378_local378_24\", \"payload\": {\"hold\": false, \"exists\": false, \"scroll\": false}}\nLOCAL378_render> QA378_local378_24_END\nLOCAL378_render> {\"pid\": 23439, \"frame\": \"QA378_local378_30\", \"payload\": {\"cursors\": 0, \"prepared\": 0}}\nLOCAL378_render> QA378_local378_30_END\nLOCAL378_render> {\"pid\": 23439, \"frame\": \"QA378_local378_32\", \"payload\": true}\nLOCAL378_render> QA378_local378_32_END\nLOCAL378_render> ",
+        "own_process_group_cleaned": true,
+        "events": []
+      }
+    }
+  },
+  "original_rows": [
+    {
+      "id": 1,
+      "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+    },
+    {
+      "id": 2,
+      "label": "item 2 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+    },
+    {
+      "id": 3,
+      "label": "item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+    },
+    {
+      "id": 4,
+      "label": "item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+    },
+    {
+      "id": 5,
+      "label": "item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+    },
+    {
+      "id": 6,
+      "label": "item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+    },
+    {
+      "id": 7,
+      "label": "item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+    },
+    {
+      "id": 8,
+      "label": "item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+    },
+    {
+      "id": 9,
+      "label": "item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+    },
+    {
+      "id": 10,
+      "label": "item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+    }
+  ],
+  "current_rows": [
+    {
+      "id": 1,
+      "label": "item 1 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+    },
+    {
+      "id": 2,
+      "label": "updated two caf\u00e9 \u65e5\u672c \ud83d\ude00"
+    },
+    {
+      "id": 3,
+      "label": "item 3 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+    },
+    {
+      "id": 4,
+      "label": "item 4 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+    },
+    {
+      "id": 5,
+      "label": "item 5 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+    },
+    {
+      "id": 6,
+      "label": "item 6 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+    },
+    {
+      "id": 7,
+      "label": "item 7 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+    },
+    {
+      "id": 8,
+      "label": "item 8 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+    },
+    {
+      "id": 9,
+      "label": "item 9 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+    },
+    {
+      "id": 10,
+      "label": "item 10 caf\u00e9 \u65e5\u672c \ud83d\ude00"
+    },
+    {
+      "id": 11,
+      "label": "new eleven caf\u00e9 \u65e5\u672c \ud83d\ude00"
+    }
+  ],
+  "cursor_names": [
+    "qa378_local378_hold",
+    "qa378_local378_normal",
+    "qa378_local378_rolled",
+    "qa378_local378_noscroll",
+    "qa378_local378_fresh"
+  ],
+  "prepared_name": "qa378_local378_prepared",
+  "owned_schema_intent": {
+    "schema": "qa378_local378",
+    "before_absent": true
+  },
+  "pass": true,
+  "schema_removed": true,
+  "local_server_stopped": true,
+  "local_data_socket_history_removed": true,
+  "original_qualification_text": "own local PostgreSQL18.6/psql18.6 prerequisite, not hosted PG15 or native wrappers"
+}

@@ -1,0 +1,93 @@
+from pathlib import Path
+import sys,os,json,time,subprocess,signal,shutil,re,termios,fcntl,struct
+from importlib.machinery import SourceFileLoader
+P=Path(__file__).resolve().parent;mod=SourceFileLoader('qa366_pty',str(P/'sweep356-pubsub.py')).load_module();Session=mod.Session;quoted=mod.quoted;ANSI=mod.ANSI
+
+def decoded(raw):
+ values=[]
+ for line in ANSI.sub('',bytes(raw).decode(errors='replace')).splitlines():
+  try:v=json.loads(line)
+  except ValueError:continue
+  values.append(v)
+ return values
+
+def journey(nonce,build,persist,events,resume_empty=False):
+ key='qa366_'+nonce+':stream';wrong='qa366_'+nonce+':ordinary-string';group='workers-'+nonce;entries=[['1-0',['payload','line1\r\nline2 café 日本 😀\x00tail','actor','render']],['2-0',['payload','','actor','render']]]
+ def start(label,actor,args):
+  e={'label':label,'actor':actor,'intent':'ordinary stream operation on own nonce fixture; no replay after ambiguous mutation'};events.append(e);persist();flags=['--json','-2','--quoted-input',*(quoted(str(a)) for a in args)];cmd,env,logical,cleanup=build(actor,flags);session=Session(cmd,env);fcntl.ioctl(session.master,termios.TIOCSWINSZ,struct.pack('HHHH',40,140,0,0));return e,session,logical,cleanup
+ def finish(state,expect=None,predicate=None):
+  e,s,logical,cleanup=state
+  try:
+   code=s.finish();v=decoded(s.raw)
+   if e['label']=='supported-command-type-error':
+    raw=ANSI.sub('',bytes(s.raw).decode(errors='replace')).strip();v=[{'error':json.loads(raw[6:])}] if raw.startswith('error:') else v;e['response_format']='native redis-cli error-prefixed JSON string; explicit parser'
+   if e['label'].startswith('own-blocked-consumer-observer-'):
+    v=[ANSI.sub('',bytes(s.raw).decode(errors='replace'))];e['response_format']='CLIENT LIST prints raw text even with --json; explicit command-specific parser'
+   e['observed_JSON']=v;e['expected']=expect;e['pass']=code==0 and (predicate(v) if predicate else v==[expect])
+  except Exception as err:e['pass']=False;e['error']=str(err)
+  finally:s.close();e['native']=s.record(logical);cleanup();persist()
+  print(json.dumps({'label':e['label'],'actor':e['actor'],'pass':e['pass']}),flush=True);assert e['pass'],e.get('error','response mismatch');return e
+ def call(label,actor,args,expect=None,predicate=None):return finish(start(label,actor,args),expect,predicate)
+ if resume_empty:
+  script="return {redis.call('XLEN',KEYS[1]),redis.call('EXISTS',KEYS[2]),redis.call('XPENDING',KEYS[1],ARGV[1])[1]}"
+  call('resume-proven-owned-empty-group','bex',['EVAL',script,'2',key,wrong,group],[0,0,0])
+ else:
+  call('fresh-own-key-absence','bex',['EXISTS',key,wrong],0)
+  call('create-consumer-group','bex',['XGROUP','CREATE',key,group,'0','MKSTREAM'],'OK')
+ state=start('blocking-consumer-delivery','bex',['XREADGROUP','GROUP',group,'worker-a','COUNT','2','BLOCK','7000','STREAMS',key,'>'])
+ try:
+  if state[2][0] in ('bex','render'):
+   e,reader,logical,cleanup=state;e['drained_terminal_until_external_client_started']=reader.wait(lambda:b'Warning: Using a password' in reader.raw,12);persist();assert e['drained_terminal_until_external_client_started'],'external data client did not start in bound'
+  observed=False
+  for attempt in range(4):
+   e=call('own-blocked-consumer-observer-'+str(attempt+1),'render',['CLIENT','LIST'],predicate=lambda v:len(v)==1 and isinstance(v[0],str));rows=[dict(pair.split('=',1) for pair in row.split() if '=' in pair) for row in e['observed_JSON'][0].splitlines()];found=[v for v in rows if v.get('cmd')=='xreadgroup' and 'b' in v.get('flags','')];e['blocked_XREADGROUP_observed']=bool(found);persist()
+   if found:observed=True;break
+   time.sleep(.15)
+  assert observed,'own blocked stream reader not observed before publish'
+  script="local a=redis.call('XADD',KEYS[1],'1-0','payload',ARGV[1],'actor','render');local b=redis.call('XADD',KEYS[1],'2-0','payload',ARGV[2],'actor','render');return {a,b}"
+  call('atomic-two-message-producer','render',['EVAL',script,'1',key,entries[0][1][1],entries[1][1][1]],['1-0','2-0'])
+  finish(state,[[key,entries]])
+ finally:
+  e,s,logical,cleanup=state
+  if not s.closed:s.close();e['native']=s.record(logical,'bounded own cleanup after incomplete operation');cleanup();persist()
+ call('pending-worker-a','render',['XPENDING',key,group],predicate=lambda v:len(v)==1 and v[0][:3]==[2,'1-0','2-0'] and v[0][3] in ([['worker-a','2']],[['worker-a',2]]))
+ call('claim-pending-to-worker-b','render',['XAUTOCLAIM',key,group,'worker-b','0','0-0','COUNT','10'],['0-0',entries,[]])
+ call('pending-worker-b','bex',['XPENDING',key,group],predicate=lambda v:len(v)==1 and v[0][:3]==[2,'1-0','2-0'] and v[0][3] in ([['worker-b','2']],[['worker-b',2]]))
+ call('acknowledge-transferred-messages','bex',['XACK',key,group,'1-0','2-0'],2)
+ call('repeat-acknowledgement','render',['XACK',key,group,'1-0','2-0'],0)
+ call('pending-empty-after-ack','bex',['XPENDING',key,group],predicate=lambda v:len(v)==1 and v[0][0]==0)
+ third=['3-0',['payload','new work','actor','bex']];call('new-work-after-handoff','bex',['XADD',key,'3-0',*third[1]],'3-0')
+ call('new-work-delivered-once','render',['XREADGROUP','GROUP',group,'worker-c','COUNT','2','STREAMS',key,'>'],[[key,[third]]])
+ call('new-work-acknowledgement','render',['XACK',key,group,'3-0'],1)
+ e=call('empty-queue-block-timeout','bex',['XREADGROUP','GROUP',group,'worker-a','COUNT','1','BLOCK','250','STREAMS',key,'>'],None);assert e['native']['elapsed']>=.2
+ call('stored-payloads-preserved','render',['XRANGE',key,'-','+'],entries+[third])
+ call('wrongtype-control-setup','bex',['SET',wrong,'ordinary-string'],'OK')
+ call('supported-command-type-error','render',['XADD',wrong,'1-0','payload','must not replace value'],predicate=lambda v:len(v)==1 and isinstance(v[0],dict) and 'WRONGTYPE' in v[0].get('error',''))
+ call('wrongtype-preserves-value','bex',['GET',wrong],'ordinary-string')
+ call('delete-own-stream-and-string','render',['DEL',key,wrong],2)
+ call('own-keys-absent','bex',['EXISTS',key,wrong],0)
+ return {'pass':True,'events':len(events),'binary_UTF8_and_empty_payloads_exact':True,'blocked_reader_proved_before_publish':True,'pending_entries_transferred':2,'first_ack':2,'repeat_ack':0,'later_new_delivery':1,'empty_250ms_block_returns_null':True,'wrongtype_preserves_original_string':True,'own_keys_deleted':True,'qualification':'one group, three messages, three sequential consumers; no crash/restart/durability or high-concurrency claim'}
+if __name__=='__main__':
+ os.umask(0o077);mode=sys.argv[1];assert mode in ('preflight','live')
+ if mode=='preflight':
+  sock=P/'sweep366-preflight.sock';assert not sock.exists();out=(P/'sweep366-local-server.log').open('wb');proc=subprocess.Popen([shutil.which('redis-server'),'--port','0','--unixsocket',str(sock),'--unixsocketperm','700','--save','','--appendonly','no','--loglevel','warning'],stdout=out,stderr=out,start_new_session=True);result={'qualification':'local installed redis-server/redis-cli stream and PTY prerequisite; not Bex evidence','events':[]}
+  def persist():(P/'sweep366-local-preflight.json').write_text(json.dumps(result,indent=2,ensure_ascii=False))
+  persist()
+  try:
+   for _ in range(60):
+    if sock.exists():break
+    time.sleep(.04)
+   assert sock.exists()
+   def build(actor,flags):return [shutil.which('redis-cli'),'-s',str(sock),*flags],None,['local-redis-cli','-s','<own-local-socket>',*flags],lambda:None
+   result['summary']=journey('local366',build,persist,result['events'])
+  finally:
+   os.killpg(proc.pid,signal.SIGTERM);proc.wait(timeout=3);out.close();sock.unlink(missing_ok=True);result['server_stopped']=True;result['socket_removed']=not sock.exists();persist()
+  print(json.dumps({'local_summary':result.get('summary'),'server_stopped':True}))
+ else:
+  f=P/'sweep366-common.py';sys.argv=[str(f),'streams','bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==366 and v.get('id'));sid=x['id'];assert x['workspace']==WS and x['create_result']['native_exit']==0 and x['create_response']['id']==sid and not x.get('stream_events');d,v=detail();assert v['status']=='available' and v['public'];cfg=P/'render-config/cli.yaml';assert not cfg.exists();x['stream_events']=[];save()
+  def build(actor,flags):
+   config=P/('config/cli.yaml' if actor=='bex' else 'render-config/cli.yaml');prefix='BEX' if actor=='bex' else 'RENDER'
+   if actor=='render':assert not config.exists();shutil.copyfile(P/'config/cli.yaml',config);config.chmod(0o600)
+   cleanup=(lambda:config.unlink(missing_ok=True)) if actor=='render' else (lambda:None);env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_','REDIS'))};env.update({prefix+'_HOST':'https://api.bex.co/v1/',prefix+'_CLI_CONFIG_PATH':str(config),prefix+'_CLI_CONFIG_DIR':str(config.parent),prefix+'_WORKSPACE':WS,prefix+'_NO_UPDATE_NOTIFIER':'1','BEX_CLI_DISABLE_ANALYTICS':'1','DO_NOT_TRACK':'1','BROWSER':'/usr/bin/true'});args=['kv-cli',sid,'-o','interactive','--',*flags];return [str(P/('release/bex' if actor=='bex' else 'render-pin')),*args],env,[actor,*args],cleanup
+  try:x['stream_summary']=journey(x['nonce'],build,save,x['stream_events'],resume_empty=x.get('stream_resume_from_created_empty_group',False));save()
+  finally:cfg.unlink(missing_ok=True);x['stream_copied_Render_config_removed']=not cfg.exists();save()

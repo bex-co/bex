@@ -1,0 +1,34 @@
+from pathlib import Path
+import json,os,subprocess,shutil,time,secrets,tarfile,io,re
+P=Path(__file__).resolve().parent;R=Path('/Volumes/nvme4tbfish/projects/bex8');os.umask(0o077);ref=json.loads((P/'sweep382-primary-reference.json').read_text());source=P/'sweep351-primary-source';remote=subprocess.check_output(['git','-C',str(source),'ls-remote','origin','refs/heads/'+ref['branch']],text=True,timeout=30);assert remote.split()[0]==ref['commit'];archive=subprocess.check_output(['git','-C',str(source),'archive','--format=tar',ref['commit']],timeout=20)
+base=re.search(r'line: "3\.12", version: "[^"]+", image: "([^"]+)"',(R/'lego/operator/internal/build/native.go').read_text())[1];supplier=re.search(r'const nativeFFmpegImage = "([^"]+)"',(R/'lego/operator/internal/build/nativeffmpeg.go').read_text())[1];nonce=secrets.token_hex(5);D=P/('sweep382-local-container-'+nonce);D.mkdir(mode=0o700);recipe=D/'recipe';recipe.mkdir();project=D/'project';project.mkdir();tag='bex-qa382-media-prereq:'+nonce;name='bex-qa382-media-'+nonce;container=None;result={'qualification':'isolated own local Python3.12 + exact pinned Bex static media supplier prerequisite; original real Pydub source/conversion and runtime re-encode/ffprobe/PCM checks; no native generator or hosting claim','public_ref':remote,'base':base,'supplier':supplier,'nonce':nonce,'own_image_tag':tag,'own_container_name':name,'network':'none','host_ports':[],'marker':'QA382_LOCAL_CONTAINER_'+nonce,'steps':[]};ledger=P/'sweep382-local-container-preflight.json'
+def save():ledger.write_text(json.dumps(result,indent=2))
+def run(args,bound=30,check=True):
+ r=subprocess.run(args,text=True,capture_output=True,timeout=bound);v={'command':args,'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr};result['steps'].append(v);save()
+ if check:assert r.returncode==0,'own local container prerequisite failed; inspect private ledger'
+ return r
+save()
+try:
+ assert run(['docker','image','inspect',tag],check=False).returncode!=0 and run(['docker','container','inspect',name],check=False).returncode!=0
+ (recipe/'Dockerfile').write_text('FROM '+base+'\nCOPY --from='+supplier+' /ffmpeg /ffprobe /usr/local/bin/\nLABEL bex.qa.sweep="382" bex.qa.nonce="'+nonce+'"\nWORKDIR /case\n')
+ run(['docker','build','--progress','plain','-t',tag,str(recipe)],bound=240);result['owned_image_id']=json.loads(run(['docker','image','inspect',tag]).stdout)[0]['Id'];save()
+ with tarfile.open(fileobj=io.BytesIO(archive)) as tar:tar.extractall(project,filter='data')
+ shutil.copyfile(P/'sweep382-probe.py',project/'qa382-probe.py');(project/'qa382-marker.json').write_text(json.dumps(result['marker']));(project/'qa382-reference.json').write_text(json.dumps(ref))
+ script="set -e\npython qa382-probe.py --prepare\npython -c \"from pydub import AudioSegment; audio=AudioSegment.from_wav('qa382-input.wav'); assert len(audio)==100; audio.export('qa382-output.mp3',format='mp3')\"\npython qa382-probe.py --build\nexec python qa382-probe.py"
+ r=run(['docker','create','--name',name,'--label','bex.qa.nonce='+nonce,'--network','none','--volume',str(project)+':/case','--workdir','/case','--env','PYTHON_VERSION=3.12','--env','PORT=3000','--entrypoint','/bin/bash',tag,'-c',script]);container=r.stdout.strip();assert re.fullmatch('[a-f0-9]{64}',container);result['owned_container_id']=container;save();run(['docker','start',container])
+ started=time.monotonic()
+ for attempt in range(40):
+  r=run(['docker','exec',container,'python','-c',"import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:3000/',timeout=1).read().decode())"],bound=10,check=False)
+  if r.returncode==0:v=json.loads(r.stdout);break
+  state=json.loads(run(['docker','container','inspect',container]).stdout)[0]['State'];assert state['Running'],'own local media process exited; inspect retained logs'
+  assert time.monotonic()-started<65;time.sleep(.25)
+ else:raise RuntimeError('own local media HTTP readiness absent')
+ assert v['marker']==v['built']['marker']==result['marker'] and v['files']==v['built']['files']==ref['files'] and v['converted_at_runtime'] is True and all(s['media']['CLI_PCM_matches_input'] and s['media']['Pydub_decoded']['PCM_matches_input'] and s['tools']['ffmpeg']['status']==s['tools']['ffprobe']['status']==0 for s in (v,v['built'])) and v['retained_build_media']['sha256']==v['built']['media']['sha256'];result.update(info=v,pass_=True);save()
+finally:
+ if container:
+  result['container_logs']=run(['docker','logs',container],check=False).__dict__.get('stdout');run(['docker','rm','--force',container]);result['own_container_absent']=run(['docker','container','inspect',container],check=False).returncode!=0
+ r=run(['docker','image','inspect',tag],check=False)
+ if r.returncode==0:
+  image=json.loads(r.stdout)[0];assert image['Config']['Labels'].get('bex.qa.nonce')==nonce;run(['docker','image','rm',tag])
+ result['own_tag_absent']=run(['docker','image','inspect',tag],check=False).returncode!=0;shutil.rmtree(D);result['own_scratch_removed']=not D.exists();save()
+print(json.dumps({'local_pinned_supplier_original_and_runtime_MP3':result.get('pass_'),'real_ffprobe_exact_PCM_decode':result.get('pass_'),'own_container_absent':result.get('own_container_absent'),'own_image_tag_absent':result['own_tag_absent'],'scratch_removed':result['own_scratch_removed']}))

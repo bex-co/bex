@@ -1,0 +1,837 @@
+{
+  "qualification": "ordinary client-side psql large-object import/export, application-owned SQL byte patches and rollback; no server filesystem operation",
+  "steps": [
+    {
+      "actor_label": "bex",
+      "label": "initial large-object catalog",
+      "command": "SELECT jsonb_build_object('count',(SELECT count(*) FROM pg_largeobject_metadata))::text;",
+      "native_exit": 0,
+      "stdout": "{\"count\": 0}\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "render",
+      "label": "missing local file",
+      "command": "\\lo_import '/tmp/bex373-78ard5lo/own transfer λ/never-created λ.bin'",
+      "native_exit": 1,
+      "stdout": "",
+      "stderr": "could not open file \"/tmp/bex373-78ard5lo/own transfer λ/never-created λ.bin\": No such file or directory\n"
+    },
+    {
+      "actor_label": "bex",
+      "label": "failed import allocated no object",
+      "command": "SELECT jsonb_build_object('count',(SELECT count(*) FROM pg_largeobject_metadata))::text;",
+      "native_exit": 0,
+      "stdout": "{\"count\": 0}\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "bex",
+      "label": "bex import",
+      "command": "\\lo_import '/tmp/bex373-78ard5lo/own transfer λ/bex upload λ.bin' 'qa373_local373_bex'",
+      "native_exit": 0,
+      "stdout": "lo_import 16384\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "render",
+      "label": "render independently reads bex",
+      "command": "SELECT jsonb_build_object('oid',16384,'bytes',octet_length(lo_get(16384)),'md5',md5(lo_get(16384)))::text;",
+      "native_exit": 0,
+      "stdout": "{\"md5\": \"46b039fb7c1f00a60d39738084a176c4\", \"oid\": 16384, \"bytes\": 2097409}\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "render",
+      "label": "render initial bex",
+      "command": "\\lo_export 16384 '/tmp/bex373-78ard5lo/own transfer λ/render initial bex λ.bin'",
+      "native_exit": 0,
+      "stdout": "lo_export\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "bex",
+      "label": "bex commit page-boundary patch",
+      "command": "BEGIN; SELECT lo_put(16384,65530,decode('716133373320636f6d6d6974746564206c6f63616c33373300ff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f','hex')); COMMIT; SELECT jsonb_build_object('bytes',octet_length(lo_get(16384)),'md5',md5(lo_get(16384)))::text;",
+      "native_exit": 0,
+      "stdout": "\n{\"md5\": \"d95a5570db1334982be7e632cd79820c\", \"bytes\": 2097409}\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "render",
+      "label": "render cross-client patched read bex",
+      "command": "SELECT jsonb_build_object('oid',16384,'bytes',octet_length(lo_get(16384)),'md5',md5(lo_get(16384)))::text;",
+      "native_exit": 0,
+      "stdout": "{\"md5\": \"d95a5570db1334982be7e632cd79820c\", \"oid\": 16384, \"bytes\": 2097409}\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "bex",
+      "label": "bex invalid transaction rolls patch back",
+      "command": "BEGIN; SELECT lo_put(16384,2040,decode('716133373320726f6c6c6261636b206d75737420646973617070656172','hex')); SELECT 1/0; COMMIT;",
+      "native_exit": 1,
+      "stdout": "\n",
+      "stderr": "ERROR:  division by zero\n"
+    },
+    {
+      "actor_label": "render",
+      "label": "render verifies rollback bex",
+      "command": "SELECT jsonb_build_object('oid',16384,'bytes',octet_length(lo_get(16384)),'md5',md5(lo_get(16384)))::text;",
+      "native_exit": 0,
+      "stdout": "{\"md5\": \"d95a5570db1334982be7e632cd79820c\", \"oid\": 16384, \"bytes\": 2097409}\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "render",
+      "label": "render final bex",
+      "command": "\\lo_export 16384 '/tmp/bex373-78ard5lo/own transfer λ/render final bex λ.bin'",
+      "native_exit": 0,
+      "stdout": "lo_export\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "render",
+      "label": "render import",
+      "command": "\\lo_import '/tmp/bex373-78ard5lo/own transfer λ/render upload λ.bin' 'qa373_local373_render'",
+      "native_exit": 0,
+      "stdout": "lo_import 16385\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "bex",
+      "label": "bex independently reads render",
+      "command": "SELECT jsonb_build_object('oid',16385,'bytes',octet_length(lo_get(16385)),'md5',md5(lo_get(16385)))::text;",
+      "native_exit": 0,
+      "stdout": "{\"md5\": \"684f9f19b7d62eb304bee00466422278\", \"oid\": 16385, \"bytes\": 2097409}\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "bex",
+      "label": "bex initial render",
+      "command": "\\lo_export 16385 '/tmp/bex373-78ard5lo/own transfer λ/bex initial render λ.bin'",
+      "native_exit": 0,
+      "stdout": "lo_export\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "render",
+      "label": "render commit page-boundary patch",
+      "command": "BEGIN; SELECT lo_put(16385,65530,decode('716133373320636f6d6d6974746564206c6f63616c33373300ff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f','hex')); COMMIT; SELECT jsonb_build_object('bytes',octet_length(lo_get(16385)),'md5',md5(lo_get(16385)))::text;",
+      "native_exit": 0,
+      "stdout": "\n{\"md5\": \"95159cfdb12f8ba6c103e82473de4b0f\", \"bytes\": 2097409}\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "bex",
+      "label": "bex cross-client patched read render",
+      "command": "SELECT jsonb_build_object('oid',16385,'bytes',octet_length(lo_get(16385)),'md5',md5(lo_get(16385)))::text;",
+      "native_exit": 0,
+      "stdout": "{\"md5\": \"95159cfdb12f8ba6c103e82473de4b0f\", \"oid\": 16385, \"bytes\": 2097409}\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "render",
+      "label": "render invalid transaction rolls patch back",
+      "command": "BEGIN; SELECT lo_put(16385,2040,decode('716133373320726f6c6c6261636b206d75737420646973617070656172','hex')); SELECT 1/0; COMMIT;",
+      "native_exit": 1,
+      "stdout": "\n",
+      "stderr": "ERROR:  division by zero\n"
+    },
+    {
+      "actor_label": "bex",
+      "label": "bex verifies rollback render",
+      "command": "SELECT jsonb_build_object('oid',16385,'bytes',octet_length(lo_get(16385)),'md5',md5(lo_get(16385)))::text;",
+      "native_exit": 0,
+      "stdout": "{\"md5\": \"95159cfdb12f8ba6c103e82473de4b0f\", \"oid\": 16385, \"bytes\": 2097409}\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "bex",
+      "label": "bex final render",
+      "command": "\\lo_export 16385 '/tmp/bex373-78ard5lo/own transfer λ/bex final render λ.bin'",
+      "native_exit": 0,
+      "stdout": "lo_export\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "render",
+      "label": "empty object create",
+      "command": "SELECT jsonb_build_object('oid',lo_from_bytea(0,''::bytea))::text;",
+      "native_exit": 0,
+      "stdout": "{\"oid\": \"16386\"}\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "bex",
+      "label": "empty object cross read",
+      "command": "SELECT jsonb_build_object('oid',16386,'bytes',octet_length(lo_get(16386)),'md5',md5(lo_get(16386)))::text;",
+      "native_exit": 0,
+      "stdout": "{\"md5\": \"d41d8cd98f00b204e9800998ecf8427e\", \"oid\": 16386, \"bytes\": 0}\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "bex",
+      "label": "empty object export",
+      "command": "\\lo_export 16386 '/tmp/bex373-78ard5lo/own transfer λ/empty object export λ.bin'",
+      "native_exit": 0,
+      "stdout": "lo_export\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "bex",
+      "label": "unlink own 16384",
+      "command": "SELECT jsonb_build_object('unlinked',lo_unlink(16384))::text;",
+      "native_exit": 0,
+      "stdout": "{\"unlinked\": 1}\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "render",
+      "label": "unlink own 16385",
+      "command": "SELECT jsonb_build_object('unlinked',lo_unlink(16385))::text;",
+      "native_exit": 0,
+      "stdout": "{\"unlinked\": 1}\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "bex",
+      "label": "unlink own 16386",
+      "command": "SELECT jsonb_build_object('unlinked',lo_unlink(16386))::text;",
+      "native_exit": 0,
+      "stdout": "{\"unlinked\": 1}\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "render",
+      "label": "all own large objects absent",
+      "command": "SELECT jsonb_build_object('remaining',(SELECT count(*) FROM pg_largeobject_metadata WHERE oid IN (16384,16385,16386)))::text;",
+      "native_exit": 0,
+      "stdout": "{\"remaining\": 0}\n",
+      "stderr": ""
+    },
+    {
+      "actor_label": "bex",
+      "label": "deleted own object expected error",
+      "command": "SELECT lo_get(16384);",
+      "native_exit": 1,
+      "stdout": "",
+      "stderr": "ERROR:  large object 16384 does not exist\n"
+    },
+    {
+      "actor_label": "render",
+      "label": "ordinary final query after error",
+      "command": "SELECT jsonb_build_object('one',1,'large_objects',(SELECT count(*) FROM pg_largeobject_metadata))::text;",
+      "native_exit": 0,
+      "stdout": "{\"one\": 1, \"large_objects\": 0}\n",
+      "stderr": ""
+    }
+  ],
+  "owned_objects": [
+    {
+      "actor": "bex",
+      "oid": 16384,
+      "import_receipt": "lo_import 16384\n",
+      "input": {
+        "bytes": 2097409,
+        "sha256": "cd83b495c2993a67c98e5d2c8852ee5c0e8c1e027ecd9f1b379d0292b9b26a81",
+        "md5": "46b039fb7c1f00a60d39738084a176c4"
+      },
+      "state": "unlinked by exact recorded own OID",
+      "committed_patch": {
+        "offset": 65530,
+        "hex": "716133373320636f6d6d6974746564206c6f63616c33373300ff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+        "expected": {
+          "bytes": 2097409,
+          "sha256": "d254a36bc3052ef1b3a1d36b9eab18acb3ab40b6007f2dbb694a7b5cb0cb8c27",
+          "md5": "d95a5570db1334982be7e632cd79820c"
+        }
+      }
+    },
+    {
+      "actor": "render",
+      "oid": 16385,
+      "import_receipt": "lo_import 16385\n",
+      "input": {
+        "bytes": 2097409,
+        "sha256": "221a326c91d611f391d9b4a136ce486d44c339a0f84a5e93ff07d134c2c1e5b2",
+        "md5": "684f9f19b7d62eb304bee00466422278"
+      },
+      "state": "unlinked by exact recorded own OID",
+      "committed_patch": {
+        "offset": 65530,
+        "hex": "716133373320636f6d6d6974746564206c6f63616c33373300ff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+        "expected": {
+          "bytes": 2097409,
+          "sha256": "d8243a126a174081ab24626b5885160939f290bdf8051ce3695784de31bac512",
+          "md5": "95159cfdb12f8ba6c103e82473de4b0f"
+        }
+      }
+    },
+    {
+      "actor": "render",
+      "oid": 16386,
+      "import_receipt": "{\"oid\": \"16386\"}\n",
+      "input": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "state": "unlinked by exact recorded own OID"
+    }
+  ],
+  "checks": [
+    {
+      "name": "initial large-object catalog exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "initial large-object catalog values",
+      "observed": {
+        "count": 0
+      },
+      "expected": {
+        "count": 0
+      },
+      "pass": true
+    },
+    {
+      "name": "missing local file exit",
+      "observed": 1,
+      "expected": 1,
+      "pass": true
+    },
+    {
+      "name": "missing file diagnostic",
+      "observed": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "name": "failed import allocated no object exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "failed import allocated no object values",
+      "observed": {
+        "count": 0
+      },
+      "expected": {
+        "count": 0
+      },
+      "pass": true
+    },
+    {
+      "name": "bex import exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "render independently reads bex exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "render independently reads bex values",
+      "observed": {
+        "md5": "46b039fb7c1f00a60d39738084a176c4",
+        "oid": 16384,
+        "bytes": 2097409
+      },
+      "expected": {
+        "oid": 16384,
+        "bytes": 2097409,
+        "md5": "46b039fb7c1f00a60d39738084a176c4"
+      },
+      "pass": true
+    },
+    {
+      "name": "render initial bex exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "render initial bex exact byte equality",
+      "observed": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "name": "render initial bex hash",
+      "observed": {
+        "bytes": 2097409,
+        "sha256": "cd83b495c2993a67c98e5d2c8852ee5c0e8c1e027ecd9f1b379d0292b9b26a81",
+        "md5": "46b039fb7c1f00a60d39738084a176c4"
+      },
+      "expected": {
+        "bytes": 2097409,
+        "sha256": "cd83b495c2993a67c98e5d2c8852ee5c0e8c1e027ecd9f1b379d0292b9b26a81",
+        "md5": "46b039fb7c1f00a60d39738084a176c4"
+      },
+      "pass": true
+    },
+    {
+      "name": "bex commit page-boundary patch exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "bex commit page-boundary patch values",
+      "observed": {
+        "md5": "d95a5570db1334982be7e632cd79820c",
+        "bytes": 2097409
+      },
+      "expected": {
+        "bytes": 2097409,
+        "md5": "d95a5570db1334982be7e632cd79820c"
+      },
+      "pass": true
+    },
+    {
+      "name": "render cross-client patched read bex exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "render cross-client patched read bex values",
+      "observed": {
+        "md5": "d95a5570db1334982be7e632cd79820c",
+        "oid": 16384,
+        "bytes": 2097409
+      },
+      "expected": {
+        "oid": 16384,
+        "bytes": 2097409,
+        "md5": "d95a5570db1334982be7e632cd79820c"
+      },
+      "pass": true
+    },
+    {
+      "name": "bex invalid transaction rolls patch back exit",
+      "observed": 1,
+      "expected": 1,
+      "pass": true
+    },
+    {
+      "name": "bex division error",
+      "observed": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "name": "render verifies rollback bex exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "render verifies rollback bex values",
+      "observed": {
+        "md5": "d95a5570db1334982be7e632cd79820c",
+        "oid": 16384,
+        "bytes": 2097409
+      },
+      "expected": {
+        "oid": 16384,
+        "bytes": 2097409,
+        "md5": "d95a5570db1334982be7e632cd79820c"
+      },
+      "pass": true
+    },
+    {
+      "name": "render final bex exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "render final bex exact byte equality",
+      "observed": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "name": "render final bex hash",
+      "observed": {
+        "bytes": 2097409,
+        "sha256": "d254a36bc3052ef1b3a1d36b9eab18acb3ab40b6007f2dbb694a7b5cb0cb8c27",
+        "md5": "d95a5570db1334982be7e632cd79820c"
+      },
+      "expected": {
+        "bytes": 2097409,
+        "sha256": "d254a36bc3052ef1b3a1d36b9eab18acb3ab40b6007f2dbb694a7b5cb0cb8c27",
+        "md5": "d95a5570db1334982be7e632cd79820c"
+      },
+      "pass": true
+    },
+    {
+      "name": "render import exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "bex independently reads render exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "bex independently reads render values",
+      "observed": {
+        "md5": "684f9f19b7d62eb304bee00466422278",
+        "oid": 16385,
+        "bytes": 2097409
+      },
+      "expected": {
+        "oid": 16385,
+        "bytes": 2097409,
+        "md5": "684f9f19b7d62eb304bee00466422278"
+      },
+      "pass": true
+    },
+    {
+      "name": "bex initial render exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "bex initial render exact byte equality",
+      "observed": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "name": "bex initial render hash",
+      "observed": {
+        "bytes": 2097409,
+        "sha256": "221a326c91d611f391d9b4a136ce486d44c339a0f84a5e93ff07d134c2c1e5b2",
+        "md5": "684f9f19b7d62eb304bee00466422278"
+      },
+      "expected": {
+        "bytes": 2097409,
+        "sha256": "221a326c91d611f391d9b4a136ce486d44c339a0f84a5e93ff07d134c2c1e5b2",
+        "md5": "684f9f19b7d62eb304bee00466422278"
+      },
+      "pass": true
+    },
+    {
+      "name": "render commit page-boundary patch exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "render commit page-boundary patch values",
+      "observed": {
+        "md5": "95159cfdb12f8ba6c103e82473de4b0f",
+        "bytes": 2097409
+      },
+      "expected": {
+        "bytes": 2097409,
+        "md5": "95159cfdb12f8ba6c103e82473de4b0f"
+      },
+      "pass": true
+    },
+    {
+      "name": "bex cross-client patched read render exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "bex cross-client patched read render values",
+      "observed": {
+        "md5": "95159cfdb12f8ba6c103e82473de4b0f",
+        "oid": 16385,
+        "bytes": 2097409
+      },
+      "expected": {
+        "oid": 16385,
+        "bytes": 2097409,
+        "md5": "95159cfdb12f8ba6c103e82473de4b0f"
+      },
+      "pass": true
+    },
+    {
+      "name": "render invalid transaction rolls patch back exit",
+      "observed": 1,
+      "expected": 1,
+      "pass": true
+    },
+    {
+      "name": "render division error",
+      "observed": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "name": "bex verifies rollback render exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "bex verifies rollback render values",
+      "observed": {
+        "md5": "95159cfdb12f8ba6c103e82473de4b0f",
+        "oid": 16385,
+        "bytes": 2097409
+      },
+      "expected": {
+        "oid": 16385,
+        "bytes": 2097409,
+        "md5": "95159cfdb12f8ba6c103e82473de4b0f"
+      },
+      "pass": true
+    },
+    {
+      "name": "bex final render exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "bex final render exact byte equality",
+      "observed": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "name": "bex final render hash",
+      "observed": {
+        "bytes": 2097409,
+        "sha256": "d8243a126a174081ab24626b5885160939f290bdf8051ce3695784de31bac512",
+        "md5": "95159cfdb12f8ba6c103e82473de4b0f"
+      },
+      "expected": {
+        "bytes": 2097409,
+        "sha256": "d8243a126a174081ab24626b5885160939f290bdf8051ce3695784de31bac512",
+        "md5": "95159cfdb12f8ba6c103e82473de4b0f"
+      },
+      "pass": true
+    },
+    {
+      "name": "empty object create exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "empty object cross read exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "empty object cross read values",
+      "observed": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "oid": 16386,
+        "bytes": 0
+      },
+      "expected": {
+        "oid": 16386,
+        "bytes": 0,
+        "md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "pass": true
+    },
+    {
+      "name": "empty object export exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "empty object export exact byte equality",
+      "observed": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "name": "empty object export hash",
+      "observed": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "expected": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "pass": true
+    },
+    {
+      "name": "unlink own 16384 exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "unlink own 16384 values",
+      "observed": {
+        "unlinked": 1
+      },
+      "expected": {
+        "unlinked": 1
+      },
+      "pass": true
+    },
+    {
+      "name": "unlink own 16385 exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "unlink own 16385 values",
+      "observed": {
+        "unlinked": 1
+      },
+      "expected": {
+        "unlinked": 1
+      },
+      "pass": true
+    },
+    {
+      "name": "unlink own 16386 exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "unlink own 16386 values",
+      "observed": {
+        "unlinked": 1
+      },
+      "expected": {
+        "unlinked": 1
+      },
+      "pass": true
+    },
+    {
+      "name": "all own large objects absent exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "all own large objects absent values",
+      "observed": {
+        "remaining": 0
+      },
+      "expected": {
+        "remaining": 0
+      },
+      "pass": true
+    },
+    {
+      "name": "deleted own object expected error exit",
+      "observed": 1,
+      "expected": 1,
+      "pass": true
+    },
+    {
+      "name": "deleted own object diagnostic",
+      "observed": true,
+      "expected": true,
+      "pass": true
+    },
+    {
+      "name": "ordinary final query after error exit",
+      "observed": 0,
+      "expected": 0,
+      "pass": true
+    },
+    {
+      "name": "ordinary final query after error values",
+      "observed": {
+        "one": 1,
+        "large_objects": 0
+      },
+      "expected": {
+        "one": 1,
+        "large_objects": 0
+      },
+      "pass": true
+    }
+  ],
+  "files": [
+    {
+      "role": "deterministic own input",
+      "path": "/tmp/bex373-78ard5lo/own transfer λ/bex upload λ.bin",
+      "actor": "bex",
+      "formula": "(i*31+7)%256",
+      "bytes": 2097409,
+      "sha256": "cd83b495c2993a67c98e5d2c8852ee5c0e8c1e027ecd9f1b379d0292b9b26a81",
+      "md5": "46b039fb7c1f00a60d39738084a176c4"
+    },
+    {
+      "role": "native local export",
+      "path": "/tmp/bex373-78ard5lo/own transfer λ/render initial bex λ.bin",
+      "actor": "render",
+      "bytes": 2097409,
+      "sha256": "cd83b495c2993a67c98e5d2c8852ee5c0e8c1e027ecd9f1b379d0292b9b26a81",
+      "md5": "46b039fb7c1f00a60d39738084a176c4"
+    },
+    {
+      "role": "native local export",
+      "path": "/tmp/bex373-78ard5lo/own transfer λ/render final bex λ.bin",
+      "actor": "render",
+      "bytes": 2097409,
+      "sha256": "d254a36bc3052ef1b3a1d36b9eab18acb3ab40b6007f2dbb694a7b5cb0cb8c27",
+      "md5": "d95a5570db1334982be7e632cd79820c"
+    },
+    {
+      "role": "deterministic own input",
+      "path": "/tmp/bex373-78ard5lo/own transfer λ/render upload λ.bin",
+      "actor": "render",
+      "formula": "(i*31+91)%256",
+      "bytes": 2097409,
+      "sha256": "221a326c91d611f391d9b4a136ce486d44c339a0f84a5e93ff07d134c2c1e5b2",
+      "md5": "684f9f19b7d62eb304bee00466422278"
+    },
+    {
+      "role": "native local export",
+      "path": "/tmp/bex373-78ard5lo/own transfer λ/bex initial render λ.bin",
+      "actor": "bex",
+      "bytes": 2097409,
+      "sha256": "221a326c91d611f391d9b4a136ce486d44c339a0f84a5e93ff07d134c2c1e5b2",
+      "md5": "684f9f19b7d62eb304bee00466422278"
+    },
+    {
+      "role": "native local export",
+      "path": "/tmp/bex373-78ard5lo/own transfer λ/bex final render λ.bin",
+      "actor": "bex",
+      "bytes": 2097409,
+      "sha256": "d8243a126a174081ab24626b5885160939f290bdf8051ce3695784de31bac512",
+      "md5": "95159cfdb12f8ba6c103e82473de4b0f"
+    },
+    {
+      "role": "native local export",
+      "path": "/tmp/bex373-78ard5lo/own transfer λ/empty object export λ.bin",
+      "actor": "bex",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "md5": "d41d8cd98f00b204e9800998ecf8427e"
+    }
+  ],
+  "pass": true,
+  "own_synthetic_file_cleanup": {
+    "files_removed": 7,
+    "all_absent": true
+  },
+  "server_stopped": true,
+  "own_data_socket_transfer_history_removed": true
+}

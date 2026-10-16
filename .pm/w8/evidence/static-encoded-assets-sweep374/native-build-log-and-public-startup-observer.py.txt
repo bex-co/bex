@@ -1,0 +1,8 @@
+from pathlib import Path
+import sys,json,subprocess
+f=Path(__file__).with_name('sweep374-common.py');sys.argv=[str(f),'startup-observe','bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==374);own(x);sid=x['id'];r=cli(['logs','--resources',sid,'--type','build','--direction','backward','--limit','40','--confirm','-o','json']);e={'at':now(),'native_build_logs':r};x.setdefault('startup_receipts',[]).append(e);save();assert r['native_exit']==0
+raw=r['stdout'];values=[];decoder=json.JSONDecoder()
+while raw.strip():raw=raw.lstrip();v,end=decoder.raw_decode(raw);values.append(v);raw=raw[end:]
+rows=values[0] if len(values)==1 and isinstance(values[0],list) else values
+messages=[z.get('message','') for z in rows];e['decoded_rows']=rows;save();print(json.dumps({'native_logs_exit':0,'build_log_rows':len(rows),'latest_messages':messages[:6]},ensure_ascii=False)[:4500])
+r=subprocess.run(['curl','--disable','-sS','--max-time','10','-w','\n%{http_code}',x['create_view']['serviceDetails']['url']],capture_output=True,text=True,timeout=15);body,_,status=r.stdout.rpartition('\n');e['public_root']={'at':now(),'curl_exit':r.returncode,'HTTP':status,'body':body,'matches_marker':body=='QA374_'+x['nonce']+'_ROOT\n'};save();print(json.dumps({'HTTP':status,'own_marker':e['public_root']['matches_marker']}))

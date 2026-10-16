@@ -1,0 +1,42 @@
+from pathlib import Path
+import sys,json,base64,hashlib,urllib.parse,subprocess,time
+f=Path(__file__).with_name('sweep374-common.py');exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==374);own(x);assert x['observations'][-1]['ready'];assert mode in ('run','resume-controls');nonce=x['nonce'];base=x['create_view']['serviceDetails']['url'].rstrip('/');expected={}
+for name in json.loads((P/'sweep374-local-preflight.json').read_text())['manifest']['files']:
+ if name=='index.html':data=('QA374_'+nonce+'_ROOT\n').encode()
+ elif name=='empty space.txt':data=b''
+ elif name.endswith('.bin'):data=bytes((i*31+7)%256 for i in range(65792))
+ elif name.endswith('.json'):data=json.dumps({'marker':'QA374_'+nonce,'name':name,'value':'café 日本 😀 # ? % +'},ensure_ascii=False,separators=(',',':')).encode()
+ else:data=('QA374_'+nonce+'_'+name+'\n').encode()
+ expected[name]=data
+if mode=='run':
+ assert not x.get('HTTP_round');batch={'at':now(),'scope':'ordinary named static assets, percent-encoded valid URLs, two HTTP protocols and conditional/range controls','probes':[]};x['HTTP_round']=batch;save()
+else:
+ batch=x['HTTP_round'];assert len(batch['probes'])==25 and all(v['pass_'] for v in batch['probes']) and 'completed_at' not in batch
+ batch['harness_qualification']={'at':now(),'initial_guard':'assumed an automatic ETag; no conditional request had been issued when the guard stopped','observed':'all25 initial probes pass; none supplies an ETag, as permitted by the current static contract','source':'staticserver.go serveObject applies only saved custom ETags and calls ServeContent; automatic validator generation is not promised. w4/done/272 explicitly covers wildcard matching before a saved ETag exists','continuation':'preserve initial25 receipts, send one standard If-None-Match wildcard for the known existing Unicode file, then finish four remaining readonly controls','new_product_issue':False};save()
+def request(label,path,body=None,status=200,protocol='2',method='GET',headers=None):
+ index=len(batch['probes']);head=P/('sweep374-http-'+str(index)+'-headers');out=P/('sweep374-http-'+str(index)+'-body');assert not head.exists() and not out.exists();e={'at':now(),'label':label,'method':method,'url':base+path,'expected_HTTP':status,'requested_HTTP':protocol,'request_headers':{'Accept-Encoding':'identity',**(headers or {})}};batch['probes'].append(e);save();args=['curl','--disable','--globoff','--path-as-is','-sS','--max-time','15','--http2' if protocol=='2' else '--http1.1','-D',str(head),'-o',str(out) if method!='HEAD' else '/dev/null','-w','%{http_code}\n%{http_version}']
+ if method=='HEAD':args+=['--head']
+ for k,v in e['request_headers'].items():args+=['-H',k+': '+v]
+ start=time.monotonic()
+ try:r=subprocess.run([*args,e['url']],capture_output=True,text=True,timeout=20);raw=head.read_text() if head.exists() else '';data=out.read_bytes() if out.exists() else b''
+ finally:head.unlink(missing_ok=True);out.unlink(missing_ok=True)
+ fields={}
+ for line in raw.splitlines():
+  if ':' in line:
+   k,v=line.split(':',1);fields[k.lower().strip()]=v.strip()
+ pieces=r.stdout.splitlines();code=pieces[0] if pieces else '';negotiated=pieces[1] if len(pieces)>1 else '';passed=r.returncode==0 and code==str(status) and negotiated==protocol and (body is None or data==body)
+ e.update(curl_exit=r.returncode,stderr=r.stderr,elapsed=round(time.monotonic()-start,3),HTTP=code,negotiated_HTTP=negotiated,response_headers=raw,headers=fields,response_bytes=len(data),response_sha256=hashlib.sha256(data).hexdigest(),response_body_base64=base64.b64encode(data).decode(),body_comparison=None if body is None else data==body,pass_=passed);save();print(json.dumps({'probe':label,'HTTP':code,'negotiated':negotiated,'bytes':len(data),'pass':passed}),flush=True);return e,data
+
+if mode=='run':
+ manifest_receipt,data=request('manifest','/manifest.json');manifest=json.loads(data);wanted={name:{'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()} for name,data in expected.items()};batch['manifest_values_match']=manifest.get('nonce')==nonce and manifest.get('source_sha256')==x['primary_reference']['package_sha256'] and manifest.get('node','').startswith('v24.') and manifest.get('files')==wanted;save();assert batch['manifest_values_match']
+ gets={}
+ for name,data in expected.items():
+  path='/'+urllib.parse.quote(name,safe='/');e,_=request('GET '+name,path,data);gets[name]=e
+  h,_=request('HEAD '+name,path,b'',protocol='1.1',method='HEAD');length=h['headers'].get('content-length');h['content_length_matches_if_present']=length is None or length==str(len(data));h['pass_']=h['pass_'] and h['content_length_matches_if_present'];save()
+else:gets={name:next(z for z in batch['probes'] if z['label']=='GET '+name) for name in expected}
+name='café 日本語.txt';etag=gets[name]['headers'].get('etag') or '*';request('conditional encoded Unicode','/'+urllib.parse.quote(name,safe='/'),b'',status=304,headers={'If-None-Match':etag})
+request('raw plus remains a plus','/plus+literal.txt',expected['plus+literal.txt'],protocol='1.1')
+name='nested folder/π.json';request('query beside encoded nested file','/'+urllib.parse.quote(name,safe='/')+'?download=yes',expected[name])
+name='binary space#.bin';e,_=request('range encoded binary','/'+urllib.parse.quote(name,safe='/'),expected[name][16:32],status=206,protocol='1.1',headers={'Range':'bytes=16-31'});e['content_range_pass']=e['headers'].get('content-range')=='bytes 16-31/'+str(len(expected[name]));e['pass_']=e['pass_'] and e['content_range_pass'];save()
+request('ordinary absent asset','/missing-'+nonce+'.txt',status=404)
+batch['pass']=batch['manifest_values_match'] and all(v['pass_'] for v in batch['probes']);batch['completed_at']=now();save();print(json.dumps({'HTTP_probes':len(batch['probes']),'all_pass':batch['pass'],'files':len(expected)}));assert batch['pass']

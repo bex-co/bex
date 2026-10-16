@@ -1,0 +1,40 @@
+from pathlib import Path
+import sys,json,subprocess,time,os
+f=Path(__file__).with_name('sweep372-common.py');exec(compile(f.read_text(),str(f),'exec'))
+x=next(v for v in c['resources'] if v.get('sweep')==372 and v.get('client')==client);own(x);sid=x['id']
+def state():
+ r=api('POST','/graphql',{'query':'query($id:String!){service(id:$id){id phase idleTTLSeconds}}','variables':{'id':sid}});assert r['status']=='200';v=decode(r);assert not v.get('errors'),v;v=v['data']['service'];assert v['id']==sid
+ x.setdefault('idle_metadata',[]).append({'receipt':r,'view':v});save();return v
+if mode=='set':
+ assert x['runtime_receipts'][-1]['first_live_pass'] and 'idle_set_intent' not in x
+ x['idle_set_intent']={'at':now(),'id':sid,'idleTTLSeconds':60,'API_only_extension':True};save()
+ r=api('POST','/graphql',{'query':'mutation($id:String!,$ttl:Int!){setIdleTimeout(id:$id,idleTTLSeconds:$ttl){id phase idleTTLSeconds}}','variables':{'id':sid,'ttl':60}});x['idle_set_receipt']=r;save();assert r['status']=='200';v=decode(r);assert not v.get('errors'),v;assert v['data']['setIdleTimeout']['id']==sid and v['data']['setIdleTimeout']['idleTTLSeconds']==60
+ print(json.dumps({'set_API_only':True,'readback':state()}))
+elif mode=='launch':
+ assert 'idle_collector' not in x and state()['idleTTLSeconds']==60
+ journal=P/'sweep372-live-journal.jsonl';output=P/'sweep372-live-client-output.txt';assert not journal.exists() and not output.exists()
+ url=x['create_view']['serviceDetails']['url'];url=url.replace('https://','wss://').rstrip('/')+'/ingest'
+ args=['node',str(P/'sweep372-client.js'),str(P/'sweep369-ws-source/index.js'),url,x['marker'],str(journal),'180','10']
+ record={'intent_at':now(),'args':args,'journal':str(journal),'stdout':str(output),'active_seconds':180,'finite_total_seconds':205,'state':'launch intent, reconcile journal/PID before retry'};x['idle_collector']=record;save()
+ env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_','PG')) and k not in ('NODE_OPTIONS','NODE_PATH')}
+ with output.open('w') as out:proc=subprocess.Popen(args,env=env,stdout=out,stderr=out,start_new_session=True)
+ record.update(PID=proc.pid,PGID=os.getpgid(proc.pid),process_start=subprocess.check_output(['ps','-p',str(proc.pid),'-o','lstart=,comm='],text=True).strip(),launched_at=now(),state='finite child running; separate journal; no CP writes by child');save();print(json.dumps({'collector_PID':proc.pid,'active_seconds':180,'ttl':60}))
+elif mode=='poll':
+ v=state();record=x.get('idle_collector');out={'metadata':v}
+ if record:
+  f=Path(record['journal']);events=[json.loads(s) for s in f.read_text().splitlines() if s.strip()] if f.exists() else [];summary=next((e for e in reversed(events) if e['event']=='FINAL'),None);last=events[-1] if events else None
+  if summary:record['state']='finished';record['final']=summary
+  record['last_observed_at']=now();record['events_count']=len(events);save();out.update(sent=len([e for e in events if e['event']=='SEND']),last_event=last,final=summary)
+ print(json.dumps(out))
+elif mode=='collect':
+ record=x['idle_collector'];events=[json.loads(s) for s in Path(record['journal']).read_text().splitlines()];assert any(e['event']=='FINAL' for e in events)
+ record['events']=events;record['final']=next(e for e in reversed(events) if e['event']=='FINAL');record['stdout_capture']=Path(record['stdout']).read_text();record['state']='finished; full journal collected';save();print(json.dumps({'final':record['final'],'events':len(events),'stdout_bytes':len(record['stdout_capture'])}))
+elif mode=='wake':
+ assert x['idle_collector']['state'].startswith('finished') and any(e['view']['phase'].lower()=='hibernated' for e in x['idle_metadata'])
+ url=x['create_view']['serviceDetails']['url'];header=P/'sweep372-wake-headers.txt';assert not header.exists()
+ try:r=subprocess.run(['curl','--disable','-sS','--max-time','10','-D',str(header),'-w','\n%{http_code}',url],capture_output=True,text=True,timeout=15);raw,_,status=r.stdout.rpartition('\n');headers=header.read_text()
+ finally:header.unlink(missing_ok=True)
+ try:decoded=json.loads(raw)
+ except ValueError:decoded=None
+ receipt={'at':now(),'http':status,'exit':r.returncode,'body':raw,'headers':headers,'decoded':decoded};x.setdefault('wake_receipts',[]).append(receipt);save();print(json.dumps({'HTTP':status,'application_marker_pass':isinstance(decoded,dict) and decoded.get('marker')==x['marker'],'phase':state()['phase']}))
+else:raise ValueError(mode)

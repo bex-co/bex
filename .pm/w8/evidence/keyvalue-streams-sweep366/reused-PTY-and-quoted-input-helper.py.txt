@@ -1,0 +1,91 @@
+from pathlib import Path
+import os,sys,json,subprocess,pty,termios,select,signal,time,re,shutil,hashlib
+P=Path(__file__).resolve().parent;sys.path.insert(0,str(P));from evidence258_sanitizer import safe
+ANSI=re.compile(r'\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1b\\))')
+VALUES=['Render CLI on Render at https://render.com/docs / render.yaml / bex.yml','line1\r\nline2 café 日本 😀\x00tail','']
+def quoted(s):return '"'+''.join('\\x%02x'%b for b in s.encode('utf-8'))+'"'
+def clean(b):return re.sub(r'(?:rediss?|postgres(?:ql)?)://[^\s"<>]+','[CONNECTION URI REDACTED]',safe(b.decode(errors='replace')))
+class Session:
+ def __init__(self,cmd,env=None):
+  self.cmd=cmd;self.start=time.monotonic();self.raw=bytearray();self.frames=[];self.times=[];self.child=None;self.process_group_cleaned=False;self.closed=False
+  self.master,slave=pty.openpty();a=termios.tcgetattr(slave);a[0]&=~(termios.ICRNL|termios.INLCR|termios.IGNCR|termios.IXON|termios.IXOFF);a[1]&=~termios.OPOST;a[3]&=~(termios.ECHO|termios.ISIG);termios.tcsetattr(slave,termios.TCSANOW,a)
+  try:self.proc=subprocess.Popen(cmd,stdin=slave,stdout=slave,stderr=slave,env=env,start_new_session=True)
+  finally:os.close(slave)
+  os.set_blocking(self.master,False)
+ def step(self):
+  if self.closed:return
+  ready,_,_=select.select([self.master],[],[],0.08)
+  if ready:
+   try:b=os.read(self.master,65536)
+   except OSError:b=b''
+   if b:self.raw.extend(b);assert len(self.raw)<1024*1024
+  text=ANSI.sub('',self.raw.decode(errors='replace'));out=[]
+  for line in text.splitlines():
+   try:v=json.loads(line)
+   except ValueError:continue
+   if isinstance(v,(list,int)):out.append(v)
+  for v in out[len(self.frames):]:self.frames.append(v);self.times.append(round(time.monotonic()-self.start,3))
+ def wait(self,pred,bound):
+  end=time.monotonic()+bound
+  while time.monotonic()<end:
+   self.step()
+   if pred():return True
+   if self.proc.poll() is not None:
+    self.step();return bool(pred())
+  return False
+ def finish(self):
+  assert self.wait(lambda:self.proc.poll() is not None,12),'bounded publisher did not exit'
+  self.proc.wait(timeout=1);self.step();return self.proc.returncode
+ def close(self):
+  if self.closed:return
+  for sig in [signal.SIGTERM,signal.SIGKILL]:
+   try:os.killpg(self.proc.pid,sig)
+   except ProcessLookupError:pass
+   try:self.proc.wait(timeout=1)
+   except subprocess.TimeoutExpired:continue
+  self.step();os.close(self.master);self.closed=True;self.process_group_cleaned=True
+ def record(self,logical,stop_reason=None):return {'command':logical,'stdin_TTY':True,'streams_merged_PTY':True,'native_exit':self.proc.poll(),'intentional_stop':stop_reason,'elapsed':round(time.monotonic()-self.start,3),'decoded_JSON':self.frames,'arrival_seconds':self.times,'output':clean(self.raw),'own_process_group_cleaned':self.process_group_cleaned}
+def run_round(actor,kind,channel,build):
+ selector=channel if kind=='SUBSCRIBE' else channel.rsplit(':',1)[0]+':*';expected_ack=[kind.lower(),selector,1];expected=[['message',channel,v] if kind=='SUBSCRIBE' else ['pmessage',selector,channel,v] for v in VALUES]
+ result={'subscriber':actor,'publisher':'render' if actor=='bex' else 'bex','kind':kind,'channel':channel,'selector':selector,'expected_payloads':VALUES,'expected_payload_utf8_sha256':[hashlib.sha256(v.encode()).hexdigest() for v in VALUES],'publications':[]};sub=None
+ try:
+  cmd,env,logical=build(actor,['--json','-2',kind,selector]);sub=Session(cmd,env);result['acknowledged_before_first_publish']=sub.wait(lambda:expected_ack in sub.frames,12);assert result['acknowledged_before_first_publish'], 'subscription acknowledgement absent'
+  for i,value in enumerate(VALUES):
+   other=result['publisher'];args=['--json','-2','--quoted-input','PUBLISH',channel,quoted(value)];pcmd,penv,plogical=build(other,args);pub=Session(pcmd,penv)
+   try:
+    code=pub.finish();assert code==0,'publisher exited nonzero'
+   finally:pub.close();result['publications'].append(pub.record(plogical))
+   assert pub.frames==[1],'expected one active subscriber acknowledgement'
+   assert sub.wait(lambda:len([v for v in sub.frames if isinstance(v,list) and v and v[0] in ('message','pmessage')])>=i+1,8),'published message not received in bound'
+  messages=[v for v in sub.frames if isinstance(v,list) and v and v[0] in ('message','pmessage')];result['pass']=messages==expected and sub.frames==[expected_ack,*expected];result['received_exact_payloads_in_order']=messages==expected;assert result['pass'],'message bytes/order differ'
+ except Exception as err:
+  result['pass']=False;result['error']=str(err)
+ finally:
+  if sub:sub.close();result['subscription']=sub.record(logical,'bounded QA stop after all expected frames' if result.get('pass') else 'bounded QA cleanup after incomplete comparison')
+ return result
+if __name__=='__main__':
+ mode=sys.argv[1];assert mode in ('preflight','live');os.umask(0o077)
+ if mode=='preflight':
+  sock=P/'sweep356-preflight.sock';assert not sock.exists();server=shutil.which('redis-server');assert server;log=P/'sweep356-local-server.log';out=log.open('wb');proc=subprocess.Popen([server,'--port','0','--unixsocket',str(sock),'--unixsocketperm','700','--save','','--appendonly','no','--loglevel','warning'],stdout=out,stderr=out,start_new_session=True)
+  result={'qualification':'local installed redis-server/redis-cli PTY/quoted-input/JSON harness preflight; not Bex product evidence','rounds':[]}
+  try:
+   for _ in range(50):
+    if sock.exists():break
+    time.sleep(.04)
+   assert sock.exists()
+   def build(actor,args):return [shutil.which('redis-cli'),'-s',str(sock),*args],None,['local-redis-cli','-s','<own-local-socket>',*args]
+   for actor,kind in [('bex','SUBSCRIBE'),('render','PSUBSCRIBE')]:result['rounds'].append(run_round(actor,kind,'qa356_preflight:'+actor+':payload',build))
+  finally:
+   os.killpg(proc.pid,signal.SIGTERM);proc.wait(timeout=3);out.close();sock.unlink(missing_ok=True);result['local_server_stopped']=True;result['local_socket_removed']=not sock.exists();(P/'sweep356-preflight.json').write_text(json.dumps(result,indent=2,ensure_ascii=False))
+  print(json.dumps({'local_rounds_pass':sum(z['pass'] for z in result['rounds']),'local_server_stopped':result['local_server_stopped']}))
+ else:
+  f=P/'sweep356-common.py';sys.argv=[str(f),'pubsub','bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==356 and v.get('id'));sid=x['id'];assert x['create_result']['native_exit']==0 and x['workspace']==WS and x['create_response']['id']==sid and not x.get('pubsub_rounds');d,v=detail();assert v['status']=='available' and v['public'];cfg=P/'render-config/cli.yaml';assert not cfg.exists();shutil.copyfile(P/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  def build(actor,args):
+   prefix='BEX' if actor=='bex' else 'RENDER';config=P/('config/cli.yaml' if actor=='bex' else 'render-config/cli.yaml');env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_','REDIS'))};env.update({prefix+'_HOST':'https://api.bex.co/v1/',prefix+'_CLI_CONFIG_PATH':str(config),prefix+'_CLI_CONFIG_DIR':str(config.parent),prefix+'_WORKSPACE':WS,prefix+'_NO_UPDATE_NOTIFIER':'1','BEX_CLI_DISABLE_ANALYTICS':'1','DO_NOT_TRACK':'1','BROWSER':'/usr/bin/true'});argv=['kv-cli',sid,'-o','interactive','--',*args];return [str(P/('release/bex' if actor=='bex' else 'render-pin')),*argv],env,[actor,*argv]
+  try:
+   for i,(actor,kind) in enumerate([('bex','SUBSCRIBE'),('render','SUBSCRIBE'),('bex','PSUBSCRIBE'),('render','PSUBSCRIBE')]):
+    e={'at':now(),'subscriber':actor,'kind':kind,'intent':'finite native Pub/Sub on own nonce channel; publish only after acknowledgement'};x.setdefault('pubsub_rounds',[]).append(e);save()
+    try:e['result']=run_round(actor,kind,'qa356_'+x['nonce']+':round'+str(i)+':payload',build);e['pass']=e['result']['pass']
+    except Exception as err:e['error']=str(err);save();raise
+    save();assert e['pass'],e['result'].get('error','Pub/Sub comparison failed');print(json.dumps({'subscriber':actor,'kind':kind,'exact_three_messages_pass':e['pass'],'publisher_exits':[z['native_exit'] for z in e['result']['publications']]}),flush=True)
+  finally:cfg.unlink(missing_ok=True);x['pubsub_copied_Render_config_removed']=not cfg.exists();save()

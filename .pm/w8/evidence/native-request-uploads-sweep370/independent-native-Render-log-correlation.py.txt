@@ -1,0 +1,13 @@
+from pathlib import Path
+import sys,json,collections
+f=Path(__file__).with_name('sweep370-common.py');sys.argv=[str(f),'upload-logs','bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==370 and v.get('id'));own(x);assert x['upload_summary']['pass'];r=cli(['logs','--resources',x['id'],'--type','app','--text','QA370_UPLOAD','--direction','forward','--limit','100','--confirm','-o','json'],client='render');e={'at':now(),'client':'unchanged Render2.27.0','native':r};x.setdefault('upload_log_receipts',[]).append(e);save();assert r['native_exit']==0;raw=r['stdout'];decoder=json.JSONDecoder();values=[]
+while raw.strip():
+ raw=raw.lstrip();v,end=decoder.raw_decode(raw);values.append(v);raw=raw[end:]
+rows=values[0] if len(values)==1 and isinstance(values[0],list) else values;events=[]
+for v in rows:
+ text=v.get('message','');start=text.find('{')
+ if start<0:continue
+ try:event=json.loads(text[start:])
+ except ValueError:continue
+ if event.get('event')=='QA370_UPLOAD' and event.get('marker')==x['marker']:events.append(event)
+expected={v['decoded']['id']:v['decoded'] for v in x['upload_events'] if v['expected_kind']!='405'};observed={v['id']:v for v in events};e.update(events=events,expected_ids=sorted(expected),observed_ids=sorted(observed));e['pass']=len(events)==8 and set(observed)==set(expected) and all(all(observed[k].get(field)==expected[k].get(field) for field in ['kind','decoded_bytes','decoded_sha256','files','fields']) for k in expected);save();print(json.dumps({'native_Render_logs_exit':r['native_exit'],'matched_upload_events':len(events),'pass':e['pass']}))

@@ -1,0 +1,661 @@
+{
+  "at": "2026-10-16T20:34:46.504573+00:00",
+  "API_only": true,
+  "request": {
+    "method": "POST",
+    "path": "/mcp",
+    "body": {
+      "jsonrpc": "2.0",
+      "id": 372,
+      "method": "tools/list",
+      "params": {}
+    },
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+    "authorization": "REDACTED"
+  },
+  "status": "200",
+  "tool_count": 189,
+  "selected_complete_tool": {
+    "description": "Update a service's settings in one call. Pass only the settings you want to change: an omitted argument is left exactly as it is, and a present argument is written to exactly the value given \u2014 including the empty value, which is how you clear a command, a path, or a list. Covers source (repo, image, branch, registryCredentialId), build (rootDir, buildCommand, startCommand, dockerfilePath, buildFilter), runtime (startCommand, healthCheckPath, preDeployCommand, maxShutdownDelaySeconds, maintenanceMode, autoscaling), delivery (autoDeploy), naming (displayName), networking (renderSubdomainPolicy, ipAllowList), and notifications (notifyOnFail, notificationsToSend). Setting repo or image switches source kind without deploying; the next deploy uses the new source. rootDir and dockerfilePath trigger a fresh build. Static sites also take publishPath here; cron jobs take schedule and command. A plan change is billable \u2014 pass dryRun:true to check any update and preview its result without writes. Verbs REST keeps behind their own routes keep their own tools: scale_service (instance count), update_static_routes / update_static_headers (edge rules), disable_autoscaling. This tool replaces the retired set_* setters (w1/m71) plus update_service_plan / update_idle_timeout / update_publish_path / update_cron_job (w1/m74). bex extension over Render's MCP.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "autoDeploy": {
+          "description": "true = a signed git push to the tracked branch redeploys (Render's Auto-Deploy); false = only explicit deploys. Setting it does not itself redeploy",
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
+        "autoscaling": {
+          "additionalProperties": false,
+          "description": "enable or update autoscaling: the operator holds the target utilization by moving replicas within [minInstances, maxInstances]. Use disable_autoscaling to turn it off",
+          "properties": {
+            "maxInstances": {
+              "description": "maximum running instances (\u2265 1; must be \u2265 minInstances)",
+              "maximum": 2147483647,
+              "minimum": -2147483648,
+              "type": "integer"
+            },
+            "minInstances": {
+              "description": "minimum running instances (\u2265 0; default 1)",
+              "maximum": 2147483647,
+              "minimum": -2147483648,
+              "type": "integer"
+            },
+            "targetCPUPercent": {
+              "description": "target average CPU utilization % of tier limit (1-100); required if targetMemoryPercent is absent",
+              "maximum": 2147483647,
+              "minimum": -2147483648,
+              "type": [
+                "null",
+                "integer"
+              ]
+            },
+            "targetMemoryPercent": {
+              "description": "target average memory utilization % of tier limit (1-100); required if targetCPUPercent is absent",
+              "maximum": 2147483647,
+              "minimum": -2147483648,
+              "type": [
+                "null",
+                "integer"
+              ]
+            }
+          },
+          "required": [
+            "minInstances",
+            "maxInstances"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "branch": {
+          "description": "the Git branch to build and deploy; empty restores the default main",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "buildCommand": {
+          "description": "the build command (e.g. npm run build) for static sites and native-runtime services; empty clears it (builder default)",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "buildFilter": {
+          "additionalProperties": false,
+          "description": "Render's Build Filters: repository-root-relative globs (paths/ignoredPaths) deciding whether a git push triggers an auto-deploy; ignored wins over included. Pass empty paths and ignoredPaths to clear the filter",
+          "properties": {
+            "ignoredPaths": {
+              "description": "exclude globs (e.g. 'docs/**'); a changed file matching one never triggers a deploy, even if it also matches paths",
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "paths": {
+              "description": "include globs (e.g. 'src/**'); a push deploys only when a changed file matches one \u2014 empty means every path is included",
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            }
+          },
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "command": {
+          "description": "cron jobs only: a /bin/sh override of the command each run executes; empty clears the override. A native-runtime cron's own command is its startCommand, which runs in Bash",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "confirm": {
+          "description": "the confirmation phrase, required only when the service belongs to a protected environment and the change repoints its source, redefines how it is built or started, or takes it offline. Do not guess it: make the call without this argument first and copy the exact phrase back out of the refusal",
+          "type": "string"
+        },
+        "displayName": {
+          "description": "the human-facing service label; empty clears it and falls back to the immutable service name",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "dockerfilePath": {
+          "description": "path to the Dockerfile relative to rootDir; empty restores Dockerfile. Triggers a fresh build",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "dryRun": {
+          "description": "if true, check the whole update and return the service as it would leave it, without any writes (zero side effects)",
+          "type": "boolean"
+        },
+        "healthCheckPath": {
+          "description": "HTTP path the platform GETs to gate pod readiness and liveness; must start with /. Empty CLEARS the path, switching the service to a TCP check that only verifies the process is listening \u2014 the right choice for a service with no cheap 2xx route. Probed every 10s, so point it at a cheap endpoint. No effect on cron_job or background_worker",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "idleTTLSeconds": {
+          "description": "seconds a free-tier service may go without traffic (HTTP requests it served, or WebSocket frames it sent) before it auto-sleeps; 0 (or unset) selects the platform default window of 15 minutes, a positive value overrides it",
+          "maximum": 2147483647,
+          "minimum": -2147483648,
+          "type": [
+            "null",
+            "integer"
+          ]
+        },
+        "image": {
+          "description": "prebuilt OCI image to deploy. Setting it switches a Git-backed service to an image and clears the repository",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "ipAllowList": {
+          "description": "replaces the inbound allowlist for a web service or static site with these {cidrBlock, description} entries; pass [] to clear it",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "cidrBlock": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "cidrBlock",
+              "description"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "ipAllowListCidrs": {
+          "description": "the plain-CIDR-string form of ipAllowList, for callers with no descriptions to keep; setting both to conflicting values is rejected",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "maintenanceMode": {
+          "additionalProperties": false,
+          "description": "take a web service offline behind an interstitial page without suspending it \u2014 pods keep running, every host answers 503. web_service only",
+          "properties": {
+            "enabled": {
+              "description": "true takes every host this service serves offline behind an interstitial page (pods keep running); false restores normal serving",
+              "type": "boolean"
+            },
+            "uri": {
+              "description": "an absolute http(s) URL to a custom maintenance page, fetched and served in place of the default page; empty uses the default page",
+              "type": "string"
+            }
+          },
+          "required": [
+            "enabled"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "maxShutdownDelaySeconds": {
+          "description": "seconds after SIGTERM before Kubernetes sends SIGKILL (1-300; default 30); web, private, and background-worker services",
+          "maximum": 2147483647,
+          "minimum": -2147483648,
+          "type": [
+            "null",
+            "integer"
+          ]
+        },
+        "notificationsToSend": {
+          "description": "service notification policy: default (inherit workspace/member preferences, failure-only), failure, all, or none",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "notifyOnFail": {
+          "description": "deploy-failure notification override: default (defer to each member's own preference), notify (always email every member on a failed deploy), or ignore (never email anyone for this service). Governs failure mail only",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "plan": {
+          "description": "the instance plan/size, e.g. starter, standard, pro, pro_plus, pro_max, pro_ultra. Changing it resizes the pod, rolls the service, and CHANGES WHAT THE WORKSPACE IS BILLED. Pass dryRun:true to preview it without any writes",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "port": {
+          "description": "the port the container listens on, which the platform injects as PORT and targets with the Service, Ingress and health probe (1-65535). Changing it rolls the pods. web_service and private_service only \u2014 a worker or cron job has no listener, and a static site is served on the platform's own port. This is the setting bex's reserved-PORT refusal points at: set the port here rather than as an environment variable",
+          "maximum": 2147483647,
+          "minimum": -2147483648,
+          "type": [
+            "null",
+            "integer"
+          ]
+        },
+        "preDeployCommand": {
+          "description": "a command run to completion against the new revision's image before it serves traffic (typically a database migration); a non-zero exit fails the deploy and leaves the previous revision serving. Empty clears the step. No effect on cron_job or static_site",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "publishPath": {
+          "description": "static sites only: the built output directory served as the site root, e.g. dist, build, or public",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "registryCredentialId": {
+          "description": "stored private-registry credential id to bind to an image-backed service or Dockerfile build; empty clears the binding",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "renderSubdomainPolicy": {
+          "description": "enabled (the platform subdomain <slug>.<BEX_BASE_DOMAIN> serves this service) or disabled (platform host dropped; only custom domains serve it \u2014 requires at least one custom domain first)",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "repo": {
+          "description": "Git repository URL to build from. Setting it switches an image-backed service to Git and clears the image",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "rootDir": {
+          "description": "subdirectory of the repo to build from (monorepo support); empty builds from the repo root. Triggers a fresh build scoped to that subdirectory",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "schedule": {
+          "description": "cron jobs only: the 5-field crontab expression, e.g. '0 0 * * *'",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "serviceId": {
+          "description": "the service id, as returned by list_services",
+          "type": "string"
+        },
+        "startCommand": {
+          "description": "the command used to start the service \u2014 Render's Docker Command for a Docker service, Start Command for a native runtime; empty restores the image default where supported",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "workspaceId": {
+          "description": "The ID of the bex workspace to use. Reuse the workspaceId the user confirmed from list_workspaces.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "serviceId"
+      ],
+      "type": "object"
+    },
+    "name": "update_service",
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "immutableName": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "suspended": {
+          "type": "string"
+        },
+        "dashboardUrl": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "owner": {
+          "type": [
+            "null",
+            "object"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "type"
+          ],
+          "additionalProperties": false
+        },
+        "serviceDetails": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "imagePath": {
+          "type": "string"
+        },
+        "registryCredential": {
+          "type": [
+            "null",
+            "object"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        "registryCredentialId": {
+          "type": "string"
+        },
+        "suspenders": {
+          "type": [
+            "null",
+            "array"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "environmentId": {
+          "type": "string"
+        },
+        "blueprintId": {
+          "type": "string"
+        },
+        "publicRoutingNotice": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "undeployedChanges": {
+          "type": "boolean"
+        },
+        "undeployedChangesApplying": {
+          "type": "boolean"
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "revision": {
+          "type": "string"
+        },
+        "urls": {
+          "type": [
+            "null",
+            "array"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "schedule": {
+          "type": "string"
+        },
+        "command": {
+          "type": "string"
+        },
+        "runs": {
+          "type": [
+            "null",
+            "array"
+          ],
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "startedAt": {
+                "type": "string"
+              },
+              "finishedAt": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "status"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "lastSuccessfulRunAt": {
+          "type": "string"
+        },
+        "nextRunAt": {
+          "type": "string"
+        },
+        "idleTTLSeconds": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "rootDir": {
+          "type": "string"
+        },
+        "buildFilter": {
+          "type": [
+            "null",
+            "object"
+          ],
+          "properties": {
+            "paths": {
+              "type": [
+                "null",
+                "array"
+              ],
+              "items": {
+                "type": "string"
+              }
+            },
+            "ignoredPaths": {
+              "type": [
+                "null",
+                "array"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "paths",
+            "ignoredPaths"
+          ],
+          "additionalProperties": false
+        },
+        "repo": {
+          "type": "string"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "autoscaling": {
+          "type": [
+            "null",
+            "object"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "minInstances": {
+              "type": "integer",
+              "minimum": -2147483648,
+              "maximum": 2147483647
+            },
+            "maxInstances": {
+              "type": "integer",
+              "minimum": -2147483648,
+              "maximum": 2147483647
+            },
+            "targetCPUPercent": {
+              "type": [
+                "null",
+                "integer"
+              ],
+              "minimum": -2147483648,
+              "maximum": 2147483647
+            },
+            "targetMemoryPercent": {
+              "type": [
+                "null",
+                "integer"
+              ],
+              "minimum": -2147483648,
+              "maximum": 2147483647
+            }
+          },
+          "required": [
+            "enabled",
+            "minInstances",
+            "maxInstances"
+          ],
+          "additionalProperties": false
+        },
+        "autoDeploy": {
+          "type": "string"
+        },
+        "linkedEnvGroupIds": {
+          "type": [
+            "null",
+            "array"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "autoDeployTrigger": {
+          "type": "string"
+        },
+        "pushDeliveryMethod": {
+          "type": "string"
+        },
+        "notifyOnFail": {
+          "type": "string"
+        },
+        "notificationsToSend": {
+          "type": "string"
+        },
+        "healthCheckPath": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "immutableName",
+        "slug",
+        "displayName",
+        "type",
+        "suspended",
+        "suspenders",
+        "replicas",
+        "idleTTLSeconds",
+        "autoDeploy",
+        "autoDeployTrigger",
+        "notifyOnFail",
+        "notificationsToSend"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "field": {
+    "description": "seconds a free-tier service may go without traffic (HTTP requests it served, or WebSocket frames it sent) before it auto-sleeps; 0 (or unset) selects the platform default window of 15 minutes, a positive value overrides it",
+    "maximum": 2147483647,
+    "minimum": -2147483648,
+    "type": [
+      "null",
+      "integer"
+    ]
+  },
+  "projection": "only the full relevant update_service descriptor is retained; unrelated static tools omitted"
+}

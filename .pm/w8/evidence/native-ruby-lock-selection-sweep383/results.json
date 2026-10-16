@@ -1,0 +1,39 @@
+{
+  "sweep": 383,
+  "existing_finding": "w8/m85",
+  "source_head": "00f2afcfb44a3626ef4c2117931d82affaf2f186",
+  "source_fix": "1f6efd4b10a1619e17027afa49d8e9d7ad7f5550",
+  "serving_revision": "unknown",
+  "public_commit": "821e9e2f9f94483a3be8d1e077cde0fd94970479",
+  "original_report_commit": "802125b979b5bb848a7cfc52409ef3176ffd4d82",
+  "lock_ruby": "3.4.7p58",
+  "expected_reviewed_line": "3.4",
+  "actual_Ruby_build_runtime": [
+    "3.4.11"
+  ],
+  "native_clients": [
+    "published Bex0.3.2/a6350da0",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "actual_unchanged_native_POST201": 2,
+  "original_required_assertion_retained": true,
+  "native_creates_deletes_exit0": [
+    2,
+    2
+  ],
+  "first_original_required_lock_deploys_live_HTTP200": 2,
+  "original_source_no_edits_Ruby_override_or_PATH_repair": true,
+  "Node24_control_both_phases": true,
+  "native_shared_readbacks_pass": 6,
+  "native_log_queries_exit0": 6,
+  "owned_parents_children_URLs_absent": [
+    2,
+    2,
+    2
+  ],
+  "original_baselines_preserved": true,
+  "all_terminating_zero": true,
+  "own_local_container_tag_scratch_removed": true,
+  "new_issue": null,
+  "uncommitted": true
+}

@@ -1,0 +1,9 @@
+{
+  "qualification": "restored originally linked historical source-image build receipt, no rerun; .log.txt survives repository *.log ignore rule",
+  "original_sweep": 351,
+  "original_image_tag": "bex-native-qa351-ffmpeg:10fc72b4a6f3",
+  "original_exit0_matches_published_observation": true,
+  "image_digest_matches_archived_cleanup": true,
+  "original_private_log_sha256": "28d5e952eb6e33f8ad61c064f09f6dbffd74a3530ae13926af77797e136dd002",
+  "published_path": ".pm/w8/done/m82/evidence/cli-sweep351/generated-image-build.log.txt"
+}

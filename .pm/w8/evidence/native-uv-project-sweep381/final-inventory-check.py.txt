@@ -1,0 +1,10 @@
+from pathlib import Path
+import sys,json
+f=Path(__file__).with_name('sweep381-common.py');sys.argv=[str(f),'final-inventory','bex'];exec(compile(f.read_text(),str(f),'exec'));xs=[v for v in c['resources'] if v.get('sweep')==381];assert len(xs)==2 and all(x['state'].startswith('deleted:') for x in xs);out={}
+for kind,path in [('env-groups','/v1/env-groups?ownerId='+ws),('projects','/v1/projects?ownerId='+ws),('blueprints','/v1/blueprints?ownerId='+ws),('quota','/v1/owners/'+ws+'/limits')]:
+ r=api('GET',path);assert r['status']=='200';v=decode(r)
+ if kind=='blueprints':
+  views=[z.get('blueprint',z) for z in v];passed={z['id'] for z in views}=={'blp-db136288mmqc73d4hpug'};r['response']=json.dumps([{'id':z['id'],'projection':'immutable baseline identity only; configuration omitted'} for z in views])
+ elif kind=='quota':passed=v['services']['used']==6 and v['services']['terminating']==0 and v['postgres']['used']==v['postgres']['terminating']==v['keyValues']['used']==v['keyValues']['terminating']==0
+ else:passed=v==[]
+ out[kind]={'at':now(),'receipt':r,'pass':bool(passed)};c['sweep381_cleanup_inventory']=out;save();print(json.dumps({'kind':kind,'pass':bool(passed)}),flush=True);assert passed

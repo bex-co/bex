@@ -1,0 +1,3 @@
+from pathlib import Path
+import sys,json
+f=Path(__file__).with_name('sweep366-common.py');sys.argv=[str(f),'record-connect-ready','bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==366);d,v=detail();assert v['status']=='available' and v['public'] and v['externalHost']==x['id']+'.kv.bex.co' and not x.get('publish_intent');x['connect_readiness']={'at':now(),'detail':d,'external_host_observed':True,'public_already_true':True,'no_setup_PATCH_sent':True};save();print('Own created instance already has a public endpoint; no setup mutation required')

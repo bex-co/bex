@@ -1,0 +1,176 @@
+{
+  "at": "2026-10-16T22:36:52.176641+00:00",
+  "source_head": "430e0673e77a970b0aa40af64a9762b28b9eaaa6",
+  "commands": [
+    {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "--help"
+      ],
+      "exit": 0,
+      "elapsed": 0.135,
+      "stdout": "bex CLI v0.3.2\n\nInteract with resources on Bex\n\nUSAGE\n  bex <subcommand> [flags]\n\nSUBCOMMANDS\nCore\n  deploys              List, create, and cancel deploys\n  jobs                 Create and manage one-off jobs\n  keyvalues            Manage Bex Key Value instances (alias: kv)\n  logs                 View logs for services and datastores\n  postgres             Manage Bex Postgres databases (alias: pg)\n  restart              Restart a service by resource ID\n  services             List services and datastores for the active workspace\n  workflows            Manage Bex Workflows in your workspace\n  workspaces           List workspaces available to your account\n\nAuth\n  login                Log in to Bex using the Bex dashboard\n  logout               Log out of Bex\n  whoami               Display information about the current user\n  workspace            Manage the CLI's active workspace\n\nSession\n  kv-cli               Open a session for a Bex Key Value instance\n  pgcli                Open a pgcli session to a Bex Postgres database instance\n  psql                 Open a psql session to a Bex Postgres database\n  ssh                  SSH into a service instance\n\nManagement\n  blueprints           Manage Blueprints, which define your infrastructure as code\n  environments         List project environments by project ID\n  projects             List projects in the active workspace\n\nAdditional Commands:\n  code                 Manage the Bex coding-agent launchers (glm, muse, kimi, deepseek)\n  completion           Generate the autocompletion script for the specified shell\n  deepseek             Launch Claude Code backed by DeepSeek\n  docs                 Open the Bex docs in your browser\n  ea                   Use early access commands\n  glm                  Launch Claude Code backed by GLM (Z.ai coding plan)\n  help                 Help about any command\n  kimi                 Launch Claude Code backed by Kimi (Moonshot platform)\n  muse                 Launch Claude Code backed by Muse Spark (Meta Model API)\n  skills               Manage Bex agent skills for AI coding tools\n  upgrade              Update bex to the latest release\n\nFLAGS\n      --confirm           Skip all confirmation prompts\n  -h, --help              Show help for this command\n  -o, --output <FORMAT>   Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n  -v, --version           version for bex\n\nEXAMPLES\n  # List services in the active workspace\n  bex services\n\n  # Output services as JSON\n  bex services --output json\n\nDETAILS\nWelcome! Use the bex CLI to manage your services, datastores, and environments\ndirectly from the command line. Trigger deploys, view logs, start psql/SSH\nsessions, and more.\n\nThe CLI's default interactive mode provides intuitive, menu-based navigation.\n\nTo use in non-interactive mode (such as in a script), set each command's\n--output option to either json or yaml for structured responses. The CLI also\ndetects non-TTY stdout and automatically switches to text output.\n\n\nUse \"bex <subcommand> --help\" for more information about a command.\n",
+      "stderr": "",
+      "native_exit": 0
+    },
+    {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--help"
+      ],
+      "exit": 0,
+      "elapsed": 0.043,
+      "stdout": "bex CLI v0.3.2\n\nCreate a new service or clone an existing one\n\nUSAGE\n  bex services create [flags]\n\nFLAGS\n      --auto-deploy                         Enable auto-deploy (default: true)\n      --branch <BRANCH>                     Set the Git branch\n      --build-command <COMMAND>             Set the build command\n      --build-filter-ignored-path <PATHS>   Set build filter ignored paths (can be specified multiple times)\n      --build-filter-path <PATHS>           Set build filter paths (can be specified multiple times)\n      --cron-command <COMMAND>              Set the cron command\n      --cron-schedule <SCHEDULE>            Set the cron schedule\n      --env-var <KEY_VALUE>                 Set environment variables in KEY=VALUE format (can be specified multiple times)\n      --environment-id <ENVIRONMENT_ID>     Set the environment ID\n      --from <SERVICE_ID>                   Clone configuration from an existing service ID or name and override cloned values with other flags\n      --health-check-path <PATH>            Set the health check path\n  -h, --help                                Show help for this command\n      --image <IMAGE_URL>                   Set the Docker image URL\n      --ip-allow-list <CIDR_DESCRIPTION>    Set IP allow list entries in cidr=..., description=... format (can be specified multiple times)\n      --maintenance-mode                    Enable maintenance mode\n      --maintenance-mode-uri <URI>          Set the maintenance mode URI\n      --max-shutdown-delay <SECONDS>        Set max shutdown delay in seconds (default: 0)\n      --name <NAME>                         Set the service name\n      --num-instances <COUNT>               Set the number of instances (default: 0)\n      --plan <PLAN>                         Set the service plan\n      --pre-deploy-command <COMMAND>        Set the pre-deploy command\n      --previews <PREVIEWS>                 Set preview generation mode\n      --publish-directory <PATH>            Set the publish directory\n      --region <REGION>                     Set the deployment region\n      --registry-credential <CREDENTIAL>    Set the registry credential\n      --repo <REPO_URL>                     Set the Git repository URL\n      --root-directory <PATH>               Set the root directory\n      --runtime <RUNTIME>                   Set the runtime environment\n      --secret-file <NAME_PATH>             Set secret files in NAME:LOCAL_PATH format (can be specified multiple times)\n      --start-command <COMMAND>             Set the start command\n      --type <TYPE>                         Set the service type\n      --confirm                             Skip all confirmation prompts\n  -o, --output <FORMAT>                     Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n\nEXAMPLES\n  # Create a service from repository configuration\n  bex services create --name my-api --type web_service --repo https://github.com/org/repo --runtime node --build-command \"npm install\" --start-command \"npm start\" --output json\n\n  # Clone configuration from an existing service\n  bex services create --from srv-abc123 --name my-api-clone --output json\n\nDETAILS\nCreate a new service on Bex. This command only runs in non-interactive modes.\nProvide configuration options with flags.\n\n",
+      "stderr": "",
+      "native_exit": 0
+    },
+    {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "update",
+        "--help"
+      ],
+      "exit": 0,
+      "elapsed": 0.036,
+      "stdout": "bex CLI v0.3.2\n\nUpdate configuration for an existing service\n\nUSAGE\n  bex services update <service> [flags]\n\nFLAGS\n      --auto-deploy                               Enable auto-deploy\n      --branch <string>                           Git branch\n      --build-command <string>                    Build command\n      --build-filter-ignored-path <stringArray>   Build filter ignored path (can be specified multiple times)\n      --build-filter-path <stringArray>           Build filter path (can be specified multiple times)\n      --cron-command <string>                     Cron command\n      --cron-schedule <string>                    Cron schedule\n      --health-check-path <string>                Health check path\n  -h, --help                                      Show help for this command\n      --image <string>                            Docker image URL\n      --ip-allow-list <stringArray>               IP allow list entry in cidr=..., description=... format (can be specified multiple times)\n      --maintenance-mode                          Enable maintenance mode\n      --maintenance-mode-uri <string>             Maintenance mode URI\n      --max-shutdown-delay <int>                  Max shutdown delay in seconds (default: 0)\n      --name <string>                             Service name\n      --plan <string>                             Service plan\n      --pre-deploy-command <string>               Pre-deploy command\n      --previews <enum>                           Preview generation mode\n      --publish-directory <string>                Publish directory\n      --registry-credential <string>              Registry credential\n      --repo <string>                             Git repository URL\n      --root-directory <string>                   Root directory\n      --runtime <enum>                            Runtime environment\n      --start-command <string>                    Start command\n      --confirm                                   Skip all confirmation prompts\n  -o, --output <FORMAT>                           Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n\nEXAMPLES\n  # Rename a service\n  bex services update my-service --name my-new-name --output json\n\n  # Change a service plan\n  bex services update srv-abc123 --plan 2c-4g --output json\n\nDETAILS\nUpdate a service on Bex. This command only runs in non-interactive modes.\n\nProvide configuration updates with flags.\n\n",
+      "stderr": "",
+      "native_exit": 0
+    },
+    {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "--help"
+      ],
+      "exit": 0,
+      "elapsed": 0.038,
+      "stdout": "bex CLI v0.3.2\n\nDelete a service\n\nUSAGE\n  bex services delete <serviceID|serviceName> [flags]\n\nFLAGS\n  -h, --help              Show help for this command\n      --confirm           Skip all confirmation prompts\n  -o, --output <FORMAT>   Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n\nEXAMPLES\n  # Preview deletion (no changes made)\n  bex services delete srv-abc123def456ghi789jkl0\n\n  # Delete by ID\n  bex services delete srv-abc123def456ghi789jkl0 --confirm\n\n  # Delete by name\n  bex services delete my-api --confirm\n\n  # JSON output\n  bex services delete srv-abc123def456ghi789jkl0 --confirm --output json\n\nDETAILS\nDelete a service on Bex.\n\nWithout --confirm, this command previews what would be deleted and makes no\nchanges. Pass --confirm to actually delete the service.\n\nThe positional argument accepts a service ID (including srv- or crn- IDs) or a\nname. Name lookup is scoped to your active workspace. If the name matches more\nthan one service, pass the service ID directly.\n\nThis command only runs non-interactively. If --output interactive is requested,\nit falls back to text output.\n\n",
+      "stderr": "",
+      "native_exit": 0
+    },
+    {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "deploys",
+        "list",
+        "--help"
+      ],
+      "exit": 0,
+      "elapsed": 0.038,
+      "stdout": "bex CLI v0.3.2\n\nList deploys for a service\n\nUSAGE\n  bex deploys list [serviceID] [flags]\n\nFLAGS\n  -h, --help              Show help for this command\n      --confirm           Skip all confirmation prompts\n  -o, --output <FORMAT>   Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n\nEXAMPLES\n  # List deploys for a service\n  bex deploys list srv-abc123\n\n  # Browse deploys interactively\n  bex deploys list\n\n",
+      "stderr": "",
+      "native_exit": 0
+    },
+    {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "logs",
+        "--help"
+      ],
+      "exit": 0,
+      "elapsed": 0.036,
+      "stdout": "bex CLI v0.3.2\n\nView logs for services and datastores\n\nUSAGE\n  bex logs [flags]\n\nFLAGS\n      --direction <LOG_DIRECTION>    Set log query direction (backward or forward)\n      --end <TIME>                   Filter logs at or before the specified end time\n  -h, --help                         Show help for this command\n      --host <HOSTS>                 Filter logs by comma-separated host values\n      --instance <INSTANCE_IDS>      Filter logs by comma-separated instance IDs\n      --level <LOG_LEVEL>            Filter logs by comma-separated log levels\n      --limit <COUNT>                Limit the number of logs returned (default: 100)\n      --method <HTTP_METHOD>         Filter logs by comma-separated HTTP methods\n      --path <PATHS>                 Filter logs by comma-separated request paths\n  -r, --resources <RESOURCE_IDS>     Filter logs by comma-separated resource IDs (Required in non-interactive mode)\n      --start <TIME>                 Filter logs at or after the specified start time\n      --status-code <STATUS_CODES>   Filter logs by comma-separated status codes\n      --tail                         Stream new logs\n      --task-id <TASK_IDS>           Filter logs by comma-separated task IDs\n      --task-run-id <TASK_RUN_IDS>   Filter logs by comma-separated task run IDs\n      --text <QUERY_TEXT>            Filter logs by comma-separated text values\n      --type <LOG_TYPE>              Filter logs by comma-separated log types\n      --confirm                      Skip all confirmation prompts\n  -o, --output <FORMAT>              Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n\nEXAMPLES\n  # Tail logs for a service\n  bex logs --resources srv-abc123 --tail\n\n  # Query logs in a time range\n  bex logs --resources srv-abc123 --start 2026-03-01T00:00:00Z --end 2026-03-01T01:00:00Z\n\n  # Output logs as JSON in non-interactive mode\n  bex logs --resources srv-abc123 --output json\n\nDETAILS\nView logs for services and datastores.\n\nUse flags to filter logs by resource, instance, time, text, level, type, host,\nstatus code, method, or path. Unlike in the Bex dashboard, you can view logs for\nmultiple resources at once.\n\nIn interactive mode you can update the filters and view logs in real time, or\nset --tail=true to stream new logs.\n\n",
+      "stderr": "",
+      "native_exit": 0
+    },
+    {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "--help"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.078,
+      "stdout": "Render CLI v2.27.0\n\nInteract with resources on Render\n\nUSAGE\n  render <subcommand> [flags]\n\nSUBCOMMANDS\nCore\n  deploys              List, create, and cancel deploys\n  jobs                 Create and manage one-off jobs\n  keyvalues            Manage Render Key Value instances (alias: kv)\n  logs                 View logs for services and datastores\n  postgres             Manage Render Postgres databases (alias: pg)\n  restart              Restart a service by resource ID\n  services             List services and datastores for the active workspace\n  workflows            Manage Render Workflows in your workspace\n  workspaces           List workspaces available to your account\n\nAuth\n  login                Log in to Render using the Render Dashboard\n  logout               Log out of Render\n  whoami               Display information about the current user\n  workspace            Manage the CLI's active workspace\n\nSession\n  kv-cli               Open a session for a Render Key Value instance\n  pgcli                Open a pgcli session to a Render Postgres database instance\n  psql                 Open a psql session to a Render Postgres database\n  ssh                  SSH into a service instance\n\nManagement\n  blueprints           Manage Blueprints, which define your infrastructure as code\n  environments         List project environments by project ID\n  projects             List projects in the active workspace\n\nAdditional Commands:\n  completion           Generate the autocompletion script for the specified shell\n  docs                 Open the Render docs in your browser\n  ea                   Use early access commands\n  help                 Help about any command\n  skills               Manage Render agent skills for AI coding tools\n\nFLAGS\n      --confirm           Skip all confirmation prompts\n  -h, --help              Show help for this command\n  -o, --output <FORMAT>   Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n  -v, --version           version for render\n\nEXAMPLES\n  # List services in the active workspace\n  render services\n\n  # Output services as JSON\n  render services --output json\n\nDETAILS\nWelcome! Use the Render CLI to manage your services, datastores, and\nenvironments directly from the command line. Trigger deploys, view logs, start\npsql/SSH sessions, and more.\n\nThe CLI's default interactive mode provides intuitive, menu-based navigation.\n\nTo use in non-interactive mode (such as in a script), set each command's\n--output option to either json or yaml for structured responses. The CLI also\ndetects non-TTY stdout and automatically switches to text output.\n\n\nUse \"render <subcommand> --help\" for more information about a command.\n",
+      "stderr": ""
+    },
+    {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "create",
+        "--help"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.034,
+      "stdout": "Render CLI v2.27.0\n\nCreate a new service or clone an existing one\n\nUSAGE\n  render services create [flags]\n\nFLAGS\n      --auto-deploy                         Enable auto-deploy (default: true)\n      --branch <BRANCH>                     Set the Git branch\n      --build-command <COMMAND>             Set the build command\n      --build-filter-ignored-path <PATHS>   Set build filter ignored paths (can be specified multiple times)\n      --build-filter-path <PATHS>           Set build filter paths (can be specified multiple times)\n      --cron-command <COMMAND>              Set the cron command\n      --cron-schedule <SCHEDULE>            Set the cron schedule\n      --env-var <KEY_VALUE>                 Set environment variables in KEY=VALUE format (can be specified multiple times)\n      --environment-id <ENVIRONMENT_ID>     Set the environment ID\n      --from <SERVICE_ID>                   Clone configuration from an existing service ID or name and override cloned values with other flags\n      --health-check-path <PATH>            Set the health check path\n  -h, --help                                Show help for this command\n      --image <IMAGE_URL>                   Set the Docker image URL\n      --ip-allow-list <CIDR_DESCRIPTION>    Set IP allow list entries in cidr=..., description=... format (can be specified multiple times)\n      --maintenance-mode                    Enable maintenance mode\n      --maintenance-mode-uri <URI>          Set the maintenance mode URI\n      --max-shutdown-delay <SECONDS>        Set max shutdown delay in seconds (default: 0)\n      --name <NAME>                         Set the service name\n      --num-instances <COUNT>               Set the number of instances (default: 0)\n      --plan <PLAN>                         Set the service plan\n      --pre-deploy-command <COMMAND>        Set the pre-deploy command\n      --previews <PREVIEWS>                 Set preview generation mode\n      --publish-directory <PATH>            Set the publish directory\n      --region <REGION>                     Set the deployment region\n      --registry-credential <CREDENTIAL>    Set the registry credential\n      --repo <REPO_URL>                     Set the Git repository URL\n      --root-directory <PATH>               Set the root directory\n      --runtime <RUNTIME>                   Set the runtime environment\n      --secret-file <NAME_PATH>             Set secret files in NAME:LOCAL_PATH format (can be specified multiple times)\n      --start-command <COMMAND>             Set the start command\n      --type <TYPE>                         Set the service type\n      --confirm                             Skip all confirmation prompts\n  -o, --output <FORMAT>                     Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n\nEXAMPLES\n  # Create a service from repository configuration\n  render services create --name my-api --type web_service --repo https://github.com/org/repo --runtime node --build-command \"npm install\" --start-command \"npm start\" --output json\n\n  # Clone configuration from an existing service\n  render services create --from srv-abc123 --name my-api-clone --output json\n\nDETAILS\nCreate a new service on Render. This command only runs in non-interactive modes.\nProvide configuration options with flags.\n\n",
+      "stderr": ""
+    },
+    {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "update",
+        "--help"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.035,
+      "stdout": "Render CLI v2.27.0\n\nUpdate configuration for an existing service\n\nUSAGE\n  render services update <service> [flags]\n\nFLAGS\n      --auto-deploy                               Enable auto-deploy\n      --branch <string>                           Git branch\n      --build-command <string>                    Build command\n      --build-filter-ignored-path <stringArray>   Build filter ignored path (can be specified multiple times)\n      --build-filter-path <stringArray>           Build filter path (can be specified multiple times)\n      --cron-command <string>                     Cron command\n      --cron-schedule <string>                    Cron schedule\n      --health-check-path <string>                Health check path\n  -h, --help                                      Show help for this command\n      --image <string>                            Docker image URL\n      --ip-allow-list <stringArray>               IP allow list entry in cidr=..., description=... format (can be specified multiple times)\n      --maintenance-mode                          Enable maintenance mode\n      --maintenance-mode-uri <string>             Maintenance mode URI\n      --max-shutdown-delay <int>                  Max shutdown delay in seconds (default: 0)\n      --name <string>                             Service name\n      --plan <string>                             Service plan\n      --pre-deploy-command <string>               Pre-deploy command\n      --previews <enum>                           Preview generation mode\n      --publish-directory <string>                Publish directory\n      --registry-credential <string>              Registry credential\n      --repo <string>                             Git repository URL\n      --root-directory <string>                   Root directory\n      --runtime <enum>                            Runtime environment\n      --start-command <string>                    Start command\n      --confirm                                   Skip all confirmation prompts\n  -o, --output <FORMAT>                           Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n\nEXAMPLES\n  # Rename a service\n  render services update my-service --name my-new-name --output json\n\n  # Change a service plan\n  render services update srv-abc123 --plan 2c-4g --output json\n\nDETAILS\nUpdate a service on Render. This command only runs in non-interactive modes.\n\nProvide configuration updates with flags.\n\n",
+      "stderr": ""
+    },
+    {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "delete",
+        "--help"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.035,
+      "stdout": "Render CLI v2.27.0\n\nDelete a service\n\nUSAGE\n  render services delete <serviceID|serviceName> [flags]\n\nFLAGS\n  -h, --help              Show help for this command\n      --confirm           Skip all confirmation prompts\n  -o, --output <FORMAT>   Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n\nEXAMPLES\n  # Preview deletion (no changes made)\n  render services delete srv-abc123def456ghi789jkl0\n\n  # Delete by ID\n  render services delete srv-abc123def456ghi789jkl0 --confirm\n\n  # Delete by name\n  render services delete my-api --confirm\n\n  # JSON output\n  render services delete srv-abc123def456ghi789jkl0 --confirm --output json\n\nDETAILS\nDelete a service on Render.\n\nWithout --confirm, this command previews what would be deleted and makes no\nchanges. Pass --confirm to actually delete the service.\n\nThe positional argument accepts a service ID (including srv- or crn- IDs) or a\nname. Name lookup is scoped to your active workspace. If the name matches more\nthan one service, pass the service ID directly.\n\nThis command only runs non-interactively. If --output interactive is requested,\nit falls back to text output.\n\n",
+      "stderr": ""
+    },
+    {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "deploys",
+        "list",
+        "--help"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.036,
+      "stdout": "Render CLI v2.27.0\n\nList deploys for a service\n\nUSAGE\n  render deploys list [serviceID] [flags]\n\nFLAGS\n  -h, --help              Show help for this command\n      --confirm           Skip all confirmation prompts\n  -o, --output <FORMAT>   Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n\nEXAMPLES\n  # List deploys for a service\n  render deploys list srv-abc123\n\n  # Browse deploys interactively\n  render deploys list\n\n",
+      "stderr": ""
+    },
+    {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "logs",
+        "--help"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.037,
+      "stdout": "Render CLI v2.27.0\n\nView logs for services and datastores\n\nUSAGE\n  render logs [flags]\n\nFLAGS\n      --direction <LOG_DIRECTION>    Set log query direction (backward or forward)\n      --end <TIME>                   Filter logs at or before the specified end time\n  -h, --help                         Show help for this command\n      --host <HOSTS>                 Filter logs by comma-separated host values\n      --instance <INSTANCE_IDS>      Filter logs by comma-separated instance IDs\n      --level <LOG_LEVEL>            Filter logs by comma-separated log levels\n      --limit <COUNT>                Limit the number of logs returned (default: 100)\n      --method <HTTP_METHOD>         Filter logs by comma-separated HTTP methods\n      --path <PATHS>                 Filter logs by comma-separated request paths\n  -r, --resources <RESOURCE_IDS>     Filter logs by comma-separated resource IDs (Required in non-interactive mode)\n      --start <TIME>                 Filter logs at or after the specified start time\n      --status-code <STATUS_CODES>   Filter logs by comma-separated status codes\n      --tail                         Stream new logs\n      --task-id <TASK_IDS>           Filter logs by comma-separated task IDs\n      --task-run-id <TASK_RUN_IDS>   Filter logs by comma-separated task run IDs\n      --text <QUERY_TEXT>            Filter logs by comma-separated text values\n      --type <LOG_TYPE>              Filter logs by comma-separated log types\n      --confirm                      Skip all confirmation prompts\n  -o, --output <FORMAT>              Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n\nEXAMPLES\n  # Tail logs for a service\n  render logs --resources srv-abc123 --tail\n\n  # Query logs in a time range\n  render logs --resources srv-abc123 --start 2026-03-01T00:00:00Z --end 2026-03-01T01:00:00Z\n\n  # Output logs as JSON in non-interactive mode\n  render logs --resources srv-abc123 --output json\n\nDETAILS\nView logs for services and datastores.\n\nUse flags to filter logs by resource, instance, time, text, level, type, host,\nstatus code, method, or path. Unlike in the Render Dashboard, you can view logs\nfor multiple resources at once.\n\nIn interactive mode you can update the filters and view logs in real time, or\nset --tail=true to stream new logs.\n\n",
+      "stderr": ""
+    }
+  ],
+  "public_main_ref_verified": "facfc73c44b35d00bb1f72e8986f0ea47cab0755\trefs/heads/main\n",
+  "local_prerequisite": "sweep380-local-preflight.json: six actual Flask hook cases, no Gunicorn network or hosted evidence"
+}

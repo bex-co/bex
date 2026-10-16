@@ -1,0 +1,39 @@
+from pathlib import Path
+import json,os,subprocess,shutil,time,socket,signal,urllib.request,tarfile,io,tempfile,re
+P=Path(__file__).resolve().parent;os.umask(0o077);py='/opt/homebrew/opt/python@3.12/bin/python3.12';ref=json.loads((P/'sweep381-primary-reference.json').read_text());source=P/'sweep350-primary-source';remote=subprocess.check_output(['git','-C',str(source),'ls-remote','origin','refs/heads/main'],text=True,timeout=30);assert remote.split()[0]==ref['commit'];archive=subprocess.check_output(['git','-C',str(source),'archive','--format=tar',ref['commit']],timeout=20);results={'qualification':'own local Python3.12 prerequisite, private exact uv releases, locked real project sync/console and actual FastAPI uvicorn process; no native CLI, image supply or hosted claim; local UV_PYTHON selects existing Homebrew3.12','public_main':remote,'cases':[]}
+def run(args,**kw):
+ log=kw.pop('log');proc=subprocess.Popen(args,stdout=log,stderr=log,start_new_session=True,**kw)
+ try:assert proc.wait(timeout=120)==0,'local prerequisite command failed; inspect private log'
+ finally:
+  if proc.poll() is None:os.killpg(proc.pid,signal.SIGKILL);proc.wait(timeout=5)
+for version in ('0.12.10','0.11.3'):
+ tool=P/('sweep381-tool-'+version);assert not tool.exists();D=Path(tempfile.mkdtemp(prefix='bex381-',dir='/tmp'));D.chmod(0o700);log=(P/('sweep381-local-'+version+'.log')).open('w');server=None;case={'uv':version,'marker':'QA381_LOCAL_'+version,'commands':[]};results['cases'].append(case)
+ try:
+  env={k:v for k,v in os.environ.items() if not k.startswith(('UV_','PIP_','PYTHON','QA_','BEX_','RENDER_'))};env['PYTHONDONTWRITEBYTECODE']='1'
+  run([py,'-m','venv',str(tool)],env=env,log=log);run([str(tool/'bin/pip'),'install','--disable-pip-version-check','--no-cache-dir','--index-url','https://pypi.org/simple','uv=='+version],env=env,log=log)
+  uv=str(tool/'bin/uv');help=subprocess.check_output([uv,'sync','--help'],env=env,text=True,timeout=10);assert '--locked' in help and '--no-python-downloads' in help;help=subprocess.check_output([uv,'run','--help'],env=env,text=True,timeout=10);assert '--no-sync' in help
+  with tarfile.open(fileobj=io.BytesIO(archive)) as tar:tar.extractall(D,filter='data')
+  shutil.copyfile(P/'sweep381-probe.py',D/'qa381_probe.py');(D/'qa381-marker.json').write_text(json.dumps(case['marker']));(D/'qa381-reference.json').write_text(json.dumps(ref));env.update(PATH=str(tool/'bin')+':'+env['PATH'],UV_CACHE_DIR=str(D/'uv-cache'),UV_PYTHON=py,UV_PYTHON_DOWNLOADS='never',PYTHON_VERSION='3.12')
+  if version=='0.11.3':env['UV_VERSION']=version
+  for args in ([uv,'sync','--locked','--no-python-downloads'],[uv,'run','--no-sync','python','qa381_probe.py','--build']):case['commands'].append(args);run(args,cwd=D,env=env,log=log)
+  sock=socket.socket();sock.bind(('127.0.0.1',0));port=sock.getsockname()[1];sock.close();args=[uv,'run','--no-sync','uvicorn','qa381_probe:app','--host','127.0.0.1','--port',str(port)];case['commands'].append(args);server=subprocess.Popen(args,cwd=D,env=env,stdout=log,stderr=log,start_new_session=True)
+  for _ in range(100):
+   try:
+    with urllib.request.urlopen('http://127.0.0.1:'+str(port)+'/',timeout=.5) as response:assert json.loads(response.read())=='Hello world'
+    break
+   except OSError:time.sleep(.1)
+  else:raise RuntimeError('own local actual FastAPI startup absent')
+  with urllib.request.urlopen('http://127.0.0.1:'+str(port)+'/qa381',timeout=3) as response:v=json.loads(response.read())
+  for snapshot in (v,v['built']):
+   assert snapshot['marker']==case['marker'] and snapshot['project_venv'] and snapshot['python'].startswith('3.12.') and snapshot['files']==ref['files'] and snapshot['project_console_hello']['status']==0 and snapshot['project_console_hello']['stdout'].strip()=='Hello world' and snapshot['dependencies']['uv-docker-example']=='0.1.0'
+   for name in ('uv','uvx'):assert snapshot['tools'][name]['status']==0 and re.match(r'^(?:uv|uvx) '+re.escape(version)+r'\b',snapshot['tools'][name]['stdout'])
+  case.update(info=v,pass_=True,root_HTTP200_actual_project=True,diagnostic_HTTP200_exact_marker=True)
+ finally:
+  if server:
+   if server.poll() is None:os.killpg(server.pid,signal.SIGTERM)
+   try:server.wait(timeout=7)
+   except subprocess.TimeoutExpired:os.killpg(server.pid,signal.SIGKILL);server.wait(timeout=5)
+   case['server_exit_after_owned_stop']=server.returncode;case['server_reaped']=True
+  log.close();shutil.rmtree(D);shutil.rmtree(tool,ignore_errors=True);case['project_cache_and_tool_scratch_removed']=not D.exists() and not tool.exists();(P/'sweep381-local-preflight.json').write_text(json.dumps(results,indent=2))
+ print(json.dumps({'local_uv':version,'actual_project_root':case.get('root_HTTP200_actual_project'),'locked_sync_console_and_venv':case.get('pass_'),'scratch_removed':case['project_cache_and_tool_scratch_removed']}),flush=True)
+results['pass']=all(v['pass_'] and v['server_reaped'] and v['project_cache_and_tool_scratch_removed'] for v in results['cases']);(P/'sweep381-local-preflight.json').write_text(json.dumps(results,indent=2));print('Both exact-version local real-project prerequisites passed and cleaned.')

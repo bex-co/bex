@@ -1,0 +1,14 @@
+from pathlib import Path
+import sys,json,subprocess,time
+P=Path(__file__).resolve().parent;CP=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json')
+def resources():return [v for v in json.loads(CP.read_text())['resources'] if v.get('sweep')==370 and v.get('id')]
+def run(file,*args):
+ r=subprocess.run([sys.executable,str(P/file),*args],capture_output=True,text=True,timeout=65);(P/('sweep370-cleanup-'+file+'-'+('-'.join(args) or 'run')+'.log')).write_text(r.stdout+r.stderr);print(json.dumps({'step':file,'args':args,'exit':r.returncode}),flush=True);assert r.returncode==0
+assert len(resources())==1 and all(v['upload_summary']['pass'] and not v.get('delete_intent') for v in resources())
+for actor in ['bex']:run('sweep370-native-web.py','delete',actor)
+for attempt in range(4):
+ for actor in ['bex']:run('sweep370-native-web.py','reconcile',actor)
+ if all(v['cleanup_receipts'][-1]['pass'] for v in resources()):break
+ if attempt<3:time.sleep(10)
+assert all(v['cleanup_receipts'][-1]['pass'] for v in resources())
+run('sweep370-final-inventory.py');print('Exact owned services, deployment children and former HTTP endpoints absent; original inventory intact',flush=True)

@@ -1,0 +1,114 @@
+{
+  "shared": {
+    "env-groups": {
+      "at": "2026-10-16T19:38:30.945800+00:00",
+      "receipt": {
+        "at": "2026-10-16T19:38:30.945527+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/env-groups?ownerId=tea-daif693dqjvc73e7as3g",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 1.481,
+        "response": "[]",
+        "stderr": ""
+      },
+      "count": 0,
+      "pass": true,
+      "qualification": "own fixture and baseline membership are checked separately; preserve every unrelated workstream resource"
+    },
+    "projects": {
+      "at": "2026-10-16T19:38:31.691731+00:00",
+      "receipt": {
+        "at": "2026-10-16T19:38:31.691579+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/projects?ownerId=tea-daif693dqjvc73e7as3g",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.314,
+        "response": "[]",
+        "stderr": ""
+      },
+      "count": 0,
+      "pass": true,
+      "qualification": "own fixture and baseline membership are checked separately; preserve every unrelated workstream resource"
+    },
+    "blueprints": {
+      "at": "2026-10-16T19:38:32.629345+00:00",
+      "receipt": {
+        "at": "2026-10-16T19:38:32.626949+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/blueprints?ownerId=tea-daif693dqjvc73e7as3g",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.337,
+        "response": "[{\"id\": \"blp-db136288mmqc73d4hpug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}]",
+        "stderr": ""
+      },
+      "count": 1,
+      "pass": true,
+      "qualification": "own fixture and baseline membership are checked separately; preserve every unrelated workstream resource"
+    },
+    "quota": {
+      "at": "2026-10-16T19:38:33.523397+00:00",
+      "receipt": {
+        "at": "2026-10-16T19:38:33.523205+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.304,
+        "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+        "stderr": ""
+      },
+      "count": null,
+      "pass": true,
+      "qualification": "own fixture and baseline membership are checked separately; preserve every unrelated workstream resource"
+    }
+  },
+  "services": {
+    "native": {
+      "at": "2026-10-16T19:38:29.075396+00:00",
+      "binary": "released Bex0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "client_setup": null,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.85,
+      "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}]",
+      "stderr": ""
+    },
+    "count": 6,
+    "baseline_present": true,
+    "unowned_extra_ids": []
+  }
+}

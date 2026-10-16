@@ -1,0 +1,343 @@
+{
+  "qualification": "own private local PostgreSQL18.6/psql18.6 harness prerequisite; not Bex evidence",
+  "rounds": [
+    {
+      "listener": "bex",
+      "channel": "qa368_local368_bex",
+      "payloads": [
+        "qa368 local368 first",
+        "qa368 café 日本 😀 apostrophe's payload",
+        ""
+      ],
+      "listener_commands": [
+        {
+          "label": "register own committed listener",
+          "stdin": "SET application_name='qa368_local368_bex'; SET statement_timeout='20s'; LISTEN qa368_local368_bex; SELECT jsonb_build_object('marker','QA368_local368_bex_1','pid',pg_backend_pid(),'channels',(SELECT coalesce(jsonb_agg(ch ORDER BY ch),'[]'::jsonb) FROM pg_listening_channels() ch))::text;\n\\echo QA368_local368_bex_1_END\n"
+        },
+        {
+          "label": "fence after producer rollback",
+          "stdin": " SELECT jsonb_build_object('marker','QA368_local368_bex_2','pid',pg_backend_pid(),'channels',(SELECT coalesce(jsonb_agg(ch ORDER BY ch),'[]'::jsonb) FROM pg_listening_channels() ch))::text;\n\\echo QA368_local368_bex_2_END\n"
+        },
+        {
+          "label": "consume committed batch",
+          "stdin": " SELECT jsonb_build_object('marker','QA368_local368_bex_3','pid',pg_backend_pid(),'channels',(SELECT coalesce(jsonb_agg(ch ORDER BY ch),'[]'::jsonb) FROM pg_listening_channels() ch))::text;\n\\echo QA368_local368_bex_3_END\n"
+        },
+        {
+          "label": "consume separate transaction",
+          "stdin": " SELECT jsonb_build_object('marker','QA368_local368_bex_4','pid',pg_backend_pid(),'channels',(SELECT coalesce(jsonb_agg(ch ORDER BY ch),'[]'::jsonb) FROM pg_listening_channels() ch))::text;\n\\echo QA368_local368_bex_4_END\n"
+        },
+        {
+          "label": "remove own subscription",
+          "stdin": "UNLISTEN qa368_local368_bex; SELECT jsonb_build_object('marker','QA368_local368_bex_5','pid',pg_backend_pid(),'channels',(SELECT coalesce(jsonb_agg(ch ORDER BY ch),'[]'::jsonb) FROM pg_listening_channels() ch))::text;\n\\echo QA368_local368_bex_5_END\n"
+        },
+        {
+          "label": "fence after unlisten",
+          "stdin": " SELECT jsonb_build_object('marker','QA368_local368_bex_6','pid',pg_backend_pid(),'channels',(SELECT coalesce(jsonb_agg(ch ORDER BY ch),'[]'::jsonb) FROM pg_listening_channels() ch))::text;\n\\echo QA368_local368_bex_6_END\n"
+        }
+      ],
+      "producer_events": [
+        {
+          "client": "local-other-psql",
+          "label": "rolled-back",
+          "native_exit": 0,
+          "SQL_output": "\n{\"pid\": 90086, \"marker\": \"QA368_local368_bex_rolled-back\"}\n",
+          "stderr": "",
+          "SQL": "BEGIN; SELECT pg_notify('qa368_local368_bex','qa368_local368_ROLLBACK_MUST_NOT_DELIVER'); ROLLBACK; SELECT jsonb_build_object('marker','QA368_local368_bex_rolled-back','pid',pg_backend_pid())::text;"
+        },
+        {
+          "client": "local-other-psql",
+          "label": "committed-batch",
+          "native_exit": 0,
+          "SQL_output": "\n\n\n\n{\"pid\": 90088, \"marker\": \"QA368_local368_bex_committed-batch\"}\n",
+          "stderr": "",
+          "SQL": "BEGIN; SELECT pg_notify('qa368_local368_bex','qa368 local368 first'); SELECT pg_notify('qa368_local368_bex','qa368 local368 first'); SELECT pg_notify('qa368_local368_bex','qa368 café 日本 😀 apostrophe''s payload'); SELECT pg_notify('qa368_local368_bex',''); COMMIT; SELECT jsonb_build_object('marker','QA368_local368_bex_committed-batch','pid',pg_backend_pid())::text;"
+        },
+        {
+          "client": "local-other-psql",
+          "label": "next-transaction",
+          "native_exit": 0,
+          "SQL_output": "\n{\"pid\": 90090, \"marker\": \"QA368_local368_bex_next-transaction\"}\n",
+          "stderr": "",
+          "SQL": "BEGIN; SELECT pg_notify('qa368_local368_bex','qa368 local368 first'); COMMIT; SELECT jsonb_build_object('marker','QA368_local368_bex_next-transaction','pid',pg_backend_pid())::text;"
+        },
+        {
+          "client": "local-other-psql",
+          "label": "after-unlisten",
+          "native_exit": 0,
+          "SQL_output": "\n{\"pid\": 90092, \"marker\": \"QA368_local368_bex_after-unlisten\"}\n",
+          "stderr": "",
+          "SQL": "SELECT pg_notify('qa368_local368_bex','qa368_local368_AFTER_UNLISTEN_MUST_NOT_DELIVER'); SELECT jsonb_build_object('marker','QA368_local368_bex_after-unlisten','pid',pg_backend_pid())::text;"
+        }
+      ],
+      "qualification": "ordinary LISTEN/NOTIFY through native psql; listener fences consume pending messages, no idle-immediate timing claim",
+      "native_command": [
+        "local-psql",
+        "<own-unix-socket>"
+      ],
+      "listener_frames": [
+        {
+          "pid": 90084,
+          "marker": "QA368_local368_bex_1",
+          "channels": [
+            "qa368_local368_bex"
+          ]
+        },
+        {
+          "pid": 90084,
+          "marker": "QA368_local368_bex_2",
+          "channels": [
+            "qa368_local368_bex"
+          ]
+        },
+        {
+          "pid": 90084,
+          "marker": "QA368_local368_bex_3",
+          "channels": [
+            "qa368_local368_bex"
+          ]
+        },
+        {
+          "pid": 90084,
+          "marker": "QA368_local368_bex_4",
+          "channels": [
+            "qa368_local368_bex"
+          ]
+        },
+        {
+          "pid": 90084,
+          "marker": "QA368_local368_bex_5",
+          "channels": []
+        },
+        {
+          "pid": 90084,
+          "marker": "QA368_local368_bex_6",
+          "channels": []
+        }
+      ],
+      "listener_pid": 90084,
+      "rollback_not_delivered": true,
+      "within_transaction_duplicate_collapsed": true,
+      "committed_batch": [
+        {
+          "payload": "qa368 local368 first",
+          "sender_pid": 90088
+        },
+        {
+          "payload": "qa368 café 日本 😀 apostrophe's payload",
+          "sender_pid": 90088
+        },
+        {
+          "payload": "",
+          "sender_pid": 90088
+        }
+      ],
+      "separate_transaction_not_collapsed": true,
+      "unlisten_stops_delivery": true,
+      "same_listener_connection_reused": true,
+      "notifications": [
+        {
+          "payload": "qa368 local368 first",
+          "sender_pid": 90088
+        },
+        {
+          "payload": "qa368 café 日本 😀 apostrophe's payload",
+          "sender_pid": 90088
+        },
+        {
+          "payload": "",
+          "sender_pid": 90088
+        },
+        {
+          "payload": "qa368 local368 first",
+          "sender_pid": 90090
+        }
+      ],
+      "natural_native_exit": 0,
+      "pass": true,
+      "PTY": {
+        "stdin_stdout_TTY": true,
+        "controlling_terminal": true,
+        "terminal_ISIG_enabled": true,
+        "terminal_echo_disabled": true,
+        "rows": 40,
+        "columns": 140,
+        "elapsed": 0.073,
+        "native_exit": 0,
+        "output": "LOCAL368_bex> {\"pid\": 90084, \"marker\": \"QA368_local368_bex_1\", \"channels\": [\"qa368_local368_bex\"]}\nLOCAL368_bex> QA368_local368_bex_1_END\nLOCAL368_bex> {\"pid\": 90084, \"marker\": \"QA368_local368_bex_2\", \"channels\": [\"qa368_local368_bex\"]}\nLOCAL368_bex> QA368_local368_bex_2_END\nLOCAL368_bex> {\"pid\": 90084, \"marker\": \"QA368_local368_bex_3\", \"channels\": [\"qa368_local368_bex\"]}\nAsynchronous notification \"qa368_local368_bex\" with payload \"qa368 local368 first\" received from server process with PID 90088.\nAsynchronous notification \"qa368_local368_bex\" with payload \"qa368 café 日本 😀 apostrophe's payload\" received from server process with PID 90088.\nAsynchronous notification \"qa368_local368_bex\" received from server process with PID 90088.\nLOCAL368_bex> QA368_local368_bex_3_END\nLOCAL368_bex> {\"pid\": 90084, \"marker\": \"QA368_local368_bex_4\", \"channels\": [\"qa368_local368_bex\"]}\nAsynchronous notification \"qa368_local368_bex\" with payload \"qa368 local368 first\" received from server process with PID 90090.\nLOCAL368_bex> QA368_local368_bex_4_END\nLOCAL368_bex> {\"pid\": 90084, \"marker\": \"QA368_local368_bex_5\", \"channels\": []}\nLOCAL368_bex> QA368_local368_bex_5_END\nLOCAL368_bex> {\"pid\": 90084, \"marker\": \"QA368_local368_bex_6\", \"channels\": []}\nLOCAL368_bex> QA368_local368_bex_6_END\nLOCAL368_bex> ",
+        "own_process_group_cleaned": true,
+        "events": []
+      },
+      "owned_listener_config_history_tmp_removed": true
+    },
+    {
+      "listener": "render",
+      "channel": "qa368_local368_render",
+      "payloads": [
+        "qa368 local368 first",
+        "qa368 café 日本 😀 apostrophe's payload",
+        ""
+      ],
+      "listener_commands": [
+        {
+          "label": "register own committed listener",
+          "stdin": "SET application_name='qa368_local368_render'; SET statement_timeout='20s'; LISTEN qa368_local368_render; SELECT jsonb_build_object('marker','QA368_local368_render_1','pid',pg_backend_pid(),'channels',(SELECT coalesce(jsonb_agg(ch ORDER BY ch),'[]'::jsonb) FROM pg_listening_channels() ch))::text;\n\\echo QA368_local368_render_1_END\n"
+        },
+        {
+          "label": "fence after producer rollback",
+          "stdin": " SELECT jsonb_build_object('marker','QA368_local368_render_2','pid',pg_backend_pid(),'channels',(SELECT coalesce(jsonb_agg(ch ORDER BY ch),'[]'::jsonb) FROM pg_listening_channels() ch))::text;\n\\echo QA368_local368_render_2_END\n"
+        },
+        {
+          "label": "consume committed batch",
+          "stdin": " SELECT jsonb_build_object('marker','QA368_local368_render_3','pid',pg_backend_pid(),'channels',(SELECT coalesce(jsonb_agg(ch ORDER BY ch),'[]'::jsonb) FROM pg_listening_channels() ch))::text;\n\\echo QA368_local368_render_3_END\n"
+        },
+        {
+          "label": "consume separate transaction",
+          "stdin": " SELECT jsonb_build_object('marker','QA368_local368_render_4','pid',pg_backend_pid(),'channels',(SELECT coalesce(jsonb_agg(ch ORDER BY ch),'[]'::jsonb) FROM pg_listening_channels() ch))::text;\n\\echo QA368_local368_render_4_END\n"
+        },
+        {
+          "label": "remove own subscription",
+          "stdin": "UNLISTEN qa368_local368_render; SELECT jsonb_build_object('marker','QA368_local368_render_5','pid',pg_backend_pid(),'channels',(SELECT coalesce(jsonb_agg(ch ORDER BY ch),'[]'::jsonb) FROM pg_listening_channels() ch))::text;\n\\echo QA368_local368_render_5_END\n"
+        },
+        {
+          "label": "fence after unlisten",
+          "stdin": " SELECT jsonb_build_object('marker','QA368_local368_render_6','pid',pg_backend_pid(),'channels',(SELECT coalesce(jsonb_agg(ch ORDER BY ch),'[]'::jsonb) FROM pg_listening_channels() ch))::text;\n\\echo QA368_local368_render_6_END\n"
+        }
+      ],
+      "producer_events": [
+        {
+          "client": "local-other-psql",
+          "label": "rolled-back",
+          "native_exit": 0,
+          "SQL_output": "\n{\"pid\": 90096, \"marker\": \"QA368_local368_render_rolled-back\"}\n",
+          "stderr": "",
+          "SQL": "BEGIN; SELECT pg_notify('qa368_local368_render','qa368_local368_ROLLBACK_MUST_NOT_DELIVER'); ROLLBACK; SELECT jsonb_build_object('marker','QA368_local368_render_rolled-back','pid',pg_backend_pid())::text;"
+        },
+        {
+          "client": "local-other-psql",
+          "label": "committed-batch",
+          "native_exit": 0,
+          "SQL_output": "\n\n\n\n{\"pid\": 90098, \"marker\": \"QA368_local368_render_committed-batch\"}\n",
+          "stderr": "",
+          "SQL": "BEGIN; SELECT pg_notify('qa368_local368_render','qa368 local368 first'); SELECT pg_notify('qa368_local368_render','qa368 local368 first'); SELECT pg_notify('qa368_local368_render','qa368 café 日本 😀 apostrophe''s payload'); SELECT pg_notify('qa368_local368_render',''); COMMIT; SELECT jsonb_build_object('marker','QA368_local368_render_committed-batch','pid',pg_backend_pid())::text;"
+        },
+        {
+          "client": "local-other-psql",
+          "label": "next-transaction",
+          "native_exit": 0,
+          "SQL_output": "\n{\"pid\": 90100, \"marker\": \"QA368_local368_render_next-transaction\"}\n",
+          "stderr": "",
+          "SQL": "BEGIN; SELECT pg_notify('qa368_local368_render','qa368 local368 first'); COMMIT; SELECT jsonb_build_object('marker','QA368_local368_render_next-transaction','pid',pg_backend_pid())::text;"
+        },
+        {
+          "client": "local-other-psql",
+          "label": "after-unlisten",
+          "native_exit": 0,
+          "SQL_output": "\n{\"pid\": 90102, \"marker\": \"QA368_local368_render_after-unlisten\"}\n",
+          "stderr": "",
+          "SQL": "SELECT pg_notify('qa368_local368_render','qa368_local368_AFTER_UNLISTEN_MUST_NOT_DELIVER'); SELECT jsonb_build_object('marker','QA368_local368_render_after-unlisten','pid',pg_backend_pid())::text;"
+        }
+      ],
+      "qualification": "ordinary LISTEN/NOTIFY through native psql; listener fences consume pending messages, no idle-immediate timing claim",
+      "native_command": [
+        "local-psql",
+        "<own-unix-socket>"
+      ],
+      "listener_frames": [
+        {
+          "pid": 90094,
+          "marker": "QA368_local368_render_1",
+          "channels": [
+            "qa368_local368_render"
+          ]
+        },
+        {
+          "pid": 90094,
+          "marker": "QA368_local368_render_2",
+          "channels": [
+            "qa368_local368_render"
+          ]
+        },
+        {
+          "pid": 90094,
+          "marker": "QA368_local368_render_3",
+          "channels": [
+            "qa368_local368_render"
+          ]
+        },
+        {
+          "pid": 90094,
+          "marker": "QA368_local368_render_4",
+          "channels": [
+            "qa368_local368_render"
+          ]
+        },
+        {
+          "pid": 90094,
+          "marker": "QA368_local368_render_5",
+          "channels": []
+        },
+        {
+          "pid": 90094,
+          "marker": "QA368_local368_render_6",
+          "channels": []
+        }
+      ],
+      "listener_pid": 90094,
+      "rollback_not_delivered": true,
+      "within_transaction_duplicate_collapsed": true,
+      "committed_batch": [
+        {
+          "payload": "qa368 local368 first",
+          "sender_pid": 90098
+        },
+        {
+          "payload": "qa368 café 日本 😀 apostrophe's payload",
+          "sender_pid": 90098
+        },
+        {
+          "payload": "",
+          "sender_pid": 90098
+        }
+      ],
+      "separate_transaction_not_collapsed": true,
+      "unlisten_stops_delivery": true,
+      "same_listener_connection_reused": true,
+      "notifications": [
+        {
+          "payload": "qa368 local368 first",
+          "sender_pid": 90098
+        },
+        {
+          "payload": "qa368 café 日本 😀 apostrophe's payload",
+          "sender_pid": 90098
+        },
+        {
+          "payload": "",
+          "sender_pid": 90098
+        },
+        {
+          "payload": "qa368 local368 first",
+          "sender_pid": 90100
+        }
+      ],
+      "natural_native_exit": 0,
+      "pass": true,
+      "PTY": {
+        "stdin_stdout_TTY": true,
+        "controlling_terminal": true,
+        "terminal_ISIG_enabled": true,
+        "terminal_echo_disabled": true,
+        "rows": 40,
+        "columns": 140,
+        "elapsed": 0.065,
+        "native_exit": 0,
+        "output": "LOCAL368_render> {\"pid\": 90094, \"marker\": \"QA368_local368_render_1\", \"channels\": [\"qa368_local368_render\"]}\nLOCAL368_render> QA368_local368_render_1_END\nLOCAL368_render> {\"pid\": 90094, \"marker\": \"QA368_local368_render_2\", \"channels\": [\"qa368_local368_render\"]}\nLOCAL368_render> QA368_local368_render_2_END\nLOCAL368_render> {\"pid\": 90094, \"marker\": \"QA368_local368_render_3\", \"channels\": [\"qa368_local368_render\"]}\nAsynchronous notification \"qa368_local368_render\" with payload \"qa368 local368 first\" received from server process with PID 90098.\nAsynchronous notification \"qa368_local368_render\" with payload \"qa368 café 日本 😀 apostrophe's payload\" received from server process with PID 90098.\nAsynchronous notification \"qa368_local368_render\" received from server process with PID 90098.\nLOCAL368_render> QA368_local368_render_3_END\nLOCAL368_render> {\"pid\": 90094, \"marker\": \"QA368_local368_render_4\", \"channels\": [\"qa368_local368_render\"]}\nAsynchronous notification \"qa368_local368_render\" with payload \"qa368 local368 first\" received from server process with PID 90100.\nLOCAL368_render> QA368_local368_render_4_END\nLOCAL368_render> {\"pid\": 90094, \"marker\": \"QA368_local368_render_5\", \"channels\": []}\nLOCAL368_render> QA368_local368_render_5_END\nLOCAL368_render> {\"pid\": 90094, \"marker\": \"QA368_local368_render_6\", \"channels\": []}\nLOCAL368_render> QA368_local368_render_6_END\nLOCAL368_render> ",
+        "own_process_group_cleaned": true,
+        "events": []
+      },
+      "owned_listener_config_history_tmp_removed": true
+    }
+  ],
+  "server_stopped": true,
+  "own_data_socket_history_removed": true
+}

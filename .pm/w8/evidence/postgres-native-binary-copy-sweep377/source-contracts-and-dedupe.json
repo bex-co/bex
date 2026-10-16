@@ -1,0 +1,14 @@
+{
+  "sweep": 377,
+  "source_head": "4052136f34445debd5391828d99995a790552d1c",
+  "fixture": "dpg-db99qr9c8a2c73cevtl0",
+  "primary_contracts": [
+    "https://www.postgresql.org/docs/16/sql-copy.html",
+    "https://www.postgresql.org/docs/16/app-psql.html"
+  ],
+  "scope": "ordinary client-side psql backslash-copy binary import/export over native CLI; signed int4/int8/text/bytea and nullable text; controlled duplicate primary key input remains a well-formed COPY stream",
+  "independent_model": "64 row Python reference + documented binary COPY signature, zero flags/extension, network-order field counts/lengths and scalar ints; SQL full data checks through opposite native client; ordered exports equal original input bytes",
+  "dedupe": "CSV360 covered CSV numeric conversion/null quoting; largeobjects373 covers LO APIs; file348 covers -c/-f transactions. These do not assert COPY BINARY framing/NULL/empty field behavior. Log comma candidate was ruled out by current repeated-query-parameter parsing and m60 original quoted-CSV positive controls before allocating any log fixture.",
+  "local_qualification": "first local JSON guard received psql scalar t; diagnostic booleans now use to_json(... )::text; initial own local server/data/files removed before corrected full local pass; no production replay",
+  "unverified": "general binary portability across types/architectures/versions; physical PVCs; real Render production; active serving image SHA; pre-fix existing-parent vector backfill"
+}

@@ -1,0 +1,23 @@
+{
+  "journey": "native two persistent psql clients on fresh Free PG15; actual snapshot isolation, uncommitted visibility,500ms lock timeout55P03, savepoint23505 recovery, serialization40001 rollback/fresh retry; stable backendPIDs; own schema removed",
+  "local_result": "27 stages pass on own PG18.6/psql18.6; server/data/socket/history removed; only a prerequisite, not Bex evidence",
+  "fixture": "dpg-db99ijq11h4c73ffkn6g",
+  "dedupe": "348 already exercises combined-c/-f whole-file transactions, so that candidate was ruled out before allocation; concurrent isolation explicitly uncovered. 353lock_timeout is only extension migration bound, not concurrent test; 365m87nativeCtrlC cancellation remains separate",
+  "primary_contracts": [
+    "https://www.postgresql.org/docs/15/transaction-iso.html",
+    "https://www.postgresql.org/docs/15/sql-savepoint.html",
+    "https://www.postgresql.org/docs/15/runtime-config-client.html"
+  ],
+  "unverified": "actual servingSHA, sustainedcontention/deadlocks/pools/failover/physicalpods, Renderproduction, pre-fix parent vectorbackfill",
+  "completed_sweep": 376,
+  "reproduction_sequence": [
+    "native SQL ping Bex + Render physical15/ownidentity",
+    "prepare own cached endpoint+CA; cachedbeforeSELECT1",
+    "run sweep376-isolation.py live",
+    "then15 native vector neighbor controls on same own fixture if isolation accepted",
+    "native delete + detail/list/quota, cachedafterSELECT1fails withCApresent, removecacheCA,finalinventory",
+    "file positiveevidenceandexistingm84acceptance or researchedrealcandidate; format/privacy/links",
+    "sync nextsweep; continue loop"
+  ],
+  "result": "27 native isolation/error recovery stages and15 native vector controls pass, exact complete cleanup"
+}

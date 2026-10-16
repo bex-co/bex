@@ -1,0 +1,1615 @@
+{
+  "sweep": 375,
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "type": "keyvalue",
+  "name": "qa-20261016-e7ce3e-watch",
+  "nonce": "e7ce3e",
+  "time": "2026-10-16T21:26:12.830174+00:00",
+  "source_head": "8769f199c1a06a80a6bfb02b65ea08e2154de02f",
+  "dependency_ids": [],
+  "recorded_child_ids": [],
+  "pre_ids": [],
+  "capacity": {
+    "at": "2026-10-16T21:26:11.584837+00:00",
+    "API_only": true,
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "body": null,
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "status": "200",
+    "curl_exit": 0,
+    "elapsed": 0.744,
+    "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+    "stderr": ""
+  },
+  "pre_inventory": {
+    "at": "2026-10-16T21:26:12.191395+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "keyvalues",
+      "list",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.606,
+    "stdout": "{\"data\": []}",
+    "stderr": ""
+  },
+  "pre_services": {
+    "at": "2026-10-16T21:26:12.829942+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.638,
+    "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}]",
+    "stderr": ""
+  },
+  "create_command": [
+    "bex",
+    "keyvalues",
+    "create",
+    "--name",
+    "qa-20261016-e7ce3e-watch",
+    "--plan",
+    "free",
+    "--region",
+    "frankfurt",
+    "--memory-policy",
+    "queue",
+    "--persistence-mode",
+    "off",
+    "--ip-allow-list",
+    "cidr=0.0.0.0/0,description=owned-qa",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "state": "deleted: native0/detail404/listempty/baseline6/KVquota0 terminating0",
+  "create_result": {
+    "at": "2026-10-16T21:26:13.456307+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "keyvalues",
+      "create",
+      "--name",
+      "qa-20261016-e7ce3e-watch",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--memory-policy",
+      "queue",
+      "--persistence-mode",
+      "off",
+      "--ip-allow-list",
+      "cidr=0.0.0.0/0,description=owned-qa",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.395,
+    "stdout": "{\"data\": {\"id\": \"red-db99cta11h4c73ffkn40\", \"name\": \"qa-20261016-e7ce3e-watch\", \"plan\": \"free\", \"region\": \"fsn1\", \"status\": \"creating\", \"createdAt\": \"2026-10-16T21:26:13Z\", \"updatedAt\": \"2026-10-16T21:26:13.335713799Z\", \"version\": \"8\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"ownerType\": \"team\", \"projectId\": null, \"environmentId\": null, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}}",
+    "stderr": ""
+  },
+  "id": "red-db99cta11h4c73ffkn40",
+  "create_response": {
+    "id": "red-db99cta11h4c73ffkn40",
+    "name": "qa-20261016-e7ce3e-watch",
+    "plan": "free",
+    "region": "fsn1",
+    "status": "creating",
+    "createdAt": "2026-10-16T21:26:13Z",
+    "updatedAt": "2026-10-16T21:26:13.335713799Z",
+    "version": "8",
+    "ownerId": "tea-daif693dqjvc73e7as3g",
+    "ownerType": "team",
+    "projectId": null,
+    "environmentId": null,
+    "ipAllowList": [
+      {
+        "cidrBlock": "0.0.0.0/0",
+        "description": "owned-qa"
+      }
+    ],
+    "maxmemoryPolicy": "noeviction",
+    "persistenceMode": "off"
+  },
+  "details": [
+    {
+      "at": "2026-10-16T21:26:32.030063+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db99cta11h4c73ffkn40",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.39,
+      "response": "{\"id\": \"red-db99cta11h4c73ffkn40\", \"name\": \"qa-20261016-e7ce3e-watch\", \"plan\": \"free\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:26:13Z\", \"updatedAt\": \"2026-10-16T21:26:19Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db99cta11h4c73ffkn40\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db99cta11h4c73ffkn40.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T21:26:43.312127+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db99cta11h4c73ffkn40",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.402,
+      "response": "{\"id\": \"red-db99cta11h4c73ffkn40\", \"name\": \"qa-20261016-e7ce3e-watch\", \"plan\": \"free\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:26:13Z\", \"updatedAt\": \"2026-10-16T21:26:39Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db99cta11h4c73ffkn40\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db99cta11h4c73ffkn40.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T21:26:54.575946+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db99cta11h4c73ffkn40",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.433,
+      "response": "{\"id\": \"red-db99cta11h4c73ffkn40\", \"name\": \"qa-20261016-e7ce3e-watch\", \"plan\": \"free\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:26:13Z\", \"updatedAt\": \"2026-10-16T21:26:53Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db99cta11h4c73ffkn40\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db99cta11h4c73ffkn40.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T21:27:06.191671+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db99cta11h4c73ffkn40",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.307,
+      "response": "{\"id\": \"red-db99cta11h4c73ffkn40\", \"name\": \"qa-20261016-e7ce3e-watch\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:26:13Z\", \"updatedAt\": \"2026-10-16T21:26:55Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db99cta11h4c73ffkn40\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db99cta11h4c73ffkn40.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T21:27:17.644398+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db99cta11h4c73ffkn40",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.414,
+      "response": "{\"id\": \"red-db99cta11h4c73ffkn40\", \"name\": \"qa-20261016-e7ce3e-watch\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:26:13Z\", \"updatedAt\": \"2026-10-16T21:26:55Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db99cta11h4c73ffkn40\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db99cta11h4c73ffkn40.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T21:28:17.205928+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db99cta11h4c73ffkn40",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.435,
+      "response": "{\"id\": \"red-db99cta11h4c73ffkn40\", \"name\": \"qa-20261016-e7ce3e-watch\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:26:13Z\", \"updatedAt\": \"2026-10-16T21:26:55Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db99cta11h4c73ffkn40\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db99cta11h4c73ffkn40.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T21:28:21.357259+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db99cta11h4c73ffkn40",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.349,
+      "response": "{\"id\": \"red-db99cta11h4c73ffkn40\", \"name\": \"qa-20261016-e7ce3e-watch\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:26:13Z\", \"updatedAt\": \"2026-10-16T21:26:55Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db99cta11h4c73ffkn40\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db99cta11h4c73ffkn40.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T21:28:24.630080+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db99cta11h4c73ffkn40",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.297,
+      "response": "{\"id\": \"red-db99cta11h4c73ffkn40\", \"name\": \"qa-20261016-e7ce3e-watch\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:26:13Z\", \"updatedAt\": \"2026-10-16T21:26:55Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db99cta11h4c73ffkn40\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db99cta11h4c73ffkn40.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T21:28:27.722154+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db99cta11h4c73ffkn40",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.368,
+      "response": "{\"id\": \"red-db99cta11h4c73ffkn40\", \"name\": \"qa-20261016-e7ce3e-watch\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:26:13Z\", \"updatedAt\": \"2026-10-16T21:26:55Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db99cta11h4c73ffkn40\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db99cta11h4c73ffkn40.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T21:29:45.775761+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db99cta11h4c73ffkn40",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.415,
+      "response": "{\"id\": \"red-db99cta11h4c73ffkn40\", \"name\": \"qa-20261016-e7ce3e-watch\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:26:13Z\", \"updatedAt\": \"2026-10-16T21:26:55Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db99cta11h4c73ffkn40\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db99cta11h4c73ffkn40.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    }
+  ],
+  "readiness": [
+    {
+      "at": "2026-10-16T21:26:32.272230+00:00",
+      "native": {
+        "at": "2026-10-16T21:26:31.627013+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "get",
+          "red-db99cta11h4c73ffkn40",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.763,
+        "stdout": "{\"data\": {\"id\": \"red-db99cta11h4c73ffkn40\", \"name\": \"qa-20261016-e7ce3e-watch\", \"plan\": \"free\", \"region\": \"fsn1\", \"status\": \"creating\", \"createdAt\": \"2026-10-16T21:26:13Z\", \"updatedAt\": \"2026-10-16T21:26:19Z\", \"version\": \"8\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"ownerType\": \"team\", \"projectId\": null, \"environmentId\": null, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-16T21:26:32.030063+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db99cta11h4c73ffkn40",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.39,
+        "response": "{\"id\": \"red-db99cta11h4c73ffkn40\", \"name\": \"qa-20261016-e7ce3e-watch\", \"plan\": \"free\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:26:13Z\", \"updatedAt\": \"2026-10-16T21:26:19Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db99cta11h4c73ffkn40\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db99cta11h4c73ffkn40.kv.bex.co\", \"public\": true}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T21:26:43.553926+00:00",
+      "native": {
+        "at": "2026-10-16T21:26:42.897253+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "get",
+          "red-db99cta11h4c73ffkn40",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.389,
+        "stdout": "{\"data\": {\"id\": \"red-db99cta11h4c73ffkn40\", \"name\": \"qa-20261016-e7ce3e-watch\", \"plan\": \"free\", \"region\": \"fsn1\", \"status\": \"creating\", \"createdAt\": \"2026-10-16T21:26:13Z\", \"updatedAt\": \"2026-10-16T21:26:39Z\", \"version\": \"8\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"ownerType\": \"team\", \"projectId\": null, \"environmentId\": null, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-16T21:26:43.312127+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db99cta11h4c73ffkn40",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.402,
+        "response": "{\"id\": \"red-db99cta11h4c73ffkn40\", \"name\": \"qa-20261016-e7ce3e-watch\", \"plan\": \"free\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:26:13Z\", \"updatedAt\": \"2026-10-16T21:26:39Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db99cta11h4c73ffkn40\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db99cta11h4c73ffkn40.kv.bex.co\", \"public\": true}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T21:26:54.801452+00:00",
+      "native": {
+        "at": "2026-10-16T21:26:54.131231+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "get",
+          "red-db99cta11h4c73ffkn40",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.337,
+        "stdout": "{\"data\": {\"id\": \"red-db99cta11h4c73ffkn40\", \"name\": \"qa-20261016-e7ce3e-watch\", \"plan\": \"free\", \"region\": \"fsn1\", \"status\": \"creating\", \"createdAt\": \"2026-10-16T21:26:13Z\", \"updatedAt\": \"2026-10-16T21:26:53Z\", \"version\": \"8\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"ownerType\": \"team\", \"projectId\": null, \"environmentId\": null, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-16T21:26:54.575946+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db99cta11h4c73ffkn40",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.433,
+        "response": "{\"id\": \"red-db99cta11h4c73ffkn40\", \"name\": \"qa-20261016-e7ce3e-watch\", \"plan\": \"free\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:26:13Z\", \"updatedAt\": \"2026-10-16T21:26:53Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db99cta11h4c73ffkn40\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db99cta11h4c73ffkn40.kv.bex.co\", \"public\": true}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T21:27:06.435767+00:00",
+      "native": {
+        "at": "2026-10-16T21:27:05.870121+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "get",
+          "red-db99cta11h4c73ffkn40",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.834,
+        "stdout": "{\"data\": {\"id\": \"red-db99cta11h4c73ffkn40\", \"name\": \"qa-20261016-e7ce3e-watch\", \"plan\": \"free\", \"region\": \"fsn1\", \"status\": \"available\", \"createdAt\": \"2026-10-16T21:26:13Z\", \"updatedAt\": \"2026-10-16T21:26:55Z\", \"version\": \"8\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"ownerType\": \"team\", \"projectId\": null, \"environmentId\": null, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-16T21:27:06.191671+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db99cta11h4c73ffkn40",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.307,
+        "response": "{\"id\": \"red-db99cta11h4c73ffkn40\", \"name\": \"qa-20261016-e7ce3e-watch\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:26:13Z\", \"updatedAt\": \"2026-10-16T21:26:55Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db99cta11h4c73ffkn40\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db99cta11h4c73ffkn40.kv.bex.co\", \"public\": true}",
+        "stderr": ""
+      }
+    }
+  ],
+  "native_ping": [
+    {
+      "at": "2026-10-16T21:27:17.884116+00:00",
+      "client": "bex",
+      "qualification": {
+        "native_process_started": false,
+        "cause": "stale optional PING wrapper referenced missing private pty-bounded.py; replaced with existing real PTY module and both successful actual native PINGs recorded",
+        "product_failure": false
+      }
+    },
+    {
+      "at": "2026-10-16T21:28:17.463766+00:00",
+      "client": "bex",
+      "native": {
+        "command": [
+          "bex",
+          "kv-cli",
+          "red-db99cta11h4c73ffkn40",
+          "-o",
+          "interactive",
+          "--",
+          "--raw",
+          "PING"
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 1.874,
+        "decoded_JSON": [],
+        "arrival_seconds": [],
+        "output": "\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \u001b[5;H\u001b[H\n\n\n⣻  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⡿  Loading...                   \r\n\u001b[5;H\u001b[H\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\u001b[5;H\u001b[H\n\n\n⣻  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n                                                   \r\n\u001b[5;H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25hWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\nPONG\n\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r \u001b[K\u001b[H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25h                                                                                             \n  The Render CLI collects usage data on commands and performance to help us keep improving.  \n  Telemetry is currently disabled, so no data is being sent to Render.                       \n                                                                                             \n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \n                                                                                             \n\n",
+        "own_process_group_cleaned": true
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T21:28:21.596784+00:00",
+      "client": "render",
+      "native": {
+        "command": [
+          "render",
+          "kv-cli",
+          "red-db99cta11h4c73ffkn40",
+          "-o",
+          "interactive",
+          "--",
+          "--raw",
+          "PING"
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 1.354,
+        "decoded_JSON": [],
+        "arrival_seconds": [],
+        "output": "\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \u001b[5;H\u001b[H\n\n\n⣻  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                   \r\n\u001b[5;H\u001b[H\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\u001b[5;H\u001b[H\n\n\n⣻  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n                                                   \r\n\u001b[5;H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25hWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\nPONG\n\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r \u001b[K\u001b[H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25h                                                                                             \n  The Render CLI collects usage data on commands and performance to help us keep improving.  \n  Telemetry is currently disabled, so no data is being sent to Render.                       \n                                                                                             \n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \n                                                                                             \n\n",
+        "own_process_group_cleaned": true
+      },
+      "pass": true
+    }
+  ],
+  "terminal_process_ledger": [
+    {
+      "at": "2026-10-16T21:28:17.946074+00:00",
+      "command": [
+        "bex",
+        "kv-cli",
+        "red-db99cta11h4c73ffkn40",
+        "-o",
+        "interactive",
+        "--",
+        "--raw",
+        "PING"
+      ],
+      "intent": "finite native read-only PING with isolated config/history",
+      "PID": 16454,
+      "PGID": 16454,
+      "state": "owned process group closed",
+      "native": {
+        "command": [
+          "bex",
+          "kv-cli",
+          "red-db99cta11h4c73ffkn40",
+          "-o",
+          "interactive",
+          "--",
+          "--raw",
+          "PING"
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 1.874,
+        "decoded_JSON": [],
+        "arrival_seconds": [],
+        "output": "\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \u001b[5;H\u001b[H\n\n\n⣻  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⡿  Loading...                   \r\n\u001b[5;H\u001b[H\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\u001b[5;H\u001b[H\n\n\n⣻  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n                                                   \r\n\u001b[5;H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25hWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\nPONG\n\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r \u001b[K\u001b[H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25h                                                                                             \n  The Render CLI collects usage data on commands and performance to help us keep improving.  \n  Telemetry is currently disabled, so no data is being sent to Render.                       \n                                                                                             \n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \n                                                                                             \n\n",
+        "own_process_group_cleaned": true
+      },
+      "owned_config_history_removed": true
+    },
+    {
+      "at": "2026-10-16T21:28:21.818426+00:00",
+      "command": [
+        "render",
+        "kv-cli",
+        "red-db99cta11h4c73ffkn40",
+        "-o",
+        "interactive",
+        "--",
+        "--raw",
+        "PING"
+      ],
+      "intent": "finite native read-only PING with isolated config/history",
+      "PID": 16467,
+      "PGID": 16467,
+      "state": "owned process group closed",
+      "native": {
+        "command": [
+          "render",
+          "kv-cli",
+          "red-db99cta11h4c73ffkn40",
+          "-o",
+          "interactive",
+          "--",
+          "--raw",
+          "PING"
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 1.354,
+        "decoded_JSON": [],
+        "arrival_seconds": [],
+        "output": "\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \u001b[5;H\u001b[H\n\n\n⣻  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                   \r\n\u001b[5;H\u001b[H\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\u001b[5;H\u001b[H\n\n\n⣻  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n                                                   \r\n\u001b[5;H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25hWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\nPONG\n\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r \u001b[K\u001b[H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25h                                                                                             \n  The Render CLI collects usage data on commands and performance to help us keep improving.  \n  Telemetry is currently disabled, so no data is being sent to Render.                       \n                                                                                             \n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \n                                                                                             \n\n",
+        "own_process_group_cleaned": true
+      },
+      "owned_config_history_removed": true
+    }
+  ],
+  "cached_endpoint_acquisition": {
+    "at": "2026-10-16T21:28:25.135732+00:00",
+    "API_only": true,
+    "method": "GET",
+    "path": "/v1/key-value/red-db99cta11h4c73ffkn40/connection-info",
+    "status": "200",
+    "credentials": "connection URI/cliCommand fields omitted before ledger; private owner-only temporary file",
+    "owned_endpoint_matched": true
+  },
+  "cached_endpoint_probes": [
+    {
+      "at": "2026-10-16T21:28:25.813845+00:00",
+      "API_only": true,
+      "qualification": "ordinary cached TLS data-client diagnostic; not native CLI coverage",
+      "after_delete": false,
+      "address_family": "explicit AF_INET for the own IPv4 allowlist; TLS SNI/verification still uses original host",
+      "PONG": true,
+      "reply_kind": "+",
+      "elapsed": 0.88
+    },
+    {
+      "at": "2026-10-16T21:30:02.789364+00:00",
+      "API_only": true,
+      "qualification": "ordinary cached TLS data-client diagnostic; not native CLI coverage",
+      "after_delete": true,
+      "address_family": "explicit AF_INET for the own IPv4 allowlist; TLS SNI/verification still uses original host",
+      "PONG": false,
+      "connection_error_type": "SSLEOFError",
+      "elapsed": 0.358
+    }
+  ],
+  "watch_journey": {
+    "at": "2026-10-16T21:28:27.962657+00:00",
+    "terminal_profile": "TERM=dumb real PTY; JSON replies; private native config/history per actor",
+    "state": "finite two-native-client transaction intent",
+    "steps": [
+      {
+        "actor": "bex",
+        "label": "initial stable client identity",
+        "stdin": "CLIENT \"\\x49\\x44\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\"\n",
+        "expected": null,
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          26,
+          "QA375_e7ce3e_FENCE_1"
+        ],
+        "observed": [
+          26
+        ],
+        "pass": true
+      },
+      {
+        "actor": "bex",
+        "label": "server protocol and same connection identity",
+        "stdin": "HELLO \"\\x32\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\"\n",
+        "expected": null,
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          [
+            "server",
+            "valkey",
+            "version",
+            "8.1.9",
+            "proto",
+            2,
+            "id",
+            26,
+            "mode",
+            "standalone",
+            "role",
+            "master",
+            "modules",
+            []
+          ],
+          "QA375_e7ce3e_FENCE_2"
+        ],
+        "observed": [
+          [
+            "server",
+            "valkey",
+            "version",
+            "8.1.9",
+            "proto",
+            2,
+            "id",
+            26,
+            "mode",
+            "standalone",
+            "role",
+            "master",
+            "modules",
+            []
+          ]
+        ],
+        "pass": true
+      },
+      {
+        "actor": "render",
+        "label": "initial stable client identity",
+        "stdin": "CLIENT \"\\x49\\x44\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\"\n",
+        "expected": null,
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          28,
+          "QA375_e7ce3e_FENCE_3"
+        ],
+        "observed": [
+          28
+        ],
+        "pass": true
+      },
+      {
+        "actor": "render",
+        "label": "server protocol and same connection identity",
+        "stdin": "HELLO \"\\x32\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x34\"\n",
+        "expected": null,
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          [
+            "server",
+            "valkey",
+            "version",
+            "8.1.9",
+            "proto",
+            2,
+            "id",
+            28,
+            "mode",
+            "standalone",
+            "role",
+            "master",
+            "modules",
+            []
+          ],
+          "QA375_e7ce3e_FENCE_4"
+        ],
+        "observed": [
+          [
+            "server",
+            "valkey",
+            "version",
+            "8.1.9",
+            "proto",
+            2,
+            "id",
+            28,
+            "mode",
+            "standalone",
+            "role",
+            "master",
+            "modules",
+            []
+          ]
+        ],
+        "pass": true
+      },
+      {
+        "actor": "bex",
+        "label": "fresh own-key absence",
+        "stdin": "EXISTS \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x63\\x6f\\x75\\x6e\\x74\\x65\\x72\" \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x35\"\n",
+        "expected": [
+          0
+        ],
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          0,
+          "QA375_e7ce3e_FENCE_5"
+        ],
+        "observed": [
+          0
+        ],
+        "pass": true
+      },
+      {
+        "actor": "bex",
+        "label": "baseline value",
+        "stdin": "SET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x62\\x61\\x73\\x65\\x6c\\x69\\x6e\\x65\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x36\"\n",
+        "expected": [
+          "OK"
+        ],
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          "OK",
+          "QA375_e7ce3e_FENCE_6"
+        ],
+        "observed": [
+          "OK"
+        ],
+        "pass": true
+      },
+      {
+        "actor": "bex",
+        "label": "watch before competing client write",
+        "stdin": "WATCH \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x76\\x61\\x6c\\x75\\x65\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x37\"\n",
+        "expected": [
+          "OK"
+        ],
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          "OK",
+          "QA375_e7ce3e_FENCE_7"
+        ],
+        "observed": [
+          "OK"
+        ],
+        "pass": true
+      },
+      {
+        "actor": "render",
+        "label": "independent competing write",
+        "stdin": "SET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x6f\\x74\\x68\\x65\\x72\\x20\\x63\\x6c\\x69\\x65\\x6e\\x74\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x38\"\n",
+        "expected": [
+          "OK"
+        ],
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          "OK",
+          "QA375_e7ce3e_FENCE_8"
+        ],
+        "observed": [
+          "OK"
+        ],
+        "pass": true
+      },
+      {
+        "actor": "bex",
+        "label": "conflicted transaction aborts",
+        "stdin": "MULTI\nSET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x6d\\x75\\x73\\x74\\x20\\x6e\\x65\\x76\\x65\\x72\\x20\\x63\\x6f\\x6d\\x6d\\x69\\x74\"\nINCR \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x63\\x6f\\x75\\x6e\\x74\\x65\\x72\"\nEXEC\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x39\"\n",
+        "expected": [
+          "OK",
+          "QUEUED",
+          "QUEUED",
+          null
+        ],
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          "OK",
+          "QUEUED",
+          "QUEUED",
+          null,
+          "QA375_e7ce3e_FENCE_9"
+        ],
+        "observed": [
+          "OK",
+          "QUEUED",
+          "QUEUED",
+          null
+        ],
+        "pass": true
+      },
+      {
+        "actor": "render",
+        "label": "abort leaves both keys unchanged",
+        "stdin": "MGET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x63\\x6f\\x75\\x6e\\x74\\x65\\x72\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x30\"\n",
+        "expected": [
+          [
+            "other client",
+            null
+          ]
+        ],
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          [
+            "other client",
+            null
+          ],
+          "QA375_e7ce3e_FENCE_10"
+        ],
+        "observed": [
+          [
+            "other client",
+            null
+          ]
+        ],
+        "pass": true
+      },
+      {
+        "actor": "bex",
+        "label": "uncontended watched commit",
+        "stdin": "WATCH \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x76\\x61\\x6c\\x75\\x65\"\nMULTI\nSET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x63\\x6f\\x6d\\x6d\\x69\\x74\\x74\\x65\\x64\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\"\nINCR \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x63\\x6f\\x75\\x6e\\x74\\x65\\x72\"\nEXEC\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x31\"\n",
+        "expected": [
+          "OK",
+          "OK",
+          "QUEUED",
+          "QUEUED",
+          [
+            "OK",
+            1
+          ]
+        ],
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          "OK",
+          "OK",
+          "QUEUED",
+          "QUEUED",
+          [
+            "OK",
+            1
+          ],
+          "QA375_e7ce3e_FENCE_11"
+        ],
+        "observed": [
+          "OK",
+          "OK",
+          "QUEUED",
+          "QUEUED",
+          [
+            "OK",
+            1
+          ]
+        ],
+        "pass": true
+      },
+      {
+        "actor": "render",
+        "label": "independent committed read",
+        "stdin": "MGET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x63\\x6f\\x75\\x6e\\x74\\x65\\x72\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x32\"\n",
+        "expected": [
+          [
+            "committed café 日本 😀",
+            "1"
+          ]
+        ],
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          [
+            "committed café 日本 😀",
+            "1"
+          ],
+          "QA375_e7ce3e_FENCE_12"
+        ],
+        "observed": [
+          [
+            "committed café 日本 😀",
+            "1"
+          ]
+        ],
+        "pass": true
+      },
+      {
+        "actor": "render",
+        "label": "watch before explicit unwatch",
+        "stdin": "WATCH \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x76\\x61\\x6c\\x75\\x65\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x33\"\n",
+        "expected": [
+          "OK"
+        ],
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          "OK",
+          "QA375_e7ce3e_FENCE_13"
+        ],
+        "observed": [
+          "OK"
+        ],
+        "pass": true
+      },
+      {
+        "actor": "bex",
+        "label": "competing write before unwatch",
+        "stdin": "SET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x75\\x6e\\x77\\x61\\x74\\x63\\x68\\x20\\x63\\x6f\\x6d\\x70\\x65\\x74\\x69\\x74\\x6f\\x72\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x34\"\n",
+        "expected": [
+          "OK"
+        ],
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          "OK",
+          "QA375_e7ce3e_FENCE_14"
+        ],
+        "observed": [
+          "OK"
+        ],
+        "pass": true
+      },
+      {
+        "actor": "render",
+        "label": "unwatch permits normal commit",
+        "stdin": "UNWATCH\nMULTI\nSET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x75\\x6e\\x77\\x61\\x74\\x63\\x68\\x65\\x64\\x20\\x63\\x6f\\x6d\\x6d\\x69\\x74\"\nEXEC\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x35\"\n",
+        "expected": [
+          "OK",
+          "OK",
+          "QUEUED",
+          [
+            "OK"
+          ]
+        ],
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          "OK",
+          "OK",
+          "QUEUED",
+          [
+            "OK"
+          ],
+          "QA375_e7ce3e_FENCE_15"
+        ],
+        "observed": [
+          "OK",
+          "OK",
+          "QUEUED",
+          [
+            "OK"
+          ]
+        ],
+        "pass": true
+      },
+      {
+        "actor": "render",
+        "label": "watch then discard queued write",
+        "stdin": "WATCH \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x76\\x61\\x6c\\x75\\x65\"\nMULTI\nSET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x64\\x69\\x73\\x63\\x61\\x72\\x64\\x65\\x64\\x20\\x76\\x61\\x6c\\x75\\x65\"\nDISCARD\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x36\"\n",
+        "expected": [
+          "OK",
+          "OK",
+          "QUEUED",
+          "OK"
+        ],
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          "OK",
+          "OK",
+          "QUEUED",
+          "OK",
+          "QA375_e7ce3e_FENCE_16"
+        ],
+        "observed": [
+          "OK",
+          "OK",
+          "QUEUED",
+          "OK"
+        ],
+        "pass": true
+      },
+      {
+        "actor": "bex",
+        "label": "discard preserves actual value",
+        "stdin": "GET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x76\\x61\\x6c\\x75\\x65\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x37\"\n",
+        "expected": [
+          "unwatched commit"
+        ],
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          "unwatched commit",
+          "QA375_e7ce3e_FENCE_17"
+        ],
+        "observed": [
+          "unwatched commit"
+        ],
+        "pass": true
+      },
+      {
+        "actor": "bex",
+        "label": "write after discard",
+        "stdin": "SET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x61\\x66\\x74\\x65\\x72\\x20\\x64\\x69\\x73\\x63\\x61\\x72\\x64\\x20\\x63\\x6f\\x6d\\x70\\x65\\x74\\x69\\x74\\x6f\\x72\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x38\"\n",
+        "expected": [
+          "OK"
+        ],
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          "OK",
+          "QA375_e7ce3e_FENCE_18"
+        ],
+        "observed": [
+          "OK"
+        ],
+        "pass": true
+      },
+      {
+        "actor": "render",
+        "label": "discard cleared watch state",
+        "stdin": "MULTI\nSET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x66\\x69\\x6e\\x61\\x6c\\x20\\x63\\x6f\\x6d\\x6d\\x69\\x74\\x74\\x65\\x64\\x20\\x76\\x61\\x6c\\x75\\x65\"\nEXEC\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x31\\x39\"\n",
+        "expected": [
+          "OK",
+          "QUEUED",
+          [
+            "OK"
+          ]
+        ],
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          "OK",
+          "QUEUED",
+          [
+            "OK"
+          ],
+          "QA375_e7ce3e_FENCE_19"
+        ],
+        "observed": [
+          "OK",
+          "QUEUED",
+          [
+            "OK"
+          ]
+        ],
+        "pass": true
+      },
+      {
+        "actor": "render",
+        "label": "own expiring key",
+        "stdin": "SET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\" \"\\x65\\x78\\x70\\x69\\x72\\x65\\x73\\x20\\x6e\\x6f\\x72\\x6d\\x61\\x6c\\x6c\\x79\" \"\\x50\\x58\" \"\\x34\\x30\\x30\\x30\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x30\"\n",
+        "expected": [
+          "OK"
+        ],
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          "OK",
+          "QA375_e7ce3e_FENCE_20"
+        ],
+        "observed": [
+          "OK"
+        ],
+        "pass": true
+      },
+      {
+        "actor": "bex",
+        "label": "watch expiring key before deadline",
+        "stdin": "WATCH \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x31\"\n",
+        "expected": [
+          "OK"
+        ],
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          "OK",
+          "QA375_e7ce3e_FENCE_21"
+        ],
+        "observed": [
+          "OK"
+        ],
+        "pass": true
+      },
+      {
+        "actor": "render",
+        "label": "positive TTL proves watch happened before expiry",
+        "stdin": "PTTL \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x32\"\n",
+        "expected": null,
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          2324,
+          "QA375_e7ce3e_FENCE_22"
+        ],
+        "observed": [
+          2324
+        ],
+        "pass": true
+      },
+      {
+        "actor": "render",
+        "label": "observe own TTL 1",
+        "stdin": "PTTL \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x33\"\n",
+        "expected": null,
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          1172,
+          "QA375_e7ce3e_FENCE_23"
+        ],
+        "observed": [
+          1172
+        ],
+        "pass": true
+      },
+      {
+        "actor": "render",
+        "label": "observe own TTL 2",
+        "stdin": "PTTL \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x34\"\n",
+        "expected": null,
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          -2,
+          "QA375_e7ce3e_FENCE_24"
+        ],
+        "observed": [
+          -2
+        ],
+        "pass": true
+      },
+      {
+        "actor": "bex",
+        "label": "expiry aborts watched transaction",
+        "stdin": "MULTI\nSET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x65\\x78\\x70\\x69\\x72\\x79\\x20\\x6d\\x75\\x73\\x74\\x20\\x6e\\x6f\\x74\\x20\\x63\\x6f\\x6d\\x6d\\x69\\x74\"\nEXEC\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x35\"\n",
+        "expected": [
+          "OK",
+          "QUEUED",
+          null
+        ],
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          "OK",
+          "QUEUED",
+          null,
+          "QA375_e7ce3e_FENCE_25"
+        ],
+        "observed": [
+          "OK",
+          "QUEUED",
+          null
+        ],
+        "pass": true
+      },
+      {
+        "actor": "render",
+        "label": "independent expiry and prior value read",
+        "stdin": "MGET \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x63\\x6f\\x75\\x6e\\x74\\x65\\x72\" \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x36\"\n",
+        "expected": [
+          [
+            "final committed value",
+            "1",
+            null
+          ]
+        ],
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          [
+            "final committed value",
+            "1",
+            null
+          ],
+          "QA375_e7ce3e_FENCE_26"
+        ],
+        "observed": [
+          [
+            "final committed value",
+            "1",
+            null
+          ]
+        ],
+        "pass": true
+      },
+      {
+        "actor": "bex",
+        "label": "same client identity after all transactions",
+        "stdin": "CLIENT \"\\x49\\x44\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x37\"\n",
+        "expected": [
+          26
+        ],
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          26,
+          "QA375_e7ce3e_FENCE_27"
+        ],
+        "observed": [
+          26
+        ],
+        "pass": true
+      },
+      {
+        "actor": "render",
+        "label": "same client identity after all transactions",
+        "stdin": "CLIENT \"\\x49\\x44\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x38\"\n",
+        "expected": [
+          28
+        ],
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          28,
+          "QA375_e7ce3e_FENCE_28"
+        ],
+        "observed": [
+          28
+        ],
+        "pass": true
+      },
+      {
+        "actor": "render",
+        "label": "delete exact own surviving keys",
+        "stdin": "DEL \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x63\\x6f\\x75\\x6e\\x74\\x65\\x72\" \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x32\\x39\"\n",
+        "expected": [
+          2
+        ],
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          2,
+          "QA375_e7ce3e_FENCE_29"
+        ],
+        "observed": [
+          2
+        ],
+        "pass": true
+      },
+      {
+        "actor": "bex",
+        "label": "all own keys absent",
+        "stdin": "EXISTS \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x76\\x61\\x6c\\x75\\x65\" \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x63\\x6f\\x75\\x6e\\x74\\x65\\x72\" \"\\x71\\x61\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x3a\\x65\\x78\\x70\\x69\\x72\\x65\\x73\"\nECHO \"\\x51\\x41\\x33\\x37\\x35\\x5f\\x65\\x37\\x63\\x65\\x33\\x65\\x5f\\x46\\x45\\x4e\\x43\\x45\\x5f\\x33\\x30\"\n",
+        "expected": [
+          0
+        ],
+        "intent": "ordinary operation on exact own cache and three nonce keys",
+        "decoded_with_fence": [
+          0,
+          "QA375_e7ce3e_FENCE_30"
+        ],
+        "observed": [
+          0
+        ],
+        "pass": true
+      }
+    ],
+    "sessions": {
+      "bex": {
+        "intent": "own bounded native interactive client",
+        "command": [
+          "bex",
+          "kv-cli",
+          "red-db99cta11h4c73ffkn40",
+          "-o",
+          "interactive",
+          "--",
+          "--json",
+          "-2"
+        ],
+        "PID": 16491,
+        "PGID": 16491,
+        "client_id": 26,
+        "server_hello": {
+          "server": "valkey",
+          "version": "8.1.9",
+          "proto": 2,
+          "id": 26,
+          "mode": "standalone",
+          "role": "master",
+          "modules": []
+        },
+        "natural_exit": 0,
+        "terminal": {
+          "command": [
+            "bex",
+            "kv-cli",
+            "red-db99cta11h4c73ffkn40",
+            "-o",
+            "interactive",
+            "--",
+            "--json",
+            "-2"
+          ],
+          "stdin_TTY": true,
+          "streams_merged_PTY": true,
+          "native_exit": 0,
+          "intentional_stop": null,
+          "elapsed": 35.288,
+          "decoded_JSON": [],
+          "arrival_seconds": [],
+          "output": "\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r                                                                                                                                                                \r\ntea-daif693dqjvc73e7as3g > Login                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                         ⣽  Loading...                                                                          \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n[Ctrl+C]: Quit                                                                                                                                                  \u001b[40;H\u001b[H\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                                                                         ⣻  Loading...                                                                          \r\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\u001b[40;H\u001b[H\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                                                                         ⢿  Loading...                                                                          \r\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\u001b[40;H\u001b[H\r                                                                                                                                                                \r\ntea-daif693dqjvc73e7as3g > kv-cli                                                                                                                               \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                         ⣽  Loading...                                                                          \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard                                                                                                             \u001b[40;H\u001b[H\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                                                                         ⣻  Loading...                                                                          \r\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\u001b[40;H\u001b[H\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                                                                         ⢿  Loading...                                                                          \r\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\u001b[40;H\u001b[H                                                   \u001b[K\r\ntea-daif693dqjvc73e7as3g > kv-cli                  \u001b[K\r\n                                                   \u001b[K\r\n                                                   \u001b[K\r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\u001b[K\u001b[J\u001b[5;H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25hWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> 26\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_1\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> [\"server\",\"valkey\",\"version\",\"8.1.9\",\"proto\",2,\"id\",26,\"mode\",\"standalone\",\"role\",\"master\",\"modules\",[]]\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_2\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> 0\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_5\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"OK\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_6\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"OK\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_7\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"OK\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379(TX)> \"QUEUED\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379(TX)> \"QUEUED\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379(TX)> null\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_9\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"OK\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"OK\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379(TX)> \"QUEUED\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379(TX)> \"QUEUED\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379(TX)> [\"OK\",1]\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_11\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"OK\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_14\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"unwatched commit\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_17\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"OK\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_18\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"OK\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_21\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"OK\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379(TX)> \"QUEUED\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379(TX)> null\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_25\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> 26\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_27\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> 0\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_30\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r \u001b[K\u001b[H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25h                                                                                             \n  The Render CLI collects usage data on commands and performance to help us keep improving.  \n  Telemetry is currently disabled, so no data is being sent to Render.                       \n                                                                                             \n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \n                                                                                             \n\n",
+          "own_process_group_cleaned": true
+        }
+      },
+      "render": {
+        "intent": "own bounded native interactive client",
+        "command": [
+          "render",
+          "kv-cli",
+          "red-db99cta11h4c73ffkn40",
+          "-o",
+          "interactive",
+          "--",
+          "--json",
+          "-2"
+        ],
+        "PID": 16509,
+        "PGID": 16509,
+        "client_id": 28,
+        "server_hello": {
+          "server": "valkey",
+          "version": "8.1.9",
+          "proto": 2,
+          "id": 28,
+          "mode": "standalone",
+          "role": "master",
+          "modules": []
+        },
+        "natural_exit": 0,
+        "terminal": {
+          "command": [
+            "render",
+            "kv-cli",
+            "red-db99cta11h4c73ffkn40",
+            "-o",
+            "interactive",
+            "--",
+            "--json",
+            "-2"
+          ],
+          "stdin_TTY": true,
+          "streams_merged_PTY": true,
+          "native_exit": 0,
+          "intentional_stop": null,
+          "elapsed": 31.482,
+          "decoded_JSON": [],
+          "arrival_seconds": [],
+          "output": "\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r                                                                                                                                                                \r\ntea-daif693dqjvc73e7as3g > Login                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                         ⣽  Loading...                                                                          \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n[Ctrl+C]: Quit                                                                                                                                                  \u001b[40;H\u001b[H\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                                                                         ⢿  Loading...                                                                          \r\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\u001b[40;H\u001b[H\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                                                                         ⡿  Loading...                                                                          \r\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\u001b[40;H\u001b[H\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                                                                         ⣟  Loading...                                                                          \r\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\u001b[40;H\u001b[H\r                                                                                                                                                                \r\ntea-daif693dqjvc73e7as3g > kv-cli                                                                                                                               \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                         ⣽  Loading...                                                                          \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n                                                                                                                                                                \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard                                                                                                             \u001b[40;H\u001b[H\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                                                                         ⣻  Loading...                                                                          \r\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\u001b[40;H\u001b[H\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                                                                         ⢿  Loading...                                                                          \r\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\u001b[40;H\u001b[H                                                   \u001b[K\r\ntea-daif693dqjvc73e7as3g > kv-cli                  \u001b[K\r\n                                                   \u001b[K\r\n                                                   \u001b[K\r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\u001b[K\u001b[J\u001b[5;H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25hWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> 28\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_3\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> [\"server\",\"valkey\",\"version\",\"8.1.9\",\"proto\",2,\"id\",28,\"mode\",\"standalone\",\"role\",\"master\",\"modules\",[]]\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_4\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"OK\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_8\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> [\"other client\",null]\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_10\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> [\"committed café 日本 😀\",\"1\"]\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_12\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"OK\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_13\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"OK\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"OK\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379(TX)> \"QUEUED\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379(TX)> [\"OK\"]\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_15\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"OK\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"OK\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379(TX)> \"QUEUED\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379(TX)> \"OK\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_16\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"OK\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379(TX)> \"QUEUED\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379(TX)> [\"OK\"]\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_19\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"OK\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_20\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> 2324\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_22\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> 1172\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_23\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> -2\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_24\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> [\"final committed value\",\"1\",null]\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_26\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> 28\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_28\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> 2\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \"QA375_e7ce3e_FENCE_29\"\nred-db99cta11h4c73ffkn40.kv.bex.co:6379> \u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r \u001b[K\u001b[H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25h                                                                                             \n  The Render CLI collects usage data on commands and performance to help us keep improving.  \n  Telemetry is currently disabled, so no data is being sent to Render.                       \n                                                                                             \n  To enable telemetry, remove DO_NOT_TRACK from your environment.                            \n  Learn more about telemetry: https://render.com/docs/cli#usage-telemetry                    \n                                                                                             \n\n",
+          "own_process_group_cleaned": true
+        }
+      }
+    },
+    "keys": [
+      "qa375_e7ce3e:value",
+      "qa375_e7ce3e:counter",
+      "qa375_e7ce3e:expires"
+    ],
+    "positive_watched_TTL_ms": 2324,
+    "pass": true,
+    "private_actor_config_history_removed": true
+  },
+  "delete_intent": {
+    "at": "2026-10-16T21:29:46.032278+00:00",
+    "detail": {
+      "at": "2026-10-16T21:29:45.775761+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db99cta11h4c73ffkn40",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.415,
+      "response": "{\"id\": \"red-db99cta11h4c73ffkn40\", \"name\": \"qa-20261016-e7ce3e-watch\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T21:26:13Z\", \"updatedAt\": \"2026-10-16T21:26:55Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db99cta11h4c73ffkn40\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"externalHost\": \"red-db99cta11h4c73ffkn40.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    "standalone_owned_KeyValue_no_dependents": true
+  },
+  "delete_result": {
+    "at": "2026-10-16T21:29:47.116273+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "keyvalues",
+      "delete",
+      "red-db99cta11h4c73ffkn40",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.858,
+    "stdout": "{\"data\": {\"id\": \"red-db99cta11h4c73ffkn40\", \"name\": \"qa-20261016-e7ce3e-watch\", \"plan\": \"free\", \"region\": \"fsn1\", \"status\": \"available\", \"createdAt\": \"2026-10-16T21:26:13Z\", \"updatedAt\": \"2026-10-16T21:26:55Z\", \"version\": \"8\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"ownerType\": \"team\", \"projectId\": null, \"environmentId\": null, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"owned-qa\"}], \"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"meta\": {\"deleted\": true}}",
+    "stderr": ""
+  },
+  "cleanup_receipts": [
+    {
+      "at": "2026-10-16T21:29:49.593557+00:00",
+      "detail": {
+        "at": "2026-10-16T21:29:48.118365+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db99cta11h4c73ffkn40",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "404",
+        "curl_exit": 0,
+        "elapsed": 0.354,
+        "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+        "stderr": ""
+      },
+      "inventory": {
+        "at": "2026-10-16T21:29:48.676531+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "list",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.558,
+        "stdout": "{\"data\": []}",
+        "stderr": ""
+      },
+      "services": {
+        "at": "2026-10-16T21:29:49.273668+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.597,
+        "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}]",
+        "stderr": ""
+      },
+      "quota": {
+        "at": "2026-10-16T21:29:49.593404+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.306,
+        "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 1, \"terminating\": 1, \"limit\": 1}}",
+        "stderr": ""
+      },
+      "pass": false
+    },
+    {
+      "at": "2026-10-16T21:30:02.153311+00:00",
+      "detail": {
+        "at": "2026-10-16T21:30:00.588686+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db99cta11h4c73ffkn40",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "404",
+        "curl_exit": 0,
+        "elapsed": 0.279,
+        "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+        "stderr": ""
+      },
+      "inventory": {
+        "at": "2026-10-16T21:30:01.232352+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "list",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.643,
+        "stdout": "{\"data\": []}",
+        "stderr": ""
+      },
+      "services": {
+        "at": "2026-10-16T21:30:01.843926+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.611,
+        "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}]",
+        "stderr": ""
+      },
+      "quota": {
+        "at": "2026-10-16T21:30:02.153195+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.298,
+        "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+        "stderr": ""
+      },
+      "pass": true
+    }
+  ],
+  "cached_endpoint_credentials_removed": {
+    "at": "2026-10-16T21:30:03.726550+00:00",
+    "removed": true
+  },
+  "harness_history_cleanup": {
+    "at": "2026-10-16T21:24:52.483042+00:00",
+    "cause": "local interactive client was initially missing REDISCLI_HISTFILE isolation",
+    "restored_only_proven_own_tail": true,
+    "owned_lines_removed": 61,
+    "preexisting_lines_preserved": 1,
+    "exact_preserved_prefix_verified_in_memory": true,
+    "proof": [
+      {
+        "owned_block": "complete local Render client",
+        "exact_tail_lines_removed": 57
+      },
+      {
+        "owned_block": "initial Bex identity in complete local run",
+        "exact_tail_lines_removed": 2
+      },
+      {
+        "owned_block": "initial identity in local prompt guard",
+        "exact_tail_lines_removed": 2
+      }
+    ],
+    "private_backup_removed": true,
+    "no_history_contents_retained": true
+  }
+}

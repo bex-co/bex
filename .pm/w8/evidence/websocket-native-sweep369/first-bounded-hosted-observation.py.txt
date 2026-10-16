@@ -1,0 +1,20 @@
+from pathlib import Path
+import sys,json,time,subprocess
+P=Path(__file__).resolve().parent;CP=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json')
+def resources():return [v for v in json.loads(CP.read_text())['resources'] if v.get('sweep')==369 and v.get('id')]
+def run(file,*args):
+ r=subprocess.run([sys.executable,str(P/file),*args],capture_output=True,text=True,timeout=65);(P/('sweep369-sequence-'+file+'-'+('-'.join(args) or 'run')+'.log')).write_text(r.stdout+r.stderr);print(json.dumps({'file':file,'args':args,'exit':r.returncode,'progress':r.stdout.strip()[:750]}),flush=True);assert r.returncode==0
+assert len(resources())==2
+for attempt in range(8):
+ for actor in ['bex','render']:run('sweep369-native-web.py','http',actor)
+ xs=resources();print(json.dumps({'readiness_round':attempt+1,'states':{v['client']:v['runtime_receipts'][-1]['history'][0]['status'] for v in xs}}),flush=True)
+ if all(v['runtime_receipts'][-1]['first_live_pass'] for v in xs):break
+ assert not any(v['runtime_receipts'][-1]['history'][0]['status'] in ['build_failed','update_failed','pre_deploy_failed','canceled'] for v in xs),'original deployment failed; research before cleanup'
+ if attempt<7:time.sleep(15)
+assert all(v['runtime_receipts'][-1]['first_live_pass'] for v in resources()),'bounded original deployment not live; inspect retained own fixture'
+for actor in ['bex','render']:run('sweep369-websocket.py','run',actor)
+for attempt in range(3):
+ for actor in ['bex','render']:run('sweep369-websocket.py','logs',actor)
+ if all(v['websocket_log_receipts'][-1]['pass'] for v in resources()):break
+ if attempt<2:time.sleep(15)
+print(json.dumps({'runtime_pass':all(v['websocket_receipts'][-1]['pass'] for v in resources()),'log_counts_pass':all(v['websocket_log_receipts'][-1]['pass'] for v in resources())}),flush=True)

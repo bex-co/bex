@@ -1,0 +1,3 @@
+{
+  "summary_label": "Initial Render creation success-summary text inherited a stale not-captured label. The actual create_result contains the complete unchanged native POST201 capture for Render as well as Bex. Corrected only the summary descriptor; no request or create repeated."
+}

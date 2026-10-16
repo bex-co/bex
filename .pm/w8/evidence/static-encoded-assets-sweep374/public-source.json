@@ -1,0 +1,8 @@
+{
+  "repo": "https://github.com/websockets/ws",
+  "branch": "master",
+  "commit": "85319a7297318e4c16dd1b0a3c4d8a69b1b55f17",
+  "package_sha256": "c1ef91ca04eb4754c011c5f0e7638b5078ff71104fada400c44ac761cf93e0b1",
+  "package_version": "8.22.0",
+  "primary_source": "https://github.com/websockets/ws/tree/85319a7297318e4c16dd1b0a3c4d8a69b1b55f17"
+}

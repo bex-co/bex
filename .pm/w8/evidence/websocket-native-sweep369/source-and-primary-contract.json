@@ -1,0 +1,29 @@
+{
+  "source_head": "5a3fc2bb2c03de23d172349297408f9a83b63f68",
+  "serving_revision": "unknown",
+  "public_server_source": {
+    "repo": "https://github.com/websockets/ws",
+    "branch": "master",
+    "commit": "85319a7297318e4c16dd1b0a3c4d8a69b1b55f17",
+    "package_sha256": "c1ef91ca04eb4754c011c5f0e7638b5078ff71104fada400c44ac761cf93e0b1",
+    "package_version": "8.22.0",
+    "primary_source": "https://github.com/websockets/ws/tree/85319a7297318e4c16dd1b0a3c4d8a69b1b55f17"
+  },
+  "local_client_tag": "8.18.3",
+  "local_client_commit": "dabbdec92f4c1f1777689733d477344e3c6c2e67",
+  "local_client_node": "v22.17.1",
+  "primary_contracts": [
+    "https://render.com/docs/websocket",
+    "https://github.com/websockets/ws/blob/8.18.3/doc/ws.md"
+  ],
+  "platform_config_change": false,
+  "wire_capture": "native POST /v1/services forwarded unchanged and captured for both; runtime WebSocket uses documented official client APIs, no raw network-frame capture",
+  "limits": [
+    "short connections only",
+    "no browser client",
+    "no long idle/autosleep or reconnect/failover",
+    "no multi-instance or scale",
+    "no HTTP2 extended CONNECT",
+    "no project native NODE_ENV/Express acceptance closure"
+  ]
+}

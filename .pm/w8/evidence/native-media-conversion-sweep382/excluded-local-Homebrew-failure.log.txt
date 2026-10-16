@@ -1,0 +1,14 @@
+QA382_LOCAL_SOURCE_AND_WAV_CONFIRMED
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/private/tmp/bex382-ox4oh2s3/pydub/audio_segment.py", line 971, in export
+    raise CouldntEncodeError(
+pydub.exceptions.CouldntEncodeError: Encoding failed. ffmpeg/avlib returned error code: -6
+
+Command:['ffmpeg', '-y', '-f', 'wav', '-i', '/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/tmpzpyxvs8g', '-f', 'mp3', '/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/tmpnx_7mf62']
+
+Output from ffmpeg/avlib:
+
+dyld[33130]: Library not loaded: /opt/homebrew/opt/x265/lib/libx265.216.dylib
+  Referenced from: <9DE88107-C61F-3986-9B48-81E2A132EEDE> /opt/homebrew/Cellar/ffmpeg/8.1.2_1/bin/ffmpeg
+  Reason: tried: '/opt/homebrew/opt/x265/lib/libx265.216.dylib' (no such file), '/System/Volumes/Preboot/Cryptexes/OS/opt/homebrew/opt/x265/lib/libx265.216.dylib' (no such file), '/opt/homebrew/opt/x265/lib/libx265.216.dylib' (no such file), '/opt/homebrew/Cellar/x265/4.3/lib/libx265.216.dylib' (no such file), '/System/Volumes/Preboot/Cryptexes/OS/opt/homebrew/Cellar/x265/4.3/lib/libx265.216.dylib' (no such file), '/opt/homebrew/Cellar/x265/4.3/lib/libx265.216.dylib' (no such file)

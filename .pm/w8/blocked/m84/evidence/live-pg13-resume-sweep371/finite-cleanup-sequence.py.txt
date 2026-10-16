@@ -1,0 +1,15 @@
+from pathlib import Path
+import subprocess,json,time,sys
+P=Path(__file__).resolve().parent;CP=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json')
+def resource():return next(v for v in json.loads(CP.read_text())['resources'] if v.get('sweep')==371)
+def run(file,*args):
+ r=subprocess.run([sys.executable,str(P/file),*args],text=True,capture_output=True,timeout=55);(P/('sweep371-sequence-'+file+'-'+('-'.join(args) or 'run')+'.log')).write_text(r.stdout+r.stderr);print(json.dumps({'step':file,'args':args,'exit':r.returncode}),flush=True);assert r.returncode==0
+assert resource()['suspend_preview']['pass'] and resource()['suspend_result']['native_exit']==resource()['resume_result']['native_exit']==0 and any(z['phase']=='suspended' and z['pass'] for z in resource()['cached_connection_checks']) and any(z['phase']=='resumed' and z['pass'] for z in resource()['cached_connection_checks']) and all(z['pass'] for z in resource()['vector_checks']) and resource()['vector_checks'][-1]['kind']=='drop-own' and resource()['cached_connection_checks'][-1]['pass'] and not resource().get('delete_intent')
+run('sweep371-native-pg.py','delete','bex')
+for attempt in range(4):
+ run('sweep371-native-pg.py','reconcile','bex')
+ if resource()['cleanup_receipts'][-1]['pass']:break
+ if attempt<3:time.sleep(10)
+assert resource()['cleanup_receipts'][-1]['pass']
+run('sweep371-cached-connection.py','after');assert resource()['cached_connection_checks'][-1]['phase']=='after' and resource()['cached_connection_checks'][-1]['pass']
+run('sweep371-cached-connection.py','remove');run('sweep371-final-inventory.py');print('Complete native deletion, cached route removal and original inventory verified',flush=True)

@@ -1,0 +1,9 @@
+from pathlib import Path
+import sys,json
+f=Path(__file__).with_name('sweep372-common.py');sys.argv=[str(f),'final-inventory','bex'];exec(compile(f.read_text(),str(f),'exec'));xs=[x for x in c['resources'] if x.get('sweep')==372];assert len(xs)==1 and all(x['state'].startswith('deleted:') for x in xs);out={};original_blueprint='blp-db136288mmqc73d4hpug';inv,services=inventory();assert not ({x['id'] for x in xs}&{v['id'] for v in services});c['sweep372_final_service_inventory']={'native':inv,'count':len(services),'baseline_present':baseline<={v['id'] for v in services},'unowned_extra_ids':[v['id'] for v in services if v['id'] not in baseline]};save()
+for kind,path in [('env-groups','/v1/env-groups?ownerId='+ws),('projects','/v1/projects?ownerId='+ws),('blueprints','/v1/blueprints?ownerId='+ws),('quota','/v1/owners/'+ws+'/limits')]:
+ r=api('GET',path);assert r['status']=='200';v=decode(r)
+ if kind=='quota':passed=all(z['terminating']==0 for z in v.values());count=None
+ else:
+  rows=[z.get('blueprint',z.get('envGroup',z.get('project',z))) for z in v];ids=[z['id'] for z in rows];count=len(rows);passed=original_blueprint in ids if kind=='blueprints' else True;r['response']=json.dumps([{'id':sid,'projection':'immutable baseline or unrelated resource identity only; configuration omitted'} for sid in ids])
+ out[kind]={'at':now(),'receipt':r,'count':count,'pass':bool(passed),'qualification':'own fixture and baseline membership are checked separately; preserve every unrelated workstream resource'};c['sweep372_cleanup_inventory']=out;save();print(json.dumps({'kind':kind,'count':count,'pass':bool(passed)}),flush=True);assert passed

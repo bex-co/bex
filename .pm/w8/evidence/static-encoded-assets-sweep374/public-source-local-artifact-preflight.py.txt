@@ -1,0 +1,30 @@
+from pathlib import Path
+import json,re,subprocess,tempfile,shutil,hashlib
+P=Path(__file__).resolve().parent
+s=(P/'sweep372-common.py').read_text().replace('sweep372','sweep374').replace('qa372','qa374');s=re.sub(r'(?<![0-9])372(?![0-9])','374',s)
+s=s.replace("request.get('type')!='web_service' or request.get('serviceDetails',{}).get('plan')!='free'", "request.get('type')!='static_site'")
+s=s.replace("x['workspace']==ws and x['id'] not in baseline", "x['workspace']==ws and x['id'] not in baseline and x['create_result']['native_exit']==0")
+(P/'sweep374-common.py').write_text(s)
+ref=json.loads((P/'sweep372-primary-reference.json').read_text());remote=subprocess.check_output(['git','ls-remote',ref['repo'],'refs/heads/'+ref['branch']],text=True,timeout=25).split()[0];assert remote==ref['commit'];(P/'sweep374-primary-reference.json').write_text(json.dumps(ref,indent=2))
+program=r'''const fs=require('node:fs'),path=require('node:path'),c=require('node:crypto');
+const nonce=process.argv[2],expected=process.argv[3];if(!/^[a-f0-9]{6}$/.test(nonce))throw Error('invalid owned nonce');
+const source=c.createHash('sha256').update(fs.readFileSync('package.json')).digest('hex');if(source!==expected)throw Error('public package source changed');
+const names=['index.html','plain.txt','space name.txt','café 日本語.txt','literal#question?.txt','percent%20literal.txt','plus+literal.txt','nested folder/π.json','empty space.txt','binary space#.bin','brackets[one].txt','dash—emoji😀.txt'];
+const files={};fs.mkdirSync('qa374-public',{recursive:true});
+for(const name of names){let data;if(name==='index.html')data=Buffer.from('QA374_'+nonce+'_ROOT\n');else if(name==='empty space.txt')data=Buffer.alloc(0);else if(name.endsWith('.bin'))data=Buffer.from(Array.from({length:65792},(_,i)=>(i*31+7)%256));else if(name.endsWith('.json'))data=Buffer.from(JSON.stringify({marker:'QA374_'+nonce,name,value:'café 日本 😀 # ? % +'}));else data=Buffer.from('QA374_'+nonce+'_'+name+'\n');const dest=path.join('qa374-public',name);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.writeFileSync(dest,data);files[name]={bytes:data.length,sha256:c.createHash('sha256').update(data).digest('hex')};}
+fs.writeFileSync('qa374-public/manifest.json',JSON.stringify({nonce,source_sha256:source,node:process.version,files}));console.log(JSON.stringify({event:'QA374_BUILD',nonce,source_sha256:source,node:process.version,files}));
+'''
+(P/'sweep374-assets.js').write_text(program)
+D=Path(tempfile.mkdtemp(prefix='qa374-local-',dir=P));nonce='a374ff'
+try:
+ shutil.copyfile(P/'sweep369-server-source/package.json',D/'package.json');f=D/'qa374-assets.js';f.write_text(program);r=subprocess.run(['node',str(f),nonce,ref['package_sha256']],cwd=D,capture_output=True,text=True,check=True,timeout=10);manifest=json.loads((D/'qa374-public/manifest.json').read_text());assert len(manifest['files'])==12
+ for name,record in manifest['files'].items():
+  if name=='index.html':data=('QA374_'+nonce+'_ROOT\n').encode()
+  elif name=='empty space.txt':data=b''
+  elif name.endswith('.bin'):data=bytes((i*31+7)%256 for i in range(65792))
+  elif name.endswith('.json'):data=json.dumps({'marker':'QA374_'+nonce,'name':name,'value':'café 日本 😀 # ? % +'},ensure_ascii=False,separators=(',',':')).encode()
+  else:data=('QA374_'+nonce+'_'+name+'\n').encode()
+  assert (D/'qa374-public'/name).read_bytes()==data and record=={'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()}
+ out={'pass':True,'files':12,'public_commit_verified':remote,'local_node':subprocess.check_output(['node','--version'],text=True).strip(),'manifest':manifest,'qualification':'local artifact creation/readback only, not hosted HTTP or filename normalization proof'}
+finally:shutil.rmtree(D)
+out['local_scratch_removed']=not D.exists();(P/'sweep374-local-preflight.json').write_text(json.dumps(out,indent=2,ensure_ascii=False));print(json.dumps({'local_files_exact':12,'scratch_removed':out['local_scratch_removed'],'pass':True}))

@@ -1,0 +1,27 @@
+import json,os
+from pathlib import Path
+from flask import jsonify,request,redirect,url_for
+from app import app
+from ipaddress import ip_address
+marker=json.loads(Path('qa380-marker.json').read_text())
+
+@app.get('/qa380/info')
+def qa380_info():
+ return jsonify(marker=marker,scheme=request.scheme,is_https=request.is_secure,
+  url_root=request.url_root,url=request.url,
+  done_url=url_for('qa380_done',_external=True),
+  immediate_peer_is_loopback=ip_address(request.remote_addr).is_loopback,
+  forwarded_proto=request.headers.get('X-Forwarded-Proto'),
+  runtime=json.loads(Path('qa380-runtime.json').read_text()),
+  build=json.loads(Path('qa380-build.json').read_text()))
+
+@app.get('/qa380/redirect')
+def qa380_redirect():return redirect(url_for('qa380_done',_external=True),code=302)
+
+@app.get('/qa380/done')
+def qa380_done():return jsonify(marker=marker,result='done',scheme=request.scheme)
+
+@app.get('/qa380/https')
+def qa380_https():
+ if not request.is_secure:return redirect(request.url.replace('http://','https://',1),code=302)
+ return jsonify(marker=marker,result='https-correct',scheme=request.scheme)

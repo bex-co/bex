@@ -1,0 +1,10 @@
+{
+  "qualification": "restored originally linked but omitted historical source-image build receipt, no rerun",
+  "original_sweep": 350,
+  "original_image_tag": "bex-native-qa350-uv:3a7e0bbf77c1",
+  "image_digest_matches_archived_cleanup": true,
+  "original_exit0_matches_published_observation": true,
+  "original_private_log_sha256": "9c8c4f8ff816ccef469d08fd60a73998bbe61ee325940abb46f228a00d242d34",
+  "published_path": ".pm/w8/done/m81/evidence/cli-sweep350/generated-image-build.log.txt",
+  "extension_note": ".log.txt makes the exact historical log durable under the repository *.log ignore rule"
+}

@@ -1,0 +1,142 @@
+{
+  "qualification": "local installed redis-server/redis-cli stream and PTY prerequisite; not Bex evidence",
+  "events": [
+    {
+      "label": "fresh-own-key-absence",
+      "actor": "bex",
+      "intent": "ordinary stream operation on own nonce fixture; no replay after ambiguous mutation",
+      "observed_JSON": [
+        0
+      ],
+      "expected": 0,
+      "pass": true,
+      "native": {
+        "command": [
+          "local-redis-cli",
+          "-s",
+          "<own-local-socket>",
+          "--json",
+          "-2",
+          "--quoted-input",
+          "\"\\x45\\x58\\x49\\x53\\x54\\x53\"",
+          "\"\\x71\\x61\\x33\\x36\\x36\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x36\\x36\\x3a\\x73\\x74\\x72\\x65\\x61\\x6d\"",
+          "\"\\x71\\x61\\x33\\x36\\x36\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x36\\x36\\x3a\\x6f\\x72\\x64\\x69\\x6e\\x61\\x72\\x79\\x2d\\x73\\x74\\x72\\x69\\x6e\\x67\""
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 0.026,
+        "decoded_JSON": [
+          0
+        ],
+        "arrival_seconds": [
+          0.025
+        ],
+        "output": "0\n",
+        "own_process_group_cleaned": true
+      }
+    },
+    {
+      "label": "create-consumer-group",
+      "actor": "bex",
+      "intent": "ordinary stream operation on own nonce fixture; no replay after ambiguous mutation",
+      "observed_JSON": [
+        "OK"
+      ],
+      "expected": "OK",
+      "pass": true,
+      "native": {
+        "command": [
+          "local-redis-cli",
+          "-s",
+          "<own-local-socket>",
+          "--json",
+          "-2",
+          "--quoted-input",
+          "\"\\x58\\x47\\x52\\x4f\\x55\\x50\"",
+          "\"\\x43\\x52\\x45\\x41\\x54\\x45\"",
+          "\"\\x71\\x61\\x33\\x36\\x36\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x36\\x36\\x3a\\x73\\x74\\x72\\x65\\x61\\x6d\"",
+          "\"\\x77\\x6f\\x72\\x6b\\x65\\x72\\x73\\x2d\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x36\\x36\"",
+          "\"\\x30\"",
+          "\"\\x4d\\x4b\\x53\\x54\\x52\\x45\\x41\\x4d\""
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 0.016,
+        "decoded_JSON": [],
+        "arrival_seconds": [],
+        "output": "\"OK\"\n",
+        "own_process_group_cleaned": true
+      }
+    },
+    {
+      "label": "blocking-consumer-delivery",
+      "actor": "bex",
+      "intent": "ordinary stream operation on own nonce fixture; no replay after ambiguous mutation",
+      "native": {
+        "command": [
+          "local-redis-cli",
+          "-s",
+          "<own-local-socket>",
+          "--json",
+          "-2",
+          "--quoted-input",
+          "\"\\x58\\x52\\x45\\x41\\x44\\x47\\x52\\x4f\\x55\\x50\"",
+          "\"\\x47\\x52\\x4f\\x55\\x50\"",
+          "\"\\x77\\x6f\\x72\\x6b\\x65\\x72\\x73\\x2d\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x36\\x36\"",
+          "\"\\x77\\x6f\\x72\\x6b\\x65\\x72\\x2d\\x61\"",
+          "\"\\x43\\x4f\\x55\\x4e\\x54\"",
+          "\"\\x32\"",
+          "\"\\x42\\x4c\\x4f\\x43\\x4b\"",
+          "\"\\x37\\x30\\x30\\x30\"",
+          "\"\\x53\\x54\\x52\\x45\\x41\\x4d\\x53\"",
+          "\"\\x71\\x61\\x33\\x36\\x36\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x36\\x36\\x3a\\x73\\x74\\x72\\x65\\x61\\x6d\"",
+          "\"\\x3e\""
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": -15,
+        "intentional_stop": "bounded own cleanup after incomplete operation",
+        "elapsed": 0.024,
+        "decoded_JSON": [],
+        "arrival_seconds": [],
+        "output": "",
+        "own_process_group_cleaned": true
+      }
+    },
+    {
+      "label": "own-blocked-consumer-observer-1",
+      "actor": "render",
+      "intent": "ordinary stream operation on own nonce fixture; no replay after ambiguous mutation",
+      "observed_JSON": [],
+      "expected": null,
+      "pass": false,
+      "native": {
+        "command": [
+          "local-redis-cli",
+          "-s",
+          "<own-local-socket>",
+          "--json",
+          "-2",
+          "--quoted-input",
+          "\"\\x43\\x4c\\x49\\x45\\x4e\\x54\"",
+          "\"\\x4c\\x49\\x53\\x54\""
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 0.014,
+        "decoded_JSON": [],
+        "arrival_seconds": [],
+        "output": "id=6 addr=/private/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8op laddr=/private/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8op fd=9 name= age=0 idle=0 flags=bU db=0 sub=0 psub=0 ssub=0 multi=-1 watch=0 qbuf=0 qbuf-free=0 argv-mem=83 multi-mem=0 rbs=16384 rbp=0 obl=0 oll=0 omem=0 omem-shared=0 omem-unshared=0 tot-mem=17835 events=r cmd=xreadgroup user=default redir=-1 resp=2 lib-name= lib-ver= io-thread=0 tot-net-in=157 tot-net-out=0 tot-cmds=0 read-events=1 avg-pipeline-len-sum=1 avg-pipeline-len-cnt=1\nid=7 addr=/private/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8op laddr=/private/var/folders/kc/7v1glq6x06bfc_klvy13tfbw0000gn/T/bex-cli-qa-w8-njo8op fd=10 name= age=0 idle=0 flags=U db=0 sub=0 psub=0 ssub=0 multi=-1 watch=0 qbuf=26 qbuf-free=20448 argv-mem=10 multi-mem=0 rbs=16384 rbp=0 obl=0 oll=0 omem=0 omem-shared=0 omem-unshared=0 tot-mem=38170 events=r cmd=client|list user=default redir=-1 resp=2 lib-name= lib-ver= io-thread=0 tot-net-in=26 tot-net-out=0 tot-cmds=0 read-events=1 avg-pipeline-len-sum=1 avg-pipeline-len-cnt=1\n",
+        "own_process_group_cleaned": true
+      }
+    }
+  ],
+  "server_stopped": true,
+  "socket_removed": true
+}

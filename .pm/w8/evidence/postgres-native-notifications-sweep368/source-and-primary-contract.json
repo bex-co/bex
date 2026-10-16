@@ -1,0 +1,26 @@
+{
+  "source_head": "cf91746da33467dc7086b2d98e40bd7b354fc83d",
+  "serving_revision": "unknown",
+  "clients": [
+    "published Bex0.3.2",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "psql": "18.6",
+  "create_client": "unchanged Render",
+  "physical_identity": "database-name/user flags omitted; actual response identity reused unchanged",
+  "primary_references": [
+    "https://www.postgresql.org/docs/18/sql-notify.html",
+    "https://www.postgresql.org/docs/18/sql-listen.html",
+    "https://www.postgresql.org/docs/18/app-psql.html",
+    "https://github.com/pgvector/pgvector/tree/v0.8.6"
+  ],
+  "notification_semantics": "fenced delivery, same-transaction duplicate collapse, distinct transaction delivery, rollback and unlisten suppression, payload order/sender PID; no idle-immediate timing claim",
+  "unverified": [
+    "production existing-parent vector backfill",
+    "other PG majors",
+    "pooler/replicas",
+    "reconnect/notification durability",
+    "full vector query planner behavior",
+    "zero-delay database ready/extension readiness race"
+  ]
+}

@@ -1,0 +1,68 @@
+from pathlib import Path
+import json,subprocess,os,time,socket,sys
+P=Path(__file__).resolve().parent
+server=r'''const fs = require('node:fs');
+const http = require('node:http');
+const crypto = require('node:crypto');
+const { WebSocketServer } = require('./index.js');
+const pkg = JSON.parse(fs.readFileSync('package.json'));
+const base = {marker: MARKER,node: process.version,package_sha256: crypto.createHash('sha256').update(fs.readFileSync('package.json')).digest('hex'),ws:pkg.version};
+if(base.package_sha256 !== EXPECTED_PACKAGE_SHA)throw new Error('public package source changed');
+if(process.argv.includes('--build')){fs.writeFileSync('qa372-built.json',JSON.stringify(base));console.log(JSON.stringify({event:'QA372_BUILD',...base}));process.exit(0);}
+const built=JSON.parse(fs.readFileSync('qa372-built.json'));
+const stats={connections:0,messages:0,bytes:0,closed:0,pings:0,http:0};
+const log=o=>console.log(JSON.stringify({at:new Date().toISOString(),marker:MARKER,...o}));
+const server=http.createServer((req,res)=>{stats.http++;log({event:'QA372_HTTP',method:req.method,url:req.url});res.writeHead(req.url==='/'?200:404,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({...base,built,stats}));});
+const wss=new WebSocketServer({noServer:true,perMessageDeflate:false,maxPayload:8192});
+server.on('upgrade',(req,socket,head)=>{if(new URL(req.url,'http://localhost').pathname!=='/ingest'){socket.end('HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n');return;}wss.handleUpgrade(req,socket,head,ws=>wss.emit('connection',ws,req));});
+wss.on('connection',(ws,req)=>{const id=new URL(req.url,'http://localhost').searchParams.get('id');stats.connections++;log({event:'QA372_WS_OPEN',id});ws.on('message',(data,binary)=>{stats.messages++;stats.bytes+=data.length;let seq=null;try{seq=JSON.parse(data.toString()).seq;}catch{}log({event:'QA372_WS_RECEIVE',id,seq,binary,bytes:data.length,sha256:crypto.createHash('sha256').update(data).digest('hex')});});ws.on('ping',data=>{stats.pings++;log({event:'QA372_WS_PING',id,bytes:data.length});});ws.on('close',(code,reason)=>{stats.closed++;log({event:'QA372_WS_CLOSE',id,code,reason:reason.toString()});});ws.on('error',err=>log({event:'QA372_WS_ERROR',id,message:err.message}));});
+server.listen(Number(process.env.PORT ?? '3000'),process.env.QA372_BIND || '0.0.0.0',()=>{const e={event:'QA372_LISTEN',port:server.address().port};log(e);if(process.env.QA372_READY_FILE)fs.writeFileSync(process.env.QA372_READY_FILE,JSON.stringify(e));});
+'''
+client=r'''const fs=require('node:fs'),crypto=require('node:crypto');
+const WebSocket=require(process.argv[2]);
+const [url,id,journal,durationArg,intervalArg]=process.argv.slice(3);
+const duration=Number(durationArg),interval=Number(intervalArg);
+if(!Number.isFinite(duration)||duration<1||duration>185||!Number.isFinite(interval)||interval<0.1)throw new Error('finite bounds required');
+const started=Date.now();let opened=null,sent=0,received=0,pings=0,pongs=0,closing=false,done=false;const timers=[];
+function log(e){fs.appendFileSync(journal,JSON.stringify({at:new Date().toISOString(),elapsed_ms:Date.now()-started,...e})+'\n',{mode:0o600});}
+function finish(code,reason){if(done)return;done=true;for(const t of timers)clearTimeout(t);log({event:'FINAL',code,reason,opened:opened!==null,sent,received,pings,pongs,active_ms:opened===null?0:Date.now()-opened});process.exitCode=code;}
+log({event:'INTENT',url,id,duration_seconds:duration,interval_seconds:interval,PID:process.pid});
+const ws=new WebSocket(url+'?id='+encodeURIComponent(id),{handshakeTimeout:12000,perMessageDeflate:false});
+function send(){if(ws.readyState!==WebSocket.OPEN||closing)return;const seq=sent++;const body=JSON.stringify({id,seq,at:new Date().toISOString(),payload:'incoming telemetry ✓ '+'.'.repeat(128)});const bytes=Buffer.from(body);ws.send(bytes,{binary:false},err=>{log({event:'SEND',seq,bytes:bytes.length,sha256:crypto.createHash('sha256').update(bytes).digest('hex'),error:err?err.message:null});});}
+ws.on('open',()=>{opened=Date.now();log({event:'OPEN'});send();timers.push(setInterval(send,interval*1000));timers.push(setTimeout(()=>{closing=true;log({event:'NORMAL_CLOSE_INTENT',sent});ws.close(1000,'qa372 complete');},duration*1000));});
+ws.on('message',data=>{received++;log({event:'UNEXPECTED_DATA',bytes:data.length});});
+ws.on('ping',data=>{pings++;log({event:'PING',bytes:data.length});});
+ws.on('pong',data=>{pongs++;log({event:'PONG',bytes:data.length});});
+ws.on('error',err=>log({event:'ERROR',message:err.message}));
+ws.on('close',(code,reason)=>{log({event:'CLOSE',code,reason:reason.toString(),normal_close_intent:closing});finish(closing&&code===1000&&received===0&&pings===0&&pongs===0?0:1,'socket closed');});
+timers.push(setTimeout(()=>{log({event:'BOUND_EXHAUSTED'});ws.terminate();finish(2,'finite total deadline');},(duration+25)*1000));
+process.on('SIGTERM',()=>{log({event:'HARNESS_ABORT'});ws.terminate();finish(3,'harness abort');});
+'''
+(P/'sweep372-server.js').write_text(server)
+(P/'sweep372-client.js').write_text(client)
+ref=json.loads((P/'sweep372-primary-reference.json').read_text());source=P/'sweep369-server-source'
+remote=subprocess.check_output(['git','ls-remote',ref['repo'],'refs/heads/'+ref['branch']],text=True,timeout=25).split()[0]
+assert remote==ref['commit'],'public branch changed: choose a safe immutable preflight before creating'
+program='const MARKER="QA372_LOCAL"; const EXPECTED_PACKAGE_SHA='+json.dumps(ref['package_sha256'])+';\n'+server
+f=source/'qa372-server.js';built=source/'qa372-built.json';ready=P/'sweep372-local-ready.json';journal=P/'sweep372-local-journal.jsonl';out=P/'sweep372-local-server.jsonl'
+assert not any(z.exists() for z in (f,built,ready,journal,out));f.write_text(program)
+proc=None
+try:
+ subprocess.run(['node',str(f),'--build'],cwd=source,check=True,capture_output=True,timeout=10)
+ env=os.environ.copy();env.update(PORT='0',QA372_BIND='127.0.0.1',QA372_READY_FILE=str(ready))
+ with out.open('w') as log:
+  proc=subprocess.Popen(['node',str(f)],cwd=source,env=env,stdout=log,stderr=log)
+  for _ in range(50):
+   if ready.exists():break
+   time.sleep(.1)
+  port=json.loads(ready.read_text())['port']
+  result=subprocess.run(['node',str(P/'sweep372-client.js'),str(P/'sweep369-ws-source/index.js'),'ws://127.0.0.1:'+str(port)+'/ingest','qa372-local',str(journal),'5','1'],capture_output=True,text=True,timeout=35)
+  assert result.returncode==0,result.stderr
+  time.sleep(.2)
+ entries=[json.loads(s) for s in journal.read_text().splitlines()];events=[json.loads(s) for s in out.read_text().splitlines()];sends=[e for e in entries if e['event']=='SEND'];receives=[e for e in events if e['event']=='QA372_WS_RECEIVE'];assert len(sends)==len(receives)>=5 and [(e['seq'],e['bytes'],e['sha256']) for e in sends]==[(e['seq'],e['bytes'],e['sha256']) for e in receives]
+ evidence={'public_remote_commit_verified':remote,'local_node':subprocess.check_output(['node','--version'],text=True).strip(),'client_exit':result.returncode,'client':entries,'server':events,'exact_received_match':True,'pass':True}
+ (P/'sweep372-local-preflight.json').write_text(json.dumps(evidence,indent=2));print(json.dumps({'local_pass':True,'messages':len(sends),'no_server_app_data':True,'no_pings':True}))
+finally:
+ if proc is not None:
+  proc.terminate();proc.wait(timeout=5)
+ for z in (f,built,ready,journal,out):z.unlink(missing_ok=True)

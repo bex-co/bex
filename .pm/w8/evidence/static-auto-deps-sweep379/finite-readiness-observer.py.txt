@@ -1,0 +1,10 @@
+from pathlib import Path
+import subprocess,time,json,sys
+P=Path(__file__).resolve().parent;actor=sys.argv[1];variant=sys.argv[2] if len(sys.argv)>2 else 'default'
+for attempt in range(4):
+ r=subprocess.run(['python3',str(P/'sweep379-native-static-deps.py'),'observe',actor,variant],text=True,capture_output=True,timeout=100,check=True);v=json.loads(r.stdout);print(json.dumps({'attempt':attempt+1,**v}),flush=True)
+ if v['status'] in ('live','build_failed','update_failed','pre_deploy_failed','canceled'):
+  for mode in ('logs','http'):
+   r=subprocess.run(['python3',str(P/'sweep379-native-static-deps.py'),mode,actor,variant],text=True,capture_output=True,timeout=100,check=True);print(r.stdout,flush=True)
+  break
+ if attempt<3:time.sleep(12)

@@ -1,0 +1,15 @@
+from pathlib import Path
+import sys,json,collections
+f=Path(__file__).with_name('sweep372-common.py');exec(compile(f.read_text(),str(f),'exec'))
+x=next(v for v in c['resources'] if v.get('sweep')==372 and v.get('client')==client);own(x);sid=x['id'];assert x['idle_collector']['state'].startswith('finished')
+r=cli(['logs','--resources',sid,'--type','app','--text','QA372_WS_','--direction','forward','--limit','100','--confirm','-o','json']);e={'at':now(),'native':r};x.setdefault('ingress_log_receipts',[]).append(e);save();assert r['native_exit']==0
+raw=r['stdout'];decoder=json.JSONDecoder();values=[]
+while raw.strip():raw=raw.lstrip();v,end=decoder.raw_decode(raw);values.append(v);raw=raw[end:]
+rows=values[0] if len(values)==1 and isinstance(values[0],list) else values;events=[]
+for v in rows:
+ message=v.get('message','');at=message.find('{')
+ if at<0:continue
+ try:event=json.loads(message[at:])
+ except ValueError:continue
+ if event.get('marker')==x['marker'] and event.get('event','').startswith('QA372_WS_'):events.append(event)
+counts=collections.Counter(v['event'] for v in events);receives=[z for z in events if z['event']=='QA372_WS_RECEIVE'];sends=[z for z in x['idle_collector']['events'] if z['event']=='SEND'];keys=('seq','bytes','sha256');same=[tuple(z[k] for k in keys) for z in sends]==[tuple(z[k] for k in keys) for z in receives];e.update(events=events,event_counts=dict(counts),exact_receive_match=same);e['pass']=same and counts['QA372_WS_OPEN']==1 and counts['QA372_WS_CLOSE']==1 and not counts['QA372_WS_ERROR'] and not counts['QA372_WS_PING'];save();print(json.dumps({'native_log_exit':r['native_exit'],'counts':dict(counts),'exact_send_receive':same,'pass':e['pass']}))

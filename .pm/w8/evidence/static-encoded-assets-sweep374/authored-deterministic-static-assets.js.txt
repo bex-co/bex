@@ -1,0 +1,7 @@
+const fs=require('node:fs'),path=require('node:path'),c=require('node:crypto');
+const nonce=process.argv[2],expected=process.argv[3];if(!/^[a-f0-9]{6}$/.test(nonce))throw Error('invalid owned nonce');
+const source=c.createHash('sha256').update(fs.readFileSync('package.json')).digest('hex');if(source!==expected)throw Error('public package source changed');
+const names=['index.html','plain.txt','space name.txt','café 日本語.txt','literal#question?.txt','percent%20literal.txt','plus+literal.txt','nested folder/π.json','empty space.txt','binary space#.bin','brackets[one].txt','dash—emoji😀.txt'];
+const files={};fs.mkdirSync('qa374-public',{recursive:true});
+for(const name of names){let data;if(name==='index.html')data=Buffer.from('QA374_'+nonce+'_ROOT\n');else if(name==='empty space.txt')data=Buffer.alloc(0);else if(name.endsWith('.bin'))data=Buffer.from(Array.from({length:65792},(_,i)=>(i*31+7)%256));else if(name.endsWith('.json'))data=Buffer.from(JSON.stringify({marker:'QA374_'+nonce,name,value:'café 日本 😀 # ? % +'}));else data=Buffer.from('QA374_'+nonce+'_'+name+'\n');const dest=path.join('qa374-public',name);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.writeFileSync(dest,data);files[name]={bytes:data.length,sha256:c.createHash('sha256').update(data).digest('hex')};}
+fs.writeFileSync('qa374-public/manifest.json',JSON.stringify({nonce,source_sha256:source,node:process.version,files}));console.log(JSON.stringify({event:'QA374_BUILD',nonce,source_sha256:source,node:process.version,files}));

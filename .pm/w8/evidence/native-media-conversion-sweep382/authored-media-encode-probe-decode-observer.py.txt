@@ -1,0 +1,41 @@
+import os,sys,json,platform,hashlib,subprocess,wave
+from pathlib import Path
+MARKER=json.loads(Path('qa382-marker.json').read_text());REFERENCE=json.loads(Path('qa382-reference.json').read_text())['files']
+def sha(b):return hashlib.sha256(b).hexdigest()
+def tool(name):
+ try:
+  r=subprocess.run([name,'-version'] if name in ('ffmpeg','ffprobe') else [name,'--version'],text=True,capture_output=True,timeout=20);return {'status':r.returncode,'stdout':r.stdout,'stderr':r.stderr,'error':None}
+ except FileNotFoundError:return {'status':None,'stdout':'','stderr':'','error':'ENOENT'}
+ except subprocess.TimeoutExpired:return {'status':None,'stdout':'','stderr':'','error':'ETIMEDOUT'}
+def input_info():
+ b=Path('qa382-input.wav').read_bytes()
+ with wave.open('qa382-input.wav','rb') as w:pcm=w.readframes(w.getnframes());shape={'channels':w.getnchannels(),'sample_width':w.getsampwidth(),'rate':w.getframerate(),'frames':w.getnframes(),'silence':pcm==b'\0\0'*800}
+ assert shape=={'channels':1,'sample_width':2,'rate':8000,'frames':800,'silence':True}
+ return {'bytes':len(b),'sha256':sha(b),'PCM_bytes':len(pcm),'PCM_sha256':sha(pcm),'shape':shape},pcm
+def media_info(path):
+ from pydub import AudioSegment
+ b=Path(path).read_bytes();wav,expected=input_info();decoded=AudioSegment.from_mp3(path);probe_args=['ffprobe','-v','error','-show_entries','stream=codec_name,codec_type,sample_rate,channels:format=size,duration','-of','json',path];p=subprocess.run(probe_args,capture_output=True,text=True,stdin=subprocess.DEVNULL,timeout=20);assert p.returncode==0;info=json.loads(p.stdout);streams=info['streams'];assert len(streams)==1 and {k:streams[0].get(k) for k in ('codec_name','codec_type','sample_rate','channels')}=={'codec_name':'mp3','codec_type':'audio','sample_rate':'8000','channels':1}
+ args=['ffmpeg','-nostdin','-v','error','-i',path,'-f','s16le','-acodec','pcm_s16le','pipe:1'];r=subprocess.run(args,capture_output=True,stdin=subprocess.DEVNULL,timeout=20);assert r.returncode==0 and r.stdout==expected
+ assert len(decoded)==100 and decoded.channels==1 and decoded.frame_rate==8000 and decoded.sample_width==2 and decoded.raw_data==expected
+ return {'file':path,'bytes':len(b),'sha256':sha(b),'ffprobe_command':probe_args,'ffprobe_exit':p.returncode,'ffprobe_raw':p.stdout,'ffprobe':info,'CLI_decode_command':args,'CLI_decode_exit':r.returncode,'CLI_decoded_PCM_bytes':len(r.stdout),'CLI_decoded_PCM_sha256':sha(r.stdout),'CLI_PCM_matches_input':r.stdout==expected,'Pydub_decoded':{'milliseconds':len(decoded),'channels':decoded.channels,'rate':decoded.frame_rate,'sample_width':decoded.sample_width,'PCM_bytes':len(decoded.raw_data),'PCM_sha256':sha(decoded.raw_data),'PCM_matches_input':decoded.raw_data==expected}}
+def snapshot(stage):
+ wav,_=input_info();files={n:{'bytes':len((b:=Path(n).read_bytes())),'sha256':sha(b)} for n in REFERENCE};assert files==REFERENCE
+ if stage=='runtime':
+  from pydub import AudioSegment
+  audio=AudioSegment.from_wav('qa382-input.wav');assert len(audio)==100;audio.export('qa382-runtime.mp3',format='mp3')
+ output='qa382-output.mp3' if stage=='build' else 'qa382-runtime.mp3'
+ return {'marker':MARKER,'phase':stage,'python':platform.python_version(),'architecture':platform.machine(),'requested_python':os.environ.get('PYTHON_VERSION'),'files':files,'wav':wav,'converted_at_runtime':stage=='runtime','media':media_info(output),'retained_build_media':media_info('qa382-output.mp3') if stage=='runtime' else None,'tools':{n:tool(n) for n in ('ffmpeg','ffprobe','python','pip','poetry')}}
+if '--prepare' in sys.argv:
+ assert all({'bytes':len((b:=Path(n).read_bytes())),'sha256':sha(b)}==v for n,v in REFERENCE.items())
+ with wave.open('qa382-input.wav','wb') as wav:wav.setnchannels(1);wav.setsampwidth(2);wav.setframerate(8000);wav.writeframes(b'\0\0'*800)
+ from pydub import AudioSegment
+ assert len(AudioSegment.from_wav('qa382-input.wav'))==100;print(MARKER+'_SOURCE_AND_WAV_CONFIRMED',flush=True)
+elif '--build' in sys.argv:
+ value=snapshot('build');Path('qa382-built.json').write_text(json.dumps(value,ensure_ascii=False));print('QA382_BUILD '+json.dumps(value,ensure_ascii=False),flush=True)
+else:
+ from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
+ value=snapshot('runtime');value['built']=json.loads(Path('qa382-built.json').read_text());body=json.dumps(value,ensure_ascii=False).encode()
+ class Handler(BaseHTTPRequestHandler):
+  def log_message(self,*a):pass
+  def do_GET(self):self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
+ ThreadingHTTPServer(('127.0.0.1' if '--local' in sys.argv else '0.0.0.0',int(os.environ.get('PORT','3000'))),Handler).serve_forever()

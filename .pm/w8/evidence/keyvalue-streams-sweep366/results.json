@@ -1,0 +1,49 @@
+{
+  "sweep": 366,
+  "result": "pass; no new product bug",
+  "native_resource_create_delete_exit0": true,
+  "source_head": "b20935cf6b13b594ad02f7cac892e694b90bb786",
+  "serving_revision": "unknown",
+  "clients": [
+    "published Bex0.3.2",
+    "unchanged pinned Render2.27.0/a764810a7682"
+  ],
+  "external_client": "redis-cli8.10.1",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "keyvalue": "red-db97gqvfsf9s73epsj8g",
+  "plan": "free",
+  "persistence": "off",
+  "policy": "noeviction (native queue alias)",
+  "native_completed_queue_checks": 20,
+  "native_by_client": {
+    "bex": 10,
+    "render": 10
+  },
+  "earlier_qualified_events": 7,
+  "queue_summary": {
+    "pass": true,
+    "events": 20,
+    "earlier_qualified_native_events": 7,
+    "binary_UTF8_and_empty_payloads_exact": true,
+    "blocked_reader_proved_before_publish": true,
+    "pending_entries_transferred": 2,
+    "first_ack": 2,
+    "repeat_ack": 0,
+    "later_new_delivery": 1,
+    "empty_250ms_block_returns_null": true,
+    "wrongtype_preserves_original_string": true,
+    "own_keys_deleted": true,
+    "qualification": "one group, three messages, three sequential consumers; no crash/restart/durability or high-concurrency claim"
+  },
+  "local_preflight_checks": 21,
+  "source_suite": "no source suite/product change needed; native real-data journey",
+  "cached_PONG_before_true_after_false": true,
+  "private_connection_removed": true,
+  "owned_local_processes_configs_cleaned": true,
+  "baseline_services": 6,
+  "Blueprints": 1,
+  "groups_projects": 0,
+  "PG_KV_used_terminating": 0,
+  "new_issue": null,
+  "uncommitted": true
+}

@@ -1,0 +1,268 @@
+{
+  "qualification": "own local pinned Ruby3.4/Node24 prerequisite, exact freshly fetched public version files and original require-lock assertion; source selector is not run by this forced-base recipe; no native CLI or hosting claim",
+  "base": "ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172",
+  "node_supplier": "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+  "nonce": "2ca401d694",
+  "own_image_tag": "bex-qa383-ruby-prereq:2ca401d694",
+  "own_container_name": "bex-qa383-ruby-2ca401d694",
+  "network": "none",
+  "host_ports": [],
+  "marker": "QA383_LOCAL_2ca401d694",
+  "steps": [
+    {
+      "command": [
+        "docker",
+        "image",
+        "inspect",
+        "bex-qa383-ruby-prereq:2ca401d694"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such image: bex-qa383-ruby-prereq:2ca401d694\n"
+    },
+    {
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "bex-qa383-ruby-2ca401d694"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: bex-qa383-ruby-2ca401d694\n"
+    },
+    {
+      "command": [
+        "docker",
+        "build",
+        "--progress",
+        "plain",
+        "-t",
+        "bex-qa383-ruby-prereq:2ca401d694",
+        "<owned-temp>/sweep383-local-container-2ca401d694/recipe"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": "#0 building with \"desktop-linux\" instance using docker driver\n\n#1 [internal] load build definition from Dockerfile\n#1 transferring dockerfile: 354B done\n#1 DONE 0.0s\n\n#2 [internal] load metadata for docker.io/library/node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0\n#2 ...\n\n#3 [internal] load metadata for docker.io/library/ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172\n#3 DONE 0.7s\n\n#2 [internal] load metadata for docker.io/library/node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0\n#2 DONE 0.7s\n\n#4 [internal] load .dockerignore\n#4 transferring context: 2B done\n#4 DONE 0.0s\n\n#5 [js 1/1] FROM docker.io/library/node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0\n#5 resolve docker.io/library/node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0 0.0s done\n#5 CACHED\n\n#6 [stage-1 1/3] FROM docker.io/library/ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172\n#6 resolve docker.io/library/ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172 0.0s done\n#6 CACHED\n\n#7 [stage-1 2/3] COPY --from=js /usr/local/bin/node /usr/local/bin/node\n#7 DONE 0.1s\n\n#8 [stage-1 3/3] WORKDIR /case\n#8 DONE 0.0s\n\n#9 exporting to image\n#9 exporting layers\n#9 exporting layers 3.1s done\n#9 exporting manifest sha256:846b3f808de83ca15dc1fe51b43cb7542d1132032813692951857fd61aa60eb7 done\n#9 exporting config sha256:0214fb1a7a43a9719e7f7513dae8949c4c298f84220a017fa07492808175256a done\n#9 exporting attestation manifest sha256:ada4006b40906726e711e11e5289e745fa9da02501c409e62e5ffb1fa82b0943 done\n#9 exporting manifest list sha256:3e9f44dfbe96b29dce389047a0146e88eda0483f870757132beeeeb415282f97 done\n#9 naming to docker.io/library/bex-qa383-ruby-prereq:2ca401d694 done\n#9 unpacking to docker.io/library/bex-qa383-ruby-prereq:2ca401d694\n#9 unpacking to docker.io/library/bex-qa383-ruby-prereq:2ca401d694 0.4s done\n#9 DONE 3.6s\n\nView build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/193h37wmqeufvv4s7ztk2lmnw\n"
+    },
+    {
+      "command": [
+        "docker",
+        "image",
+        "inspect",
+        "bex-qa383-ruby-prereq:2ca401d694"
+      ],
+      "exit": 0,
+      "stdout": "[\n    {\n        \"Id\": \"sha256:3e9f44dfbe96b29dce389047a0146e88eda0483f870757132beeeeb415282f97\",\n        \"RepoTags\": [\n            \"bex-qa383-ruby-prereq:2ca401d694\"\n        ],\n        \"RepoDigests\": [\n            \"bex-qa383-ruby-prereq@sha256:3e9f44dfbe96b29dce389047a0146e88eda0483f870757132beeeeb415282f97\"\n        ],\n        \"Comment\": \"buildkit.dockerfile.v0\",\n        \"Created\": \"2026-10-16T23:29:23.192517301Z\",\n        \"Config\": {\n            \"Env\": [\n                \"PATH=/usr/local/bundle/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\n                \"LANG=C.UTF-8\",\n                \"RUBY_VERSION=3.4.11\",\n                \"RUBY_DOWNLOAD_URL=https://cache.ruby-lang.org/pub/ruby/3.4/ruby-3.4.11.tar.xz\",\n                \"RUBY_DOWNLOAD_SHA256=f79c6e789ce4f30f77c88a40b23b93e2547c512a843dc17db27ab1f5cc66f4e4\",\n                \"GEM_HOME=/usr/local/bundle\",\n                \"BUNDLE_SILENCE_ROOT_WARNING=1\",\n                \"BUNDLE_APP_CONFIG=/usr/local/bundle\"\n            ],\n            \"Cmd\": [\n                \"irb\"\n            ],\n            \"WorkingDir\": \"/case\",\n            \"Labels\": {\n                \"bex.qa.nonce\": \"2ca401d694\",\n                \"bex.qa.sweep\": \"383\"\n            }\n        },\n        \"Architecture\": \"arm64\",\n        \"Os\": \"linux\",\n        \"Size\": 429429451,\n        \"RootFS\": {\n            \"Type\": \"layers\",\n            \"Layers\": [\n                \"sha256:dc51344534bbef928c25f87c724daca6fd7a58522a0f2bc4d0de42899b94bd42\",\n                \"sha256:06b20ab917ae7fb7d9ad62f1495d6e69f44462215df657bd5f8aa34228f3ba84\",\n                \"sha256:f3ea0fdbfef7e10eceded81946e8d6a7d853a730fc4debc2313de180c5789c54\",\n                \"sha256:424eda943bfc22b4ca641896a614763d5dabe8b0112c9eb2376a43db74114305\",\n                \"sha256:fc12fb1f8b0af1629b180982a16ce7695fe9ea8ff49e02759a5dd4172f627766\",\n                \"sha256:ffed457098ea1d0c41c54910e7edba48b29ac6752a6b2a76aec151054381dbe6\",\n                \"sha256:c43836da9af65e6ceaa024533a998a76a1a996c5d0366a92302899e1645dee04\",\n                \"sha256:0d7d64e9b77f2ce53a18bc6cdd96348edf07b3dd44147a4cb8aa6dcf9707591f\",\n                \"sha256:4c79147dcf191b6339385e001e03c0a5d5e5f430550cb0399400dccd217495e5\"\n            ]\n        },\n        \"Metadata\": {\n            \"LastTagTime\": \"2026-10-16T23:29:26.323840136Z\"\n        },\n        \"Descriptor\": {\n            \"mediaType\": \"application/vnd.oci.image.index.v1+json\",\n            \"digest\": \"sha256:3e9f44dfbe96b29dce389047a0146e88eda0483f870757132beeeeb415282f97\",\n            \"size\": 856\n        },\n        \"Identity\": {\n            \"Build\": [\n                {\n                    \"Ref\": \"193h37wmqeufvv4s7ztk2lmnw\",\n                    \"CreatedAt\": \"2026-10-16T23:29:26.734241803Z\"\n                }\n            ]\n        }\n    }\n]\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "create",
+        "--name",
+        "bex-qa383-ruby-2ca401d694",
+        "--label",
+        "bex.qa.nonce=2ca401d694",
+        "--network",
+        "none",
+        "--volume",
+        "<owned-temp>/sweep383-local-container-2ca401d694/project:/case",
+        "--workdir",
+        "/case",
+        "--env",
+        "NODE_VERSION=24",
+        "--env",
+        "PORT=3000",
+        "--entrypoint",
+        "/bin/bash",
+        "bex-qa383-ruby-prereq:2ca401d694",
+        "-c",
+        "set -e\ncat > qa383-probe.rb <<'QA383_RUBY_PROBE'\nrequire 'json'\nMARKER = \"QA383_LOCAL_2ca401d694\"\nEXPECTED_FILES = JSON.parse(\"{\\\"Gemfile\\\": {\\\"bytes\\\": 8532, \\\"sha256\\\": \\\"0f965f6d5bac5be6a76b4852e3267345180f77a56ebc32e88a86fc602777ff8f\\\"}, \\\"Gemfile.lock\\\": {\\\"bytes\\\": 56048, \\\"sha256\\\": \\\"489e3e1b84277ddd8e3b72495ca3359508eeced6eb70e07535c4c45598a9ff89\\\"}}\")\nABSENT_FILES = JSON.parse(\"[\\\".ruby-version\\\", \\\".tool-versions\\\", \\\"gems.locked\\\"]\")\nrequire 'json'\nrequire 'socket'\nrequire 'digest'\nrequire 'open3'\ndef files\n EXPECTED_FILES.to_h { |name, _| [name, {'bytes'=>File.size(name), 'sha256'=>Digest::SHA256.file(name).hexdigest}] }\nend\ndef snapshot\n out,err,status=Open3.capture3('timeout','20','node','--version')\n {'marker'=>MARKER,'ruby'=>RUBY_VERSION,'ruby_engine'=>RUBY_ENGINE,'ruby_patchlevel'=>RUBY_PATCHLEVEL,'architecture'=>RUBY_PLATFORM,'files'=>files,'lock_ruby'=>File.read('Gemfile.lock')[/^RUBY VERSION\\n[ \\t]+ruby ([^\\n]+)/,1],'other_ruby_sources'=>ABSENT_FILES.to_h { |n| [n,File.exist?(n)] },'node'=>{'exit'=>status.exitstatus,'stdout'=>out,'stderr'=>err},'requested_node'=>ENV['NODE_VERSION']}\nend\nif ARGV.include?('--build')\n abort 'unexpected public version-file content' unless files==EXPECTED_FILES && ABSENT_FILES.none? { |n| File.exist?(n) }\n puts(MARKER+'_SOURCE_LOCK_CONFIRMED');$stdout.flush\n abort(MARKER+'_LOCK_EXPECTED_3_4_ACTUAL='+RUBY_VERSION) if ARGV.include?('--require-lock') && !RUBY_VERSION.start_with?('3.4.')\n value=snapshot\n File.write('qa383-built.json',JSON.generate(value))\n puts(JSON.generate(value));$stdout.flush\nelse\n body=JSON.generate(snapshot.merge('built'=>JSON.parse(File.read('qa383-built.json'))))\n TCPServer.open('0.0.0.0',Integer(ENV.fetch('PORT','10000'))) do |server|\n  loop do\n   connection=server.accept\n   begin\n    while (line=connection.gets) && line!=\"\\r\\n\"; end\n    connection.write(\"HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: #{body.bytesize}\\r\\nConnection: close\\r\\n\\r\\n\")\n    connection.write(body)\n   rescue IOError,SystemCallError\n   ensure\n    connection.close\n   end\n  end\n end\nend\n\nQA383_RUBY_PROBE\nruby qa383-probe.rb --build --require-lock\nexec ruby qa383-probe.rb"
+      ],
+      "exit": 0,
+      "stdout": "61b3fdaba23ddedaa950aab7c71a7d2a6e2aad8192330244378fef834a090e0e\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "start",
+        "61b3fdaba23ddedaa950aab7c71a7d2a6e2aad8192330244378fef834a090e0e"
+      ],
+      "exit": 0,
+      "stdout": "61b3fdaba23ddedaa950aab7c71a7d2a6e2aad8192330244378fef834a090e0e\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "61b3fdaba23ddedaa950aab7c71a7d2a6e2aad8192330244378fef834a090e0e",
+        "ruby",
+        "-rnet/http",
+        "-e",
+        "puts Net::HTTP.get(URI('http://127.0.0.1:3000/'))"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "/usr/local/lib/ruby/3.4.0/net/http.rb:1659:in 'TCPSocket#initialize': Failed to open TCP connection to 127.0.0.1:3000 (Connection refused - connect(2) for \"127.0.0.1\" port 3000) (Errno::ECONNREFUSED)\n\tfrom /usr/local/lib/ruby/3.4.0/net/http.rb:1659:in 'IO.open'\n\tfrom /usr/local/lib/ruby/3.4.0/net/http.rb:1659:in 'block in Net::HTTP#connect'\n\tfrom /usr/local/lib/ruby/3.4.0/timeout.rb:186:in 'block in Timeout.timeout'\n\tfrom /usr/local/lib/ruby/3.4.0/timeout.rb:194:in 'Timeout.timeout'\n\tfrom /usr/local/lib/ruby/3.4.0/net/http.rb:1657:in 'Net::HTTP#connect'\n\tfrom /usr/local/lib/ruby/3.4.0/net/http.rb:1636:in 'Net::HTTP#do_start'\n\tfrom /usr/local/lib/ruby/3.4.0/net/http.rb:1625:in 'Net::HTTP#start'\n\tfrom /usr/local/lib/ruby/3.4.0/net/http.rb:1064:in 'Net::HTTP.start'\n\tfrom /usr/local/lib/ruby/3.4.0/net/http.rb:824:in 'Net::HTTP.get_response'\n\tfrom /usr/local/lib/ruby/3.4.0/net/http.rb:805:in 'Net::HTTP.get'\n\tfrom -e:1:in '<main>'\n/usr/local/lib/ruby/3.4.0/net/http.rb:1659:in 'TCPSocket#initialize': Connection refused - connect(2) for \"127.0.0.1\" port 3000 (Errno::ECONNREFUSED)\n\tfrom /usr/local/lib/ruby/3.4.0/net/http.rb:1659:in 'IO.open'\n\tfrom /usr/local/lib/ruby/3.4.0/net/http.rb:1659:in 'block in Net::HTTP#connect'\n\tfrom /usr/local/lib/ruby/3.4.0/timeout.rb:186:in 'block in Timeout.timeout'\n\tfrom /usr/local/lib/ruby/3.4.0/timeout.rb:194:in 'Timeout.timeout'\n\tfrom /usr/local/lib/ruby/3.4.0/net/http.rb:1657:in 'Net::HTTP#connect'\n\tfrom /usr/local/lib/ruby/3.4.0/net/http.rb:1636:in 'Net::HTTP#do_start'\n\tfrom /usr/local/lib/ruby/3.4.0/net/http.rb:1625:in 'Net::HTTP#start'\n\tfrom /usr/local/lib/ruby/3.4.0/net/http.rb:1064:in 'Net::HTTP.start'\n\tfrom /usr/local/lib/ruby/3.4.0/net/http.rb:824:in 'Net::HTTP.get_response'\n\tfrom /usr/local/lib/ruby/3.4.0/net/http.rb:805:in 'Net::HTTP.get'\n\tfrom -e:1:in '<main>'\n"
+    },
+    {
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "61b3fdaba23ddedaa950aab7c71a7d2a6e2aad8192330244378fef834a090e0e"
+      ],
+      "exit": 0,
+      "stdout": "[\n    {\n        \"Id\": \"61b3fdaba23ddedaa950aab7c71a7d2a6e2aad8192330244378fef834a090e0e\",\n        \"Created\": \"2026-10-16T23:29:26.978607886Z\",\n        \"Path\": \"/bin/bash\",\n        \"Args\": [\n            \"-c\",\n            \"set -e\\ncat \\u003e qa383-probe.rb \\u003c\\u003c'QA383_RUBY_PROBE'\\nrequire 'json'\\nMARKER = \\\"QA383_LOCAL_2ca401d694\\\"\\nEXPECTED_FILES = JSON.parse(\\\"{\\\\\\\"Gemfile\\\\\\\": {\\\\\\\"bytes\\\\\\\": 8532, \\\\\\\"sha256\\\\\\\": \\\\\\\"0f965f6d5bac5be6a76b4852e3267345180f77a56ebc32e88a86fc602777ff8f\\\\\\\"}, \\\\\\\"Gemfile.lock\\\\\\\": {\\\\\\\"bytes\\\\\\\": 56048, \\\\\\\"sha256\\\\\\\": \\\\\\\"489e3e1b84277ddd8e3b72495ca3359508eeced6eb70e07535c4c45598a9ff89\\\\\\\"}}\\\")\\nABSENT_FILES = JSON.parse(\\\"[\\\\\\\".ruby-version\\\\\\\", \\\\\\\".tool-versions\\\\\\\", \\\\\\\"gems.locked\\\\\\\"]\\\")\\nrequire 'json'\\nrequire 'socket'\\nrequire 'digest'\\nrequire 'open3'\\ndef files\\n EXPECTED_FILES.to_h { |name, _| [name, {'bytes'=\\u003eFile.size(name), 'sha256'=\\u003eDigest::SHA256.file(name).hexdigest}] }\\nend\\ndef snapshot\\n out,err,status=Open3.capture3('timeout','20','node','--version')\\n {'marker'=\\u003eMARKER,'ruby'=\\u003eRUBY_VERSION,'ruby_engine'=\\u003eRUBY_ENGINE,'ruby_patchlevel'=\\u003eRUBY_PATCHLEVEL,'architecture'=\\u003eRUBY_PLATFORM,'files'=\\u003efiles,'lock_ruby'=\\u003eFile.read('Gemfile.lock')[/^RUBY VERSION\\\\n[ \\\\t]+ruby ([^\\\\n]+)/,1],'other_ruby_sources'=\\u003eABSENT_FILES.to_h { |n| [n,File.exist?(n)] },'node'=\\u003e{'exit'=\\u003estatus.exitstatus,'stdout'=\\u003eout,'stderr'=\\u003eerr},'requested_node'=\\u003eENV['NODE_VERSION']}\\nend\\nif ARGV.include?('--build')\\n abort 'unexpected public version-file content' unless files==EXPECTED_FILES \\u0026\\u0026 ABSENT_FILES.none? { |n| File.exist?(n) }\\n puts(MARKER+'_SOURCE_LOCK_CONFIRMED');$stdout.flush\\n abort(MARKER+'_LOCK_EXPECTED_3_4_ACTUAL='+RUBY_VERSION) if ARGV.include?('--require-lock') \\u0026\\u0026 !RUBY_VERSION.start_with?('3.4.')\\n value=snapshot\\n File.write('qa383-built.json',JSON.generate(value))\\n puts(JSON.generate(value));$stdout.flush\\nelse\\n body=JSON.generate(snapshot.merge('built'=\\u003eJSON.parse(File.read('qa383-built.json'))))\\n TCPServer.open('0.0.0.0',Integer(ENV.fetch('PORT','10000'))) do |server|\\n  loop do\\n   connection=server.accept\\n   begin\\n    while (line=connection.gets) \\u0026\\u0026 line!=\\\"\\\\r\\\\n\\\"; end\\n    connection.write(\\\"HTTP/1.1 200 OK\\\\r\\\\nContent-Type: application/json\\\\r\\\\nContent-Length: #{body.bytesize}\\\\r\\\\nConnection: close\\\\r\\\\n\\\\r\\\\n\\\")\\n    connection.write(body)\\n   rescue IOError,SystemCallError\\n   ensure\\n    connection.close\\n   end\\n  end\\n end\\nend\\n\\nQA383_RUBY_PROBE\\nruby qa383-probe.rb --build --require-lock\\nexec ruby qa383-probe.rb\"\n        ],\n        \"State\": {\n            \"Status\": \"running\",\n            \"Running\": true,\n            \"Paused\": false,\n            \"Restarting\": false,\n            \"OOMKilled\": false,\n            \"Dead\": false,\n            \"Pid\": 91777,\n            \"ExitCode\": 0,\n            \"Error\": \"\",\n            \"StartedAt\": \"2026-10-16T23:29:27.15099072Z\",\n            \"FinishedAt\": \"0001-01-01T00:00:00Z\"\n        },\n        \"Image\": \"sha256:3e9f44dfbe96b29dce389047a0146e88eda0483f870757132beeeeb415282f97\",\n        \"ResolvConfPath\": \"/var/lib/docker/containers/61b3fdaba23ddedaa950aab7c71a7d2a6e2aad8192330244378fef834a090e0e/resolv.conf\",\n        \"HostnamePath\": \"/var/lib/docker/containers/61b3fdaba23ddedaa950aab7c71a7d2a6e2aad8192330244378fef834a090e0e/hostname\",\n        \"HostsPath\": \"/var/lib/docker/containers/61b3fdaba23ddedaa950aab7c71a7d2a6e2aad8192330244378fef834a090e0e/hosts\",\n        \"LogPath\": \"/var/lib/docker/containers/61b3fdaba23ddedaa950aab7c71a7d2a6e2aad8192330244378fef834a090e0e/61b3fdaba23ddedaa950aab7c71a7d2a6e2aad8192330244378fef834a090e0e-json.log\",\n        \"Name\": \"/bex-qa383-ruby-2ca401d694\",\n        \"RestartCount\": 0,\n        \"Driver\": \"overlayfs\",\n        \"Platform\": \"linux\",\n        \"MountLabel\": \"\",\n        \"ProcessLabel\": \"\",\n        \"AppArmorProfile\": \"\",\n        \"ExecIDs\": null,\n        \"HostConfig\": {\n            \"Binds\": [\n                \"<owned-temp>/sweep383-local-container-2ca401d694/project:/case\"\n            ],\n            \"ContainerIDFile\": \"\",\n            \"LogConfig\": {\n                \"Type\": \"json-file\",\n                \"Config\": {}\n            },\n            \"NetworkMode\": \"none\",\n            \"PortBindings\": {},\n            \"RestartPolicy\": {\n                \"Name\": \"no\",\n                \"MaximumRetryCount\": 0\n            },\n            \"AutoRemove\": false,\n            \"VolumeDriver\": \"\",\n            \"VolumesFrom\": null,\n            \"ConsoleSize\": [\n                0,\n                0\n            ],\n            \"CapAdd\": null,\n            \"CapDrop\": null,\n            \"CgroupnsMode\": \"private\",\n            \"Dns\": null,\n            \"DnsOptions\": [],\n            \"DnsSearch\": [],\n            \"ExtraHosts\": null,\n            \"GroupAdd\": null,\n            \"IpcMode\": \"private\",\n            \"Cgroup\": \"\",\n            \"Links\": null,\n            \"OomScoreAdj\": 0,\n            \"PidMode\": \"\",\n            \"Privileged\": false,\n            \"PublishAllPorts\": false,\n            \"ReadonlyRootfs\": false,\n            \"SecurityOpt\": null,\n            \"UTSMode\": \"\",\n            \"UsernsMode\": \"\",\n            \"ShmSize\": 67108864,\n            \"Runtime\": \"runc\",\n            \"Isolation\": \"\",\n            \"CpuShares\": 0,\n            \"Memory\": 0,\n            \"NanoCpus\": 0,\n            \"CgroupParent\": \"\",\n            \"BlkioWeight\": 0,\n            \"BlkioWeightDevice\": [],\n            \"BlkioDeviceReadBps\": [],\n            \"BlkioDeviceWriteBps\": [],\n            \"BlkioDeviceReadIOps\": [],\n            \"BlkioDeviceWriteIOps\": [],\n            \"CpuPeriod\": 0,\n            \"CpuQuota\": 0,\n            \"CpuRealtimePeriod\": 0,\n            \"CpuRealtimeRuntime\": 0,\n            \"CpusetCpus\": \"\",\n            \"CpusetMems\": \"\",\n            \"Devices\": [],\n            \"DeviceCgroupRules\": null,\n            \"DeviceRequests\": null,\n            \"MemoryReservation\": 0,\n            \"MemorySwap\": 0,\n            \"MemorySwappiness\": null,\n            \"OomKillDisable\": null,\n            \"PidsLimit\": null,\n            \"Ulimits\": [],\n            \"CpuCount\": 0,\n            \"CpuPercent\": 0,\n            \"IOMaximumIOps\": 0,\n            \"IOMaximumBandwidth\": 0,\n            \"MaskedPaths\": [\n                \"/proc/acpi\",\n                \"/proc/asound\",\n                \"/proc/interrupts\",\n                \"/proc/kcore\",\n                \"/proc/keys\",\n                \"/proc/latency_stats\",\n                \"/proc/sched_debug\",\n                \"/proc/scsi\",\n                \"/proc/timer_list\",\n                \"/proc/timer_stats\",\n                \"/sys/devices/virtual/powercap\",\n                \"/sys/firmware\"\n            ],\n            \"ReadonlyPaths\": [\n                \"/proc/bus\",\n                \"/proc/fs\",\n                \"/proc/irq\",\n                \"/proc/sys\",\n                \"/proc/sysrq-trigger\"\n            ]\n        },\n        \"Storage\": {\n            \"RootFS\": {\n                \"Snapshot\": {\n                    \"Name\": \"overlayfs\"\n                }\n            }\n        },\n        \"Mounts\": [\n            {\n                \"Type\": \"bind\",\n                \"Source\": \"<owned-temp>/sweep383-local-container-2ca401d694/project\",\n                \"Destination\": \"/case\",\n                \"Mode\": \"\",\n                \"RW\": true,\n                \"Propagation\": \"rprivate\"\n            }\n        ],\n        \"Config\": {\n            \"Hostname\": \"61b3fdaba23d\",\n            \"Domainname\": \"\",\n            \"User\": \"\",\n            \"AttachStdin\": false,\n            \"AttachStdout\": true,\n            \"AttachStderr\": true,\n            \"Tty\": false,\n            \"OpenStdin\": false,\n            \"StdinOnce\": false,\n            \"Env\": [\n                \"NODE_VERSION=24\",\n                \"PORT=3000\",\n                \"PATH=/usr/local/bundle/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\n                \"LANG=C.UTF-8\",\n                \"RUBY_VERSION=3.4.11\",\n                \"RUBY_DOWNLOAD_URL=https://cache.ruby-lang.org/pub/ruby/3.4/ruby-3.4.11.tar.xz\",\n                \"RUBY_DOWNLOAD_SHA256=f79c6e789ce4f30f77c88a40b23b93e2547c512a843dc17db27ab1f5cc66f4e4\",\n                \"GEM_HOME=/usr/local/bundle\",\n                \"BUNDLE_SILENCE_ROOT_WARNING=1\",\n                \"BUNDLE_APP_CONFIG=/usr/local/bundle\"\n            ],\n            \"Cmd\": [\n                \"-c\",\n                \"set -e\\ncat \\u003e qa383-probe.rb \\u003c\\u003c'QA383_RUBY_PROBE'\\nrequire 'json'\\nMARKER = \\\"QA383_LOCAL_2ca401d694\\\"\\nEXPECTED_FILES = JSON.parse(\\\"{\\\\\\\"Gemfile\\\\\\\": {\\\\\\\"bytes\\\\\\\": 8532, \\\\\\\"sha256\\\\\\\": \\\\\\\"0f965f6d5bac5be6a76b4852e3267345180f77a56ebc32e88a86fc602777ff8f\\\\\\\"}, \\\\\\\"Gemfile.lock\\\\\\\": {\\\\\\\"bytes\\\\\\\": 56048, \\\\\\\"sha256\\\\\\\": \\\\\\\"489e3e1b84277ddd8e3b72495ca3359508eeced6eb70e07535c4c45598a9ff89\\\\\\\"}}\\\")\\nABSENT_FILES = JSON.parse(\\\"[\\\\\\\".ruby-version\\\\\\\", \\\\\\\".tool-versions\\\\\\\", \\\\\\\"gems.locked\\\\\\\"]\\\")\\nrequire 'json'\\nrequire 'socket'\\nrequire 'digest'\\nrequire 'open3'\\ndef files\\n EXPECTED_FILES.to_h { |name, _| [name, {'bytes'=\\u003eFile.size(name), 'sha256'=\\u003eDigest::SHA256.file(name).hexdigest}] }\\nend\\ndef snapshot\\n out,err,status=Open3.capture3('timeout','20','node','--version')\\n {'marker'=\\u003eMARKER,'ruby'=\\u003eRUBY_VERSION,'ruby_engine'=\\u003eRUBY_ENGINE,'ruby_patchlevel'=\\u003eRUBY_PATCHLEVEL,'architecture'=\\u003eRUBY_PLATFORM,'files'=\\u003efiles,'lock_ruby'=\\u003eFile.read('Gemfile.lock')[/^RUBY VERSION\\\\n[ \\\\t]+ruby ([^\\\\n]+)/,1],'other_ruby_sources'=\\u003eABSENT_FILES.to_h { |n| [n,File.exist?(n)] },'node'=\\u003e{'exit'=\\u003estatus.exitstatus,'stdout'=\\u003eout,'stderr'=\\u003eerr},'requested_node'=\\u003eENV['NODE_VERSION']}\\nend\\nif ARGV.include?('--build')\\n abort 'unexpected public version-file content' unless files==EXPECTED_FILES \\u0026\\u0026 ABSENT_FILES.none? { |n| File.exist?(n) }\\n puts(MARKER+'_SOURCE_LOCK_CONFIRMED');$stdout.flush\\n abort(MARKER+'_LOCK_EXPECTED_3_4_ACTUAL='+RUBY_VERSION) if ARGV.include?('--require-lock') \\u0026\\u0026 !RUBY_VERSION.start_with?('3.4.')\\n value=snapshot\\n File.write('qa383-built.json',JSON.generate(value))\\n puts(JSON.generate(value));$stdout.flush\\nelse\\n body=JSON.generate(snapshot.merge('built'=\\u003eJSON.parse(File.read('qa383-built.json'))))\\n TCPServer.open('0.0.0.0',Integer(ENV.fetch('PORT','10000'))) do |server|\\n  loop do\\n   connection=server.accept\\n   begin\\n    while (line=connection.gets) \\u0026\\u0026 line!=\\\"\\\\r\\\\n\\\"; end\\n    connection.write(\\\"HTTP/1.1 200 OK\\\\r\\\\nContent-Type: application/json\\\\r\\\\nContent-Length: #{body.bytesize}\\\\r\\\\nConnection: close\\\\r\\\\n\\\\r\\\\n\\\")\\n    connection.write(body)\\n   rescue IOError,SystemCallError\\n   ensure\\n    connection.close\\n   end\\n  end\\n end\\nend\\n\\nQA383_RUBY_PROBE\\nruby qa383-probe.rb --build --require-lock\\nexec ruby qa383-probe.rb\"\n            ],\n            \"Image\": \"bex-qa383-ruby-prereq:2ca401d694\",\n            \"Volumes\": null,\n            \"WorkingDir\": \"/case\",\n            \"Entrypoint\": [\n                \"/bin/bash\"\n            ],\n            \"Labels\": {\n                \"bex.qa.nonce\": \"2ca401d694\",\n                \"bex.qa.sweep\": \"383\"\n            }\n        },\n        \"NetworkSettings\": {\n            \"SandboxID\": \"5a1958c0df147c17ff6619b880ec8de703f8f6ddcb40afcc8b16ca889048f1b2\",\n            \"SandboxKey\": \"/var/run/docker/netns/5a1958c0df14\",\n            \"Ports\": {},\n            \"Networks\": {\n                \"none\": {\n                    \"IPAMConfig\": null,\n                    \"Links\": null,\n                    \"Aliases\": null,\n                    \"DriverOpts\": null,\n                    \"GwPriority\": 0,\n                    \"NetworkID\": \"86090866ed42a3e7c8135660b1b59a5f3d6963cc6b757ab7c487348acd44f0bb\",\n                    \"EndpointID\": \"536614289aff62e9475aaf1df1c3f9eb3ad4c66e9ff2962bcf5cdab4e16f7df5\",\n                    \"Gateway\": \"\",\n                    \"IPAddress\": \"\",\n                    \"MacAddress\": \"\",\n                    \"IPPrefixLen\": 0,\n                    \"IPv6Gateway\": \"\",\n                    \"GlobalIPv6Address\": \"\",\n                    \"GlobalIPv6PrefixLen\": 0,\n                    \"DNSNames\": null\n                }\n            }\n        },\n        \"ImageManifestDescriptor\": {\n            \"mediaType\": \"application/vnd.oci.image.manifest.v1+json\",\n            \"digest\": \"sha256:846b3f808de83ca15dc1fe51b43cb7542d1132032813692951857fd61aa60eb7\",\n            \"size\": 2011,\n            \"platform\": {\n                \"architecture\": \"arm64\",\n                \"os\": \"linux\"\n            }\n        }\n    }\n]\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "61b3fdaba23ddedaa950aab7c71a7d2a6e2aad8192330244378fef834a090e0e",
+        "ruby",
+        "-rnet/http",
+        "-e",
+        "puts Net::HTTP.get(URI('http://127.0.0.1:3000/'))"
+      ],
+      "exit": 0,
+      "stdout": "{\"marker\":\"QA383_LOCAL_2ca401d694\",\"ruby\":\"3.4.11\",\"ruby_engine\":\"ruby\",\"ruby_patchlevel\":137,\"architecture\":\"aarch64-linux\",\"files\":{\"Gemfile\":{\"bytes\":8532,\"sha256\":\"0f965f6d5bac5be6a76b4852e3267345180f77a56ebc32e88a86fc602777ff8f\"},\"Gemfile.lock\":{\"bytes\":56048,\"sha256\":\"489e3e1b84277ddd8e3b72495ca3359508eeced6eb70e07535c4c45598a9ff89\"}},\"lock_ruby\":\"3.4.7p58\",\"other_ruby_sources\":{\".ruby-version\":false,\".tool-versions\":false,\"gems.locked\":false},\"node\":{\"exit\":0,\"stdout\":\"v24.22.0\\n\",\"stderr\":\"\"},\"requested_node\":\"24\",\"built\":{\"marker\":\"QA383_LOCAL_2ca401d694\",\"ruby\":\"3.4.11\",\"ruby_engine\":\"ruby\",\"ruby_patchlevel\":137,\"architecture\":\"aarch64-linux\",\"files\":{\"Gemfile\":{\"bytes\":8532,\"sha256\":\"0f965f6d5bac5be6a76b4852e3267345180f77a56ebc32e88a86fc602777ff8f\"},\"Gemfile.lock\":{\"bytes\":56048,\"sha256\":\"489e3e1b84277ddd8e3b72495ca3359508eeced6eb70e07535c4c45598a9ff89\"}},\"lock_ruby\":\"3.4.7p58\",\"other_ruby_sources\":{\".ruby-version\":false,\".tool-versions\":false,\"gems.locked\":false},\"node\":{\"exit\":0,\"stdout\":\"v24.22.0\\n\",\"stderr\":\"\"},\"requested_node\":\"24\"}}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "logs",
+        "61b3fdaba23ddedaa950aab7c71a7d2a6e2aad8192330244378fef834a090e0e"
+      ],
+      "exit": 0,
+      "stdout": "QA383_LOCAL_2ca401d694_SOURCE_LOCK_CONFIRMED\n{\"marker\":\"QA383_LOCAL_2ca401d694\",\"ruby\":\"3.4.11\",\"ruby_engine\":\"ruby\",\"ruby_patchlevel\":137,\"architecture\":\"aarch64-linux\",\"files\":{\"Gemfile\":{\"bytes\":8532,\"sha256\":\"0f965f6d5bac5be6a76b4852e3267345180f77a56ebc32e88a86fc602777ff8f\"},\"Gemfile.lock\":{\"bytes\":56048,\"sha256\":\"489e3e1b84277ddd8e3b72495ca3359508eeced6eb70e07535c4c45598a9ff89\"}},\"lock_ruby\":\"3.4.7p58\",\"other_ruby_sources\":{\".ruby-version\":false,\".tool-versions\":false,\"gems.locked\":false},\"node\":{\"exit\":0,\"stdout\":\"v24.22.0\\n\",\"stderr\":\"\"},\"requested_node\":\"24\"}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "rm",
+        "--force",
+        "61b3fdaba23ddedaa950aab7c71a7d2a6e2aad8192330244378fef834a090e0e"
+      ],
+      "exit": 0,
+      "stdout": "61b3fdaba23ddedaa950aab7c71a7d2a6e2aad8192330244378fef834a090e0e\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "61b3fdaba23ddedaa950aab7c71a7d2a6e2aad8192330244378fef834a090e0e"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: 61b3fdaba23ddedaa950aab7c71a7d2a6e2aad8192330244378fef834a090e0e\n"
+    },
+    {
+      "command": [
+        "docker",
+        "image",
+        "inspect",
+        "bex-qa383-ruby-prereq:2ca401d694"
+      ],
+      "exit": 0,
+      "stdout": "[\n    {\n        \"Id\": \"sha256:3e9f44dfbe96b29dce389047a0146e88eda0483f870757132beeeeb415282f97\",\n        \"RepoTags\": [\n            \"bex-qa383-ruby-prereq:2ca401d694\"\n        ],\n        \"RepoDigests\": [\n            \"bex-qa383-ruby-prereq@sha256:3e9f44dfbe96b29dce389047a0146e88eda0483f870757132beeeeb415282f97\"\n        ],\n        \"Comment\": \"buildkit.dockerfile.v0\",\n        \"Created\": \"2026-10-16T23:29:23.192517301Z\",\n        \"Config\": {\n            \"Env\": [\n                \"PATH=/usr/local/bundle/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\n                \"LANG=C.UTF-8\",\n                \"RUBY_VERSION=3.4.11\",\n                \"RUBY_DOWNLOAD_URL=https://cache.ruby-lang.org/pub/ruby/3.4/ruby-3.4.11.tar.xz\",\n                \"RUBY_DOWNLOAD_SHA256=f79c6e789ce4f30f77c88a40b23b93e2547c512a843dc17db27ab1f5cc66f4e4\",\n                \"GEM_HOME=/usr/local/bundle\",\n                \"BUNDLE_SILENCE_ROOT_WARNING=1\",\n                \"BUNDLE_APP_CONFIG=/usr/local/bundle\"\n            ],\n            \"Cmd\": [\n                \"irb\"\n            ],\n            \"WorkingDir\": \"/case\",\n            \"Labels\": {\n                \"bex.qa.nonce\": \"2ca401d694\",\n                \"bex.qa.sweep\": \"383\"\n            }\n        },\n        \"Architecture\": \"arm64\",\n        \"Os\": \"linux\",\n        \"Size\": 429429451,\n        \"RootFS\": {\n            \"Type\": \"layers\",\n            \"Layers\": [\n                \"sha256:dc51344534bbef928c25f87c724daca6fd7a58522a0f2bc4d0de42899b94bd42\",\n                \"sha256:06b20ab917ae7fb7d9ad62f1495d6e69f44462215df657bd5f8aa34228f3ba84\",\n                \"sha256:f3ea0fdbfef7e10eceded81946e8d6a7d853a730fc4debc2313de180c5789c54\",\n                \"sha256:424eda943bfc22b4ca641896a614763d5dabe8b0112c9eb2376a43db74114305\",\n                \"sha256:fc12fb1f8b0af1629b180982a16ce7695fe9ea8ff49e02759a5dd4172f627766\",\n                \"sha256:ffed457098ea1d0c41c54910e7edba48b29ac6752a6b2a76aec151054381dbe6\",\n                \"sha256:c43836da9af65e6ceaa024533a998a76a1a996c5d0366a92302899e1645dee04\",\n                \"sha256:0d7d64e9b77f2ce53a18bc6cdd96348edf07b3dd44147a4cb8aa6dcf9707591f\",\n                \"sha256:4c79147dcf191b6339385e001e03c0a5d5e5f430550cb0399400dccd217495e5\"\n            ]\n        },\n        \"Metadata\": {\n            \"LastTagTime\": \"2026-10-16T23:29:26.323840136Z\"\n        },\n        \"Descriptor\": {\n            \"mediaType\": \"application/vnd.oci.image.index.v1+json\",\n            \"digest\": \"sha256:3e9f44dfbe96b29dce389047a0146e88eda0483f870757132beeeeb415282f97\",\n            \"size\": 856\n        },\n        \"Identity\": {\n            \"Build\": [\n                {\n                    \"Ref\": \"193h37wmqeufvv4s7ztk2lmnw\",\n                    \"CreatedAt\": \"2026-10-16T23:29:26.734241803Z\"\n                }\n            ]\n        }\n    }\n]\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "image",
+        "rm",
+        "bex-qa383-ruby-prereq:2ca401d694"
+      ],
+      "exit": 0,
+      "stdout": "Untagged: bex-qa383-ruby-prereq:2ca401d694\nDeleted: sha256:3e9f44dfbe96b29dce389047a0146e88eda0483f870757132beeeeb415282f97\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "image",
+        "inspect",
+        "bex-qa383-ruby-prereq:2ca401d694"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such image: bex-qa383-ruby-prereq:2ca401d694\n"
+    }
+  ],
+  "owned_image_id": "sha256:3e9f44dfbe96b29dce389047a0146e88eda0483f870757132beeeeb415282f97",
+  "authored_build_bytes": 2149,
+  "owned_container_id": "61b3fdaba23ddedaa950aab7c71a7d2a6e2aad8192330244378fef834a090e0e",
+  "info": {
+    "marker": "QA383_LOCAL_2ca401d694",
+    "ruby": "3.4.11",
+    "ruby_engine": "ruby",
+    "ruby_patchlevel": 137,
+    "architecture": "aarch64-linux",
+    "files": {
+      "Gemfile": {
+        "bytes": 8532,
+        "sha256": "0f965f6d5bac5be6a76b4852e3267345180f77a56ebc32e88a86fc602777ff8f"
+      },
+      "Gemfile.lock": {
+        "bytes": 56048,
+        "sha256": "489e3e1b84277ddd8e3b72495ca3359508eeced6eb70e07535c4c45598a9ff89"
+      }
+    },
+    "lock_ruby": "3.4.7p58",
+    "other_ruby_sources": {
+      ".ruby-version": false,
+      ".tool-versions": false,
+      "gems.locked": false
+    },
+    "node": {
+      "exit": 0,
+      "stdout": "v24.22.0\n",
+      "stderr": ""
+    },
+    "requested_node": "24",
+    "built": {
+      "marker": "QA383_LOCAL_2ca401d694",
+      "ruby": "3.4.11",
+      "ruby_engine": "ruby",
+      "ruby_patchlevel": 137,
+      "architecture": "aarch64-linux",
+      "files": {
+        "Gemfile": {
+          "bytes": 8532,
+          "sha256": "0f965f6d5bac5be6a76b4852e3267345180f77a56ebc32e88a86fc602777ff8f"
+        },
+        "Gemfile.lock": {
+          "bytes": 56048,
+          "sha256": "489e3e1b84277ddd8e3b72495ca3359508eeced6eb70e07535c4c45598a9ff89"
+        }
+      },
+      "lock_ruby": "3.4.7p58",
+      "other_ruby_sources": {
+        ".ruby-version": false,
+        ".tool-versions": false,
+        "gems.locked": false
+      },
+      "node": {
+        "exit": 0,
+        "stdout": "v24.22.0\n",
+        "stderr": ""
+      },
+      "requested_node": "24"
+    }
+  },
+  "pass_": true,
+  "container_logs": "QA383_LOCAL_2ca401d694_SOURCE_LOCK_CONFIRMED\n{\"marker\":\"QA383_LOCAL_2ca401d694\",\"ruby\":\"3.4.11\",\"ruby_engine\":\"ruby\",\"ruby_patchlevel\":137,\"architecture\":\"aarch64-linux\",\"files\":{\"Gemfile\":{\"bytes\":8532,\"sha256\":\"0f965f6d5bac5be6a76b4852e3267345180f77a56ebc32e88a86fc602777ff8f\"},\"Gemfile.lock\":{\"bytes\":56048,\"sha256\":\"489e3e1b84277ddd8e3b72495ca3359508eeced6eb70e07535c4c45598a9ff89\"}},\"lock_ruby\":\"3.4.7p58\",\"other_ruby_sources\":{\".ruby-version\":false,\".tool-versions\":false,\"gems.locked\":false},\"node\":{\"exit\":0,\"stdout\":\"v24.22.0\\n\",\"stderr\":\"\"},\"requested_node\":\"24\"}\n",
+  "own_container_absent": true,
+  "own_tag_absent": true,
+  "own_scratch_removed": true
+}

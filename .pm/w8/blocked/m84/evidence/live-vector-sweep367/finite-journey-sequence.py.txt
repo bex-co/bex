@@ -1,0 +1,23 @@
+from pathlib import Path
+import sys,json,subprocess
+P=Path(__file__).resolve().parent;CP=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json')
+def resource():return next(v for v in json.loads(CP.read_text())['resources'] if v.get('sweep')==367)
+def run(name,*args):
+ r=subprocess.run([sys.executable,str(P/name),*args],text=True,capture_output=True,timeout=80);(P/('sweep367-sequence-'+name+'-'+('-'.join(args) or 'run')+'.log')).write_text(r.stdout+r.stderr);print(json.dumps({'step':name,'args':args,'exit':r.returncode}),flush=True);assert r.returncode==0
+assert json.loads(resource()['native_readiness'][-1]['detail']['response'])['status']=='available'
+for actor in ['bex','render']:run('sweep367-native-pg.py','ping',actor)
+assert all(v['pass'] for v in resource()['native_SQL_readiness'])
+run('sweep367-prepare.py');run('sweep367-cached-connection.py','before')
+for actor in ['bex','render']:run('sweep367-vector.py','catalog',actor)
+for actor in ['bex','render']:run('sweep367-vector.py','migration',actor)
+checks=[v for v in resource()['vector_checks'] if v['kind']=='migration'];assert len(checks)==2
+if all(v['pass'] for v in checks):
+ for actor in ['bex','render']:
+  run('sweep367-vector.py','use',actor);run('sweep367-vector.py','negative',actor)
+ for actor in ['bex','render']:run('sweep367-vector.py','cross-read',actor)
+ print('Both original migrations, real vectors/HNSW and independent rollback reads pass',flush=True)
+else:print('Original known vector migration remains unavailable; recorded for existing m84, no duplicate or fallback role',flush=True)
+for actor in ['bex','render']:run('sweep367-vector.py','hstore',actor)
+for actor in ['bex','render']:run('sweep367-vector.py','catalog',actor)
+if resource().get('owned_vector_schemas'):run('sweep367-vector.py','drop-own','bex')
+print('Bounded vector journey finished; exact owned database cleanup next',flush=True)

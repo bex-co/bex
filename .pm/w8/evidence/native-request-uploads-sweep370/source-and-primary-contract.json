@@ -1,0 +1,38 @@
+{
+  "source_head": "b5a47b661ab2cc17bb83c6f47c72b1a8f25c4d9f",
+  "serving_revision": "unknown",
+  "public_source": {
+    "repo": "https://github.com/mscdex/busboy",
+    "branch": "master",
+    "commit": "6b3dcf69d38c1a8d53a0b3e4c88ba296f6c91525",
+    "package_sha256": "4faefdc1fc73a2c8a87dfa0cc6ca3dc3d9e518abf9b92d84aa495c59b3e20c92",
+    "package_version": "1.6.0",
+    "primary_source": "https://github.com/mscdex/busboy/tree/6b3dcf69d38c1a8d53a0b3e4c88ba296f6c91525",
+    "dependencies": {
+      "streamsearch": "^1.1.0"
+    }
+  },
+  "native_create": "published Bex0.3.2 with actual unchanged POST201 captured",
+  "independent_native_logs": "unchanged Render2.27.0/a764810a7682",
+  "runtime": {
+    "node": "v24.22.0",
+    "node_env": "production",
+    "busboy": "1.6.0",
+    "streamsearch": "1.1.0"
+  },
+  "curl": "curl 8.7.1 (x86_64-apple-darwin25.0) libcurl/8.7.1 (SecureTransport) LibreSSL/3.3.6 zlib/1.2.12 nghttp2/1.68.1",
+  "primary_contract": "https://github.com/mscdex/busboy/tree/6b3dcf69d38c1a8d53a0b3e4c88ba296f6c91525",
+  "explicit_authored_dependency_install": "npm install --no-save --package-lock=false --omit=dev --ignore-scripts --no-audit --no-fund streamsearch@1.1.0",
+  "local_preflight": "exact authored build succeeded; only local HTTP1; all positive response IDs retrospectively match the strengthened marker check before hosted traffic",
+  "semantic_checks": "decoded raw payload hashes, exact multipart fields/files and request marker; encoding/chunk normalization recorded without asserting end-to-end HTTP2",
+  "limits": [
+    "one Node Free service",
+    "64KiB file body only",
+    "no browser client",
+    "no large/slow/concurrent uploads",
+    "no HTTP3",
+    "no signature/raw-content transform claim",
+    "no automatic dependency-install acceptance",
+    "physical pod teardown unobserved"
+  ]
+}

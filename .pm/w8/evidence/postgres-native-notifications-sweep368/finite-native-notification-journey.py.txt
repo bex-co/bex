@@ -1,0 +1,74 @@
+from pathlib import Path
+import os,sys,json,re,time,shutil,subprocess,signal,tempfile,importlib.util
+P=Path(__file__).resolve().parent;sp=importlib.util.spec_from_file_location('qa368pty',P/'sweep365-pty.py');m=importlib.util.module_from_spec(sp);sp.loader.exec_module(m);Session=m.Session
+
+def literal(v):return "'"+v.replace("'","''")+"'"
+def frame(text,marker):
+ out=[]
+ for line in text.splitlines():
+  at=line.find('{')
+  if at<0:continue
+  try:v=json.loads(line[at:])
+  except ValueError:continue
+  if isinstance(v,dict) and v.get('marker')==marker:out.append(v)
+ assert out,'listener SQL frame missing';return out[-1]
+
+def round_trip(actor,nonce,connect,produce,persist,e):
+ s=None;cleanup=lambda:None;chan='qa368_'+nonce+'_'+actor;prefix='QA368_'+nonce+'_'+actor;payloads=['qa368 '+nonce+' first',"qa368 café 日本 😀 apostrophe's payload",''];e.update(listener=actor,channel=chan,payloads=payloads,listener_commands=[],producer_events=[],qualification='ordinary LISTEN/NOTIFY through native psql; listener fences consume pending messages, no idle-immediate timing claim');persist()
+ try:
+  cmd,env,logical,prompt,cleanup=connect(actor);e['native_command']=logical;s=Session(cmd,env);assert s.wait(prompt,25),'listener prompt unavailable';counter=0
+  def query(sql,label):
+   nonlocal counter
+   counter+=1;marker=prefix+'_'+str(counter);command=sql+" SELECT jsonb_build_object('marker',"+literal(marker)+",'pid',pg_backend_pid(),'channels',(SELECT coalesce(jsonb_agg(ch ORDER BY ch),'[]'::jsonb) FROM pg_listening_channels() ch))::text;\n\\echo "+marker+'_END\n';e['listener_commands'].append({'label':label,'stdin':command});persist();offset=len(s.text());s.send(command);assert s.wait_since(marker+'_END\n',offset,10),'listener fence missing';v=frame(s.text()[offset:],marker);e.setdefault('listener_frames',[]).append(v);persist();return v
+  pattern=re.compile(r'Asynchronous notification "'+re.escape(chan)+r'"(?: with payload "(.*?)")? received from server process with PID ([0-9]+)\.')
+  def messages():return [{'payload':v or '', 'sender_pid':int(pid)} for v,pid in pattern.findall(s.text())]
+  before=query('SET application_name='+literal('qa368_'+nonce+'_'+actor)+"; SET statement_timeout='20s'; LISTEN "+chan+';','register own committed listener');assert before['channels']==[chan];pid=before['pid'];e['listener_pid']=pid
+  def send(label,statement):
+   result=produce(actor,statement+" SELECT jsonb_build_object('marker',"+literal(prefix+'_'+label)+",'pid',pg_backend_pid())::text;",label);e['producer_events'].append(result);persist();assert result['native_exit']==0;v=json.loads(result['SQL_output'].strip());assert v['marker']==prefix+'_'+label;return v
+  rolled=send('rolled-back',"BEGIN; SELECT pg_notify("+literal(chan)+','+literal('qa368_'+nonce+'_ROLLBACK_MUST_NOT_DELIVER')+"); ROLLBACK;");query('','fence after producer rollback');assert messages()==[];e['rollback_not_delivered']=True;persist()
+  sql='BEGIN; '+''.join('SELECT pg_notify('+literal(chan)+','+literal(p)+'); ' for p in [payloads[0],payloads[0],payloads[1],payloads[2]])+'COMMIT;';sent=send('committed-batch',sql);after=query('','consume committed batch');expected=[{'payload':p,'sender_pid':sent['pid']} for p in payloads];assert after['pid']==pid and messages()==expected,'committed payload/order/PID or duplicate fold differs';e['within_transaction_duplicate_collapsed']=True;e['committed_batch']=messages();persist()
+  again=send('next-transaction','BEGIN; SELECT pg_notify('+literal(chan)+','+literal(payloads[0])+'); COMMIT;');query('','consume separate transaction');expected.append({'payload':payloads[0],'sender_pid':again['pid']});assert messages()==expected;e['separate_transaction_not_collapsed']=True;persist()
+  unlisten=query('UNLISTEN '+chan+';','remove own subscription');assert unlisten['channels']==[];send('after-unlisten','SELECT pg_notify('+literal(chan)+','+literal('qa368_'+nonce+'_AFTER_UNLISTEN_MUST_NOT_DELIVER')+');');final=query('','fence after unlisten');assert final['pid']==pid and final['channels']==[] and messages()==expected;e.update(unlisten_stops_delivery=True,same_listener_connection_reused=True,notifications=messages());persist();s.send('\\q\n');end=time.monotonic()+12
+  while s.poll() is None and time.monotonic()<end:s.step()
+  e['natural_native_exit']=s.poll();e['pass']=s.poll()==0;assert e['pass'],'listener did not quit naturally'
+ except Exception as error:e['error']=str(error);e['pass']=False;persist()
+ finally:
+  if s:s.close();e['PTY']=s.record()
+  cleanup();e['owned_listener_config_history_tmp_removed']=True;persist()
+ print(json.dumps({'listener':actor,'pass':e.get('pass'),'received':len(e.get('notifications',[])),'natural_exit':e.get('natural_native_exit'),'error':e.get('error')}),flush=True);assert e['pass'],e.get('error','notification round failed')
+
+if __name__=='__main__':
+ os.umask(0o077);mode=sys.argv[1];assert mode in ('preflight','live')
+ if mode=='preflight':
+  D=Path(tempfile.mkdtemp(prefix='bex368-',dir='/tmp'));D.chmod(0o700);sock=D/'socket';sock.mkdir(mode=0o700);data=D/'data';bin=Path('/opt/homebrew/opt/postgresql@18/bin');psql=Path('/opt/homebrew/opt/libpq/bin/psql');log=(P/'sweep368-local-pg.log').open('wb');server=None;v={'qualification':'own private local PostgreSQL18.6/psql18.6 harness prerequisite; not Bex evidence','rounds':[]}
+  def persist():(P/'sweep368-local-preflight.json').write_text(json.dumps(v,indent=2,ensure_ascii=False))
+  base=[str(psql),'-h',str(sock),'-p','16432','-U','qa368','-d','postgres','-X','-n','-q','-t','-A','-P','pager=off'];env={k:v for k,v in os.environ.items() if not k.startswith(('PG','PSQL','QA_','BEX_','RENDER_'))};env.update(PSQL_HISTORY=str(D/'history'),PGCLIENTENCODING='UTF8',PGCONNECT_TIMEOUT='5')
+  try:
+   init=subprocess.run([str(bin/'initdb'),'-D',str(data),'-U','qa368','--auth=trust','--no-locale','--encoding=UTF8'],stdout=log,stderr=log,timeout=20);assert init.returncode==0;server=subprocess.Popen([str(bin/'postgres'),'-D',str(data),'-k',str(sock),'-p','16432','-h',''],stdout=log,stderr=log,start_new_session=True)
+   for _ in range(80):
+    if (sock/'.s.PGSQL.16432').exists():break
+    time.sleep(.05)
+   assert (sock/'.s.PGSQL.16432').exists()
+   def connect(actor):
+    prompt='LOCAL368_'+actor+'> ';return [*base,'-v','ON_ERROR_STOP=off','-v','PROMPT1='+prompt,'-v','PROMPT2=LOCAL368_CONT> '],env,['local-psql','<own-unix-socket>'],prompt,lambda:None
+   def produce(actor,sql,label):
+    r=subprocess.run([*base,'-v','ON_ERROR_STOP=1','-c',sql],env=env,capture_output=True,text=True,timeout=10);return {'client':'local-other-psql','label':label,'native_exit':r.returncode,'SQL_output':r.stdout,'stderr':r.stderr,'SQL':sql}
+   for actor in ['bex','render']:
+    e={};v['rounds'].append(e);persist();round_trip(actor,'local368',connect,produce,persist,e)
+  finally:
+   if server:
+    os.killpg(server.pid,signal.SIGTERM);server.wait(timeout=10)
+   log.close();shutil.rmtree(D);v.update(server_stopped=True,own_data_socket_history_removed=not D.exists());persist()
+ else:
+  f=P/'sweep368-common.py';sys.argv=[str(f),'notifications','bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==368 and v.get('id'));sid=x['id'];assert x['create_result']['native_exit']==0 and not x.get('notification_rounds') and not x['state'].startswith('deleted:')
+  def connect(actor):
+   D=P/('sweep368-listener-'+actor);assert not D.exists();D.mkdir(mode=0o700);cfg=D/'cli.yaml';shutil.copyfile(P/'config/cli.yaml',cfg);cfg.chmod(0o600);tmp=D/'tmp';tmp.mkdir(mode=0o700);prefix='BEX' if actor=='bex' else 'RENDER';env={k:v for k,v in os.environ.items() if not k.startswith(('PG','PSQL','QA_','BEX_','RENDER_'))};env.update({prefix+'_HOST':'https://api.bex.co/v1/',prefix+'_CLI_CONFIG_PATH':str(cfg),prefix+'_CLI_CONFIG_DIR':str(D),prefix+'_WORKSPACE':WS,prefix+'_NO_UPDATE_NOTIFIER':'1','BEX_CLI_DISABLE_ANALYTICS':'1','DO_NOT_TRACK':'1','BROWSER':'/usr/bin/true','TERM':'xterm-256color','PSQL_HISTORY':str(D/'history'),'PGCONNECT_TIMEOUT':'10','PGCLIENTENCODING':'UTF8','TMPDIR':str(tmp)})
+   if actor=='render':env['PGSSLROOTCERT']=str(P/'sweep368-session-ca.pem')
+   prompt='QA368_'+x['nonce']+'_'+actor+'> ';argv=['psql',sid,'--confirm','-o','interactive','--','-X','-n','-q','-t','-A','-P','pager=off','-v','ON_ERROR_STOP=off','-v','PROMPT1='+prompt,'-v','PROMPT2=QA368_CONT> '];return [str(P/('release/bex' if actor=='bex' else 'render-pin')),*argv],env,[actor,*argv],prompt,lambda:shutil.rmtree(D)
+  def produce(actor,statement,label):
+   global client
+   previous=client;client='render' if actor=='bex' else 'bex'
+   try:event=sql('notify '+actor+' '+label,statement);r=event['result'];return {'client':client,'label':label,'native_exit':r['native_exit'],'SQL_output':json.loads(r['stdout'])['output'] if r['native_exit']==0 else '', 'event':event}
+   finally:client=previous
+  for actor in ['bex','render']:
+   e={'at':now()};x.setdefault('notification_rounds',[]).append(e);save();round_trip(actor,x['nonce'],connect,produce,save,e)

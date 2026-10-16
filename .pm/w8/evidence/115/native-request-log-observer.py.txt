@@ -1,0 +1,7 @@
+from pathlib import Path
+import sys,json
+f=Path(__file__).with_name('sweep372-common.py');exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==372);own(x)
+r=cli(['logs','--resources',x['id'],'--type','request','--direction','forward','--limit','100','--confirm','-o','json']);x.setdefault('native_request_log_receipts',[]).append({'at':now(),'native':r});save();assert r['native_exit']==0;raw=r['stdout'];values=[];d=json.JSONDecoder()
+while raw.strip():raw=raw.lstrip();v,end=d.raw_decode(raw);values.append(v);raw=raw[end:]
+rows=values[0] if len(values)==1 and isinstance(values[0],list) else values
+print(json.dumps({'native_exit':0,'rows':len(rows),'timestamp_and_message':[{'timestamp':v.get('timestamp'),'message':v.get('message'),'labels':v.get('labels')} for v in rows]},ensure_ascii=False)[:7000])

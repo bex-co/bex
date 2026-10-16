@@ -1,0 +1,14 @@
+{
+  "source_head": "37944bca41e2185321f3ec899fff939ac7d70f03",
+  "probe_scope": "twelve normal named static assets: spaces, Japanese/accent/emoji, literal percent/plus/question/hash/brackets and nested directory, empty/binary data; HTTP2 GET and HTTP1.1 HEAD, normal query, ETag and one finite range",
+  "normal_filename_URL_mapping": "Python urllib.parse.quote(name,safe=/) encodes UTF8 and literal URI delimiters; plus remains a literal path character; percent in a literal filename is percent-encoded once by the client",
+  "producer": "authored native Node24 static build, exact source package hash verified, explicit SKIP_INSTALL_DEPS=true; separate own qa374-public publish directory",
+  "consumer_source": [
+    "lego/operator/internal/staticserver/staticserver.go:231 reads decoded r.URL.Path, normalizes path, fetches the corresponding origin key",
+    "lego/operator/internal/staticserver/staticserver.go:697–703 normalizes slashes and preserves trailing slash",
+    "lego/operator/internal/staticserver/s3origin.go uses S3 object lookup; exact key behavior to research if a live case fails"
+  ],
+  "dedupe": "existing range317, compression346/m79 and cache-revision363 positive journeys do not exercise these filenames; w4/m162 is health-path suspended routing, not named static files",
+  "unverified": "actual serving SHA, physical object-store keys, local filesystem Unicode normalization, browser behavior and Render production",
+  "conditional_qualification": "no automatic ETag is promised; preserve25 completed positive probes, use If-None-Match wildcard for the existing encoded Unicode file, then finish remaining controls without mutation/redeploy"
+}

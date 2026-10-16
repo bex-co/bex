@@ -1,0 +1,19 @@
+{
+  "source_head": "0d24e58c619b8ce9dca1f14dc63bc4ec7d8b2e87",
+  "render_pin": "a764810a768202704e7206eb7b87a47211fcd98e",
+  "upstream_source": "pkg/tui/views/psql.go:76\u201395 passes one native --command into external psql -c plus child args; cmd/psql.go:103 consumer",
+  "primary_contracts": [
+    "https://www.postgresql.org/docs/14/app-psql.html",
+    "https://www.postgresql.org/docs/14/lo-funcs.html"
+  ],
+  "scope": "only normal local-file LO import/export, current own DB SQL lo_put/lo_get/unlink, rollback, zero-length file, missing-local-file and deleted-own-object errors",
+  "dedupe": "prior sweep355 used inline bytea in a logical dump and explicitly left large objects uncovered; no functional large-object issue found in board; existing native stdout/warnings085/079 and cancellation m87 remain separate",
+  "public_port_proxy": "pg-sni-proxy TLS passthrough to the own PG server; no statement parsing claimed",
+  "unverified": "physical pod/PVC internals, server exact patch, alternate major versions/plans, server-side filesystem import/export, live Render production",
+  "harness_qualifications": [
+    "local -q hides the LO import tag; explicit psql QUIET=off added only to client meta commands",
+    "PostgreSQL JSON renders oid as string; numeric-string OID normalization corrected before hosted execution",
+    "initial40s live import bound exhausted; exact nonce/comment+size+MD5 and zero other active SQL sessions reconciled, exact object removed, original processes absent, empty catalog proved before one180s-bound replay; no product timeout claim",
+    "the first longer-bound replay failed in read-only CA preparation before any Render process/import; original HTTP/curl status was not retained and cause unknown; subsequent exact native-UA GET returned200, helper standardized on that UA, empty-catalog/no-import state preserved before continuation"
+  ]
+}
