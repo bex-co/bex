@@ -1,0 +1,943 @@
+{
+  "pass": "a770",
+  "date": "2026-10-16",
+  "researchHead": "5b1f186982f244727912cff70a6cdc4c0b43bbe8",
+  "scope": "Read-only service-create catalog plan preview",
+  "captures": [
+    {
+      "capture": "a770Desktop",
+      "at": "2026-10-16T20:04:07.335Z",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "url": "https://dashboard.bex.co/services/new?type=web_service",
+      "responseHold": "Held the successful native catalog response until pending measurement, then fulfilled its unchanged original response",
+      "catalog": {
+        "projection": "Complete selected operation and corresponding complete response entry from the actual held native batch; sibling repository/workspace bodies are omitted. This is not the full native HTTP body and is not an isolated-operation delay.",
+        "batchOperationNames": [
+          "RouterAvailable",
+          "BillingReadiness",
+          "Workspaces",
+          "Repos",
+          "GitConnections",
+          "Projects",
+          "InstanceTypes"
+        ],
+        "status": 200,
+        "operation": {
+          "operationName": "InstanceTypes",
+          "variables": {},
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query InstanceTypes {\n  instanceTypes {\n    id\n    name\n    cpu\n    memory\n    monthlyUsd\n    __typename\n  }\n}"
+        },
+        "responseEntry": {
+          "data": {
+            "instanceTypes": [
+              {
+                "__typename": "InstanceType",
+                "cpu": "100m",
+                "id": "free",
+                "memory": "512Mi",
+                "monthlyUsd": "0.00",
+                "name": "Free"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "500m",
+                "id": "starter",
+                "memory": "512Mi",
+                "monthlyUsd": "4.90",
+                "name": "Starter"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "1",
+                "id": "standard",
+                "memory": "2Gi",
+                "monthlyUsd": "17.50",
+                "name": "Standard"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "2",
+                "id": "pro",
+                "memory": "4Gi",
+                "monthlyUsd": "59.50",
+                "name": "Pro"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "4",
+                "id": "pro_plus",
+                "memory": "8Gi",
+                "monthlyUsd": "122.50",
+                "name": "Pro Plus"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "4",
+                "id": "pro_max",
+                "memory": "16Gi",
+                "monthlyUsd": "157.50",
+                "name": "Pro Max"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "8",
+                "id": "pro_ultra",
+                "memory": "32Gi",
+                "monthlyUsd": "315.00",
+                "name": "Pro Ultra"
+              }
+            ]
+          }
+        }
+      },
+      "pending": {
+        "at": "2026-10-16T20:04:06.805Z",
+        "geometry": {
+          "region": {
+            "x": 533,
+            "y": 1289,
+            "width": 630,
+            "height": 102,
+            "bottom": 1391
+          },
+          "grid": null,
+          "skeletons": [
+            {
+              "x": 533,
+              "y": 1311,
+              "width": 630,
+              "height": 80,
+              "bottom": 1391
+            }
+          ],
+          "radios": [],
+          "project": {
+            "x": 533,
+            "y": 1429,
+            "width": 117.546875,
+            "height": 36,
+            "bottom": 1465
+          },
+          "projectOffsetFromPlanTop": 140,
+          "positionQualification": "The screenshot call scrolls an inner overflow container. Compare region heights and projectOffsetFromPlanTop, not the raw absolute y across states."
+        },
+        "snapshot": "- text: Instance Type"
+      },
+      "ready": {
+        "at": "2026-10-16T20:04:07.240Z",
+        "geometry": {
+          "region": {
+            "x": 533,
+            "y": 475,
+            "width": 630,
+            "height": 280,
+            "bottom": 755
+          },
+          "grid": {
+            "rect": {
+              "x": 533,
+              "y": 497,
+              "width": 630,
+              "height": 258,
+              "bottom": 755
+            },
+            "columns": "202px 202px 202px",
+            "gap": "12px"
+          },
+          "skeletons": [],
+          "radios": [
+            {
+              "rect": {
+                "x": 533,
+                "y": 497,
+                "width": 202,
+                "height": 70,
+                "bottom": 567
+              },
+              "label": "Free$0.00/month512 MB RAM · 0.1 CPU",
+              "checked": "true"
+            },
+            {
+              "rect": {
+                "x": 747,
+                "y": 497,
+                "width": 202,
+                "height": 70,
+                "bottom": 567
+              },
+              "label": "Starter$4.90/month512 MB RAM · 0.5 CPU",
+              "checked": "false"
+            },
+            {
+              "rect": {
+                "x": 961,
+                "y": 497,
+                "width": 202,
+                "height": 70,
+                "bottom": 567
+              },
+              "label": "Standard$17.50/month2 GB RAM · 1 CPU",
+              "checked": "false"
+            },
+            {
+              "rect": {
+                "x": 533,
+                "y": 579,
+                "width": 202,
+                "height": 70,
+                "bottom": 649
+              },
+              "label": "Pro$59.50/month4 GB RAM · 2 CPU",
+              "checked": "false"
+            },
+            {
+              "rect": {
+                "x": 747,
+                "y": 579,
+                "width": 202,
+                "height": 70,
+                "bottom": 649
+              },
+              "label": "Pro Plus$122.50/month8 GB RAM · 4 CPU",
+              "checked": "false"
+            },
+            {
+              "rect": {
+                "x": 961,
+                "y": 579,
+                "width": 202,
+                "height": 70,
+                "bottom": 649
+              },
+              "label": "Pro Max$157.50/month16 GB RAM · 4 CPU",
+              "checked": "false"
+            },
+            {
+              "rect": {
+                "x": 533,
+                "y": 661,
+                "width": 202,
+                "height": 94,
+                "bottom": 755
+              },
+              "label": "Pro Ultra$315.00/month32 GB RAM · 8 CPU",
+              "checked": "false"
+            }
+          ],
+          "project": {
+            "x": 533,
+            "y": 793,
+            "width": 117.546875,
+            "height": 36,
+            "bottom": 829
+          },
+          "projectOffsetFromPlanTop": 318,
+          "positionQualification": "The screenshot call scrolls an inner overflow container. Compare region heights and projectOffsetFromPlanTop, not the raw absolute y across states."
+        },
+        "snapshot": "- text: Instance Type\n- radiogroup \"Instance Type\":\n  - radio \"Free $0.00/month 512 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $4.90/month 512 MB RAM · 0.5 CPU\"\n  - radio \"Standard $17.50/month 2 GB RAM · 1 CPU\"\n  - radio \"Pro $59.50/month 4 GB RAM · 2 CPU\"\n  - radio \"Pro Plus $122.50/month 8 GB RAM · 4 CPU\"\n  - radio \"Pro Max $157.50/month 16 GB RAM · 4 CPU\"\n  - radio \"Pro Ultra $315.00/month 32 GB RAM · 8 CPU\""
+      },
+      "console": []
+    },
+    {
+      "capture": "a770Mobile",
+      "at": "2026-10-16T20:04:42.135Z",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "url": "https://dashboard.bex.co/services/new?type=web_service",
+      "responseHold": "Held the successful native catalog response until pending measurement, then fulfilled its unchanged original response",
+      "catalog": {
+        "projection": "Complete selected operation and corresponding complete response entry from the actual held native batch; sibling repository/workspace bodies are omitted. This is not the full native HTTP body and is not an isolated-operation delay.",
+        "batchOperationNames": [
+          "BillingReadiness",
+          "Workspaces",
+          "Repos",
+          "GitConnections",
+          "Projects",
+          "InstanceTypes"
+        ],
+        "status": 200,
+        "operation": {
+          "operationName": "InstanceTypes",
+          "variables": {},
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query InstanceTypes {\n  instanceTypes {\n    id\n    name\n    cpu\n    memory\n    monthlyUsd\n    __typename\n  }\n}"
+        },
+        "responseEntry": {
+          "data": {
+            "instanceTypes": [
+              {
+                "__typename": "InstanceType",
+                "cpu": "100m",
+                "id": "free",
+                "memory": "512Mi",
+                "monthlyUsd": "0.00",
+                "name": "Free"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "500m",
+                "id": "starter",
+                "memory": "512Mi",
+                "monthlyUsd": "4.90",
+                "name": "Starter"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "1",
+                "id": "standard",
+                "memory": "2Gi",
+                "monthlyUsd": "17.50",
+                "name": "Standard"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "2",
+                "id": "pro",
+                "memory": "4Gi",
+                "monthlyUsd": "59.50",
+                "name": "Pro"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "4",
+                "id": "pro_plus",
+                "memory": "8Gi",
+                "monthlyUsd": "122.50",
+                "name": "Pro Plus"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "4",
+                "id": "pro_max",
+                "memory": "16Gi",
+                "monthlyUsd": "157.50",
+                "name": "Pro Max"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "8",
+                "id": "pro_ultra",
+                "memory": "32Gi",
+                "monthlyUsd": "315.00",
+                "name": "Pro Ultra"
+              }
+            ]
+          }
+        }
+      },
+      "pending": {
+        "at": "2026-10-16T20:04:41.643Z",
+        "geometry": {
+          "region": {
+            "x": 37,
+            "y": 1485,
+            "width": 316,
+            "height": 102,
+            "bottom": 1587
+          },
+          "grid": null,
+          "skeletons": [
+            {
+              "x": 37,
+              "y": 1507,
+              "width": 316,
+              "height": 80,
+              "bottom": 1587
+            }
+          ],
+          "radios": [],
+          "project": {
+            "x": 37,
+            "y": 1625,
+            "width": 117.546875,
+            "height": 36,
+            "bottom": 1661
+          },
+          "projectOffsetFromPlanTop": 140,
+          "positionQualification": "The screenshot call scrolls an inner overflow container. Compare region heights and projectOffsetFromPlanTop, not the raw absolute y across states."
+        },
+        "snapshot": "- text: Instance Type"
+      },
+      "ready": {
+        "at": "2026-10-16T20:04:42.051Z",
+        "geometry": {
+          "region": {
+            "x": 37,
+            "y": 395,
+            "width": 316,
+            "height": 584,
+            "bottom": 979
+          },
+          "grid": {
+            "rect": {
+              "x": 37,
+              "y": 417,
+              "width": 316,
+              "height": 562,
+              "bottom": 979
+            },
+            "columns": "316px",
+            "gap": "12px"
+          },
+          "skeletons": [],
+          "radios": [
+            {
+              "rect": {
+                "x": 37,
+                "y": 417,
+                "width": 316,
+                "height": 70,
+                "bottom": 487
+              },
+              "label": "Free$0.00/month512 MB RAM · 0.1 CPU",
+              "checked": "true"
+            },
+            {
+              "rect": {
+                "x": 37,
+                "y": 499,
+                "width": 316,
+                "height": 70,
+                "bottom": 569
+              },
+              "label": "Starter$4.90/month512 MB RAM · 0.5 CPU",
+              "checked": "false"
+            },
+            {
+              "rect": {
+                "x": 37,
+                "y": 581,
+                "width": 316,
+                "height": 70,
+                "bottom": 651
+              },
+              "label": "Standard$17.50/month2 GB RAM · 1 CPU",
+              "checked": "false"
+            },
+            {
+              "rect": {
+                "x": 37,
+                "y": 663,
+                "width": 316,
+                "height": 70,
+                "bottom": 733
+              },
+              "label": "Pro$59.50/month4 GB RAM · 2 CPU",
+              "checked": "false"
+            },
+            {
+              "rect": {
+                "x": 37,
+                "y": 745,
+                "width": 316,
+                "height": 70,
+                "bottom": 815
+              },
+              "label": "Pro Plus$122.50/month8 GB RAM · 4 CPU",
+              "checked": "false"
+            },
+            {
+              "rect": {
+                "x": 37,
+                "y": 827,
+                "width": 316,
+                "height": 70,
+                "bottom": 897
+              },
+              "label": "Pro Max$157.50/month16 GB RAM · 4 CPU",
+              "checked": "false"
+            },
+            {
+              "rect": {
+                "x": 37,
+                "y": 909,
+                "width": 316,
+                "height": 70,
+                "bottom": 979
+              },
+              "label": "Pro Ultra$315.00/month32 GB RAM · 8 CPU",
+              "checked": "false"
+            }
+          ],
+          "project": {
+            "x": 37,
+            "y": 1017,
+            "width": 117.546875,
+            "height": 36,
+            "bottom": 1053
+          },
+          "projectOffsetFromPlanTop": 622,
+          "positionQualification": "The screenshot call scrolls an inner overflow container. Compare region heights and projectOffsetFromPlanTop, not the raw absolute y across states."
+        },
+        "snapshot": "- text: Instance Type\n- radiogroup \"Instance Type\":\n  - radio \"Free $0.00/month 512 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $4.90/month 512 MB RAM · 0.5 CPU\"\n  - radio \"Standard $17.50/month 2 GB RAM · 1 CPU\"\n  - radio \"Pro $59.50/month 4 GB RAM · 2 CPU\"\n  - radio \"Pro Plus $122.50/month 8 GB RAM · 4 CPU\"\n  - radio \"Pro Max $157.50/month 16 GB RAM · 4 CPU\"\n  - radio \"Pro Ultra $315.00/month 32 GB RAM · 8 CPU\""
+      },
+      "console": []
+    },
+    {
+      "capture": "a770PrivateMobile",
+      "at": "2026-10-16T20:08:38.058Z",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "url": "https://dashboard.bex.co/services/new?type=private_service",
+      "responseHold": "Held the successful native catalog response until pending measurement, then fulfilled its unchanged original response",
+      "catalog": {
+        "projection": "Complete selected operation and corresponding complete response entry from the actual held native batch; sibling repository/workspace bodies are omitted. This is not the full native HTTP body and is not an isolated-operation delay.",
+        "batchOperationNames": [
+          "BillingReadiness",
+          "Workspaces",
+          "Repos",
+          "GitConnections",
+          "Projects",
+          "InstanceTypes"
+        ],
+        "status": 200,
+        "operation": {
+          "operationName": "InstanceTypes",
+          "variables": {},
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query InstanceTypes {\n  instanceTypes {\n    id\n    name\n    cpu\n    memory\n    monthlyUsd\n    __typename\n  }\n}"
+        },
+        "responseEntry": {
+          "data": {
+            "instanceTypes": [
+              {
+                "__typename": "InstanceType",
+                "cpu": "100m",
+                "id": "free",
+                "memory": "512Mi",
+                "monthlyUsd": "0.00",
+                "name": "Free"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "500m",
+                "id": "starter",
+                "memory": "512Mi",
+                "monthlyUsd": "4.90",
+                "name": "Starter"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "1",
+                "id": "standard",
+                "memory": "2Gi",
+                "monthlyUsd": "17.50",
+                "name": "Standard"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "2",
+                "id": "pro",
+                "memory": "4Gi",
+                "monthlyUsd": "59.50",
+                "name": "Pro"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "4",
+                "id": "pro_plus",
+                "memory": "8Gi",
+                "monthlyUsd": "122.50",
+                "name": "Pro Plus"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "4",
+                "id": "pro_max",
+                "memory": "16Gi",
+                "monthlyUsd": "157.50",
+                "name": "Pro Max"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "8",
+                "id": "pro_ultra",
+                "memory": "32Gi",
+                "monthlyUsd": "315.00",
+                "name": "Pro Ultra"
+              }
+            ]
+          }
+        }
+      },
+      "pending": {
+        "at": "2026-10-16T20:08:37.546Z",
+        "geometry": {
+          "region": {
+            "x": 37,
+            "y": 1521,
+            "width": 316,
+            "height": 102,
+            "bottom": 1623
+          },
+          "grid": null,
+          "skeletons": [
+            {
+              "x": 37,
+              "y": 1543,
+              "width": 316,
+              "height": 80,
+              "bottom": 1623
+            }
+          ],
+          "radios": [],
+          "project": {
+            "x": 37,
+            "y": 1661,
+            "width": 117.546875,
+            "height": 36,
+            "bottom": 1697
+          },
+          "projectOffsetFromPlanTop": 140,
+          "positionQualification": "The screenshot call scrolls an inner overflow container. Compare region heights and projectOffsetFromPlanTop, not the raw absolute y across states."
+        },
+        "snapshot": "- text: Instance Type"
+      },
+      "ready": {
+        "at": "2026-10-16T20:08:37.978Z",
+        "geometry": {
+          "region": {
+            "x": 37,
+            "y": 395,
+            "width": 316,
+            "height": 502,
+            "bottom": 897
+          },
+          "grid": {
+            "rect": {
+              "x": 37,
+              "y": 417,
+              "width": 316,
+              "height": 480,
+              "bottom": 897
+            },
+            "columns": "316px",
+            "gap": "12px"
+          },
+          "skeletons": [],
+          "radios": [
+            {
+              "rect": {
+                "x": 37,
+                "y": 417,
+                "width": 316,
+                "height": 70,
+                "bottom": 487
+              },
+              "label": "Starter$4.90/month512 MB RAM · 0.5 CPU",
+              "checked": "true"
+            },
+            {
+              "rect": {
+                "x": 37,
+                "y": 499,
+                "width": 316,
+                "height": 70,
+                "bottom": 569
+              },
+              "label": "Standard$17.50/month2 GB RAM · 1 CPU",
+              "checked": "false"
+            },
+            {
+              "rect": {
+                "x": 37,
+                "y": 581,
+                "width": 316,
+                "height": 70,
+                "bottom": 651
+              },
+              "label": "Pro$59.50/month4 GB RAM · 2 CPU",
+              "checked": "false"
+            },
+            {
+              "rect": {
+                "x": 37,
+                "y": 663,
+                "width": 316,
+                "height": 70,
+                "bottom": 733
+              },
+              "label": "Pro Plus$122.50/month8 GB RAM · 4 CPU",
+              "checked": "false"
+            },
+            {
+              "rect": {
+                "x": 37,
+                "y": 745,
+                "width": 316,
+                "height": 70,
+                "bottom": 815
+              },
+              "label": "Pro Max$157.50/month16 GB RAM · 4 CPU",
+              "checked": "false"
+            },
+            {
+              "rect": {
+                "x": 37,
+                "y": 827,
+                "width": 316,
+                "height": 70,
+                "bottom": 897
+              },
+              "label": "Pro Ultra$315.00/month32 GB RAM · 8 CPU",
+              "checked": "false"
+            }
+          ],
+          "project": {
+            "x": 37,
+            "y": 935,
+            "width": 117.546875,
+            "height": 36,
+            "bottom": 971
+          },
+          "projectOffsetFromPlanTop": 540,
+          "positionQualification": "The screenshot call scrolls an inner overflow container. Compare region heights and projectOffsetFromPlanTop, not the raw absolute y across states."
+        },
+        "snapshot": "- text: Instance Type\n- radiogroup \"Instance Type\":\n  - radio \"Starter $4.90/month 512 MB RAM · 0.5 CPU\" [checked]\n  - radio \"Standard $17.50/month 2 GB RAM · 1 CPU\"\n  - radio \"Pro $59.50/month 4 GB RAM · 2 CPU\"\n  - radio \"Pro Plus $122.50/month 8 GB RAM · 4 CPU\"\n  - radio \"Pro Max $157.50/month 16 GB RAM · 4 CPU\"\n  - radio \"Pro Ultra $315.00/month 32 GB RAM · 8 CPU\""
+      },
+      "console": []
+    }
+  ],
+  "css": {
+    "at": "2026-10-16T20:08:40.011Z",
+    "rootFontSize": "16px",
+    "spacing": ".25rem",
+    "heightRules": [".h-20 { height: calc(var(--spacing) * 20); }"]
+  },
+  "staticControl": {
+    "at": "2026-10-16T20:08:38.796Z",
+    "url": "https://dashboard.bex.co/services/new?type=static_site",
+    "instanceLabelCount": 0,
+    "planRadioGroups": 0,
+    "staticSelected": true
+  },
+  "sourceCensus": {
+    "PlanCardGridProductionMounts": [
+      "routes/services.new.tsx",
+      "routes/keyvalue.new.tsx",
+      "features/databases/components/database-plan-section.tsx",
+      "features/keyvalue/components/key-value-plan-section.tsx"
+    ],
+    "useInstanceTypesProductionConsumers": [
+      "features/services/hooks/use-new-service-form.ts",
+      "features/services/components/service-detail-header.tsx",
+      "features/services/components/instance-type-row.tsx",
+      "features/services/components/instance-type-picker.tsx"
+    ],
+    "CreatePlanGridSkeletonProductionCalls": 2,
+    "PlanTierSlotsProductionCalls": 3,
+    "currentServiceTypes": {
+      "web_service": 7,
+      "private_service": 6,
+      "background_worker": "6 source-traced, not live-delayed",
+      "cron_job": "6 source-traced, not live-delayed",
+      "static_site": "no plan controls, live passing switch control"
+    }
+  },
+  "cleanup": {
+    "resourcesCreated": [],
+    "paidSubmissions": 0,
+    "baselineRequest": {
+      "operationName": "Qaa467Inventory",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      },
+      "query": "query Qaa467Inventory($ownerId:String!){ services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name}}"
+    },
+    "baselineResponse": {
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      }
+    },
+    "allSevenIDSets": {
+      "blueprints": {
+        "before": ["blp-d9nqg95cavls73fp8m10"],
+        "after": ["blp-d9nqg95cavls73fp8m10"],
+        "equal": true
+      },
+      "databases": {
+        "before": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "after": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "equal": true
+      },
+      "envGroups": {
+        "before": ["evg-db0s94c48ccs739jikr0"],
+        "after": ["evg-db0s94c48ccs739jikr0"],
+        "equal": true
+      },
+      "keyValues": {
+        "before": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "after": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "equal": true
+      },
+      "projects": {
+        "before": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "after": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "equal": true
+      },
+      "services": {
+        "before": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "after": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "equal": true
+      },
+      "webhookEndpoints": {
+        "before": [],
+        "after": [],
+        "equal": true
+      }
+    },
+    "sessionCleared": {
+      "at": "2026-10-16T20:09:45.004Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "ownHandlesAbsent": true
+  },
+  "limits": [
+    "Full native GraphQL batches were held and fulfilled unchanged; no claim of isolated InstanceTypes timing. Two attempted warm-navigation isolates used cached catalog data and produced no held-response evidence; excluded.",
+    "Element screenshot scrolling changes raw y coordinates; relative positions and dimensions support the layout claim.",
+    "No purchase, provisioning, save, API error, lost selection or failed deployment observed.",
+    "Only Web at desktop/mobile and Private at mobile were delayed live; worker/cron, Private desktop, route-loader phase, other widths, translated/error/empty/refetch/changed-catalog states remain verification work.",
+    "Screenshots are ignored local support; durable selected-operation responses and DOM measurements carry the finding.",
+    "No authenticated Render loading-state comparison."
+  ]
+}
