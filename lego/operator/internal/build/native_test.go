@@ -877,7 +877,7 @@ func TestNativePnpmPinKeysTheCache(t *testing.T) {
 	saved := nativePnpm
 	t.Cleanup(func() { nativePnpm = saved })
 	for _, change := range []func(){
-		func() { nativePnpm.version = "10.34.7" },
+		func() { nativePnpm.version = saved.version + "-changed" },
 		func() { nativePnpm.checksum = "sha256:" + strings.Repeat("0", 64) },
 	} {
 		nativePnpm = saved

@@ -36,8 +36,8 @@
       "id": "cnb-run-image",
       "kind": "stack",
       "upstream": "ghcr.io/bex-co/bex-cnb-run:latest",
-      "committed": "ghcr.io/bex-co/bex-cnb-run@sha256:e737036058ca4fb01ac1fbc344a8d56ea926f9ed77bef471c4d796830b589fe6",
-      "resolved_at": "2026-10-11T02:05:00Z",
+      "committed": "ghcr.io/bex-co/bex-cnb-run@sha256:b2ec0fa5b6f5e6bf2e4f427eeb3db09b7573ebe6e789cf1676b6f717a5e95423",
+      "resolved_at": "2026-10-16T10:31:28Z",
       "source": "ghcr.io bex-co/bex-cnb-run:latest multi-arch index (linux/amd64 + linux/arm64), published by cnb-run-image.yml run 37171066271 from 158ea9fe; anonymous pull verified",
       "files": ["deploy/gitops/charts/kpack/platform.yaml"]
     },
@@ -141,9 +141,9 @@
       "id": "native-pnpm",
       "kind": "npm-package",
       "upstream": "registry.npmjs.org/pnpm:latest-10",
-      "committed": "pnpm-10.34.6.tgz@sha256:44d7db90fcbb2315b581f85989a913466765421fc656c28e80fac1b7ab5be456",
-      "resolved_at": "2026-10-15T22:45:00Z",
-      "source": "npm registry pnpm@latest-10 = 10.34.6 tarball sha256 (registry integrity sha512-fhrmaoOpFDwRjMGUTzfMTyuKzd7aSwAc+niQj25G5F4VKSc5ymydAmQmzHV+kxjMmMVVHWoWwWUJewAouoe05g== verified); pure-JS, engines node>=18.12, installed into every native Node image (w8/m73)",
+      "committed": "pnpm-10.34.7.tgz@sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694",
+      "resolved_at": "2026-10-16T10:32:32Z",
+      "source": "npm registry pnpm@latest-10 = 10.34.7 tarball sha256 (registry integrity sha512-fhrmaoOpFDwRjMGUTzfMTyuKzd7aSwAc+niQj25G5F4VKSc5ymydAmQmzHV+kxjMmMVVHWoWwWUJewAouoe05g== verified); pure-JS, engines node>=18.12, installed into every native Node image (w8/m73)",
       "files": ["lego/operator/internal/build/nativepnpm.go"]
     },
     {
@@ -177,8 +177,8 @@
       "id": "native-rust",
       "kind": "native-base",
       "upstream": "docker.io/library/rust:1-bookworm",
-      "committed": "rust:1-bookworm@sha256:114c7a4425406451c2866b6aafe69fe29b1b298832db1277d411ac73c82d04d6",
-      "resolved_at": "2026-10-11T02:05:00Z",
+      "committed": "rust:1-bookworm@sha256:e12566d5abc17a0da741628782cdb504b68b8961f5bfcf677936bf3e8b32de29",
+      "resolved_at": "2026-10-16T10:32:32Z",
       "source": "Docker Hub library/rust:1-bookworm multi-arch index",
       "files": ["lego/operator/internal/build/native.go"]
     },
