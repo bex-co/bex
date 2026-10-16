@@ -1,0 +1,245 @@
+{
+  "schemaVersion": 1,
+  "pass": "a802",
+  "sourceHead": "56ae9135aabc0d8d4510e476437868a297300776",
+  "scope": "Ordinary native UI input validation; no response injection/delay. Two real Free static create attempts were refused before resource creation. Paid types were inspected without submission.",
+  "replay": "Use scripts/qa-login.sh with your own session. Fresh-load /services/new?type=static_site; Public Git URL https://github.com/bex-co/bex, own unique Name, branch main, build blank, Auto-deploy off. Leave Publish Directory empty on desktop or enter three spaces on mobile. Record button enabled, click, and select the native CreateService response matching your own name. The request and complete response are in the receipts. Stop if a future server starts accepting blank paths; inventory and clean up any resulting own fixture.",
+  "receipts": {
+    "a802EmptyPublishDesktop": {
+      "at": "2026-10-16T23:47:46.068Z",
+      "publish": "",
+      "placeholder": "dist",
+      "required": false,
+      "deployEnabled": true,
+      "build": ""
+    },
+    "a802EmptyPublishSubmitDesktop": {
+      "at": "2026-10-16T23:47:47.768Z",
+      "request": {
+        "operationName": "CreateService",
+        "variables": {
+          "repo": "https://github.com/bex-co/bex",
+          "branch": "main",
+          "name": "qa-a802-empty-publish",
+          "type": "static_site",
+          "autoDeploy": false,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createService": null
+        },
+        "errors": [
+          {
+            "message": "bad request: publishPath is required for a static_site",
+            "locations": [
+              {
+                "line": 2,
+                "column": 3
+              }
+            ],
+            "path": ["createService"]
+          }
+        ]
+      },
+      "timing": {
+        "startTime": 1792194466840.139,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.138,
+        "responseStart": 223.477,
+        "responseEnd": 223.896
+      },
+      "url": "https://dashboard.bex.co/services/new?type=static_site"
+    },
+    "a802EmptyPublishDesktopError": {
+      "at": "2026-10-16T23:48:03.188Z",
+      "alerts": [],
+      "name": "qa-a802-empty-publish",
+      "url": "https://dashboard.bex.co/services/new?type=static_site",
+      "publishInvalid": "false"
+    },
+    "a802SpacePublishMobile": {
+      "at": "2026-10-16T23:48:05.577Z",
+      "width": 390,
+      "publish": "   ",
+      "deployEnabled": true,
+      "build": ""
+    },
+    "a802SpacePublishSubmitMobile": {
+      "at": "2026-10-16T23:48:07.288Z",
+      "request": {
+        "operationName": "CreateService",
+        "variables": {
+          "repo": "https://github.com/bex-co/bex",
+          "branch": "main",
+          "name": "qa-a802-space-publish",
+          "type": "static_site",
+          "autoDeploy": false,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createService": null
+        },
+        "errors": [
+          {
+            "message": "bad request: publishPath is required for a static_site",
+            "locations": [
+              {
+                "line": 2,
+                "column": 3
+              }
+            ],
+            "path": ["createService"]
+          }
+        ]
+      },
+      "timing": {
+        "startTime": 1792194486322.062,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.133,
+        "responseStart": 260.376,
+        "responseEnd": 260.788
+      },
+      "url": "https://dashboard.bex.co/services/new?type=static_site"
+    },
+    "a802ValidPublishControls": {
+      "at": "2026-10-16T23:48:32.602Z",
+      "dot": {
+        "value": ".",
+        "enabled": true,
+        "invalid": "false"
+      },
+      "relative": {
+        "value": "examples/static-site",
+        "enabled": true
+      },
+      "web": {
+        "publishCount": 0,
+        "port": "3000",
+        "enabled": true
+      },
+      "noSuccessfulCreateSubmitted": true
+    },
+    "a802InvalidWebPort": {
+      "at": "2026-10-16T23:46:40.637Z",
+      "deployEnabled": false,
+      "portError": "true",
+      "main": "sing with no port or URL\nCron Job\nRun a command on a recurring schedule\nStatic Site\nBuild and serve a static site from object storage\nSource\nGitHub\nPublic Git URL\nExisting Image\nDocker Image\n\nThe container must listen on the port set below — bex injects it as $PORT — and cannot bind ports below 1024.\n\nRegistry credential\nNo credential — public image\n\nNo stored registry credentials are available. Manage registry credentials\n\nSettings\n\nName\n\nChecking availability…\n\nDocker Command\nPort\n\nEnter a port between 1024 and 65535.\n\nInstance Type\nFree\n$0.00/month\n512 MB RAM · 0.1 CPU\nStarter\n$4.90/month\n512 MB RAM · 0.5 CPU\nStandard\n$17.50/month\n2 GB RAM · 1 CPU\nPro\n$59.50/month\n4 GB RAM · 2 CPU\nPro Plus\n$122.50/month\n8 GB RAM · 4 CPU\nPro Max\n$157.50/month\n16 GB RAM · 4 CPU\nPro Ultra\n$315.00/month\n32 GB RAM · 8 CPU\nProject and Environment\nNo project\nNo environment\n\nWhen creating a resource, selecting a Project filters its Environments. Choose an Environment to add the resource to that Project. Leaving No environment selected creates the resource outside any Project. If the Project has no Environment yet, create one from the Project's page first.\n\nEnvironment Variables\nAdd Variable\nSecret Files\n\nMounted read-only under /etc/secrets from the first deploy.\n\nAdd Secret File\nCancel\nDeploy Service"
+    },
+    "a802WorkerIgnoresHiddenPort": {
+      "at": "2026-10-16T23:46:42.301Z",
+      "portCount": 0,
+      "deployEnabled": true,
+      "name": "qa-a802-type-draft",
+      "image": "docker.io/library/node:24-alpine",
+      "main": "New Service\nSearch\n⌘ K\nNew\nP\nNew Background Worker\nDeploy a background worker from a Git repo or Docker image.\nService Type\nWeb Service\nExpose your service on a public URL\nPrivate Service\nAccessible only within the platform network\nBackground Worker\nRun background processing with no port or URL\nCron Job\nRun a command on a recurring schedule\nStatic Site\nBuild and serve a static site from object storage\nSource\nGitHub\nPublic Git URL\nExisting Image\nDocker Image\nRegistry credential\nNo credential — public image\n\nNo stored registry credentials are available. Manage registry credentials\n\nSettings\n\nName\nDocker Command\n\nThis service type has no public URL.\n\nInstance Type\nStarter\n$4.90/month\n512 MB RAM · 0.5 CPU\nStandard\n$17.50/month\n2 GB RAM · 1 CPU\nPro\n$59.50/month\n4 GB RAM · 2 CPU\nPro Plus\n$122.50/month\n8 GB RAM · 4 CPU\nPro Max\n$157.50/month\n16 GB RAM · 4 CPU\nPro Ultra\n$315.00/month\n32 GB RAM · 8 CPU\nProject and Environment\nNo project\nNo environment\n\nWhen creating a resource, selecting a Project filters its Environments. Choose an Environment to add the resource to that Project. Leaving No environment selected creates the resource outside any Project. If the Project has no Environment yet, create one from the Project's page first.\n\nEnvironment Variables\nAdd Variable\nSecret Files\n\nMounted read-only under /etc/secrets from the first deploy.\n\nAdd Secret File\nCancel\nDeploy Service"
+    },
+    "a802CronValidationSwitch": {
+      "at": "2026-10-16T23:47:07.928Z",
+      "cronValid": {
+        "enabled": true,
+        "portCount": 0
+      },
+      "cronInvalid": {
+        "enabled": false,
+        "aria": "true"
+      },
+      "web": {
+        "scheduleCount": 0,
+        "port": "8192",
+        "enabled": true,
+        "name": "qa-a802-type-draft",
+        "image": "docker.io/library/node:24-alpine"
+      }
+    },
+    "a802HiddenDraftRestores": {
+      "at": "2026-10-16T23:47:28.451Z",
+      "web": {
+        "port": "8192",
+        "publishCount": 0,
+        "scheduleCount": 0,
+        "enabled": true
+      },
+      "cron": {
+        "schedule": "0 0 * *",
+        "invalid": "true",
+        "enabled": false
+      },
+      "name": "qa-a802-type-draft"
+    },
+    "a802InventoryCleanup": {
+      "at": "2026-10-16T23:48:59.831Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [],
+      "consoleErrors": [],
+      "httpFailures": []
+    },
+    "a802SessionCleared": {
+      "at": "2026-10-16T23:49:05.569Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  }
+}
