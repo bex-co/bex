@@ -997,19 +997,7 @@ func TestNativeImageRunsPnpm(t *testing.T) {
 		` yarn=$(yarn --version 2>/dev/null || echo absent)"`
 	dockerBuild := func(t *testing.T, o Options, line string) string {
 		t.Helper()
-		bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"NODE_VERSION": line}, pkg)
-		if _, err := ResolveNativeBuild(nativeRuntime(o), bundle, dockerfile, src); err != nil {
-			t.Fatal(err)
-		}
-		must(t, os.Rename(dockerfile, filepath.Join(src, "Dockerfile")))
-		tag := fmt.Sprintf("bex-native-pnpm-it-%s-%t:%d", line, o.StaticSite, os.Getpid())
-		t.Cleanup(func() { _ = exec.Command("docker", "image", "rm", "-f", tag).Run() })
-		cmd := exec.Command("docker", "build", "-q", "-t", tag, "--secret", "id=render-env,src="+bundle, src)
-		cmd.Env = append(os.Environ(), "DOCKER_BUILDKIT=1")
-		if out, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("build: %v\n%s", err, out)
-		}
-		return tag
+		return buildResolvedImage(t, o, map[string]string{"NODE_VERSION": line}, pkg, fmt.Sprintf("bex-native-pnpm-it-%s-%t:%d", line, o.StaticSite, os.Getpid()))
 	}
 	for _, l := range nativeToolchains[nativeNodeRuntime].lines {
 		t.Run("node"+l.line, func(t *testing.T) {
@@ -1114,4 +1102,23 @@ func TestNativeImageRunsJSToolsBesideRubyAndPython(t *testing.T) {
 			}
 		})
 	}
+}
+
+// buildResolvedImage runs the resolve phase over o's generated Dockerfile with
+// env and the source files src, then builds it with BuildKit as tag, removed
+// when the test ends.
+func buildResolvedImage(t *testing.T, o Options, env, src map[string]string, tag string) string {
+	t.Helper()
+	bundle, dockerfile, dir := writeResolveFixture(t, o, env, src)
+	if _, err := ResolveNativeBuild(nativeRuntime(o), bundle, dockerfile, dir); err != nil {
+		t.Fatal(err)
+	}
+	must(t, os.Rename(dockerfile, filepath.Join(dir, "Dockerfile")))
+	t.Cleanup(func() { _ = exec.Command("docker", "image", "rm", "-f", tag).Run() })
+	cmd := exec.Command("docker", "build", "-q", "-t", tag, "--secret", "id=render-env,src="+bundle, dir)
+	cmd.Env = append(os.Environ(), "DOCKER_BUILDKIT=1")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("build: %v\n%s", err, out)
+	}
+	return tag
 }

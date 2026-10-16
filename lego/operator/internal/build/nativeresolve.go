@@ -45,8 +45,9 @@ const (
 // ResolveNativeBuild is the resolve phase: env bundle and Dockerfile paths,
 // the service's root directory in the checkout, and the runtime. It returns
 // the choices it applied, the primary toolchain first, then Python's Poetry
-// (w8/m72), Ruby's and Python's Node (w8/m77) and any opted-in companion
-// (Bun); an *UnsupportedVersionError is tenant input.
+// (w8/m72) and, for a uv project, uv (w8/m81), Ruby's and Python's Node
+// (w8/m77) and any opted-in companion (Bun); an *UnsupportedVersionError is
+// tenant input.
 func ResolveNativeBuild(runtime, bundlePath, dockerfilePath, sourceDir string) ([]NativeChoice, error) {
 	env, err := readEnvBundle(bundlePath)
 	if err != nil {
@@ -75,10 +76,24 @@ func ResolveNativeBuild(runtime, bundlePath, dockerfilePath, sourceDir string) (
 		if err != nil {
 			return nil, err
 		}
+		uv, withUV, err := ResolveNativeUV(env, readFile)
+		if err != nil {
+			return nil, err
+		}
+		// Each step lands right after the FROM, so uv goes in first to follow
+		// Poetry's layer, which a uv version change then leaves cached.
+		if withUV {
+			if rewritten, err = addNativeUV(rewritten, choice.Image, uv.Line); err != nil {
+				return nil, err
+			}
+		}
 		if rewritten, err = addNativePoetry(rewritten, choice.Image, poetry.Line); err != nil {
 			return nil, err
 		}
 		choices = append(choices, poetry)
+		if withUV {
+			choices = append(choices, uv)
+		}
 	}
 	if nativeJSCompanionRuntimes[runtime] {
 		node, err := ResolveNativeVersion(nativeNodeRuntime, env, readFile)
@@ -146,21 +161,38 @@ func nativeJSToolLines(nodeImage string) string {
 		nativePnpmInstall()
 }
 
-// nativePoetryHome is the Poetry tool's own virtualenv: the application's
-// packages, virtualenvs and PATH never share it, and Poetry's dependencies
-// never land in the image's site-packages.
-const nativePoetryHome = "/opt/bex/poetry"
-
-// addNativePoetry installs the chosen Poetry right after the FROM, before the
-// source and the authored build, into its own virtualenv on the selected
-// Python, and links it onto the image PATH so the build, the pre-deploy step
-// and the started service all find poetry (w8/m72). The step runs under the
-// image's own environment, not the service's, and sits before COPY so a
-// source change reuses it; a changed version is a changed instruction.
+// addNativePoetry installs the chosen Poetry (w8/m72); see
+// nativePythonToolInstall.
 func addNativePoetry(dockerfile, baseImage, version string) (string, error) {
-	return afterNativeBase(dockerfile, baseImage, fmt.Sprintf(
-		"RUN /usr/local/bin/python -m venv %[1]s && %[1]s/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==%[2]s && ln -s %[1]s/bin/poetry /usr/local/bin/poetry\n",
-		nativePoetryHome, version))
+	return afterNativeBase(dockerfile, baseImage, nativePythonToolInstall("poetry", version, "poetry"))
+}
+
+// addNativeUV installs the chosen uv, with uvx (w8/m81); see
+// nativePythonToolInstall. uv discovers interpreters itself: the image's
+// selected Python on PATH serves a project whose pin it satisfies, and a
+// project pinning another patch (bex builds a line's reviewed patch) gets the
+// CPython uv downloads for it, as uv does anywhere.
+func addNativeUV(dockerfile, baseImage, version string) (string, error) {
+	return afterNativeBase(dockerfile, baseImage, nativePythonToolInstall("uv", version, "uv", "uvx"))
+}
+
+// nativePythonToolInstall is the step that installs an exact PyPI release of a
+// Python-packaged tool right after the FROM, before the source and the
+// authored build, into its own virtualenv /opt/bex/<pkg> on the selected
+// Python, and links its commands onto the image PATH so the build, the
+// pre-deploy step and the started service all find them. The application's
+// packages, virtualenvs and PATH never share that virtualenv, and the tool's
+// dependencies never land in the image's site-packages. The step runs under
+// the image's own environment, not the service's, and sits before COPY so a
+// source change reuses it; a changed version is a changed instruction.
+func nativePythonToolInstall(pkg, version string, commands ...string) string {
+	home := "/opt/bex/" + pkg
+	var links strings.Builder
+	for _, command := range commands {
+		fmt.Fprintf(&links, " && ln -s %s/bin/%s /usr/local/bin/%s", home, command, command)
+	}
+	return fmt.Sprintf("RUN /usr/local/bin/python -m venv %[1]s && %[1]s/bin/pip install --no-cache-dir --disable-pip-version-check --no-input %[2]s==%[3]s%[4]s\n",
+		home, pkg, version, links.String())
 }
 
 // afterNativeBase inserts lines right after the generated Dockerfile's FROM.
