@@ -1,16 +1,16 @@
 # w8 · m86 — Install automatic npm dependencies for static builds
 
-**Worker:** worker8 **Goal:** A declared npm static project builds with its normal authored script, without a manual installer prefix. **Status:** todo
+**Worker:** worker8 **Goal:** A declared npm static project builds with its normal authored script, without a manual installer prefix. **Status:** blocked — t001–t005 done 2026-10-16; t006 needs the operator deployed plus a hosted fresh-fixture replay
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Install automatic npm dependencies for native static builds](t001.md) | 45m | — |
-| t002 | [Audit shared roots, environment and install selection](t002.md) | 25m | t001 |
-| t003 | [Verify Render parity across static authoring surfaces](t003.md) | 20m | t002 |
-| t004 | [Simplify the changed installation path](t004.md) | 10m | t003 |
-| t005 | [Test actual dependency use and phase controls](t005.md) | 35m | t003 |
+| t001 | [Install automatic npm dependencies for native static builds](done/t001.md) | 45m | — — **DONE 2026-10-16** |
+| t002 | [Audit shared roots, environment and install selection](done/t002.md) | 25m | t001 — **DONE 2026-10-16** |
+| t003 | [Verify Render parity across static authoring surfaces](done/t003.md) | 20m | t002 — **DONE 2026-10-16** |
+| t004 | [Simplify the changed installation path](done/t004.md) | 10m | t003 — **DONE 2026-10-16** |
+| t005 | [Test actual dependency use and phase controls](done/t005.md) | 35m | t003 — **DONE 2026-10-16** |
 | t006 | [Verify live default installation and close the milestone](t006.md) | 25m | t004, t005 |
 
 **Total:**6 tasks/160m. [Researched finding](finding.md) · [full evidence](evidence/cli-sweep358/README.md).

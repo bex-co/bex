@@ -1146,16 +1146,23 @@ func TestNativeImageRunsJSToolsBesidePrimaries(t *testing.T) {
 // when the test ends.
 func buildResolvedImage(t *testing.T, o Options, env, src map[string]string, tag string) string {
 	t.Helper()
+	if out, err := dockerBuildResolved(t, o, env, src, tag); err != nil {
+		t.Fatalf("build: %v\n%s", err, out)
+	}
+	return tag
+}
+
+// dockerBuildResolved is buildResolvedImage for a build that may fail: it
+// returns BuildKit's plain step log and the build's error.
+func dockerBuildResolved(t *testing.T, o Options, env, src map[string]string, tag string) ([]byte, error) {
+	t.Helper()
 	bundle, dockerfile, dir := writeResolveFixture(t, o, env, src)
 	if _, err := ResolveNativeBuild(nativeRuntime(o), bundle, dockerfile, dir); err != nil {
 		t.Fatal(err)
 	}
 	must(t, os.Rename(dockerfile, filepath.Join(dir, "Dockerfile")))
 	t.Cleanup(func() { _ = exec.Command("docker", "image", "rm", "-f", tag).Run() })
-	cmd := exec.Command("docker", "build", "-q", "-t", tag, "--secret", "id=render-env,src="+bundle, dir)
+	cmd := exec.Command("docker", "build", "--progress=plain", "-t", tag, "--secret", "id=render-env,src="+bundle, dir)
 	cmd.Env = append(os.Environ(), "DOCKER_BUILDKIT=1")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("build: %v\n%s", err, out)
-	}
-	return tag
+	return cmd.CombinedOutput()
 }

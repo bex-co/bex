@@ -1035,6 +1035,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		Builder:           builder,
 		Runtime:           app.Spec.Runtime,
 		StaticSite:        app.Spec.Type == appv1alpha1.TypeStaticSite,
+		StaticPublishPath: app.Spec.PublishPath,
 		BuildCommand:      app.Spec.BuildCommand,
 		StartCommand:      app.Spec.StartCommand,
 		BuildEnv:          buildLiterals,
