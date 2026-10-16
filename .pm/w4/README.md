@@ -302,6 +302,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **328** — [Editing a precise custom range truncates its bounds to minutes](328.md) (55m) ← functional QA a761, 2026-10-16: fresh desktop/mobile reject an accepted subminute range on unchanged Apply; a wider Logs window silently shifts both actual request bounds. Minute-aligned control passes. Preserve exact instants through the shared editor; owned fixture and session cleaned up. Filing only.
+
 - [ ] **327** — [Unicode progress-line overwrites leave extra characters and break visible-text search](327.md) (55m) ← functional QA a735, 2026-10-16: desktop and fresh mobile render an extra character after a supplementary Unicode overwrite; service display search misses that text while ASCII and deploy-local controls pass. Correct the shared browser parser's code-point consumption; raw records remain intact. Fixture and session cleaned up.
 
 - [ ] **326** — [Empty environment-group file reads omit their content](326.md) (55m) ← functional QA a725, 2026-10-16: native source/clone and fresh REST reads omit the empty content field, while GraphQL and nonempty/missing controls pass. Use a read-specific REST/MCP response; preserve metadata/write masking. Both groups and the exact session are cleaned up.

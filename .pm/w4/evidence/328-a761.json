@@ -1,0 +1,446 @@
+{
+  "schemaVersion": 1,
+  "pass": "a761",
+  "date": "2026-10-16",
+  "inspectedMain": "72a6f77f47b637b4825824e1058e95e47b582e9d",
+  "scope": "Functional custom range editing truncates accepted seconds/milliseconds before validation or query serialization",
+  "receipts": {
+    "a761PastMobile": {
+      "at": "2026-10-16T18:30:08.370Z",
+      "before": {
+        "at": "2026-10-16T18:30:08.057Z",
+        "request": {
+          "operationName": "Metrics",
+          "variables": {
+            "query": {
+              "filters": [
+                {
+                  "field": "RESOURCE",
+                  "values": ["srv-db96q2pkoksc73a7vkhg"]
+                }
+              ],
+              "name": "HTTP_REQUESTS",
+              "start": "2026-10-16T18:28:10.123Z",
+              "end": "2026-10-16T18:28:50.987Z",
+              "resolution": 1
+            }
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query Metrics($query: MetricsQueryInput!) {\n  metrics(query: $query) {\n    unit\n    labels {\n      field\n      value\n      __typename\n    }\n    values {\n      time\n      value\n      __typename\n    }\n    parameters {\n      quantile\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "metrics": []
+          }
+        },
+        "url": "https://dashboard.bex.co/services/srv-db96q2pkoksc73a7vkhg/metrics?range=custom&rangeStart=2026-10-16T18%3A28%3A10.123Z&rangeEnd=2026-10-16T18%3A28%3A50.987Z"
+      },
+      "dialogBefore": "- dialog \"Custom range\":\n  - heading \"Custom range\" [level=2]\n  - paragraph: Choose an absolute start and end. Windows over 30 days aren't available.\n  - text: Start\n  - textbox \"Start\": 2026-10-16T11:28\n  - text: End\n  - textbox \"End\": 2026-10-16T11:28\n  - button \"Cancel\"\n  - button \"Apply\"\n  - button \"Close\"",
+      "dialogAfter": "- dialog \"Custom range\":\n  - heading \"Custom range\" [level=2]\n  - paragraph: Choose an absolute start and end. Windows over 30 days aren't available.\n  - text: Start\n  - textbox \"Start\": 2026-10-16T11:28\n  - text: End\n  - textbox \"End\": 2026-10-16T11:28\n  - alert: The end must be after the start.\n  - button \"Cancel\"\n  - button \"Apply\"\n  - button \"Close\"",
+      "urlAfter": "https://dashboard.bex.co/services/srv-db96q2pkoksc73a7vkhg/metrics?range=custom&rangeStart=2026-10-16T18%3A28%3A10.123Z&rangeEnd=2026-10-16T18%3A28%3A50.987Z",
+      "docWidth": 390
+    },
+    "a761PastDesktop": {
+      "at": "2026-10-16T18:30:32.556Z",
+      "url": "https://dashboard.bex.co/services/srv-db96q2pkoksc73a7vkhg/metrics?range=custom&rangeStart=2026-10-16T18%3A28%3A10.123Z&rangeEnd=2026-10-16T18%3A28%3A50.987Z",
+      "before": "- dialog \"Custom range\":\n  - heading \"Custom range\" [level=2]\n  - paragraph: Choose an absolute start and end. Windows over 30 days aren't available.\n  - text: Start\n  - textbox \"Start\": 2026-10-16T11:28\n  - text: End\n  - textbox \"End\": 2026-10-16T11:28\n  - button \"Cancel\"\n  - button \"Apply\"\n  - button \"Close\"",
+      "after": "- dialog \"Custom range\":\n  - heading \"Custom range\" [level=2]\n  - paragraph: Choose an absolute start and end. Windows over 30 days aren't available.\n  - text: Start\n  - textbox \"Start\": 2026-10-16T11:28\n  - text: End\n  - textbox \"End\": 2026-10-16T11:28\n  - alert: The end must be after the start.\n  - button \"Cancel\"\n  - button \"Apply\"\n  - button \"Close\"",
+      "consoleErrors": []
+    },
+    "a761LogsDesktop": {
+      "at": "2026-10-16T18:30:53.998Z",
+      "before": {
+        "request": {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "srv-db96q2pkoksc73a7vkhg",
+            "type": "app",
+            "startTime": "2026-10-16T18:28:10.123Z",
+            "endTime": "2026-10-16T18:28:50.987Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [],
+              "nextEndTime": "2026-10-16T18:28:50Z",
+              "nextStartTime": "2026-10-16T18:28:10Z"
+            }
+          }
+        },
+        "url": "https://dashboard.bex.co/services/srv-db96q2pkoksc73a7vkhg/logs?type=app&live=0&range=custom&rangeStart=2026-10-16T18%3A28%3A10.123Z&rangeEnd=2026-10-16T18%3A28%3A50.987Z"
+      },
+      "dialogBefore": "- dialog \"Custom range\":\n  - heading \"Custom range\" [level=2]\n  - paragraph: Choose an absolute start and end. Windows over 30 days aren't available.\n  - text: Start\n  - textbox \"Start\": 2026-10-16T11:28\n  - text: End\n  - textbox \"End\": 2026-10-16T11:28\n  - button \"Cancel\"\n  - button \"Apply\"\n  - button \"Close\"",
+      "dialogAfter": "- dialog \"Custom range\":\n  - heading \"Custom range\" [level=2]\n  - paragraph: Choose an absolute start and end. Windows over 30 days aren't available.\n  - text: Start\n  - textbox \"Start\": 2026-10-16T11:28\n  - text: End\n  - textbox \"End\": 2026-10-16T11:28\n  - alert: The end must be after the start.\n  - button \"Cancel\"\n  - button \"Apply\"\n  - button \"Close\"",
+      "urlAfter": "https://dashboard.bex.co/services/srv-db96q2pkoksc73a7vkhg/logs?type=app&live=0&range=custom&rangeStart=2026-10-16T18%3A28%3A10.123Z&rangeEnd=2026-10-16T18%3A28%3A50.987Z"
+    },
+    "a761AppLogsSilentShift": {
+      "at": "2026-10-16T18:32:03.095Z",
+      "before": {
+        "request": {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "srv-db96q2pkoksc73a7vkhg",
+            "type": "app",
+            "startTime": "2026-10-16T18:27:10.123Z",
+            "endTime": "2026-10-16T18:28:50.987Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [],
+              "nextEndTime": "2026-10-16T18:28:50Z",
+              "nextStartTime": "2026-10-16T18:27:10Z"
+            }
+          }
+        }
+      },
+      "urlBefore": "https://dashboard.bex.co/services/srv-db96q2pkoksc73a7vkhg/logs?type=app&live=0&range=custom&rangeStart=2026-10-16T18%3A27%3A10.123Z&rangeEnd=2026-10-16T18%3A28%3A50.987Z",
+      "dialog": "- dialog \"Custom range\":\n  - heading \"Custom range\" [level=2]\n  - paragraph: Choose an absolute start and end. Windows over 30 days aren't available.\n  - text: Start\n  - textbox \"Start\": 2026-10-16T11:27\n  - text: End\n  - textbox \"End\": 2026-10-16T11:28\n  - button \"Cancel\"\n  - button \"Apply\"\n  - button \"Close\"",
+      "after": {
+        "request": {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "srv-db96q2pkoksc73a7vkhg",
+            "type": "app",
+            "startTime": "2026-10-16T18:27:00.000Z",
+            "endTime": "2026-10-16T18:28:00.000Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [],
+              "nextEndTime": "2026-10-16T18:28:00Z",
+              "nextStartTime": "2026-10-16T18:27:00Z"
+            }
+          }
+        }
+      },
+      "urlAfter": "https://dashboard.bex.co/services/srv-db96q2pkoksc73a7vkhg/logs?range=custom&rangeStart=2026-10-16T18%3A27%3A00.000Z&rangeEnd=2026-10-16T18%3A28%3A00.000Z&type=app&live=0",
+      "dialogCount": 0
+    },
+    "a761MinuteAlignedControl": {
+      "at": "2026-10-16T18:32:04.585Z",
+      "before": "https://dashboard.bex.co/services/srv-db96q2pkoksc73a7vkhg/logs?range=custom&rangeStart=2026-10-16T18%3A27%3A00.000Z&rangeEnd=2026-10-16T18%3A28%3A00.000Z&type=app&live=0",
+      "after": "https://dashboard.bex.co/services/srv-db96q2pkoksc73a7vkhg/logs?range=custom&rangeStart=2026-10-16T18%3A27%3A00.000Z&rangeEnd=2026-10-16T18%3A28%3A00.000Z&type=app&live=0",
+      "dialog": "- dialog \"Custom range\":\n  - heading \"Custom range\" [level=2]\n  - paragraph: Choose an absolute start and end. Windows over 30 days aren't available.\n  - text: Start\n  - textbox \"Start\": 2026-10-16T11:27\n  - text: End\n  - textbox \"End\": 2026-10-16T11:28\n  - button \"Cancel\"\n  - button \"Apply\"\n  - button \"Close\"",
+      "dialogCount": 0,
+      "alertCount": 0
+    },
+    "a761Created": {
+      "at": "2026-10-16T18:29:32.846Z",
+      "request": {
+        "operationName": "CreateService",
+        "variables": {
+          "image": "node:24-alpine",
+          "name": "qa-20261016-a761-range",
+          "type": "web_service",
+          "registryCredentialId": "",
+          "runtime": "image",
+          "startCommand": "node -e 'require(\"http\").createServer((q,r)=>r.end(\"QA_A761\\n\")).listen(Number(process.env.PORT),\"0.0.0.0\")'",
+          "plan": "free",
+          "port": 8139,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db96q2pkoksc73a7vkhg",
+            "latestDeployId": "dep-db96q2pkoksc73a7vki0",
+            "name": "qa-20261016-a761-range",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": "",
+            "type": "web_service"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792175371749.9358,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.134,
+        "responseStart": 379.101,
+        "responseEnd": 379.646
+      },
+      "url": "https://dashboard.bex.co/services/srv-db96q2pkoksc73a7vkhg/deploys/dep-db96q2pkoksc73a7vki0"
+    },
+    "a761Deleted": {
+      "at": "2026-10-16T18:32:56.287Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db96q2pkoksc73a7vkhg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "timing": {
+        "startTime": 1792175575141.968,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.138,
+        "responseStart": 416.126,
+        "responseEnd": 416.643
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "a761Cleanup": {
+      "at": "2026-10-16T18:33:28.227Z",
+      "statuses": [
+        {
+          "path": "/v1/services/srv-db96q2pkoksc73a7vkhg",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db96q2pkoksc73a7vkhg/deploys/dep-db96q2pkoksc73a7vki0",
+          "status": 404
+        }
+      ],
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      },
+      "sets": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "baselineMatch": true
+    },
+    "a761SessionCleared": {
+      "at": "2026-10-16T18:33:33.663Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  },
+  "nativeInputCapability": {
+    "at": "2026-10-16T18:32:53.721Z",
+    "type": "datetime-local",
+    "step": "0.001",
+    "value": "2026-10-16T11:28:10.123",
+    "valid": true,
+    "stepMismatch": false
+  },
+  "limits": [
+    "Exact URL windows were supplied as supported custom deep links; no claim these precise bounds were generated by the minute-only picker.",
+    "Past accepted native Metrics and Logs requests return200 and empty results. No lost matching record or exact subsecond storage behavior is claimed.",
+    "Logs nextStartTime/nextEndTime have whole-second formatting in this empty response; this is distinct from the independently observed client query shift of10.123s/50.987s.",
+    "Initial future-bound setup and unsupported type=deploy trial are excluded; the final silent-shift repro uses type=app before and after.",
+    "Postgres/KeyValue logs, static aliases, DST transitions, other locales and browser engines were not live exercised.",
+    "React DOM installed node_modules19.2.3 differs from the19.3.1 lockfile; the actual19.3.1 primary npm source was separately fetched and read. No Radix defect is inferred."
+  ],
+  "independentChecks": {
+    "qa-a761-runtime-control.json": {
+      "at": "2026-10-16T18:32:54.946273+00:00",
+      "exitCode": 0,
+      "response": "HTTP/2 200 \ndate: Fri, 16 Oct 2026 18:32:54 GMT\ncontent-length: 8\n\nQA_A761\n",
+      "stderr": ""
+    },
+    "qa-a761-runtime-cleanup.json": {
+      "at": "2026-10-16T18:33:50.752055+00:00",
+      "checks": {
+        "app": {
+          "exitCode": 0,
+          "output": "",
+          "error": ""
+        },
+        "pods": {
+          "exitCode": 0,
+          "output": "",
+          "error": ""
+        },
+        "public": {
+          "exitCode": 0,
+          "status": "404"
+        }
+      }
+    }
+  },
+  "pinnedDependency": {
+    "version": "19.3.1",
+    "source": "https://registry.npmjs.org/react-dom/-/react-dom-19.3.1.tgz",
+    "packageIntegrityVerified": true,
+    "sourceMember": "package/cjs/react-dom-client.development.js",
+    "memberSha256": "f6b7e0de965d24a560efa784ef8a63706dea79fa551bee15a37acd015d995106",
+    "mechanism": "updateInput assigns the supplied string to element.value for non-number inputs; application toLocalInput already discarded the precision."
+  },
+  "primaryReferences": [
+    "https://html.spec.whatwg.org/multipage/input.html#local-date-and-time-state-(type=datetime-local)",
+    "https://render.com/docs/logging",
+    "https://render.com/docs/service-metrics"
+  ]
+}
