@@ -183,7 +183,7 @@ func TestBlueprintImageToGitDropsImageOnlySettings(t *testing.T) {
 // A Git entry that inherits its repo from the Blueprint switches an
 // image-backed service as a declared repo would.
 func TestBlueprintInheritedRepoSwitchesAnImageService(t *testing.T) {
-	got, rec := switchSourceWith(t, imageBornSpec(), DeployRequest{Repo: switchRepo, Branch: "master",
+	got, rec := switchSourceWith(t, imageBornSpec(), DeployRequest{Repo: switchRepo, Branch: "master", ContainingSource: true,
 		Manifest: "services:\n- {name: own-source, type: web, runtime: node, plan: free, buildCommand: 'true', startCommand: 'node server.js'}\n"})
 	if got.Repo != switchRepo || got.Image != "" || got.Runtime != "node" || len(rec.deployCalls) != 1 {
 		t.Errorf("inherited repo: repo %q image %q runtime %q, %d deploys; want the Git source, node, one deploy",

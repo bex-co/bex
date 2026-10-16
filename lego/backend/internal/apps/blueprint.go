@@ -678,7 +678,7 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 	if len(problems) > 0 {
 		return BlueprintValidation{Errors: blueprintCompilerValidationErrors(problems)}, nil
 	}
-	st, err := parseCompiledStack(blueprintParseOverrides{repo: repo, branch: branch}, source, ir)
+	st, err := parseCompiledStack(blueprintParseOverrides{repo: repo, branch: branch, containing: true}, source, ir)
 	// The validation writes nothing, so its checks share one workspace snapshot.
 	snap := s.newWorkspaceSnapshot(ctx)
 	var refused blueprintResourceErrors
@@ -1106,7 +1106,7 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 		takeoverNote = fmt.Sprintf("replaced blueprint %s (%q), which tracked %s@%s from %q", existing.ID, existing.Name, existing.Repo, existing.Branch, existing.Path)
 	}
 
-	prepareReq := DeployRequest{Repo: req.Repo, Branch: req.Branch, Manifest: contents, EnvVarValues: req.EnvVarValues}
+	prepareReq := DeployRequest{Repo: req.Repo, Branch: req.Branch, ContainingSource: true, Manifest: contents, EnvVarValues: req.EnvVarValues}
 	parsed, ir, parseErr := compileStack(prepareReq)
 	if parseErr != nil {
 		return BlueprintView{}, parseErr
@@ -1298,7 +1298,7 @@ func (s *Service) SyncBlueprint(ctx context.Context, bpID, ownerID, bexYAML, con
 // manifest (the sync-owned field) is written: current name/path/autoSync
 // settings survive the sync (w8/m37 t005).
 func (s *Service) prepareSyncManifest(ctx context.Context, b store.Blueprint, run store.BlueprintSync, manifest string, snap *workspaceSnapshot) (store.Blueprint, *parsedStack, error) {
-	parsed, ir, err := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, Manifest: manifest})
+	parsed, ir, err := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, ContainingSource: true, Manifest: manifest})
 	if err != nil {
 		return store.Blueprint{}, nil, err
 	}
@@ -1475,6 +1475,7 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		BlueprintRunID:      run.ID,
 		Repo:                b.Repo,
 		Branch:              b.Branch,
+		ContainingSource:    true,
 		Manifest:            b.Manifest,
 		Confirm:             confirm,
 	}
