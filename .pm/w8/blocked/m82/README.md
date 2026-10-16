@@ -1,16 +1,16 @@
 # w8 · m82 — Supply FFmpeg in native Python builds and runtime
 
-**Worker:** worker8 **Goal:** ordinary native Python media builds and started services can use the supplied FFmpeg package. **Status:** todo
+**Worker:** worker8 **Goal:** ordinary native Python media builds and started services can use the supplied FFmpeg package. **Status:** blocked — t001–t005 done 2026-10-16; t006 needs the operator deployed plus a hosted fresh-fixture replay
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Supply reviewed FFmpeg and runtime libraries | 55m | — |
-| [t002](t002.md) | Audit shared native image consumers | 30m | t001 |
-| [t003](t003.md) | Render parity | 20m | t002 |
-| [t004](t004.md) | Simplify | 10m | t003 |
-| [t005](t005.md) | Test coverage | 40m | t003 |
+| [t001](done/t001.md) | Supply reviewed FFmpeg and runtime libraries | 55m | — — **DONE 2026-10-16** |
+| [t002](done/t002.md) | Audit shared native image consumers | 30m | t001 — **DONE 2026-10-16** |
+| [t003](done/t003.md) | Render parity | 20m | t002 — **DONE 2026-10-16** |
+| [t004](done/t004.md) | Simplify | 10m | t003 — **DONE 2026-10-16** |
+| [t005](done/t005.md) | Test coverage | 40m | t003 — **DONE 2026-10-16** |
 | [t006](t006.md) | Closeout | 20m | t004, t005 |
 
 Six tasks,175m total.

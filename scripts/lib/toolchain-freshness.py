@@ -30,6 +30,7 @@ ID_RE = re.compile(r"^[a-z][a-z0-9-]{0,62}$")
 CANONICAL_PIN_SITES = (
     "lego/operator/internal/build/native.go",
     "lego/operator/internal/build/nativepnpm.go",
+    "lego/operator/internal/build/nativeffmpeg.go",
     "lego/operator/internal/build/build.go",
     "lego/operator/cmd/manager/main.go",
     "lego/operator/config/manager/manager.yaml",

@@ -266,7 +266,7 @@ COPY . .
 COPY <<'%s' %s
 %s%s
 RUN --mount=type=secret,id=render-env,target=%s%s %s
-`, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeNodeTools(o), nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
+`, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeNodeTools(o)+nativeMediaTools, nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
 		nativeEnvSecretPath, fileMounts.String(), run)
 	if o.StaticSite {
 		// No PORT/CMD: the image only carries the built site for the publish

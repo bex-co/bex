@@ -140,6 +140,9 @@ func TestNativeToolchainLinesAreInventoried(t *testing.T) {
 	if pnpm := "pnpm-" + nativePnpm.version + ".tgz@" + nativePnpm.checksum; !committed[pnpm] {
 		t.Errorf("pnpm %s is not in toolchain-freshness.json", pnpm)
 	}
+	if !committed[nativeFFmpegImage] {
+		t.Errorf("ffmpeg %s is not in toolchain-freshness.json", nativeFFmpegImage)
+	}
 }
 
 // writeResolveFixture lays out what the resolve phase sees: the preparer's
