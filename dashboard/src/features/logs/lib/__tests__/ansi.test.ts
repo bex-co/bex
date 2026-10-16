@@ -1,3 +1,4 @@
+import { readRepoVectors } from "@/test/repo-vectors";
 import { describe, it, expect } from "vitest";
 import { needsAnsiParse, parseAnsi, stripAnsi, type AnsiSpan } from "../ansi";
 
@@ -231,5 +232,31 @@ describe("stripAnsi", () => {
 
   it("applies carriage-return overwrites", () => {
     expect(stripAnsi("stale\rfresh")).toBe("fresh");
+  });
+});
+
+// The one table of display projections, shared with the server's
+// textMode=display search (lego/backend/internal/logs/display_test.go): what a
+// row shows and what display search matches cannot drift apart. w4/327 found
+// them a cell apart: "𝒜Z\rAB" rendered "ABZ" here and matched "AB" there.
+describe("shared display vectors (w4/327)", () => {
+  const vectors = readRepoVectors<{ name: string; in: string; want: string }>(
+    "lego/backend/internal/logs/testdata/display-text-vectors.json",
+  );
+
+  it.each(vectors.map((v) => [v.name, v] as const))("%s", (_, v) => {
+    expect(stripAnsi(v.in)).toBe(v.want);
+    expect(
+      parseAnsi(v.in)
+        .map((span) => span.text)
+        .join(""),
+    ).toBe(v.want);
+  });
+
+  it("keeps the style of an overwriting astral character", () => {
+    const spans = parseAnsi("ab\r\u001b[31m\u{1D49C}\u001b[0m");
+    expect(spans.map((span) => span.text).join("")).toBe("\u{1D49C}b");
+    expect(spans[0]).toMatchObject({ text: "\u{1D49C}" });
+    expect(spans[0]).not.toEqual(spans[1]);
   });
 });

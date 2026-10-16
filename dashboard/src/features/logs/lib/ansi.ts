@@ -209,10 +209,15 @@ export function parseAnsi(input: string): AnsiSpan[] {
       continue;
     }
 
-    writeCell(cells, cursor, ch, sgr);
+    // One cell per code point, as the server's display projection counts
+    // (Go []rune): a character outside the BMP is two UTF-16 units but one
+    // cell, so a carriage return's overwrite lines up with what the server
+    // matches (w4/327 — "𝒜Z\rAB" is "AB", not "ABZ").
+    const char = String.fromCodePoint(input.codePointAt(i)!);
+    writeCell(cells, cursor, char, sgr);
     cursor++;
-    if (ch === "\n") lineStart = cursor;
-    i++;
+    if (char === "\n") lineStart = cursor;
+    i += char.length;
   }
 
   return coalesce(cells);

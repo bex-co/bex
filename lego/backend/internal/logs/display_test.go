@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -35,29 +36,29 @@ import (
 // The colored line from the w4/m189 finding, byte for byte.
 const ansiSample = "QA_A31_ANSI_\x1b[31mred\x1b[0m_end"
 
+// displayTextVectorsPath is the one table of display projections: this Go
+// projection (textMode=display search) and the dashboard's ANSI renderer
+// (dashboard/src/features/logs/lib/__tests__/ansi.test.ts) both assert every
+// row, so what a reader sees and what display search matches cannot drift
+// apart — w4/327 found them a cell apart on a character outside the BMP.
+const displayTextVectorsPath = "testdata/display-text-vectors.json"
+
 func TestDisplayTextMatchesTheDashboardRenderer(t *testing.T) {
-	for _, tc := range []struct{ name, in, want string }{
-		{"plain", "plain, 中文 .* | text", "plain, 中文 .* | text"},
-		{"sgr", ansiSample, "QA_A31_ANSI_red_end"},
-		{"extended sgr", "\x1b[38;2;1;2;3mtrue\x1b[38;5;196mcolor\x1b[m", "truecolor"},
-		{"cr overwrite", "secret\rSHOWN", "SHOWNt"},
-		{"progress bar", "10%\r50%\r100%", "100%"},
-		{"cr per line", "abc\ndef\rX", "abc\nXef"},
-		{"erase to end", "abcdef\r\x1b[Kxy", "xy"},
-		{"erase to start", "abcdef\x1b[3D\x1b[1Kz", "      z"},
-		{"erase line", "old\x1b[2Knew", "new"},
-		{"osc hyperlink bel", "\x1b]8;;https://x.test\alabel\x1b]8;;\a!", "label!"},
-		{"osc title st", "\x1b]0;title\x1b\\body", "body"},
-		{"charset", "\x1b(Bok", "ok"},
-		{"two byte escape", "a\x1b7b", "ab"},
-		{"private csi", "\x1b[?25lhidden-cursor", "hidden-cursor"},
-		{"unterminated csi", "keep\x1b[31", "keep"},
-		{"unterminated osc", "keep\x1b]0;never ends", "keep"},
-		{"lone esc", "keep\x1b", "keep"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := displayText(tc.in); got != tc.want {
-				t.Fatalf("displayText(%q) = %q, want %q", tc.in, got, tc.want)
+	raw, err := os.ReadFile(displayTextVectorsPath)
+	if err != nil {
+		t.Fatalf("read %s: %v", displayTextVectorsPath, err)
+	}
+	var vectors []struct{ Name, In, Want string }
+	if err := json.Unmarshal(raw, &vectors); err != nil {
+		t.Fatalf("parse %s: %v", displayTextVectorsPath, err)
+	}
+	if len(vectors) < 20 {
+		t.Fatalf("%s has %d rows; it lost cases", displayTextVectorsPath, len(vectors))
+	}
+	for _, tc := range vectors {
+		t.Run(tc.Name, func(t *testing.T) {
+			if got := displayText(tc.In); got != tc.Want {
+				t.Fatalf("displayText(%q) = %q, want %q", tc.In, got, tc.Want)
 			}
 		})
 	}
