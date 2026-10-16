@@ -674,17 +674,21 @@ func (s *Service) ParameterSpec(ctx context.Context, dbID string) ([]ParameterSp
 	return parameterSpecViews(db.Spec.Parameters, parameterOverrideViews(observed), observationErr), nil
 }
 
+// parameterSpecViews matches declarations to observations case-insensitively:
+// PostgreSQL parameter names are, so a declared `timezone` is the runtime's
+// `TimeZone` (w4/317). Only the lookup folds; each declaration keeps its
+// spelling and value.
 func parameterSpecViews(params map[string]string, observed []ParameterOverrideView, observationErr error) []ParameterSpecView {
 	byName := make(map[string]ParameterOverrideView, len(observed))
 	for _, row := range observed {
-		byName[row.Name] = row
+		byName[strings.ToLower(row.Name)] = row
 	}
 	out := make([]ParameterSpecView, 0, len(params))
 	for name, value := range params {
 		row := ParameterSpecView{Name: name, Value: value, ObservationStatus: "not_observed"}
 		if observationErr != nil {
 			row.ObservationStatus = "unavailable"
-		} else if current, ok := byName[name]; ok {
+		} else if current, ok := byName[strings.ToLower(name)]; ok {
 			row.ObservationStatus = "observed"
 			row.ObservedSetting = &current.Setting
 			if current.Unit != "" {
