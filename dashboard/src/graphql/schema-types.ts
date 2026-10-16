@@ -948,6 +948,7 @@ export type KeyValueLogEntry = {
 
 export type LogEntry = {
   __typename: 'LogEntry';
+  id: Maybe<Scalars['String']['output']>;
   instance: Maybe<Scalars['String']['output']>;
   level: Maybe<Scalars['String']['output']>;
   message: Maybe<Scalars['String']['output']>;
@@ -1057,6 +1058,7 @@ export type MetricsQueryInput = {
   name: Scalars['String']['input'];
   parameters?: InputMaybe<Array<InputMaybe<MetricsParameterInput>>>;
   percentage?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Step in seconds; default 60. BANDWIDTH (bex) refuses a step below 60 or a window shorter than 60 seconds. */
   resolution?: InputMaybe<Scalars['Int']['input']>;
   start?: InputMaybe<Scalars['String']['input']>;
 };

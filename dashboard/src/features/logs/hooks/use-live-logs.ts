@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { config } from "@/config/config";
-import { fromRenderLog, type RenderLog } from "../lib/map";
+import { fromRenderLog, LogIdentity, type RenderLog } from "../lib/map";
 import {
   LOG_TYPE_ALL,
   type LogLine,
@@ -190,9 +190,9 @@ export function useLiveLogs({
   // reader round trip (A → B → A) reproduces the same subKey string while the
   // buffer was reset in between, and the set must reset with it. A pause
   // keeps the epoch, so the resumed replay dedupes against retained rows.
-  const keysRef = useRef<{ epoch: number; set: Set<string> }>({
+  const keysRef = useRef<{ epoch: number; set: LogIdentity }>({
     epoch: 0,
-    set: new Set(),
+    set: new LogIdentity(),
   });
   // Bumped after every reader-identity change (a retry bumps `attempt` and a
   // pause flips `enabled`, neither touches subKey, so both keep the set).
@@ -237,14 +237,10 @@ export function useLiveLogs({
     const flushPending = () => {
       if (pending.length === 0) return;
       if (keysRef.current.epoch !== epochRef.current) {
-        keysRef.current = { epoch: epochRef.current, set: new Set() };
+        keysRef.current = { epoch: epochRef.current, set: new LogIdentity() };
       }
       const keys = keysRef.current.set;
-      const batch = pending.filter((line) => {
-        if (keys.has(line.key)) return false;
-        keys.add(line.key);
-        return true;
-      });
+      const batch = pending.filter((line) => keys.admit(line));
       pending = [];
       if (batch.length === 0) return;
       setBuffer((prev) => {
@@ -259,7 +255,7 @@ export function useLiveLogs({
         // longer dedupe (idempotent under StrictMode's double-invoked
         // updater — same prev computes the same evictions).
         for (const line of next.slice(0, next.length - maxLines))
-          keys.delete(line.key);
+          keys.forget(line);
         return { key: prev.key, lines: kept };
       });
     };
