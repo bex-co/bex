@@ -175,7 +175,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		return s.SetEnvGroupFile(r.Context(), r.PathValue("id"), r.PathValue("name"), req.Content)
 	}))
 	mux.HandleFunc("GET /v1/env-groups/{id}/secret-files/{name}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		return s.GetEnvGroupFile(r.Context(), r.PathValue("id"), r.PathValue("name"))
+		return s.RevealEnvGroupFile(r.Context(), r.PathValue("id"), r.PathValue("name"))
 	}))
 	mux.HandleFunc("DELETE /v1/env-groups/{id}/secret-files/{name}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		return s.DeleteEnvGroupFile(r.Context(), r.PathValue("id"), r.PathValue("name"))

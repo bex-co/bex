@@ -137,6 +137,25 @@ type SecretFileView struct {
 	Content string `json:"content,omitempty"`
 }
 
+// SecretFileContent is a revealed group file: the content-read answer of REST
+// and MCP. Unlike SecretFileView — names-only in metadata and write
+// acknowledgements, where omitempty is the masking — content is always present,
+// so a revealed empty file reads `content:""` rather than looking unrevealed
+// (w4/326).
+type SecretFileContent struct {
+	Name    string `json:"name"`
+	Content string `json:"content"`
+}
+
+// RevealEnvGroupFile is GetEnvGroupFile in the content-read shape.
+func (s *Service) RevealEnvGroupFile(ctx context.Context, gid, name string) (SecretFileContent, error) {
+	f, err := s.GetEnvGroupFile(ctx, gid, name)
+	if err != nil {
+		return SecretFileContent{}, err
+	}
+	return SecretFileContent{Name: f.Name, Content: f.Content}, nil
+}
+
 // CreateEnvVarInput is Render's create-time value-or-generate env-var shape.
 // GenerateValue is resolved before the group id is minted, so a generation or
 // validation failure cannot leave a partially created group behind.
