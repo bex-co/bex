@@ -15,7 +15,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m219** — Make creation inputs editable only when their handlers are ready (8 tasks, 2h45) ← functional QA a797, 2026-10-16; eight startup input-loss replays, [finding](m219/finding.md), [durable evidence](evidence/m219-a797-input-startup.json).
+- [ ] **m219** — Make creation inputs editable only when their handlers are ready (8 tasks, 2h45) ← functional QA a797/a800, 2026-10-16; twelve startup input-loss replays across all five service types plus Key Value/Blueprint and a passing Postgres dialog control, [finding](m219/finding.md), [sibling follow-up](m219/finding-a800.md), [durable evidence](evidence/m219-a797-input-startup.json).
 
 - [ ] **m218** — [Recover plan catalogs in creation and datastore details](m218/README.md) (10 tasks) ← functional live QA a785/a796, 2026-10-16: three create forms and both datastore detail plan editors hide settled catalog errors and offer no Retry; browser-local fault injection only, no production API outage observed.
 
