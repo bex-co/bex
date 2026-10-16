@@ -20,6 +20,7 @@ import (
 	"context"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -226,5 +227,153 @@ func TestAFailedMajorUpgradeRecordsTheClustersVersion(t *testing.T) {
 	if db.Spec.Version != "16" || db.Status.Phase != appv1alpha1.DBPhaseFailed || db.Status.CurrentVersion != "16" {
 		t.Fatalf("failed upgrade = spec %q, phase %q, current %q; want the revert to the cluster's 16, Failed, recording 16",
 			db.Spec.Version, db.Status.Phase, db.Status.CurrentVersion)
+	}
+}
+
+// setClusterStatus rewrites the fake CNPG Cluster's status for the next pass;
+// major 0 removes pgDataImageInfo (nothing observed yet).
+func setClusterStatus(t *testing.T, cl client.Client, req reconcile.Request, phase string, ready, major int64) {
+	t.Helper()
+	ctx := context.Background()
+	cluster := &unstructured.Unstructured{}
+	cluster.SetGroupVersionKind(cnpgClusterGVK)
+	if err := cl.Get(ctx, req.NamespacedName, cluster); err != nil {
+		t.Fatal(err)
+	}
+	status := map[string]any{"phase": phase, "readyInstances": ready}
+	if major > 0 {
+		status["pgDataImageInfo"] = map[string]any{"majorVersion": major}
+	}
+	if err := unstructured.SetNestedMap(cluster.Object, status, "status"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Update(ctx, cluster); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func reconcileDB(t *testing.T, r *DatabaseReconciler, cl client.Client, req reconcile.Request) appv1alpha1.Database {
+	t.Helper()
+	if _, err := r.Reconcile(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	var db appv1alpha1.Database
+	if err := cl.Get(context.Background(), req.NamespacedName, &db); err != nil {
+		t.Fatal(err)
+	}
+	return db
+}
+
+// TestAcceptedMajorUpgradeStaysNonReadyUntilTheTargetIsHealthy is w4/m215's
+// a713 sequence. Right after an accepted 16 → 17 write, CNPG has not yet
+// patched its upgrade phase and the old major's instance is still healthy;
+// that frame used to mark the new generation Ready (Available mid-upgrade).
+// Every frame until the target major is healthy is now Upgrading with the
+// source version recorded — including CNPG reporting the 17 PGDATA before its
+// instance is ready, which used to skip the post-upgrade base backup and
+// point archiving back at the source generation. Completion is Ready, records
+// 17, takes that backup and archives into the pg17 generation.
+func TestAcceptedMajorUpgradeStaysNonReadyUntilTheTargetIsHealthy(t *testing.T) {
+	r, cl, req := newMajorUpgradeReconciler(t, "Cluster in healthy state")
+	for _, frame := range []struct {
+		name      string
+		phase     string
+		ready     int64
+		major     int64
+		wantPhase appv1alpha1.DatabasePhase
+		wantSeen  string
+	}{
+		{"old major healthy, upgrade not yet announced", "Cluster in healthy state", 1, 16, appv1alpha1.DBPhaseUpgrading, "16"},
+		{"CNPG upgrading", "Upgrading Postgres major version", 0, 16, appv1alpha1.DBPhaseUpgrading, "16"},
+		{"target observed, instances not ready", "Cluster in healthy state", 0, 17, appv1alpha1.DBPhaseUpgrading, "16"},
+		{"target healthy", "Cluster in healthy state", 1, 17, appv1alpha1.DBPhaseReady, "17"},
+	} {
+		setClusterStatus(t, cl, req, frame.phase, frame.ready, frame.major)
+		db := reconcileDB(t, r, cl, req)
+		ready := meta.IsStatusConditionTrue(db.Status.Conditions, appv1alpha1.ConditionReady)
+		if db.Status.Phase != frame.wantPhase || db.Status.CurrentVersion != frame.wantSeen ||
+			ready != (frame.wantPhase == appv1alpha1.DBPhaseReady) {
+			t.Fatalf("%s: phase %q current %q Ready=%v, want phase %q current %q",
+				frame.name, db.Status.Phase, db.Status.CurrentVersion, ready, frame.wantPhase, frame.wantSeen)
+		}
+	}
+	backup := &unstructured.Unstructured{}
+	backup.SetGroupVersionKind(cnpgBackupGVK)
+	if err := cl.Get(context.Background(), types.NamespacedName{Name: "upgrade-db-post-upgrade-pg17", Namespace: "default"}, backup); err != nil {
+		t.Fatalf("post-upgrade base backup: %v", err)
+	}
+	var db appv1alpha1.Database
+	if err := cl.Get(context.Background(), req.NamespacedName, &db); err != nil {
+		t.Fatal(err)
+	}
+	if db.Status.BackupServerName != "upgrade-db-pg17" {
+		t.Fatalf("backup server = %q, want the pg17 generation", db.Status.BackupServerName)
+	}
+}
+
+// The pending hold must not change what other states mean: an unchanged
+// healthy database is Ready, a first provision with nothing observed yet is
+// Ready once CNPG is, and a failed upgrade's revert returns to Ready on the
+// source major rather than sticking at Upgrading.
+func TestPendingMajorUpgradeLeavesOtherReadinessAlone(t *testing.T) {
+	t.Run("unchanged major", func(t *testing.T) {
+		r, cl, req := newMajorUpgradeReconciler(t, "Cluster in healthy state")
+		var db appv1alpha1.Database
+		if err := cl.Get(context.Background(), req.NamespacedName, &db); err != nil {
+			t.Fatal(err)
+		}
+		db.Spec.Version = "16"
+		if err := cl.Update(context.Background(), &db); err != nil {
+			t.Fatal(err)
+		}
+		setClusterStatus(t, cl, req, "Cluster in healthy state", 1, 16)
+		if got := reconcileDB(t, r, cl, req); got.Status.Phase != appv1alpha1.DBPhaseReady {
+			t.Fatalf("unchanged major phase = %q, want Ready", got.Status.Phase)
+		}
+	})
+	t.Run("nothing observed yet", func(t *testing.T) {
+		r, cl, req := newMajorUpgradeReconciler(t, "Cluster in healthy state")
+		var db appv1alpha1.Database
+		if err := cl.Get(context.Background(), req.NamespacedName, &db); err != nil {
+			t.Fatal(err)
+		}
+		db.Status = appv1alpha1.DatabaseStatus{}
+		if err := cl.Status().Update(context.Background(), &db); err != nil {
+			t.Fatal(err)
+		}
+		setClusterStatus(t, cl, req, "Cluster in healthy state", 1, 0)
+		if got := reconcileDB(t, r, cl, req); got.Status.Phase != appv1alpha1.DBPhaseReady {
+			t.Fatalf("first provision phase = %q, want Ready", got.Status.Phase)
+		}
+	})
+	t.Run("failed upgrade reverted", func(t *testing.T) {
+		r, cl, req := newMajorUpgradeReconciler(t, "Failed to upgrade Postgres major version")
+		if got := reconcileDB(t, r, cl, req); got.Spec.Version != "16" || got.Status.Phase != appv1alpha1.DBPhaseFailed {
+			t.Fatalf("failed upgrade = spec %q phase %q", got.Spec.Version, got.Status.Phase)
+		}
+		setClusterStatus(t, cl, req, "Cluster in healthy state", 1, 16)
+		if got := reconcileDB(t, r, cl, req); got.Status.Phase != appv1alpha1.DBPhaseReady {
+			t.Fatalf("after revert phase = %q, want Ready on the source major", got.Status.Phase)
+		}
+	})
+}
+
+func TestMajorUpgradePending(t *testing.T) {
+	for _, tc := range []struct {
+		desired, observed string
+		want              bool
+	}{
+		{"17", "16", true},
+		{"18", "16", true},
+		{"16", "16", false},
+		{"16", "17", false}, // never a downgrade
+		{"", "16", false},   // operator default
+		{"17", "", false},   // nothing observed yet
+		{"17", "0", false},
+		{"latest", "16", false},
+	} {
+		if got := majorUpgradePending(tc.desired, tc.observed); got != tc.want {
+			t.Errorf("majorUpgradePending(%q, %q) = %v, want %v", tc.desired, tc.observed, got, tc.want)
+		}
 	}
 }

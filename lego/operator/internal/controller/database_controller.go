@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1275,8 +1276,16 @@ func (r *DatabaseReconciler) reconcileDatabaseReadiness(
 ) (ctrl.Result, error) {
 	previousVersion := db.Status.CurrentVersion
 	clusterState := r.readClusterStatus(ctx, db, cluster)
-	if clusterState.currentVersion != "" {
-		db.Status.CurrentVersion = clusterState.currentVersion
+	// A new major is recorded once its cluster is healthy (or its upgrade has
+	// failed, whose revert needs the cluster's own version, w5/110). CNPG
+	// reports the target PGDATA major before its instances are ready; adopting
+	// it then made this pass's version change invisible to the next one, so the
+	// healthy pass took no post-upgrade base backup and pointed archiving back
+	// at the source generation's prefix (w4/m215).
+	if observed := clusterState.currentVersion; observed != "" &&
+		(previousVersion == "" || observed == previousVersion ||
+			clusterState.majorUpgradeFailed() || clusterState.ready >= desiredInstances) {
+		db.Status.CurrentVersion = observed
 	}
 
 	// CNPG's offline pg_upgrade deliberately takes every instance down. Surface
@@ -1318,6 +1327,25 @@ func (r *DatabaseReconciler) reconcileDatabaseReadiness(
 		meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
 			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: appv1alpha1.ReasonMajorVersionUpgrade,
 			Message: clusterState.message, ObservedGeneration: db.Generation,
+		})
+		if err := updateStatusIfChanged(ctx, r.Client, db); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+	}
+
+	// An accepted major upgrade CNPG has not announced yet (w4/m215): it
+	// patches its upgrade phase only after resolving the new image, and until
+	// then the old major's instances are still healthy. Their readyInstances
+	// must not mark the new generation Ready — that read Available mid-upgrade
+	// and cancelled the dashboard's fast polling. The failed branch above runs
+	// first, so its revert (spec back to the observed major) clears this.
+	if majorUpgradePending(db.Spec.Version, db.Status.CurrentVersion) {
+		db.Status.Phase = appv1alpha1.DBPhaseUpgrading
+		meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: appv1alpha1.ReasonMajorVersionUpgrade,
+			Message:            fmt.Sprintf("waiting for CloudNativePG to start the upgrade from PostgreSQL %s to %s", db.Status.CurrentVersion, db.Spec.Version),
+			ObservedGeneration: db.Generation,
 		})
 		if err := updateStatusIfChanged(ctx, r.Client, db); err != nil {
 			return ctrl.Result{}, err
@@ -1380,6 +1408,16 @@ const (
 // restartRolloutBound caps how long a requested restart holds the Database
 // non-Ready, so a CNPG that never acts on the annotation cannot wedge it.
 const restartRolloutBound = 10 * time.Minute
+
+// majorUpgradePending reports a known desired major ahead of the known
+// observed one: an accepted upgrade whose target is not yet running. An empty
+// desired version (the operator default) or an unobserved cluster is never
+// pending, so first provisioning and unchanged databases keep their meaning.
+func majorUpgradePending(desired, observed string) bool {
+	want, wantErr := strconv.Atoi(desired)
+	have, haveErr := strconv.Atoi(observed)
+	return wantErr == nil && haveErr == nil && have > 0 && want > have
+}
 
 // restartPending reports whether a manual restart (spec.restartedAt) has not yet
 // rolled through every instance. CNPG restarts each instance Pod whose
