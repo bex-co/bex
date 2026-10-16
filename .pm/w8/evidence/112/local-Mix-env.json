@@ -1,0 +1,14 @@
+[
+  {
+    "case": "unset",
+    "exit": 0,
+    "stdout": "{\"env\":null,\"mix\":\"dev\"}\n",
+    "stderr": ""
+  },
+  {
+    "case": "prod",
+    "exit": 0,
+    "stdout": "{\"env\":\"prod\",\"mix\":\"prod\"}\n",
+    "stderr": ""
+  }
+]

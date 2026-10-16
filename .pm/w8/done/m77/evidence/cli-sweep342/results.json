@@ -1,0 +1,18 @@
+{
+  "source_head": "e5ff3a6f013e6060c09b9ce7291515f1b14bd1e4",
+  "implementation": "69b74a192",
+  "desired_image_signal": "45d809f99 pins platform5a39b80ff05a",
+  "serving_SHA": "unobserved",
+  "native_first_Ruby_JS_primary_pass": 2,
+  "Python_native_first_acceptance": "done/m72/evidence/cli-sweep341",
+  "source_execution_head": "7ee5a95fd1d88dd8766072f497e8e191d51a06cb",
+  "source_top_pass_reused": 5,
+  "source_named_pass_reused": 18,
+  "all_lego_source_unchanged_since_execution": true,
+  "shared_API_source_reads_pass": 6,
+  "owned_services_deleted": 2,
+  "owned_children_404": 2,
+  "baseline_services": 6,
+  "terminating": 0,
+  "uncommitted": true
+}

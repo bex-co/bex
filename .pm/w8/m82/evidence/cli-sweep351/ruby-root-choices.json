@@ -1,0 +1,20 @@
+{
+  "case": "ruby-root",
+  "choices": [
+    {
+      "Label": "Ruby",
+      "Line": "3.4",
+      "Image": "ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172",
+      "Source": ""
+    },
+    {
+      "Label": "Node",
+      "Line": "24",
+      "Image": "node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0",
+      "Source": ""
+    }
+  ],
+  "qualification": "unchanged generator and real resolver observation; only python-root image is executed separately; no passing repair regression claimed",
+  "rootDir": "",
+  "runtime": "ruby"
+}

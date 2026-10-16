@@ -1,0 +1,2266 @@
+{
+  "at": "2026-10-16T01:33:14.694957+00:00",
+  "source_head": "a1adb0cdf138a71edcaaeea58c71cd04d88ca2d3",
+  "nonce": "c69a48",
+  "scope": "native Blueprint validation only; no cron/resource creation, paid Starter is syntax input only",
+  "cases": [
+    {
+      "case": "daily",
+      "schedule": "0 0 * * *",
+      "expected_valid": true,
+      "manifest": "services:\n- type: cron\n  name: qa333-c69a48-cron\n  runtime: node\n  plan: starter\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  startCommand: date\n  schedule: 0 0 * * *\n  autoDeploy: false\n"
+    },
+    {
+      "case": "named-month-weekday",
+      "schedule": "0 9 * JAN,MAR MON-FRI",
+      "expected_valid": true,
+      "manifest": "services:\n- type: cron\n  name: qa333-c69a48-cron\n  runtime: node\n  plan: starter\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  startCommand: date\n  schedule: 0 9 * JAN,MAR MON-FRI\n  autoDeploy: false\n"
+    },
+    {
+      "case": "question-day",
+      "schedule": "0 0 ? * *",
+      "expected_valid": true,
+      "manifest": "services:\n- type: cron\n  name: qa333-c69a48-cron\n  runtime: node\n  plan: starter\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  startCommand: date\n  schedule: 0 0 ? * *\n  autoDeploy: false\n"
+    },
+    {
+      "case": "leap-day",
+      "schedule": "0 0 29 FEB *",
+      "expected_valid": true,
+      "manifest": "services:\n- type: cron\n  name: qa333-c69a48-cron\n  runtime: node\n  plan: starter\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  startCommand: date\n  schedule: 0 0 29 FEB *\n  autoDeploy: false\n"
+    },
+    {
+      "case": "day-or-weekday",
+      "schedule": "0 0 31 FEB MON",
+      "expected_valid": true,
+      "manifest": "services:\n- type: cron\n  name: qa333-c69a48-cron\n  runtime: node\n  plan: starter\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  startCommand: date\n  schedule: 0 0 31 FEB MON\n  autoDeploy: false\n"
+    },
+    {
+      "case": "trim-whitespace",
+      "schedule": " \t0 0 * * *\n",
+      "expected_valid": true,
+      "manifest": "services:\n- type: cron\n  name: qa333-c69a48-cron\n  runtime: node\n  plan: starter\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  startCommand: date\n  schedule: \" \\t0 0 * * *\\n\"\n  autoDeploy: false\n"
+    },
+    {
+      "case": "tabs",
+      "schedule": "0\t0\t*\t*\t*",
+      "expected_valid": true,
+      "manifest": "services:\n- type: cron\n  name: qa333-c69a48-cron\n  runtime: node\n  plan: starter\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  startCommand: date\n  schedule: \"0\\t0\\t*\\t*\\t*\"\n  autoDeploy: false\n"
+    },
+    {
+      "case": "unicode-separators",
+      "schedule": "0 0 * * *",
+      "expected_valid": true,
+      "manifest": "services:\n- type: cron\n  name: qa333-c69a48-cron\n  runtime: node\n  plan: starter\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  startCommand: date\n  schedule: \"0\\_0\\_*\\_*\\_*\"\n  autoDeploy: false\n"
+    },
+    {
+      "case": "minute-range-list",
+      "schedule": "0,15,30,45 9-17/2 * * 1-5",
+      "expected_valid": true,
+      "manifest": "services:\n- type: cron\n  name: qa333-c69a48-cron\n  runtime: node\n  plan: starter\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  startCommand: date\n  schedule: 0,15,30,45 9-17/2 * * 1-5\n  autoDeploy: false\n"
+    },
+    {
+      "case": "named-lowercase",
+      "schedule": "0 0 * jan mon",
+      "expected_valid": true,
+      "manifest": "services:\n- type: cron\n  name: qa333-c69a48-cron\n  runtime: node\n  plan: starter\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  startCommand: date\n  schedule: 0 0 * jan mon\n  autoDeploy: false\n"
+    },
+    {
+      "case": "empty",
+      "schedule": "",
+      "expected_valid": false,
+      "manifest": "services:\n- type: cron\n  name: qa333-c69a48-cron\n  runtime: node\n  plan: starter\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  startCommand: date\n  schedule: ''\n  autoDeploy: false\n"
+    },
+    {
+      "case": "spaces",
+      "schedule": "  ",
+      "expected_valid": false,
+      "manifest": "services:\n- type: cron\n  name: qa333-c69a48-cron\n  runtime: node\n  plan: starter\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  startCommand: date\n  schedule: '  '\n  autoDeploy: false\n"
+    },
+    {
+      "case": "descriptor",
+      "schedule": "@daily",
+      "expected_valid": false,
+      "manifest": "services:\n- type: cron\n  name: qa333-c69a48-cron\n  runtime: node\n  plan: starter\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  startCommand: date\n  schedule: '@daily'\n  autoDeploy: false\n"
+    },
+    {
+      "case": "seconds",
+      "schedule": "0 0 0 * * *",
+      "expected_valid": false,
+      "manifest": "services:\n- type: cron\n  name: qa333-c69a48-cron\n  runtime: node\n  plan: starter\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  startCommand: date\n  schedule: 0 0 0 * * *\n  autoDeploy: false\n"
+    },
+    {
+      "case": "TZ-prefix",
+      "schedule": "CRON_TZ=Europe/Paris 0 0 * * *",
+      "expected_valid": false,
+      "manifest": "services:\n- type: cron\n  name: qa333-c69a48-cron\n  runtime: node\n  plan: starter\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  startCommand: date\n  schedule: CRON_TZ=Europe/Paris 0 0 * * *\n  autoDeploy: false\n"
+    },
+    {
+      "case": "minute-overflow",
+      "schedule": "60 * * * *",
+      "expected_valid": false,
+      "manifest": "services:\n- type: cron\n  name: qa333-c69a48-cron\n  runtime: node\n  plan: starter\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  startCommand: date\n  schedule: 60 * * * *\n  autoDeploy: false\n"
+    },
+    {
+      "case": "hour-overflow",
+      "schedule": "0 24 * * *",
+      "expected_valid": false,
+      "manifest": "services:\n- type: cron\n  name: qa333-c69a48-cron\n  runtime: node\n  plan: starter\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  startCommand: date\n  schedule: 0 24 * * *\n  autoDeploy: false\n"
+    },
+    {
+      "case": "day-zero",
+      "schedule": "0 0 0 * *",
+      "expected_valid": false,
+      "manifest": "services:\n- type: cron\n  name: qa333-c69a48-cron\n  runtime: node\n  plan: starter\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  startCommand: date\n  schedule: 0 0 0 * *\n  autoDeploy: false\n"
+    },
+    {
+      "case": "month-thirteen",
+      "schedule": "0 0 * 13 *",
+      "expected_valid": false,
+      "manifest": "services:\n- type: cron\n  name: qa333-c69a48-cron\n  runtime: node\n  plan: starter\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  startCommand: date\n  schedule: 0 0 * 13 *\n  autoDeploy: false\n"
+    },
+    {
+      "case": "weekday-seven",
+      "schedule": "0 0 * * 7",
+      "expected_valid": false,
+      "manifest": "services:\n- type: cron\n  name: qa333-c69a48-cron\n  runtime: node\n  plan: starter\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  startCommand: date\n  schedule: 0 0 * * 7\n  autoDeploy: false\n"
+    },
+    {
+      "case": "never-Feb31",
+      "schedule": "0 0 31 FEB *",
+      "expected_valid": false,
+      "manifest": "services:\n- type: cron\n  name: qa333-c69a48-cron\n  runtime: node\n  plan: starter\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  startCommand: date\n  schedule: 0 0 31 FEB *\n  autoDeploy: false\n"
+    },
+    {
+      "case": "never-Apr31",
+      "schedule": "0 0 31 APR *",
+      "expected_valid": false,
+      "manifest": "services:\n- type: cron\n  name: qa333-c69a48-cron\n  runtime: node\n  plan: starter\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  startCommand: date\n  schedule: 0 0 31 APR *\n  autoDeploy: false\n"
+    },
+    {
+      "case": "zero-step",
+      "schedule": "*/0 * * * *",
+      "expected_valid": false,
+      "manifest": "services:\n- type: cron\n  name: qa333-c69a48-cron\n  runtime: node\n  plan: starter\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  startCommand: date\n  schedule: '*/0 * * * *'\n  autoDeploy: false\n"
+    },
+    {
+      "case": "descending-range",
+      "schedule": "5-1 * * * *",
+      "expected_valid": false,
+      "manifest": "services:\n- type: cron\n  name: qa333-c69a48-cron\n  runtime: node\n  plan: starter\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  startCommand: date\n  schedule: 5-1 * * * *\n  autoDeploy: false\n"
+    }
+  ],
+  "results": [
+    {
+      "at": "2026-10-16T01:33:15.746563+00:00",
+      "client": "published Bex0.3.2",
+      "case": "daily",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.612,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa333-c69a48-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa333-c69a48-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:33:19.056701+00:00",
+      "client": "published Bex0.3.2",
+      "case": "named-month-weekday",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.001,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa333-c69a48-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa333-c69a48-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:33:22.015149+00:00",
+      "client": "published Bex0.3.2",
+      "case": "question-day",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.255,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa333-c69a48-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa333-c69a48-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:33:25.130074+00:00",
+      "client": "published Bex0.3.2",
+      "case": "leap-day",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.834,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa333-c69a48-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa333-c69a48-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:33:27.458808+00:00",
+      "client": "published Bex0.3.2",
+      "case": "day-or-weekday",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.808,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa333-c69a48-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa333-c69a48-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:33:29.379300+00:00",
+      "client": "published Bex0.3.2",
+      "case": "trim-whitespace",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.006,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa333-c69a48-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa333-c69a48-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:33:31.207595+00:00",
+      "client": "published Bex0.3.2",
+      "case": "tabs",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.754,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa333-c69a48-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa333-c69a48-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:33:32.847349+00:00",
+      "client": "published Bex0.3.2",
+      "case": "unicode-separators",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.673,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa333-c69a48-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa333-c69a48-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:33:34.538409+00:00",
+      "client": "published Bex0.3.2",
+      "case": "minute-range-list",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.627,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa333-c69a48-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa333-c69a48-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:33:36.377778+00:00",
+      "client": "published Bex0.3.2",
+      "case": "named-lowercase",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.709,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa333-c69a48-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa333-c69a48-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:33:38.339251+00:00",
+      "client": "published Bex0.3.2",
+      "case": "empty",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.765,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule is required for a cron_job\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule is required for a cron_job",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:33:40.490017+00:00",
+      "client": "published Bex0.3.2",
+      "case": "spaces",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.832,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule is required for a cron_job\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule is required for a cron_job",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:33:42.326414+00:00",
+      "client": "published Bex0.3.2",
+      "case": "descriptor",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.635,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:33:43.882101+00:00",
+      "client": "published Bex0.3.2",
+      "case": "seconds",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.981,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:33:45.925098+00:00",
+      "client": "published Bex0.3.2",
+      "case": "TZ-prefix",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.692,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:33:47.469228+00:00",
+      "client": "published Bex0.3.2",
+      "case": "minute-overflow",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.735,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:33:49.037736+00:00",
+      "client": "published Bex0.3.2",
+      "case": "hour-overflow",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.578,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:33:50.479340+00:00",
+      "client": "published Bex0.3.2",
+      "case": "day-zero",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.638,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:33:52.008383+00:00",
+      "client": "published Bex0.3.2",
+      "case": "month-thirteen",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.746,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:33:53.597295+00:00",
+      "client": "published Bex0.3.2",
+      "case": "weekday-seven",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.637,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:33:55.042164+00:00",
+      "client": "published Bex0.3.2",
+      "case": "never-Feb31",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.415,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule \\\"0 0 31 FEB *\\\" never fires: no date and time matches all of its fields (e.g. February 31)\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule \"0 0 31 FEB *\" never fires: no date and time matches all of its fields (e.g. February 31)",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:33:56.234882+00:00",
+      "client": "published Bex0.3.2",
+      "case": "never-Apr31",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.666,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule \\\"0 0 31 APR *\\\" never fires: no date and time matches all of its fields (e.g. February 31)\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule \"0 0 31 APR *\" never fires: no date and time matches all of its fields (e.g. February 31)",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:33:57.655784+00:00",
+      "client": "published Bex0.3.2",
+      "case": "zero-step",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.645,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:33:59.048490+00:00",
+      "client": "published Bex0.3.2",
+      "case": "descending-range",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.625,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:34:00.381640+00:00",
+      "client": "unchanged Render2.27",
+      "case": "daily",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.762,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa333-c69a48-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa333-c69a48-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:34:01.859868+00:00",
+      "client": "unchanged Render2.27",
+      "case": "named-month-weekday",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.577,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa333-c69a48-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa333-c69a48-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:34:03.147292+00:00",
+      "client": "unchanged Render2.27",
+      "case": "question-day",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.645,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa333-c69a48-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa333-c69a48-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:34:04.499429+00:00",
+      "client": "unchanged Render2.27",
+      "case": "leap-day",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.588,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa333-c69a48-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa333-c69a48-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:34:05.790424+00:00",
+      "client": "unchanged Render2.27",
+      "case": "day-or-weekday",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.644,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa333-c69a48-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa333-c69a48-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:34:07.128066+00:00",
+      "client": "unchanged Render2.27",
+      "case": "trim-whitespace",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.62,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa333-c69a48-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa333-c69a48-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:34:08.506615+00:00",
+      "client": "unchanged Render2.27",
+      "case": "tabs",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.709,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa333-c69a48-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa333-c69a48-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:34:09.911115+00:00",
+      "client": "unchanged Render2.27",
+      "case": "unicode-separators",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.663,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa333-c69a48-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa333-c69a48-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:34:11.283207+00:00",
+      "client": "unchanged Render2.27",
+      "case": "minute-range-list",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.591,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa333-c69a48-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa333-c69a48-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:34:12.567648+00:00",
+      "client": "unchanged Render2.27",
+      "case": "named-lowercase",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.776,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa333-c69a48-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa333-c69a48-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:34:14.342592+00:00",
+      "client": "unchanged Render2.27",
+      "case": "empty",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.86,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule is required for a cron_job\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule is required for a cron_job",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:34:15.940622+00:00",
+      "client": "unchanged Render2.27",
+      "case": "spaces",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.591,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule is required for a cron_job\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule is required for a cron_job",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:34:17.240743+00:00",
+      "client": "unchanged Render2.27",
+      "case": "descriptor",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.714,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:34:18.675310+00:00",
+      "client": "unchanged Render2.27",
+      "case": "seconds",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.62,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:34:20.014581+00:00",
+      "client": "unchanged Render2.27",
+      "case": "TZ-prefix",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.625,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:34:21.534041+00:00",
+      "client": "unchanged Render2.27",
+      "case": "minute-overflow",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.615,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:34:22.873863+00:00",
+      "client": "unchanged Render2.27",
+      "case": "hour-overflow",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.761,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:34:24.362476+00:00",
+      "client": "unchanged Render2.27",
+      "case": "day-zero",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.576,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:34:25.647136+00:00",
+      "client": "unchanged Render2.27",
+      "case": "month-thirteen",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.664,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:34:27.024723+00:00",
+      "client": "unchanged Render2.27",
+      "case": "weekday-seven",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.718,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:34:28.464650+00:00",
+      "client": "unchanged Render2.27",
+      "case": "never-Feb31",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.587,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule \\\"0 0 31 FEB *\\\" never fires: no date and time matches all of its fields (e.g. February 31)\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule \"0 0 31 FEB *\" never fires: no date and time matches all of its fields (e.g. February 31)",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:34:29.801470+00:00",
+      "client": "unchanged Render2.27",
+      "case": "never-Apr31",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 1.155,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule \\\"0 0 31 APR *\\\" never fires: no date and time matches all of its fields (e.g. February 31)\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule \"0 0 31 APR *\" never fires: no date and time matches all of its fields (e.g. February 31)",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:34:32.056899+00:00",
+      "client": "unchanged Render2.27",
+      "case": "zero-step",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.727,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:34:33.760639+00:00",
+      "client": "unchanged Render2.27",
+      "case": "descending-range",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep333-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep333-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.589,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"service \\\"qa333-c69a48-cron\\\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "service \"qa333-c69a48-cron\": schedule must be a valid 5-field cron expression (e.g. '0 * * * *')",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    }
+  ],
+  "input_removed": true,
+  "copied_render_config_removed": true,
+  "post_inventory": {
+    "at": "2026-10-16T01:35:29.770611+00:00",
+    "native": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.058,
+      "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-16T01:35:07Z\",\n        \"nextRunAt\": \"2026-10-16T01:36:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-16T01:35:07Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-16T01:35:06Z\",\n        \"nextRunAt\": \"2026-10-16T01:36:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-16T01:35:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-16T01:35:06Z\",\n        \"nextRunAt\": \"2026-10-16T01:36:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-16T01:35:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T22:54:15Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T12:22:37Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T22:14:51Z\"\n    }\n  }\n]",
+      "stderr": ""
+    },
+    "quota": {
+      "at": "2026-10-16T01:35:29.761235+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.781,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4b353bf1ca623fd-SJC"
+      },
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "baseline_preserved": true,
+    "authored_names_absent": true
+  }
+}

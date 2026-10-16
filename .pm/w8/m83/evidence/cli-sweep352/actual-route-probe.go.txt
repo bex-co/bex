@@ -1,0 +1,26 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package controller
+import("context";"encoding/json";"os";"path/filepath";"strings";"testing";networkingv1 "k8s.io/api/networking/v1";"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured";"k8s.io/apimachinery/pkg/types";"sigs.k8s.io/controller-runtime/pkg/client/fake";appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1")
+func TestQA352WebCompressionProjection(t *testing.T){
+ out:=os.Getenv("QA352_OUTPUT");if out==""{t.Fatal("private output required")}
+ for _,tc:=range []struct{name,runtime,repo,image string}{{"native-node","node","https://github.com/expressjs/serve-static",""},{"native-python","python","https://github.com/jiaaro/pydub",""},{"dockerfile","docker","https://github.com/bex-co/bex",""},{"prebuilt-image","","","traefik/whoami:v1.11.0"}}{t.Run(tc.name,func(t *testing.T){
+  scheme:=newIPAllowListScheme();scheme.AddKnownTypeWithName(traefikHTTPMiddlewareGVK.GroupVersion().WithKind("MiddlewareList"),&unstructured.UnstructuredList{});app:=appWithAllowList("qa352-"+tc.name,nil,appv1alpha1.TypeWebService);app.UID=types.UID("qa352-"+tc.name);app.Spec.Runtime=tc.runtime;app.Spec.Repo=tc.repo;app.Spec.Image=tc.image;app.Labels=map[string]string{labelAppID:"srv-qa352-"+tc.name};cl:=fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).Build();r:=&AppReconciler{Client:cl,Scheme:scheme,Mode:ModeKubernetes,BaseDomain:"example.invalid",ClusterIssuer:"qa-owned-issuer"};ctx:=context.Background();reason,err:=r.reconcileIngressWithMiddlewares(ctx,app,[]string{tc.name+".example.invalid"},app.Name,10000);if err!=nil{t.Fatalf("real projector %s: %v",reason,err)}
+  var ing networkingv1.Ingress;if err:=cl.Get(ctx,types.NamespacedName{Name:app.Name,Namespace:app.Namespace},&ing);err!=nil{t.Fatal(err)};list:=&unstructured.UnstructuredList{};list.SetGroupVersionKind(traefikHTTPMiddlewareGVK.GroupVersion().WithKind("MiddlewareList"));if err:=cl.List(ctx,list);err!=nil{t.Fatal(err)};compress:=false;for _,mw:=range list.Items{if _,ok,_:=unstructured.NestedMap(mw.Object,"spec","compress");ok&&strings.Contains(ing.Annotations[traefikRouterMiddlewaresAnnotation],mw.GetName()){compress=true}}
+  control:=len(ing.Spec.Rules)==1&&ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name==app.Name&&strings.Contains(ing.Annotations[traefikRouterMiddlewaresAnnotation],app.Name+"-ws-egress");record:=map[string]any{"case":tc.name,"ingress":ing,"middlewares":list.Items,"backend_and_meter_control":control,"automatic_compress_referenced":compress,"qualification":"real unchanged shared web-route projector on fake Kubernetes client; no live cluster or proxy execution"};data,err:=json.MarshalIndent(record,"","  ");if err!=nil{t.Fatal(err)};if err:=os.MkdirAll(out,0700);err!=nil{t.Fatal(err)};if err:=os.WriteFile(filepath.Join(out,tc.name+".json"),data,0600);err!=nil{t.Fatal(err)};if !control{t.Fatal("fixture routing/meter control failed")};if !compress{t.Error("eligible web route has no automatic response-compression middleware")}
+ })}
+}

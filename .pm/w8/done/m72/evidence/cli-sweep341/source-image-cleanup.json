@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-16T03:34:12.483483+00:00",
+  "command": [
+    "docker",
+    "image",
+    "ls",
+    "--format",
+    "{{.Repository}}:{{.Tag}}",
+    "--filter",
+    "reference=bex-native-poetry-it-*",
+    "--filter",
+    "reference=bex-native-js-it-*"
+  ],
+  "exit": 0,
+  "stdout": "",
+  "stderr": "",
+  "named_integration_image_refs_absent": true,
+  "base_and_build_cache_preserved": true
+}

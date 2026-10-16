@@ -1,0 +1,8 @@
+from pathlib import Path
+import sys,json
+f=Path(__file__).with_name('sweep338-joint-node-acceptance.py');sys.argv=[str(f),'diagnostic','bex'];exec(compile(f.read_text().split("if mode=='create':")[0],str(f),'exec'))
+x=next(v for v in c['resources'] if v.get('sweep')==338 and v['client']=='bex');own(x);r=cli(['logs','--resources',x['id'],'--start',x['runtime_observer_update']['at'],'--direction','backward','--limit','100','--confirm','-o','json']);x.setdefault('update_diagnostic_logs',[]).append({'at':now(),'result':r});save();print('native log exit',r['native_exit'])
+raw=r['stdout'];dec=json.JSONDecoder();vs=[]
+while raw.strip():
+ v,end=dec.raw_decode(raw.lstrip());vs.extend(v if isinstance(v,list) else [v]);raw=raw.lstrip()[end:]
+print('messages',len(vs));print(json.dumps(vs[-12:],ensure_ascii=False)[:9000])

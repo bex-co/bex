@@ -1,0 +1,9 @@
+from pathlib import Path
+import sys,json
+f=Path(__file__).with_name('sweep344-omitted-branch.py');sys.argv=[str(f),'reconcile-disconnect','bex-born'];exec(compile(f.read_text().split("if mode=='create':")[0],str(f),'exec'))
+b=next(v for v in c['resources'] if v.get('sweep')==344 and v.get('type')=='blueprint' and v.get('case')=='bex-born')
+assert b['delete_result']['status']=='204'
+detail=wire('/v1/blueprints/'+b['id']+'?ownerId='+ws);after,rows=blueprints()
+b['disconnect_reconciliation']={'at':now(),'detail':detail,'inventory':after,'local_observer_exclusion':'Earlier assertion expected the already-disconnected own render-born Blueprint to remain. Delete204 was persisted; no DELETE replay. Require the actual immutable baseline, excluding only proven-owned disconnected rows.'};save()
+assert detail['status']=='404' and {v['id'] for v in rows}=={'blp-db136288mmqc73d4hpug'}
+b.update(state='deleted: own Blueprint detail404/listabsent/baseline preserved',detail_after_delete=detail,inventory_after_delete=after);save();print(json.dumps({'own_Blueprint_disconnected':b['id'],'baseline_preserved':True,'mutation_replayed':False}))

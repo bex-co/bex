@@ -1,0 +1,9 @@
+{
+  "searched": "all PM open/blocked/done titles/content, pgvector/vector migration terms, DO_NOT_DO, ADR009/018, native client and operator source/history, freshly fetched origin",
+  "matching_pgvector_owner": false,
+  "neighbor": "w8/done/006 and w2/m25 cover pg_stat_statements only; existing settings/insights/SQL-value issues do not supply vector",
+  "research_head": "bd0ffac525f2ff1dfb4d7c7add9f81000fed8036",
+  "fresh_origin": "779c825e2b6b99c8e3b697b20355781880da7fc8",
+  "product_delta_paths": [],
+  "source_fix_on_origin": false
+}

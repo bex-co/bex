@@ -1,0 +1,16 @@
+services:
+- name: qa-20261016-baade3-source
+  type: web
+  runtime: image
+  image:
+    url: docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592
+  plan: free
+  healthCheckPath: /
+  autoDeploy: false
+  envVars:
+  - key: QA_LITERAL
+    value: "QA343_baade3\n\u2603=literal"
+  - key: HTTP_PORT
+    value: '3000'
+  - key: WHOAMI_PORT_NUMBER
+    value: '3000'

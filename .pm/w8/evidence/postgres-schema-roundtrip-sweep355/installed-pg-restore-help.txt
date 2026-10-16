@@ -1,0 +1,76 @@
+pg_restore restores a PostgreSQL database from an archive created by pg_dump.
+
+Usage:
+  pg_restore [OPTION]... [FILE]
+
+General options:
+  -d, --dbname=NAME        connect to database name
+  -f, --file=FILENAME      output file name (- for stdout)
+  -F, --format=c|d|t       backup file format (should be automatic)
+  -l, --list               print summarized TOC of the archive
+  -v, --verbose            verbose mode
+  -V, --version            output version information, then exit
+  -?, --help               show this help, then exit
+
+Options controlling the restore:
+  -a, --data-only              restore only the data, no schema
+  -c, --clean                  clean (drop) database objects before recreating
+  -C, --create                 create the target database
+  -e, --exit-on-error          exit on error, default is to continue
+  -I, --index=NAME             restore named index
+  -j, --jobs=NUM               use this many parallel jobs to restore
+  -L, --use-list=FILENAME      use table of contents from this file for
+                               selecting/ordering output
+  -n, --schema=NAME            restore only objects in this schema
+  -N, --exclude-schema=NAME    do not restore objects in this schema
+  -O, --no-owner               skip restoration of object ownership
+  -P, --function=NAME(args)    restore named function
+  -s, --schema-only            restore only the schema, no data
+  -S, --superuser=NAME         superuser user name to use for disabling triggers
+  -t, --table=NAME             restore named relation (table, view, etc.)
+  -T, --trigger=NAME           restore named trigger
+  -x, --no-privileges          skip restoration of access privileges (grant/revoke)
+  -1, --single-transaction     restore as a single transaction
+  --disable-triggers           disable triggers during data-only restore
+  --enable-row-security        enable row security
+  --filter=FILENAME            restore or skip objects based on expressions
+                               in FILENAME
+  --if-exists                  use IF EXISTS when dropping objects
+  --no-comments                do not restore comment commands
+  --no-data                    do not restore data
+  --no-data-for-failed-tables  do not restore data of tables that could not be
+                               created
+  --no-policies                do not restore row security policies
+  --no-publications            do not restore publications
+  --no-schema                  do not restore schema
+  --no-security-labels         do not restore security labels
+  --no-statistics              do not restore statistics
+  --no-subscriptions           do not restore subscriptions
+  --no-table-access-method     do not restore table access methods
+  --no-tablespaces             do not restore tablespace assignments
+  --restrict-key=RESTRICT_KEY  use provided string as psql \restrict key
+  --section=SECTION            restore named section (pre-data, data, or post-data)
+  --statistics                 restore the statistics
+  --statistics-only            restore only the statistics, not schema or data
+  --strict-names               require table and/or schema include patterns to
+                               match at least one entity each
+  --transaction-size=N         commit after every N objects
+  --use-set-session-authorization
+                               use SET SESSION AUTHORIZATION commands instead of
+                               ALTER OWNER commands to set ownership
+
+Connection options:
+  -h, --host=HOSTNAME      database server host or socket directory
+  -p, --port=PORT          database server port number
+  -U, --username=NAME      connect as specified database user
+  -w, --no-password        never prompt for password
+  -W, --password           force password prompt (should happen automatically)
+  --role=ROLENAME          do SET ROLE before restore
+
+The options -I, -n, -N, -P, -t, -T, and --section can be combined and specified
+multiple times to select multiple objects.
+
+If no input file name is supplied, then standard input is used.
+
+Report bugs to <pgsql-bugs@lists.postgresql.org>.
+PostgreSQL home page: <https://www.postgresql.org/>

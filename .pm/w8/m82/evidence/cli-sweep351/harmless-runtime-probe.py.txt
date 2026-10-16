@@ -1,0 +1,27 @@
+import os,sys,json,platform,hashlib,subprocess,wave
+from pathlib import Path
+def tool(name):
+ try:
+  r=subprocess.run([name,'-version'] if name in ('ffmpeg','ffprobe') else [name,'--version'],text=True,capture_output=True,timeout=20);return {'status':r.returncode,'stdout':r.stdout,'stderr':r.stderr,'error':None}
+ except FileNotFoundError:return {'status':None,'stdout':'','stderr':'','error':'ENOENT'}
+ except subprocess.TimeoutExpired:return {'status':None,'stdout':'','stderr':'','error':'ETIMEDOUT'}
+def snapshot():
+ audio=Path('qa351-input.wav').read_bytes()
+ with wave.open('qa351-input.wav','rb') as wav:shape={'channels':wav.getnchannels(),'sample_width':wav.getsampwidth(),'rate':wav.getframerate(),'frames':wav.getnframes(),'silence':wav.readframes(wav.getnframes())==b'\0\0'*800}
+ return {'marker':MARKER,'python':platform.python_version(),'architecture':platform.machine(),'requested_python':os.environ.get('PYTHON_VERSION'),'files':{n:{'bytes':len(Path(n).read_bytes()),'sha256':hashlib.sha256(Path(n).read_bytes()).hexdigest()} for n in ('pydub/__init__.py','pydub/audio_segment.py')},'wav':{'bytes':len(audio),'sha256':hashlib.sha256(audio).hexdigest(),'shape':shape},'tools':{n:tool(n) for n in ('ffmpeg','ffprobe','python','pip','poetry')}}
+if '--prepare' in sys.argv:
+ expected=REFERENCE
+ assert all({'bytes':len(Path(n).read_bytes()),'sha256':hashlib.sha256(Path(n).read_bytes()).hexdigest()}==v for n,v in expected.items())
+ with wave.open('qa351-input.wav','wb') as wav:wav.setnchannels(1);wav.setsampwidth(2);wav.setframerate(8000);wav.writeframes(b'\0\0'*800)
+ from pydub import AudioSegment
+ assert len(AudioSegment.from_wav('qa351-input.wav'))==100
+ print(MARKER+'_SOURCE_AND_WAV_CONFIRMED',flush=True)
+elif '--build' in sys.argv:
+ value=snapshot();Path('qa351-built.json').write_text(json.dumps(value,ensure_ascii=False));print(json.dumps(value,ensure_ascii=False),flush=True)
+else:
+ from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
+ built=json.loads(Path('/opt/render/project/src/qa351-built.json').read_text());value=snapshot();value['built']=built;body=json.dumps(value,ensure_ascii=False).encode()
+ class Handler(BaseHTTPRequestHandler):
+  def log_message(self,*a):pass
+  def do_GET(self):self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
+ ThreadingHTTPServer(('0.0.0.0',int(os.environ.get('PORT','3000'))),Handler).serve_forever()

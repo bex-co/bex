@@ -1,0 +1,18 @@
+{
+  "scope": "open/blocked/done all .pm; DO_NOT_DO; native source/history; freshly fetched origin/main",
+  "queries": [
+    "ffmpeg",
+    "ffprobe",
+    "multimedia native utilities"
+  ],
+  "FFmpeg_board_or_source_supplier_match": false,
+  "origin_main": "bd0ffac525f2ff1dfb4d7c7add9f81000fed8036",
+  "distinct_neighbors": [
+    "w8/m81 uv.lock package manager",
+    "w8/done/m72 Poetry",
+    "w8/done/m77 Ruby/Python JavaScript",
+    "w4/321 native Go JavaScript",
+    "w4/320 Node26 Yarn"
+  ],
+  "generic_utility_expansion": false
+}

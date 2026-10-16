@@ -1,0 +1,23 @@
+# Native Key Value logical databases and conditional writes — sweep359
+
+[Results](results.json) · [complete native create/readiness/data commands and output, expected/observed values, cleanup](native-data-and-cleanup.json) · [local prerequisite](local-client-preflight.json) · [final inventory](final-inventory.json).
+
+**Pass; no new issue.** Refreshed sourceae5f8cada22510baa1e6a79cb2c09b8346103ccf; serving SHA unobserved. Installed Bex0.2.1 help is inspected first, while actual execution uses published Bex0.3.2/a6350da0 and unchanged Render2.27.0/a764810a7682 against api.bex.co through continuing isolated human QA in bex-canary. redis-cli8.10.1 is the external prerequisite. Both native HELLO replies report protocol3, standalone and version8.1.9; this is observed server metadata, not a proven deployed-image SHA. No authenticated Render account.
+
+Native Bex creates one fresh explicit Free/off/noeviction cache, red-db8tsc7dbg8c73dgheog, with its own IPv4 allowlist in the creation request. Normal external connection setup happens through that supported native flag; no API-only public:true mutation or restart is needed. Exact returned name/ID/workspace/Free, empty pre-cache inventory/quota, original6 services and the observed public/available detail prove ownership/readiness. Both native PING controls exit0/PONG before data. Native mutation HTTP wire is not separately captured.
+
+## Logical database and data comparisons
+
+Sixteen further normal interactive kv-cli commands run with -n0/1/2, --json and explicit -3 under bounded real PTYs. HELLO confirms protocol3 through each client. Bex writes20 nonce keys to database1, Render writes the same20 key names with different values to database2. Each database has4 empty values and16 valid UTF8 strings containing CRLF, NUL, accents/Japanese/emoji and literal Render text. --quoted-input encodes bytes without putting NUL in argv. The ordinary Lua writer refuses preexisting own keys before writing any, then returns hashes of actual stored values; Python independently computes all expected hashes.
+
+The opposite client reads every value hash in each database. Matched compare-and-set through that client updates one value per database; a stale comparison through the other client returns0 and the current new-value hash without replacing it. Full post-update reads verify all40 current values with only those two changes. These are small sequential Lua atomic-operation comparisons; no concurrent contention, WATCH/MULTI/EXEC, retry or durability claim.
+
+Both clients independently prove all20 own key names absent from default database0. Native --scan --pattern in databases1/2 returns the exact20 unique own names in each; comparison allows SCAN's documented duplicate possibilities instead of treating duplicates as an error. All18 native connection/data checks terminate0, nine per client, with no harness timeout. [Finite journey/data generator](finite-data-journey.py.txt). [Redis SELECT](https://redis.io/docs/latest/commands/select/) specifies the connection-selected logical database; this covers standalone databases1/2 only, not cluster support or every configured index.
+
+The PTY runner retains complete merged terminal output and decoded JSON/expected hashes. A real local redis-server/redis-cli preflight executes the same16 cases first and removes its own server/socket. The [reused module](sweep356-pubsub.py.txt) supplies only Session, ANSI and quoted helpers for this journey; its Pub/Sub main routine is not executed. Local prerequisite checks are not Bex product evidence. No module suite or product-code change is claimed.
+
+## Cleanup qualification
+
+All native checks pass. The first separate cached Python TLS diagnostic returns SSLEOF; its connection-family equivalence is unverified. An explicit AF_INET probe matching this fixture's IPv4 allowlist receives PONG before deletion, preserving normal original-host TLS SNI/verification. The first failure is excluded from product failures; its exact cause is not claimed proved. No hosted setting or mutation is replayed to repair that diagnostic.
+
+Native delete exits0. The first quota observation legitimately remains terminating1, then detail404/listempty, used0/terminating0, baseline6 services/Blueprint1 and empty groups/projects converge. The same cached AF_INET endpoint receives no PONG after deletion. Own credentials/copied Render configs are removed; the isolated login remains for the authorized loop. Physical pod/volume teardown is unobserved. [Fixture lifecycle](native-fixture-lifecycle.py.txt), [isolated clients](isolated-client-helpers.py.txt), [cached teardown](cached-endpoint-cleanup.py.txt). No other tenant/cache/key, paid feature, security work, external write or new issue. Uncommitted.

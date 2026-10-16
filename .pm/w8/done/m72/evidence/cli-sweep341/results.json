@@ -1,0 +1,28 @@
+{
+  "source_head": "7ee5a95fd1d88dd8766072f497e8e191d51a06cb",
+  "m72_implementation": "314d7276d",
+  "m77_implementation": "69b74a192",
+  "desired_image_signal": "45d809f99 pins platform5a39b80ff05a",
+  "serving_SHA": "unobserved",
+  "native_first_Python_Poetry_1_8_5_JS_pass": 2,
+  "native_Python_only_omitted_Poetry_default_2_1_3_pass": 1,
+  "all_markers_primary_versions_build_runtime_match": true,
+  "app_Poetry_dependency_isolation_pass": 3,
+  "shared_API_source_reads_pass": 9,
+  "source_top_pass": 5,
+  "source_named_pass": 18,
+  "source_fail": 0,
+  "source_skip": 0,
+  "actual_generated_Ruby_lines_executed": [
+    "3.3",
+    "3.4",
+    "4.0"
+  ],
+  "actual_generated_Python_line_executed": "3.12",
+  "owned_services_deleted": 3,
+  "owned_children_404": 3,
+  "baseline_services": 6,
+  "terminating": 0,
+  "m77_Ruby_native_gate": "still pending; milestone remains blocked",
+  "uncommitted": true
+}

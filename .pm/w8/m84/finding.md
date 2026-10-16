@@ -1,0 +1,27 @@
+# A fresh managed PostgreSQL database cannot use its packaged pgvector
+
+**Major · application-database extension provisioning.** On an owned Free PostgreSQL18 database, published Bex and unchanged pinned Render both exit1 for CREATE EXTENSION IF NOT EXISTS vector before the vector-distance SELECT can run. The catalog lists vector0.8.6, uninstalled. Both independent hstore install/query/rollback controls pass and the before/after catalogs match. [Exact native/server/error/source/cleanup evidence](evidence/cli-sweep353/README.md).
+
+[Render's PostgreSQL13+ extension contract](https://render.com/docs/postgresql-extensions) includes pgvector under the SQL name vector. This blocks an ordinary embedding-storage migration on a new supported database. It is not a missing package, failed connection, wrong SQL extension name or general inability to create extensions. The observed server error is permission denied plus its superuser requirement; no different account, role mutation or admin connection was used.
+
+## Boundary and concrete fix
+
+The exact pinned command routes unchanged SQL/psql passthrough through cmd/psql.go into pkg/tui/views/psql.go:45–94. The external client uses the application connection assembled by lego/backend/internal/postgres/service.go:806 via rest.go:249. Bex's CA preparation and Render's equivalent own CA setup both work: SELECT1, identity/UTF8, catalogs and hstore execute successfully. Changing the CLI, TLS or this request would not provision the extension.
+
+`lego/operator/internal/controller/database_controller.go:815,932–935,450` feeds the shared CNPG cluster projection. Its image at480–487 packages vector (directly confirmed by hosted SQL), while bootstrap at520–527 only provisions pg_stat_statements. It creates the application DB/owner without vector; no other production vector provisioner or upstream CNPG Database GVK exists. Four real serializer observations (PG13/18, default/custom identity) preserve normal controls but contain no vector installation. Those are source observations, not live proof for other majors or a passing fix test.
+
+Use the existing CNPG declarative extension-management mechanism: project a distinctly typed postgresql.cnpg.io/v1 Database child tied to the correct existing application DB/owner/Cluster, with extensions ensuring vector present and databaseReclaimPolicy retain. Reconcile it for new and existing Bex Database parents, with resource ownership/watch/RBAC wiring, convergent writes and readiness/error projection. The exact locked chart0.29.0 archive/hash gives appVersion1.30.0; its tagged Database CRD verifies these fields. [CNPG extension-management contract](https://cloudnative-pg.io/docs/1.29/declarative_database_management/#managing-extensions-in-a-database) supplies the primitive. Running CNPG version is unobserved, so verify the deployed dependency during implementation.
+
+This makes the supplied extension usable through normal application connections and the original IF NOT EXISTS migration. Document preenabled vector as the Bex policy rather than claiming identical on-demand bare-CREATE behavior. Preserve existing vector versions/schema/data, application identity/connection contract, pg_stat_statements's existing management, other extensions, and retain behavior if the child object is withdrawn. Do not turn this into a general extension catalog/API project.
+
+## Shared scope and lifecycle work
+
+All REST/native, GraphQL, MCP and Blueprint managed Postgres creation converges on the Bex Database reconciler and shared projection. Native psql/pgcli, app drivers and SQL-query surfaces consume that same application database. Only Bex create and both noninteractive native psql clients are live exercised. Trace defaults/custom names, supported majors, existing parents, restore/import, upgrades, suspend/resume, failure/readiness and deletion. No paid/upgrade/restore request was made here; do not overwrite user content or create a second physical DB when adopting an existing one. Keep the upstream Database resource distinct from the Bex Database GVK.
+
+A fresh-only post-init script alone leaves existing databases broken. An image update alone cannot solve the observed application install failure because the package is already present. Use the controller's managed reconciliation path and actual SQL acceptance, not a tenant bootstrap workaround.
+
+## Dedupe and acceptance
+
+Open/blocked/done PM, source/history, ADR009/018, DO_NOT_DO and freshly fetched main have no pgvector owner. w8/done/006 and w2/m25 fix pg_stat_statements specifically; completed settings/insights/SQL-value tasks do not promise vector provisioning. Origin779c825e2 only adds an environment-group note and has identical product code to research bd0ffac525f2ff1dfb4d7c7add9f81000fed8036. Serving SHA is unknown, with no newer repair to classify as deploy lag.
+
+Six tasks total220m. Acceptance uses fresh permitted Free fixtures through both native clients, default and custom application names, ordinary IF NOT EXISTS vector migrations, real vector values/distance/table use, preserved hstore/pg_stat_statements/data and backfilled existing-parent behavior. Maintained actual-CNPG/SQL regressions must fail before/pass after; three current neighboring tests pass but do not certify vector. The recorded fixture is deleted, cached endpoint is no longer usable, private files are removed and quota/baseline restored. No product fix is implemented.

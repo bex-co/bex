@@ -1,0 +1,20 @@
+from pathlib import Path
+import sys,json,socket,ssl,urllib.parse
+action=sys.argv[1];assert action in ('acquire','probe','remove');f=Path(__file__).with_name('sweep359-common.py');sys.argv=[str(f),'cached-endpoint','bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==359);sid=x['id'];assert x['workspace']==WS and x['create_result']['native_exit']==0 and x['create_response']['id']==sid
+creds=P/'sweep359-connection.private.json'
+if action=='acquire':
+ assert not creds.exists() and 'delete_intent' not in x;d,v=detail();assert v['status']=='available';r=api('GET','/v1/key-value/'+sid+'/connection-info');assert r['status']=='200';body=json.loads(r['response']);u=urllib.parse.urlsplit(body['externalConnectionString']);assert u.scheme=='rediss' and u.hostname==sid+'.kv.bex.co' and u.password
+ info={'id':sid,'workspace':WS,'host':u.hostname,'port':u.port or 6379,'username':urllib.parse.unquote(u.username or 'default'),'password':urllib.parse.unquote(u.password)};creds.write_text(json.dumps(info));creds.chmod(0o600);x['cached_endpoint_acquisition']={'at':now(),'API_only':True,'method':'GET','path':'/v1/key-value/'+sid+'/connection-info','status':'200','credentials':'connection URI/cliCommand fields omitted before ledger; private owner-only temporary file','owned_endpoint_matched':True};save();print('Own cached endpoint captured privately; no connection credentials in ledger')
+elif action=='remove':
+ assert x.get('delete_result',{}).get('native_exit')==0;creds.unlink();x['cached_endpoint_credentials_removed']={'at':now(),'removed':not creds.exists()};save();print('Owned temporary data connection credentials removed')
+else:
+ assert creds.exists() and creds.stat().st_mode&0o077==0;info=json.loads(creds.read_text());assert info['id']==sid and info['workspace']==WS;result={'at':now(),'API_only':True,'qualification':'ordinary cached TLS data-client diagnostic; not native CLI coverage','after_delete':'delete_result' in x,'address_family':'explicit AF_INET for the own IPv4 allowlist; TLS SNI/verification still uses original host','PONG':False};start=time.monotonic()
+ try:
+  with socket.create_connection(socket.getaddrinfo(info['host'],info['port'],socket.AF_INET,socket.SOCK_STREAM)[0][4],timeout=7) as raw:
+   with ssl.create_default_context().wrap_socket(raw,server_hostname=info['host']) as s:
+    s.settimeout(7);f=s.makefile('rb')
+    def command(*args):
+     bs=[v.encode() for v in args];s.sendall(('*'+str(len(bs))+'\r\n').encode()+b''.join(('$'+str(len(v))+'\r\n').encode()+v+b'\r\n' for v in bs));return f.readline(65536)
+    answer=command('AUTH',info['username'],info['password']);assert answer==b'+OK\r\n','Own data client authentication did not succeed';answer=command('PING');result['PONG']=answer==b'+PONG\r\n';result['reply_kind']=answer[:1].decode(errors='replace');f.close()
+ except (OSError,ValueError) as e:result['connection_error_type']=type(e).__name__
+ result['elapsed']=round(time.monotonic()-start,3);x.setdefault('cached_endpoint_probes',[]).append(result);save();print(json.dumps(result))

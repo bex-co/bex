@@ -1,0 +1,12 @@
+{"Time":"2026-10-15T18:44:02.74428-07:00","Action":"start","Package":"github.com/bex-co/bex/lego/backend/internal/postgres"}
+{"Time":"2026-10-15T18:44:03.617995-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Test":"TestCreatePostgresPhysicalIdentifierAdapterParity"}
+{"Time":"2026-10-15T18:44:03.61814-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Test":"TestCreatePostgresPhysicalIdentifierAdapterParity","Output":"=== RUN   TestCreatePostgresPhysicalIdentifierAdapterParity\n"}
+{"Time":"2026-10-15T18:44:03.669065-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Test":"TestCreatePostgresPhysicalIdentifierAdapterParity","Output":"--- PASS: TestCreatePostgresPhysicalIdentifierAdapterParity (0.05s)\n"}
+{"Time":"2026-10-15T18:44:03.66912-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Test":"TestCreatePostgresPhysicalIdentifierAdapterParity","Elapsed":0.05}
+{"Time":"2026-10-15T18:44:03.670053-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Test":"TestCreatePostgresPhysicalIdentifierDefaultsAreIndependent"}
+{"Time":"2026-10-15T18:44:03.670066-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Test":"TestCreatePostgresPhysicalIdentifierDefaultsAreIndependent","Output":"=== RUN   TestCreatePostgresPhysicalIdentifierDefaultsAreIndependent\n"}
+{"Time":"2026-10-15T18:44:03.67375-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Test":"TestCreatePostgresPhysicalIdentifierDefaultsAreIndependent","Output":"--- PASS: TestCreatePostgresPhysicalIdentifierDefaultsAreIndependent (0.00s)\n"}
+{"Time":"2026-10-15T18:44:03.673797-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Test":"TestCreatePostgresPhysicalIdentifierDefaultsAreIndependent","Elapsed":0}
+{"Time":"2026-10-15T18:44:03.67382-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Output":"PASS\n"}
+{"Time":"2026-10-15T18:44:03.675901-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Output":"ok  \tgithub.com/bex-co/bex/lego/backend/internal/postgres\t0.929s\n"}
+{"Time":"2026-10-15T18:44:03.675937-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Elapsed":0.932}

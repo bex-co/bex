@@ -1,0 +1,22 @@
+{
+  "repo": "https://github.com/expressjs/serve-favicon",
+  "branch": "master",
+  "HEAD": "1d9a8e7261557ec9a40463fd54e99b601016598c",
+  "references": [
+    {
+      "commit": "1d9a8e7261557ec9a40463fd54e99b601016598c",
+      "package_name": "serve-favicon",
+      "package_version": "2.5.1",
+      "package_sha256": "46dd2069300082210c2ee9a92f4812d3336eb31c39e386b6874ac0ab58de70e7"
+    },
+    {
+      "commit": "c03a88b2e88b927fec69a72982fe92d2abc5a99e",
+      "package_name": "serve-favicon",
+      "package_version": "2.5.0",
+      "package_sha256": "819d7a676e12d607dbfeb3eab0cf56d677c34b5a0016775750df79c994fa47a6"
+    }
+  ],
+  "remote_HEAD": "ref: refs/heads/master\tHEAD\n1d9a8e7261557ec9a40463fd54e99b601016598c\tHEAD",
+  "anonymous_primary_clone": true,
+  "setup_note": "Initial reference selector incorrectly required HEAD itself to edit package.json; no live mutation occurred, corrected reference reads package.json at HEAD."
+}

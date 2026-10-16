@@ -1,0 +1,18 @@
+{
+  "repo": "https://github.com/astral-sh/uv-docker-example",
+  "branch": "main",
+  "commit": "3c23b2cd3a2baf090d52ba2a5699249ab9499808",
+  "files": {
+    "uv.lock": {
+      "bytes": 158319,
+      "sha256": "43f07524f1b045e3377854cc2e1d6d1a919d5ba20ad3112f6ac3e74938f5b3fa"
+    },
+    "pyproject.toml": {
+      "bytes": 402,
+      "sha256": "92913b1e3c2e38d54d19941f47a878bd499ea6317a6fd8b8d83332247da9d461"
+    }
+  },
+  "project": "uv-docker-example",
+  "requires_python": ">=3.11",
+  "root_uv_lock_present": true
+}

@@ -1,0 +1,55 @@
+from pathlib import Path
+import sys,json,hashlib,os
+f=Path(__file__).with_name('sweep360-common.py');exec(compile(f.read_text(),str(f),'exec'));x=next(x for x in c['resources'] if x.get('sweep')==360 and x.get('id'));sid=x['id'];assert x['workspace']==WS and x['create_result']['native_exit']==0 and x['create_response']['id']==sid
+NULL='__QA360_NULL__';cols='id,label,maybe,payload,amount';schema='qa360_'+x['nonce'];directory=P/'sweep360 CSV files';paths={'valid':directory/'input α.csv','invalid':directory/'bad input β.csv','render_export':directory/'Render export γ.csv','bex_export':directory/'Bex export δ.csv'}
+def expected():
+ out=[]
+ for i in range(1,38):
+  nullable=[None,'',NULL,r'\N','comma, "quoted"','café\r\n日本 😀','plain'][i%7];out.append({'id':i,'label':f'row {i}, "quoted"\nnext\r\ncafé 日本 😀','maybe':nullable,'payload':{'row':i,'marker':'QA360_'+x['nonce'],'values':[None,'','日本',f'row{i}\n']},'amount':f'{(-1 if i%2 else 1)*(9007199254740993+i)}.{i:06}'})
+ return out
+def field(v):return NULL if v is None else '"'+str(v).replace('"','""')+'"'
+def csvbytes(bad=False):
+ records=[','.join(field(v) for v in cols.split(','))]
+ for row in expected():
+  r=dict(row);r['payload']=json.dumps(r['payload'],ensure_ascii=False,separators=(',',':'))
+  if bad and r['id']==37:r['amount']='not_a_decimal'
+  records.append(','.join(field(r[k]) for k in cols.split(',')))
+ return ('\n'.join(records)+'\n').encode()
+def meta(path):
+ b=path.read_bytes();assert path.stat().st_mode&0o077==0;return {'path':str(path),'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}
+def result(e):
+ r=e['result'];assert r['native_exit']==0 and not r['harness_timeout'];return json.loads(json.loads(r['stdout'])['output'].strip())
+def object_expr():return "jsonb_build_object('id',id,'label',label,'maybe',maybe,'payload',payload,'amount',amount::text)"
+def array_expr(table):return "(SELECT coalesce(jsonb_agg("+object_expr()+" ORDER BY id),'[]'::jsonb) FROM "+schema+'.'+table+')'
+def snapshot(label,table):
+ e=sql(label,'SELECT '+array_expr(table)+'::text;');observed=result(e);check={'at':now(),'label':label,'client':client,'table':table,'rows':len(observed),'pass':observed==expected()};x.setdefault('csv_comparisons',[]).append(check);save();assert check['pass'];print(json.dumps(check),flush=True)
+def do_copy(label,command,path=None,expect_error=False):
+ assert not any(z['label']==label for z in x.get('sql_events',[]));e=sql(label,command);r=e['result']
+ if expect_error:
+  passed=r['native_exit'] not in (None,0) and not r['harness_timeout'] and 'not_a_decimal' in (r['stdout']+r['stderr']);e['expected_data_error_pass']=passed;save();assert passed
+ else:assert r['native_exit']==0 and not r['harness_timeout']
+ if path:
+  x.setdefault('csv_file_receipts',[]).append({'at':now(),'label':label,'file':meta(path)});save()
+if mode=='prepare':
+ assert not directory.exists() and 'csv_prepare_intent' not in x;x['csv_prepare_intent']={'at':now(),'directory':str(directory),'synthetic_only':True};save();directory.mkdir(mode=0o700)
+ for key in ('valid','invalid'):paths[key].write_bytes(csvbytes(key=='invalid'))
+ x['csv_inputs']={key:meta(paths[key]) for key in ('valid','invalid')};x['csv_schema']=schema;x['csv_expected_rows']=expected();save();print(json.dumps({'synthetic_rows':37,'input_bytes':x['csv_inputs']['valid']['bytes'],'private_input_files':2}));raise SystemExit(0)
+assert x['csv_schema']==schema
+if mode=='seed':
+ assert 'csv_seed_intent' not in x;e=sql('schema-absent',"SELECT to_regnamespace('"+schema+"') IS NULL;");assert json.loads(e['result']['stdout'])['output'].strip()=='t';x['csv_seed_intent']={'at':now(),'schema':schema};save();e=sql('create-three-tables',"BEGIN; CREATE SCHEMA "+schema+'; '+''.join('CREATE TABLE '+schema+'.'+t+' (id integer PRIMARY KEY,label text NOT NULL,maybe text,payload jsonb NOT NULL,amount numeric(30,6) NOT NULL); ' for t in ('a','b','c'))+"COMMIT; SELECT jsonb_build_object('a', (SELECT count(*) FROM "+schema+".a),'b',(SELECT count(*) FROM "+schema+".b),'c',(SELECT count(*) FROM "+schema+".c))::text;");assert result(e)=={'a':0,'b':0,'c':0};x['csv_seed_pass']=True;save()
+elif mode in ('bad-import','good-import','import-b','import-c'):
+ assert x['csv_seed_pass'];key,table={'bad-import':('invalid','a'),'good-import':('valid','a'),'import-b':('render_export','b'),'import-c':('bex_export','c')}[mode];assert paths[key].exists();command='\\copy '+schema+'.'+table+'('+cols+") FROM '"+str(paths[key])+"' WITH (FORMAT csv, HEADER true, NULL '"+NULL+"')";do_copy(mode,command,expect_error=mode=='bad-import')
+elif mode=='bad-count':
+ assert any(e.get('expected_data_error_pass') for e in x['sql_events']);e=sql('failed-copy-left-zero-rows',"SELECT jsonb_build_object('a',(SELECT count(*) FROM "+schema+".a),'b',(SELECT count(*) FROM "+schema+".b),'c',(SELECT count(*) FROM "+schema+".c))::text;");x['csv_failed_copy_atomicity']={'at':now(),'client':client,'counts':result(e),'pass':result(e)=={'a':0,'b':0,'c':0}};save();assert x['csv_failed_copy_atomicity']['pass']
+elif mode in ('snapshot-a','snapshot-b'):snapshot(mode,mode[-1])
+elif mode in ('export-render','export-bex'):
+ table,key=('a','render_export') if mode=='export-render' else ('b','bex_export');assert not paths[key].exists();command='\\copy (SELECT '+cols+' FROM '+schema+'.'+table+" ORDER BY id) TO '"+str(paths[key])+"' WITH (FORMAT csv, HEADER true, NULL '"+NULL+"', FORCE_QUOTE *)";do_copy(mode,command,paths[key])
+ if mode=='export-bex':
+  x['csv_ordered_exports_byte_equal']={'at':now(),'pass':paths['render_export'].read_bytes()==paths['bex_export'].read_bytes(),'render':meta(paths['render_export']),'bex':meta(paths['bex_export'])};save();assert x['csv_ordered_exports_byte_equal']['pass']
+elif mode=='final':
+ assert not any(z['client']==client for z in x.get('csv_final',[]));e=sql('all-tables-'+client,"SELECT jsonb_build_object("+','.join("'"+t+"',"+array_expr(t) for t in ('a','b','c'))+")::text;");v=result(e);z={'at':now(),'client':client,'pass':v=={t:expected() for t in ('a','b','c')},'rows_per_table':{t:len(v[t]) for t in v}};x.setdefault('csv_final',[]).append(z);save();assert z['pass'];print(json.dumps(z))
+elif mode=='remove':
+ assert len(x['csv_final'])==2 and all(z['pass'] for z in x['csv_final']) and x['csv_ordered_exports_byte_equal']['pass'];receipt={'at':now(),'files':{k:meta(p) for k,p in paths.items()}}
+ for p in paths.values():p.unlink()
+ directory.rmdir();receipt['removed']=not directory.exists();x['csv_private_files_removed']=receipt;save();print('Own synthetic CSV files removed after successful full comparisons')
+else:raise ValueError(mode)

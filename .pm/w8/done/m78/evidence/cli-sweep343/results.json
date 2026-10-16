@@ -1,0 +1,32 @@
+{
+  "source_head": "e5ff3a6f013e6060c09b9ce7291515f1b14bd1e4",
+  "implementation": "fef60e605",
+  "desired_image_signal": "45d809f99 pins platform5a39b80ff05a",
+  "serving_SHA": "unobserved",
+  "fresh_native_Free_image_creates_exit0": 2,
+  "first_accepted_Git_Live_exact_source_commit_package_literals": 2,
+  "native_validate_calls_pass": 6,
+  "native_inventory_history_readbacks_pass": 8,
+  "API_service_readbacks_pass": 6,
+  "exact_stored_Blueprint_manifest_pass": true,
+  "pre_noop_convergence_seconds": {
+    "persistent": 215.109427,
+    "inline": 215.463598
+  },
+  "post_noop_convergence_seconds": {
+    "persistent": 72.524259,
+    "inline": 72.115638
+  },
+  "identical_reapply_new_deploys": 0,
+  "source_top_tests_pass": 17,
+  "source_named_pass": 55,
+  "source_fail": 0,
+  "source_skip": 0,
+  "owned_services_deleted": 2,
+  "owned_Blueprint_disconnected": 1,
+  "owned_child_deploys_404": 5,
+  "baseline_services": 6,
+  "baseline_Blueprints": 1,
+  "terminating": 0,
+  "uncommitted": true
+}

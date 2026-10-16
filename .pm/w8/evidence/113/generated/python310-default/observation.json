@@ -1,0 +1,28 @@
+{
+  "case": "python310-default",
+  "choices": [
+    {
+      "Label": "Python",
+      "Line": "3.10",
+      "Image": "python:3.10-bookworm@sha256:f72a86806f92fe13a49f49aeca1db0b19ea5cf4a0470b842a01b0e14314945b8",
+      "Source": "PYTHON_VERSION=3.10"
+    },
+    {
+      "Label": "Poetry",
+      "Line": "2.1.3",
+      "Image": "",
+      "Source": ""
+    },
+    {
+      "Label": "Node",
+      "Line": "24",
+      "Image": "node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0",
+      "Source": ""
+    }
+  ],
+  "generated_default_GUNICORN_CMD_ARGS_present": false,
+  "qualification": "unchanged real generator/resolver; env bundle supplied to actual resolver, loader applies user env at build and runtime user env is separate; no generated Dockerfile execution or fixed regression asserted",
+  "static": false,
+  "user_GUNICORN_CMD_ARGS": "",
+  "user_GUNICORN_CMD_ARGS_present": false
+}

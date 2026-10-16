@@ -1,0 +1,22 @@
+projects:
+- name: qa339-0d2075-project
+  environments:
+  - name: production
+    services:
+    - type: web
+      name: qa339-0d2075-consumer
+      runtime: image
+      image:
+        url: nginx:1.27
+      plan: free
+      envVars:
+      - key: MISSING_ONE
+        fromService:
+          type: web
+          name: qa339-0d2075-missing
+          property: host
+      - key: MISSING_TWO
+        fromService:
+          type: web
+          name: qa339-0d2075-missing
+          property: host

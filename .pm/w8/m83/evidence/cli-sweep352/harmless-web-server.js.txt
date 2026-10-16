@@ -1,0 +1,25 @@
+const fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');
+const hash=b=>crypto.createHash('sha256').update(b).digest('hex');
+const expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';
+const packageBytes=fs.readFileSync('package.json');
+if(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');
+const payload=Buffer.from((MARKER+' | plain web response | café 日本語\n').repeat(5000));
+const snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});
+if(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}
+const built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));
+http.createServer((req,res)=>{
+ const path=new URL(req.url,'http://owned.example').pathname;
+ res.setHeader('X-QA-Marker',MARKER);
+ if(path==='/stream'){
+  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();
+  let seq=0;const send=()=>res.write('id: '+seq+'\nevent: tick\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\n\n');send();
+  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;
+ }
+ if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){
+  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');
+  res.setHeader('ETag','"qa352-'+hash(body)+'"');
+  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}
+  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;
+ }
+ const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);
+}).listen(Number(process.env.PORT||10000),'0.0.0.0');

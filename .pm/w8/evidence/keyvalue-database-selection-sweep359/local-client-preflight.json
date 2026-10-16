@@ -1,0 +1,1337 @@
+{
+  "qualification": "local redis-server/redis-cli data and PTY prerequisite; not Bex product evidence",
+  "local_server_pid": 12302,
+  "events": [
+    {
+      "label": "HELLO-protocol3-bex",
+      "actor": "bex",
+      "database_index": 0,
+      "intent": "ordinary owned nonce data operation; no replay after ambiguous outcome",
+      "expected": "HELLO proto3",
+      "observed_JSON": [
+        {
+          "server": "redis",
+          "version": "8.10.1",
+          "proto": 3,
+          "id": 4,
+          "mode": "standalone",
+          "role": "master",
+          "modules": [
+            {
+              "name": "vectorset",
+              "ver": 1,
+              "path": "",
+              "args": []
+            }
+          ]
+        }
+      ],
+      "pass": true,
+      "native": {
+        "command": [
+          "local-redis-cli",
+          "-s",
+          "<own-local-socket>",
+          "-n",
+          "0",
+          "--json",
+          "-3",
+          "--quoted-input",
+          "\"\\x48\\x45\\x4c\\x4c\\x4f\"",
+          "\"\\x33\""
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 0.008,
+        "decoded_JSON": [],
+        "arrival_seconds": [],
+        "output": "{\"server\":\"redis\",\"version\":\"8.10.1\",\"proto\":3,\"id\":4,\"mode\":\"standalone\",\"role\":\"master\",\"modules\":[{\"name\":\"vectorset\",\"ver\":1,\"path\":\"\",\"args\":[]}]}\n",
+        "own_process_group_cleaned": true
+      }
+    },
+    {
+      "label": "HELLO-protocol3-render",
+      "actor": "render",
+      "database_index": 0,
+      "intent": "ordinary owned nonce data operation; no replay after ambiguous outcome",
+      "expected": "HELLO proto3",
+      "observed_JSON": [
+        {
+          "server": "redis",
+          "version": "8.10.1",
+          "proto": 3,
+          "id": 5,
+          "mode": "standalone",
+          "role": "master",
+          "modules": [
+            {
+              "name": "vectorset",
+              "ver": 1,
+              "path": "",
+              "args": []
+            }
+          ]
+        }
+      ],
+      "pass": true,
+      "native": {
+        "command": [
+          "local-redis-cli",
+          "-s",
+          "<own-local-socket>",
+          "-n",
+          "0",
+          "--json",
+          "-3",
+          "--quoted-input",
+          "\"\\x48\\x45\\x4c\\x4c\\x4f\"",
+          "\"\\x33\""
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 0.005,
+        "decoded_JSON": [],
+        "arrival_seconds": [],
+        "output": "{\"server\":\"redis\",\"version\":\"8.10.1\",\"proto\":3,\"id\":5,\"mode\":\"standalone\",\"role\":\"master\",\"modules\":[{\"name\":\"vectorset\",\"ver\":1,\"path\":\"\",\"args\":[]}]}\n",
+        "own_process_group_cleaned": true
+      }
+    },
+    {
+      "label": "write-db1",
+      "actor": "bex",
+      "database_index": 1,
+      "intent": "ordinary owned nonce data operation; no replay after ambiguous outcome",
+      "expected": [
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "2d823896cd5aa0bc28ff6ec802d51d01248c60c7",
+        "20db29043674ca849f042a9a74bd4d334e52750d",
+        "314d2670ba3d7864dc8203dbcbdf875d29a68568",
+        "0f27b534703ca9d045e152bc5bee1dca67e27b1e",
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "1a5584fca53e8ff7c1ce5345012723f1694cd186",
+        "3b890860c74a08b3a2d4c508eb64f1e23e8559ab",
+        "3716f9df863c5e24b58587b01268bf9146546f0e",
+        "296ad0f4ce332a3188b04db1fad3024f45f61fcb",
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "cbe34832d1846888b2bd9fb8debf873ed9564234",
+        "5fabe19b6d6ce8301e7a42a1b59b533cc894ac85",
+        "5206419c3e6935f289e75809c017450d37b70d8a",
+        "2e022ff5307ea6eb860aa546dd7a814070c6676a",
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "f4f7dd4bbb02ab817058959901ff6da8ac677fb5",
+        "3bcd89f6b77487ac51554803e90d4f57e4b854a6",
+        "b62bd8d9bf16accf13fa2599942ae057471c7d9f",
+        "d29492959d13f7f4aeff646a3700cf19ae732018"
+      ],
+      "observed_JSON": [
+        [
+          "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "2d823896cd5aa0bc28ff6ec802d51d01248c60c7",
+          "20db29043674ca849f042a9a74bd4d334e52750d",
+          "314d2670ba3d7864dc8203dbcbdf875d29a68568",
+          "0f27b534703ca9d045e152bc5bee1dca67e27b1e",
+          "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "1a5584fca53e8ff7c1ce5345012723f1694cd186",
+          "3b890860c74a08b3a2d4c508eb64f1e23e8559ab",
+          "3716f9df863c5e24b58587b01268bf9146546f0e",
+          "296ad0f4ce332a3188b04db1fad3024f45f61fcb",
+          "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "cbe34832d1846888b2bd9fb8debf873ed9564234",
+          "5fabe19b6d6ce8301e7a42a1b59b533cc894ac85",
+          "5206419c3e6935f289e75809c017450d37b70d8a",
+          "2e022ff5307ea6eb860aa546dd7a814070c6676a",
+          "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "f4f7dd4bbb02ab817058959901ff6da8ac677fb5",
+          "3bcd89f6b77487ac51554803e90d4f57e4b854a6",
+          "b62bd8d9bf16accf13fa2599942ae057471c7d9f",
+          "d29492959d13f7f4aeff646a3700cf19ae732018"
+        ]
+      ],
+      "pass": true,
+      "native": {
+        "command": [
+          "local-redis-cli",
+          "-s",
+          "<own-local-socket>",
+          "-n",
+          "1",
+          "--json",
+          "-3",
+          "--quoted-input",
+          "\"\\x45\\x56\\x41\\x4c\"",
+          "\"\\x66\\x6f\\x72\\x20\\x5f\\x2c\\x6b\\x20\\x69\\x6e\\x20\\x69\\x70\\x61\\x69\\x72\\x73\\x28\\x4b\\x45\\x59\\x53\\x29\\x20\\x64\\x6f\\x20\\x69\\x66\\x20\\x72\\x65\\x64\\x69\\x73\\x2e\\x63\\x61\\x6c\\x6c\\x28\\x27\\x45\\x58\\x49\\x53\\x54\\x53\\x27\\x2c\\x6b\\x29\\x7e\\x3d\\x30\\x20\\x74\\x68\\x65\\x6e\\x20\\x72\\x65\\x74\\x75\\x72\\x6e\\x20\\x72\\x65\\x64\\x69\\x73\\x2e\\x65\\x72\\x72\\x6f\\x72\\x5f\\x72\\x65\\x70\\x6c\\x79\\x28\\x27\\x6f\\x77\\x6e\\x20\\x66\\x72\\x65\\x73\\x68\\x20\\x6b\\x65\\x79\\x20\\x61\\x6c\\x72\\x65\\x61\\x64\\x79\\x20\\x65\\x78\\x69\\x73\\x74\\x73\\x27\\x29\\x20\\x65\\x6e\\x64\\x20\\x65\\x6e\\x64\\x3b\\x6c\\x6f\\x63\\x61\\x6c\\x20\\x6f\\x75\\x74\\x3d\\x7b\\x7d\\x3b\\x66\\x6f\\x72\\x20\\x69\\x2c\\x6b\\x20\\x69\\x6e\\x20\\x69\\x70\\x61\\x69\\x72\\x73\\x28\\x4b\\x45\\x59\\x53\\x29\\x20\\x64\\x6f\\x20\\x72\\x65\\x64\\x69\\x73\\x2e\\x63\\x61\\x6c\\x6c\\x28\\x27\\x53\\x45\\x54\\x27\\x2c\\x6b\\x2c\\x41\\x52\\x47\\x56\\x5b\\x69\\x5d\\x29\\x3b\\x6f\\x75\\x74\\x5b\\x69\\x5d\\x3d\\x72\\x65\\x64\\x69\\x73\\x2e\\x73\\x68\\x61\\x31\\x68\\x65\\x78\\x28\\x72\\x65\\x64\\x69\\x73\\x2e\\x63\\x61\\x6c\\x6c\\x28\\x27\\x47\\x45\\x54\\x27\\x2c\\x6b\\x29\\x29\\x20\\x65\\x6e\\x64\\x3b\\x72\\x65\\x74\\x75\\x72\\x6e\\x20\\x6f\\x75\\x74\"",
+          "\"\\x32\\x30\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x30\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x31\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x32\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x33\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x34\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x35\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x36\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x37\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x38\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x39\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x30\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x31\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x32\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x33\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x34\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x35\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x36\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x37\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x38\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x39\"",
+          "\"\"",
+          "\"\\x44\\x42\\x31\\x20\\x69\\x74\\x65\\x6d\\x31\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x31\\x20\\x69\\x74\\x65\\x6d\\x32\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x31\\x20\\x69\\x74\\x65\\x6d\\x33\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x31\\x20\\x69\\x74\\x65\\x6d\\x34\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\"",
+          "\"\\x44\\x42\\x31\\x20\\x69\\x74\\x65\\x6d\\x36\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x31\\x20\\x69\\x74\\x65\\x6d\\x37\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x31\\x20\\x69\\x74\\x65\\x6d\\x38\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x31\\x20\\x69\\x74\\x65\\x6d\\x39\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\"",
+          "\"\\x44\\x42\\x31\\x20\\x69\\x74\\x65\\x6d\\x31\\x31\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x31\\x20\\x69\\x74\\x65\\x6d\\x31\\x32\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x31\\x20\\x69\\x74\\x65\\x6d\\x31\\x33\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x31\\x20\\x69\\x74\\x65\\x6d\\x31\\x34\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\"",
+          "\"\\x44\\x42\\x31\\x20\\x69\\x74\\x65\\x6d\\x31\\x36\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x31\\x20\\x69\\x74\\x65\\x6d\\x31\\x37\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x31\\x20\\x69\\x74\\x65\\x6d\\x31\\x38\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x31\\x20\\x69\\x74\\x65\\x6d\\x31\\x39\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\""
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 0.006,
+        "decoded_JSON": [
+          [
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "2d823896cd5aa0bc28ff6ec802d51d01248c60c7",
+            "20db29043674ca849f042a9a74bd4d334e52750d",
+            "314d2670ba3d7864dc8203dbcbdf875d29a68568",
+            "0f27b534703ca9d045e152bc5bee1dca67e27b1e",
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "1a5584fca53e8ff7c1ce5345012723f1694cd186",
+            "3b890860c74a08b3a2d4c508eb64f1e23e8559ab",
+            "3716f9df863c5e24b58587b01268bf9146546f0e",
+            "296ad0f4ce332a3188b04db1fad3024f45f61fcb",
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "cbe34832d1846888b2bd9fb8debf873ed9564234",
+            "5fabe19b6d6ce8301e7a42a1b59b533cc894ac85",
+            "5206419c3e6935f289e75809c017450d37b70d8a",
+            "2e022ff5307ea6eb860aa546dd7a814070c6676a",
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "f4f7dd4bbb02ab817058959901ff6da8ac677fb5",
+            "3bcd89f6b77487ac51554803e90d4f57e4b854a6",
+            "b62bd8d9bf16accf13fa2599942ae057471c7d9f",
+            "d29492959d13f7f4aeff646a3700cf19ae732018"
+          ]
+        ],
+        "arrival_seconds": [
+          0.006
+        ],
+        "output": "[\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"2d823896cd5aa0bc28ff6ec802d51d01248c60c7\",\"20db29043674ca849f042a9a74bd4d334e52750d\",\"314d2670ba3d7864dc8203dbcbdf875d29a68568\",\"0f27b534703ca9d045e152bc5bee1dca67e27b1e\",\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"1a5584fca53e8ff7c1ce5345012723f1694cd186\",\"3b890860c74a08b3a2d4c508eb64f1e23e8559ab\",\"3716f9df863c5e24b58587b01268bf9146546f0e\",\"296ad0f4ce332a3188b04db1fad3024f45f61fcb\",\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"cbe34832d1846888b2bd9fb8debf873ed9564234\",\"5fabe19b6d6ce8301e7a42a1b59b533cc894ac85\",\"5206419c3e6935f289e75809c017450d37b70d8a\",\"2e022ff5307ea6eb860aa546dd7a814070c6676a\",\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"f4f7dd4bbb02ab817058959901ff6da8ac677fb5\",\"3bcd89f6b77487ac51554803e90d4f57e4b854a6\",\"b62bd8d9bf16accf13fa2599942ae057471c7d9f\",\"d29492959d13f7f4aeff646a3700cf19ae732018\"]\n",
+        "own_process_group_cleaned": true
+      }
+    },
+    {
+      "label": "write-db2",
+      "actor": "render",
+      "database_index": 2,
+      "intent": "ordinary owned nonce data operation; no replay after ambiguous outcome",
+      "expected": [
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "ddb216adcbb522af28dc83fcfb7eb115c6ef4b94",
+        "b8b3b0c5543b05a1c7e2a5da3c223eb4cb92bc86",
+        "d56dd1efbd3a48af429e50d3e8ee404d2eb13d96",
+        "caa77c8e255bb8f51751b6db377595623e2ef4ac",
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "1afb83a0d255d0b5010985bd11e20d37534ff385",
+        "67d3e64ec5aa38ad7b14000349c2f8be6c185c85",
+        "a5d80d2be2191a41b0a7cd491a391deb6284843f",
+        "ca6e7d81e70d336355717d52e4de76ed26eaf50c",
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "ca39ab8e40e2e66c69e09d3314b76cf4ea66656b",
+        "a41eb8b3af576392c98b52776b9fb910bb876322",
+        "940803c9bba1cbb13d3c7e7a1b22b7975df8772e",
+        "45b6e8e2b8765969429d6f260bdd234d3ae28b68",
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "de14ab81fb538d20815ec51751b549e30b1c93eb",
+        "4d24dab6f4ac5eda6deef6a71a75749c5197f057",
+        "d2bbf6bf3c32760155784e3fc66e63d5e687fded",
+        "26e416c25e0e75d4d1d68df1163e86b53e52c847"
+      ],
+      "observed_JSON": [
+        [
+          "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "ddb216adcbb522af28dc83fcfb7eb115c6ef4b94",
+          "b8b3b0c5543b05a1c7e2a5da3c223eb4cb92bc86",
+          "d56dd1efbd3a48af429e50d3e8ee404d2eb13d96",
+          "caa77c8e255bb8f51751b6db377595623e2ef4ac",
+          "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "1afb83a0d255d0b5010985bd11e20d37534ff385",
+          "67d3e64ec5aa38ad7b14000349c2f8be6c185c85",
+          "a5d80d2be2191a41b0a7cd491a391deb6284843f",
+          "ca6e7d81e70d336355717d52e4de76ed26eaf50c",
+          "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "ca39ab8e40e2e66c69e09d3314b76cf4ea66656b",
+          "a41eb8b3af576392c98b52776b9fb910bb876322",
+          "940803c9bba1cbb13d3c7e7a1b22b7975df8772e",
+          "45b6e8e2b8765969429d6f260bdd234d3ae28b68",
+          "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "de14ab81fb538d20815ec51751b549e30b1c93eb",
+          "4d24dab6f4ac5eda6deef6a71a75749c5197f057",
+          "d2bbf6bf3c32760155784e3fc66e63d5e687fded",
+          "26e416c25e0e75d4d1d68df1163e86b53e52c847"
+        ]
+      ],
+      "pass": true,
+      "native": {
+        "command": [
+          "local-redis-cli",
+          "-s",
+          "<own-local-socket>",
+          "-n",
+          "2",
+          "--json",
+          "-3",
+          "--quoted-input",
+          "\"\\x45\\x56\\x41\\x4c\"",
+          "\"\\x66\\x6f\\x72\\x20\\x5f\\x2c\\x6b\\x20\\x69\\x6e\\x20\\x69\\x70\\x61\\x69\\x72\\x73\\x28\\x4b\\x45\\x59\\x53\\x29\\x20\\x64\\x6f\\x20\\x69\\x66\\x20\\x72\\x65\\x64\\x69\\x73\\x2e\\x63\\x61\\x6c\\x6c\\x28\\x27\\x45\\x58\\x49\\x53\\x54\\x53\\x27\\x2c\\x6b\\x29\\x7e\\x3d\\x30\\x20\\x74\\x68\\x65\\x6e\\x20\\x72\\x65\\x74\\x75\\x72\\x6e\\x20\\x72\\x65\\x64\\x69\\x73\\x2e\\x65\\x72\\x72\\x6f\\x72\\x5f\\x72\\x65\\x70\\x6c\\x79\\x28\\x27\\x6f\\x77\\x6e\\x20\\x66\\x72\\x65\\x73\\x68\\x20\\x6b\\x65\\x79\\x20\\x61\\x6c\\x72\\x65\\x61\\x64\\x79\\x20\\x65\\x78\\x69\\x73\\x74\\x73\\x27\\x29\\x20\\x65\\x6e\\x64\\x20\\x65\\x6e\\x64\\x3b\\x6c\\x6f\\x63\\x61\\x6c\\x20\\x6f\\x75\\x74\\x3d\\x7b\\x7d\\x3b\\x66\\x6f\\x72\\x20\\x69\\x2c\\x6b\\x20\\x69\\x6e\\x20\\x69\\x70\\x61\\x69\\x72\\x73\\x28\\x4b\\x45\\x59\\x53\\x29\\x20\\x64\\x6f\\x20\\x72\\x65\\x64\\x69\\x73\\x2e\\x63\\x61\\x6c\\x6c\\x28\\x27\\x53\\x45\\x54\\x27\\x2c\\x6b\\x2c\\x41\\x52\\x47\\x56\\x5b\\x69\\x5d\\x29\\x3b\\x6f\\x75\\x74\\x5b\\x69\\x5d\\x3d\\x72\\x65\\x64\\x69\\x73\\x2e\\x73\\x68\\x61\\x31\\x68\\x65\\x78\\x28\\x72\\x65\\x64\\x69\\x73\\x2e\\x63\\x61\\x6c\\x6c\\x28\\x27\\x47\\x45\\x54\\x27\\x2c\\x6b\\x29\\x29\\x20\\x65\\x6e\\x64\\x3b\\x72\\x65\\x74\\x75\\x72\\x6e\\x20\\x6f\\x75\\x74\"",
+          "\"\\x32\\x30\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x30\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x31\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x32\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x33\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x34\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x35\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x36\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x37\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x38\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x39\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x30\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x31\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x32\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x33\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x34\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x35\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x36\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x37\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x38\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x39\"",
+          "\"\"",
+          "\"\\x44\\x42\\x32\\x20\\x69\\x74\\x65\\x6d\\x31\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x32\\x20\\x69\\x74\\x65\\x6d\\x32\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x32\\x20\\x69\\x74\\x65\\x6d\\x33\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x32\\x20\\x69\\x74\\x65\\x6d\\x34\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\"",
+          "\"\\x44\\x42\\x32\\x20\\x69\\x74\\x65\\x6d\\x36\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x32\\x20\\x69\\x74\\x65\\x6d\\x37\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x32\\x20\\x69\\x74\\x65\\x6d\\x38\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x32\\x20\\x69\\x74\\x65\\x6d\\x39\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\"",
+          "\"\\x44\\x42\\x32\\x20\\x69\\x74\\x65\\x6d\\x31\\x31\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x32\\x20\\x69\\x74\\x65\\x6d\\x31\\x32\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x32\\x20\\x69\\x74\\x65\\x6d\\x31\\x33\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x32\\x20\\x69\\x74\\x65\\x6d\\x31\\x34\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\"",
+          "\"\\x44\\x42\\x32\\x20\\x69\\x74\\x65\\x6d\\x31\\x36\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x32\\x20\\x69\\x74\\x65\\x6d\\x31\\x37\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x32\\x20\\x69\\x74\\x65\\x6d\\x31\\x38\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x32\\x20\\x69\\x74\\x65\\x6d\\x31\\x39\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\""
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 0.006,
+        "decoded_JSON": [
+          [
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "ddb216adcbb522af28dc83fcfb7eb115c6ef4b94",
+            "b8b3b0c5543b05a1c7e2a5da3c223eb4cb92bc86",
+            "d56dd1efbd3a48af429e50d3e8ee404d2eb13d96",
+            "caa77c8e255bb8f51751b6db377595623e2ef4ac",
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "1afb83a0d255d0b5010985bd11e20d37534ff385",
+            "67d3e64ec5aa38ad7b14000349c2f8be6c185c85",
+            "a5d80d2be2191a41b0a7cd491a391deb6284843f",
+            "ca6e7d81e70d336355717d52e4de76ed26eaf50c",
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "ca39ab8e40e2e66c69e09d3314b76cf4ea66656b",
+            "a41eb8b3af576392c98b52776b9fb910bb876322",
+            "940803c9bba1cbb13d3c7e7a1b22b7975df8772e",
+            "45b6e8e2b8765969429d6f260bdd234d3ae28b68",
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "de14ab81fb538d20815ec51751b549e30b1c93eb",
+            "4d24dab6f4ac5eda6deef6a71a75749c5197f057",
+            "d2bbf6bf3c32760155784e3fc66e63d5e687fded",
+            "26e416c25e0e75d4d1d68df1163e86b53e52c847"
+          ]
+        ],
+        "arrival_seconds": [
+          0.005
+        ],
+        "output": "[\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"ddb216adcbb522af28dc83fcfb7eb115c6ef4b94\",\"b8b3b0c5543b05a1c7e2a5da3c223eb4cb92bc86\",\"d56dd1efbd3a48af429e50d3e8ee404d2eb13d96\",\"caa77c8e255bb8f51751b6db377595623e2ef4ac\",\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"1afb83a0d255d0b5010985bd11e20d37534ff385\",\"67d3e64ec5aa38ad7b14000349c2f8be6c185c85\",\"a5d80d2be2191a41b0a7cd491a391deb6284843f\",\"ca6e7d81e70d336355717d52e4de76ed26eaf50c\",\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"ca39ab8e40e2e66c69e09d3314b76cf4ea66656b\",\"a41eb8b3af576392c98b52776b9fb910bb876322\",\"940803c9bba1cbb13d3c7e7a1b22b7975df8772e\",\"45b6e8e2b8765969429d6f260bdd234d3ae28b68\",\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"de14ab81fb538d20815ec51751b549e30b1c93eb\",\"4d24dab6f4ac5eda6deef6a71a75749c5197f057\",\"d2bbf6bf3c32760155784e3fc66e63d5e687fded\",\"26e416c25e0e75d4d1d68df1163e86b53e52c847\"]\n",
+        "own_process_group_cleaned": true
+      }
+    },
+    {
+      "label": "cross-read-db1",
+      "actor": "render",
+      "database_index": 1,
+      "intent": "ordinary owned nonce data operation; no replay after ambiguous outcome",
+      "expected": [
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "2d823896cd5aa0bc28ff6ec802d51d01248c60c7",
+        "20db29043674ca849f042a9a74bd4d334e52750d",
+        "314d2670ba3d7864dc8203dbcbdf875d29a68568",
+        "0f27b534703ca9d045e152bc5bee1dca67e27b1e",
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "1a5584fca53e8ff7c1ce5345012723f1694cd186",
+        "3b890860c74a08b3a2d4c508eb64f1e23e8559ab",
+        "3716f9df863c5e24b58587b01268bf9146546f0e",
+        "296ad0f4ce332a3188b04db1fad3024f45f61fcb",
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "cbe34832d1846888b2bd9fb8debf873ed9564234",
+        "5fabe19b6d6ce8301e7a42a1b59b533cc894ac85",
+        "5206419c3e6935f289e75809c017450d37b70d8a",
+        "2e022ff5307ea6eb860aa546dd7a814070c6676a",
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "f4f7dd4bbb02ab817058959901ff6da8ac677fb5",
+        "3bcd89f6b77487ac51554803e90d4f57e4b854a6",
+        "b62bd8d9bf16accf13fa2599942ae057471c7d9f",
+        "d29492959d13f7f4aeff646a3700cf19ae732018"
+      ],
+      "observed_JSON": [
+        [
+          "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "2d823896cd5aa0bc28ff6ec802d51d01248c60c7",
+          "20db29043674ca849f042a9a74bd4d334e52750d",
+          "314d2670ba3d7864dc8203dbcbdf875d29a68568",
+          "0f27b534703ca9d045e152bc5bee1dca67e27b1e",
+          "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "1a5584fca53e8ff7c1ce5345012723f1694cd186",
+          "3b890860c74a08b3a2d4c508eb64f1e23e8559ab",
+          "3716f9df863c5e24b58587b01268bf9146546f0e",
+          "296ad0f4ce332a3188b04db1fad3024f45f61fcb",
+          "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "cbe34832d1846888b2bd9fb8debf873ed9564234",
+          "5fabe19b6d6ce8301e7a42a1b59b533cc894ac85",
+          "5206419c3e6935f289e75809c017450d37b70d8a",
+          "2e022ff5307ea6eb860aa546dd7a814070c6676a",
+          "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "f4f7dd4bbb02ab817058959901ff6da8ac677fb5",
+          "3bcd89f6b77487ac51554803e90d4f57e4b854a6",
+          "b62bd8d9bf16accf13fa2599942ae057471c7d9f",
+          "d29492959d13f7f4aeff646a3700cf19ae732018"
+        ]
+      ],
+      "pass": true,
+      "native": {
+        "command": [
+          "local-redis-cli",
+          "-s",
+          "<own-local-socket>",
+          "-n",
+          "1",
+          "--json",
+          "-3",
+          "--quoted-input",
+          "\"\\x45\\x56\\x41\\x4c\"",
+          "\"\\x6c\\x6f\\x63\\x61\\x6c\\x20\\x6f\\x75\\x74\\x3d\\x7b\\x7d\\x3b\\x66\\x6f\\x72\\x20\\x69\\x2c\\x6b\\x20\\x69\\x6e\\x20\\x69\\x70\\x61\\x69\\x72\\x73\\x28\\x4b\\x45\\x59\\x53\\x29\\x20\\x64\\x6f\\x20\\x6c\\x6f\\x63\\x61\\x6c\\x20\\x76\\x3d\\x72\\x65\\x64\\x69\\x73\\x2e\\x63\\x61\\x6c\\x6c\\x28\\x27\\x47\\x45\\x54\\x27\\x2c\\x6b\\x29\\x3b\\x6f\\x75\\x74\\x5b\\x69\\x5d\\x3d\\x76\\x20\\x61\\x6e\\x64\\x20\\x72\\x65\\x64\\x69\\x73\\x2e\\x73\\x68\\x61\\x31\\x68\\x65\\x78\\x28\\x76\\x29\\x20\\x6f\\x72\\x20\\x27\\x4d\\x49\\x53\\x53\\x49\\x4e\\x47\\x27\\x20\\x65\\x6e\\x64\\x3b\\x72\\x65\\x74\\x75\\x72\\x6e\\x20\\x6f\\x75\\x74\"",
+          "\"\\x32\\x30\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x30\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x31\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x32\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x33\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x34\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x35\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x36\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x37\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x38\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x39\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x30\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x31\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x32\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x33\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x34\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x35\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x36\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x37\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x38\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x39\""
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 0.005,
+        "decoded_JSON": [
+          [
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "2d823896cd5aa0bc28ff6ec802d51d01248c60c7",
+            "20db29043674ca849f042a9a74bd4d334e52750d",
+            "314d2670ba3d7864dc8203dbcbdf875d29a68568",
+            "0f27b534703ca9d045e152bc5bee1dca67e27b1e",
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "1a5584fca53e8ff7c1ce5345012723f1694cd186",
+            "3b890860c74a08b3a2d4c508eb64f1e23e8559ab",
+            "3716f9df863c5e24b58587b01268bf9146546f0e",
+            "296ad0f4ce332a3188b04db1fad3024f45f61fcb",
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "cbe34832d1846888b2bd9fb8debf873ed9564234",
+            "5fabe19b6d6ce8301e7a42a1b59b533cc894ac85",
+            "5206419c3e6935f289e75809c017450d37b70d8a",
+            "2e022ff5307ea6eb860aa546dd7a814070c6676a",
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "f4f7dd4bbb02ab817058959901ff6da8ac677fb5",
+            "3bcd89f6b77487ac51554803e90d4f57e4b854a6",
+            "b62bd8d9bf16accf13fa2599942ae057471c7d9f",
+            "d29492959d13f7f4aeff646a3700cf19ae732018"
+          ]
+        ],
+        "arrival_seconds": [
+          0.005
+        ],
+        "output": "[\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"2d823896cd5aa0bc28ff6ec802d51d01248c60c7\",\"20db29043674ca849f042a9a74bd4d334e52750d\",\"314d2670ba3d7864dc8203dbcbdf875d29a68568\",\"0f27b534703ca9d045e152bc5bee1dca67e27b1e\",\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"1a5584fca53e8ff7c1ce5345012723f1694cd186\",\"3b890860c74a08b3a2d4c508eb64f1e23e8559ab\",\"3716f9df863c5e24b58587b01268bf9146546f0e\",\"296ad0f4ce332a3188b04db1fad3024f45f61fcb\",\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"cbe34832d1846888b2bd9fb8debf873ed9564234\",\"5fabe19b6d6ce8301e7a42a1b59b533cc894ac85\",\"5206419c3e6935f289e75809c017450d37b70d8a\",\"2e022ff5307ea6eb860aa546dd7a814070c6676a\",\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"f4f7dd4bbb02ab817058959901ff6da8ac677fb5\",\"3bcd89f6b77487ac51554803e90d4f57e4b854a6\",\"b62bd8d9bf16accf13fa2599942ae057471c7d9f\",\"d29492959d13f7f4aeff646a3700cf19ae732018\"]\n",
+        "own_process_group_cleaned": true
+      }
+    },
+    {
+      "label": "cross-read-db2",
+      "actor": "bex",
+      "database_index": 2,
+      "intent": "ordinary owned nonce data operation; no replay after ambiguous outcome",
+      "expected": [
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "ddb216adcbb522af28dc83fcfb7eb115c6ef4b94",
+        "b8b3b0c5543b05a1c7e2a5da3c223eb4cb92bc86",
+        "d56dd1efbd3a48af429e50d3e8ee404d2eb13d96",
+        "caa77c8e255bb8f51751b6db377595623e2ef4ac",
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "1afb83a0d255d0b5010985bd11e20d37534ff385",
+        "67d3e64ec5aa38ad7b14000349c2f8be6c185c85",
+        "a5d80d2be2191a41b0a7cd491a391deb6284843f",
+        "ca6e7d81e70d336355717d52e4de76ed26eaf50c",
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "ca39ab8e40e2e66c69e09d3314b76cf4ea66656b",
+        "a41eb8b3af576392c98b52776b9fb910bb876322",
+        "940803c9bba1cbb13d3c7e7a1b22b7975df8772e",
+        "45b6e8e2b8765969429d6f260bdd234d3ae28b68",
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "de14ab81fb538d20815ec51751b549e30b1c93eb",
+        "4d24dab6f4ac5eda6deef6a71a75749c5197f057",
+        "d2bbf6bf3c32760155784e3fc66e63d5e687fded",
+        "26e416c25e0e75d4d1d68df1163e86b53e52c847"
+      ],
+      "observed_JSON": [
+        [
+          "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "ddb216adcbb522af28dc83fcfb7eb115c6ef4b94",
+          "b8b3b0c5543b05a1c7e2a5da3c223eb4cb92bc86",
+          "d56dd1efbd3a48af429e50d3e8ee404d2eb13d96",
+          "caa77c8e255bb8f51751b6db377595623e2ef4ac",
+          "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "1afb83a0d255d0b5010985bd11e20d37534ff385",
+          "67d3e64ec5aa38ad7b14000349c2f8be6c185c85",
+          "a5d80d2be2191a41b0a7cd491a391deb6284843f",
+          "ca6e7d81e70d336355717d52e4de76ed26eaf50c",
+          "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "ca39ab8e40e2e66c69e09d3314b76cf4ea66656b",
+          "a41eb8b3af576392c98b52776b9fb910bb876322",
+          "940803c9bba1cbb13d3c7e7a1b22b7975df8772e",
+          "45b6e8e2b8765969429d6f260bdd234d3ae28b68",
+          "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "de14ab81fb538d20815ec51751b549e30b1c93eb",
+          "4d24dab6f4ac5eda6deef6a71a75749c5197f057",
+          "d2bbf6bf3c32760155784e3fc66e63d5e687fded",
+          "26e416c25e0e75d4d1d68df1163e86b53e52c847"
+        ]
+      ],
+      "pass": true,
+      "native": {
+        "command": [
+          "local-redis-cli",
+          "-s",
+          "<own-local-socket>",
+          "-n",
+          "2",
+          "--json",
+          "-3",
+          "--quoted-input",
+          "\"\\x45\\x56\\x41\\x4c\"",
+          "\"\\x6c\\x6f\\x63\\x61\\x6c\\x20\\x6f\\x75\\x74\\x3d\\x7b\\x7d\\x3b\\x66\\x6f\\x72\\x20\\x69\\x2c\\x6b\\x20\\x69\\x6e\\x20\\x69\\x70\\x61\\x69\\x72\\x73\\x28\\x4b\\x45\\x59\\x53\\x29\\x20\\x64\\x6f\\x20\\x6c\\x6f\\x63\\x61\\x6c\\x20\\x76\\x3d\\x72\\x65\\x64\\x69\\x73\\x2e\\x63\\x61\\x6c\\x6c\\x28\\x27\\x47\\x45\\x54\\x27\\x2c\\x6b\\x29\\x3b\\x6f\\x75\\x74\\x5b\\x69\\x5d\\x3d\\x76\\x20\\x61\\x6e\\x64\\x20\\x72\\x65\\x64\\x69\\x73\\x2e\\x73\\x68\\x61\\x31\\x68\\x65\\x78\\x28\\x76\\x29\\x20\\x6f\\x72\\x20\\x27\\x4d\\x49\\x53\\x53\\x49\\x4e\\x47\\x27\\x20\\x65\\x6e\\x64\\x3b\\x72\\x65\\x74\\x75\\x72\\x6e\\x20\\x6f\\x75\\x74\"",
+          "\"\\x32\\x30\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x30\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x31\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x32\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x33\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x34\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x35\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x36\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x37\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x38\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x39\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x30\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x31\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x32\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x33\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x34\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x35\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x36\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x37\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x38\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x39\""
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 0.007,
+        "decoded_JSON": [
+          [
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "ddb216adcbb522af28dc83fcfb7eb115c6ef4b94",
+            "b8b3b0c5543b05a1c7e2a5da3c223eb4cb92bc86",
+            "d56dd1efbd3a48af429e50d3e8ee404d2eb13d96",
+            "caa77c8e255bb8f51751b6db377595623e2ef4ac",
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "1afb83a0d255d0b5010985bd11e20d37534ff385",
+            "67d3e64ec5aa38ad7b14000349c2f8be6c185c85",
+            "a5d80d2be2191a41b0a7cd491a391deb6284843f",
+            "ca6e7d81e70d336355717d52e4de76ed26eaf50c",
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "ca39ab8e40e2e66c69e09d3314b76cf4ea66656b",
+            "a41eb8b3af576392c98b52776b9fb910bb876322",
+            "940803c9bba1cbb13d3c7e7a1b22b7975df8772e",
+            "45b6e8e2b8765969429d6f260bdd234d3ae28b68",
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "de14ab81fb538d20815ec51751b549e30b1c93eb",
+            "4d24dab6f4ac5eda6deef6a71a75749c5197f057",
+            "d2bbf6bf3c32760155784e3fc66e63d5e687fded",
+            "26e416c25e0e75d4d1d68df1163e86b53e52c847"
+          ]
+        ],
+        "arrival_seconds": [
+          0.006
+        ],
+        "output": "[\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"ddb216adcbb522af28dc83fcfb7eb115c6ef4b94\",\"b8b3b0c5543b05a1c7e2a5da3c223eb4cb92bc86\",\"d56dd1efbd3a48af429e50d3e8ee404d2eb13d96\",\"caa77c8e255bb8f51751b6db377595623e2ef4ac\",\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"1afb83a0d255d0b5010985bd11e20d37534ff385\",\"67d3e64ec5aa38ad7b14000349c2f8be6c185c85\",\"a5d80d2be2191a41b0a7cd491a391deb6284843f\",\"ca6e7d81e70d336355717d52e4de76ed26eaf50c\",\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"ca39ab8e40e2e66c69e09d3314b76cf4ea66656b\",\"a41eb8b3af576392c98b52776b9fb910bb876322\",\"940803c9bba1cbb13d3c7e7a1b22b7975df8772e\",\"45b6e8e2b8765969429d6f260bdd234d3ae28b68\",\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"de14ab81fb538d20815ec51751b549e30b1c93eb\",\"4d24dab6f4ac5eda6deef6a71a75749c5197f057\",\"d2bbf6bf3c32760155784e3fc66e63d5e687fded\",\"26e416c25e0e75d4d1d68df1163e86b53e52c847\"]\n",
+        "own_process_group_cleaned": true
+      }
+    },
+    {
+      "label": "CAS-match-db1",
+      "actor": "render",
+      "database_index": 1,
+      "intent": "ordinary owned nonce data operation; no replay after ambiguous outcome",
+      "expected": [
+        1,
+        "a39e3fbc622f58b5c9cfbcda0dc5ca792e502d17"
+      ],
+      "observed_JSON": [
+        [
+          1,
+          "a39e3fbc622f58b5c9cfbcda0dc5ca792e502d17"
+        ]
+      ],
+      "pass": true,
+      "native": {
+        "command": [
+          "local-redis-cli",
+          "-s",
+          "<own-local-socket>",
+          "-n",
+          "1",
+          "--json",
+          "-3",
+          "--quoted-input",
+          "\"\\x45\\x56\\x41\\x4c\"",
+          "\"\\x6c\\x6f\\x63\\x61\\x6c\\x20\\x76\\x3d\\x72\\x65\\x64\\x69\\x73\\x2e\\x63\\x61\\x6c\\x6c\\x28\\x27\\x47\\x45\\x54\\x27\\x2c\\x4b\\x45\\x59\\x53\\x5b\\x31\\x5d\\x29\\x3b\\x69\\x66\\x20\\x76\\x3d\\x3d\\x41\\x52\\x47\\x56\\x5b\\x31\\x5d\\x20\\x74\\x68\\x65\\x6e\\x20\\x72\\x65\\x64\\x69\\x73\\x2e\\x63\\x61\\x6c\\x6c\\x28\\x27\\x53\\x45\\x54\\x27\\x2c\\x4b\\x45\\x59\\x53\\x5b\\x31\\x5d\\x2c\\x41\\x52\\x47\\x56\\x5b\\x32\\x5d\\x29\\x3b\\x72\\x65\\x74\\x75\\x72\\x6e\\x20\\x7b\\x31\\x2c\\x72\\x65\\x64\\x69\\x73\\x2e\\x73\\x68\\x61\\x31\\x68\\x65\\x78\\x28\\x72\\x65\\x64\\x69\\x73\\x2e\\x63\\x61\\x6c\\x6c\\x28\\x27\\x47\\x45\\x54\\x27\\x2c\\x4b\\x45\\x59\\x53\\x5b\\x31\\x5d\\x29\\x29\\x7d\\x20\\x65\\x6e\\x64\\x3b\\x72\\x65\\x74\\x75\\x72\\x6e\\x20\\x7b\\x30\\x2c\\x76\\x20\\x61\\x6e\\x64\\x20\\x72\\x65\\x64\\x69\\x73\\x2e\\x73\\x68\\x61\\x31\\x68\\x65\\x78\\x28\\x76\\x29\\x20\\x6f\\x72\\x20\\x27\\x4d\\x49\\x53\\x53\\x49\\x4e\\x47\\x27\\x7d\"",
+          "\"\\x31\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x31\"",
+          "\"\\x44\\x42\\x31\\x20\\x69\\x74\\x65\\x6d\\x31\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x31\\x20\\x69\\x74\\x65\\x6d\\x31\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\\x7c\\x75\\x70\\x64\\x61\\x74\\x65\\x64\\x2d\\x64\\x62\\x31\""
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 0.005,
+        "decoded_JSON": [
+          [
+            1,
+            "a39e3fbc622f58b5c9cfbcda0dc5ca792e502d17"
+          ]
+        ],
+        "arrival_seconds": [
+          0.005
+        ],
+        "output": "[1,\"a39e3fbc622f58b5c9cfbcda0dc5ca792e502d17\"]\n",
+        "own_process_group_cleaned": true
+      }
+    },
+    {
+      "label": "CAS-stale-db1",
+      "actor": "bex",
+      "database_index": 1,
+      "intent": "ordinary owned nonce data operation; no replay after ambiguous outcome",
+      "expected": [
+        0,
+        "a39e3fbc622f58b5c9cfbcda0dc5ca792e502d17"
+      ],
+      "observed_JSON": [
+        [
+          0,
+          "a39e3fbc622f58b5c9cfbcda0dc5ca792e502d17"
+        ]
+      ],
+      "pass": true,
+      "native": {
+        "command": [
+          "local-redis-cli",
+          "-s",
+          "<own-local-socket>",
+          "-n",
+          "1",
+          "--json",
+          "-3",
+          "--quoted-input",
+          "\"\\x45\\x56\\x41\\x4c\"",
+          "\"\\x6c\\x6f\\x63\\x61\\x6c\\x20\\x76\\x3d\\x72\\x65\\x64\\x69\\x73\\x2e\\x63\\x61\\x6c\\x6c\\x28\\x27\\x47\\x45\\x54\\x27\\x2c\\x4b\\x45\\x59\\x53\\x5b\\x31\\x5d\\x29\\x3b\\x69\\x66\\x20\\x76\\x3d\\x3d\\x41\\x52\\x47\\x56\\x5b\\x31\\x5d\\x20\\x74\\x68\\x65\\x6e\\x20\\x72\\x65\\x64\\x69\\x73\\x2e\\x63\\x61\\x6c\\x6c\\x28\\x27\\x53\\x45\\x54\\x27\\x2c\\x4b\\x45\\x59\\x53\\x5b\\x31\\x5d\\x2c\\x41\\x52\\x47\\x56\\x5b\\x32\\x5d\\x29\\x3b\\x72\\x65\\x74\\x75\\x72\\x6e\\x20\\x7b\\x31\\x2c\\x72\\x65\\x64\\x69\\x73\\x2e\\x73\\x68\\x61\\x31\\x68\\x65\\x78\\x28\\x72\\x65\\x64\\x69\\x73\\x2e\\x63\\x61\\x6c\\x6c\\x28\\x27\\x47\\x45\\x54\\x27\\x2c\\x4b\\x45\\x59\\x53\\x5b\\x31\\x5d\\x29\\x29\\x7d\\x20\\x65\\x6e\\x64\\x3b\\x72\\x65\\x74\\x75\\x72\\x6e\\x20\\x7b\\x30\\x2c\\x76\\x20\\x61\\x6e\\x64\\x20\\x72\\x65\\x64\\x69\\x73\\x2e\\x73\\x68\\x61\\x31\\x68\\x65\\x78\\x28\\x76\\x29\\x20\\x6f\\x72\\x20\\x27\\x4d\\x49\\x53\\x53\\x49\\x4e\\x47\\x27\\x7d\"",
+          "\"\\x31\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x31\"",
+          "\"\\x44\\x42\\x31\\x20\\x69\\x74\\x65\\x6d\\x31\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x31\\x20\\x69\\x74\\x65\\x6d\\x31\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\\x7c\\x6d\\x75\\x73\\x74\\x2d\\x6e\\x6f\\x74\\x2d\\x77\\x72\\x69\\x74\\x65\""
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 0.005,
+        "decoded_JSON": [
+          [
+            0,
+            "a39e3fbc622f58b5c9cfbcda0dc5ca792e502d17"
+          ]
+        ],
+        "arrival_seconds": [
+          0.005
+        ],
+        "output": "[0,\"a39e3fbc622f58b5c9cfbcda0dc5ca792e502d17\"]\n",
+        "own_process_group_cleaned": true
+      }
+    },
+    {
+      "label": "CAS-match-db2",
+      "actor": "bex",
+      "database_index": 2,
+      "intent": "ordinary owned nonce data operation; no replay after ambiguous outcome",
+      "expected": [
+        1,
+        "47607a379f39d73882a239199c7bf279115963ca"
+      ],
+      "observed_JSON": [
+        [
+          1,
+          "47607a379f39d73882a239199c7bf279115963ca"
+        ]
+      ],
+      "pass": true,
+      "native": {
+        "command": [
+          "local-redis-cli",
+          "-s",
+          "<own-local-socket>",
+          "-n",
+          "2",
+          "--json",
+          "-3",
+          "--quoted-input",
+          "\"\\x45\\x56\\x41\\x4c\"",
+          "\"\\x6c\\x6f\\x63\\x61\\x6c\\x20\\x76\\x3d\\x72\\x65\\x64\\x69\\x73\\x2e\\x63\\x61\\x6c\\x6c\\x28\\x27\\x47\\x45\\x54\\x27\\x2c\\x4b\\x45\\x59\\x53\\x5b\\x31\\x5d\\x29\\x3b\\x69\\x66\\x20\\x76\\x3d\\x3d\\x41\\x52\\x47\\x56\\x5b\\x31\\x5d\\x20\\x74\\x68\\x65\\x6e\\x20\\x72\\x65\\x64\\x69\\x73\\x2e\\x63\\x61\\x6c\\x6c\\x28\\x27\\x53\\x45\\x54\\x27\\x2c\\x4b\\x45\\x59\\x53\\x5b\\x31\\x5d\\x2c\\x41\\x52\\x47\\x56\\x5b\\x32\\x5d\\x29\\x3b\\x72\\x65\\x74\\x75\\x72\\x6e\\x20\\x7b\\x31\\x2c\\x72\\x65\\x64\\x69\\x73\\x2e\\x73\\x68\\x61\\x31\\x68\\x65\\x78\\x28\\x72\\x65\\x64\\x69\\x73\\x2e\\x63\\x61\\x6c\\x6c\\x28\\x27\\x47\\x45\\x54\\x27\\x2c\\x4b\\x45\\x59\\x53\\x5b\\x31\\x5d\\x29\\x29\\x7d\\x20\\x65\\x6e\\x64\\x3b\\x72\\x65\\x74\\x75\\x72\\x6e\\x20\\x7b\\x30\\x2c\\x76\\x20\\x61\\x6e\\x64\\x20\\x72\\x65\\x64\\x69\\x73\\x2e\\x73\\x68\\x61\\x31\\x68\\x65\\x78\\x28\\x76\\x29\\x20\\x6f\\x72\\x20\\x27\\x4d\\x49\\x53\\x53\\x49\\x4e\\x47\\x27\\x7d\"",
+          "\"\\x31\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x31\"",
+          "\"\\x44\\x42\\x32\\x20\\x69\\x74\\x65\\x6d\\x31\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x32\\x20\\x69\\x74\\x65\\x6d\\x31\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\\x7c\\x75\\x70\\x64\\x61\\x74\\x65\\x64\\x2d\\x64\\x62\\x32\""
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 0.008,
+        "decoded_JSON": [
+          [
+            1,
+            "47607a379f39d73882a239199c7bf279115963ca"
+          ]
+        ],
+        "arrival_seconds": [
+          0.007
+        ],
+        "output": "[1,\"47607a379f39d73882a239199c7bf279115963ca\"]\n",
+        "own_process_group_cleaned": true
+      }
+    },
+    {
+      "label": "CAS-stale-db2",
+      "actor": "render",
+      "database_index": 2,
+      "intent": "ordinary owned nonce data operation; no replay after ambiguous outcome",
+      "expected": [
+        0,
+        "47607a379f39d73882a239199c7bf279115963ca"
+      ],
+      "observed_JSON": [
+        [
+          0,
+          "47607a379f39d73882a239199c7bf279115963ca"
+        ]
+      ],
+      "pass": true,
+      "native": {
+        "command": [
+          "local-redis-cli",
+          "-s",
+          "<own-local-socket>",
+          "-n",
+          "2",
+          "--json",
+          "-3",
+          "--quoted-input",
+          "\"\\x45\\x56\\x41\\x4c\"",
+          "\"\\x6c\\x6f\\x63\\x61\\x6c\\x20\\x76\\x3d\\x72\\x65\\x64\\x69\\x73\\x2e\\x63\\x61\\x6c\\x6c\\x28\\x27\\x47\\x45\\x54\\x27\\x2c\\x4b\\x45\\x59\\x53\\x5b\\x31\\x5d\\x29\\x3b\\x69\\x66\\x20\\x76\\x3d\\x3d\\x41\\x52\\x47\\x56\\x5b\\x31\\x5d\\x20\\x74\\x68\\x65\\x6e\\x20\\x72\\x65\\x64\\x69\\x73\\x2e\\x63\\x61\\x6c\\x6c\\x28\\x27\\x53\\x45\\x54\\x27\\x2c\\x4b\\x45\\x59\\x53\\x5b\\x31\\x5d\\x2c\\x41\\x52\\x47\\x56\\x5b\\x32\\x5d\\x29\\x3b\\x72\\x65\\x74\\x75\\x72\\x6e\\x20\\x7b\\x31\\x2c\\x72\\x65\\x64\\x69\\x73\\x2e\\x73\\x68\\x61\\x31\\x68\\x65\\x78\\x28\\x72\\x65\\x64\\x69\\x73\\x2e\\x63\\x61\\x6c\\x6c\\x28\\x27\\x47\\x45\\x54\\x27\\x2c\\x4b\\x45\\x59\\x53\\x5b\\x31\\x5d\\x29\\x29\\x7d\\x20\\x65\\x6e\\x64\\x3b\\x72\\x65\\x74\\x75\\x72\\x6e\\x20\\x7b\\x30\\x2c\\x76\\x20\\x61\\x6e\\x64\\x20\\x72\\x65\\x64\\x69\\x73\\x2e\\x73\\x68\\x61\\x31\\x68\\x65\\x78\\x28\\x76\\x29\\x20\\x6f\\x72\\x20\\x27\\x4d\\x49\\x53\\x53\\x49\\x4e\\x47\\x27\\x7d\"",
+          "\"\\x31\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x31\"",
+          "\"\\x44\\x42\\x32\\x20\\x69\\x74\\x65\\x6d\\x31\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\"",
+          "\"\\x44\\x42\\x32\\x20\\x69\\x74\\x65\\x6d\\x31\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x0d\\x0a\\x00\\x74\\x61\\x69\\x6c\\x7c\\x6d\\x75\\x73\\x74\\x2d\\x6e\\x6f\\x74\\x2d\\x77\\x72\\x69\\x74\\x65\""
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 0.007,
+        "decoded_JSON": [
+          [
+            0,
+            "47607a379f39d73882a239199c7bf279115963ca"
+          ]
+        ],
+        "arrival_seconds": [
+          0.006
+        ],
+        "output": "[0,\"47607a379f39d73882a239199c7bf279115963ca\"]\n",
+        "own_process_group_cleaned": true
+      }
+    },
+    {
+      "label": "post-CAS-read-db1",
+      "actor": "bex",
+      "database_index": 1,
+      "intent": "ordinary owned nonce data operation; no replay after ambiguous outcome",
+      "expected": [
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "a39e3fbc622f58b5c9cfbcda0dc5ca792e502d17",
+        "20db29043674ca849f042a9a74bd4d334e52750d",
+        "314d2670ba3d7864dc8203dbcbdf875d29a68568",
+        "0f27b534703ca9d045e152bc5bee1dca67e27b1e",
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "1a5584fca53e8ff7c1ce5345012723f1694cd186",
+        "3b890860c74a08b3a2d4c508eb64f1e23e8559ab",
+        "3716f9df863c5e24b58587b01268bf9146546f0e",
+        "296ad0f4ce332a3188b04db1fad3024f45f61fcb",
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "cbe34832d1846888b2bd9fb8debf873ed9564234",
+        "5fabe19b6d6ce8301e7a42a1b59b533cc894ac85",
+        "5206419c3e6935f289e75809c017450d37b70d8a",
+        "2e022ff5307ea6eb860aa546dd7a814070c6676a",
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "f4f7dd4bbb02ab817058959901ff6da8ac677fb5",
+        "3bcd89f6b77487ac51554803e90d4f57e4b854a6",
+        "b62bd8d9bf16accf13fa2599942ae057471c7d9f",
+        "d29492959d13f7f4aeff646a3700cf19ae732018"
+      ],
+      "observed_JSON": [
+        [
+          "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "a39e3fbc622f58b5c9cfbcda0dc5ca792e502d17",
+          "20db29043674ca849f042a9a74bd4d334e52750d",
+          "314d2670ba3d7864dc8203dbcbdf875d29a68568",
+          "0f27b534703ca9d045e152bc5bee1dca67e27b1e",
+          "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "1a5584fca53e8ff7c1ce5345012723f1694cd186",
+          "3b890860c74a08b3a2d4c508eb64f1e23e8559ab",
+          "3716f9df863c5e24b58587b01268bf9146546f0e",
+          "296ad0f4ce332a3188b04db1fad3024f45f61fcb",
+          "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "cbe34832d1846888b2bd9fb8debf873ed9564234",
+          "5fabe19b6d6ce8301e7a42a1b59b533cc894ac85",
+          "5206419c3e6935f289e75809c017450d37b70d8a",
+          "2e022ff5307ea6eb860aa546dd7a814070c6676a",
+          "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "f4f7dd4bbb02ab817058959901ff6da8ac677fb5",
+          "3bcd89f6b77487ac51554803e90d4f57e4b854a6",
+          "b62bd8d9bf16accf13fa2599942ae057471c7d9f",
+          "d29492959d13f7f4aeff646a3700cf19ae732018"
+        ]
+      ],
+      "pass": true,
+      "native": {
+        "command": [
+          "local-redis-cli",
+          "-s",
+          "<own-local-socket>",
+          "-n",
+          "1",
+          "--json",
+          "-3",
+          "--quoted-input",
+          "\"\\x45\\x56\\x41\\x4c\"",
+          "\"\\x6c\\x6f\\x63\\x61\\x6c\\x20\\x6f\\x75\\x74\\x3d\\x7b\\x7d\\x3b\\x66\\x6f\\x72\\x20\\x69\\x2c\\x6b\\x20\\x69\\x6e\\x20\\x69\\x70\\x61\\x69\\x72\\x73\\x28\\x4b\\x45\\x59\\x53\\x29\\x20\\x64\\x6f\\x20\\x6c\\x6f\\x63\\x61\\x6c\\x20\\x76\\x3d\\x72\\x65\\x64\\x69\\x73\\x2e\\x63\\x61\\x6c\\x6c\\x28\\x27\\x47\\x45\\x54\\x27\\x2c\\x6b\\x29\\x3b\\x6f\\x75\\x74\\x5b\\x69\\x5d\\x3d\\x76\\x20\\x61\\x6e\\x64\\x20\\x72\\x65\\x64\\x69\\x73\\x2e\\x73\\x68\\x61\\x31\\x68\\x65\\x78\\x28\\x76\\x29\\x20\\x6f\\x72\\x20\\x27\\x4d\\x49\\x53\\x53\\x49\\x4e\\x47\\x27\\x20\\x65\\x6e\\x64\\x3b\\x72\\x65\\x74\\x75\\x72\\x6e\\x20\\x6f\\x75\\x74\"",
+          "\"\\x32\\x30\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x30\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x31\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x32\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x33\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x34\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x35\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x36\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x37\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x38\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x39\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x30\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x31\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x32\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x33\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x34\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x35\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x36\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x37\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x38\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x39\""
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 0.005,
+        "decoded_JSON": [
+          [
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "a39e3fbc622f58b5c9cfbcda0dc5ca792e502d17",
+            "20db29043674ca849f042a9a74bd4d334e52750d",
+            "314d2670ba3d7864dc8203dbcbdf875d29a68568",
+            "0f27b534703ca9d045e152bc5bee1dca67e27b1e",
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "1a5584fca53e8ff7c1ce5345012723f1694cd186",
+            "3b890860c74a08b3a2d4c508eb64f1e23e8559ab",
+            "3716f9df863c5e24b58587b01268bf9146546f0e",
+            "296ad0f4ce332a3188b04db1fad3024f45f61fcb",
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "cbe34832d1846888b2bd9fb8debf873ed9564234",
+            "5fabe19b6d6ce8301e7a42a1b59b533cc894ac85",
+            "5206419c3e6935f289e75809c017450d37b70d8a",
+            "2e022ff5307ea6eb860aa546dd7a814070c6676a",
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "f4f7dd4bbb02ab817058959901ff6da8ac677fb5",
+            "3bcd89f6b77487ac51554803e90d4f57e4b854a6",
+            "b62bd8d9bf16accf13fa2599942ae057471c7d9f",
+            "d29492959d13f7f4aeff646a3700cf19ae732018"
+          ]
+        ],
+        "arrival_seconds": [
+          0.005
+        ],
+        "output": "[\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"a39e3fbc622f58b5c9cfbcda0dc5ca792e502d17\",\"20db29043674ca849f042a9a74bd4d334e52750d\",\"314d2670ba3d7864dc8203dbcbdf875d29a68568\",\"0f27b534703ca9d045e152bc5bee1dca67e27b1e\",\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"1a5584fca53e8ff7c1ce5345012723f1694cd186\",\"3b890860c74a08b3a2d4c508eb64f1e23e8559ab\",\"3716f9df863c5e24b58587b01268bf9146546f0e\",\"296ad0f4ce332a3188b04db1fad3024f45f61fcb\",\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"cbe34832d1846888b2bd9fb8debf873ed9564234\",\"5fabe19b6d6ce8301e7a42a1b59b533cc894ac85\",\"5206419c3e6935f289e75809c017450d37b70d8a\",\"2e022ff5307ea6eb860aa546dd7a814070c6676a\",\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"f4f7dd4bbb02ab817058959901ff6da8ac677fb5\",\"3bcd89f6b77487ac51554803e90d4f57e4b854a6\",\"b62bd8d9bf16accf13fa2599942ae057471c7d9f\",\"d29492959d13f7f4aeff646a3700cf19ae732018\"]\n",
+        "own_process_group_cleaned": true
+      }
+    },
+    {
+      "label": "post-CAS-read-db2",
+      "actor": "render",
+      "database_index": 2,
+      "intent": "ordinary owned nonce data operation; no replay after ambiguous outcome",
+      "expected": [
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "47607a379f39d73882a239199c7bf279115963ca",
+        "b8b3b0c5543b05a1c7e2a5da3c223eb4cb92bc86",
+        "d56dd1efbd3a48af429e50d3e8ee404d2eb13d96",
+        "caa77c8e255bb8f51751b6db377595623e2ef4ac",
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "1afb83a0d255d0b5010985bd11e20d37534ff385",
+        "67d3e64ec5aa38ad7b14000349c2f8be6c185c85",
+        "a5d80d2be2191a41b0a7cd491a391deb6284843f",
+        "ca6e7d81e70d336355717d52e4de76ed26eaf50c",
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "ca39ab8e40e2e66c69e09d3314b76cf4ea66656b",
+        "a41eb8b3af576392c98b52776b9fb910bb876322",
+        "940803c9bba1cbb13d3c7e7a1b22b7975df8772e",
+        "45b6e8e2b8765969429d6f260bdd234d3ae28b68",
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+        "de14ab81fb538d20815ec51751b549e30b1c93eb",
+        "4d24dab6f4ac5eda6deef6a71a75749c5197f057",
+        "d2bbf6bf3c32760155784e3fc66e63d5e687fded",
+        "26e416c25e0e75d4d1d68df1163e86b53e52c847"
+      ],
+      "observed_JSON": [
+        [
+          "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "47607a379f39d73882a239199c7bf279115963ca",
+          "b8b3b0c5543b05a1c7e2a5da3c223eb4cb92bc86",
+          "d56dd1efbd3a48af429e50d3e8ee404d2eb13d96",
+          "caa77c8e255bb8f51751b6db377595623e2ef4ac",
+          "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "1afb83a0d255d0b5010985bd11e20d37534ff385",
+          "67d3e64ec5aa38ad7b14000349c2f8be6c185c85",
+          "a5d80d2be2191a41b0a7cd491a391deb6284843f",
+          "ca6e7d81e70d336355717d52e4de76ed26eaf50c",
+          "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "ca39ab8e40e2e66c69e09d3314b76cf4ea66656b",
+          "a41eb8b3af576392c98b52776b9fb910bb876322",
+          "940803c9bba1cbb13d3c7e7a1b22b7975df8772e",
+          "45b6e8e2b8765969429d6f260bdd234d3ae28b68",
+          "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+          "de14ab81fb538d20815ec51751b549e30b1c93eb",
+          "4d24dab6f4ac5eda6deef6a71a75749c5197f057",
+          "d2bbf6bf3c32760155784e3fc66e63d5e687fded",
+          "26e416c25e0e75d4d1d68df1163e86b53e52c847"
+        ]
+      ],
+      "pass": true,
+      "native": {
+        "command": [
+          "local-redis-cli",
+          "-s",
+          "<own-local-socket>",
+          "-n",
+          "2",
+          "--json",
+          "-3",
+          "--quoted-input",
+          "\"\\x45\\x56\\x41\\x4c\"",
+          "\"\\x6c\\x6f\\x63\\x61\\x6c\\x20\\x6f\\x75\\x74\\x3d\\x7b\\x7d\\x3b\\x66\\x6f\\x72\\x20\\x69\\x2c\\x6b\\x20\\x69\\x6e\\x20\\x69\\x70\\x61\\x69\\x72\\x73\\x28\\x4b\\x45\\x59\\x53\\x29\\x20\\x64\\x6f\\x20\\x6c\\x6f\\x63\\x61\\x6c\\x20\\x76\\x3d\\x72\\x65\\x64\\x69\\x73\\x2e\\x63\\x61\\x6c\\x6c\\x28\\x27\\x47\\x45\\x54\\x27\\x2c\\x6b\\x29\\x3b\\x6f\\x75\\x74\\x5b\\x69\\x5d\\x3d\\x76\\x20\\x61\\x6e\\x64\\x20\\x72\\x65\\x64\\x69\\x73\\x2e\\x73\\x68\\x61\\x31\\x68\\x65\\x78\\x28\\x76\\x29\\x20\\x6f\\x72\\x20\\x27\\x4d\\x49\\x53\\x53\\x49\\x4e\\x47\\x27\\x20\\x65\\x6e\\x64\\x3b\\x72\\x65\\x74\\x75\\x72\\x6e\\x20\\x6f\\x75\\x74\"",
+          "\"\\x32\\x30\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x30\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x31\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x32\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x33\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x34\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x35\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x36\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x37\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x38\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x39\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x30\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x31\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x32\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x33\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x34\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x35\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x36\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x37\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x38\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x39\""
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 0.007,
+        "decoded_JSON": [
+          [
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "47607a379f39d73882a239199c7bf279115963ca",
+            "b8b3b0c5543b05a1c7e2a5da3c223eb4cb92bc86",
+            "d56dd1efbd3a48af429e50d3e8ee404d2eb13d96",
+            "caa77c8e255bb8f51751b6db377595623e2ef4ac",
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "1afb83a0d255d0b5010985bd11e20d37534ff385",
+            "67d3e64ec5aa38ad7b14000349c2f8be6c185c85",
+            "a5d80d2be2191a41b0a7cd491a391deb6284843f",
+            "ca6e7d81e70d336355717d52e4de76ed26eaf50c",
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "ca39ab8e40e2e66c69e09d3314b76cf4ea66656b",
+            "a41eb8b3af576392c98b52776b9fb910bb876322",
+            "940803c9bba1cbb13d3c7e7a1b22b7975df8772e",
+            "45b6e8e2b8765969429d6f260bdd234d3ae28b68",
+            "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "de14ab81fb538d20815ec51751b549e30b1c93eb",
+            "4d24dab6f4ac5eda6deef6a71a75749c5197f057",
+            "d2bbf6bf3c32760155784e3fc66e63d5e687fded",
+            "26e416c25e0e75d4d1d68df1163e86b53e52c847"
+          ]
+        ],
+        "arrival_seconds": [
+          0.006
+        ],
+        "output": "[\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"47607a379f39d73882a239199c7bf279115963ca\",\"b8b3b0c5543b05a1c7e2a5da3c223eb4cb92bc86\",\"d56dd1efbd3a48af429e50d3e8ee404d2eb13d96\",\"caa77c8e255bb8f51751b6db377595623e2ef4ac\",\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"1afb83a0d255d0b5010985bd11e20d37534ff385\",\"67d3e64ec5aa38ad7b14000349c2f8be6c185c85\",\"a5d80d2be2191a41b0a7cd491a391deb6284843f\",\"ca6e7d81e70d336355717d52e4de76ed26eaf50c\",\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"ca39ab8e40e2e66c69e09d3314b76cf4ea66656b\",\"a41eb8b3af576392c98b52776b9fb910bb876322\",\"940803c9bba1cbb13d3c7e7a1b22b7975df8772e\",\"45b6e8e2b8765969429d6f260bdd234d3ae28b68\",\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"de14ab81fb538d20815ec51751b549e30b1c93eb\",\"4d24dab6f4ac5eda6deef6a71a75749c5197f057\",\"d2bbf6bf3c32760155784e3fc66e63d5e687fded\",\"26e416c25e0e75d4d1d68df1163e86b53e52c847\"]\n",
+        "own_process_group_cleaned": true
+      }
+    },
+    {
+      "label": "default-db0-untouched-bex",
+      "actor": "bex",
+      "database_index": 0,
+      "intent": "ordinary owned nonce data operation; no replay after ambiguous outcome",
+      "expected": [
+        0
+      ],
+      "observed_JSON": [
+        [
+          0
+        ]
+      ],
+      "pass": true,
+      "native": {
+        "command": [
+          "local-redis-cli",
+          "-s",
+          "<own-local-socket>",
+          "-n",
+          "0",
+          "--json",
+          "-3",
+          "--quoted-input",
+          "\"\\x45\\x56\\x41\\x4c\"",
+          "\"\\x6c\\x6f\\x63\\x61\\x6c\\x20\\x63\\x6f\\x75\\x6e\\x74\\x3d\\x30\\x3b\\x66\\x6f\\x72\\x20\\x5f\\x2c\\x6b\\x20\\x69\\x6e\\x20\\x69\\x70\\x61\\x69\\x72\\x73\\x28\\x4b\\x45\\x59\\x53\\x29\\x20\\x64\\x6f\\x20\\x63\\x6f\\x75\\x6e\\x74\\x3d\\x63\\x6f\\x75\\x6e\\x74\\x2b\\x72\\x65\\x64\\x69\\x73\\x2e\\x63\\x61\\x6c\\x6c\\x28\\x27\\x45\\x58\\x49\\x53\\x54\\x53\\x27\\x2c\\x6b\\x29\\x20\\x65\\x6e\\x64\\x3b\\x72\\x65\\x74\\x75\\x72\\x6e\\x20\\x7b\\x63\\x6f\\x75\\x6e\\x74\\x7d\"",
+          "\"\\x32\\x30\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x30\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x31\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x32\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x33\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x34\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x35\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x36\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x37\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x38\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x39\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x30\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x31\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x32\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x33\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x34\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x35\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x36\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x37\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x38\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x39\""
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 0.005,
+        "decoded_JSON": [
+          [
+            0
+          ]
+        ],
+        "arrival_seconds": [
+          0.005
+        ],
+        "output": "[0]\n",
+        "own_process_group_cleaned": true
+      }
+    },
+    {
+      "label": "default-db0-untouched-render",
+      "actor": "render",
+      "database_index": 0,
+      "intent": "ordinary owned nonce data operation; no replay after ambiguous outcome",
+      "expected": [
+        0
+      ],
+      "observed_JSON": [
+        [
+          0
+        ]
+      ],
+      "pass": true,
+      "native": {
+        "command": [
+          "local-redis-cli",
+          "-s",
+          "<own-local-socket>",
+          "-n",
+          "0",
+          "--json",
+          "-3",
+          "--quoted-input",
+          "\"\\x45\\x56\\x41\\x4c\"",
+          "\"\\x6c\\x6f\\x63\\x61\\x6c\\x20\\x63\\x6f\\x75\\x6e\\x74\\x3d\\x30\\x3b\\x66\\x6f\\x72\\x20\\x5f\\x2c\\x6b\\x20\\x69\\x6e\\x20\\x69\\x70\\x61\\x69\\x72\\x73\\x28\\x4b\\x45\\x59\\x53\\x29\\x20\\x64\\x6f\\x20\\x63\\x6f\\x75\\x6e\\x74\\x3d\\x63\\x6f\\x75\\x6e\\x74\\x2b\\x72\\x65\\x64\\x69\\x73\\x2e\\x63\\x61\\x6c\\x6c\\x28\\x27\\x45\\x58\\x49\\x53\\x54\\x53\\x27\\x2c\\x6b\\x29\\x20\\x65\\x6e\\x64\\x3b\\x72\\x65\\x74\\x75\\x72\\x6e\\x20\\x7b\\x63\\x6f\\x75\\x6e\\x74\\x7d\"",
+          "\"\\x32\\x30\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x30\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x31\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x32\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x33\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x34\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x35\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x36\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x37\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x38\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x30\\x39\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x30\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x31\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x32\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x33\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x34\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x35\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x36\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x37\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x38\"",
+          "\"\\x71\\x61\\x33\\x35\\x39\\x5f\\x6c\\x6f\\x63\\x61\\x6c\\x33\\x35\\x39\\x3a\\x69\\x74\\x65\\x6d\\x31\\x39\""
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 0.006,
+        "decoded_JSON": [
+          [
+            0
+          ]
+        ],
+        "arrival_seconds": [
+          0.005
+        ],
+        "output": "[0]\n",
+        "own_process_group_cleaned": true
+      }
+    },
+    {
+      "label": "native-scan-db1",
+      "actor": "render",
+      "database_index": 1,
+      "intent": "ordinary owned nonce data operation; no replay after ambiguous outcome",
+      "expected": "own key set",
+      "observed_JSON": [],
+      "observed_scan_keys": [
+        "qa359_local359:item10",
+        "qa359_local359:item19",
+        "qa359_local359:item14",
+        "qa359_local359:item18",
+        "qa359_local359:item16",
+        "qa359_local359:item13",
+        "qa359_local359:item02",
+        "qa359_local359:item11",
+        "qa359_local359:item07",
+        "qa359_local359:item00",
+        "qa359_local359:item01",
+        "qa359_local359:item08",
+        "qa359_local359:item15",
+        "qa359_local359:item12",
+        "qa359_local359:item04",
+        "qa359_local359:item06",
+        "qa359_local359:item05",
+        "qa359_local359:item03",
+        "qa359_local359:item09",
+        "qa359_local359:item17"
+      ],
+      "pass": true,
+      "native": {
+        "command": [
+          "local-redis-cli",
+          "-s",
+          "<own-local-socket>",
+          "-n",
+          "1",
+          "--json",
+          "-3",
+          "--scan",
+          "--pattern",
+          "qa359_local359:*"
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 0.007,
+        "decoded_JSON": [],
+        "arrival_seconds": [],
+        "output": "qa359_local359:item10\nqa359_local359:item19\nqa359_local359:item14\nqa359_local359:item18\nqa359_local359:item16\nqa359_local359:item13\nqa359_local359:item02\nqa359_local359:item11\nqa359_local359:item07\nqa359_local359:item00\nqa359_local359:item01\nqa359_local359:item08\nqa359_local359:item15\nqa359_local359:item12\nqa359_local359:item04\nqa359_local359:item06\nqa359_local359:item05\nqa359_local359:item03\nqa359_local359:item09\nqa359_local359:item17\n",
+        "own_process_group_cleaned": true
+      }
+    },
+    {
+      "label": "native-scan-db2",
+      "actor": "bex",
+      "database_index": 2,
+      "intent": "ordinary owned nonce data operation; no replay after ambiguous outcome",
+      "expected": "own key set",
+      "observed_JSON": [],
+      "observed_scan_keys": [
+        "qa359_local359:item10",
+        "qa359_local359:item19",
+        "qa359_local359:item14",
+        "qa359_local359:item18",
+        "qa359_local359:item16",
+        "qa359_local359:item13",
+        "qa359_local359:item02",
+        "qa359_local359:item11",
+        "qa359_local359:item07",
+        "qa359_local359:item00",
+        "qa359_local359:item01",
+        "qa359_local359:item08",
+        "qa359_local359:item15",
+        "qa359_local359:item12",
+        "qa359_local359:item04",
+        "qa359_local359:item06",
+        "qa359_local359:item05",
+        "qa359_local359:item03",
+        "qa359_local359:item09",
+        "qa359_local359:item17"
+      ],
+      "pass": true,
+      "native": {
+        "command": [
+          "local-redis-cli",
+          "-s",
+          "<own-local-socket>",
+          "-n",
+          "2",
+          "--json",
+          "-3",
+          "--scan",
+          "--pattern",
+          "qa359_local359:*"
+        ],
+        "stdin_TTY": true,
+        "streams_merged_PTY": true,
+        "native_exit": 0,
+        "intentional_stop": null,
+        "elapsed": 0.006,
+        "decoded_JSON": [],
+        "arrival_seconds": [],
+        "output": "qa359_local359:item10\nqa359_local359:item19\nqa359_local359:item14\nqa359_local359:item18\nqa359_local359:item16\nqa359_local359:item13\nqa359_local359:item02\nqa359_local359:item11\nqa359_local359:item07\nqa359_local359:item00\nqa359_local359:item01\nqa359_local359:item08\nqa359_local359:item15\nqa359_local359:item12\nqa359_local359:item04\nqa359_local359:item06\nqa359_local359:item05\nqa359_local359:item03\nqa359_local359:item09\nqa359_local359:item17\n",
+        "own_process_group_cleaned": true
+      }
+    }
+  ],
+  "summary": {
+    "logical_key_values": 40,
+    "keys_per_database": 20,
+    "databases": [
+      1,
+      2
+    ],
+    "events_pass": 16,
+    "distinct_scan_keys": [
+      20,
+      20
+    ],
+    "explicit_protocol3_confirmations": 2,
+    "matched_CAS_updates": 2,
+    "stale_CAS_preserved_new_value": 2,
+    "default_database0_no_own_keys": 2
+  },
+  "server_stopped": true,
+  "socket_removed": true
+}

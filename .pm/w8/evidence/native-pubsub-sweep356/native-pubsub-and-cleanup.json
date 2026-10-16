@@ -1,0 +1,1658 @@
+{
+  "sweep": 356,
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "type": "keyvalue",
+  "name": "qa-20261016-0e52e8-pubsub",
+  "nonce": "0e52e8",
+  "time": "2026-10-16T07:42:33.849845+00:00",
+  "source_head": "013418ce3cae21b318d66b39549f65ae502f8e7e",
+  "dependency_ids": [],
+  "recorded_child_ids": [],
+  "pre_ids": [],
+  "capacity": {
+    "at": "2026-10-16T07:42:32.590678+00:00",
+    "API_only": true,
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "body": null,
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "status": "200",
+    "curl_exit": 0,
+    "elapsed": 0.483,
+    "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+    "stderr": ""
+  },
+  "pre_inventory": {
+    "at": "2026-10-16T07:42:33.293956+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "keyvalues",
+      "list",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.703,
+    "stdout": "{\"data\": []}",
+    "stderr": ""
+  },
+  "pre_services": {
+    "at": "2026-10-16T07:42:33.849704+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.556,
+    "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}]",
+    "stderr": ""
+  },
+  "create_command": [
+    "bex",
+    "keyvalues",
+    "create",
+    "--name",
+    "qa-20261016-0e52e8-pubsub",
+    "--plan",
+    "free",
+    "--region",
+    "frankfurt",
+    "--memory-policy",
+    "queue",
+    "--persistence-mode",
+    "off",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "state": "deleted: native0/detail404/listempty/baseline6/KVquota0 terminating0",
+  "create_result": {
+    "at": "2026-10-16T07:42:34.487385+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "keyvalues",
+      "create",
+      "--name",
+      "qa-20261016-0e52e8-pubsub",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--memory-policy",
+      "queue",
+      "--persistence-mode",
+      "off",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.411,
+    "stdout": "{\"data\": {\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"region\": \"fsn1\", \"status\": \"creating\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:42:34.327026545Z\", \"version\": \"8\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"ownerType\": \"team\", \"projectId\": null, \"environmentId\": null, \"ipAllowList\": [], \"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}}",
+    "stderr": ""
+  },
+  "id": "red-db8taqndbg8c73dghe80",
+  "create_response": {
+    "id": "red-db8taqndbg8c73dghe80",
+    "name": "qa-20261016-0e52e8-pubsub",
+    "plan": "free",
+    "region": "fsn1",
+    "status": "creating",
+    "createdAt": "2026-10-16T07:42:34Z",
+    "updatedAt": "2026-10-16T07:42:34.327026545Z",
+    "version": "8",
+    "ownerId": "tea-daif693dqjvc73e7as3g",
+    "ownerType": "team",
+    "projectId": null,
+    "environmentId": null,
+    "ipAllowList": [],
+    "maxmemoryPolicy": "noeviction",
+    "persistenceMode": "off"
+  },
+  "details": [
+    {
+      "at": "2026-10-16T07:42:52.426386+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.286,
+      "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:42:46Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"public\": false}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T07:43:03.585567+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.333,
+      "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:42:46Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"public\": false}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T07:43:15.107020+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.655,
+      "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:06Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"public\": false}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T07:43:16.637738+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.744,
+      "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:06Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"public\": false}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T07:43:18.682637+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.289,
+      "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"config_restart\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:18Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"externalHost\": \"red-db8taqndbg8c73dghe80.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T07:43:29.767932+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.275,
+      "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"config_restart\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:19Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"externalHost\": \"red-db8taqndbg8c73dghe80.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T07:43:41.050829+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.365,
+      "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"config_restart\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:39Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"externalHost\": \"red-db8taqndbg8c73dghe80.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T07:43:52.968637+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.652,
+      "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"config_restart\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:52Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"externalHost\": \"red-db8taqndbg8c73dghe80.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T07:43:54.072681+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.323,
+      "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"config_restart\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:52Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"externalHost\": \"red-db8taqndbg8c73dghe80.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T07:44:18.451631+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.557,
+      "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:55Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"externalHost\": \"red-db8taqndbg8c73dghe80.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T07:44:41.887849+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.325,
+      "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:55Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"externalHost\": \"red-db8taqndbg8c73dghe80.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T07:44:44.887566+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.38,
+      "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:55Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"externalHost\": \"red-db8taqndbg8c73dghe80.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T07:44:47.614417+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.306,
+      "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:55Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"externalHost\": \"red-db8taqndbg8c73dghe80.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T07:44:50.734538+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.329,
+      "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:55Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"externalHost\": \"red-db8taqndbg8c73dghe80.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-16T07:45:48.744767+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.424,
+      "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:55Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"externalHost\": \"red-db8taqndbg8c73dghe80.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    }
+  ],
+  "readiness": [
+    {
+      "at": "2026-10-16T07:42:52.649375+00:00",
+      "native": {
+        "at": "2026-10-16T07:42:52.128228+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "get",
+          "red-db8taqndbg8c73dghe80",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.686,
+        "stdout": "{\"data\": {\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"region\": \"fsn1\", \"status\": \"creating\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:42:46Z\", \"version\": \"8\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"ownerType\": \"team\", \"projectId\": null, \"environmentId\": null, \"ipAllowList\": [], \"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-16T07:42:52.426386+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.286,
+        "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:42:46Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"public\": false}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T07:43:03.818232+00:00",
+      "native": {
+        "at": "2026-10-16T07:43:03.237470+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "get",
+          "red-db8taqndbg8c73dghe80",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.369,
+        "stdout": "{\"data\": {\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"region\": \"fsn1\", \"status\": \"creating\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:42:46Z\", \"version\": \"8\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"ownerType\": \"team\", \"projectId\": null, \"environmentId\": null, \"ipAllowList\": [], \"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-16T07:43:03.585567+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.333,
+        "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:42:46Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"public\": false}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T07:43:15.324327+00:00",
+      "native": {
+        "at": "2026-10-16T07:43:14.439677+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "get",
+          "red-db8taqndbg8c73dghe80",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.402,
+        "stdout": "{\"data\": {\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"region\": \"fsn1\", \"status\": \"available\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:06Z\", \"version\": \"8\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"ownerType\": \"team\", \"projectId\": null, \"environmentId\": null, \"ipAllowList\": [], \"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-16T07:43:15.107020+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.655,
+        "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:06Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"public\": false}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T07:43:18.913285+00:00",
+      "native": {
+        "at": "2026-10-16T07:43:18.381113+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "get",
+          "red-db8taqndbg8c73dghe80",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.335,
+        "stdout": "{\"data\": {\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"region\": \"fsn1\", \"status\": \"config_restart\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:17.362747565Z\", \"version\": \"8\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"ownerType\": \"team\", \"projectId\": null, \"environmentId\": null, \"ipAllowList\": [], \"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-16T07:43:18.682637+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.289,
+        "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"config_restart\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:18Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"externalHost\": \"red-db8taqndbg8c73dghe80.kv.bex.co\", \"public\": true}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T07:43:29.985921+00:00",
+      "native": {
+        "at": "2026-10-16T07:43:29.480804+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "get",
+          "red-db8taqndbg8c73dghe80",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.355,
+        "stdout": "{\"data\": {\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"region\": \"fsn1\", \"status\": \"config_restart\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:19Z\", \"version\": \"8\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"ownerType\": \"team\", \"projectId\": null, \"environmentId\": null, \"ipAllowList\": [], \"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-16T07:43:29.767932+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.275,
+        "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"config_restart\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:19Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"externalHost\": \"red-db8taqndbg8c73dghe80.kv.bex.co\", \"public\": true}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T07:43:41.293907+00:00",
+      "native": {
+        "at": "2026-10-16T07:43:40.673758+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "get",
+          "red-db8taqndbg8c73dghe80",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.466,
+        "stdout": "{\"data\": {\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"region\": \"fsn1\", \"status\": \"config_restart\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:39Z\", \"version\": \"8\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"ownerType\": \"team\", \"projectId\": null, \"environmentId\": null, \"ipAllowList\": [], \"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-16T07:43:41.050829+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.365,
+        "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"config_restart\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:39Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"externalHost\": \"red-db8taqndbg8c73dghe80.kv.bex.co\", \"public\": true}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T07:43:53.183966+00:00",
+      "native": {
+        "at": "2026-10-16T07:43:52.304121+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "get",
+          "red-db8taqndbg8c73dghe80",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.767,
+        "stdout": "{\"data\": {\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"region\": \"fsn1\", \"status\": \"config_restart\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:39Z\", \"version\": \"8\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"ownerType\": \"team\", \"projectId\": null, \"environmentId\": null, \"ipAllowList\": [], \"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-16T07:43:52.968637+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.652,
+        "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"config_restart\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:52Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"externalHost\": \"red-db8taqndbg8c73dghe80.kv.bex.co\", \"public\": true}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-16T07:44:18.675470+00:00",
+      "native": {
+        "at": "2026-10-16T07:44:17.883068+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "get",
+          "red-db8taqndbg8c73dghe80",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.501,
+        "stdout": "{\"data\": {\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"region\": \"fsn1\", \"status\": \"available\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:55Z\", \"version\": \"8\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"ownerType\": \"team\", \"projectId\": null, \"environmentId\": null, \"ipAllowList\": [], \"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-16T07:44:18.451631+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.557,
+        "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:55Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"externalHost\": \"red-db8taqndbg8c73dghe80.kv.bex.co\", \"public\": true}",
+        "stderr": ""
+      }
+    }
+  ],
+  "publish_intent": {
+    "at": "2026-10-16T07:43:16.865934+00:00",
+    "body": {
+      "public": true
+    },
+    "qualification": "API-only ordinary external connection setup on exact owned disposable fixture"
+  },
+  "publish_result": {
+    "at": "2026-10-16T07:43:17.479599+00:00",
+    "API_only": true,
+    "request": {
+      "method": "PATCH",
+      "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+      "body": {
+        "public": true
+      },
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "status": "200",
+    "curl_exit": 0,
+    "elapsed": 0.384,
+    "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"config_restart\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:17.362747565Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"public\": true}",
+    "stderr": ""
+  },
+  "readiness_harness_qualification": {
+    "at": "2026-10-16T07:44:41.201521+00:00",
+    "initial_ping_wrapper_precondition_refused_config_restart": true,
+    "native_ping_was_not_executed_before_available": true,
+    "no_create_or_publication_mutation_replayed": true
+  },
+  "native_ping": [
+    {
+      "at": "2026-10-16T07:44:42.109691+00:00",
+      "client": "bex",
+      "native": {
+        "at": "2026-10-16T07:44:43.926323+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "kv-cli",
+          "red-db8taqndbg8c73dghe80",
+          "-o",
+          "interactive",
+          "--",
+          "--raw",
+          "PING"
+        ],
+        "exit": 0,
+        "elapsed": 1.546,
+        "timeout": false,
+        "stdin_tty": true,
+        "output": "\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \u001b[5;H\u001b[H\n\n\n⣻  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⡿  Loading...                   \r\n\u001b[5;H\u001b[H\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\u001b[5;H\u001b[H\n\n\n⣻  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n                                                   \r\n\u001b[5;H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25hWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\r\nPONG\r\n\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r \u001b[H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25h",
+        "native_exit": 0
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T07:44:45.117970+00:00",
+      "client": "render",
+      "native": {
+        "at": "2026-10-16T07:44:46.730847+00:00",
+        "binary": "unmodified Render2.27.0",
+        "command": [
+          "render",
+          "kv-cli",
+          "red-db8taqndbg8c73dghe80",
+          "-o",
+          "interactive",
+          "--",
+          "--raw",
+          "PING"
+        ],
+        "exit": 0,
+        "elapsed": 1.346,
+        "timeout": false,
+        "stdin_tty": true,
+        "output": "\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \u001b[5;H\u001b[H\n\n\n⣻  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                   \r\n\u001b[5;H\u001b[H\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\u001b[5;H\u001b[H\n\n\n⣻  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n                                                   \r\n\u001b[5;H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25hWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\r\nPONG\r\n\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r \u001b[H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25h",
+        "native_exit": 0
+      },
+      "pass": true
+    }
+  ],
+  "cached_endpoint_acquisition": {
+    "at": "2026-10-16T07:44:48.287610+00:00",
+    "API_only": true,
+    "method": "GET",
+    "path": "/v1/key-value/red-db8taqndbg8c73dghe80/connection-info",
+    "status": "200",
+    "credentials": "connection URI/cliCommand fields omitted before ledger; private owner-only temporary file",
+    "owned_endpoint_matched": true
+  },
+  "cached_endpoint_probes": [
+    {
+      "at": "2026-10-16T07:44:48.862111+00:00",
+      "API_only": true,
+      "qualification": "ordinary cached TLS data-client diagnostic; not native CLI coverage",
+      "after_delete": false,
+      "PONG": true,
+      "reply_kind": "+",
+      "elapsed": 0.995
+    },
+    {
+      "at": "2026-10-16T07:45:52.777427+00:00",
+      "API_only": true,
+      "qualification": "ordinary cached TLS data-client diagnostic; not native CLI coverage",
+      "after_delete": true,
+      "PONG": false,
+      "connection_error_type": "SSLEOFError",
+      "elapsed": 0.395
+    }
+  ],
+  "pubsub_rounds": [
+    {
+      "at": "2026-10-16T07:44:50.968073+00:00",
+      "subscriber": "bex",
+      "kind": "SUBSCRIBE",
+      "intent": "finite native Pub/Sub on own nonce channel; publish only after acknowledgement",
+      "result": {
+        "subscriber": "bex",
+        "publisher": "render",
+        "kind": "SUBSCRIBE",
+        "channel": "qa356_0e52e8:round0:payload",
+        "selector": "qa356_0e52e8:round0:payload",
+        "expected_payloads": [
+          "Render CLI on Render at https://render.com/docs / render.yaml / bex.yml",
+          "line1\r\nline2 café 日本 😀\u0000tail",
+          ""
+        ],
+        "expected_payload_utf8_sha256": [
+          "d842e9652789f921bea15786273f7f2556192471d6a63967f4b261a73fd6f17a",
+          "35c4256757aaf6eea304e1ba414fbb090383da712b6cac4971cbac3d9089805d",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "publications": [
+          {
+            "command": [
+              "render",
+              "kv-cli",
+              "red-db8taqndbg8c73dghe80",
+              "-o",
+              "interactive",
+              "--",
+              "--json",
+              "-2",
+              "--quoted-input",
+              "PUBLISH",
+              "qa356_0e52e8:round0:payload",
+              "\"\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x43\\x4c\\x49\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x61\\x74\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x64\\x6f\\x63\\x73\\x20\\x2f\\x20\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x79\\x61\\x6d\\x6c\\x20\\x2f\\x20\\x62\\x65\\x78\\x2e\\x79\\x6d\\x6c\""
+            ],
+            "stdin_TTY": true,
+            "streams_merged_PTY": true,
+            "native_exit": 0,
+            "intentional_stop": null,
+            "elapsed": 1.28,
+            "decoded_JSON": [
+              1
+            ],
+            "arrival_seconds": [
+              1.274
+            ],
+            "output": "\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \u001b[5;H\u001b[H\n\n\n⣻  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                   \r\n\u001b[5;H\u001b[H\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\u001b[5;H\u001b[H\n\n\n⣻  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n                                                   \r\n\u001b[5;H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25hWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\n1\n\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r \u001b[H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25h",
+            "own_process_group_cleaned": true
+          },
+          {
+            "command": [
+              "render",
+              "kv-cli",
+              "red-db8taqndbg8c73dghe80",
+              "-o",
+              "interactive",
+              "--",
+              "--json",
+              "-2",
+              "--quoted-input",
+              "PUBLISH",
+              "qa356_0e52e8:round0:payload",
+              "\"\\x6c\\x69\\x6e\\x65\\x31\\x0d\\x0a\\x6c\\x69\\x6e\\x65\\x32\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x00\\x74\\x61\\x69\\x6c\""
+            ],
+            "stdin_TTY": true,
+            "streams_merged_PTY": true,
+            "native_exit": 0,
+            "intentional_stop": null,
+            "elapsed": 1.514,
+            "decoded_JSON": [
+              1
+            ],
+            "arrival_seconds": [
+              1.5
+            ],
+            "output": "\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \u001b[5;H\u001b[H\n\n\n⣻  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                   \r\n\u001b[5;H\u001b[H\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\u001b[5;H\u001b[H\n\n\n⣻  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n                                                   \r\n\u001b[5;H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25hWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\n1\n\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r \u001b[H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25h",
+            "own_process_group_cleaned": true
+          },
+          {
+            "command": [
+              "render",
+              "kv-cli",
+              "red-db8taqndbg8c73dghe80",
+              "-o",
+              "interactive",
+              "--",
+              "--json",
+              "-2",
+              "--quoted-input",
+              "PUBLISH",
+              "qa356_0e52e8:round0:payload",
+              "\"\""
+            ],
+            "stdin_TTY": true,
+            "streams_merged_PTY": true,
+            "native_exit": 0,
+            "intentional_stop": null,
+            "elapsed": 1.296,
+            "decoded_JSON": [
+              1
+            ],
+            "arrival_seconds": [
+              1.281
+            ],
+            "output": "\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \u001b[5;H\u001b[H\n\n\n⣻  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                   \r\n\u001b[5;H\u001b[H\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\u001b[5;H\u001b[H\n\n\n⣻  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n                                                   \r\n\u001b[5;H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25hWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\n1\n\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r \u001b[H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25h",
+            "own_process_group_cleaned": true
+          }
+        ],
+        "acknowledged_before_first_publish": true,
+        "pass": true,
+        "received_exact_payloads_in_order": true,
+        "subscription": {
+          "command": [
+            "bex",
+            "kv-cli",
+            "red-db8taqndbg8c73dghe80",
+            "-o",
+            "interactive",
+            "--",
+            "--json",
+            "-2",
+            "SUBSCRIBE",
+            "qa356_0e52e8:round0:payload"
+          ],
+          "stdin_TTY": true,
+          "streams_merged_PTY": true,
+          "native_exit": -9,
+          "intentional_stop": "bounded QA stop after all expected frames",
+          "elapsed": 7.038,
+          "decoded_JSON": [
+            [
+              "subscribe",
+              "qa356_0e52e8:round0:payload",
+              1
+            ],
+            [
+              "message",
+              "qa356_0e52e8:round0:payload",
+              "Render CLI on Render at https://render.com/docs / render.yaml / bex.yml"
+            ],
+            [
+              "message",
+              "qa356_0e52e8:round0:payload",
+              "line1\r\nline2 café 日本 😀\u0000tail"
+            ],
+            [
+              "message",
+              "qa356_0e52e8:round0:payload",
+              ""
+            ]
+          ],
+          "arrival_seconds": [
+            1.303,
+            2.583,
+            4.097,
+            5.393
+          ],
+          "output": "\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \u001b[5;H\u001b[H\n\n\n⣻  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                   \r\n\u001b[5;H\u001b[H\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\u001b[5;H\u001b[H\n\n\n⣻  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n                                                   \r\n\u001b[5;H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25hWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\n[\"subscribe\",\"qa356_0e52e8:round0:payload\",1]\n[\"message\",\"qa356_0e52e8:round0:payload\",\"Render CLI on Render at https://render.com/docs / render.yaml / bex.yml\"]\n[\"message\",\"qa356_0e52e8:round0:payload\",\"line1\\r\\nline2 café 日本 😀\\u0000tail\"]\n[\"message\",\"qa356_0e52e8:round0:payload\",\"\"]\n",
+          "own_process_group_cleaned": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T07:44:58.455723+00:00",
+      "subscriber": "render",
+      "kind": "SUBSCRIBE",
+      "intent": "finite native Pub/Sub on own nonce channel; publish only after acknowledgement",
+      "result": {
+        "subscriber": "render",
+        "publisher": "bex",
+        "kind": "SUBSCRIBE",
+        "channel": "qa356_0e52e8:round1:payload",
+        "selector": "qa356_0e52e8:round1:payload",
+        "expected_payloads": [
+          "Render CLI on Render at https://render.com/docs / render.yaml / bex.yml",
+          "line1\r\nline2 café 日本 😀\u0000tail",
+          ""
+        ],
+        "expected_payload_utf8_sha256": [
+          "d842e9652789f921bea15786273f7f2556192471d6a63967f4b261a73fd6f17a",
+          "35c4256757aaf6eea304e1ba414fbb090383da712b6cac4971cbac3d9089805d",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "publications": [
+          {
+            "command": [
+              "bex",
+              "kv-cli",
+              "red-db8taqndbg8c73dghe80",
+              "-o",
+              "interactive",
+              "--",
+              "--json",
+              "-2",
+              "--quoted-input",
+              "PUBLISH",
+              "qa356_0e52e8:round1:payload",
+              "\"\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x43\\x4c\\x49\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x61\\x74\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x64\\x6f\\x63\\x73\\x20\\x2f\\x20\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x79\\x61\\x6d\\x6c\\x20\\x2f\\x20\\x62\\x65\\x78\\x2e\\x79\\x6d\\x6c\""
+            ],
+            "stdin_TTY": true,
+            "streams_merged_PTY": true,
+            "native_exit": 0,
+            "intentional_stop": null,
+            "elapsed": 1.683,
+            "decoded_JSON": [
+              1
+            ],
+            "arrival_seconds": [
+              1.668
+            ],
+            "output": "\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \u001b[5;H\u001b[H\n\n\n⣻  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                   \r\n\u001b[5;H\u001b[H\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\u001b[5;H\u001b[H\n\n\n⣻  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⡿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n                                                   \r\n\u001b[5;H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25hWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\n1\n\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r \u001b[H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25h",
+            "own_process_group_cleaned": true
+          },
+          {
+            "command": [
+              "bex",
+              "kv-cli",
+              "red-db8taqndbg8c73dghe80",
+              "-o",
+              "interactive",
+              "--",
+              "--json",
+              "-2",
+              "--quoted-input",
+              "PUBLISH",
+              "qa356_0e52e8:round1:payload",
+              "\"\\x6c\\x69\\x6e\\x65\\x31\\x0d\\x0a\\x6c\\x69\\x6e\\x65\\x32\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x00\\x74\\x61\\x69\\x6c\""
+            ],
+            "stdin_TTY": true,
+            "streams_merged_PTY": true,
+            "native_exit": 0,
+            "intentional_stop": null,
+            "elapsed": 1.419,
+            "decoded_JSON": [
+              1
+            ],
+            "arrival_seconds": [
+              1.408
+            ],
+            "output": "\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \u001b[5;H\u001b[H\n\n\n⣻  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⡿  Loading...                   \r\n\u001b[5;H\u001b[H\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\u001b[5;H\u001b[H\n\n\n⣻  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n                                                   \r\n\u001b[5;H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25hWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\n1\n\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r \u001b[H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25h",
+            "own_process_group_cleaned": true
+          },
+          {
+            "command": [
+              "bex",
+              "kv-cli",
+              "red-db8taqndbg8c73dghe80",
+              "-o",
+              "interactive",
+              "--",
+              "--json",
+              "-2",
+              "--quoted-input",
+              "PUBLISH",
+              "qa356_0e52e8:round1:payload",
+              "\"\""
+            ],
+            "stdin_TTY": true,
+            "streams_merged_PTY": true,
+            "native_exit": 0,
+            "intentional_stop": null,
+            "elapsed": 1.368,
+            "decoded_JSON": [
+              1
+            ],
+            "arrival_seconds": [
+              1.359
+            ],
+            "output": "\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \u001b[5;H\u001b[H\n\n\n⣻  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                   \r\n\u001b[5;H\u001b[H\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\u001b[5;H\u001b[H\n\n\n⣻  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n                                                   \r\n\u001b[5;H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25hWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\n1\n\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r \u001b[H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25h",
+            "own_process_group_cleaned": true
+          }
+        ],
+        "acknowledged_before_first_publish": true,
+        "pass": true,
+        "received_exact_payloads_in_order": true,
+        "subscription": {
+          "command": [
+            "render",
+            "kv-cli",
+            "red-db8taqndbg8c73dghe80",
+            "-o",
+            "interactive",
+            "--",
+            "--json",
+            "-2",
+            "SUBSCRIBE",
+            "qa356_0e52e8:round1:payload"
+          ],
+          "stdin_TTY": true,
+          "streams_merged_PTY": true,
+          "native_exit": -9,
+          "intentional_stop": "bounded QA stop after all expected frames",
+          "elapsed": 7.505,
+          "decoded_JSON": [
+            [
+              "subscribe",
+              "qa356_0e52e8:round1:payload",
+              1
+            ],
+            [
+              "message",
+              "qa356_0e52e8:round1:payload",
+              "Render CLI on Render at https://render.com/docs / render.yaml / bex.yml"
+            ],
+            [
+              "message",
+              "qa356_0e52e8:round1:payload",
+              "line1\r\nline2 café 日本 😀\u0000tail"
+            ],
+            [
+              "message",
+              "qa356_0e52e8:round1:payload",
+              ""
+            ]
+          ],
+          "arrival_seconds": [
+            1.421,
+            3.104,
+            4.524,
+            5.892
+          ],
+          "output": "\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \u001b[5;H\u001b[H\n\n\n⣻  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⡿  Loading...                   \r\n\u001b[5;H\u001b[H\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\u001b[5;H\u001b[H\n\n\n⣻  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n                                                   \r\n\u001b[5;H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25hWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\n[\"subscribe\",\"qa356_0e52e8:round1:payload\",1]\n[\"message\",\"qa356_0e52e8:round1:payload\",\"Render CLI on Render at https://render.com/docs / render.yaml / bex.yml\"]\n[\"message\",\"qa356_0e52e8:round1:payload\",\"line1\\r\\nline2 café 日本 😀\\u0000tail\"]\n[\"message\",\"qa356_0e52e8:round1:payload\",\"\"]\n",
+          "own_process_group_cleaned": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T07:45:06.418265+00:00",
+      "subscriber": "bex",
+      "kind": "PSUBSCRIBE",
+      "intent": "finite native Pub/Sub on own nonce channel; publish only after acknowledgement",
+      "result": {
+        "subscriber": "bex",
+        "publisher": "render",
+        "kind": "PSUBSCRIBE",
+        "channel": "qa356_0e52e8:round2:payload",
+        "selector": "qa356_0e52e8:round2:*",
+        "expected_payloads": [
+          "Render CLI on Render at https://render.com/docs / render.yaml / bex.yml",
+          "line1\r\nline2 café 日本 😀\u0000tail",
+          ""
+        ],
+        "expected_payload_utf8_sha256": [
+          "d842e9652789f921bea15786273f7f2556192471d6a63967f4b261a73fd6f17a",
+          "35c4256757aaf6eea304e1ba414fbb090383da712b6cac4971cbac3d9089805d",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "publications": [
+          {
+            "command": [
+              "render",
+              "kv-cli",
+              "red-db8taqndbg8c73dghe80",
+              "-o",
+              "interactive",
+              "--",
+              "--json",
+              "-2",
+              "--quoted-input",
+              "PUBLISH",
+              "qa356_0e52e8:round2:payload",
+              "\"\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x43\\x4c\\x49\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x61\\x74\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x64\\x6f\\x63\\x73\\x20\\x2f\\x20\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x79\\x61\\x6d\\x6c\\x20\\x2f\\x20\\x62\\x65\\x78\\x2e\\x79\\x6d\\x6c\""
+            ],
+            "stdin_TTY": true,
+            "streams_merged_PTY": true,
+            "native_exit": 0,
+            "intentional_stop": null,
+            "elapsed": 1.37,
+            "decoded_JSON": [
+              1
+            ],
+            "arrival_seconds": [
+              1.365
+            ],
+            "output": "\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \u001b[5;H\u001b[H\n\n\n⣻  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⡿  Loading...                   \r\n\u001b[5;H\u001b[H\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\u001b[5;H\u001b[H\n\n\n⣻  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n                                                   \r\n\u001b[5;H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25hWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\n1\n\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r \u001b[H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25h",
+            "own_process_group_cleaned": true
+          },
+          {
+            "command": [
+              "render",
+              "kv-cli",
+              "red-db8taqndbg8c73dghe80",
+              "-o",
+              "interactive",
+              "--",
+              "--json",
+              "-2",
+              "--quoted-input",
+              "PUBLISH",
+              "qa356_0e52e8:round2:payload",
+              "\"\\x6c\\x69\\x6e\\x65\\x31\\x0d\\x0a\\x6c\\x69\\x6e\\x65\\x32\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x00\\x74\\x61\\x69\\x6c\""
+            ],
+            "stdin_TTY": true,
+            "streams_merged_PTY": true,
+            "native_exit": 0,
+            "intentional_stop": null,
+            "elapsed": 1.544,
+            "decoded_JSON": [
+              1
+            ],
+            "arrival_seconds": [
+              1.529
+            ],
+            "output": "\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \u001b[5;H\u001b[H\n\n\n⣻  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                   \r\n\u001b[5;H\u001b[H\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\u001b[5;H\u001b[H\n\n\n⣻  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⡿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n                                                   \r\n\u001b[5;H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25hWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\n1\n\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r \u001b[H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25h",
+            "own_process_group_cleaned": true
+          },
+          {
+            "command": [
+              "render",
+              "kv-cli",
+              "red-db8taqndbg8c73dghe80",
+              "-o",
+              "interactive",
+              "--",
+              "--json",
+              "-2",
+              "--quoted-input",
+              "PUBLISH",
+              "qa356_0e52e8:round2:payload",
+              "\"\""
+            ],
+            "stdin_TTY": true,
+            "streams_merged_PTY": true,
+            "native_exit": 0,
+            "intentional_stop": null,
+            "elapsed": 1.412,
+            "decoded_JSON": [
+              1
+            ],
+            "arrival_seconds": [
+              1.398
+            ],
+            "output": "\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \u001b[5;H\u001b[H\n\n\n⣻  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⡿  Loading...                   \r\n\u001b[5;H\u001b[H\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\u001b[5;H\u001b[H\n\n\n⣻  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n                                                   \r\n\u001b[5;H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25hWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\n1\n\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r \u001b[H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25h",
+            "own_process_group_cleaned": true
+          }
+        ],
+        "acknowledged_before_first_publish": true,
+        "pass": true,
+        "received_exact_payloads_in_order": true,
+        "subscription": {
+          "command": [
+            "bex",
+            "kv-cli",
+            "red-db8taqndbg8c73dghe80",
+            "-o",
+            "interactive",
+            "--",
+            "--json",
+            "-2",
+            "PSUBSCRIBE",
+            "qa356_0e52e8:round2:*"
+          ],
+          "stdin_TTY": true,
+          "streams_merged_PTY": true,
+          "native_exit": -9,
+          "intentional_stop": "bounded QA stop after all expected frames",
+          "elapsed": 7.268,
+          "decoded_JSON": [
+            [
+              "psubscribe",
+              "qa356_0e52e8:round2:*",
+              1
+            ],
+            [
+              "pmessage",
+              "qa356_0e52e8:round2:*",
+              "qa356_0e52e8:round2:payload",
+              "Render CLI on Render at https://render.com/docs / render.yaml / bex.yml"
+            ],
+            [
+              "pmessage",
+              "qa356_0e52e8:round2:*",
+              "qa356_0e52e8:round2:payload",
+              "line1\r\nline2 café 日本 😀\u0000tail"
+            ],
+            [
+              "pmessage",
+              "qa356_0e52e8:round2:*",
+              "qa356_0e52e8:round2:payload",
+              ""
+            ]
+          ],
+          "arrival_seconds": [
+            1.328,
+            2.699,
+            4.243,
+            5.655
+          ],
+          "output": "\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \u001b[5;H\u001b[H\n\n\n⣻  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                   \r\n\u001b[5;H\u001b[H\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\u001b[5;H\u001b[H\n\n\n⣻  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n                                                   \r\n\u001b[5;H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25hWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\n[\"psubscribe\",\"qa356_0e52e8:round2:*\",1]\n[\"pmessage\",\"qa356_0e52e8:round2:*\",\"qa356_0e52e8:round2:payload\",\"Render CLI on Render at https://render.com/docs / render.yaml / bex.yml\"]\n[\"pmessage\",\"qa356_0e52e8:round2:*\",\"qa356_0e52e8:round2:payload\",\"line1\\r\\nline2 café 日本 😀\\u0000tail\"]\n[\"pmessage\",\"qa356_0e52e8:round2:*\",\"qa356_0e52e8:round2:payload\",\"\"]\n",
+          "own_process_group_cleaned": true
+        }
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-16T07:45:14.129944+00:00",
+      "subscriber": "render",
+      "kind": "PSUBSCRIBE",
+      "intent": "finite native Pub/Sub on own nonce channel; publish only after acknowledgement",
+      "result": {
+        "subscriber": "render",
+        "publisher": "bex",
+        "kind": "PSUBSCRIBE",
+        "channel": "qa356_0e52e8:round3:payload",
+        "selector": "qa356_0e52e8:round3:*",
+        "expected_payloads": [
+          "Render CLI on Render at https://render.com/docs / render.yaml / bex.yml",
+          "line1\r\nline2 café 日本 😀\u0000tail",
+          ""
+        ],
+        "expected_payload_utf8_sha256": [
+          "d842e9652789f921bea15786273f7f2556192471d6a63967f4b261a73fd6f17a",
+          "35c4256757aaf6eea304e1ba414fbb090383da712b6cac4971cbac3d9089805d",
+          "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ],
+        "publications": [
+          {
+            "command": [
+              "bex",
+              "kv-cli",
+              "red-db8taqndbg8c73dghe80",
+              "-o",
+              "interactive",
+              "--",
+              "--json",
+              "-2",
+              "--quoted-input",
+              "PUBLISH",
+              "qa356_0e52e8:round3:payload",
+              "\"\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x43\\x4c\\x49\\x20\\x6f\\x6e\\x20\\x52\\x65\\x6e\\x64\\x65\\x72\\x20\\x61\\x74\\x20\\x68\\x74\\x74\\x70\\x73\\x3a\\x2f\\x2f\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x63\\x6f\\x6d\\x2f\\x64\\x6f\\x63\\x73\\x20\\x2f\\x20\\x72\\x65\\x6e\\x64\\x65\\x72\\x2e\\x79\\x61\\x6d\\x6c\\x20\\x2f\\x20\\x62\\x65\\x78\\x2e\\x79\\x6d\\x6c\""
+            ],
+            "stdin_TTY": true,
+            "streams_merged_PTY": true,
+            "native_exit": 0,
+            "intentional_stop": null,
+            "elapsed": 1.396,
+            "decoded_JSON": [
+              1
+            ],
+            "arrival_seconds": [
+              1.389
+            ],
+            "output": "\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \u001b[5;H\u001b[H\n\n\n⣻  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                   \r\n\u001b[5;H\u001b[H\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\u001b[5;H\u001b[H\n\n\n⣻  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n                                                   \r\n\u001b[5;H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25hWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\n1\n\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r \u001b[H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25h",
+            "own_process_group_cleaned": true
+          },
+          {
+            "command": [
+              "bex",
+              "kv-cli",
+              "red-db8taqndbg8c73dghe80",
+              "-o",
+              "interactive",
+              "--",
+              "--json",
+              "-2",
+              "--quoted-input",
+              "PUBLISH",
+              "qa356_0e52e8:round3:payload",
+              "\"\\x6c\\x69\\x6e\\x65\\x31\\x0d\\x0a\\x6c\\x69\\x6e\\x65\\x32\\x20\\x63\\x61\\x66\\xc3\\xa9\\x20\\xe6\\x97\\xa5\\xe6\\x9c\\xac\\x20\\xf0\\x9f\\x98\\x80\\x00\\x74\\x61\\x69\\x6c\""
+            ],
+            "stdin_TTY": true,
+            "streams_merged_PTY": true,
+            "native_exit": 0,
+            "intentional_stop": null,
+            "elapsed": 1.367,
+            "decoded_JSON": [
+              1
+            ],
+            "arrival_seconds": [
+              1.352
+            ],
+            "output": "\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \u001b[5;H\u001b[H\n\n\n⣻  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                   \r\n\u001b[5;H\u001b[H\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\u001b[5;H\u001b[H\n\n\n⣻  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n                                                   \r\n\u001b[5;H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25hWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\n1\n\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r \u001b[H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25h",
+            "own_process_group_cleaned": true
+          },
+          {
+            "command": [
+              "bex",
+              "kv-cli",
+              "red-db8taqndbg8c73dghe80",
+              "-o",
+              "interactive",
+              "--",
+              "--json",
+              "-2",
+              "--quoted-input",
+              "PUBLISH",
+              "qa356_0e52e8:round3:payload",
+              "\"\""
+            ],
+            "stdin_TTY": true,
+            "streams_merged_PTY": true,
+            "native_exit": 0,
+            "intentional_stop": null,
+            "elapsed": 1.433,
+            "decoded_JSON": [
+              1
+            ],
+            "arrival_seconds": [
+              1.419
+            ],
+            "output": "\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \u001b[5;H\u001b[H\n\n\n⣻  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⡿  Loading...                   \r\n\u001b[5;H\u001b[H\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\u001b[5;H\u001b[H\n\n\n⣻  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⡿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n                                                   \r\n\u001b[5;H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25hWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\n1\n\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r \u001b[H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25h",
+            "own_process_group_cleaned": true
+          }
+        ],
+        "acknowledged_before_first_publish": true,
+        "pass": true,
+        "received_exact_payloads_in_order": true,
+        "subscription": {
+          "command": [
+            "render",
+            "kv-cli",
+            "red-db8taqndbg8c73dghe80",
+            "-o",
+            "interactive",
+            "--",
+            "--json",
+            "-2",
+            "PSUBSCRIBE",
+            "qa356_0e52e8:round3:*"
+          ],
+          "stdin_TTY": true,
+          "streams_merged_PTY": true,
+          "native_exit": -9,
+          "intentional_stop": "bounded QA stop after all expected frames",
+          "elapsed": 7.094,
+          "decoded_JSON": [
+            [
+              "psubscribe",
+              "qa356_0e52e8:round3:*",
+              1
+            ],
+            [
+              "pmessage",
+              "qa356_0e52e8:round3:*",
+              "qa356_0e52e8:round3:payload",
+              "Render CLI on Render at https://render.com/docs / render.yaml / bex.yml"
+            ],
+            [
+              "pmessage",
+              "qa356_0e52e8:round3:*",
+              "qa356_0e52e8:round3:payload",
+              "line1\r\nline2 café 日本 😀\u0000tail"
+            ],
+            [
+              "pmessage",
+              "qa356_0e52e8:round3:*",
+              "qa356_0e52e8:round3:payload",
+              ""
+            ]
+          ],
+          "arrival_seconds": [
+            1.291,
+            2.687,
+            4.054,
+            5.488
+          ],
+          "output": "\u001b[?25l\u001b[?1049h\u001b[2J\u001b[H\u001b[?25l\u001b[?2004h\u001b[H\r                                \r\ntea-daif693dqjvc73e7as3g > Login\r\n                                \r\n⣽  Loading...                   \r\n[Ctrl+C]: Quit                  \u001b[5;H\u001b[H\n\n\n⣻  Loading...                   \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                   \r\n\u001b[5;H\u001b[H\r                                                   \r\ntea-daif693dqjvc73e7as3g > kv-cli                  \r\n                                                   \r\n⣽  Loading...                                      \r\n[Ctrl+C]: Quit  [Ctrl+S]: Copy command to clipboard\u001b[5;H\u001b[H\n\n\n⣻  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n⢿  Loading...                                      \r\n\u001b[5;H\u001b[H\n\n\n                                                   \r\n\u001b[5;H\u001b[2K\r\u001b[?2004l\u001b[?25h\u001b[?1002l\u001b[?1003l\u001b[?1006l\u001b[?1049l\u001b[?25hWarning: Using a password with '-a' or '-u' option on the command line interface may not be safe.\n[\"psubscribe\",\"qa356_0e52e8:round3:*\",1]\n[\"pmessage\",\"qa356_0e52e8:round3:*\",\"qa356_0e52e8:round3:payload\",\"Render CLI on Render at https://render.com/docs / render.yaml / bex.yml\"]\n[\"pmessage\",\"qa356_0e52e8:round3:*\",\"qa356_0e52e8:round3:payload\",\"line1\\r\\nline2 café 日本 😀\\u0000tail\"]\n[\"pmessage\",\"qa356_0e52e8:round3:*\",\"qa356_0e52e8:round3:payload\",\"\"]\n",
+          "own_process_group_cleaned": true
+        }
+      },
+      "pass": true
+    }
+  ],
+  "pubsub_copied_Render_config_removed": true,
+  "delete_intent": {
+    "at": "2026-10-16T07:45:48.989041+00:00",
+    "detail": {
+      "at": "2026-10-16T07:45:48.744767+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.424,
+      "response": "{\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:55Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/r/red-db8taqndbg8c73dghe80\", \"version\": \"8\", \"options\": {\"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"ipAllowList\": [], \"externalHost\": \"red-db8taqndbg8c73dghe80.kv.bex.co\", \"public\": true}",
+      "stderr": ""
+    },
+    "standalone_owned_KeyValue_no_dependents": true
+  },
+  "delete_result": {
+    "at": "2026-10-16T07:45:49.874681+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "keyvalues",
+      "delete",
+      "red-db8taqndbg8c73dghe80",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.667,
+    "stdout": "{\"data\": {\"id\": \"red-db8taqndbg8c73dghe80\", \"name\": \"qa-20261016-0e52e8-pubsub\", \"plan\": \"free\", \"region\": \"fsn1\", \"status\": \"available\", \"createdAt\": \"2026-10-16T07:42:34Z\", \"updatedAt\": \"2026-10-16T07:43:55Z\", \"version\": \"8\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"ownerType\": \"team\", \"projectId\": null, \"environmentId\": null, \"ipAllowList\": [], \"maxmemoryPolicy\": \"noeviction\", \"persistenceMode\": \"off\"}, \"meta\": {\"deleted\": true}}",
+    "stderr": ""
+  },
+  "cleanup_receipts": [
+    {
+      "at": "2026-10-16T07:45:52.165389+00:00",
+      "detail": {
+        "at": "2026-10-16T07:45:50.843741+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "404",
+        "curl_exit": 0,
+        "elapsed": 0.349,
+        "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+        "stderr": ""
+      },
+      "inventory": {
+        "at": "2026-10-16T07:45:51.345912+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "list",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.501,
+        "stdout": "{\"data\": []}",
+        "stderr": ""
+      },
+      "services": {
+        "at": "2026-10-16T07:45:51.874175+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.528,
+        "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}]",
+        "stderr": ""
+      },
+      "quota": {
+        "at": "2026-10-16T07:45:52.165243+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.279,
+        "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 1, \"terminating\": 1, \"limit\": 1}}",
+        "stderr": ""
+      },
+      "pass": false
+    },
+    {
+      "at": "2026-10-16T07:46:22.091138+00:00",
+      "detail": {
+        "at": "2026-10-16T07:46:19.795139+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/key-value/red-db8taqndbg8c73dghe80",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "404",
+        "curl_exit": 0,
+        "elapsed": 0.354,
+        "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+        "stderr": ""
+      },
+      "inventory": {
+        "at": "2026-10-16T07:46:20.461843+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "keyvalues",
+          "list",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.666,
+        "stdout": "{\"data\": []}",
+        "stderr": ""
+      },
+      "services": {
+        "at": "2026-10-16T07:46:21.757568+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 1.296,
+        "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}]",
+        "stderr": ""
+      },
+      "quota": {
+        "at": "2026-10-16T07:46:22.091034+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.321,
+        "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+        "stderr": ""
+      },
+      "pass": true
+    }
+  ],
+  "cached_endpoint_credentials_removed": {
+    "at": "2026-10-16T07:46:18.842433+00:00",
+    "removed": true
+  }
+}

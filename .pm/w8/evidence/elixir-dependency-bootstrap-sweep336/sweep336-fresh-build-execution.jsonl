@@ -1,0 +1,8 @@
+{"Time":"2026-10-15T19:05:44.579819-07:00","Action":"start","Package":"github.com/bex-co/bex/lego/operator/internal/build"}
+{"Time":"2026-10-15T19:05:45.146184-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/operator/internal/build","Test":"TestQA336ElixirHexDependencyBuildExecution"}
+{"Time":"2026-10-15T19:05:45.146316-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/build","Test":"TestQA336ElixirHexDependencyBuildExecution","Output":"=== RUN   TestQA336ElixirHexDependencyBuildExecution\n"}
+{"Time":"2026-10-15T19:05:52.292785-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/build","Test":"TestQA336ElixirHexDependencyBuildExecution","Output":"--- PASS: TestQA336ElixirHexDependencyBuildExecution (7.15s)\n"}
+{"Time":"2026-10-15T19:05:52.292829-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/build","Test":"TestQA336ElixirHexDependencyBuildExecution","Elapsed":7.15}
+{"Time":"2026-10-15T19:05:52.292872-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/build","Output":"PASS\n"}
+{"Time":"2026-10-15T19:05:52.294197-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/build","Output":"ok  \tgithub.com/bex-co/bex/lego/operator/internal/build\t7.714s\n"}
+{"Time":"2026-10-15T19:05:52.294242-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/build","Elapsed":7.715}

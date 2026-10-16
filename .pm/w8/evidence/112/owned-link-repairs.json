@@ -1,0 +1,7 @@
+{
+  "reason": "upstream f373dd508 promoted the source note to w4/m213 and archived321; repair only this hunt\u2019s owned Markdown links",
+  "target": ".pm/w4/done/321.md",
+  "files": [
+    ".pm/w8/m82/finding.md"
+  ]
+}

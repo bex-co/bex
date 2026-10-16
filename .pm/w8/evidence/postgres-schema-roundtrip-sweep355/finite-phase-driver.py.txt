@@ -1,0 +1,7 @@
+from pathlib import Path
+import subprocess,sys,json
+P=Path(__file__).resolve().parent;group=sys.argv[1];assert group in ('backup','restore')
+steps=([('seed-bex','sweep355-native-data.py','seed','bex'),('before-render','sweep355-native-data.py','snapshot','render','before'),('dump','sweep355-archive.py','dump','bex')] if group=='backup' else [('drop','sweep355-native-data.py','drop','bex'),('restore','sweep355-archive.py','restore','bex'),('restored-bex','sweep355-native-data.py','snapshot','bex','restored'),('restored-render','sweep355-native-data.py','snapshot','render','restored'),('next-identity','sweep355-native-data.py','next','bex'),('remove-archive','sweep355-archive.py','remove','bex')])
+for label,name,*args in steps:
+ print(json.dumps({'step':label,'state':'starting','group':group}),flush=True);r=subprocess.run(['python3',str(P/name),*args],text=True,capture_output=True,timeout=120);(P/('sweep355-'+label+'.stdout.log')).write_text(r.stdout);(P/('sweep355-'+label+'.stderr.log')).write_text(r.stderr);print(json.dumps({'step':label,'exit':r.returncode,'result_logged_privately':True}),flush=True)
+ if r.returncode!=0:raise SystemExit('Inspect recorded result before any retry: '+label)

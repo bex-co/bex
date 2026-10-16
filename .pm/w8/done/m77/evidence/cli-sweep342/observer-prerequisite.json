@@ -1,0 +1,26 @@
+{
+  "at": "2026-10-16T03:39:53.648142+00:00",
+  "source_head": "7ee5a95fd1d88dd8766072f497e8e191d51a06cb",
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--network",
+    "none",
+    "--cpus",
+    "1",
+    "--memory",
+    "512m",
+    "--pids-limit",
+    "128",
+    "ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172",
+    "timeout",
+    "2",
+    "ruby",
+    "--version"
+  ],
+  "exit": 0,
+  "stdout": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [aarch64-linux]\n",
+  "stderr": "Unable to find image 'ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172' locally\ndocker.io/library/ruby@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172: Pulling from library/ruby\nDigest: sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172\nStatus: Downloaded newer image for ruby@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172\n",
+  "qualification": "local pinned Ruby image provides the timeout command used only to bound QA version observers; --rm exits successfully"
+}

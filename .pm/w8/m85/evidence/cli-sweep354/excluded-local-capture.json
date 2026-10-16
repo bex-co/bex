@@ -1,0 +1,274 @@
+[
+  {
+    "sweep": 354,
+    "client": "render",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "web_service",
+    "name": "qa-20261016-5415b5-rubylock",
+    "nonce": "5415b5",
+    "marker": "QA354_5415b5_render",
+    "time": "2026-10-16T06:57:47.900558+00:00",
+    "source_head": "779c825e2b6b99c8e3b697b20355781880da7fc8",
+    "primary_reference": {
+      "repo": "https://github.com/discourse/discourse",
+      "branch": "main",
+      "commit": "802125b979b5bb848a7cfc52409ef3176ffd4d82",
+      "files": {
+        "Gemfile": {
+          "bytes": 8485,
+          "sha256": "bf35ad5fddd287ba5844788629ee153bbbef7058770b21bf276738a6829b2cb4"
+        },
+        "Gemfile.lock": {
+          "bytes": 55990,
+          "sha256": "5931d9aac02cd610eeb499e9ff520784924e86f896ae6da7ce3ab35f7044579d"
+        }
+      },
+      "lock_ruby": "3.4.7p58",
+      "expected_reviewed_line": "3.4",
+      "absent_files": [
+        ".ruby-version",
+        ".tool-versions",
+        "gems.locked"
+      ],
+      "primary_fetch_receipts": {
+        "repo": "discourse/discourse",
+        "branch": "main",
+        "commit": "802125b979b5bb848a7cfc52409ef3176ffd4d82",
+        "files": {
+          ".ruby-version": {
+            "HTTP": "404",
+            "exit": 0
+          },
+          ".tool-versions": {
+            "HTTP": "404",
+            "exit": 0
+          },
+          "Gemfile": {
+            "HTTP": "200",
+            "exit": 0,
+            "bytes": 8485,
+            "Ruby_signal": [
+              "\nruby \">= 3.4\", \"< 4.1\""
+            ]
+          },
+          "Gemfile.lock": {
+            "HTTP": "200",
+            "exit": 0,
+            "bytes": 55990,
+            "Ruby_signal": [
+              "RUBY VERSION\n  ruby 3.4.7p58"
+            ]
+          },
+          "gems.locked": {
+            "HTTP": "404",
+            "exit": 0
+          }
+        }
+      },
+      "anonymous_main_ref_verified_at": "2026-10-16T06:56:47.929993+00:00"
+    },
+    "commands": {
+      "initial": {
+        "build": "set -e\ncat > qa354-probe.rb <<'QA354_RUBY_PROBE'\nrequire 'json'\nMARKER = \"QA354_5415b5_render\"\nEXPECTED_FILES = JSON.parse(\"{\\\"Gemfile\\\": {\\\"bytes\\\": 8485, \\\"sha256\\\": \\\"bf35ad5fddd287ba5844788629ee153bbbef7058770b21bf276738a6829b2cb4\\\"}, \\\"Gemfile.lock\\\": {\\\"bytes\\\": 55990, \\\"sha256\\\": \\\"5931d9aac02cd610eeb499e9ff520784924e86f896ae6da7ce3ab35f7044579d\\\"}}\")\nABSENT_FILES = JSON.parse(\"[\\\".ruby-version\\\", \\\".tool-versions\\\", \\\"gems.locked\\\"]\")\nrequire 'json'\nrequire 'socket'\nrequire 'digest'\nrequire 'open3'\ndef files\n EXPECTED_FILES.to_h { |name, _| [name, {'bytes'=>File.size(name), 'sha256'=>Digest::SHA256.file(name).hexdigest}] }\nend\ndef snapshot\n out,err,status=Open3.capture3('timeout','20','node','--version')\n {'marker'=>MARKER,'ruby'=>RUBY_VERSION,'ruby_engine'=>RUBY_ENGINE,'ruby_patchlevel'=>RUBY_PATCHLEVEL,'architecture'=>RUBY_PLATFORM,'files'=>files,'lock_ruby'=>File.read('Gemfile.lock')[/^RUBY VERSION\\n[ \\t]+ruby ([^\\n]+)/,1],'other_ruby_sources'=>ABSENT_FILES.to_h { |n| [n,File.exist?(n)] },'node'=>{'exit'=>status.exitstatus,'stdout'=>out,'stderr'=>err},'requested_node'=>ENV['NODE_VERSION']}\nend\nif ARGV.include?('--build')\n abort 'unexpected public version-file content' unless files==EXPECTED_FILES && ABSENT_FILES.none? { |n| File.exist?(n) }\n puts(MARKER+'_SOURCE_LOCK_CONFIRMED');$stdout.flush\n abort(MARKER+'_LOCK_EXPECTED_3_4_ACTUAL='+RUBY_VERSION) if ARGV.include?('--require-lock') && !RUBY_VERSION.start_with?('3.4.')\n value=snapshot\n File.write('qa354-built.json',JSON.generate(value))\n puts(JSON.generate(value));$stdout.flush\nelse\n body=JSON.generate(snapshot.merge('built'=>JSON.parse(File.read('qa354-built.json'))))\n TCPServer.open('0.0.0.0',Integer(ENV.fetch('PORT','10000'))) do |server|\n  loop do\n   connection=server.accept\n   begin\n    while (line=connection.gets) && line!=\"\\r\\n\"; end\n    connection.write(\"HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: #{body.bytesize}\\r\\nConnection: close\\r\\n\\r\\n\")\n    connection.write(body)\n   rescue IOError,SystemCallError\n   ensure\n    connection.close\n   end\n  end\n end\nend\n\nQA354_RUBY_PROBE\nruby qa354-probe.rb --build --require-lock",
+        "start": "ruby qa354-probe.rb",
+        "program": "require 'json'\nMARKER = \"QA354_5415b5_render\"\nEXPECTED_FILES = JSON.parse(\"{\\\"Gemfile\\\": {\\\"bytes\\\": 8485, \\\"sha256\\\": \\\"bf35ad5fddd287ba5844788629ee153bbbef7058770b21bf276738a6829b2cb4\\\"}, \\\"Gemfile.lock\\\": {\\\"bytes\\\": 55990, \\\"sha256\\\": \\\"5931d9aac02cd610eeb499e9ff520784924e86f896ae6da7ce3ab35f7044579d\\\"}}\")\nABSENT_FILES = JSON.parse(\"[\\\".ruby-version\\\", \\\".tool-versions\\\", \\\"gems.locked\\\"]\")\nrequire 'json'\nrequire 'socket'\nrequire 'digest'\nrequire 'open3'\ndef files\n EXPECTED_FILES.to_h { |name, _| [name, {'bytes'=>File.size(name), 'sha256'=>Digest::SHA256.file(name).hexdigest}] }\nend\ndef snapshot\n out,err,status=Open3.capture3('timeout','20','node','--version')\n {'marker'=>MARKER,'ruby'=>RUBY_VERSION,'ruby_engine'=>RUBY_ENGINE,'ruby_patchlevel'=>RUBY_PATCHLEVEL,'architecture'=>RUBY_PLATFORM,'files'=>files,'lock_ruby'=>File.read('Gemfile.lock')[/^RUBY VERSION\\n[ \\t]+ruby ([^\\n]+)/,1],'other_ruby_sources'=>ABSENT_FILES.to_h { |n| [n,File.exist?(n)] },'node'=>{'exit'=>status.exitstatus,'stdout'=>out,'stderr'=>err},'requested_node'=>ENV['NODE_VERSION']}\nend\nif ARGV.include?('--build')\n abort 'unexpected public version-file content' unless files==EXPECTED_FILES && ABSENT_FILES.none? { |n| File.exist?(n) }\n puts(MARKER+'_SOURCE_LOCK_CONFIRMED');$stdout.flush\n abort(MARKER+'_LOCK_EXPECTED_3_4_ACTUAL='+RUBY_VERSION) if ARGV.include?('--require-lock') && !RUBY_VERSION.start_with?('3.4.')\n value=snapshot\n File.write('qa354-built.json',JSON.generate(value))\n puts(JSON.generate(value));$stdout.flush\nelse\n body=JSON.generate(snapshot.merge('built'=>JSON.parse(File.read('qa354-built.json'))))\n TCPServer.open('0.0.0.0',Integer(ENV.fetch('PORT','10000'))) do |server|\n  loop do\n   connection=server.accept\n   begin\n    while (line=connection.gets) && line!=\"\\r\\n\"; end\n    connection.write(\"HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: #{body.bytesize}\\r\\nConnection: close\\r\\n\\r\\n\")\n    connection.write(body)\n   rescue IOError,SystemCallError\n   ensure\n    connection.close\n   end\n  end\n end\nend\n",
+        "require_lock": true
+      }
+    },
+    "pre_ids": [
+      "srv-dap3v694dm7c7390q930",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-db09vbgehcmc739j12i0",
+      "srv-db09u90ehcmc739j12cg",
+      "srv-db8slcndbg8c73dghda0"
+    ],
+    "pre_inventory": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.714,
+      "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"main\", \"createdAt\": \"2026-10-16T06:56:50Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db8slcndbg8c73dghda0\", \"id\": \"srv-db8slcndbg8c73dghda0\", \"name\": \"qa-20261016-1b2e62-rubylock\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/discourse/discourse\", \"rootDir\": \"\", \"serviceDetails\": {\"env\": \"ruby\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\ncat > qa354-probe.rb <<'QA354_RUBY_PROBE'\\nrequire 'json'\\nMARKER = \\\"QA354_1b2e62_bex\\\"\\nEXPECTED_FILES = JSON.parse(\\\"{\\\\\\\"Gemfile\\\\\\\": {\\\\\\\"bytes\\\\\\\": 8485, \\\\\\\"sha256\\\\\\\": \\\\\\\"bf35ad5fddd287ba5844788629ee153bbbef7058770b21bf276738a6829b2cb4\\\\\\\"}, \\\\\\\"Gemfile.lock\\\\\\\": {\\\\\\\"bytes\\\\\\\": 55990, \\\\\\\"sha256\\\\\\\": \\\\\\\"5931d9aac02cd610eeb499e9ff520784924e86f896ae6da7ce3ab35f7044579d\\\\\\\"}}\\\")\\nABSENT_FILES = JSON.parse(\\\"[\\\\\\\".ruby-version\\\\\\\", \\\\\\\".tool-versions\\\\\\\", \\\\\\\"gems.locked\\\\\\\"]\\\")\\nrequire 'json'\\nrequire 'socket'\\nrequire 'digest'\\nrequire 'open3'\\ndef files\\n EXPECTED_FILES.to_h { |name, _| [name, {'bytes'=>File.size(name), 'sha256'=>Digest::SHA256.file(name).hexdigest}] }\\nend\\ndef snapshot\\n out,err,status=Open3.capture3('timeout','20','node','--version')\\n {'marker'=>MARKER,'ruby'=>RUBY_VERSION,'ruby_engine'=>RUBY_ENGINE,'ruby_patchlevel'=>RUBY_PATCHLEVEL,'architecture'=>RUBY_PLATFORM,'files'=>files,'lock_ruby'=>File.read('Gemfile.lock')[/^RUBY VERSION\\\\n[ \\\\t]+ruby ([^\\\\n]+)/,1],'other_ruby_sources'=>ABSENT_FILES.to_h { |n| [n,File.exist?(n)] },'node'=>{'exit'=>status.exitstatus,'stdout'=>out,'stderr'=>err},'requested_node'=>ENV['NODE_VERSION']}\\nend\\nif ARGV.include?('--build')\\n abort 'unexpected public version-file content' unless files==EXPECTED_FILES && ABSENT_FILES.none? { |n| File.exist?(n) }\\n puts(MARKER+'_SOURCE_LOCK_CONFIRMED');$stdout.flush\\n abort(MARKER+'_LOCK_EXPECTED_3_4_ACTUAL='+RUBY_VERSION) if ARGV.include?('--require-lock') && !RUBY_VERSION.start_with?('3.4.')\\n value=snapshot\\n File.write('qa354-built.json',JSON.generate(value))\\n puts(JSON.generate(value));$stdout.flush\\nelse\\n body=JSON.generate(snapshot.merge('built'=>JSON.parse(File.read('qa354-built.json'))))\\n TCPServer.open('0.0.0.0',Integer(ENV.fetch('PORT','10000'))) do |server|\\n  loop do\\n   connection=server.accept\\n   begin\\n    while (line=connection.gets) && line!=\\\"\\\\r\\\\n\\\"; end\\n    connection.write(\\\"HTTP/1.1 200 OK\\\\r\\\\nContent-Type: application/json\\\\r\\\\nContent-Length: #{body.bytesize}\\\\r\\\\nConnection: close\\\\r\\\\n\\\\r\\\\n\\\")\\n    connection.write(body)\\n   rescue IOError,SystemCallError\\n   ensure\\n    connection.close\\n   end\\n  end\\n end\\nend\\n\\nQA354_RUBY_PROBE\\nruby qa354-probe.rb --build --require-lock\", \"preDeployCommand\": \"\", \"startCommand\": \"ruby qa354-probe.rb\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261016-1b2e62-rubylock:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"ruby\", \"url\": \"https://qa-20261016-1b2e62-rubylock.onbex.co\"}, \"slug\": \"qa-20261016-1b2e62-rubylock\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"web_service\", \"updatedAt\": \"2026-10-16T06:57:46Z\"}}]",
+      "stderr": ""
+    },
+    "capacity": {
+      "at": "2026-10-16T06:57:47.144296+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.337,
+      "response": "{\"services\": {\"used\": 7, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+      "stderr": ""
+    },
+    "dependency_ids": [],
+    "recorded_child_ids": [],
+    "create_command": [
+      "render",
+      "services",
+      "create",
+      "--name",
+      "qa-20261016-5415b5-rubylock",
+      "--type",
+      "web_service",
+      "--runtime",
+      "ruby",
+      "--repo",
+      "https://github.com/discourse/discourse",
+      "--branch",
+      "main",
+      "--build-command",
+      "set -e\ncat > qa354-probe.rb <<'QA354_RUBY_PROBE'\nrequire 'json'\nMARKER = \"QA354_5415b5_render\"\nEXPECTED_FILES = JSON.parse(\"{\\\"Gemfile\\\": {\\\"bytes\\\": 8485, \\\"sha256\\\": \\\"bf35ad5fddd287ba5844788629ee153bbbef7058770b21bf276738a6829b2cb4\\\"}, \\\"Gemfile.lock\\\": {\\\"bytes\\\": 55990, \\\"sha256\\\": \\\"5931d9aac02cd610eeb499e9ff520784924e86f896ae6da7ce3ab35f7044579d\\\"}}\")\nABSENT_FILES = JSON.parse(\"[\\\".ruby-version\\\", \\\".tool-versions\\\", \\\"gems.locked\\\"]\")\nrequire 'json'\nrequire 'socket'\nrequire 'digest'\nrequire 'open3'\ndef files\n EXPECTED_FILES.to_h { |name, _| [name, {'bytes'=>File.size(name), 'sha256'=>Digest::SHA256.file(name).hexdigest}] }\nend\ndef snapshot\n out,err,status=Open3.capture3('timeout','20','node','--version')\n {'marker'=>MARKER,'ruby'=>RUBY_VERSION,'ruby_engine'=>RUBY_ENGINE,'ruby_patchlevel'=>RUBY_PATCHLEVEL,'architecture'=>RUBY_PLATFORM,'files'=>files,'lock_ruby'=>File.read('Gemfile.lock')[/^RUBY VERSION\\n[ \\t]+ruby ([^\\n]+)/,1],'other_ruby_sources'=>ABSENT_FILES.to_h { |n| [n,File.exist?(n)] },'node'=>{'exit'=>status.exitstatus,'stdout'=>out,'stderr'=>err},'requested_node'=>ENV['NODE_VERSION']}\nend\nif ARGV.include?('--build')\n abort 'unexpected public version-file content' unless files==EXPECTED_FILES && ABSENT_FILES.none? { |n| File.exist?(n) }\n puts(MARKER+'_SOURCE_LOCK_CONFIRMED');$stdout.flush\n abort(MARKER+'_LOCK_EXPECTED_3_4_ACTUAL='+RUBY_VERSION) if ARGV.include?('--require-lock') && !RUBY_VERSION.start_with?('3.4.')\n value=snapshot\n File.write('qa354-built.json',JSON.generate(value))\n puts(JSON.generate(value));$stdout.flush\nelse\n body=JSON.generate(snapshot.merge('built'=>JSON.parse(File.read('qa354-built.json'))))\n TCPServer.open('0.0.0.0',Integer(ENV.fetch('PORT','10000'))) do |server|\n  loop do\n   connection=server.accept\n   begin\n    while (line=connection.gets) && line!=\"\\r\\n\"; end\n    connection.write(\"HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: #{body.bytesize}\\r\\nConnection: close\\r\\n\\r\\n\")\n    connection.write(body)\n   rescue IOError,SystemCallError\n   ensure\n    connection.close\n   end\n  end\n end\nend\n\nQA354_RUBY_PROBE\nruby qa354-probe.rb --build --require-lock",
+      "--start-command",
+      "ruby qa354-probe.rb",
+      "--env-var",
+      "NODE_VERSION=24",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--health-check-path",
+      "/",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "state": "unallocated: local capture EOF; complete native/API inventories and quota agree after request bounds; replaced only with a fresh nonce/direct native invocation",
+    "create_result": {
+      "binary": "unmodified Render 2.27.0/a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "create",
+        "--name",
+        "qa-20261016-5415b5-rubylock",
+        "--type",
+        "web_service",
+        "--runtime",
+        "ruby",
+        "--repo",
+        "https://github.com/discourse/discourse",
+        "--branch",
+        "main",
+        "--build-command",
+        "set -e\ncat > qa354-probe.rb <<'QA354_RUBY_PROBE'\nrequire 'json'\nMARKER = \"QA354_5415b5_render\"\nEXPECTED_FILES = JSON.parse(\"{\\\"Gemfile\\\": {\\\"bytes\\\": 8485, \\\"sha256\\\": \\\"bf35ad5fddd287ba5844788629ee153bbbef7058770b21bf276738a6829b2cb4\\\"}, \\\"Gemfile.lock\\\": {\\\"bytes\\\": 55990, \\\"sha256\\\": \\\"5931d9aac02cd610eeb499e9ff520784924e86f896ae6da7ce3ab35f7044579d\\\"}}\")\nABSENT_FILES = JSON.parse(\"[\\\".ruby-version\\\", \\\".tool-versions\\\", \\\"gems.locked\\\"]\")\nrequire 'json'\nrequire 'socket'\nrequire 'digest'\nrequire 'open3'\ndef files\n EXPECTED_FILES.to_h { |name, _| [name, {'bytes'=>File.size(name), 'sha256'=>Digest::SHA256.file(name).hexdigest}] }\nend\ndef snapshot\n out,err,status=Open3.capture3('timeout','20','node','--version')\n {'marker'=>MARKER,'ruby'=>RUBY_VERSION,'ruby_engine'=>RUBY_ENGINE,'ruby_patchlevel'=>RUBY_PATCHLEVEL,'architecture'=>RUBY_PLATFORM,'files'=>files,'lock_ruby'=>File.read('Gemfile.lock')[/^RUBY VERSION\\n[ \\t]+ruby ([^\\n]+)/,1],'other_ruby_sources'=>ABSENT_FILES.to_h { |n| [n,File.exist?(n)] },'node'=>{'exit'=>status.exitstatus,'stdout'=>out,'stderr'=>err},'requested_node'=>ENV['NODE_VERSION']}\nend\nif ARGV.include?('--build')\n abort 'unexpected public version-file content' unless files==EXPECTED_FILES && ABSENT_FILES.none? { |n| File.exist?(n) }\n puts(MARKER+'_SOURCE_LOCK_CONFIRMED');$stdout.flush\n abort(MARKER+'_LOCK_EXPECTED_3_4_ACTUAL='+RUBY_VERSION) if ARGV.include?('--require-lock') && !RUBY_VERSION.start_with?('3.4.')\n value=snapshot\n File.write('qa354-built.json',JSON.generate(value))\n puts(JSON.generate(value));$stdout.flush\nelse\n body=JSON.generate(snapshot.merge('built'=>JSON.parse(File.read('qa354-built.json'))))\n TCPServer.open('0.0.0.0',Integer(ENV.fetch('PORT','10000'))) do |server|\n  loop do\n   connection=server.accept\n   begin\n    while (line=connection.gets) && line!=\"\\r\\n\"; end\n    connection.write(\"HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: #{body.bytesize}\\r\\nConnection: close\\r\\n\\r\\n\")\n    connection.write(body)\n   rescue IOError,SystemCallError\n   ensure\n    connection.close\n   end\n  end\n end\nend\n\nQA354_RUBY_PROBE\nruby qa354-probe.rb --build --require-lock",
+        "--start-command",
+        "ruby qa354-probe.rb",
+        "--env-var",
+        "NODE_VERSION=24",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--health-check-path",
+        "/",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 35.146,
+      "stdout": "",
+      "stderr": "Error: Post \"http://127.0.0.1:51010/v1/services\": EOF\n",
+      "captures": [],
+      "qualification": "actual native POST forwarded unchanged to production; owned local relay and copied config cleaned",
+      "native_exit": 1
+    },
+    "create_reconciliations": [
+      {
+        "at": "2026-10-16T07:00:47.572646+00:00",
+        "native_inventory": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "services",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 1.263,
+          "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"main\", \"createdAt\": \"2026-10-16T06:56:50Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db8slcndbg8c73dghda0\", \"id\": \"srv-db8slcndbg8c73dghda0\", \"name\": \"qa-20261016-1b2e62-rubylock\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/discourse/discourse\", \"rootDir\": \"\", \"serviceDetails\": {\"env\": \"ruby\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\ncat > qa354-probe.rb <<'QA354_RUBY_PROBE'\\nrequire 'json'\\nMARKER = \\\"QA354_1b2e62_bex\\\"\\nEXPECTED_FILES = JSON.parse(\\\"{\\\\\\\"Gemfile\\\\\\\": {\\\\\\\"bytes\\\\\\\": 8485, \\\\\\\"sha256\\\\\\\": \\\\\\\"bf35ad5fddd287ba5844788629ee153bbbef7058770b21bf276738a6829b2cb4\\\\\\\"}, \\\\\\\"Gemfile.lock\\\\\\\": {\\\\\\\"bytes\\\\\\\": 55990, \\\\\\\"sha256\\\\\\\": \\\\\\\"5931d9aac02cd610eeb499e9ff520784924e86f896ae6da7ce3ab35f7044579d\\\\\\\"}}\\\")\\nABSENT_FILES = JSON.parse(\\\"[\\\\\\\".ruby-version\\\\\\\", \\\\\\\".tool-versions\\\\\\\", \\\\\\\"gems.locked\\\\\\\"]\\\")\\nrequire 'json'\\nrequire 'socket'\\nrequire 'digest'\\nrequire 'open3'\\ndef files\\n EXPECTED_FILES.to_h { |name, _| [name, {'bytes'=>File.size(name), 'sha256'=>Digest::SHA256.file(name).hexdigest}] }\\nend\\ndef snapshot\\n out,err,status=Open3.capture3('timeout','20','node','--version')\\n {'marker'=>MARKER,'ruby'=>RUBY_VERSION,'ruby_engine'=>RUBY_ENGINE,'ruby_patchlevel'=>RUBY_PATCHLEVEL,'architecture'=>RUBY_PLATFORM,'files'=>files,'lock_ruby'=>File.read('Gemfile.lock')[/^RUBY VERSION\\\\n[ \\\\t]+ruby ([^\\\\n]+)/,1],'other_ruby_sources'=>ABSENT_FILES.to_h { |n| [n,File.exist?(n)] },'node'=>{'exit'=>status.exitstatus,'stdout'=>out,'stderr'=>err},'requested_node'=>ENV['NODE_VERSION']}\\nend\\nif ARGV.include?('--build')\\n abort 'unexpected public version-file content' unless files==EXPECTED_FILES && ABSENT_FILES.none? { |n| File.exist?(n) }\\n puts(MARKER+'_SOURCE_LOCK_CONFIRMED');$stdout.flush\\n abort(MARKER+'_LOCK_EXPECTED_3_4_ACTUAL='+RUBY_VERSION) if ARGV.include?('--require-lock') && !RUBY_VERSION.start_with?('3.4.')\\n value=snapshot\\n File.write('qa354-built.json',JSON.generate(value))\\n puts(JSON.generate(value));$stdout.flush\\nelse\\n body=JSON.generate(snapshot.merge('built'=>JSON.parse(File.read('qa354-built.json'))))\\n TCPServer.open('0.0.0.0',Integer(ENV.fetch('PORT','10000'))) do |server|\\n  loop do\\n   connection=server.accept\\n   begin\\n    while (line=connection.gets) && line!=\\\"\\\\r\\\\n\\\"; end\\n    connection.write(\\\"HTTP/1.1 200 OK\\\\r\\\\nContent-Type: application/json\\\\r\\\\nContent-Length: #{body.bytesize}\\\\r\\\\nConnection: close\\\\r\\\\n\\\\r\\\\n\\\")\\n    connection.write(body)\\n   rescue IOError,SystemCallError\\n   ensure\\n    connection.close\\n   end\\n  end\\n end\\nend\\n\\nQA354_RUBY_PROBE\\nruby qa354-probe.rb --build --require-lock\", \"preDeployCommand\": \"\", \"startCommand\": \"ruby qa354-probe.rb\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261016-1b2e62-rubylock:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"ruby\", \"url\": \"https://qa-20261016-1b2e62-rubylock.onbex.co\"}, \"slug\": \"qa-20261016-1b2e62-rubylock\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"web_service\", \"updatedAt\": \"2026-10-16T06:58:52Z\"}}]",
+          "stderr": ""
+        },
+        "candidate_ids": []
+      },
+      {
+        "at": "2026-10-16T07:03:14.101101+00:00",
+        "elapsed_since_native_intent": 324.293215,
+        "native_inventory": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "services",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.76,
+          "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"main\", \"createdAt\": \"2026-10-16T06:56:50Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db8slcndbg8c73dghda0\", \"id\": \"srv-db8slcndbg8c73dghda0\", \"name\": \"qa-20261016-1b2e62-rubylock\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/discourse/discourse\", \"rootDir\": \"\", \"serviceDetails\": {\"env\": \"ruby\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\ncat > qa354-probe.rb <<'QA354_RUBY_PROBE'\\nrequire 'json'\\nMARKER = \\\"QA354_1b2e62_bex\\\"\\nEXPECTED_FILES = JSON.parse(\\\"{\\\\\\\"Gemfile\\\\\\\": {\\\\\\\"bytes\\\\\\\": 8485, \\\\\\\"sha256\\\\\\\": \\\\\\\"bf35ad5fddd287ba5844788629ee153bbbef7058770b21bf276738a6829b2cb4\\\\\\\"}, \\\\\\\"Gemfile.lock\\\\\\\": {\\\\\\\"bytes\\\\\\\": 55990, \\\\\\\"sha256\\\\\\\": \\\\\\\"5931d9aac02cd610eeb499e9ff520784924e86f896ae6da7ce3ab35f7044579d\\\\\\\"}}\\\")\\nABSENT_FILES = JSON.parse(\\\"[\\\\\\\".ruby-version\\\\\\\", \\\\\\\".tool-versions\\\\\\\", \\\\\\\"gems.locked\\\\\\\"]\\\")\\nrequire 'json'\\nrequire 'socket'\\nrequire 'digest'\\nrequire 'open3'\\ndef files\\n EXPECTED_FILES.to_h { |name, _| [name, {'bytes'=>File.size(name), 'sha256'=>Digest::SHA256.file(name).hexdigest}] }\\nend\\ndef snapshot\\n out,err,status=Open3.capture3('timeout','20','node','--version')\\n {'marker'=>MARKER,'ruby'=>RUBY_VERSION,'ruby_engine'=>RUBY_ENGINE,'ruby_patchlevel'=>RUBY_PATCHLEVEL,'architecture'=>RUBY_PLATFORM,'files'=>files,'lock_ruby'=>File.read('Gemfile.lock')[/^RUBY VERSION\\\\n[ \\\\t]+ruby ([^\\\\n]+)/,1],'other_ruby_sources'=>ABSENT_FILES.to_h { |n| [n,File.exist?(n)] },'node'=>{'exit'=>status.exitstatus,'stdout'=>out,'stderr'=>err},'requested_node'=>ENV['NODE_VERSION']}\\nend\\nif ARGV.include?('--build')\\n abort 'unexpected public version-file content' unless files==EXPECTED_FILES && ABSENT_FILES.none? { |n| File.exist?(n) }\\n puts(MARKER+'_SOURCE_LOCK_CONFIRMED');$stdout.flush\\n abort(MARKER+'_LOCK_EXPECTED_3_4_ACTUAL='+RUBY_VERSION) if ARGV.include?('--require-lock') && !RUBY_VERSION.start_with?('3.4.')\\n value=snapshot\\n File.write('qa354-built.json',JSON.generate(value))\\n puts(JSON.generate(value));$stdout.flush\\nelse\\n body=JSON.generate(snapshot.merge('built'=>JSON.parse(File.read('qa354-built.json'))))\\n TCPServer.open('0.0.0.0',Integer(ENV.fetch('PORT','10000'))) do |server|\\n  loop do\\n   connection=server.accept\\n   begin\\n    while (line=connection.gets) && line!=\\\"\\\\r\\\\n\\\"; end\\n    connection.write(\\\"HTTP/1.1 200 OK\\\\r\\\\nContent-Type: application/json\\\\r\\\\nContent-Length: #{body.bytesize}\\\\r\\\\nConnection: close\\\\r\\\\n\\\\r\\\\n\\\")\\n    connection.write(body)\\n   rescue IOError,SystemCallError\\n   ensure\\n    connection.close\\n   end\\n  end\\n end\\nend\\n\\nQA354_RUBY_PROBE\\nruby qa354-probe.rb --build --require-lock\", \"preDeployCommand\": \"\", \"startCommand\": \"ruby qa354-probe.rb\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261016-1b2e62-rubylock:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"ruby\", \"url\": \"https://qa-20261016-1b2e62-rubylock.onbex.co\"}, \"slug\": \"qa-20261016-1b2e62-rubylock\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"web_service\", \"updatedAt\": \"2026-10-16T06:58:52Z\"}}]",
+          "stderr": "",
+          "native_exit": 0
+        },
+        "API_inventory": {
+          "at": "2026-10-16T07:03:13.746190+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services?ownerId=tea-daif693dqjvc73e7as3g",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.729,
+          "response": "[{\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}, \"cursor\": \"hello-go\"}, {\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline identity only; configuration omitted\"}, \"cursor\": \"qa-20260922-cd9361-boundary\"}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}, \"cursor\": \"qa-20260922-cd9361-longcronxx\"}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline identity only; configuration omitted\"}, \"cursor\": \"qa-20260922-cd9361-nativecron\"}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline identity only; configuration omitted\"}, \"cursor\": \"qa-20261003-c63833-zero-head\"}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}, \"cursor\": \"qa-20261003-f592c7-zero\"}, {\"service\": {\"id\": \"srv-db8slcndbg8c73dghda0\", \"name\": \"qa-20261016-1b2e62-rubylock\", \"immutableName\": \"qa-20261016-1b2e62-rubylock\", \"slug\": \"qa-20261016-1b2e62-rubylock\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db8slcndbg8c73dghda0\", \"createdAt\": \"2026-10-16T06:56:50Z\", \"updatedAt\": \"2026-10-16T06:58:52Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"ruby\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\ncat > qa354-probe.rb <<'QA354_RUBY_PROBE'\\nrequire 'json'\\nMARKER = \\\"QA354_1b2e62_bex\\\"\\nEXPECTED_FILES = JSON.parse(\\\"{\\\\\\\"Gemfile\\\\\\\": {\\\\\\\"bytes\\\\\\\": 8485, \\\\\\\"sha256\\\\\\\": \\\\\\\"bf35ad5fddd287ba5844788629ee153bbbef7058770b21bf276738a6829b2cb4\\\\\\\"}, \\\\\\\"Gemfile.lock\\\\\\\": {\\\\\\\"bytes\\\\\\\": 55990, \\\\\\\"sha256\\\\\\\": \\\\\\\"5931d9aac02cd610eeb499e9ff520784924e86f896ae6da7ce3ab35f7044579d\\\\\\\"}}\\\")\\nABSENT_FILES = JSON.parse(\\\"[\\\\\\\".ruby-version\\\\\\\", \\\\\\\".tool-versions\\\\\\\", \\\\\\\"gems.locked\\\\\\\"]\\\")\\nrequire 'json'\\nrequire 'socket'\\nrequire 'digest'\\nrequire 'open3'\\ndef files\\n EXPECTED_FILES.to_h { |name, _| [name, {'bytes'=>File.size(name), 'sha256'=>Digest::SHA256.file(name).hexdigest}] }\\nend\\ndef snapshot\\n out,err,status=Open3.capture3('timeout','20','node','--version')\\n {'marker'=>MARKER,'ruby'=>RUBY_VERSION,'ruby_engine'=>RUBY_ENGINE,'ruby_patchlevel'=>RUBY_PATCHLEVEL,'architecture'=>RUBY_PLATFORM,'files'=>files,'lock_ruby'=>File.read('Gemfile.lock')[/^RUBY VERSION\\\\n[ \\\\t]+ruby ([^\\\\n]+)/,1],'other_ruby_sources'=>ABSENT_FILES.to_h { |n| [n,File.exist?(n)] },'node'=>{'exit'=>status.exitstatus,'stdout'=>out,'stderr'=>err},'requested_node'=>ENV['NODE_VERSION']}\\nend\\nif ARGV.include?('--build')\\n abort 'unexpected public version-file content' unless files==EXPECTED_FILES && ABSENT_FILES.none? { |n| File.exist?(n) }\\n puts(MARKER+'_SOURCE_LOCK_CONFIRMED');$stdout.flush\\n abort(MARKER+'_LOCK_EXPECTED_3_4_ACTUAL='+RUBY_VERSION) if ARGV.include?('--require-lock') && !RUBY_VERSION.start_with?('3.4.')\\n value=snapshot\\n File.write('qa354-built.json',JSON.generate(value))\\n puts(JSON.generate(value));$stdout.flush\\nelse\\n body=JSON.generate(snapshot.merge('built'=>JSON.parse(File.read('qa354-built.json'))))\\n TCPServer.open('0.0.0.0',Integer(ENV.fetch('PORT','10000'))) do |server|\\n  loop do\\n   connection=server.accept\\n   begin\\n    while (line=connection.gets) && line!=\\\"\\\\r\\\\n\\\"; end\\n    connection.write(\\\"HTTP/1.1 200 OK\\\\r\\\\nContent-Type: application/json\\\\r\\\\nContent-Length: #{body.bytesize}\\\\r\\\\nConnection: close\\\\r\\\\n\\\\r\\\\n\\\")\\n    connection.write(body)\\n   rescue IOError,SystemCallError\\n   ensure\\n    connection.close\\n   end\\n  end\\n end\\nend\\n\\nQA354_RUBY_PROBE\\nruby qa354-probe.rb --build --require-lock\", \"preDeployCommand\": \"\", \"startCommand\": \"ruby qa354-probe.rb\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261016-1b2e62-rubylock:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"ruby\", \"url\": \"https://qa-20261016-1b2e62-rubylock.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Failed\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"repo\": \"https://github.com/discourse/discourse\", \"branch\": \"main\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\", \"healthCheckPath\": \"/\"}, \"cursor\": \"qa-20261016-1b2e62-rubylock\"}]",
+          "stderr": ""
+        },
+        "quota": {
+          "at": "2026-10-16T07:03:14.100831+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.34,
+          "response": "{\"services\": {\"used\": 7, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+          "stderr": ""
+        },
+        "pass": true,
+        "qualification": "two native inventory processes plus complete API inventory agree; service usage equals inventory count and zero terminating; original unique nonce absent after forwarding/process bounds; no resource allocated"
+      }
+    ],
+    "excluded_local_capture": true
+  }
+]

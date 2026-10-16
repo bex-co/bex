@@ -1,0 +1,16 @@
+{
+  "SKIP_INSTALL_DEPS": "true",
+  "actual_authored_build_command_preserved": true,
+  "case": "root-true",
+  "choices": [
+    {
+      "Label": "Node",
+      "Line": "24",
+      "Image": "node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0",
+      "Source": "NODE_VERSION=24"
+    }
+  ],
+  "manifest_and_npm_lock_at_selected_root": true,
+  "qualification": "real unchanged static generator/resolver; full generated application RUN retained for inspection; no Docker/install execution, cache bug or fixed regression claim",
+  "rootDir": ""
+}

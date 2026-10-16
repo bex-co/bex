@@ -1,0 +1,1974 @@
+[
+  {
+    "sweep": 352,
+    "client": "bex",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "web_service",
+    "name": "qa-20261016-74eb6c-http",
+    "nonce": "74eb6c",
+    "marker": "QA352_74eb6c_bex",
+    "time": "2026-10-16T06:09:28.931957+00:00",
+    "source_head": "bd0ffac525f2ff1dfb4d7c7add9f81000fed8036",
+    "primary_reference": {
+      "at": "2026-10-16T03:52:52.612656+00:00",
+      "repo": "https://github.com/expressjs/serve-static",
+      "branch": "master",
+      "commit": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+      "package_name": "serve-static",
+      "package_sha256": "4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8",
+      "qualification": "fresh anonymous master/HEAD matches independently checked prior source hash; no package installation",
+      "fresh_anonymous_default_ref": "109a299c26d2d532027bb6e66e50e365eeb8fcdd"
+    },
+    "commands": {
+      "initial": {
+        "build": "set -e\ncat > qa352-server.js <<'QA352_NODE_PROBE'\nconst MARKER=\"QA352_74eb6c_bex\";\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\nconst packageBytes=fs.readFileSync('package.json');\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\n').repeat(5000));\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\nhttp.createServer((req,res)=>{\n const path=new URL(req.url,'http://owned.example').pathname;\n res.setHeader('X-QA-Marker',MARKER);\n if(path==='/stream'){\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\n  let seq=0;const send=()=>res.write('id: '+seq+'\\nevent: tick\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\n\\n');send();\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\n }\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\n  res.setHeader('ETag','\"qa352-'+hash(body)+'\"');\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\n }\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\n\nQA352_NODE_PROBE\nnode qa352-server.js --build",
+        "start": "node qa352-server.js",
+        "program": "const MARKER=\"QA352_74eb6c_bex\";\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\nconst packageBytes=fs.readFileSync('package.json');\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\n').repeat(5000));\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\nhttp.createServer((req,res)=>{\n const path=new URL(req.url,'http://owned.example').pathname;\n res.setHeader('X-QA-Marker',MARKER);\n if(path==='/stream'){\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\n  let seq=0;const send=()=>res.write('id: '+seq+'\\nevent: tick\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\n\\n');send();\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\n }\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\n  res.setHeader('ETag','\"qa352-'+hash(body)+'\"');\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\n }\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\n"
+      }
+    },
+    "pre_ids": [
+      "srv-dap3v694dm7c7390q930",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-db09vbgehcmc739j12i0",
+      "srv-db09u90ehcmc739j12cg"
+    ],
+    "pre_inventory": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.664,
+      "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}]",
+      "stderr": "",
+      "native_exit": 0
+    },
+    "capacity": {
+      "at": "2026-10-16T06:09:28.220166+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.6,
+      "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+      "stderr": ""
+    },
+    "dependency_ids": [],
+    "recorded_child_ids": [
+      "dep-db8rv6i9cl7s73ae4aug"
+    ],
+    "create_command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261016-74eb6c-http",
+      "--type",
+      "web_service",
+      "--runtime",
+      "node",
+      "--repo",
+      "https://github.com/expressjs/serve-static",
+      "--branch",
+      "master",
+      "--build-command",
+      "set -e\ncat > qa352-server.js <<'QA352_NODE_PROBE'\nconst MARKER=\"QA352_74eb6c_bex\";\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\nconst packageBytes=fs.readFileSync('package.json');\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\n').repeat(5000));\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\nhttp.createServer((req,res)=>{\n const path=new URL(req.url,'http://owned.example').pathname;\n res.setHeader('X-QA-Marker',MARKER);\n if(path==='/stream'){\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\n  let seq=0;const send=()=>res.write('id: '+seq+'\\nevent: tick\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\n\\n');send();\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\n }\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\n  res.setHeader('ETag','\"qa352-'+hash(body)+'\"');\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\n }\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\n\nQA352_NODE_PROBE\nnode qa352-server.js --build",
+      "--start-command",
+      "node qa352-server.js",
+      "--env-var",
+      "NODE_VERSION=24",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--health-check-path",
+      "/",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "state": "deleted: native0/detail404/listabsent/runtime404/children404/baseline6/quota terminating0",
+    "create_result": {
+      "binary": "published Bex 0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--name",
+        "qa-20261016-74eb6c-http",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://github.com/expressjs/serve-static",
+        "--branch",
+        "master",
+        "--build-command",
+        "set -e\ncat > qa352-server.js <<'QA352_NODE_PROBE'\nconst MARKER=\"QA352_74eb6c_bex\";\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\nconst packageBytes=fs.readFileSync('package.json');\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\n').repeat(5000));\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\nhttp.createServer((req,res)=>{\n const path=new URL(req.url,'http://owned.example').pathname;\n res.setHeader('X-QA-Marker',MARKER);\n if(path==='/stream'){\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\n  let seq=0;const send=()=>res.write('id: '+seq+'\\nevent: tick\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\n\\n');send();\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\n }\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\n  res.setHeader('ETag','\"qa352-'+hash(body)+'\"');\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\n }\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\n\nQA352_NODE_PROBE\nnode qa352-server.js --build",
+        "--start-command",
+        "node qa352-server.js",
+        "--env-var",
+        "NODE_VERSION=24",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--health-check-path",
+        "/",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.466,
+      "stdout": "{\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"master\", \"createdAt\": \"2026-10-16T06:09:30Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db8rv6i9cl7s73ae4au0\", \"id\": \"srv-db8rv6i9cl7s73ae4au0\", \"name\": \"qa-20261016-74eb6c-http\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/expressjs/serve-static\", \"rootDir\": \"\", \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\ncat > qa352-server.js <<'QA352_NODE_PROBE'\\nconst MARKER=\\\"QA352_74eb6c_bex\\\";\\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\\nconst packageBytes=fs.readFileSync('package.json');\\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\\\n').repeat(5000));\\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\\nhttp.createServer((req,res)=>{\\n const path=new URL(req.url,'http://owned.example').pathname;\\n res.setHeader('X-QA-Marker',MARKER);\\n if(path==='/stream'){\\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\\n  let seq=0;const send=()=>res.write('id: '+seq+'\\\\nevent: tick\\\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\\\n\\\\n');send();\\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\\n }\\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\\n  res.setHeader('ETag','\\\"qa352-'+hash(body)+'\\\"');\\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\\n }\\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\\n\\nQA352_NODE_PROBE\\nnode qa352-server.js --build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa352-server.js\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261016-74eb6c-http:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261016-74eb6c-http.onbex.co\"}, \"slug\": \"qa-20261016-74eb6c-http\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"web_service\", \"updatedAt\": \"2026-10-16T06:09:30.066259385Z\"}",
+      "stderr": "",
+      "captures": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/v1/services",
+            "body": {
+              "autoDeploy": "no",
+              "branch": "master",
+              "envVars": [
+                {
+                  "key": "NODE_VERSION",
+                  "value": "24"
+                }
+              ],
+              "name": "qa-20261016-74eb6c-http",
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "repo": "https://github.com/expressjs/serve-static",
+              "serviceDetails": {
+                "envSpecificDetails": {
+                  "buildCommand": "set -e\ncat > qa352-server.js <<'QA352_NODE_PROBE'\nconst MARKER=\"QA352_74eb6c_bex\";\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\nconst packageBytes=fs.readFileSync('package.json');\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\n').repeat(5000));\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\nhttp.createServer((req,res)=>{\n const path=new URL(req.url,'http://owned.example').pathname;\n res.setHeader('X-QA-Marker',MARKER);\n if(path==='/stream'){\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\n  let seq=0;const send=()=>res.write('id: '+seq+'\\nevent: tick\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\n\\n');send();\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\n }\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\n  res.setHeader('ETag','\"qa352-'+hash(body)+'\"');\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\n }\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\n\nQA352_NODE_PROBE\nnode qa352-server.js --build",
+                  "startCommand": "node qa352-server.js"
+                },
+                "healthCheckPath": "/",
+                "plan": "free",
+                "region": "frankfurt",
+                "runtime": "node"
+              },
+              "type": "web_service"
+            },
+            "raw_body": "{\"autoDeploy\": \"no\", \"branch\": \"master\", \"envVars\": [{\"key\": \"NODE_VERSION\", \"value\": \"24\"}], \"name\": \"qa-20261016-74eb6c-http\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/expressjs/serve-static\", \"serviceDetails\": {\"envSpecificDetails\": {\"buildCommand\": \"set -e\\ncat > qa352-server.js <<'QA352_NODE_PROBE'\\nconst MARKER=\\\"QA352_74eb6c_bex\\\";\\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\\nconst packageBytes=fs.readFileSync('package.json');\\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\\\n').repeat(5000));\\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\\nhttp.createServer((req,res)=>{\\n const path=new URL(req.url,'http://owned.example').pathname;\\n res.setHeader('X-QA-Marker',MARKER);\\n if(path==='/stream'){\\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\\n  let seq=0;const send=()=>res.write('id: '+seq+'\\\\nevent: tick\\\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\\\n\\\\n');send();\\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\\n }\\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\\n  res.setHeader('ETag','\\\"qa352-'+hash(body)+'\\\"');\\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\\n }\\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\\n\\nQA352_NODE_PROBE\\nnode qa352-server.js --build\", \"startCommand\": \"node qa352-server.js\"}, \"healthCheckPath\": \"/\", \"plan\": \"free\", \"region\": \"frankfurt\", \"runtime\": \"node\"}, \"type\": \"web_service\"}",
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "Content-Type": "application/json",
+              "X-Bex-Cli-Version": "0.3.2"
+            },
+            "authorization": "[REDACTED]"
+          },
+          "status": 201,
+          "response": "{\"service\": {\"id\": \"srv-db8rv6i9cl7s73ae4au0\", \"name\": \"qa-20261016-74eb6c-http\", \"immutableName\": \"qa-20261016-74eb6c-http\", \"slug\": \"qa-20261016-74eb6c-http\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db8rv6i9cl7s73ae4au0\", \"createdAt\": \"2026-10-16T06:09:30Z\", \"updatedAt\": \"2026-10-16T06:09:30.066259385Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\ncat > qa352-server.js <<'QA352_NODE_PROBE'\\nconst MARKER=\\\"QA352_74eb6c_bex\\\";\\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\\nconst packageBytes=fs.readFileSync('package.json');\\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\\\n').repeat(5000));\\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\\nhttp.createServer((req,res)=>{\\n const path=new URL(req.url,'http://owned.example').pathname;\\n res.setHeader('X-QA-Marker',MARKER);\\n if(path==='/stream'){\\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\\n  let seq=0;const send=()=>res.write('id: '+seq+'\\\\nevent: tick\\\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\\\n\\\\n');send();\\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\\n }\\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\\n  res.setHeader('ETag','\\\"qa352-'+hash(body)+'\\\"');\\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\\n }\\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\\n\\nQA352_NODE_PROBE\\nnode qa352-server.js --build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa352-server.js\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261016-74eb6c-http:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261016-74eb6c-http.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"repo\": \"https://github.com/expressjs/serve-static\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\", \"healthCheckPath\": \"/\"}, \"deployId\": \"dep-db8rv6i9cl7s73ae4aug\"}",
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a4b4e51e1f567afa-SJC"
+          }
+        }
+      ],
+      "qualification": "actual native POST forwarded unchanged to production; owned local relay and copied config cleaned",
+      "native_exit": 0
+    },
+    "id": "srv-db8rv6i9cl7s73ae4au0",
+    "create_view": {
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "branch": "master",
+      "createdAt": "2026-10-16T06:09:30Z",
+      "dashboardUrl": "https://dashboard.bex.co/web/srv-db8rv6i9cl7s73ae4au0",
+      "id": "srv-db8rv6i9cl7s73ae4au0",
+      "name": "qa-20261016-74eb6c-http",
+      "notifyOnFail": "default",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/expressjs/serve-static",
+      "rootDir": "",
+      "serviceDetails": {
+        "env": "node",
+        "envSpecificDetails": {
+          "buildCommand": "set -e\ncat > qa352-server.js <<'QA352_NODE_PROBE'\nconst MARKER=\"QA352_74eb6c_bex\";\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\nconst packageBytes=fs.readFileSync('package.json');\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\n').repeat(5000));\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\nhttp.createServer((req,res)=>{\n const path=new URL(req.url,'http://owned.example').pathname;\n res.setHeader('X-QA-Marker',MARKER);\n if(path==='/stream'){\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\n  let seq=0;const send=()=>res.write('id: '+seq+'\\nevent: tick\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\n\\n');send();\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\n }\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\n  res.setHeader('ETag','\"qa352-'+hash(body)+'\"');\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\n }\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\n\nQA352_NODE_PROBE\nnode qa352-server.js --build",
+          "preDeployCommand": "",
+          "startCommand": "node qa352-server.js"
+        },
+        "healthCheckPath": "/",
+        "internalAddress": "qa-20261016-74eb6c-http:3000",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "free",
+        "port": 3000,
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "node",
+        "url": "https://qa-20261016-74eb6c-http.onbex.co"
+      },
+      "slug": "qa-20261016-74eb6c-http",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "web_service",
+      "updatedAt": "2026-10-16T06:09:30.066259385Z"
+    },
+    "history_receipts": [
+      {
+        "at": "2026-10-16T06:09:31.631177+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db8rv6i9cl7s73ae4au0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.674,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T06:09:30.027652Z\", \"id\": \"dep-db8rv6i9cl7s73ae4aug\", \"status\": \"created\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T06:09:30.027652Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-16T06:11:39.803705+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db8rv6i9cl7s73ae4au0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 1.014,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T06:09:30.027652Z\", \"finishedAt\": \"2026-10-16T06:11:32.318339Z\", \"id\": \"dep-db8rv6i9cl7s73ae4aug\", \"startedAt\": \"2026-10-16T06:10:32.466621Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T06:11:32.318341Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-16T06:15:20.609724+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db8rv6i9cl7s73ae4au0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.454,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T06:09:30.027652Z\", \"finishedAt\": \"2026-10-16T06:11:32.318339Z\", \"id\": \"dep-db8rv6i9cl7s73ae4aug\", \"startedAt\": \"2026-10-16T06:10:32.466621Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T06:11:32.318341Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      }
+    ],
+    "deploy_children": [
+      {
+        "commit": {
+          "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+          "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+        },
+        "createdAt": "2026-10-16T06:09:30.027652Z",
+        "finishedAt": "2026-10-16T06:11:32.318339Z",
+        "id": "dep-db8rv6i9cl7s73ae4aug",
+        "startedAt": "2026-10-16T06:10:32.466621Z",
+        "status": "live",
+        "trigger": "other",
+        "updatedAt": "2026-10-16T06:11:32.318341Z"
+      }
+    ],
+    "first_deploy_id": "dep-db8rv6i9cl7s73ae4aug",
+    "runtime_receipts": [
+      {
+        "at": "2026-10-16T06:11:40.551918+00:00",
+        "HTTP": "200",
+        "curl_exit": 0,
+        "raw": "{\"marker\": \"QA352_74eb6c_bex\", \"node\": \"v24.21.0\", \"architecture\": \"x64\", \"package_sha256\": \"4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8\", \"payload_bytes\": 280000, \"payload_sha256\": \"f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02\", \"built\": {\"marker\": \"QA352_74eb6c_bex\", \"node\": \"v24.21.0\", \"architecture\": \"x64\", \"package_sha256\": \"4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8\", \"payload_bytes\": 280000, \"payload_sha256\": \"f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02\"}}",
+        "decoded": {
+          "marker": "QA352_74eb6c_bex",
+          "node": "v24.21.0",
+          "architecture": "x64",
+          "package_sha256": "4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8",
+          "payload_bytes": 280000,
+          "payload_sha256": "f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02",
+          "built": {
+            "marker": "QA352_74eb6c_bex",
+            "node": "v24.21.0",
+            "architecture": "x64",
+            "package_sha256": "4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8",
+            "payload_bytes": 280000,
+            "payload_sha256": "f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02"
+          }
+        },
+        "history": [
+          {
+            "commit": {
+              "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+              "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+            },
+            "createdAt": "2026-10-16T06:09:30.027652Z",
+            "finishedAt": "2026-10-16T06:11:32.318339Z",
+            "id": "dep-db8rv6i9cl7s73ae4aug",
+            "startedAt": "2026-10-16T06:10:32.466621Z",
+            "status": "live",
+            "trigger": "other",
+            "updatedAt": "2026-10-16T06:11:32.318341Z"
+          }
+        ],
+        "first_live_pass": true
+      }
+    ],
+    "transport_batches": [
+      {
+        "at": "2026-10-16T06:11:55.573685+00:00",
+        "expected_bytes": 280000,
+        "expected_sha256": "f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02",
+        "HTTP": [
+          {
+            "at": "2026-10-16T06:11:57.184726+00:00",
+            "API_only_HTTP_diagnostic": true,
+            "request": {
+              "URL": "https://qa-20261016-74eb6c-http.onbex.co/text",
+              "Accept-Encoding": "identity",
+              "protocol": "HTTP/1.1",
+              "User-Agent": "bex-functional-qa/352"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed_ms": 1438,
+            "headers_raw": "HTTP/1.1 200 OK\nCache-Control: no-cache\nContent-Length: 280000\nContent-Type: text/plain; charset=utf-8\nDate: Fri, 16 Oct 2026 06:11:56 GMT\nEtag: \"qa352-f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02\"\nX-Qa-Marker: QA352_74eb6c_bex\n\n",
+            "headers": {
+              "cache-control": "no-cache",
+              "content-length": "280000",
+              "content-type": "text/plain; charset=utf-8",
+              "date": "Fri, 16 Oct 2026 06:11:56 GMT",
+              "etag": "\"qa352-f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02\"",
+              "x-qa-marker": "QA352_74eb6c_bex"
+            },
+            "raw_bytes": 280000,
+            "raw_sha256": "f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02",
+            "complete_raw_body_gzip_base64": "H4sIAAAAAAAC/+3LvQnCYBQAwN4p3gz+1o6QCUK+8ARBYjCFFu5hI3YWilu4S3AMbd3h2oOr1rPFtF7NsyzbuuQpztHvmm0XxyxxyKHfd0P+sG0270eMl/t4fX2et0nleZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7n/b0vZDupvMBFBAA=",
+            "decode_exit": 0,
+            "decoded": {
+              "bytes": 280000,
+              "sha256": "f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02"
+            },
+            "stderr": "",
+            "exact_payload": true,
+            "compressed": false
+          },
+          {
+            "at": "2026-10-16T06:11:58.726990+00:00",
+            "API_only_HTTP_diagnostic": true,
+            "request": {
+              "URL": "https://qa-20261016-74eb6c-http.onbex.co/text",
+              "Accept-Encoding": "br",
+              "protocol": "HTTP/1.1",
+              "User-Agent": "bex-functional-qa/352"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed_ms": 1379,
+            "headers_raw": "HTTP/1.1 200 OK\nCache-Control: no-cache\nContent-Length: 280000\nContent-Type: text/plain; charset=utf-8\nDate: Fri, 16 Oct 2026 06:11:57 GMT\nEtag: \"qa352-f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02\"\nX-Qa-Marker: QA352_74eb6c_bex\n\n",
+            "headers": {
+              "cache-control": "no-cache",
+              "content-length": "280000",
+              "content-type": "text/plain; charset=utf-8",
+              "date": "Fri, 16 Oct 2026 06:11:57 GMT",
+              "etag": "\"qa352-f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02\"",
+              "x-qa-marker": "QA352_74eb6c_bex"
+            },
+            "raw_bytes": 280000,
+            "raw_sha256": "f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02",
+            "complete_raw_body_gzip_base64": "H4sIAAAAAAAC/+3LvQnCYBQAwN4p3gz+1o6QCUK+8ARBYjCFFu5hI3YWilu4S3AMbd3h2oOr1rPFtF7NsyzbuuQpztHvmm0XxyxxyKHfd0P+sG0270eMl/t4fX2et0nleZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7n/b0vZDupvMBFBAA=",
+            "decode_exit": 0,
+            "decoded": {
+              "bytes": 280000,
+              "sha256": "f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02"
+            },
+            "stderr": "",
+            "exact_payload": true,
+            "compressed": false
+          },
+          {
+            "at": "2026-10-16T06:12:00.168366+00:00",
+            "API_only_HTTP_diagnostic": true,
+            "request": {
+              "URL": "https://qa-20261016-74eb6c-http.onbex.co/text",
+              "Accept-Encoding": "gzip",
+              "protocol": "HTTP/1.1",
+              "User-Agent": "bex-functional-qa/352"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed_ms": 1289,
+            "headers_raw": "HTTP/1.1 200 OK\nCache-Control: no-cache\nContent-Length: 280000\nContent-Type: text/plain; charset=utf-8\nDate: Fri, 16 Oct 2026 06:11:59 GMT\nEtag: \"qa352-f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02\"\nX-Qa-Marker: QA352_74eb6c_bex\n\n",
+            "headers": {
+              "cache-control": "no-cache",
+              "content-length": "280000",
+              "content-type": "text/plain; charset=utf-8",
+              "date": "Fri, 16 Oct 2026 06:11:59 GMT",
+              "etag": "\"qa352-f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02\"",
+              "x-qa-marker": "QA352_74eb6c_bex"
+            },
+            "raw_bytes": 280000,
+            "raw_sha256": "f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02",
+            "complete_raw_body_gzip_base64": "H4sIAAAAAAAC/+3LvQnCYBQAwN4p3gz+1o6QCUK+8ARBYjCFFu5hI3YWilu4S3AMbd3h2oOr1rPFtF7NsyzbuuQpztHvmm0XxyxxyKHfd0P+sG0270eMl/t4fX2et0nleZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7n/b0vZDupvMBFBAA=",
+            "decode_exit": 0,
+            "decoded": {
+              "bytes": 280000,
+              "sha256": "f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02"
+            },
+            "stderr": "",
+            "exact_payload": true,
+            "compressed": false
+          },
+          {
+            "at": "2026-10-16T06:12:01.716923+00:00",
+            "API_only_HTTP_diagnostic": true,
+            "request": {
+              "URL": "https://qa-20261016-74eb6c-http.onbex.co/text",
+              "Accept-Encoding": "br, gzip",
+              "protocol": "HTTP/1.1",
+              "User-Agent": "bex-functional-qa/352"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed_ms": 1362,
+            "headers_raw": "HTTP/1.1 200 OK\nCache-Control: no-cache\nContent-Length: 280000\nContent-Type: text/plain; charset=utf-8\nDate: Fri, 16 Oct 2026 06:12:00 GMT\nEtag: \"qa352-f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02\"\nX-Qa-Marker: QA352_74eb6c_bex\n\n",
+            "headers": {
+              "cache-control": "no-cache",
+              "content-length": "280000",
+              "content-type": "text/plain; charset=utf-8",
+              "date": "Fri, 16 Oct 2026 06:12:00 GMT",
+              "etag": "\"qa352-f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02\"",
+              "x-qa-marker": "QA352_74eb6c_bex"
+            },
+            "raw_bytes": 280000,
+            "raw_sha256": "f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02",
+            "complete_raw_body_gzip_base64": "H4sIAAAAAAAC/+3LvQnCYBQAwN4p3gz+1o6QCUK+8ARBYjCFFu5hI3YWilu4S3AMbd3h2oOr1rPFtF7NsyzbuuQpztHvmm0XxyxxyKHfd0P+sG0270eMl/t4fX2et0nleZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7n/b0vZDupvMBFBAA=",
+            "decode_exit": 0,
+            "decoded": {
+              "bytes": 280000,
+              "sha256": "f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02"
+            },
+            "stderr": "",
+            "exact_payload": true,
+            "compressed": false
+          },
+          {
+            "at": "2026-10-16T06:12:03.277482+00:00",
+            "API_only_HTTP_diagnostic": true,
+            "request": {
+              "URL": "https://qa-20261016-74eb6c-http.onbex.co/no-transform",
+              "Accept-Encoding": "br, gzip",
+              "protocol": "HTTP/1.1",
+              "User-Agent": "bex-functional-qa/352"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed_ms": 1387,
+            "headers_raw": "HTTP/1.1 200 OK\nCache-Control: no-cache, no-transform\nContent-Length: 280000\nContent-Type: text/plain; charset=utf-8\nDate: Fri, 16 Oct 2026 06:12:02 GMT\nEtag: \"qa352-f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02\"\nX-Qa-Marker: QA352_74eb6c_bex\n\n",
+            "headers": {
+              "cache-control": "no-cache, no-transform",
+              "content-length": "280000",
+              "content-type": "text/plain; charset=utf-8",
+              "date": "Fri, 16 Oct 2026 06:12:02 GMT",
+              "etag": "\"qa352-f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02\"",
+              "x-qa-marker": "QA352_74eb6c_bex"
+            },
+            "raw_bytes": 280000,
+            "raw_sha256": "f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02",
+            "complete_raw_body_gzip_base64": "H4sIAAAAAAAC/+3LvQnCYBQAwN4p3gz+1o6QCUK+8ARBYjCFFu5hI3YWilu4S3AMbd3h2oOr1rPFtF7NsyzbuuQpztHvmm0XxyxxyKHfd0P+sG0270eMl/t4fX2et0nleZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7n/b0vZDupvMBFBAA=",
+            "decode_exit": 0,
+            "decoded": {
+              "bytes": 280000,
+              "sha256": "f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02"
+            },
+            "stderr": "",
+            "exact_payload": true,
+            "compressed": false
+          },
+          {
+            "at": "2026-10-16T06:12:04.164186+00:00",
+            "API_only_HTTP_diagnostic": true,
+            "request": {
+              "URL": "https://qa-20261016-74eb6c-http.onbex.co/origin-gzip",
+              "Accept-Encoding": "gzip",
+              "protocol": "HTTP/1.1",
+              "User-Agent": "bex-functional-qa/352"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed_ms": 719,
+            "headers_raw": "HTTP/1.1 200 OK\nCache-Control: no-cache\nContent-Encoding: gzip\nContent-Length: 920\nContent-Type: text/plain; charset=utf-8\nDate: Fri, 16 Oct 2026 06:12:04 GMT\nEtag: \"qa352-f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02\"\nVary: Accept-Encoding\nX-Qa-Marker: QA352_74eb6c_bex\n\n",
+            "headers": {
+              "cache-control": "no-cache",
+              "content-encoding": "gzip",
+              "content-length": "920",
+              "content-type": "text/plain; charset=utf-8",
+              "date": "Fri, 16 Oct 2026 06:12:04 GMT",
+              "etag": "\"qa352-f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02\"",
+              "vary": "Accept-Encoding",
+              "x-qa-marker": "QA352_74eb6c_bex"
+            },
+            "raw_bytes": 920,
+            "raw_sha256": "349d98459f91c11fb4dd459c9efb905e272ff71cac7cc99e68387efd9818c409",
+            "complete_raw_body_gzip_base64": "H4sIAAAAAAAC/5Pv5mAAA+a3p/dyHkoQYThwT/Mez79rfRM4nfZ9YHFMMmgVu3nY7Y2OyPaC6Q8krr0ruB6/NXbNs69pM1PvXlPVN3Srz/gWO2fzEc32fzd4JZO3nH33ueflrxl579+/tlttc/7zKBpFo4gYtGf/d+YU65V7DriyMAAAa9iHF5gDAAA=",
+            "decode_exit": 0,
+            "decoded": {
+              "bytes": 280000,
+              "sha256": "f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02"
+            },
+            "stderr": "",
+            "exact_payload": true,
+            "compressed": true
+          }
+        ],
+        "streams": [
+          {
+            "at": "2026-10-16T06:12:08.319796+00:00",
+            "API_only_HTTP_diagnostic": true,
+            "native_CLI_stream": false,
+            "command": [
+              "node",
+              "<owned-temp>/sweep352-stream-client.js",
+              "https://qa-20261016-74eb6c-http.onbex.co/stream",
+              "<own-marker>",
+              "identity"
+            ],
+            "exit": 0,
+            "stdout": "{\"url\": \"https://qa-20261016-74eb6c-http.onbex.co/stream\", \"offer\": \"identity\", \"status\": 200, \"headers\": {\"cache-control\": \"no-cache\", \"content-type\": \"text/event-stream; charset=utf-8\", \"date\": \"Fri, 16 Oct 2026 06:12:04 GMT\", \"x-qa-marker\": \"QA352_74eb6c_bex\", \"transfer-encoding\": \"chunked\"}, \"headers_ms\": 618, \"error\": null, \"elapsed_ms\": 3922, \"text\": \"id: 0\\nevent: tick\\ndata: {\\\"marker\\\":\\\"QA352_74eb6c_bex\\\",\\\"seq\\\":0,\\\"text\\\":\\\"café 日本語\\\",\\\"emitted\\\":1792131124960}\\n\\nid: 1\\nevent: tick\\ndata: {\\\"marker\\\":\\\"QA352_74eb6c_bex\\\",\\\"seq\\\":1,\\\"text\\\":\\\"café 日本語\\\",\\\"emitted\\\":1792131126062}\\n\\nid: 2\\nevent: tick\\ndata: {\\\"marker\\\":\\\"QA352_74eb6c_bex\\\",\\\"seq\\\":2,\\\"text\\\":\\\"café 日本語\\\",\\\"emitted\\\":1792131127161}\\n\\n\", \"events\": [{\"at_ms\": 619, \"value\": {\"marker\": \"QA352_74eb6c_bex\", \"seq\": 0, \"text\": \"café 日本語\", \"emitted\": 1792131124960}}, {\"at_ms\": 1719, \"value\": {\"marker\": \"QA352_74eb6c_bex\", \"seq\": 1, \"text\": \"café 日本語\", \"emitted\": 1792131126062}}, {\"at_ms\": 2874, \"value\": {\"marker\": \"QA352_74eb6c_bex\", \"seq\": 2, \"text\": \"café 日本語\", \"emitted\": 1792131127161}}], \"chunks\": [{\"at_ms\": 619, \"chars\": 105}, {\"at_ms\": 1719, \"chars\": 105}, {\"at_ms\": 2874, \"chars\": 105}], \"pass\": true}",
+            "stderr": "",
+            "decoded": {
+              "url": "https://qa-20261016-74eb6c-http.onbex.co/stream",
+              "offer": "identity",
+              "status": 200,
+              "headers": {
+                "cache-control": "no-cache",
+                "content-type": "text/event-stream; charset=utf-8",
+                "date": "Fri, 16 Oct 2026 06:12:04 GMT",
+                "x-qa-marker": "QA352_74eb6c_bex",
+                "transfer-encoding": "chunked"
+              },
+              "headers_ms": 618,
+              "error": null,
+              "elapsed_ms": 3922,
+              "text": "id: 0\nevent: tick\ndata: {\"marker\":\"QA352_74eb6c_bex\",\"seq\":0,\"text\":\"café 日本語\",\"emitted\":1792131124960}\n\nid: 1\nevent: tick\ndata: {\"marker\":\"QA352_74eb6c_bex\",\"seq\":1,\"text\":\"café 日本語\",\"emitted\":1792131126062}\n\nid: 2\nevent: tick\ndata: {\"marker\":\"QA352_74eb6c_bex\",\"seq\":2,\"text\":\"café 日本語\",\"emitted\":1792131127161}\n\n",
+              "events": [
+                {
+                  "at_ms": 619,
+                  "value": {
+                    "marker": "QA352_74eb6c_bex",
+                    "seq": 0,
+                    "text": "café 日本語",
+                    "emitted": 1792131124960
+                  }
+                },
+                {
+                  "at_ms": 1719,
+                  "value": {
+                    "marker": "QA352_74eb6c_bex",
+                    "seq": 1,
+                    "text": "café 日本語",
+                    "emitted": 1792131126062
+                  }
+                },
+                {
+                  "at_ms": 2874,
+                  "value": {
+                    "marker": "QA352_74eb6c_bex",
+                    "seq": 2,
+                    "text": "café 日本語",
+                    "emitted": 1792131127161
+                  }
+                }
+              ],
+              "chunks": [
+                {
+                  "at_ms": 619,
+                  "chars": 105
+                },
+                {
+                  "at_ms": 1719,
+                  "chars": 105
+                },
+                {
+                  "at_ms": 2874,
+                  "chars": 105
+                }
+              ],
+              "pass": true
+            }
+          },
+          {
+            "at": "2026-10-16T06:12:12.505988+00:00",
+            "API_only_HTTP_diagnostic": true,
+            "native_CLI_stream": false,
+            "command": [
+              "node",
+              "<owned-temp>/sweep352-stream-client.js",
+              "https://qa-20261016-74eb6c-http.onbex.co/stream",
+              "<own-marker>",
+              "br, gzip"
+            ],
+            "exit": 0,
+            "stdout": "{\"url\": \"https://qa-20261016-74eb6c-http.onbex.co/stream\", \"offer\": \"br, gzip\", \"status\": 200, \"headers\": {\"cache-control\": \"no-cache\", \"content-type\": \"text/event-stream; charset=utf-8\", \"date\": \"Fri, 16 Oct 2026 06:12:09 GMT\", \"x-qa-marker\": \"QA352_74eb6c_bex\", \"transfer-encoding\": \"chunked\"}, \"headers_ms\": 626, \"error\": null, \"elapsed_ms\": 3940, \"text\": \"id: 0\\nevent: tick\\ndata: {\\\"marker\\\":\\\"QA352_74eb6c_bex\\\",\\\"seq\\\":0,\\\"text\\\":\\\"café 日本語\\\",\\\"emitted\\\":1792131129142}\\n\\nid: 1\\nevent: tick\\ndata: {\\\"marker\\\":\\\"QA352_74eb6c_bex\\\",\\\"seq\\\":1,\\\"text\\\":\\\"café 日本語\\\",\\\"emitted\\\":1792131130242}\\n\\nid: 2\\nevent: tick\\ndata: {\\\"marker\\\":\\\"QA352_74eb6c_bex\\\",\\\"seq\\\":2,\\\"text\\\":\\\"café 日本語\\\",\\\"emitted\\\":1792131131343}\\n\\n\", \"events\": [{\"at_ms\": 627, \"value\": {\"marker\": \"QA352_74eb6c_bex\", \"seq\": 0, \"text\": \"café 日本語\", \"emitted\": 1792131129142}}, {\"at_ms\": 1727, \"value\": {\"marker\": \"QA352_74eb6c_bex\", \"seq\": 1, \"text\": \"café 日本語\", \"emitted\": 1792131130242}}, {\"at_ms\": 2890, \"value\": {\"marker\": \"QA352_74eb6c_bex\", \"seq\": 2, \"text\": \"café 日本語\", \"emitted\": 1792131131343}}], \"chunks\": [{\"at_ms\": 627, \"chars\": 105}, {\"at_ms\": 1727, \"chars\": 105}, {\"at_ms\": 2890, \"chars\": 105}], \"pass\": true}",
+            "stderr": "",
+            "decoded": {
+              "url": "https://qa-20261016-74eb6c-http.onbex.co/stream",
+              "offer": "br, gzip",
+              "status": 200,
+              "headers": {
+                "cache-control": "no-cache",
+                "content-type": "text/event-stream; charset=utf-8",
+                "date": "Fri, 16 Oct 2026 06:12:09 GMT",
+                "x-qa-marker": "QA352_74eb6c_bex",
+                "transfer-encoding": "chunked"
+              },
+              "headers_ms": 626,
+              "error": null,
+              "elapsed_ms": 3940,
+              "text": "id: 0\nevent: tick\ndata: {\"marker\":\"QA352_74eb6c_bex\",\"seq\":0,\"text\":\"café 日本語\",\"emitted\":1792131129142}\n\nid: 1\nevent: tick\ndata: {\"marker\":\"QA352_74eb6c_bex\",\"seq\":1,\"text\":\"café 日本語\",\"emitted\":1792131130242}\n\nid: 2\nevent: tick\ndata: {\"marker\":\"QA352_74eb6c_bex\",\"seq\":2,\"text\":\"café 日本語\",\"emitted\":1792131131343}\n\n",
+              "events": [
+                {
+                  "at_ms": 627,
+                  "value": {
+                    "marker": "QA352_74eb6c_bex",
+                    "seq": 0,
+                    "text": "café 日本語",
+                    "emitted": 1792131129142
+                  }
+                },
+                {
+                  "at_ms": 1727,
+                  "value": {
+                    "marker": "QA352_74eb6c_bex",
+                    "seq": 1,
+                    "text": "café 日本語",
+                    "emitted": 1792131130242
+                  }
+                },
+                {
+                  "at_ms": 2890,
+                  "value": {
+                    "marker": "QA352_74eb6c_bex",
+                    "seq": 2,
+                    "text": "café 日本語",
+                    "emitted": 1792131131343
+                  }
+                }
+              ],
+              "chunks": [
+                {
+                  "at_ms": 627,
+                  "chars": 105
+                },
+                {
+                  "at_ms": 1727,
+                  "chars": 105
+                },
+                {
+                  "at_ms": 2890,
+                  "chars": 105
+                }
+              ],
+              "pass": true
+            }
+          }
+        ],
+        "all_payloads_exact": true,
+        "origin_gzip_control": true,
+        "no_transform_identity": true,
+        "automatic_compression_available": false,
+        "stream_events_pass": true
+      },
+      {
+        "at": "2026-10-16T06:13:52.574279+00:00",
+        "expected_bytes": 280000,
+        "expected_sha256": "f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02",
+        "HTTP": [
+          {
+            "at": "2026-10-16T06:13:54.060272+00:00",
+            "API_only_HTTP_diagnostic": true,
+            "request": {
+              "URL": "https://qa-20261016-74eb6c-http.onbex.co/text",
+              "Accept-Encoding": "br",
+              "protocol": "HTTP/2 offered; actual status line retained",
+              "User-Agent": "bex-functional-qa/352"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed_ms": 1350,
+            "headers_raw": "HTTP/2 200 \ncache-control: no-cache\ncontent-type: text/plain; charset=utf-8\ndate: Fri, 16 Oct 2026 06:13:53 GMT\netag: \"qa352-f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02\"\nx-qa-marker: QA352_74eb6c_bex\ncontent-length: 280000\n\n",
+            "headers": {
+              "cache-control": "no-cache",
+              "content-type": "text/plain; charset=utf-8",
+              "date": "Fri, 16 Oct 2026 06:13:53 GMT",
+              "etag": "\"qa352-f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02\"",
+              "x-qa-marker": "QA352_74eb6c_bex",
+              "content-length": "280000"
+            },
+            "raw_bytes": 280000,
+            "raw_sha256": "f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02",
+            "complete_raw_body_gzip_base64": "H4sIAAAAAAAC/+3LvQnCYBQAwN4p3gz+1o6QCUK+8ARBYjCFFu5hI3YWilu4S3AMbd3h2oOr1rPFtF7NsyzbuuQpztHvmm0XxyxxyKHfd0P+sG0270eMl/t4fX2et0nleZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7n/b0vZDupvMBFBAA=",
+            "decode_exit": 0,
+            "decoded": {
+              "bytes": 280000,
+              "sha256": "f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02"
+            },
+            "stderr": "",
+            "exact_payload": true,
+            "compressed": false
+          },
+          {
+            "at": "2026-10-16T06:13:55.478372+00:00",
+            "API_only_HTTP_diagnostic": true,
+            "request": {
+              "URL": "https://qa-20261016-74eb6c-http.onbex.co/text",
+              "Accept-Encoding": "gzip",
+              "protocol": "HTTP/2 offered; actual status line retained",
+              "User-Agent": "bex-functional-qa/352"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed_ms": 1283,
+            "headers_raw": "HTTP/2 200 \ncache-control: no-cache\ncontent-type: text/plain; charset=utf-8\ndate: Fri, 16 Oct 2026 06:13:54 GMT\netag: \"qa352-f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02\"\nx-qa-marker: QA352_74eb6c_bex\ncontent-length: 280000\n\n",
+            "headers": {
+              "cache-control": "no-cache",
+              "content-type": "text/plain; charset=utf-8",
+              "date": "Fri, 16 Oct 2026 06:13:54 GMT",
+              "etag": "\"qa352-f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02\"",
+              "x-qa-marker": "QA352_74eb6c_bex",
+              "content-length": "280000"
+            },
+            "raw_bytes": 280000,
+            "raw_sha256": "f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02",
+            "complete_raw_body_gzip_base64": "H4sIAAAAAAAC/+3LvQnCYBQAwN4p3gz+1o6QCUK+8ARBYjCFFu5hI3YWilu4S3AMbd3h2oOr1rPFtF7NsyzbuuQpztHvmm0XxyxxyKHfd0P+sG0270eMl/t4fX2et0nleZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7neZ7n/b0vZDupvMBFBAA=",
+            "decode_exit": 0,
+            "decoded": {
+              "bytes": 280000,
+              "sha256": "f3cb27e5e66ebcd1aef24357b65ac19a531efae864e3a79494394f8a6c364e02"
+            },
+            "stderr": "",
+            "exact_payload": true,
+            "compressed": false
+          }
+        ],
+        "streams": [],
+        "all_payloads_exact": true,
+        "automatic_compression_available": false,
+        "offered_HTTP2": true
+      }
+    ],
+    "shared_state": [
+      {
+        "at": "2026-10-16T06:14:29.788842+00:00",
+        "surface": "REST",
+        "receipt": {
+          "at": "2026-10-16T06:14:30.917203+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db8rv6i9cl7s73ae4au0",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.921,
+          "response": "{\"id\": \"srv-db8rv6i9cl7s73ae4au0\", \"name\": \"qa-20261016-74eb6c-http\", \"immutableName\": \"qa-20261016-74eb6c-http\", \"slug\": \"qa-20261016-74eb6c-http\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db8rv6i9cl7s73ae4au0\", \"createdAt\": \"2026-10-16T06:09:30Z\", \"updatedAt\": \"2026-10-16T06:11:28Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\ncat > qa352-server.js <<'QA352_NODE_PROBE'\\nconst MARKER=\\\"QA352_74eb6c_bex\\\";\\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\\nconst packageBytes=fs.readFileSync('package.json');\\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\\\n').repeat(5000));\\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\\nhttp.createServer((req,res)=>{\\n const path=new URL(req.url,'http://owned.example').pathname;\\n res.setHeader('X-QA-Marker',MARKER);\\n if(path==='/stream'){\\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\\n  let seq=0;const send=()=>res.write('id: '+seq+'\\\\nevent: tick\\\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\\\n\\\\n');send();\\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\\n }\\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\\n  res.setHeader('ETag','\\\"qa352-'+hash(body)+'\\\"');\\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\\n }\\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\\n\\nQA352_NODE_PROBE\\nnode qa352-server.js --build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa352-server.js\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261016-74eb6c-http:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261016-74eb6c-http.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Running\", \"replicas\": 1, \"revision\": \"rev-1\", \"urls\": [\"https://qa-20261016-74eb6c-http.onbex.co\"], \"idleTTLSeconds\": 0, \"repo\": \"https://github.com/expressjs/serve-static\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\", \"healthCheckPath\": \"/\"}",
+          "stderr": ""
+        },
+        "pass": true
+      },
+      {
+        "at": "2026-10-16T06:14:31.207834+00:00",
+        "surface": "GraphQL",
+        "receipt": {
+          "at": "2026-10-16T06:14:32.626792+00:00",
+          "API_only": true,
+          "request": {
+            "method": "POST",
+            "path": "/graphql",
+            "body": {
+              "query": "query QA352 {service(id:\"srv-db8rv6i9cl7s73ae4au0\"){id name repo branch runtime plan buildCommand startCommand autoDeploy}}"
+            },
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 1.28,
+          "response": "{\"data\": {\"service\": {\"autoDeploy\": false, \"branch\": \"master\", \"buildCommand\": \"set -e\\ncat > qa352-server.js <<'QA352_NODE_PROBE'\\nconst MARKER=\\\"QA352_74eb6c_bex\\\";\\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\\nconst packageBytes=fs.readFileSync('package.json');\\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\\\n').repeat(5000));\\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\\nhttp.createServer((req,res)=>{\\n const path=new URL(req.url,'http://owned.example').pathname;\\n res.setHeader('X-QA-Marker',MARKER);\\n if(path==='/stream'){\\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\\n  let seq=0;const send=()=>res.write('id: '+seq+'\\\\nevent: tick\\\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\\\n\\\\n');send();\\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\\n }\\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\\n  res.setHeader('ETag','\\\"qa352-'+hash(body)+'\\\"');\\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\\n }\\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\\n\\nQA352_NODE_PROBE\\nnode qa352-server.js --build\", \"id\": \"srv-db8rv6i9cl7s73ae4au0\", \"name\": \"qa-20261016-74eb6c-http\", \"plan\": \"free\", \"repo\": \"https://github.com/expressjs/serve-static\", \"runtime\": \"node\", \"startCommand\": \"node qa352-server.js\"}}}",
+          "stderr": ""
+        },
+        "pass": true
+      },
+      {
+        "at": "2026-10-16T06:14:32.897881+00:00",
+        "surface": "MCP",
+        "receipt": {
+          "at": "2026-10-16T06:14:36.059997+00:00",
+          "API_only": true,
+          "request": {
+            "method": "POST",
+            "path": "/mcp",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 352,
+              "method": "tools/call",
+              "params": {
+                "name": "get_service",
+                "arguments": {
+                  "serviceId": "srv-db8rv6i9cl7s73ae4au0",
+                  "workspaceId": "tea-daif693dqjvc73e7as3g"
+                }
+              }
+            },
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 3.011,
+          "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":352,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"autoDeploy\\\":\\\"no\\\",\\\"autoDeployTrigger\\\":\\\"off\\\",\\\"branch\\\":\\\"master\\\",\\\"createdAt\\\":\\\"2026-10-16T06:09:30Z\\\",\\\"dashboardUrl\\\":\\\"https://dashboard.bex.co/web/srv-db8rv6i9cl7s73ae4au0\\\",\\\"displayName\\\":\\\"\\\",\\\"healthCheckPath\\\":\\\"/\\\",\\\"id\\\":\\\"srv-db8rv6i9cl7s73ae4au0\\\",\\\"idleTTLSeconds\\\":0,\\\"immutableName\\\":\\\"qa-20261016-74eb6c-http\\\",\\\"name\\\":\\\"qa-20261016-74eb6c-http\\\",\\\"notificationsToSend\\\":\\\"default\\\",\\\"notifyOnFail\\\":\\\"default\\\",\\\"ownerId\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"phase\\\":\\\"Running\\\",\\\"pushDeliveryMethod\\\":\\\"manual_webhook\\\",\\\"replicas\\\":1,\\\"repo\\\":\\\"https://github.com/expressjs/serve-static\\\",\\\"revision\\\":\\\"rev-1\\\",\\\"serviceDetails\\\":{\\\"env\\\":\\\"node\\\",\\\"envSpecificDetails\\\":{\\\"buildCommand\\\":\\\"set -e\\\\ncat \\\\u003e qa352-server.js \\\\u003c\\\\u003c'QA352_NODE_PROBE'\\\\nconst MARKER=\\\\\\\"QA352_74eb6c_bex\\\\\\\";\\\\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\\\\nconst hash=b=\\\\u003ecrypto.createHash('sha256').update(b).digest('hex');\\\\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\\\\nconst packageBytes=fs.readFileSync('package.json');\\\\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\\\\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\\\\\\\n').repeat(5000));\\\\nconst snapshot=()=\\\\u003e({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\\\\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\\\\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\\\\nhttp.createServer((req,res)=\\\\u003e{\\\\n const path=new URL(req.url,'http://owned.example').pathname;\\\\n res.setHeader('X-QA-Marker',MARKER);\\\\n if(path==='/stream'){\\\\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\\\\n  let seq=0;const send=()=\\\\u003eres.write('id: '+seq+'\\\\\\\\nevent: tick\\\\\\\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\\\\\\\n\\\\\\\\n');send();\\\\n  const timer=setInterval(()=\\\\u003e{if(seq\\\\u003c3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=\\\\u003eclearInterval(timer));return;\\\\n }\\\\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\\\\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\\\\n  res.setHeader('ETag','\\\\\\\"qa352-'+hash(body)+'\\\\\\\"');\\\\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\\\\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\\\\n }\\\\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\\\\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\\\\n\\\\nQA352_NODE_PROBE\\\\nnode qa352-server.js --build\\\",\\\"preDeployCommand\\\":\\\"\\\",\\\"startCommand\\\":\\\"node qa352-server.js\\\"},\\\"healthCheckPath\\\":\\\"/\\\",\\\"internalAddress\\\":\\\"qa-20261016-74eb6c-http:3000\\\",\\\"maintenanceMode\\\":{\\\"enabled\\\":false,\\\"uri\\\":\\\"\\\"},\\\"maxShutdownDelaySeconds\\\":30,\\\"numInstances\\\":1,\\\"plan\\\":\\\"free\\\",\\\"port\\\":3000,\\\"region\\\":\\\"fsn1\\\",\\\"renderSubdomainPolicy\\\":\\\"enabled\\\",\\\"runtime\\\":\\\"node\\\",\\\"url\\\":\\\"https://qa-20261016-74eb6c-http.onbex.co\\\"},\\\"slug\\\":\\\"qa-20261016-74eb6c-http\\\",\\\"suspended\\\":\\\"not_suspended\\\",\\\"suspenders\\\":[],\\\"type\\\":\\\"web_service\\\",\\\"updatedAt\\\":\\\"2026-10-16T06:11:28Z\\\",\\\"urls\\\":[\\\"https://qa-20261016-74eb6c-http.onbex.co\\\"]}\"}],\"structuredContent\":{\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"branch\":\"master\",\"createdAt\":\"2026-10-16T06:09:30Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db8rv6i9cl7s73ae4au0\",\"displayName\":\"\",\"healthCheckPath\":\"/\",\"id\":\"srv-db8rv6i9cl7s73ae4au0\",\"idleTTLSeconds\":0,\"immutableName\":\"qa-20261016-74eb6c-http\",\"name\":\"qa-20261016-74eb6c-http\",\"notificationsToSend\":\"default\",\"notifyOnFail\":\"default\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"pushDeliveryMethod\":\"manual_webhook\",\"replicas\":1,\"repo\":\"https://github.com/expressjs/serve-static\",\"revision\":\"rev-1\",\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"set -e\\ncat \\u003e qa352-server.js \\u003c\\u003c'QA352_NODE_PROBE'\\nconst MARKER=\\\"QA352_74eb6c_bex\\\";\\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\\nconst hash=b=\\u003ecrypto.createHash('sha256').update(b).digest('hex');\\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\\nconst packageBytes=fs.readFileSync('package.json');\\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\\\n').repeat(5000));\\nconst snapshot=()=\\u003e({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\\nhttp.createServer((req,res)=\\u003e{\\n const path=new URL(req.url,'http://owned.example').pathname;\\n res.setHeader('X-QA-Marker',MARKER);\\n if(path==='/stream'){\\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\\n  let seq=0;const send=()=\\u003eres.write('id: '+seq+'\\\\nevent: tick\\\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\\\n\\\\n');send();\\n  const timer=setInterval(()=\\u003e{if(seq\\u003c3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=\\u003eclearInterval(timer));return;\\n }\\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\\n  res.setHeader('ETag','\\\"qa352-'+hash(body)+'\\\"');\\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\\n }\\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\\n\\nQA352_NODE_PROBE\\nnode qa352-server.js --build\",\"preDeployCommand\":\"\",\"startCommand\":\"node qa352-server.js\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261016-74eb6c-http:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261016-74eb6c-http.onbex.co\"},\"slug\":\"qa-20261016-74eb6c-http\",\"suspended\":\"not_suspended\",\"suspenders\":[],\"type\":\"web_service\",\"updatedAt\":\"2026-10-16T06:11:28Z\",\"urls\":[\"https://qa-20261016-74eb6c-http.onbex.co\"]}}}\n\n",
+          "stderr": ""
+        },
+        "pass": true
+      }
+    ],
+    "delete_intent": {
+      "at": "2026-10-16T06:15:20.767105+00:00",
+      "children": [
+        {
+          "commit": {
+            "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+            "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+          },
+          "createdAt": "2026-10-16T06:09:30.027652Z",
+          "finishedAt": "2026-10-16T06:11:32.318339Z",
+          "id": "dep-db8rv6i9cl7s73ae4aug",
+          "startedAt": "2026-10-16T06:10:32.466621Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-16T06:11:32.318341Z"
+        }
+      ]
+    },
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db8rv6i9cl7s73ae4au0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.95,
+      "stdout": "{\"data\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"master\", \"createdAt\": \"2026-10-16T06:09:30Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db8rv6i9cl7s73ae4au0\", \"id\": \"srv-db8rv6i9cl7s73ae4au0\", \"name\": \"qa-20261016-74eb6c-http\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/expressjs/serve-static\", \"rootDir\": \"\", \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\ncat > qa352-server.js <<'QA352_NODE_PROBE'\\nconst MARKER=\\\"QA352_74eb6c_bex\\\";\\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\\nconst packageBytes=fs.readFileSync('package.json');\\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\\\n').repeat(5000));\\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\\nhttp.createServer((req,res)=>{\\n const path=new URL(req.url,'http://owned.example').pathname;\\n res.setHeader('X-QA-Marker',MARKER);\\n if(path==='/stream'){\\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\\n  let seq=0;const send=()=>res.write('id: '+seq+'\\\\nevent: tick\\\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\\\n\\\\n');send();\\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\\n }\\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\\n  res.setHeader('ETag','\\\"qa352-'+hash(body)+'\\\"');\\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\\n }\\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\\n\\nQA352_NODE_PROBE\\nnode qa352-server.js --build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa352-server.js\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261016-74eb6c-http:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261016-74eb6c-http.onbex.co\"}, \"slug\": \"qa-20261016-74eb6c-http\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"web_service\", \"updatedAt\": \"2026-10-16T06:11:28Z\", \"environmentId\": null, \"projectId\": null}, \"meta\": {\"deleted\": true}}",
+      "stderr": "",
+      "native_exit": 0
+    },
+    "cleanup_receipts": [
+      {
+        "at": "2026-10-16T06:15:53.904598+00:00",
+        "detail": {
+          "at": "2026-10-16T06:15:51.982079+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db8rv6i9cl7s73ae4au0",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "404",
+          "curl_exit": 0,
+          "elapsed": 0.444,
+          "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+          "stderr": ""
+        },
+        "inventory": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "services",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.638,
+          "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}]",
+          "stderr": "",
+          "native_exit": 0
+        },
+        "runtime_HTTP": "404",
+        "runtime_exit": 0,
+        "quota": {
+          "at": "2026-10-16T06:15:53.556719+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.342,
+          "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+          "stderr": ""
+        },
+        "children": [
+          {
+            "at": "2026-10-16T06:15:53.904392+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/services/srv-db8rv6i9cl7s73ae4au0/deploys/dep-db8rv6i9cl7s73ae4aug",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "404",
+            "curl_exit": 0,
+            "elapsed": 0.336,
+            "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+            "stderr": ""
+          }
+        ],
+        "pass": true
+      }
+    ]
+  },
+  {
+    "sweep": 352,
+    "client": "render",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "web_service",
+    "name": "qa-20261016-e47bb1-http",
+    "nonce": "e47bb1",
+    "marker": "QA352_e47bb1_render",
+    "time": "2026-10-16T06:09:57.065299+00:00",
+    "source_head": "bd0ffac525f2ff1dfb4d7c7add9f81000fed8036",
+    "primary_reference": {
+      "at": "2026-10-16T03:52:52.612656+00:00",
+      "repo": "https://github.com/expressjs/serve-static",
+      "branch": "master",
+      "commit": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+      "package_name": "serve-static",
+      "package_sha256": "4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8",
+      "qualification": "fresh anonymous master/HEAD matches independently checked prior source hash; no package installation",
+      "fresh_anonymous_default_ref": "109a299c26d2d532027bb6e66e50e365eeb8fcdd"
+    },
+    "commands": {
+      "initial": {
+        "build": "set -e\ncat > qa352-server.js <<'QA352_NODE_PROBE'\nconst MARKER=\"QA352_e47bb1_render\";\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\nconst packageBytes=fs.readFileSync('package.json');\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\n').repeat(5000));\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\nhttp.createServer((req,res)=>{\n const path=new URL(req.url,'http://owned.example').pathname;\n res.setHeader('X-QA-Marker',MARKER);\n if(path==='/stream'){\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\n  let seq=0;const send=()=>res.write('id: '+seq+'\\nevent: tick\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\n\\n');send();\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\n }\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\n  res.setHeader('ETag','\"qa352-'+hash(body)+'\"');\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\n }\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\n\nQA352_NODE_PROBE\nnode qa352-server.js --build",
+        "start": "node qa352-server.js",
+        "program": "const MARKER=\"QA352_e47bb1_render\";\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\nconst packageBytes=fs.readFileSync('package.json');\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\n').repeat(5000));\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\nhttp.createServer((req,res)=>{\n const path=new URL(req.url,'http://owned.example').pathname;\n res.setHeader('X-QA-Marker',MARKER);\n if(path==='/stream'){\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\n  let seq=0;const send=()=>res.write('id: '+seq+'\\nevent: tick\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\n\\n');send();\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\n }\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\n  res.setHeader('ETag','\"qa352-'+hash(body)+'\"');\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\n }\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\n"
+      }
+    },
+    "pre_ids": [
+      "srv-dap3v694dm7c7390q930",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-db09vbgehcmc739j12i0",
+      "srv-db09u90ehcmc739j12cg",
+      "srv-db8rv6i9cl7s73ae4au0"
+    ],
+    "pre_inventory": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 1.105,
+      "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"master\", \"createdAt\": \"2026-10-16T06:09:30Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db8rv6i9cl7s73ae4au0\", \"id\": \"srv-db8rv6i9cl7s73ae4au0\", \"name\": \"qa-20261016-74eb6c-http\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/expressjs/serve-static\", \"rootDir\": \"\", \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\ncat > qa352-server.js <<'QA352_NODE_PROBE'\\nconst MARKER=\\\"QA352_74eb6c_bex\\\";\\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\\nconst packageBytes=fs.readFileSync('package.json');\\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\\\n').repeat(5000));\\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\\nhttp.createServer((req,res)=>{\\n const path=new URL(req.url,'http://owned.example').pathname;\\n res.setHeader('X-QA-Marker',MARKER);\\n if(path==='/stream'){\\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\\n  let seq=0;const send=()=>res.write('id: '+seq+'\\\\nevent: tick\\\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\\\n\\\\n');send();\\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\\n }\\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\\n  res.setHeader('ETag','\\\"qa352-'+hash(body)+'\\\"');\\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\\n }\\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\\n\\nQA352_NODE_PROBE\\nnode qa352-server.js --build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa352-server.js\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261016-74eb6c-http:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261016-74eb6c-http.onbex.co\"}, \"slug\": \"qa-20261016-74eb6c-http\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"web_service\", \"updatedAt\": \"2026-10-16T06:09:32Z\"}}]",
+      "stderr": ""
+    },
+    "capacity": {
+      "at": "2026-10-16T06:09:55.762100+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.45,
+      "response": "{\"services\": {\"used\": 7, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+      "stderr": ""
+    },
+    "dependency_ids": [],
+    "recorded_child_ids": [
+      "dep-db8rvdndbg8c73dghcg0"
+    ],
+    "create_command": [
+      "render",
+      "services",
+      "create",
+      "--name",
+      "qa-20261016-e47bb1-http",
+      "--type",
+      "web_service",
+      "--runtime",
+      "node",
+      "--repo",
+      "https://github.com/expressjs/serve-static",
+      "--branch",
+      "master",
+      "--build-command",
+      "set -e\ncat > qa352-server.js <<'QA352_NODE_PROBE'\nconst MARKER=\"QA352_e47bb1_render\";\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\nconst packageBytes=fs.readFileSync('package.json');\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\n').repeat(5000));\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\nhttp.createServer((req,res)=>{\n const path=new URL(req.url,'http://owned.example').pathname;\n res.setHeader('X-QA-Marker',MARKER);\n if(path==='/stream'){\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\n  let seq=0;const send=()=>res.write('id: '+seq+'\\nevent: tick\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\n\\n');send();\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\n }\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\n  res.setHeader('ETag','\"qa352-'+hash(body)+'\"');\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\n }\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\n\nQA352_NODE_PROBE\nnode qa352-server.js --build",
+      "--start-command",
+      "node qa352-server.js",
+      "--env-var",
+      "NODE_VERSION=24",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--health-check-path",
+      "/",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "state": "deleted: native0/detail404/listabsent/runtime404/children404/baseline6/quota terminating0",
+    "create_result": {
+      "binary": "unmodified Render 2.27.0/a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "create",
+        "--name",
+        "qa-20261016-e47bb1-http",
+        "--type",
+        "web_service",
+        "--runtime",
+        "node",
+        "--repo",
+        "https://github.com/expressjs/serve-static",
+        "--branch",
+        "master",
+        "--build-command",
+        "set -e\ncat > qa352-server.js <<'QA352_NODE_PROBE'\nconst MARKER=\"QA352_e47bb1_render\";\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\nconst packageBytes=fs.readFileSync('package.json');\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\n').repeat(5000));\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\nhttp.createServer((req,res)=>{\n const path=new URL(req.url,'http://owned.example').pathname;\n res.setHeader('X-QA-Marker',MARKER);\n if(path==='/stream'){\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\n  let seq=0;const send=()=>res.write('id: '+seq+'\\nevent: tick\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\n\\n');send();\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\n }\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\n  res.setHeader('ETag','\"qa352-'+hash(body)+'\"');\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\n }\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\n\nQA352_NODE_PROBE\nnode qa352-server.js --build",
+        "--start-command",
+        "node qa352-server.js",
+        "--env-var",
+        "NODE_VERSION=24",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--health-check-path",
+        "/",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.266,
+      "stdout": "{\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"master\", \"createdAt\": \"2026-10-16T06:09:58Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db8rvdndbg8c73dghcfg\", \"id\": \"srv-db8rvdndbg8c73dghcfg\", \"name\": \"qa-20261016-e47bb1-http\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/expressjs/serve-static\", \"rootDir\": \"\", \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\ncat > qa352-server.js <<'QA352_NODE_PROBE'\\nconst MARKER=\\\"QA352_e47bb1_render\\\";\\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\\nconst packageBytes=fs.readFileSync('package.json');\\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\\\n').repeat(5000));\\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\\nhttp.createServer((req,res)=>{\\n const path=new URL(req.url,'http://owned.example').pathname;\\n res.setHeader('X-QA-Marker',MARKER);\\n if(path==='/stream'){\\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\\n  let seq=0;const send=()=>res.write('id: '+seq+'\\\\nevent: tick\\\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\\\n\\\\n');send();\\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\\n }\\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\\n  res.setHeader('ETag','\\\"qa352-'+hash(body)+'\\\"');\\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\\n }\\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\\n\\nQA352_NODE_PROBE\\nnode qa352-server.js --build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa352-server.js\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261016-e47bb1-http:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261016-e47bb1-http.onbex.co\"}, \"slug\": \"qa-20261016-e47bb1-http\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"web_service\", \"updatedAt\": \"2026-10-16T06:09:58.280839289Z\"}",
+      "stderr": "",
+      "captures": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/v1/services",
+            "body": {
+              "autoDeploy": "no",
+              "branch": "master",
+              "envVars": [
+                {
+                  "key": "NODE_VERSION",
+                  "value": "24"
+                }
+              ],
+              "name": "qa-20261016-e47bb1-http",
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "repo": "https://github.com/expressjs/serve-static",
+              "serviceDetails": {
+                "envSpecificDetails": {
+                  "buildCommand": "set -e\ncat > qa352-server.js <<'QA352_NODE_PROBE'\nconst MARKER=\"QA352_e47bb1_render\";\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\nconst packageBytes=fs.readFileSync('package.json');\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\n').repeat(5000));\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\nhttp.createServer((req,res)=>{\n const path=new URL(req.url,'http://owned.example').pathname;\n res.setHeader('X-QA-Marker',MARKER);\n if(path==='/stream'){\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\n  let seq=0;const send=()=>res.write('id: '+seq+'\\nevent: tick\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\n\\n');send();\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\n }\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\n  res.setHeader('ETag','\"qa352-'+hash(body)+'\"');\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\n }\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\n\nQA352_NODE_PROBE\nnode qa352-server.js --build",
+                  "startCommand": "node qa352-server.js"
+                },
+                "healthCheckPath": "/",
+                "plan": "free",
+                "region": "frankfurt",
+                "runtime": "node"
+              },
+              "type": "web_service"
+            },
+            "raw_body": "{\"autoDeploy\": \"no\", \"branch\": \"master\", \"envVars\": [{\"key\": \"NODE_VERSION\", \"value\": \"24\"}], \"name\": \"qa-20261016-e47bb1-http\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/expressjs/serve-static\", \"serviceDetails\": {\"envSpecificDetails\": {\"buildCommand\": \"set -e\\ncat > qa352-server.js <<'QA352_NODE_PROBE'\\nconst MARKER=\\\"QA352_e47bb1_render\\\";\\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\\nconst packageBytes=fs.readFileSync('package.json');\\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\\\n').repeat(5000));\\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\\nhttp.createServer((req,res)=>{\\n const path=new URL(req.url,'http://owned.example').pathname;\\n res.setHeader('X-QA-Marker',MARKER);\\n if(path==='/stream'){\\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\\n  let seq=0;const send=()=>res.write('id: '+seq+'\\\\nevent: tick\\\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\\\n\\\\n');send();\\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\\n }\\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\\n  res.setHeader('ETag','\\\"qa352-'+hash(body)+'\\\"');\\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\\n }\\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\\n\\nQA352_NODE_PROBE\\nnode qa352-server.js --build\", \"startCommand\": \"node qa352-server.js\"}, \"healthCheckPath\": \"/\", \"plan\": \"free\", \"region\": \"frankfurt\", \"runtime\": \"node\"}, \"type\": \"web_service\"}",
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "Content-Type": "application/json"
+            },
+            "authorization": "[REDACTED]"
+          },
+          "status": 201,
+          "response": "{\"service\": {\"id\": \"srv-db8rvdndbg8c73dghcfg\", \"name\": \"qa-20261016-e47bb1-http\", \"immutableName\": \"qa-20261016-e47bb1-http\", \"slug\": \"qa-20261016-e47bb1-http\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db8rvdndbg8c73dghcfg\", \"createdAt\": \"2026-10-16T06:09:58Z\", \"updatedAt\": \"2026-10-16T06:09:58.280839289Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\ncat > qa352-server.js <<'QA352_NODE_PROBE'\\nconst MARKER=\\\"QA352_e47bb1_render\\\";\\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\\nconst packageBytes=fs.readFileSync('package.json');\\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\\\n').repeat(5000));\\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\\nhttp.createServer((req,res)=>{\\n const path=new URL(req.url,'http://owned.example').pathname;\\n res.setHeader('X-QA-Marker',MARKER);\\n if(path==='/stream'){\\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\\n  let seq=0;const send=()=>res.write('id: '+seq+'\\\\nevent: tick\\\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\\\n\\\\n');send();\\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\\n }\\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\\n  res.setHeader('ETag','\\\"qa352-'+hash(body)+'\\\"');\\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\\n }\\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\\n\\nQA352_NODE_PROBE\\nnode qa352-server.js --build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa352-server.js\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261016-e47bb1-http:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261016-e47bb1-http.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"repo\": \"https://github.com/expressjs/serve-static\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\", \"healthCheckPath\": \"/\"}, \"deployId\": \"dep-db8rvdndbg8c73dghcg0\"}",
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a4b4e5ce58a69e50-SJC"
+          }
+        }
+      ],
+      "qualification": "actual native POST forwarded unchanged to production; owned local relay and copied config cleaned",
+      "native_exit": 0
+    },
+    "id": "srv-db8rvdndbg8c73dghcfg",
+    "create_view": {
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "branch": "master",
+      "createdAt": "2026-10-16T06:09:58Z",
+      "dashboardUrl": "https://dashboard.bex.co/web/srv-db8rvdndbg8c73dghcfg",
+      "id": "srv-db8rvdndbg8c73dghcfg",
+      "name": "qa-20261016-e47bb1-http",
+      "notifyOnFail": "default",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/expressjs/serve-static",
+      "rootDir": "",
+      "serviceDetails": {
+        "env": "node",
+        "envSpecificDetails": {
+          "buildCommand": "set -e\ncat > qa352-server.js <<'QA352_NODE_PROBE'\nconst MARKER=\"QA352_e47bb1_render\";\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\nconst packageBytes=fs.readFileSync('package.json');\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\n').repeat(5000));\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\nhttp.createServer((req,res)=>{\n const path=new URL(req.url,'http://owned.example').pathname;\n res.setHeader('X-QA-Marker',MARKER);\n if(path==='/stream'){\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\n  let seq=0;const send=()=>res.write('id: '+seq+'\\nevent: tick\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\n\\n');send();\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\n }\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\n  res.setHeader('ETag','\"qa352-'+hash(body)+'\"');\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\n }\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\n\nQA352_NODE_PROBE\nnode qa352-server.js --build",
+          "preDeployCommand": "",
+          "startCommand": "node qa352-server.js"
+        },
+        "healthCheckPath": "/",
+        "internalAddress": "qa-20261016-e47bb1-http:3000",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "free",
+        "port": 3000,
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "node",
+        "url": "https://qa-20261016-e47bb1-http.onbex.co"
+      },
+      "slug": "qa-20261016-e47bb1-http",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "web_service",
+      "updatedAt": "2026-10-16T06:09:58.280839289Z"
+    },
+    "history_receipts": [
+      {
+        "at": "2026-10-16T06:10:00.401910+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db8rvdndbg8c73dghcfg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 1.011,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T06:09:58.242686Z\", \"id\": \"dep-db8rvdndbg8c73dghcg0\", \"status\": \"created\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T06:09:58.242686Z\"}]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-16T06:11:48.533588+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db8rvdndbg8c73dghcfg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.865,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T06:09:58.242686Z\", \"finishedAt\": \"2026-10-16T06:11:32.352352Z\", \"id\": \"dep-db8rvdndbg8c73dghcg0\", \"startedAt\": \"2026-10-16T06:10:32.489237Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T06:11:32.352353Z\"}]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-16T06:15:28.653325+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db8rvdndbg8c73dghcfg",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.495,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T06:09:58.242686Z\", \"finishedAt\": \"2026-10-16T06:11:32.352352Z\", \"id\": \"dep-db8rvdndbg8c73dghcg0\", \"startedAt\": \"2026-10-16T06:10:32.489237Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T06:11:32.352353Z\"}]",
+          "stderr": ""
+        }
+      }
+    ],
+    "deploy_children": [
+      {
+        "commit": {
+          "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+          "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+        },
+        "createdAt": "2026-10-16T06:09:58.242686Z",
+        "finishedAt": "2026-10-16T06:11:32.352352Z",
+        "id": "dep-db8rvdndbg8c73dghcg0",
+        "startedAt": "2026-10-16T06:10:32.489237Z",
+        "status": "live",
+        "trigger": "other",
+        "updatedAt": "2026-10-16T06:11:32.352353Z"
+      }
+    ],
+    "first_deploy_id": "dep-db8rvdndbg8c73dghcg0",
+    "runtime_receipts": [
+      {
+        "at": "2026-10-16T06:11:49.273516+00:00",
+        "HTTP": "200",
+        "curl_exit": 0,
+        "raw": "{\"marker\": \"QA352_e47bb1_render\", \"node\": \"v24.21.0\", \"architecture\": \"x64\", \"package_sha256\": \"4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8\", \"payload_bytes\": 295000, \"payload_sha256\": \"184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815\", \"built\": {\"marker\": \"QA352_e47bb1_render\", \"node\": \"v24.21.0\", \"architecture\": \"x64\", \"package_sha256\": \"4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8\", \"payload_bytes\": 295000, \"payload_sha256\": \"184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815\"}}",
+        "decoded": {
+          "marker": "QA352_e47bb1_render",
+          "node": "v24.21.0",
+          "architecture": "x64",
+          "package_sha256": "4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8",
+          "payload_bytes": 295000,
+          "payload_sha256": "184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815",
+          "built": {
+            "marker": "QA352_e47bb1_render",
+            "node": "v24.21.0",
+            "architecture": "x64",
+            "package_sha256": "4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8",
+            "payload_bytes": 295000,
+            "payload_sha256": "184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815"
+          }
+        },
+        "history": [
+          {
+            "commit": {
+              "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+              "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+            },
+            "createdAt": "2026-10-16T06:09:58.242686Z",
+            "finishedAt": "2026-10-16T06:11:32.352352Z",
+            "id": "dep-db8rvdndbg8c73dghcg0",
+            "startedAt": "2026-10-16T06:10:32.489237Z",
+            "status": "live",
+            "trigger": "other",
+            "updatedAt": "2026-10-16T06:11:32.352353Z"
+          }
+        ],
+        "first_live_pass": true
+      }
+    ],
+    "transport_batches": [
+      {
+        "at": "2026-10-16T06:12:13.360122+00:00",
+        "expected_bytes": 295000,
+        "expected_sha256": "184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815",
+        "HTTP": [
+          {
+            "at": "2026-10-16T06:12:14.812309+00:00",
+            "API_only_HTTP_diagnostic": true,
+            "request": {
+              "URL": "https://qa-20261016-e47bb1-http.onbex.co/text",
+              "Accept-Encoding": "identity",
+              "protocol": "HTTP/1.1",
+              "User-Agent": "bex-functional-qa/352"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed_ms": 1311,
+            "headers_raw": "HTTP/1.1 200 OK\nCache-Control: no-cache\nContent-Length: 295000\nContent-Type: text/plain; charset=utf-8\nDate: Fri, 16 Oct 2026 06:12:14 GMT\nEtag: \"qa352-184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815\"\nX-Qa-Marker: QA352_e47bb1_render\n\n",
+            "headers": {
+              "cache-control": "no-cache",
+              "content-length": "295000",
+              "content-type": "text/plain; charset=utf-8",
+              "date": "Fri, 16 Oct 2026 06:12:14 GMT",
+              "etag": "\"qa352-184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815\"",
+              "x-qa-marker": "QA352_e47bb1_render"
+            },
+            "raw_bytes": 295000,
+            "raw_sha256": "184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815",
+            "complete_raw_body_gzip_base64": "H4sIAAAAAAAC/+3LvQnCQBgA0N4pbgX/sHaETBBy+gmCnOFS2LiHjdhZKG7hLsExdAX71z54zXq+nLWxWOU8bWuUbdR0Tv2h25d0ipxqDP2xDPHDTbd7P9J4uY/X1+d5mzSqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqv5Xv/cc3VFYgAQA",
+            "decode_exit": 0,
+            "decoded": {
+              "bytes": 295000,
+              "sha256": "184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815"
+            },
+            "stderr": "",
+            "exact_payload": true,
+            "compressed": false
+          },
+          {
+            "at": "2026-10-16T06:12:16.393024+00:00",
+            "API_only_HTTP_diagnostic": true,
+            "request": {
+              "URL": "https://qa-20261016-e47bb1-http.onbex.co/text",
+              "Accept-Encoding": "br",
+              "protocol": "HTTP/1.1",
+              "User-Agent": "bex-functional-qa/352"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed_ms": 1361,
+            "headers_raw": "HTTP/1.1 200 OK\nCache-Control: no-cache\nContent-Length: 295000\nContent-Type: text/plain; charset=utf-8\nDate: Fri, 16 Oct 2026 06:12:15 GMT\nEtag: \"qa352-184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815\"\nX-Qa-Marker: QA352_e47bb1_render\n\n",
+            "headers": {
+              "cache-control": "no-cache",
+              "content-length": "295000",
+              "content-type": "text/plain; charset=utf-8",
+              "date": "Fri, 16 Oct 2026 06:12:15 GMT",
+              "etag": "\"qa352-184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815\"",
+              "x-qa-marker": "QA352_e47bb1_render"
+            },
+            "raw_bytes": 295000,
+            "raw_sha256": "184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815",
+            "complete_raw_body_gzip_base64": "H4sIAAAAAAAC/+3LvQnCQBgA0N4pbgX/sHaETBBy+gmCnOFS2LiHjdhZKG7hLsExdAX71z54zXq+nLWxWOU8bWuUbdR0Tv2h25d0ipxqDP2xDPHDTbd7P9J4uY/X1+d5mzSqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqv5Xv/cc3VFYgAQA",
+            "decode_exit": 0,
+            "decoded": {
+              "bytes": 295000,
+              "sha256": "184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815"
+            },
+            "stderr": "",
+            "exact_payload": true,
+            "compressed": false
+          },
+          {
+            "at": "2026-10-16T06:12:17.831010+00:00",
+            "API_only_HTTP_diagnostic": true,
+            "request": {
+              "URL": "https://qa-20261016-e47bb1-http.onbex.co/text",
+              "Accept-Encoding": "gzip",
+              "protocol": "HTTP/1.1",
+              "User-Agent": "bex-functional-qa/352"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed_ms": 1286,
+            "headers_raw": "HTTP/1.1 200 OK\nCache-Control: no-cache\nContent-Length: 295000\nContent-Type: text/plain; charset=utf-8\nDate: Fri, 16 Oct 2026 06:12:17 GMT\nEtag: \"qa352-184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815\"\nX-Qa-Marker: QA352_e47bb1_render\n\n",
+            "headers": {
+              "cache-control": "no-cache",
+              "content-length": "295000",
+              "content-type": "text/plain; charset=utf-8",
+              "date": "Fri, 16 Oct 2026 06:12:17 GMT",
+              "etag": "\"qa352-184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815\"",
+              "x-qa-marker": "QA352_e47bb1_render"
+            },
+            "raw_bytes": 295000,
+            "raw_sha256": "184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815",
+            "complete_raw_body_gzip_base64": "H4sIAAAAAAAC/+3LvQnCQBgA0N4pbgX/sHaETBBy+gmCnOFS2LiHjdhZKG7hLsExdAX71z54zXq+nLWxWOU8bWuUbdR0Tv2h25d0ipxqDP2xDPHDTbd7P9J4uY/X1+d5mzSqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqv5Xv/cc3VFYgAQA",
+            "decode_exit": 0,
+            "decoded": {
+              "bytes": 295000,
+              "sha256": "184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815"
+            },
+            "stderr": "",
+            "exact_payload": true,
+            "compressed": false
+          },
+          {
+            "at": "2026-10-16T06:12:19.366874+00:00",
+            "API_only_HTTP_diagnostic": true,
+            "request": {
+              "URL": "https://qa-20261016-e47bb1-http.onbex.co/text",
+              "Accept-Encoding": "br, gzip",
+              "protocol": "HTTP/1.1",
+              "User-Agent": "bex-functional-qa/352"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed_ms": 1373,
+            "headers_raw": "HTTP/1.1 200 OK\nCache-Control: no-cache\nContent-Length: 295000\nContent-Type: text/plain; charset=utf-8\nDate: Fri, 16 Oct 2026 06:12:18 GMT\nEtag: \"qa352-184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815\"\nX-Qa-Marker: QA352_e47bb1_render\n\n",
+            "headers": {
+              "cache-control": "no-cache",
+              "content-length": "295000",
+              "content-type": "text/plain; charset=utf-8",
+              "date": "Fri, 16 Oct 2026 06:12:18 GMT",
+              "etag": "\"qa352-184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815\"",
+              "x-qa-marker": "QA352_e47bb1_render"
+            },
+            "raw_bytes": 295000,
+            "raw_sha256": "184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815",
+            "complete_raw_body_gzip_base64": "H4sIAAAAAAAC/+3LvQnCQBgA0N4pbgX/sHaETBBy+gmCnOFS2LiHjdhZKG7hLsExdAX71z54zXq+nLWxWOU8bWuUbdR0Tv2h25d0ipxqDP2xDPHDTbd7P9J4uY/X1+d5mzSqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqv5Xv/cc3VFYgAQA",
+            "decode_exit": 0,
+            "decoded": {
+              "bytes": 295000,
+              "sha256": "184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815"
+            },
+            "stderr": "",
+            "exact_payload": true,
+            "compressed": false
+          },
+          {
+            "at": "2026-10-16T06:12:20.938691+00:00",
+            "API_only_HTTP_diagnostic": true,
+            "request": {
+              "URL": "https://qa-20261016-e47bb1-http.onbex.co/no-transform",
+              "Accept-Encoding": "br, gzip",
+              "protocol": "HTTP/1.1",
+              "User-Agent": "bex-functional-qa/352"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed_ms": 1408,
+            "headers_raw": "HTTP/1.1 200 OK\nCache-Control: no-cache, no-transform\nContent-Length: 295000\nContent-Type: text/plain; charset=utf-8\nDate: Fri, 16 Oct 2026 06:12:20 GMT\nEtag: \"qa352-184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815\"\nX-Qa-Marker: QA352_e47bb1_render\n\n",
+            "headers": {
+              "cache-control": "no-cache, no-transform",
+              "content-length": "295000",
+              "content-type": "text/plain; charset=utf-8",
+              "date": "Fri, 16 Oct 2026 06:12:20 GMT",
+              "etag": "\"qa352-184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815\"",
+              "x-qa-marker": "QA352_e47bb1_render"
+            },
+            "raw_bytes": 295000,
+            "raw_sha256": "184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815",
+            "complete_raw_body_gzip_base64": "H4sIAAAAAAAC/+3LvQnCQBgA0N4pbgX/sHaETBBy+gmCnOFS2LiHjdhZKG7hLsExdAX71z54zXq+nLWxWOU8bWuUbdR0Tv2h25d0ipxqDP2xDPHDTbd7P9J4uY/X1+d5mzSqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqv5Xv/cc3VFYgAQA",
+            "decode_exit": 0,
+            "decoded": {
+              "bytes": 295000,
+              "sha256": "184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815"
+            },
+            "stderr": "",
+            "exact_payload": true,
+            "compressed": false
+          },
+          {
+            "at": "2026-10-16T06:12:21.856259+00:00",
+            "API_only_HTTP_diagnostic": true,
+            "request": {
+              "URL": "https://qa-20261016-e47bb1-http.onbex.co/origin-gzip",
+              "Accept-Encoding": "gzip",
+              "protocol": "HTTP/1.1",
+              "User-Agent": "bex-functional-qa/352"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed_ms": 748,
+            "headers_raw": "HTTP/1.1 200 OK\nCache-Control: no-cache\nContent-Encoding: gzip\nContent-Length: 966\nContent-Type: text/plain; charset=utf-8\nDate: Fri, 16 Oct 2026 06:12:21 GMT\nEtag: \"qa352-184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815\"\nVary: Accept-Encoding\nX-Qa-Marker: QA352_e47bb1_render\n\n",
+            "headers": {
+              "cache-control": "no-cache",
+              "content-encoding": "gzip",
+              "content-length": "966",
+              "content-type": "text/plain; charset=utf-8",
+              "date": "Fri, 16 Oct 2026 06:12:21 GMT",
+              "etag": "\"qa352-184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815\"",
+              "vary": "Accept-Encoding",
+              "x-qa-marker": "QA352_e47bb1_render"
+            },
+            "raw_bytes": 966,
+            "raw_sha256": "3ea19bd958eecb6024bec8157496a861ef784ba9d737a86cd840524627cf7459",
+            "complete_raw_body_gzip_base64": "H4sIAAAAAAAC/5Pv5mAAA+a3p/dyHnKQYLhwT3Of6J/DtwSNHE+85Gya8zDoRgq/9MbNAXcOxTYlWzT/rf6bve3010VnV/t6fd72bNN502Mv/O9uPKK6fEXli/OpJwyPrbOumWcYK3/57d/au+m9q0bBKBgF1Af/r8p/l7kbGNHAwgAAd8XNacYDAAA=",
+            "decode_exit": 0,
+            "decoded": {
+              "bytes": 295000,
+              "sha256": "184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815"
+            },
+            "stderr": "",
+            "exact_payload": true,
+            "compressed": true
+          }
+        ],
+        "streams": [
+          {
+            "at": "2026-10-16T06:12:26.144055+00:00",
+            "API_only_HTTP_diagnostic": true,
+            "native_CLI_stream": false,
+            "command": [
+              "node",
+              "<owned-temp>/sweep352-stream-client.js",
+              "https://qa-20261016-e47bb1-http.onbex.co/stream",
+              "<own-marker>",
+              "identity"
+            ],
+            "exit": 0,
+            "stdout": "{\"url\": \"https://qa-20261016-e47bb1-http.onbex.co/stream\", \"offer\": \"identity\", \"status\": 200, \"headers\": {\"cache-control\": \"no-cache\", \"content-type\": \"text/event-stream; charset=utf-8\", \"date\": \"Fri, 16 Oct 2026 06:12:22 GMT\", \"x-qa-marker\": \"QA352_e47bb1_render\", \"transfer-encoding\": \"chunked\"}, \"headers_ms\": 668, \"error\": null, \"elapsed_ms\": 3991, \"text\": \"id: 0\\nevent: tick\\ndata: {\\\"marker\\\":\\\"QA352_e47bb1_render\\\",\\\"seq\\\":0,\\\"text\\\":\\\"café 日本語\\\",\\\"emitted\\\":1792131142766}\\n\\nid: 1\\nevent: tick\\ndata: {\\\"marker\\\":\\\"QA352_e47bb1_render\\\",\\\"seq\\\":1,\\\"text\\\":\\\"café 日本語\\\",\\\"emitted\\\":1792131143867}\\n\\nid: 2\\nevent: tick\\ndata: {\\\"marker\\\":\\\"QA352_e47bb1_render\\\",\\\"seq\\\":2,\\\"text\\\":\\\"café 日本語\\\",\\\"emitted\\\":1792131144968}\\n\\n\", \"events\": [{\"at_ms\": 668, \"value\": {\"marker\": \"QA352_e47bb1_render\", \"seq\": 0, \"text\": \"café 日本語\", \"emitted\": 1792131142766}}, {\"at_ms\": 1770, \"value\": {\"marker\": \"QA352_e47bb1_render\", \"seq\": 1, \"text\": \"café 日本語\", \"emitted\": 1792131143867}}, {\"at_ms\": 2943, \"value\": {\"marker\": \"QA352_e47bb1_render\", \"seq\": 2, \"text\": \"café 日本語\", \"emitted\": 1792131144968}}], \"chunks\": [{\"at_ms\": 668, \"chars\": 108}, {\"at_ms\": 1770, \"chars\": 108}, {\"at_ms\": 2943, \"chars\": 108}], \"pass\": true}",
+            "stderr": "",
+            "decoded": {
+              "url": "https://qa-20261016-e47bb1-http.onbex.co/stream",
+              "offer": "identity",
+              "status": 200,
+              "headers": {
+                "cache-control": "no-cache",
+                "content-type": "text/event-stream; charset=utf-8",
+                "date": "Fri, 16 Oct 2026 06:12:22 GMT",
+                "x-qa-marker": "QA352_e47bb1_render",
+                "transfer-encoding": "chunked"
+              },
+              "headers_ms": 668,
+              "error": null,
+              "elapsed_ms": 3991,
+              "text": "id: 0\nevent: tick\ndata: {\"marker\":\"QA352_e47bb1_render\",\"seq\":0,\"text\":\"café 日本語\",\"emitted\":1792131142766}\n\nid: 1\nevent: tick\ndata: {\"marker\":\"QA352_e47bb1_render\",\"seq\":1,\"text\":\"café 日本語\",\"emitted\":1792131143867}\n\nid: 2\nevent: tick\ndata: {\"marker\":\"QA352_e47bb1_render\",\"seq\":2,\"text\":\"café 日本語\",\"emitted\":1792131144968}\n\n",
+              "events": [
+                {
+                  "at_ms": 668,
+                  "value": {
+                    "marker": "QA352_e47bb1_render",
+                    "seq": 0,
+                    "text": "café 日本語",
+                    "emitted": 1792131142766
+                  }
+                },
+                {
+                  "at_ms": 1770,
+                  "value": {
+                    "marker": "QA352_e47bb1_render",
+                    "seq": 1,
+                    "text": "café 日本語",
+                    "emitted": 1792131143867
+                  }
+                },
+                {
+                  "at_ms": 2943,
+                  "value": {
+                    "marker": "QA352_e47bb1_render",
+                    "seq": 2,
+                    "text": "café 日本語",
+                    "emitted": 1792131144968
+                  }
+                }
+              ],
+              "chunks": [
+                {
+                  "at_ms": 668,
+                  "chars": 108
+                },
+                {
+                  "at_ms": 1770,
+                  "chars": 108
+                },
+                {
+                  "at_ms": 2943,
+                  "chars": 108
+                }
+              ],
+              "pass": true
+            }
+          },
+          {
+            "at": "2026-10-16T06:12:30.455805+00:00",
+            "API_only_HTTP_diagnostic": true,
+            "native_CLI_stream": false,
+            "command": [
+              "node",
+              "<owned-temp>/sweep352-stream-client.js",
+              "https://qa-20261016-e47bb1-http.onbex.co/stream",
+              "<own-marker>",
+              "br, gzip"
+            ],
+            "exit": 0,
+            "stdout": "{\"url\": \"https://qa-20261016-e47bb1-http.onbex.co/stream\", \"offer\": \"br, gzip\", \"status\": 200, \"headers\": {\"cache-control\": \"no-cache\", \"content-type\": \"text/event-stream; charset=utf-8\", \"date\": \"Fri, 16 Oct 2026 06:12:27 GMT\", \"x-qa-marker\": \"QA352_e47bb1_render\", \"transfer-encoding\": \"chunked\"}, \"headers_ms\": 808, \"error\": null, \"elapsed_ms\": 4082, \"text\": \"id: 0\\nevent: tick\\ndata: {\\\"marker\\\":\\\"QA352_e47bb1_render\\\",\\\"seq\\\":0,\\\"text\\\":\\\"café 日本語\\\",\\\"emitted\\\":1792131147109}\\n\\nid: 1\\nevent: tick\\ndata: {\\\"marker\\\":\\\"QA352_e47bb1_render\\\",\\\"seq\\\":1,\\\"text\\\":\\\"café 日本語\\\",\\\"emitted\\\":1792131148209}\\n\\nid: 2\\nevent: tick\\ndata: {\\\"marker\\\":\\\"QA352_e47bb1_render\\\",\\\"seq\\\":2,\\\"text\\\":\\\"café 日本語\\\",\\\"emitted\\\":1792131149310}\\n\\n\", \"events\": [{\"at_ms\": 808, \"value\": {\"marker\": \"QA352_e47bb1_render\", \"seq\": 0, \"text\": \"café 日本語\", \"emitted\": 1792131147109}}, {\"at_ms\": 1881, \"value\": {\"marker\": \"QA352_e47bb1_render\", \"seq\": 1, \"text\": \"café 日本語\", \"emitted\": 1792131148209}}, {\"at_ms\": 2981, \"value\": {\"marker\": \"QA352_e47bb1_render\", \"seq\": 2, \"text\": \"café 日本語\", \"emitted\": 1792131149310}}], \"chunks\": [{\"at_ms\": 808, \"chars\": 108}, {\"at_ms\": 1881, \"chars\": 108}, {\"at_ms\": 2981, \"chars\": 108}], \"pass\": true}",
+            "stderr": "",
+            "decoded": {
+              "url": "https://qa-20261016-e47bb1-http.onbex.co/stream",
+              "offer": "br, gzip",
+              "status": 200,
+              "headers": {
+                "cache-control": "no-cache",
+                "content-type": "text/event-stream; charset=utf-8",
+                "date": "Fri, 16 Oct 2026 06:12:27 GMT",
+                "x-qa-marker": "QA352_e47bb1_render",
+                "transfer-encoding": "chunked"
+              },
+              "headers_ms": 808,
+              "error": null,
+              "elapsed_ms": 4082,
+              "text": "id: 0\nevent: tick\ndata: {\"marker\":\"QA352_e47bb1_render\",\"seq\":0,\"text\":\"café 日本語\",\"emitted\":1792131147109}\n\nid: 1\nevent: tick\ndata: {\"marker\":\"QA352_e47bb1_render\",\"seq\":1,\"text\":\"café 日本語\",\"emitted\":1792131148209}\n\nid: 2\nevent: tick\ndata: {\"marker\":\"QA352_e47bb1_render\",\"seq\":2,\"text\":\"café 日本語\",\"emitted\":1792131149310}\n\n",
+              "events": [
+                {
+                  "at_ms": 808,
+                  "value": {
+                    "marker": "QA352_e47bb1_render",
+                    "seq": 0,
+                    "text": "café 日本語",
+                    "emitted": 1792131147109
+                  }
+                },
+                {
+                  "at_ms": 1881,
+                  "value": {
+                    "marker": "QA352_e47bb1_render",
+                    "seq": 1,
+                    "text": "café 日本語",
+                    "emitted": 1792131148209
+                  }
+                },
+                {
+                  "at_ms": 2981,
+                  "value": {
+                    "marker": "QA352_e47bb1_render",
+                    "seq": 2,
+                    "text": "café 日本語",
+                    "emitted": 1792131149310
+                  }
+                }
+              ],
+              "chunks": [
+                {
+                  "at_ms": 808,
+                  "chars": 108
+                },
+                {
+                  "at_ms": 1881,
+                  "chars": 108
+                },
+                {
+                  "at_ms": 2981,
+                  "chars": 108
+                }
+              ],
+              "pass": true
+            }
+          }
+        ],
+        "all_payloads_exact": true,
+        "origin_gzip_control": true,
+        "no_transform_identity": true,
+        "automatic_compression_available": false,
+        "stream_events_pass": true
+      },
+      {
+        "at": "2026-10-16T06:14:02.027020+00:00",
+        "expected_bytes": 295000,
+        "expected_sha256": "184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815",
+        "HTTP": [
+          {
+            "at": "2026-10-16T06:14:03.506677+00:00",
+            "API_only_HTTP_diagnostic": true,
+            "request": {
+              "URL": "https://qa-20261016-e47bb1-http.onbex.co/text",
+              "Accept-Encoding": "br",
+              "protocol": "HTTP/2 offered; actual status line retained",
+              "User-Agent": "bex-functional-qa/352"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed_ms": 1307,
+            "headers_raw": "HTTP/2 200 \ncache-control: no-cache\ncontent-type: text/plain; charset=utf-8\ndate: Fri, 16 Oct 2026 06:14:02 GMT\netag: \"qa352-184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815\"\nx-qa-marker: QA352_e47bb1_render\ncontent-length: 295000\n\n",
+            "headers": {
+              "cache-control": "no-cache",
+              "content-type": "text/plain; charset=utf-8",
+              "date": "Fri, 16 Oct 2026 06:14:02 GMT",
+              "etag": "\"qa352-184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815\"",
+              "x-qa-marker": "QA352_e47bb1_render",
+              "content-length": "295000"
+            },
+            "raw_bytes": 295000,
+            "raw_sha256": "184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815",
+            "complete_raw_body_gzip_base64": "H4sIAAAAAAAC/+3LvQnCQBgA0N4pbgX/sHaETBBy+gmCnOFS2LiHjdhZKG7hLsExdAX71z54zXq+nLWxWOU8bWuUbdR0Tv2h25d0ipxqDP2xDPHDTbd7P9J4uY/X1+d5mzSqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqv5Xv/cc3VFYgAQA",
+            "decode_exit": 0,
+            "decoded": {
+              "bytes": 295000,
+              "sha256": "184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815"
+            },
+            "stderr": "",
+            "exact_payload": true,
+            "compressed": false
+          },
+          {
+            "at": "2026-10-16T06:14:04.914949+00:00",
+            "API_only_HTTP_diagnostic": true,
+            "request": {
+              "URL": "https://qa-20261016-e47bb1-http.onbex.co/text",
+              "Accept-Encoding": "gzip",
+              "protocol": "HTTP/2 offered; actual status line retained",
+              "User-Agent": "bex-functional-qa/352"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed_ms": 1261,
+            "headers_raw": "HTTP/2 200 \ncache-control: no-cache\ncontent-type: text/plain; charset=utf-8\ndate: Fri, 16 Oct 2026 06:14:04 GMT\netag: \"qa352-184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815\"\nx-qa-marker: QA352_e47bb1_render\ncontent-length: 295000\n\n",
+            "headers": {
+              "cache-control": "no-cache",
+              "content-type": "text/plain; charset=utf-8",
+              "date": "Fri, 16 Oct 2026 06:14:04 GMT",
+              "etag": "\"qa352-184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815\"",
+              "x-qa-marker": "QA352_e47bb1_render",
+              "content-length": "295000"
+            },
+            "raw_bytes": 295000,
+            "raw_sha256": "184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815",
+            "complete_raw_body_gzip_base64": "H4sIAAAAAAAC/+3LvQnCQBgA0N4pbgX/sHaETBBy+gmCnOFS2LiHjdhZKG7hLsExdAX71z54zXq+nLWxWOU8bWuUbdR0Tv2h25d0ipxqDP2xDPHDTbd7P9J4uY/X1+d5mzSqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqv5Xv/cc3VFYgAQA",
+            "decode_exit": 0,
+            "decoded": {
+              "bytes": 295000,
+              "sha256": "184cf2167d9da1bfa1967805a689571cbd874cd82426c92531745407291e8815"
+            },
+            "stderr": "",
+            "exact_payload": true,
+            "compressed": false
+          }
+        ],
+        "streams": [],
+        "all_payloads_exact": true,
+        "automatic_compression_available": false,
+        "offered_HTTP2": true
+      }
+    ],
+    "shared_state": [
+      {
+        "at": "2026-10-16T06:14:36.342410+00:00",
+        "surface": "REST",
+        "receipt": {
+          "at": "2026-10-16T06:14:37.206848+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db8rvdndbg8c73dghcfg",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.714,
+          "response": "{\"id\": \"srv-db8rvdndbg8c73dghcfg\", \"name\": \"qa-20261016-e47bb1-http\", \"immutableName\": \"qa-20261016-e47bb1-http\", \"slug\": \"qa-20261016-e47bb1-http\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db8rvdndbg8c73dghcfg\", \"createdAt\": \"2026-10-16T06:09:58Z\", \"updatedAt\": \"2026-10-16T06:11:31Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\ncat > qa352-server.js <<'QA352_NODE_PROBE'\\nconst MARKER=\\\"QA352_e47bb1_render\\\";\\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\\nconst packageBytes=fs.readFileSync('package.json');\\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\\\n').repeat(5000));\\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\\nhttp.createServer((req,res)=>{\\n const path=new URL(req.url,'http://owned.example').pathname;\\n res.setHeader('X-QA-Marker',MARKER);\\n if(path==='/stream'){\\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\\n  let seq=0;const send=()=>res.write('id: '+seq+'\\\\nevent: tick\\\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\\\n\\\\n');send();\\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\\n }\\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\\n  res.setHeader('ETag','\\\"qa352-'+hash(body)+'\\\"');\\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\\n }\\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\\n\\nQA352_NODE_PROBE\\nnode qa352-server.js --build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa352-server.js\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261016-e47bb1-http:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261016-e47bb1-http.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Running\", \"replicas\": 1, \"revision\": \"rev-1\", \"urls\": [\"https://qa-20261016-e47bb1-http.onbex.co\"], \"idleTTLSeconds\": 0, \"repo\": \"https://github.com/expressjs/serve-static\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\", \"healthCheckPath\": \"/\"}",
+          "stderr": ""
+        },
+        "pass": true
+      },
+      {
+        "at": "2026-10-16T06:14:37.458917+00:00",
+        "surface": "GraphQL",
+        "receipt": {
+          "at": "2026-10-16T06:14:38.057078+00:00",
+          "API_only": true,
+          "request": {
+            "method": "POST",
+            "path": "/graphql",
+            "body": {
+              "query": "query QA352 {service(id:\"srv-db8rvdndbg8c73dghcfg\"){id name repo branch runtime plan buildCommand startCommand autoDeploy}}"
+            },
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.459,
+          "response": "{\"data\": {\"service\": {\"autoDeploy\": false, \"branch\": \"master\", \"buildCommand\": \"set -e\\ncat > qa352-server.js <<'QA352_NODE_PROBE'\\nconst MARKER=\\\"QA352_e47bb1_render\\\";\\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\\nconst packageBytes=fs.readFileSync('package.json');\\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\\\n').repeat(5000));\\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\\nhttp.createServer((req,res)=>{\\n const path=new URL(req.url,'http://owned.example').pathname;\\n res.setHeader('X-QA-Marker',MARKER);\\n if(path==='/stream'){\\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\\n  let seq=0;const send=()=>res.write('id: '+seq+'\\\\nevent: tick\\\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\\\n\\\\n');send();\\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\\n }\\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\\n  res.setHeader('ETag','\\\"qa352-'+hash(body)+'\\\"');\\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\\n }\\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\\n\\nQA352_NODE_PROBE\\nnode qa352-server.js --build\", \"id\": \"srv-db8rvdndbg8c73dghcfg\", \"name\": \"qa-20261016-e47bb1-http\", \"plan\": \"free\", \"repo\": \"https://github.com/expressjs/serve-static\", \"runtime\": \"node\", \"startCommand\": \"node qa352-server.js\"}}}",
+          "stderr": ""
+        },
+        "pass": true
+      },
+      {
+        "at": "2026-10-16T06:14:38.334245+00:00",
+        "surface": "MCP",
+        "receipt": {
+          "at": "2026-10-16T06:14:38.916469+00:00",
+          "API_only": true,
+          "request": {
+            "method": "POST",
+            "path": "/mcp",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 352,
+              "method": "tools/call",
+              "params": {
+                "name": "get_service",
+                "arguments": {
+                  "serviceId": "srv-db8rvdndbg8c73dghcfg",
+                  "workspaceId": "tea-daif693dqjvc73e7as3g"
+                }
+              }
+            },
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.433,
+          "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":352,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"autoDeploy\\\":\\\"no\\\",\\\"autoDeployTrigger\\\":\\\"off\\\",\\\"branch\\\":\\\"master\\\",\\\"createdAt\\\":\\\"2026-10-16T06:09:58Z\\\",\\\"dashboardUrl\\\":\\\"https://dashboard.bex.co/web/srv-db8rvdndbg8c73dghcfg\\\",\\\"displayName\\\":\\\"\\\",\\\"healthCheckPath\\\":\\\"/\\\",\\\"id\\\":\\\"srv-db8rvdndbg8c73dghcfg\\\",\\\"idleTTLSeconds\\\":0,\\\"immutableName\\\":\\\"qa-20261016-e47bb1-http\\\",\\\"name\\\":\\\"qa-20261016-e47bb1-http\\\",\\\"notificationsToSend\\\":\\\"default\\\",\\\"notifyOnFail\\\":\\\"default\\\",\\\"ownerId\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"phase\\\":\\\"Running\\\",\\\"pushDeliveryMethod\\\":\\\"manual_webhook\\\",\\\"replicas\\\":1,\\\"repo\\\":\\\"https://github.com/expressjs/serve-static\\\",\\\"revision\\\":\\\"rev-1\\\",\\\"serviceDetails\\\":{\\\"env\\\":\\\"node\\\",\\\"envSpecificDetails\\\":{\\\"buildCommand\\\":\\\"set -e\\\\ncat \\\\u003e qa352-server.js \\\\u003c\\\\u003c'QA352_NODE_PROBE'\\\\nconst MARKER=\\\\\\\"QA352_e47bb1_render\\\\\\\";\\\\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\\\\nconst hash=b=\\\\u003ecrypto.createHash('sha256').update(b).digest('hex');\\\\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\\\\nconst packageBytes=fs.readFileSync('package.json');\\\\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\\\\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\\\\\\\n').repeat(5000));\\\\nconst snapshot=()=\\\\u003e({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\\\\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\\\\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\\\\nhttp.createServer((req,res)=\\\\u003e{\\\\n const path=new URL(req.url,'http://owned.example').pathname;\\\\n res.setHeader('X-QA-Marker',MARKER);\\\\n if(path==='/stream'){\\\\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\\\\n  let seq=0;const send=()=\\\\u003eres.write('id: '+seq+'\\\\\\\\nevent: tick\\\\\\\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\\\\\\\n\\\\\\\\n');send();\\\\n  const timer=setInterval(()=\\\\u003e{if(seq\\\\u003c3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=\\\\u003eclearInterval(timer));return;\\\\n }\\\\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\\\\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\\\\n  res.setHeader('ETag','\\\\\\\"qa352-'+hash(body)+'\\\\\\\"');\\\\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\\\\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\\\\n }\\\\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\\\\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\\\\n\\\\nQA352_NODE_PROBE\\\\nnode qa352-server.js --build\\\",\\\"preDeployCommand\\\":\\\"\\\",\\\"startCommand\\\":\\\"node qa352-server.js\\\"},\\\"healthCheckPath\\\":\\\"/\\\",\\\"internalAddress\\\":\\\"qa-20261016-e47bb1-http:3000\\\",\\\"maintenanceMode\\\":{\\\"enabled\\\":false,\\\"uri\\\":\\\"\\\"},\\\"maxShutdownDelaySeconds\\\":30,\\\"numInstances\\\":1,\\\"plan\\\":\\\"free\\\",\\\"port\\\":3000,\\\"region\\\":\\\"fsn1\\\",\\\"renderSubdomainPolicy\\\":\\\"enabled\\\",\\\"runtime\\\":\\\"node\\\",\\\"url\\\":\\\"https://qa-20261016-e47bb1-http.onbex.co\\\"},\\\"slug\\\":\\\"qa-20261016-e47bb1-http\\\",\\\"suspended\\\":\\\"not_suspended\\\",\\\"suspenders\\\":[],\\\"type\\\":\\\"web_service\\\",\\\"updatedAt\\\":\\\"2026-10-16T06:11:31Z\\\",\\\"urls\\\":[\\\"https://qa-20261016-e47bb1-http.onbex.co\\\"]}\"}],\"structuredContent\":{\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"branch\":\"master\",\"createdAt\":\"2026-10-16T06:09:58Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db8rvdndbg8c73dghcfg\",\"displayName\":\"\",\"healthCheckPath\":\"/\",\"id\":\"srv-db8rvdndbg8c73dghcfg\",\"idleTTLSeconds\":0,\"immutableName\":\"qa-20261016-e47bb1-http\",\"name\":\"qa-20261016-e47bb1-http\",\"notificationsToSend\":\"default\",\"notifyOnFail\":\"default\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Running\",\"pushDeliveryMethod\":\"manual_webhook\",\"replicas\":1,\"repo\":\"https://github.com/expressjs/serve-static\",\"revision\":\"rev-1\",\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"set -e\\ncat \\u003e qa352-server.js \\u003c\\u003c'QA352_NODE_PROBE'\\nconst MARKER=\\\"QA352_e47bb1_render\\\";\\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\\nconst hash=b=\\u003ecrypto.createHash('sha256').update(b).digest('hex');\\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\\nconst packageBytes=fs.readFileSync('package.json');\\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\\\n').repeat(5000));\\nconst snapshot=()=\\u003e({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\\nhttp.createServer((req,res)=\\u003e{\\n const path=new URL(req.url,'http://owned.example').pathname;\\n res.setHeader('X-QA-Marker',MARKER);\\n if(path==='/stream'){\\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\\n  let seq=0;const send=()=\\u003eres.write('id: '+seq+'\\\\nevent: tick\\\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\\\n\\\\n');send();\\n  const timer=setInterval(()=\\u003e{if(seq\\u003c3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=\\u003eclearInterval(timer));return;\\n }\\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\\n  res.setHeader('ETag','\\\"qa352-'+hash(body)+'\\\"');\\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\\n }\\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\\n\\nQA352_NODE_PROBE\\nnode qa352-server.js --build\",\"preDeployCommand\":\"\",\"startCommand\":\"node qa352-server.js\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261016-e47bb1-http:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261016-e47bb1-http.onbex.co\"},\"slug\":\"qa-20261016-e47bb1-http\",\"suspended\":\"not_suspended\",\"suspenders\":[],\"type\":\"web_service\",\"updatedAt\":\"2026-10-16T06:11:31Z\",\"urls\":[\"https://qa-20261016-e47bb1-http.onbex.co\"]}}}\n\n",
+          "stderr": ""
+        },
+        "pass": true
+      }
+    ],
+    "delete_intent": {
+      "at": "2026-10-16T06:15:28.788443+00:00",
+      "children": [
+        {
+          "commit": {
+            "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+            "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+          },
+          "createdAt": "2026-10-16T06:09:58.242686Z",
+          "finishedAt": "2026-10-16T06:11:32.352352Z",
+          "id": "dep-db8rvdndbg8c73dghcg0",
+          "startedAt": "2026-10-16T06:10:32.489237Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-16T06:11:32.352353Z"
+        }
+      ]
+    },
+    "delete_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "delete",
+        "srv-db8rvdndbg8c73dghcfg",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 2.422,
+      "stdout": "{\"data\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"master\", \"createdAt\": \"2026-10-16T06:09:58Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db8rvdndbg8c73dghcfg\", \"id\": \"srv-db8rvdndbg8c73dghcfg\", \"name\": \"qa-20261016-e47bb1-http\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/expressjs/serve-static\", \"rootDir\": \"\", \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"set -e\\ncat > qa352-server.js <<'QA352_NODE_PROBE'\\nconst MARKER=\\\"QA352_e47bb1_render\\\";\\nconst fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto'),zlib=require('node:zlib');\\nconst hash=b=>crypto.createHash('sha256').update(b).digest('hex');\\nconst expectedPackage='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';\\nconst packageBytes=fs.readFileSync('package.json');\\nif(hash(packageBytes)!==expectedPackage)throw new Error('Public source hash mismatch');\\nconst payload=Buffer.from((MARKER+' | plain web response | café 日本語\\\\n').repeat(5000));\\nconst snapshot=()=>({marker:MARKER,node:process.version,architecture:process.arch,package_sha256:hash(packageBytes),payload_bytes:payload.length,payload_sha256:hash(payload)});\\nif(process.argv.includes('--build')){fs.writeFileSync('qa352-built.json',JSON.stringify(snapshot()));console.log(MARKER+'_BUILD_SOURCE_CONFIRMED');process.exit(0);}\\nconst built=JSON.parse(fs.readFileSync('qa352-built.json','utf8'));\\nhttp.createServer((req,res)=>{\\n const path=new URL(req.url,'http://owned.example').pathname;\\n res.setHeader('X-QA-Marker',MARKER);\\n if(path==='/stream'){\\n  res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache'});res.flushHeaders();\\n  let seq=0;const send=()=>res.write('id: '+seq+'\\\\nevent: tick\\\\ndata: '+JSON.stringify({marker:MARKER,seq:seq++,text:'café 日本語',emitted:Date.now()})+'\\\\n\\\\n');send();\\n  const timer=setInterval(()=>{if(seq<3)send();else{clearInterval(timer);res.end();}},1100);req.on('close',()=>clearInterval(timer));return;\\n }\\n if(path==='/text'||path==='/no-transform'||path==='/origin-gzip'){\\n  let body=payload;res.setHeader('Content-Type','text/plain; charset=utf-8');res.setHeader('Cache-Control',path==='/no-transform'?'no-cache, no-transform':'no-cache');\\n  res.setHeader('ETag','\\\"qa352-'+hash(body)+'\\\"');\\n  if(path==='/origin-gzip'){body=zlib.gzipSync(body);res.setHeader('Content-Encoding','gzip');res.setHeader('Vary','Accept-Encoding');}\\n  res.setHeader('Content-Length',body.length);res.writeHead(200);res.end(req.method==='HEAD'?undefined:body);return;\\n }\\n const body=Buffer.from(JSON.stringify({...snapshot(),built}));res.writeHead(200,{'Content-Type':'application/json','Content-Length':body.length});res.end(req.method==='HEAD'?undefined:body);\\n}).listen(Number(process.env.PORT||10000),'0.0.0.0');\\n\\nQA352_NODE_PROBE\\nnode qa352-server.js --build\", \"preDeployCommand\": \"\", \"startCommand\": \"node qa352-server.js\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261016-e47bb1-http:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261016-e47bb1-http.onbex.co\"}, \"slug\": \"qa-20261016-e47bb1-http\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"web_service\", \"updatedAt\": \"2026-10-16T06:11:31Z\", \"environmentId\": null, \"projectId\": null}, \"meta\": {\"deleted\": true}}",
+      "stderr": ""
+    },
+    "cleanup_receipts": [
+      {
+        "at": "2026-10-16T06:16:18.720801+00:00",
+        "detail": {
+          "at": "2026-10-16T06:16:16.624419+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db8rvdndbg8c73dghcfg",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "404",
+          "curl_exit": 0,
+          "elapsed": 1.632,
+          "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+          "stderr": ""
+        },
+        "inventory": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "services",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.72,
+          "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}]",
+          "stderr": ""
+        },
+        "runtime_HTTP": "404",
+        "runtime_exit": 0,
+        "quota": {
+          "at": "2026-10-16T06:16:18.234466+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.309,
+          "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+          "stderr": ""
+        },
+        "children": [
+          {
+            "at": "2026-10-16T06:16:18.720680+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/services/srv-db8rvdndbg8c73dghcfg/deploys/dep-db8rvdndbg8c73dghcg0",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "404",
+            "curl_exit": 0,
+            "elapsed": 0.473,
+            "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+            "stderr": ""
+          }
+        ],
+        "pass": true
+      }
+    ]
+  }
+]

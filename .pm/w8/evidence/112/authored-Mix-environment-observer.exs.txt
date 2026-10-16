@@ -1,0 +1,50 @@
+defmodule QA361 do
+  @root System.get_env("QA361_ROOT", "/opt/render/project/src")
+  def snapshot(phase) do
+    ref = :json.decode(File.read!(Path.join(@root, "qa361-reference.json")))
+    marker = :json.decode(File.read!(Path.join(@root, "qa361-marker.json")))
+    files = Map.new(ref["files"], fn {name, expected} ->
+      bytes = File.read!(Path.join(@root, name))
+      proof = %{"bytes" => byte_size(bytes), "sha256" => Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)}
+      if (phase == "before" or name != "mix.lock") and proof != expected, do: raise("source mismatch: " <> name)
+      {name, proof}
+    end)
+    value = System.get_env("MIX_ENV")
+    %{"marker" => marker, "phase" => phase, "mix_env_present" => value != nil,
+      "mix_env" => value || :null, "mix_environment" => Atom.to_string(Mix.env()),
+      "elixir" => System.version(), "otp" => List.to_string(:erlang.system_info(:otp_release)),
+      "files" => files,
+      "compiled_app_prod" => File.exists?(Path.join(@root, "_build/prod/lib/phoenix_hello/ebin/Elixir.PhoenixHello.beam")),
+      "compiled_app_dev" => File.exists?(Path.join(@root, "_build/dev/lib/phoenix_hello/ebin/Elixir.PhoenixHello.beam"))}
+  end
+  def encoded(phase), do: snapshot(phase) |> :json.encode() |> IO.iodata_to_binary()
+  def serve(listener, built) do
+    {:ok, socket} = :gen_tcp.accept(listener)
+    case :gen_tcp.recv(socket, 0, 5000) do
+      {:ok, _} ->
+        payload = "{\"built\":" <> built <> ",\"runtime\":" <> encoded("runtime") <> "}"
+        :gen_tcp.send(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: #{byte_size(payload)}\r\nConnection: close\r\n\r\n" <> payload)
+      _ -> :ok
+    end
+    :gen_tcp.close(socket)
+    serve(listener, built)
+  end
+  def main(args) do
+    case args do
+      ["--before"] ->
+        data = encoded("before")
+        File.write!(Path.join(@root, "qa361-before.json"), data)
+        IO.puts("QA361_BEFORE " <> data)
+      ["--after"] ->
+        data = encoded("after")
+        File.write!(Path.join(@root, "qa361-built.json"), data)
+        IO.puts("QA361_AFTER " <> data)
+      [] ->
+        built = File.read!(Path.join(@root, "qa361-built.json"))
+        port = System.get_env("PORT", "10000") |> String.to_integer()
+        {:ok, listener} = :gen_tcp.listen(port, [:binary, active: false, reuseaddr: true, packet: :raw, ip: {0, 0, 0, 0}])
+        serve(listener, built)
+    end
+  end
+end
+QA361.main(System.argv())

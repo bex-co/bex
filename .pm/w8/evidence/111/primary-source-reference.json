@@ -1,0 +1,28 @@
+{
+  "repo": "https://github.com/expressjs/express",
+  "branch": "master",
+  "commit": "a419aa7350389a275ab45fde2e849ed1f02449ef",
+  "files": {
+    "package.json": {
+      "bytes": 2731,
+      "sha256": "9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe"
+    },
+    "package-lock.json": {
+      "absent": true
+    },
+    "lib/application.js": {
+      "bytes": 13953,
+      "sha256": "6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04"
+    },
+    "index.js": {
+      "bytes": 224,
+      "sha256": "4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140"
+    },
+    ".nvmrc": {
+      "absent": true
+    },
+    ".node-version": {
+      "absent": true
+    }
+  }
+}

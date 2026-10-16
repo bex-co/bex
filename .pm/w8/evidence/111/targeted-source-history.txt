@@ -1,0 +1,2 @@
+280377a6b fix(operator): release snapshots work in workspace namespaces and never roll the fleet (w1/m152 t004, t011)
+2dd15854d feat: add Render-compatible source builds

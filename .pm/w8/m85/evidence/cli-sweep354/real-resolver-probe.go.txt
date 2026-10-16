@@ -1,0 +1,23 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package build
+import("testing";"os";"path/filepath";"encoding/json")
+func TestQA354RubyLockSelection(t *testing.T){
+ src:=os.Getenv("QA354_SOURCE");out:=os.Getenv("QA354_OUTPUT");if src==""||out==""{t.Fatal("private source/output required")};gem,err:=os.ReadFile(filepath.Join(src,"Gemfile"));if err!=nil{t.Fatal(err)};lock,err:=os.ReadFile(filepath.Join(src,"Gemfile.lock"));if err!=nil{t.Fatal(err)}
+ cases:=[]struct{name string;files map[string][]byte;want string}{{"public-root-lock",map[string][]byte{"Gemfile":gem,"Gemfile.lock":lock},"3.4"},{"equivalent-gems-locked",map[string][]byte{"Gemfile":gem,"gems.locked":lock},"3.4"},{"tool-versions",map[string][]byte{".tool-versions":[]byte("ruby 3.3.6\n")},"3.3"},{"literal-control",map[string][]byte{"Gemfile":[]byte("ruby '3.4.7'\n")},"3.4"},{"ruby-file-control",map[string][]byte{".ruby-version":[]byte("3.4.7\n")},"3.4"},{"no-signal-control",map[string][]byte{},"3.4"}}
+ for _,tc:=range cases{t.Run(tc.name,func(t *testing.T){choice,err:=ResolveNativeVersion("ruby",map[string]string{},func(n string)([]byte,bool){b,ok:=tc.files[n];return b,ok});if err!=nil{t.Fatal(err)};record:=map[string]any{"case":tc.name,"choice":choice,"expected_line":tc.want,"actual_line":choice.Line,"pass":choice.Line==tc.want,"qualification":"unchanged actual resolver; public root lock plus authored contract neighbors/positive controls; not a fixed regression"};data,err:=json.MarshalIndent(record,"","  ");if err!=nil{t.Fatal(err)};if err:=os.MkdirAll(out,0700);err!=nil{t.Fatal(err)};if err:=os.WriteFile(filepath.Join(out,tc.name+".json"),data,0600);err!=nil{t.Fatal(err)};if choice.Line!=tc.want{t.Errorf("selected %s from %s; want committed Ruby line %s",choice.Line,choice.Source,tc.want)}})}
+}

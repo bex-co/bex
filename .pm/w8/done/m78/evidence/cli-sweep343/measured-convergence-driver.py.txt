@@ -1,0 +1,12 @@
+from pathlib import Path
+import sys,json,datetime
+f=Path(__file__).with_name('sweep343-source-switch.py');requested=sys.argv[1];sys.argv=[str(f),'convergence','persistent'];exec(compile(f.read_text().split("if mode=='create':")[0],str(f),'exec'));xs=[v for v in c['resources'] if v.get('sweep')==343 and v.get('type')=='web_service'];assert len(xs)==2
+for x in xs:
+ good=[(i,z) for i,z in enumerate(x.get('observations',[])) if z['stage']=='changed' and z['pass']];assert len(good)>=2;first=good[0][1];last=x['observations'][-1];assert last['stage']=='changed' and last['pass'] and last['latest_deploy']['id']==x['changed_deploy_id'];elapsed=(datetime.datetime.fromisoformat(last['at'])-datetime.datetime.fromisoformat(first['at'])).total_seconds();e={'at':last['at'],'first_git_pass_at':first['at'],'elapsed_seconds':elapsed,'first_Git_deploy_preserved':True}
+ if requested=='before-noop':
+  assert 'noop_intent' not in x and elapsed>=180;e['pass']=True;x['projector_convergence']=e
+ elif requested=='after-noop':
+  assert x['noop_pass'];delay=(datetime.datetime.fromisoformat(last['at'])-datetime.datetime.fromisoformat(x['noop_intent']['at'])).total_seconds();before=set(x['noop_intent']['before_deploy_ids']);assert delay>=60 and set(x['recorded_child_ids'])==before;e.update(noop_elapsed_seconds=delay,no_new_deploys=True,pass_value=True);e['pass']=True;x['late_noop_convergence']=e
+ else:raise ValueError(requested)
+ print(json.dumps({'case':x['case'],'gate':requested,**e}),flush=True)
+save()

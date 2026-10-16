@@ -1,0 +1,7 @@
+'use strict';
+const fs=require('node:fs'),c=require('node:crypto');
+const ref=JSON.parse(fs.readFileSync('qa358-reference.json','utf8'));const marker=JSON.parse(fs.readFileSync('qa358-marker.json','utf8'));
+const hash=b=>c.createHash('sha256').update(b).digest('hex');const files={};
+for(const [name,e] of Object.entries(ref.files)){if(e.absent){if(fs.existsSync(name))throw Error('unexpected source '+name);files[name]={absent:true}}else{const b=fs.readFileSync(name);files[name]={bytes:b.length,sha256:hash(b)};if(files[name].bytes!==e.bytes||files[name].sha256!==e.sha256)throw Error('source mismatch '+name)}}
+const result={marker,node:process.version,files,skip_install_deps_present:Object.hasOwn(process.env,'SKIP_INSTALL_DEPS'),skip_install_deps:process.env.SKIP_INSTALL_DEPS??null,node_modules_present:fs.existsSync('node_modules'),cross_env_present:fs.existsSync('node_modules/.bin/cross-env')};
+if(process.argv.includes('--before')){fs.writeFileSync('qa358-before.json',JSON.stringify(result));console.log('QA358_BEFORE '+JSON.stringify(result))}else{const b=fs.readFileSync('_site/index.html');const out={...result,before:JSON.parse(fs.readFileSync('qa358-before.json','utf8')),index:{bytes:b.length,sha256:hash(b)},generator:'Eleventy',generator_version:JSON.parse(fs.readFileSync('node_modules/@11ty/eleventy/package.json','utf8')).version};fs.writeFileSync('_site/qa358-evidence.json',JSON.stringify(out));console.log('QA358_AFTER '+JSON.stringify(out))}

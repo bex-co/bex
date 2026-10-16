@@ -1,0 +1,16 @@
+{
+  "binary": "released v0.3.2",
+  "command": [
+    "bex",
+    "deploys",
+    "list",
+    "srv-db8nm8u7925c73etgqt0",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "exit": 0,
+  "elapsed": 1.634,
+  "stdout": "[{\"commit\": {\"createdAt\": \"2025-06-06T13:21:46Z\", \"id\": \"c03a88b2e88b927fec69a72982fe92d2abc5a99e\", \"message\": \"[PUBLIC COMMIT MESSAGE OMITTED; ID/TIME RETAINED]\"}, \"createdAt\": \"2026-10-16T01:24:17.593041Z\", \"id\": \"dep-db8npge7925c73etgr4g\", \"status\": \"queued\", \"trigger\": \"api\", \"updatedAt\": \"2026-10-16T01:24:20.160914Z\"}, {\"commit\": {\"createdAt\": \"2025-12-01T11:43:06Z\", \"id\": \"1d9a8e7261557ec9a40463fd54e99b601016598c\", \"message\": \"[PUBLIC COMMIT MESSAGE OMITTED; ID/TIME RETAINED]\"}, \"createdAt\": \"2026-10-16T01:22:21.42598Z\", \"finishedAt\": \"2026-10-16T01:23:49.933587Z\", \"id\": \"dep-db8noje7925c73etgr30\", \"startedAt\": \"2026-10-16T01:23:06.343579Z\", \"status\": \"live\", \"trigger\": \"api\", \"updatedAt\": \"2026-10-16T01:23:49.933588Z\"}, {\"commit\": {\"createdAt\": \"2025-06-06T13:21:46Z\", \"id\": \"c03a88b2e88b927fec69a72982fe92d2abc5a99e\", \"message\": \"[PUBLIC COMMIT MESSAGE OMITTED; ID/TIME RETAINED]\"}, \"createdAt\": \"2026-10-16T01:20:41.809684Z\", \"finishedAt\": \"2026-10-16T01:21:36.164128Z\", \"id\": \"dep-db8nnqad4sfs7388qktg\", \"startedAt\": \"2026-10-16T01:20:49.985958Z\", \"status\": \"deactivated\", \"trigger\": \"api\", \"updatedAt\": \"2026-10-16T01:23:49.939273Z\"}, {\"commit\": {\"id\": \"1d9a8e7261557ec9a40463fd54e99b601016598c\", \"message\": \"[PUBLIC COMMIT MESSAGE OMITTED; ID/TIME RETAINED]\"}, \"createdAt\": \"2026-10-16T01:17:23.887574Z\", \"finishedAt\": \"2026-10-16T01:19:36.137968Z\", \"id\": \"dep-db8nm8u7925c73etgqtg\", \"startedAt\": \"2026-10-16T01:18:36.161329Z\", \"status\": \"deactivated\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T01:21:36.166189Z\"}]",
+  "stderr": ""
+}

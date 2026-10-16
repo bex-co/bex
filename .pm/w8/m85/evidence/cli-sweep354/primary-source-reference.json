@@ -1,0 +1,58 @@
+{
+  "repo": "https://github.com/discourse/discourse",
+  "branch": "main",
+  "commit": "802125b979b5bb848a7cfc52409ef3176ffd4d82",
+  "files": {
+    "Gemfile": {
+      "bytes": 8485,
+      "sha256": "bf35ad5fddd287ba5844788629ee153bbbef7058770b21bf276738a6829b2cb4"
+    },
+    "Gemfile.lock": {
+      "bytes": 55990,
+      "sha256": "5931d9aac02cd610eeb499e9ff520784924e86f896ae6da7ce3ab35f7044579d"
+    }
+  },
+  "lock_ruby": "3.4.7p58",
+  "expected_reviewed_line": "3.4",
+  "absent_files": [
+    ".ruby-version",
+    ".tool-versions",
+    "gems.locked"
+  ],
+  "primary_fetch_receipts": {
+    "repo": "discourse/discourse",
+    "branch": "main",
+    "commit": "802125b979b5bb848a7cfc52409ef3176ffd4d82",
+    "files": {
+      ".ruby-version": {
+        "HTTP": "404",
+        "exit": 0
+      },
+      ".tool-versions": {
+        "HTTP": "404",
+        "exit": 0
+      },
+      "Gemfile": {
+        "HTTP": "200",
+        "exit": 0,
+        "bytes": 8485,
+        "Ruby_signal": [
+          "\nruby \">= 3.4\", \"< 4.1\""
+        ]
+      },
+      "Gemfile.lock": {
+        "HTTP": "200",
+        "exit": 0,
+        "bytes": 55990,
+        "Ruby_signal": [
+          "RUBY VERSION\n  ruby 3.4.7p58"
+        ]
+      },
+      "gems.locked": {
+        "HTTP": "404",
+        "exit": 0
+      }
+    }
+  },
+  "anonymous_main_ref_verified_at": "2026-10-16T06:56:47.929993+00:00"
+}

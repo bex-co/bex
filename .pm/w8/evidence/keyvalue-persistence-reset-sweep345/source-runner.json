@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-16T04:42:37.821381+00:00",
+  "source_head": "c84c348b0e4a2248ee0f80a09cc15165275e14d7",
+  "command": [
+    "go",
+    "test",
+    "-json",
+    "./internal/controller",
+    "-run",
+    "^TestValkeyPersistenceEngine$/(7|8)/^all_mode_pairs$/(^journal-snapshot_to_off$|^off_to_snapshot$)",
+    "-count=1",
+    "-timeout=7m"
+  ],
+  "BEX_TEST_VALKEY": "1",
+  "runner_pid": 75073,
+  "exit": 0,
+  "harness_timeout": false
+}

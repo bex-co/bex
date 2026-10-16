@@ -1,0 +1,1 @@
+bex postgres create --name qa-20261016-a8627a-pgdump --plan free --version 18 --region frankfurt --connection-pool none --database-name qa355_db_a8627a --database-user qa355_user_a8627a --confirm -o json

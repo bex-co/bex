@@ -2,7 +2,7 @@
 
 [Complete native/API/runtime/cleanup receipts](native-api-runtime-cleanup.json) · [finite driver](finite-journey-driver.py.txt) · [REST/GraphQL/MCP readback driver](API-readback-driver.py.txt) · [source checks and measured delays](source-and-timing.json).
 
-This completes m70's original persistent image→Git acceptance alongside [sweep322's inline first-artifact/no-op control](../../../../m78/evidence/cli-sweep322/README.md). The later different-containing-repo failure remains [m78](../../../../m78/README.md); this acceptance does not fix or close it. Source is a4e95b873 with implementation eebd8ce27; serving revision is unobserved.
+This completes m70's original persistent image→Git acceptance alongside [sweep322's inline first-artifact/no-op control](../../../m78/evidence/cli-sweep322/README.md). The later different-containing-repo failure remains [m78](../../../m78/README.md); this acceptance does not fix or close it. Source is a4e95b873 with implementation eebd8ce27; serving revision is unobserved.
 
 ## Actual hosted result
 

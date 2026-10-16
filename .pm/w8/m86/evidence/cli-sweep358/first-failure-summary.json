@@ -1,0 +1,78 @@
+[
+  {
+    "client": "bex",
+    "id": "srv-db8tlfq9cl7s73ae4ch0",
+    "first_deploy": "dep-db8tlfq9cl7s73ae4chg",
+    "first_failed": true,
+    "exit_codes_in_native_build_logs": [
+      "127"
+    ],
+    "before": {
+      "marker": "QA358_49952c_bex",
+      "node": "v24.21.0",
+      "files": {
+        "package.json": {
+          "bytes": 1529,
+          "sha256": "3ed35bee96a89ac437b2f17d235938a2e685faaa49498e960f4cec6daeaad7a1"
+        },
+        "package-lock.json": {
+          "bytes": 77010,
+          "sha256": "ed2178b4a8c717b332f876e59956b23f3611e9344bfa6f3e432b0956e58b95f8"
+        },
+        "eleventy.config.js": {
+          "bytes": 5222,
+          "sha256": "17f8f92e126087d6cd52716a5b9ceaba38a47805edb0b61f32d94ab7b36a98c4"
+        },
+        ".nvmrc": {
+          "bytes": 3,
+          "sha256": "f14b4987904bcb5814e4459a057ed4d20f58a633152288a761214dcd28780b56"
+        },
+        ".node-version": {
+          "absent": true
+        }
+      },
+      "skip_install_deps_present": false,
+      "skip_install_deps": null,
+      "node_modules_present": false,
+      "cross_env_present": false
+    }
+  },
+  {
+    "client": "render",
+    "id": "srv-db8tlji9cl7s73ae4cj0",
+    "first_deploy": "dep-db8tlji9cl7s73ae4cjg",
+    "first_failed": true,
+    "exit_codes_in_native_build_logs": [
+      "127"
+    ],
+    "before": {
+      "marker": "QA358_9aee8f_render",
+      "node": "v24.21.0",
+      "files": {
+        "package.json": {
+          "bytes": 1529,
+          "sha256": "3ed35bee96a89ac437b2f17d235938a2e685faaa49498e960f4cec6daeaad7a1"
+        },
+        "package-lock.json": {
+          "bytes": 77010,
+          "sha256": "ed2178b4a8c717b332f876e59956b23f3611e9344bfa6f3e432b0956e58b95f8"
+        },
+        "eleventy.config.js": {
+          "bytes": 5222,
+          "sha256": "17f8f92e126087d6cd52716a5b9ceaba38a47805edb0b61f32d94ab7b36a98c4"
+        },
+        ".nvmrc": {
+          "bytes": 3,
+          "sha256": "f14b4987904bcb5814e4459a057ed4d20f58a633152288a761214dcd28780b56"
+        },
+        ".node-version": {
+          "absent": true
+        }
+      },
+      "skip_install_deps_present": false,
+      "skip_install_deps": null,
+      "node_modules_present": false,
+      "cross_env_present": false
+    }
+  }
+]

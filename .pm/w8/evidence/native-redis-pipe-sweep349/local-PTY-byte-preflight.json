@@ -1,0 +1,27 @@
+{
+  "at": 1792127905.65737,
+  "actor": "preflight",
+  "command": [
+    "preflight",
+    "kv-cli",
+    "unused",
+    "-o",
+    "interactive",
+    "--",
+    "--pipe",
+    "--pipe-timeout",
+    "10"
+  ],
+  "stdin_TTY": true,
+  "streams_merged_PTY": true,
+  "payload_bytes": 4042,
+  "payload_sha256": "713d6c95a7b9fa9e9dfdf7fef6c1dbff756034586057ba8284292418abcc0bc7",
+  "payload_sent": true,
+  "input_bytes_written": 4043,
+  "exact_process_group_cleanup": true,
+  "child_PID": 98148,
+  "native_exit": 0,
+  "harness_timeout": false,
+  "elapsed": 0.029,
+  "output": "QA349_STDIN_READY\nQA349_SHA256=713d6c95a7b9fa9e9dfdf7fef6c1dbff756034586057ba8284292418abcc0bc7\n"
+}

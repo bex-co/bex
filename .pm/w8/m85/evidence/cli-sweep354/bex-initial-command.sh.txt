@@ -1,0 +1,43 @@
+bex services create --name qa-20261016-1b2e62-rubylock --type web_service --runtime ruby --repo https://github.com/discourse/discourse --branch main --build-command 'set -e
+cat > qa354-probe.rb <<'"'"'QA354_RUBY_PROBE'"'"'
+require '"'"'json'"'"'
+MARKER = "QA354_1b2e62_bex"
+EXPECTED_FILES = JSON.parse("{\"Gemfile\": {\"bytes\": 8485, \"sha256\": \"bf35ad5fddd287ba5844788629ee153bbbef7058770b21bf276738a6829b2cb4\"}, \"Gemfile.lock\": {\"bytes\": 55990, \"sha256\": \"5931d9aac02cd610eeb499e9ff520784924e86f896ae6da7ce3ab35f7044579d\"}}")
+ABSENT_FILES = JSON.parse("[\".ruby-version\", \".tool-versions\", \"gems.locked\"]")
+require '"'"'json'"'"'
+require '"'"'socket'"'"'
+require '"'"'digest'"'"'
+require '"'"'open3'"'"'
+def files
+ EXPECTED_FILES.to_h { |name, _| [name, {'"'"'bytes'"'"'=>File.size(name), '"'"'sha256'"'"'=>Digest::SHA256.file(name).hexdigest}] }
+end
+def snapshot
+ out,err,status=Open3.capture3('"'"'timeout'"'"','"'"'20'"'"','"'"'node'"'"','"'"'--version'"'"')
+ {'"'"'marker'"'"'=>MARKER,'"'"'ruby'"'"'=>RUBY_VERSION,'"'"'ruby_engine'"'"'=>RUBY_ENGINE,'"'"'ruby_patchlevel'"'"'=>RUBY_PATCHLEVEL,'"'"'architecture'"'"'=>RUBY_PLATFORM,'"'"'files'"'"'=>files,'"'"'lock_ruby'"'"'=>File.read('"'"'Gemfile.lock'"'"')[/^RUBY VERSION\n[ \t]+ruby ([^\n]+)/,1],'"'"'other_ruby_sources'"'"'=>ABSENT_FILES.to_h { |n| [n,File.exist?(n)] },'"'"'node'"'"'=>{'"'"'exit'"'"'=>status.exitstatus,'"'"'stdout'"'"'=>out,'"'"'stderr'"'"'=>err},'"'"'requested_node'"'"'=>ENV['"'"'NODE_VERSION'"'"']}
+end
+if ARGV.include?('"'"'--build'"'"')
+ abort '"'"'unexpected public version-file content'"'"' unless files==EXPECTED_FILES && ABSENT_FILES.none? { |n| File.exist?(n) }
+ puts(MARKER+'"'"'_SOURCE_LOCK_CONFIRMED'"'"');$stdout.flush
+ abort(MARKER+'"'"'_LOCK_EXPECTED_3_4_ACTUAL='"'"'+RUBY_VERSION) if ARGV.include?('"'"'--require-lock'"'"') && !RUBY_VERSION.start_with?('"'"'3.4.'"'"')
+ value=snapshot
+ File.write('"'"'qa354-built.json'"'"',JSON.generate(value))
+ puts(JSON.generate(value));$stdout.flush
+else
+ body=JSON.generate(snapshot.merge('"'"'built'"'"'=>JSON.parse(File.read('"'"'qa354-built.json'"'"'))))
+ TCPServer.open('"'"'0.0.0.0'"'"',Integer(ENV.fetch('"'"'PORT'"'"','"'"'10000'"'"'))) do |server|
+  loop do
+   connection=server.accept
+   begin
+    while (line=connection.gets) && line!="\r\n"; end
+    connection.write("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: #{body.bytesize}\r\nConnection: close\r\n\r\n")
+    connection.write(body)
+   rescue IOError,SystemCallError
+   ensure
+    connection.close
+   end
+  end
+ end
+end
+
+QA354_RUBY_PROBE
+ruby qa354-probe.rb --build --require-lock' --start-command 'ruby qa354-probe.rb' --env-var NODE_VERSION=24 --plan free --region frankfurt --health-check-path / --auto-deploy=false --confirm -o json

@@ -1,0 +1,1239 @@
+[
+  {
+    "sweep": 347,
+    "case": "inline",
+    "type": "web_service",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "name": "qa-20261016-dc787f-web",
+    "group_name": "qa-20261016-dc787f-env",
+    "nonce": "dc787f",
+    "time": "2026-10-16T04:59:11.755970+00:00",
+    "source_head": "c84c348b0e4a2248ee0f80a09cc15165275e14d7",
+    "manifest": "envVarGroups:\n- name: qa-20261016-dc787f-env\n  envVars:\n  - key: QA347_GROUP\n    value: \"QA347_dc787f\\n\\u2603=group\"\n  - key: QA347_COLLISION\n    value: group-default\n  - key: QA347_EMPTY\n    value: group-nonempty\n  - key: QA347_GROUP_EMPTY\n    value: ''\nservices:\n- name: qa-20261016-dc787f-web\n  type: web\n  runtime: node\n  repo: https://github.com/expressjs/serve-static\n  branch: master\n  plan: free\n  autoDeploy: false\n  rootDir: ''\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"');const\n    keys=[\"QA347_GROUP\", \"QA347_COLLISION\", \"QA347_EMPTY\", \"QA347_GROUP_EMPTY\", \"QA347_ABSENT\"];const\n    read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));fs.writeFileSync('\"'\"'qa347-built.json'\"'\"',JSON.stringify(read()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"'),http=require('\"'\"'node:http'\"'\"'),crypto=require('\"'\"'node:crypto'\"'\"');const\n    keys=[\"QA347_GROUP\", \"QA347_COLLISION\", \"QA347_EMPTY\", \"QA347_GROUP_EMPTY\", \"QA347_ABSENT\"];const\n    read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));const\n    built=JSON.parse(fs.readFileSync('\"'\"'/opt/render/project/src/qa347-built.json'\"'\"')),boot=crypto.randomUUID();http.createServer((q,r)=>{r.setHeader('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"');r.end(JSON.stringify({built,runtime:read(),boot}));}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'\n  healthCheckPath: /\n  envVars:\n  - fromGroup: qa-20261016-dc787f-env\n  - key: QA347_COLLISION\n    value: QA347_dc787f_service\n  - key: QA347_EMPTY\n    value: ''\n  - key: NODE_VERSION\n    value: '24'\n  - key: SKIP_INSTALL_DEPS\n    value: 'true'\n",
+    "expected_projection": {
+      "QA347_GROUP": {
+        "present": true,
+        "value": "QA347_dc787f\n☃=group"
+      },
+      "QA347_COLLISION": {
+        "present": true,
+        "value": "QA347_dc787f_service"
+      },
+      "QA347_EMPTY": {
+        "present": true,
+        "value": ""
+      },
+      "QA347_GROUP_EMPTY": {
+        "present": true,
+        "value": ""
+      },
+      "QA347_ABSENT": {
+        "present": false,
+        "value": null
+      }
+    },
+    "group_values": {
+      "QA347_GROUP": "QA347_dc787f\n☃=group",
+      "QA347_COLLISION": "group-default",
+      "QA347_EMPTY": "group-nonempty",
+      "QA347_GROUP_EMPTY": ""
+    },
+    "service_values": {
+      "QA347_COLLISION": "QA347_dc787f_service",
+      "QA347_EMPTY": ""
+    },
+    "build_js": "const fs=require('node:fs');const keys=[\"QA347_GROUP\", \"QA347_COLLISION\", \"QA347_EMPTY\", \"QA347_GROUP_EMPTY\", \"QA347_ABSENT\"];const read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));fs.writeFileSync('qa347-built.json',JSON.stringify(read()));",
+    "start_js": "const fs=require('node:fs'),http=require('node:http'),crypto=require('node:crypto');const keys=[\"QA347_GROUP\", \"QA347_COLLISION\", \"QA347_EMPTY\", \"QA347_GROUP_EMPTY\", \"QA347_ABSENT\"];const read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));const built=JSON.parse(fs.readFileSync('/opt/render/project/src/qa347-built.json')),boot=crypto.randomUUID();http.createServer((q,r)=>{r.setHeader('Content-Type','application/json');r.end(JSON.stringify({built,runtime:read(),boot}));}).listen(Number(process.env.PORT||3000),'0.0.0.0');",
+    "build_command": "/usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"');const keys=[\"QA347_GROUP\", \"QA347_COLLISION\", \"QA347_EMPTY\", \"QA347_GROUP_EMPTY\", \"QA347_ABSENT\"];const read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));fs.writeFileSync('\"'\"'qa347-built.json'\"'\"',JSON.stringify(read()));'",
+    "start_command": "/usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"'),http=require('\"'\"'node:http'\"'\"'),crypto=require('\"'\"'node:crypto'\"'\"');const keys=[\"QA347_GROUP\", \"QA347_COLLISION\", \"QA347_EMPTY\", \"QA347_GROUP_EMPTY\", \"QA347_ABSENT\"];const read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));const built=JSON.parse(fs.readFileSync('\"'\"'/opt/render/project/src/qa347-built.json'\"'\"')),boot=crypto.randomUUID();http.createServer((q,r)=>{r.setHeader('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"');r.end(JSON.stringify({built,runtime:read(),boot}));}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'",
+    "capacity": {
+      "at": "2026-10-16T04:59:08.358653+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.331,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4b47e107af74e35-SJC"
+      },
+      "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}"
+    },
+    "pre_inventory": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.79,
+      "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}]",
+      "stderr": "",
+      "native_exit": 0
+    },
+    "pre_group_inventory": {
+      "at": "2026-10-16T04:59:11.343313+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups?ownerId=tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 2.073,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4b47e184fba1576-SJC"
+      },
+      "response": "[]"
+    },
+    "pre_blueprint_inventory": {
+      "at": "2026-10-16T04:59:11.746153+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/blueprints?ownerId=tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.283,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4b47e25ea2a169e-SJC"
+      },
+      "response": "[{\"blueprint\": {\"id\": \"blp-db136288mmqc73d4hpug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}, \"cursor\": \"blp-db136288mmqc73d4hpug\"}]"
+    },
+    "dependency_ids": [
+      "evg-db8quna9cl7s73ae493g"
+    ],
+    "recorded_child_ids": [
+      "dep-db8quoa9cl7s73ae4950"
+    ],
+    "state": "deleted: own detail404/listabsent/runtime404/children404/baseline6/quota termination0",
+    "excluded_setup_validations": [
+      {
+        "at": "2026-10-16T04:59:12.303979+00:00",
+        "client": "bex",
+        "label": "initial-group",
+        "manifest": "envVarGroups:\n- name: qa-20261016-dc787f-env\n  envVars:\n  - key: QA347_GROUP\n    value: \"QA347_dc787f\\n\\u2603=group\"\n  - key: QA347_COLLISION\n    value: group-default\n  - key: QA347_EMPTY\n    value: group-nonempty\n  - key: QA347_GROUP_EMPTY\n    value: ''\nservices:\n- name: qa-20261016-dc787f-web\n  type: web\n  runtime: node\n  repo: https://github.com/expressjs/serve-static\n  branch: master\n  plan: free\n  region: frankfurt\n  autoDeploy: false\n  rootDir: ''\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"');const\n    keys=[\"QA347_GROUP\", \"QA347_COLLISION\", \"QA347_EMPTY\", \"QA347_GROUP_EMPTY\", \"QA347_ABSENT\"];const\n    read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));fs.writeFileSync('\"'\"'qa347-built.json'\"'\"',JSON.stringify(read()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"'),http=require('\"'\"'node:http'\"'\"'),crypto=require('\"'\"'node:crypto'\"'\"');const\n    keys=[\"QA347_GROUP\", \"QA347_COLLISION\", \"QA347_EMPTY\", \"QA347_GROUP_EMPTY\", \"QA347_ABSENT\"];const\n    read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));const\n    built=JSON.parse(fs.readFileSync('\"'\"'/opt/render/project/src/qa347-built.json'\"'\"')),boot=crypto.randomUUID();http.createServer((q,r)=>{r.setHeader('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"');r.end(JSON.stringify({built,runtime:read(),boot}));}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'\n  healthCheckPath: /\n  envVars:\n  - fromGroup: qa-20261016-dc787f-env\n  - key: QA347_COLLISION\n    value: QA347_dc787f_service\n  - key: QA347_EMPTY\n    value: ''\n  - key: NODE_VERSION\n    value: '24'\n  - key: SKIP_INSTALL_DEPS\n    value: 'true'\n",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep347-inline-initial-group.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 1,
+          "elapsed": 0.33,
+          "stdout": "{\"errors\": [{\"column\": 11, \"error\": \"per-resource region placement is not available on bex\", \"line\": 19, \"path\": \"services[0].region\"}], \"valid\": false}",
+          "stderr": "",
+          "native_exit": 1
+        }
+      }
+    ],
+    "excluded_manifest_with_unsupported_region": "envVarGroups:\n- name: qa-20261016-dc787f-env\n  envVars:\n  - key: QA347_GROUP\n    value: \"QA347_dc787f\\n\\u2603=group\"\n  - key: QA347_COLLISION\n    value: group-default\n  - key: QA347_EMPTY\n    value: group-nonempty\n  - key: QA347_GROUP_EMPTY\n    value: ''\nservices:\n- name: qa-20261016-dc787f-web\n  type: web\n  runtime: node\n  repo: https://github.com/expressjs/serve-static\n  branch: master\n  plan: free\n  region: frankfurt\n  autoDeploy: false\n  rootDir: ''\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"');const\n    keys=[\"QA347_GROUP\", \"QA347_COLLISION\", \"QA347_EMPTY\", \"QA347_GROUP_EMPTY\", \"QA347_ABSENT\"];const\n    read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));fs.writeFileSync('\"'\"'qa347-built.json'\"'\"',JSON.stringify(read()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"'),http=require('\"'\"'node:http'\"'\"'),crypto=require('\"'\"'node:crypto'\"'\"');const\n    keys=[\"QA347_GROUP\", \"QA347_COLLISION\", \"QA347_EMPTY\", \"QA347_GROUP_EMPTY\", \"QA347_ABSENT\"];const\n    read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));const\n    built=JSON.parse(fs.readFileSync('\"'\"'/opt/render/project/src/qa347-built.json'\"'\"')),boot=crypto.randomUUID();http.createServer((q,r)=>{r.setHeader('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"');r.end(JSON.stringify({built,runtime:read(),boot}));}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'\n  healthCheckPath: /\n  envVars:\n  - fromGroup: qa-20261016-dc787f-env\n  - key: QA347_COLLISION\n    value: QA347_dc787f_service\n  - key: QA347_EMPTY\n    value: ''\n  - key: NODE_VERSION\n    value: '24'\n  - key: SKIP_INSTALL_DEPS\n    value: 'true'\n",
+    "input_qualification": {
+      "at": "2026-10-16T04:59:47.097471+00:00",
+      "description": "Local fixture incorrectly included per-resource Blueprint region. Native validator correctly refused the documented unsupported field. Removed only region before any apply; no hosted mutation, no product finding.",
+      "old_validation_input_removed": true
+    },
+    "validations": [
+      {
+        "at": "2026-10-16T04:59:49.576581+00:00",
+        "client": "bex",
+        "label": "initial-group",
+        "manifest": "envVarGroups:\n- name: qa-20261016-dc787f-env\n  envVars:\n  - key: QA347_GROUP\n    value: \"QA347_dc787f\\n\\u2603=group\"\n  - key: QA347_COLLISION\n    value: group-default\n  - key: QA347_EMPTY\n    value: group-nonempty\n  - key: QA347_GROUP_EMPTY\n    value: ''\nservices:\n- name: qa-20261016-dc787f-web\n  type: web\n  runtime: node\n  repo: https://github.com/expressjs/serve-static\n  branch: master\n  plan: free\n  autoDeploy: false\n  rootDir: ''\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"');const\n    keys=[\"QA347_GROUP\", \"QA347_COLLISION\", \"QA347_EMPTY\", \"QA347_GROUP_EMPTY\", \"QA347_ABSENT\"];const\n    read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));fs.writeFileSync('\"'\"'qa347-built.json'\"'\"',JSON.stringify(read()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"'),http=require('\"'\"'node:http'\"'\"'),crypto=require('\"'\"'node:crypto'\"'\"');const\n    keys=[\"QA347_GROUP\", \"QA347_COLLISION\", \"QA347_EMPTY\", \"QA347_GROUP_EMPTY\", \"QA347_ABSENT\"];const\n    read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));const\n    built=JSON.parse(fs.readFileSync('\"'\"'/opt/render/project/src/qa347-built.json'\"'\"')),boot=crypto.randomUUID();http.createServer((q,r)=>{r.setHeader('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"');r.end(JSON.stringify({built,runtime:read(),boot}));}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'\n  healthCheckPath: /\n  envVars:\n  - fromGroup: qa-20261016-dc787f-env\n  - key: QA347_COLLISION\n    value: QA347_dc787f_service\n  - key: QA347_EMPTY\n    value: ''\n  - key: NODE_VERSION\n    value: '24'\n  - key: SKIP_INSTALL_DEPS\n    value: 'true'\n",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep347-inline-initial-group.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 2.289,
+          "stdout": "{\"plan\": {\"envGroups\": [\"qa-20261016-dc787f-env\"], \"services\": [\"qa-20261016-dc787f-web\"], \"totalActions\": 2}, \"valid\": true}",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-16T04:59:52.581692+00:00",
+        "client": "render",
+        "label": "initial-group",
+        "manifest": "envVarGroups:\n- name: qa-20261016-dc787f-env\n  envVars:\n  - key: QA347_GROUP\n    value: \"QA347_dc787f\\n\\u2603=group\"\n  - key: QA347_COLLISION\n    value: group-default\n  - key: QA347_EMPTY\n    value: group-nonempty\n  - key: QA347_GROUP_EMPTY\n    value: ''\nservices:\n- name: qa-20261016-dc787f-web\n  type: web\n  runtime: node\n  repo: https://github.com/expressjs/serve-static\n  branch: master\n  plan: free\n  autoDeploy: false\n  rootDir: ''\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"');const\n    keys=[\"QA347_GROUP\", \"QA347_COLLISION\", \"QA347_EMPTY\", \"QA347_GROUP_EMPTY\", \"QA347_ABSENT\"];const\n    read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));fs.writeFileSync('\"'\"'qa347-built.json'\"'\"',JSON.stringify(read()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"'),http=require('\"'\"'node:http'\"'\"'),crypto=require('\"'\"'node:crypto'\"'\"');const\n    keys=[\"QA347_GROUP\", \"QA347_COLLISION\", \"QA347_EMPTY\", \"QA347_GROUP_EMPTY\", \"QA347_ABSENT\"];const\n    read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));const\n    built=JSON.parse(fs.readFileSync('\"'\"'/opt/render/project/src/qa347-built.json'\"'\"')),boot=crypto.randomUUID();http.createServer((q,r)=>{r.setHeader('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"');r.end(JSON.stringify({built,runtime:read(),boot}));}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'\n  healthCheckPath: /\n  envVars:\n  - fromGroup: qa-20261016-dc787f-env\n  - key: QA347_COLLISION\n    value: QA347_dc787f_service\n  - key: QA347_EMPTY\n    value: ''\n  - key: NODE_VERSION\n    value: '24'\n  - key: SKIP_INSTALL_DEPS\n    value: 'true'\n",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "blueprints",
+            "validate",
+            "<owned-temp>/sweep347-inline-initial-group.yaml",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 2.818,
+          "stdout": "{\"plan\": {\"envGroups\": [\"qa-20261016-dc787f-env\"], \"services\": [\"qa-20261016-dc787f-web\"], \"totalActions\": 2}, \"valid\": true}",
+          "stderr": ""
+        }
+      }
+    ],
+    "validation_input_cleanup": [
+      {
+        "label": "initial-group",
+        "removed": true
+      }
+    ],
+    "apply_intent": {
+      "at": "2026-10-16T05:00:09.011399+00:00",
+      "body": {
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "bexYaml": "envVarGroups:\n- name: qa-20261016-dc787f-env\n  envVars:\n  - key: QA347_GROUP\n    value: \"QA347_dc787f\\n\\u2603=group\"\n  - key: QA347_COLLISION\n    value: group-default\n  - key: QA347_EMPTY\n    value: group-nonempty\n  - key: QA347_GROUP_EMPTY\n    value: ''\nservices:\n- name: qa-20261016-dc787f-web\n  type: web\n  runtime: node\n  repo: https://github.com/expressjs/serve-static\n  branch: master\n  plan: free\n  autoDeploy: false\n  rootDir: ''\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"');const\n    keys=[\"QA347_GROUP\", \"QA347_COLLISION\", \"QA347_EMPTY\", \"QA347_GROUP_EMPTY\", \"QA347_ABSENT\"];const\n    read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));fs.writeFileSync('\"'\"'qa347-built.json'\"'\"',JSON.stringify(read()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"'),http=require('\"'\"'node:http'\"'\"'),crypto=require('\"'\"'node:crypto'\"'\"');const\n    keys=[\"QA347_GROUP\", \"QA347_COLLISION\", \"QA347_EMPTY\", \"QA347_GROUP_EMPTY\", \"QA347_ABSENT\"];const\n    read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));const\n    built=JSON.parse(fs.readFileSync('\"'\"'/opt/render/project/src/qa347-built.json'\"'\"')),boot=crypto.randomUUID();http.createServer((q,r)=>{r.setHeader('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"');r.end(JSON.stringify({built,runtime:read(),boot}));}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'\n  healthCheckPath: /\n  envVars:\n  - fromGroup: qa-20261016-dc787f-env\n  - key: QA347_COLLISION\n    value: QA347_dc787f_service\n  - key: QA347_EMPTY\n    value: ''\n  - key: NODE_VERSION\n    value: '24'\n  - key: SKIP_INSTALL_DEPS\n    value: 'true'\n"
+      },
+      "qualification": "one API-only inline provided-manifest create; native CLI exposes validate only",
+      "planned_resources": [
+        {
+          "type": "web_service",
+          "name": "qa-20261016-dc787f-web"
+        },
+        {
+          "type": "env_group",
+          "name": "qa-20261016-dc787f-env"
+        }
+      ]
+    },
+    "apply_result": {
+      "at": "2026-10-16T05:00:18.984164+00:00",
+      "api_only": true,
+      "request": {
+        "method": "POST",
+        "path": "/v1/blueprints/deploy",
+        "body": {
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "bexYaml": "envVarGroups:\n- name: qa-20261016-dc787f-env\n  envVars:\n  - key: QA347_GROUP\n    value: \"QA347_dc787f\\n\\u2603=group\"\n  - key: QA347_COLLISION\n    value: group-default\n  - key: QA347_EMPTY\n    value: group-nonempty\n  - key: QA347_GROUP_EMPTY\n    value: ''\nservices:\n- name: qa-20261016-dc787f-web\n  type: web\n  runtime: node\n  repo: https://github.com/expressjs/serve-static\n  branch: master\n  plan: free\n  autoDeploy: false\n  rootDir: ''\n  buildCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"');const\n    keys=[\"QA347_GROUP\", \"QA347_COLLISION\", \"QA347_EMPTY\", \"QA347_GROUP_EMPTY\", \"QA347_ABSENT\"];const\n    read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));fs.writeFileSync('\"'\"'qa347-built.json'\"'\"',JSON.stringify(read()));'\n  startCommand: /usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"'),http=require('\"'\"'node:http'\"'\"'),crypto=require('\"'\"'node:crypto'\"'\"');const\n    keys=[\"QA347_GROUP\", \"QA347_COLLISION\", \"QA347_EMPTY\", \"QA347_GROUP_EMPTY\", \"QA347_ABSENT\"];const\n    read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));const\n    built=JSON.parse(fs.readFileSync('\"'\"'/opt/render/project/src/qa347-built.json'\"'\"')),boot=crypto.randomUUID();http.createServer((q,r)=>{r.setHeader('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"');r.end(JSON.stringify({built,runtime:read(),boot}));}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'\n  healthCheckPath: /\n  envVars:\n  - fromGroup: qa-20261016-dc787f-env\n  - key: QA347_COLLISION\n    value: QA347_dc787f_service\n  - key: QA347_EMPTY\n    value: ''\n  - key: NODE_VERSION\n    value: '24'\n  - key: SKIP_INSTALL_DEPS\n    value: 'true'\n"
+        },
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "REDACTED",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 9.799,
+      "response": "{\"services\": [{\"id\": \"srv-db8quoa9cl7s73ae494g\", \"name\": \"qa-20261016-dc787f-web\", \"slug\": \"qa-20261016-dc787f-web\", \"displayName\": \"\", \"type\": \"web_service\", \"phase\": \"\", \"undeployedChanges\": false, \"undeployedChangesApplying\": false, \"url\": \"https://qa-20261016-dc787f-web.onbex.co\", \"urls\": null, \"image\": \"\", \"runtime\": \"node\", \"buildCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"');const keys=[\\\"QA347_GROUP\\\", \\\"QA347_COLLISION\\\", \\\"QA347_EMPTY\\\", \\\"QA347_GROUP_EMPTY\\\", \\\"QA347_ABSENT\\\"];const read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));fs.writeFileSync('\\\"'\\\"'qa347-built.json'\\\"'\\\"',JSON.stringify(read()));'\", \"startCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"'),http=require('\\\"'\\\"'node:http'\\\"'\\\"'),crypto=require('\\\"'\\\"'node:crypto'\\\"'\\\"');const keys=[\\\"QA347_GROUP\\\", \\\"QA347_COLLISION\\\", \\\"QA347_EMPTY\\\", \\\"QA347_GROUP_EMPTY\\\", \\\"QA347_ABSENT\\\"];const read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));const built=JSON.parse(fs.readFileSync('\\\"'\\\"'/opt/render/project/src/qa347-built.json'\\\"'\\\"')),boot=crypto.randomUUID();http.createServer((q,r)=>{r.setHeader('\\\"'\\\"'Content-Type'\\\"'\\\"','\\\"'\\\"'application/json'\\\"'\\\"');r.end(JSON.stringify({built,runtime:read(),boot}));}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\", \"builder\": \"native\", \"replicas\": 1, \"suspended\": false, \"plan\": \"free\", \"revision\": \"\", \"internalAddress\": \"qa-20261016-dc787f-web:3000\", \"port\": 3000, \"createdAt\": \"2026-10-16T05:00:18Z\", \"updatedAt\": \"2026-10-16T05:00:18Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db8quoa9cl7s73ae494g\", \"region\": \"fsn1\", \"idleTTLSeconds\": 0, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/expressjs/serve-static\", \"branch\": \"master\", \"linkedEnvGroupIds\": [\"evg-db8quna9cl7s73ae493g\"], \"autoDeploy\": false, \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\", \"renderSubdomainPolicy\": \"enabled\", \"healthCheckPath\": \"/\", \"maxShutdownDelaySeconds\": 30, \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"latestDeployId\": \"dep-db8quoa9cl7s73ae4950\"}], \"databases\": null, \"keyValues\": null, \"envGroups\": [{\"id\": \"evg-db8quna9cl7s73ae493g\", \"name\": \"qa-20261016-dc787f-env\"}]}",
+      "stderr": ""
+    },
+    "id": "srv-db8quoa9cl7s73ae494g",
+    "create_response": {
+      "id": "srv-db8quoa9cl7s73ae494g",
+      "name": "qa-20261016-dc787f-web",
+      "immutableName": "qa-20261016-dc787f-web",
+      "slug": "qa-20261016-dc787f-web",
+      "displayName": "",
+      "type": "web_service",
+      "suspended": "not_suspended",
+      "dashboardUrl": "https://dashboard.bex.co/web/srv-db8quoa9cl7s73ae494g",
+      "createdAt": "2026-10-16T05:00:18Z",
+      "updatedAt": "2026-10-16T05:01:14Z",
+      "owner": {
+        "id": "tea-daif693dqjvc73e7as3g",
+        "name": "bex-canary",
+        "email": "QA_PRIVATE_VALUE_REDACTED",
+        "type": "team"
+      },
+      "serviceDetails": {
+        "env": "node",
+        "envSpecificDetails": {
+          "buildCommand": "/usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"');const keys=[\"QA347_GROUP\", \"QA347_COLLISION\", \"QA347_EMPTY\", \"QA347_GROUP_EMPTY\", \"QA347_ABSENT\"];const read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));fs.writeFileSync('\"'\"'qa347-built.json'\"'\"',JSON.stringify(read()));'",
+          "preDeployCommand": "",
+          "startCommand": "/usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"'),http=require('\"'\"'node:http'\"'\"'),crypto=require('\"'\"'node:crypto'\"'\"');const keys=[\"QA347_GROUP\", \"QA347_COLLISION\", \"QA347_EMPTY\", \"QA347_GROUP_EMPTY\", \"QA347_ABSENT\"];const read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));const built=JSON.parse(fs.readFileSync('\"'\"'/opt/render/project/src/qa347-built.json'\"'\"')),boot=crypto.randomUUID();http.createServer((q,r)=>{r.setHeader('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"');r.end(JSON.stringify({built,runtime:read(),boot}));}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'"
+        },
+        "healthCheckPath": "/",
+        "internalAddress": "qa-20261016-dc787f-web:3000",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "free",
+        "port": 3000,
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "node",
+        "url": "https://qa-20261016-dc787f-web.onbex.co"
+      },
+      "suspenders": [],
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "phase": "Building",
+      "replicas": 1,
+      "idleTTLSeconds": 0,
+      "repo": "https://github.com/expressjs/serve-static",
+      "branch": "master",
+      "autoDeploy": "no",
+      "linkedEnvGroupIds": [
+        "evg-db8quna9cl7s73ae493g"
+      ],
+      "autoDeployTrigger": "off",
+      "pushDeliveryMethod": "manual_webhook",
+      "notifyOnFail": "default",
+      "notificationsToSend": "default",
+      "healthCheckPath": "/"
+    },
+    "first_deploy_id": "dep-db8quoa9cl7s73ae4950",
+    "inline_service_view": {
+      "id": "srv-db8quoa9cl7s73ae494g",
+      "name": "qa-20261016-dc787f-web",
+      "slug": "qa-20261016-dc787f-web",
+      "displayName": "",
+      "type": "web_service",
+      "phase": "",
+      "undeployedChanges": false,
+      "undeployedChangesApplying": false,
+      "url": "https://qa-20261016-dc787f-web.onbex.co",
+      "urls": null,
+      "image": "",
+      "runtime": "node",
+      "buildCommand": "/usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"');const keys=[\"QA347_GROUP\", \"QA347_COLLISION\", \"QA347_EMPTY\", \"QA347_GROUP_EMPTY\", \"QA347_ABSENT\"];const read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));fs.writeFileSync('\"'\"'qa347-built.json'\"'\"',JSON.stringify(read()));'",
+      "startCommand": "/usr/local/bin/node -e 'const fs=require('\"'\"'node:fs'\"'\"'),http=require('\"'\"'node:http'\"'\"'),crypto=require('\"'\"'node:crypto'\"'\"');const keys=[\"QA347_GROUP\", \"QA347_COLLISION\", \"QA347_EMPTY\", \"QA347_GROUP_EMPTY\", \"QA347_ABSENT\"];const read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));const built=JSON.parse(fs.readFileSync('\"'\"'/opt/render/project/src/qa347-built.json'\"'\"')),boot=crypto.randomUUID();http.createServer((q,r)=>{r.setHeader('\"'\"'Content-Type'\"'\"','\"'\"'application/json'\"'\"');r.end(JSON.stringify({built,runtime:read(),boot}));}).listen(Number(process.env.PORT||3000),'\"'\"'0.0.0.0'\"'\"');'",
+      "builder": "native",
+      "replicas": 1,
+      "suspended": false,
+      "plan": "free",
+      "revision": "",
+      "internalAddress": "qa-20261016-dc787f-web:3000",
+      "port": 3000,
+      "createdAt": "2026-10-16T05:00:18Z",
+      "updatedAt": "2026-10-16T05:00:18Z",
+      "dashboardUrl": "https://dashboard.bex.co/web/srv-db8quoa9cl7s73ae494g",
+      "region": "fsn1",
+      "idleTTLSeconds": 0,
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/expressjs/serve-static",
+      "branch": "master",
+      "linkedEnvGroupIds": [
+        "evg-db8quna9cl7s73ae493g"
+      ],
+      "autoDeploy": false,
+      "notifyOnFail": "default",
+      "notificationsToSend": "default",
+      "renderSubdomainPolicy": "enabled",
+      "healthCheckPath": "/",
+      "maxShutdownDelaySeconds": 30,
+      "maintenanceMode": {
+        "enabled": false,
+        "uri": ""
+      },
+      "latestDeployId": "dep-db8quoa9cl7s73ae4950"
+    },
+    "response_qualification": {
+      "at": "2026-10-16T05:01:18.969502+00:00",
+      "description": "Successful inline stack response contains AppView with top-level plan/url, not native REST serviceDetails. Captured HTTP200 and both returned IDs were saved before the local assertion. This read-only qualification fetches canonical REST views; no apply replay.",
+      "service_detail": {
+        "at": "2026-10-16T05:01:18.231302+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db8quoa9cl7s73ae494g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "authorization": "[REDACTED]"
+        },
+        "status": "200",
+        "elapsed": 0.781,
+        "curl_exit": 0,
+        "stderr": "",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a4b48139dfa0feff-PDX"
+        },
+        "response": "{\"id\": \"srv-db8quoa9cl7s73ae494g\", \"name\": \"qa-20261016-dc787f-web\", \"immutableName\": \"qa-20261016-dc787f-web\", \"slug\": \"qa-20261016-dc787f-web\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db8quoa9cl7s73ae494g\", \"createdAt\": \"2026-10-16T05:00:18Z\", \"updatedAt\": \"2026-10-16T05:01:14Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"');const keys=[\\\"QA347_GROUP\\\", \\\"QA347_COLLISION\\\", \\\"QA347_EMPTY\\\", \\\"QA347_GROUP_EMPTY\\\", \\\"QA347_ABSENT\\\"];const read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));fs.writeFileSync('\\\"'\\\"'qa347-built.json'\\\"'\\\"',JSON.stringify(read()));'\", \"preDeployCommand\": \"\", \"startCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"'),http=require('\\\"'\\\"'node:http'\\\"'\\\"'),crypto=require('\\\"'\\\"'node:crypto'\\\"'\\\"');const keys=[\\\"QA347_GROUP\\\", \\\"QA347_COLLISION\\\", \\\"QA347_EMPTY\\\", \\\"QA347_GROUP_EMPTY\\\", \\\"QA347_ABSENT\\\"];const read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));const built=JSON.parse(fs.readFileSync('\\\"'\\\"'/opt/render/project/src/qa347-built.json'\\\"'\\\"')),boot=crypto.randomUUID();http.createServer((q,r)=>{r.setHeader('\\\"'\\\"'Content-Type'\\\"'\\\"','\\\"'\\\"'application/json'\\\"'\\\"');r.end(JSON.stringify({built,runtime:read(),boot}));}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261016-dc787f-web:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261016-dc787f-web.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Building\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"repo\": \"https://github.com/expressjs/serve-static\", \"branch\": \"master\", \"autoDeploy\": \"no\", \"linkedEnvGroupIds\": [\"evg-db8quna9cl7s73ae493g\"], \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\", \"healthCheckPath\": \"/\"}"
+      },
+      "group_detail": {
+        "at": "2026-10-16T05:01:18.962642+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/env-groups/evg-db8quna9cl7s73ae493g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "authorization": "[REDACTED]"
+        },
+        "status": "200",
+        "elapsed": 0.634,
+        "curl_exit": 0,
+        "stderr": "",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a4b4813f1ce6ff06-PDX"
+        },
+        "response": "{\"id\": \"evg-db8quna9cl7s73ae493g\", \"name\": \"qa-20261016-dc787f-env\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"envVars\": [{\"key\": \"QA347_COLLISION\"}, {\"key\": \"QA347_EMPTY\"}, {\"key\": \"QA347_GROUP\"}, {\"key\": \"QA347_GROUP_EMPTY\"}], \"secretFiles\": [], \"createdAt\": \"2026-10-16T05:00:16.571243401Z\", \"updatedAt\": \"2026-10-16T05:00:18.583360839Z\", \"revision\": \"egr1_AAAAAAAAAAE\", \"serviceLinks\": [{\"id\": \"srv-db8quoa9cl7s73ae494g\", \"name\": \"qa-20261016-dc787f-web\", \"type\": \"web\"}]}"
+      }
+    },
+    "post_apply_blueprints": {
+      "at": "2026-10-16T05:01:19.478201+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/blueprints?ownerId=tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.311,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4b481445d92ca84-PDX"
+      },
+      "response": "[{\"blueprint\": {\"id\": \"blp-db136288mmqc73d4hpug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}, \"cursor\": \"blp-db136288mmqc73d4hpug\"}]"
+    },
+    "history_receipts": [
+      {
+        "at": "2026-10-16T05:01:20.157351+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db8quoa9cl7s73ae494g",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.454,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T05:00:17.900048Z\", \"id\": \"dep-db8quoa9cl7s73ae4950\", \"status\": \"queued\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T05:00:32.460474Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-16T05:01:39.006151+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db8quoa9cl7s73ae494g",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.518,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T05:00:17.900048Z\", \"id\": \"dep-db8quoa9cl7s73ae4950\", \"startedAt\": \"2026-10-16T05:01:24.051497Z\", \"status\": \"build_in_progress\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T05:01:24.051498Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-16T05:02:28.812701+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db8quoa9cl7s73ae494g",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.432,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T05:00:17.900048Z\", \"id\": \"dep-db8quoa9cl7s73ae4950\", \"startedAt\": \"2026-10-16T05:01:24.051497Z\", \"status\": \"update_in_progress\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T05:02:13.424782Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-16T05:03:38.041539+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db8quoa9cl7s73ae494g",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.674,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T05:00:17.900048Z\", \"finishedAt\": \"2026-10-16T05:02:32.458379Z\", \"id\": \"dep-db8quoa9cl7s73ae4950\", \"startedAt\": \"2026-10-16T05:01:24.051497Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T05:02:32.458381Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-16T05:04:51.939322+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db8quoa9cl7s73ae494g",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.544,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T05:00:17.900048Z\", \"finishedAt\": \"2026-10-16T05:02:32.458379Z\", \"id\": \"dep-db8quoa9cl7s73ae4950\", \"startedAt\": \"2026-10-16T05:01:24.051497Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T05:02:32.458381Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-16T05:05:06.429470+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db8quoa9cl7s73ae494g",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.415,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T05:00:17.900048Z\", \"finishedAt\": \"2026-10-16T05:02:32.458379Z\", \"id\": \"dep-db8quoa9cl7s73ae4950\", \"startedAt\": \"2026-10-16T05:01:24.051497Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T05:02:32.458381Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      }
+    ],
+    "deploy_children": [
+      {
+        "commit": {
+          "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+          "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+        },
+        "createdAt": "2026-10-16T05:00:17.900048Z",
+        "finishedAt": "2026-10-16T05:02:32.458379Z",
+        "id": "dep-db8quoa9cl7s73ae4950",
+        "startedAt": "2026-10-16T05:01:24.051497Z",
+        "status": "live",
+        "trigger": "other",
+        "updatedAt": "2026-10-16T05:02:32.458381Z"
+      }
+    ],
+    "observations": [
+      {
+        "at": "2026-10-16T05:01:39.709411+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+              "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+            },
+            "createdAt": "2026-10-16T05:00:17.900048Z",
+            "id": "dep-db8quoa9cl7s73ae4950",
+            "startedAt": "2026-10-16T05:01:24.051497Z",
+            "status": "build_in_progress",
+            "trigger": "other",
+            "updatedAt": "2026-10-16T05:01:24.051498Z"
+          }
+        ],
+        "runtime": {
+          "at": "2026-10-16T05:01:39.709373+00:00",
+          "url": "https://qa-20261016-dc787f-web.onbex.co",
+          "HTTP": "404",
+          "curl_exit": 0,
+          "body": "404 page not found\n",
+          "decoded": null,
+          "stderr": ""
+        },
+        "first_build_and_runtime_projection_exact": false,
+        "pass": false
+      },
+      {
+        "at": "2026-10-16T05:02:29.504932+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+              "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+            },
+            "createdAt": "2026-10-16T05:00:17.900048Z",
+            "id": "dep-db8quoa9cl7s73ae4950",
+            "startedAt": "2026-10-16T05:01:24.051497Z",
+            "status": "update_in_progress",
+            "trigger": "other",
+            "updatedAt": "2026-10-16T05:02:13.424782Z"
+          }
+        ],
+        "runtime": {
+          "at": "2026-10-16T05:02:29.504896+00:00",
+          "url": "https://qa-20261016-dc787f-web.onbex.co",
+          "HTTP": "200",
+          "curl_exit": 0,
+          "body": "{\"built\": {\"QA347_GROUP\": {\"present\": true, \"value\": \"QA347_dc787f\\n☃=group\"}, \"QA347_COLLISION\": {\"present\": true, \"value\": \"QA347_dc787f_service\"}, \"QA347_EMPTY\": {\"present\": true, \"value\": \"\"}, \"QA347_GROUP_EMPTY\": {\"present\": true, \"value\": \"\"}, \"QA347_ABSENT\": {\"present\": false, \"value\": null}}, \"runtime\": {\"QA347_GROUP\": {\"present\": true, \"value\": \"QA347_dc787f\\n☃=group\"}, \"QA347_COLLISION\": {\"present\": true, \"value\": \"QA347_dc787f_service\"}, \"QA347_EMPTY\": {\"present\": true, \"value\": \"\"}, \"QA347_GROUP_EMPTY\": {\"present\": true, \"value\": \"\"}, \"QA347_ABSENT\": {\"present\": false, \"value\": null}}, \"boot\": \"94f36f31-a9fc-4842-9ed1-dd2f71dab7d7\"}",
+          "decoded": {
+            "built": {
+              "QA347_GROUP": {
+                "present": true,
+                "value": "QA347_dc787f\n☃=group"
+              },
+              "QA347_COLLISION": {
+                "present": true,
+                "value": "QA347_dc787f_service"
+              },
+              "QA347_EMPTY": {
+                "present": true,
+                "value": ""
+              },
+              "QA347_GROUP_EMPTY": {
+                "present": true,
+                "value": ""
+              },
+              "QA347_ABSENT": {
+                "present": false,
+                "value": null
+              }
+            },
+            "runtime": {
+              "QA347_GROUP": {
+                "present": true,
+                "value": "QA347_dc787f\n☃=group"
+              },
+              "QA347_COLLISION": {
+                "present": true,
+                "value": "QA347_dc787f_service"
+              },
+              "QA347_EMPTY": {
+                "present": true,
+                "value": ""
+              },
+              "QA347_GROUP_EMPTY": {
+                "present": true,
+                "value": ""
+              },
+              "QA347_ABSENT": {
+                "present": false,
+                "value": null
+              }
+            },
+            "boot": "94f36f31-a9fc-4842-9ed1-dd2f71dab7d7"
+          },
+          "stderr": ""
+        },
+        "first_build_and_runtime_projection_exact": false,
+        "pass": false
+      },
+      {
+        "at": "2026-10-16T05:03:38.785648+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+              "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+            },
+            "createdAt": "2026-10-16T05:00:17.900048Z",
+            "finishedAt": "2026-10-16T05:02:32.458379Z",
+            "id": "dep-db8quoa9cl7s73ae4950",
+            "startedAt": "2026-10-16T05:01:24.051497Z",
+            "status": "live",
+            "trigger": "other",
+            "updatedAt": "2026-10-16T05:02:32.458381Z"
+          }
+        ],
+        "runtime": {
+          "at": "2026-10-16T05:03:38.785597+00:00",
+          "url": "https://qa-20261016-dc787f-web.onbex.co",
+          "HTTP": "200",
+          "curl_exit": 0,
+          "body": "{\"built\": {\"QA347_GROUP\": {\"present\": true, \"value\": \"QA347_dc787f\\n☃=group\"}, \"QA347_COLLISION\": {\"present\": true, \"value\": \"QA347_dc787f_service\"}, \"QA347_EMPTY\": {\"present\": true, \"value\": \"\"}, \"QA347_GROUP_EMPTY\": {\"present\": true, \"value\": \"\"}, \"QA347_ABSENT\": {\"present\": false, \"value\": null}}, \"runtime\": {\"QA347_GROUP\": {\"present\": true, \"value\": \"QA347_dc787f\\n☃=group\"}, \"QA347_COLLISION\": {\"present\": true, \"value\": \"QA347_dc787f_service\"}, \"QA347_EMPTY\": {\"present\": true, \"value\": \"\"}, \"QA347_GROUP_EMPTY\": {\"present\": true, \"value\": \"\"}, \"QA347_ABSENT\": {\"present\": false, \"value\": null}}, \"boot\": \"94f36f31-a9fc-4842-9ed1-dd2f71dab7d7\"}",
+          "decoded": {
+            "built": {
+              "QA347_GROUP": {
+                "present": true,
+                "value": "QA347_dc787f\n☃=group"
+              },
+              "QA347_COLLISION": {
+                "present": true,
+                "value": "QA347_dc787f_service"
+              },
+              "QA347_EMPTY": {
+                "present": true,
+                "value": ""
+              },
+              "QA347_GROUP_EMPTY": {
+                "present": true,
+                "value": ""
+              },
+              "QA347_ABSENT": {
+                "present": false,
+                "value": null
+              }
+            },
+            "runtime": {
+              "QA347_GROUP": {
+                "present": true,
+                "value": "QA347_dc787f\n☃=group"
+              },
+              "QA347_COLLISION": {
+                "present": true,
+                "value": "QA347_dc787f_service"
+              },
+              "QA347_EMPTY": {
+                "present": true,
+                "value": ""
+              },
+              "QA347_GROUP_EMPTY": {
+                "present": true,
+                "value": ""
+              },
+              "QA347_ABSENT": {
+                "present": false,
+                "value": null
+              }
+            },
+            "boot": "94f36f31-a9fc-4842-9ed1-dd2f71dab7d7"
+          },
+          "stderr": ""
+        },
+        "first_build_and_runtime_projection_exact": true,
+        "pass": true
+      },
+      {
+        "at": "2026-10-16T05:04:52.637196+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+              "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+            },
+            "createdAt": "2026-10-16T05:00:17.900048Z",
+            "finishedAt": "2026-10-16T05:02:32.458379Z",
+            "id": "dep-db8quoa9cl7s73ae4950",
+            "startedAt": "2026-10-16T05:01:24.051497Z",
+            "status": "live",
+            "trigger": "other",
+            "updatedAt": "2026-10-16T05:02:32.458381Z"
+          }
+        ],
+        "runtime": {
+          "at": "2026-10-16T05:04:52.637128+00:00",
+          "url": "https://qa-20261016-dc787f-web.onbex.co",
+          "HTTP": "200",
+          "curl_exit": 0,
+          "body": "{\"built\": {\"QA347_GROUP\": {\"present\": true, \"value\": \"QA347_dc787f\\n☃=group\"}, \"QA347_COLLISION\": {\"present\": true, \"value\": \"QA347_dc787f_service\"}, \"QA347_EMPTY\": {\"present\": true, \"value\": \"\"}, \"QA347_GROUP_EMPTY\": {\"present\": true, \"value\": \"\"}, \"QA347_ABSENT\": {\"present\": false, \"value\": null}}, \"runtime\": {\"QA347_GROUP\": {\"present\": true, \"value\": \"QA347_dc787f\\n☃=group\"}, \"QA347_COLLISION\": {\"present\": true, \"value\": \"QA347_dc787f_service\"}, \"QA347_EMPTY\": {\"present\": true, \"value\": \"\"}, \"QA347_GROUP_EMPTY\": {\"present\": true, \"value\": \"\"}, \"QA347_ABSENT\": {\"present\": false, \"value\": null}}, \"boot\": \"94f36f31-a9fc-4842-9ed1-dd2f71dab7d7\"}",
+          "decoded": {
+            "built": {
+              "QA347_GROUP": {
+                "present": true,
+                "value": "QA347_dc787f\n☃=group"
+              },
+              "QA347_COLLISION": {
+                "present": true,
+                "value": "QA347_dc787f_service"
+              },
+              "QA347_EMPTY": {
+                "present": true,
+                "value": ""
+              },
+              "QA347_GROUP_EMPTY": {
+                "present": true,
+                "value": ""
+              },
+              "QA347_ABSENT": {
+                "present": false,
+                "value": null
+              }
+            },
+            "runtime": {
+              "QA347_GROUP": {
+                "present": true,
+                "value": "QA347_dc787f\n☃=group"
+              },
+              "QA347_COLLISION": {
+                "present": true,
+                "value": "QA347_dc787f_service"
+              },
+              "QA347_EMPTY": {
+                "present": true,
+                "value": ""
+              },
+              "QA347_GROUP_EMPTY": {
+                "present": true,
+                "value": ""
+              },
+              "QA347_ABSENT": {
+                "present": false,
+                "value": null
+              }
+            },
+            "boot": "94f36f31-a9fc-4842-9ed1-dd2f71dab7d7"
+          },
+          "stderr": ""
+        },
+        "first_build_and_runtime_projection_exact": true,
+        "pass": true
+      }
+    ],
+    "independent_source_ref": {
+      "repo": "https://github.com/expressjs/serve-static",
+      "branch": "master",
+      "commit": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+      "qualification": "anonymous primary Git ref read during this journey"
+    },
+    "native_first_deploy_readbacks": [
+      {
+        "at": "2026-10-16T05:03:46.413783+00:00",
+        "client": "bex",
+        "native": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db8quoa9cl7s73ae494g",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.449,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T05:00:17.900048Z\", \"finishedAt\": \"2026-10-16T05:02:32.458379Z\", \"id\": \"dep-db8quoa9cl7s73ae4950\", \"startedAt\": \"2026-10-16T05:01:24.051497Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T05:02:32.458381Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        },
+        "pass": true
+      },
+      {
+        "at": "2026-10-16T05:03:47.250203+00:00",
+        "client": "render",
+        "native": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db8quoa9cl7s73ae494g",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.504,
+          "stdout": "[{\"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T05:00:17.900048Z\", \"finishedAt\": \"2026-10-16T05:02:32.458379Z\", \"id\": \"dep-db8quoa9cl7s73ae4950\", \"startedAt\": \"2026-10-16T05:01:24.051497Z\", \"status\": \"live\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-16T05:02:32.458381Z\"}]",
+          "stderr": ""
+        },
+        "pass": true
+      }
+    ],
+    "shared_deploy_readbacks": [
+      {
+        "at": "2026-10-16T05:03:47.537150+00:00",
+        "surface": "REST",
+        "receipt": {
+          "at": "2026-10-16T05:03:48.016910+00:00",
+          "api_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db8quoa9cl7s73ae494g/deploys/dep-db8quoa9cl7s73ae4950",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "REDACTED",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.326,
+          "response": "{\"id\": \"dep-db8quoa9cl7s73ae4950\", \"serviceId\": \"srv-db8quoa9cl7s73ae494g\", \"status\": \"live\", \"trigger\": \"other\", \"bexTrigger\": \"create\", \"commit\": {\"id\": \"109a299c26d2d532027bb6e66e50e365eeb8fcdd\", \"message\": \"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ <haiming@github.com>\"}, \"createdAt\": \"2026-10-16T05:00:17.900048Z\", \"updatedAt\": \"2026-10-16T05:02:32.458381Z\", \"startedAt\": \"2026-10-16T05:01:24.051497Z\", \"finishedAt\": \"2026-10-16T05:02:32.458379Z\"}",
+          "stderr": ""
+        },
+        "pass": true
+      },
+      {
+        "at": "2026-10-16T05:03:48.308661+00:00",
+        "surface": "GraphQL",
+        "receipt": {
+          "at": "2026-10-16T05:03:48.809850+00:00",
+          "api_only": true,
+          "request": {
+            "method": "POST",
+            "path": "/graphql",
+            "body": {
+              "query": "query QA347 {deploy(serviceId:\"srv-db8quoa9cl7s73ae494g\",deployId:\"dep-db8quoa9cl7s73ae4950\"){id status}}"
+            },
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "REDACTED",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.347,
+          "response": "{\"data\": {\"deploy\": {\"id\": \"dep-db8quoa9cl7s73ae4950\", \"status\": \"live\"}}}",
+          "stderr": ""
+        },
+        "pass": true
+      },
+      {
+        "at": "2026-10-16T05:03:49.108037+00:00",
+        "surface": "MCP",
+        "receipt": {
+          "at": "2026-10-16T05:03:49.602699+00:00",
+          "api_only": true,
+          "request": {
+            "method": "POST",
+            "path": "/mcp",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 347,
+              "method": "tools/call",
+              "params": {
+                "name": "get_deploy",
+                "arguments": {
+                  "serviceId": "srv-db8quoa9cl7s73ae494g",
+                  "deployId": "dep-db8quoa9cl7s73ae4950",
+                  "workspaceId": "tea-daif693dqjvc73e7as3g"
+                }
+              }
+            },
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "REDACTED",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.334,
+          "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":347,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"bexTrigger\\\":\\\"create\\\",\\\"commit\\\":{\\\"id\\\":\\\"109a299c26d2d532027bb6e66e50e365eeb8fcdd\\\",\\\"message\\\":\\\"fix: correct typos in source comments (#246)\\\\n\\\\nCo-authored-by: haimingZZ \\\\u003chaiming@github.com\\\\u003e\\\"},\\\"createdAt\\\":\\\"2026-10-16T05:00:17.900048Z\\\",\\\"finishedAt\\\":\\\"2026-10-16T05:02:32.458379Z\\\",\\\"id\\\":\\\"dep-db8quoa9cl7s73ae4950\\\",\\\"serviceId\\\":\\\"srv-db8quoa9cl7s73ae494g\\\",\\\"startedAt\\\":\\\"2026-10-16T05:01:24.051497Z\\\",\\\"status\\\":\\\"live\\\",\\\"trigger\\\":\\\"other\\\",\\\"updatedAt\\\":\\\"2026-10-16T05:02:32.458381Z\\\"}\"}],\"structuredContent\":{\"bexTrigger\":\"create\",\"commit\":{\"id\":\"109a299c26d2d532027bb6e66e50e365eeb8fcdd\",\"message\":\"fix: correct typos in source comments (#246)\\n\\nCo-authored-by: haimingZZ \\u003chaiming@github.com\\u003e\"},\"createdAt\":\"2026-10-16T05:00:17.900048Z\",\"finishedAt\":\"2026-10-16T05:02:32.458379Z\",\"id\":\"dep-db8quoa9cl7s73ae4950\",\"serviceId\":\"srv-db8quoa9cl7s73ae494g\",\"startedAt\":\"2026-10-16T05:01:24.051497Z\",\"status\":\"live\",\"trigger\":\"other\",\"updatedAt\":\"2026-10-16T05:02:32.458381Z\"}}}\n\n",
+          "stderr": ""
+        },
+        "pass": true
+      }
+    ],
+    "delete_intent": {
+      "at": "2026-10-16T05:05:06.578436+00:00",
+      "children": [
+        {
+          "commit": {
+            "id": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+            "message": "fix: correct typos in source comments (#246)\n\nCo-authored-by: haimingZZ <haiming@github.com>"
+          },
+          "createdAt": "2026-10-16T05:00:17.900048Z",
+          "finishedAt": "2026-10-16T05:02:32.458379Z",
+          "id": "dep-db8quoa9cl7s73ae4950",
+          "startedAt": "2026-10-16T05:01:24.051497Z",
+          "status": "live",
+          "trigger": "other",
+          "updatedAt": "2026-10-16T05:02:32.458381Z"
+        }
+      ],
+      "owned_group": {
+        "at": "2026-10-16T05:05:05.956584+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/env-groups/evg-db8quna9cl7s73ae493g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "authorization": "[REDACTED]"
+        },
+        "status": "200",
+        "elapsed": 0.507,
+        "curl_exit": 0,
+        "stderr": "",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a4b486cb1cefdebd-PDX"
+        },
+        "response": "{\"id\": \"evg-db8quna9cl7s73ae493g\", \"name\": \"qa-20261016-dc787f-env\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"envVars\": [{\"key\": \"QA347_COLLISION\"}, {\"key\": \"QA347_EMPTY\"}, {\"key\": \"QA347_GROUP\"}, {\"key\": \"QA347_GROUP_EMPTY\"}], \"secretFiles\": [], \"createdAt\": \"2026-10-16T05:00:16.571243401Z\", \"updatedAt\": \"2026-10-16T05:00:18.583360839Z\", \"revision\": \"egr1_AAAAAAAAAAE\", \"serviceLinks\": [{\"id\": \"srv-db8quoa9cl7s73ae494g\", \"name\": \"qa-20261016-dc787f-web\", \"type\": \"web\"}]}"
+      }
+    },
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db8quoa9cl7s73ae494g",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.631,
+      "stdout": "{\"data\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"master\", \"createdAt\": \"2026-10-16T05:00:18Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db8quoa9cl7s73ae494g\", \"id\": \"srv-db8quoa9cl7s73ae494g\", \"name\": \"qa-20261016-dc787f-web\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/expressjs/serve-static\", \"rootDir\": \"\", \"serviceDetails\": {\"env\": \"node\", \"envSpecificDetails\": {\"buildCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"');const keys=[\\\"QA347_GROUP\\\", \\\"QA347_COLLISION\\\", \\\"QA347_EMPTY\\\", \\\"QA347_GROUP_EMPTY\\\", \\\"QA347_ABSENT\\\"];const read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));fs.writeFileSync('\\\"'\\\"'qa347-built.json'\\\"'\\\"',JSON.stringify(read()));'\", \"preDeployCommand\": \"\", \"startCommand\": \"/usr/local/bin/node -e 'const fs=require('\\\"'\\\"'node:fs'\\\"'\\\"'),http=require('\\\"'\\\"'node:http'\\\"'\\\"'),crypto=require('\\\"'\\\"'node:crypto'\\\"'\\\"');const keys=[\\\"QA347_GROUP\\\", \\\"QA347_COLLISION\\\", \\\"QA347_EMPTY\\\", \\\"QA347_GROUP_EMPTY\\\", \\\"QA347_ABSENT\\\"];const read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));const built=JSON.parse(fs.readFileSync('\\\"'\\\"'/opt/render/project/src/qa347-built.json'\\\"'\\\"')),boot=crypto.randomUUID();http.createServer((q,r)=>{r.setHeader('\\\"'\\\"'Content-Type'\\\"'\\\"','\\\"'\\\"'application/json'\\\"'\\\"');r.end(JSON.stringify({built,runtime:read(),boot}));}).listen(Number(process.env.PORT||3000),'\\\"'\\\"'0.0.0.0'\\\"'\\\"');'\"}, \"healthCheckPath\": \"/\", \"internalAddress\": \"qa-20261016-dc787f-web:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"node\", \"url\": \"https://qa-20261016-dc787f-web.onbex.co\"}, \"slug\": \"qa-20261016-dc787f-web\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"web_service\", \"updatedAt\": \"2026-10-16T05:02:22Z\", \"environmentId\": null, \"projectId\": null}, \"meta\": {\"deleted\": true}}",
+      "stderr": "",
+      "native_exit": 0
+    },
+    "cleanup_receipts": [
+      {
+        "at": "2026-10-16T05:05:17.103102+00:00",
+        "service": {
+          "at": "2026-10-16T05:05:12.029956+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db8quoa9cl7s73ae494g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "404",
+          "elapsed": 0.363,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4b486f1882c1a0b-PDX"
+          },
+          "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}"
+        },
+        "group": {
+          "at": "2026-10-16T05:05:12.419724+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db8quna9cl7s73ae493g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "404",
+          "elapsed": 0.325,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4b486f43fd9ef20-PDX"
+          },
+          "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}"
+        },
+        "groups": {
+          "at": "2026-10-16T05:05:13.950204+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups?ownerId=tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "200",
+          "elapsed": 1.468,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4b486f69df6816e-PDX"
+          },
+          "response": "[]"
+        },
+        "inventory": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "services",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 1.003,
+          "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}]",
+          "stderr": "",
+          "native_exit": 0
+        },
+        "blueprints": {
+          "at": "2026-10-16T05:05:15.678798+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/blueprints?ownerId=tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "200",
+          "elapsed": 0.614,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4b487067cfec79e-SJC"
+          },
+          "response": "[{\"blueprint\": {\"id\": \"blp-db136288mmqc73d4hpug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}, \"cursor\": \"blp-db136288mmqc73d4hpug\"}]"
+        },
+        "quota": {
+          "at": "2026-10-16T05:05:16.086491+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "200",
+          "elapsed": 0.342,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4b4870b0f66b7b9-PDX"
+          },
+          "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}"
+        },
+        "runtime": {
+          "at": "2026-10-16T05:05:16.621118+00:00",
+          "url": "https://qa-20261016-dc787f-web.onbex.co",
+          "HTTP": "404",
+          "curl_exit": 0,
+          "body": "404 page not found\n",
+          "decoded": null,
+          "stderr": ""
+        },
+        "children": [
+          {
+            "at": "2026-10-16T05:05:17.096159+00:00",
+            "request": {
+              "method": "GET",
+              "path": "/v1/services/srv-db8quoa9cl7s73ae494g/deploys/dep-db8quoa9cl7s73ae4950",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "authorization": "[REDACTED]"
+            },
+            "status": "404",
+            "elapsed": 0.419,
+            "curl_exit": 0,
+            "stderr": "",
+            "headers": {
+              "content-type": "application/json",
+              "cf-ray": "a4b48710d97bc895-PDX"
+            },
+            "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}"
+          }
+        ],
+        "pass": true
+      }
+    ]
+  },
+  {
+    "sweep": 347,
+    "case": "inline",
+    "type": "env_group",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "name": "qa-20261016-dc787f-env",
+    "id": "evg-db8quna9cl7s73ae493g",
+    "time": "2026-10-16T05:00:09.011399+00:00",
+    "creation_response": {
+      "id": "evg-db8quna9cl7s73ae493g",
+      "name": "qa-20261016-dc787f-env"
+    },
+    "creation_proof": "same one accepted inline request/response retained in web_service ledger",
+    "dependent_service_id": "srv-db8quoa9cl7s73ae494g",
+    "dependency_ids": [],
+    "state": "deleted: own detail404/listabsent/runtime404/children404/baseline6/quota termination0",
+    "creation_detail": {
+      "at": "2026-10-16T05:01:18.962642+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8quna9cl7s73ae493g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.634,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4b4813f1ce6ff06-PDX"
+      },
+      "response": "{\"id\": \"evg-db8quna9cl7s73ae493g\", \"name\": \"qa-20261016-dc787f-env\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"envVars\": [{\"key\": \"QA347_COLLISION\"}, {\"key\": \"QA347_EMPTY\"}, {\"key\": \"QA347_GROUP\"}, {\"key\": \"QA347_GROUP_EMPTY\"}], \"secretFiles\": [], \"createdAt\": \"2026-10-16T05:00:16.571243401Z\", \"updatedAt\": \"2026-10-16T05:00:18.583360839Z\", \"revision\": \"egr1_AAAAAAAAAAE\", \"serviceLinks\": [{\"id\": \"srv-db8quoa9cl7s73ae494g\", \"name\": \"qa-20261016-dc787f-web\", \"type\": \"web\"}]}"
+    },
+    "live_detail": {
+      "at": "2026-10-16T05:03:50.415411+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8quna9cl7s73ae493g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.44,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4b484f36fda5135-PDX"
+      },
+      "response": "{\"id\": \"evg-db8quna9cl7s73ae493g\", \"name\": \"qa-20261016-dc787f-env\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"envVars\": [{\"key\": \"QA347_COLLISION\"}, {\"key\": \"QA347_EMPTY\"}, {\"key\": \"QA347_GROUP\"}, {\"key\": \"QA347_GROUP_EMPTY\"}], \"secretFiles\": [], \"createdAt\": \"2026-10-16T05:00:16.571243401Z\", \"updatedAt\": \"2026-10-16T05:00:18.583360839Z\", \"revision\": \"egr1_AAAAAAAAAAE\", \"serviceLinks\": [{\"id\": \"srv-db8quoa9cl7s73ae494g\", \"name\": \"qa-20261016-dc787f-web\", \"type\": \"web\"}]}"
+    },
+    "only_owned_service_link_pass": true,
+    "delete_intent": {
+      "at": "2026-10-16T05:05:10.004374+00:00",
+      "detail": {
+        "at": "2026-10-16T05:05:09.996948+00:00",
+        "request": {
+          "method": "GET",
+          "path": "/v1/env-groups/evg-db8quna9cl7s73ae493g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "authorization": "[REDACTED]"
+        },
+        "status": "200",
+        "elapsed": 0.694,
+        "curl_exit": 0,
+        "stderr": "",
+        "headers": {
+          "content-type": "application/json",
+          "cf-ray": "a4b486e2cfb8ff0f-PDX"
+        },
+        "response": "{\"id\": \"evg-db8quna9cl7s73ae493g\", \"name\": \"qa-20261016-dc787f-env\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"envVars\": [{\"key\": \"QA347_COLLISION\"}, {\"key\": \"QA347_EMPTY\"}, {\"key\": \"QA347_GROUP\"}, {\"key\": \"QA347_GROUP_EMPTY\"}], \"secretFiles\": [], \"createdAt\": \"2026-10-16T05:00:16.571243401Z\", \"updatedAt\": \"2026-10-16T05:05:08.259613346Z\", \"revision\": \"egr1_AAAAAAAAAAE\", \"serviceLinks\": []}"
+      },
+      "all_own_service_links_absent": true
+    },
+    "delete_result": {
+      "at": "2026-10-16T05:05:11.197732+00:00",
+      "api_only": true,
+      "request": {
+        "method": "DELETE",
+        "path": "/v1/env-groups/evg-db8quna9cl7s73ae493g",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "REDACTED",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+      },
+      "status": "204",
+      "curl_exit": 0,
+      "elapsed": 1.029,
+      "response": "",
+      "stderr": ""
+    }
+  }
+]

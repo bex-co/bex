@@ -1,0 +1,12 @@
+{"Time":"2026-10-15T18:33:44.873641-07:00","Action":"start","Package":"github.com/bex-co/bex/lego/backend/internal/apps"}
+{"Time":"2026-10-15T18:33:45.519889-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestCronScheduleThatNeverFires"}
+{"Time":"2026-10-15T18:33:45.520032-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestCronScheduleThatNeverFires","Output":"=== RUN   TestCronScheduleThatNeverFires\n"}
+{"Time":"2026-10-15T18:33:45.562006-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestCronScheduleThatNeverFires","Output":"--- PASS: TestCronScheduleThatNeverFires (0.04s)\n"}
+{"Time":"2026-10-15T18:33:45.562052-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestCronScheduleThatNeverFires","Elapsed":0.04}
+{"Time":"2026-10-15T18:33:45.562073-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestValidCronScheduleVectors"}
+{"Time":"2026-10-15T18:33:45.562079-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestValidCronScheduleVectors","Output":"=== RUN   TestValidCronScheduleVectors\n"}
+{"Time":"2026-10-15T18:33:45.587866-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestValidCronScheduleVectors","Output":"--- PASS: TestValidCronScheduleVectors (0.03s)\n"}
+{"Time":"2026-10-15T18:33:45.587939-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Test":"TestValidCronScheduleVectors","Elapsed":0.03}
+{"Time":"2026-10-15T18:33:45.587957-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Output":"PASS\n"}
+{"Time":"2026-10-15T18:33:45.590382-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Output":"ok  \tgithub.com/bex-co/bex/lego/backend/internal/apps\t0.716s\n"}
+{"Time":"2026-10-15T18:33:45.590438-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/apps","Elapsed":0.717}

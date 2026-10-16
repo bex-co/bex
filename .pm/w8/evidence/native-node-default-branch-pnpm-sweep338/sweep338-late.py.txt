@@ -1,0 +1,12 @@
+from pathlib import Path
+import sys,subprocess,json,datetime
+P=Path(__file__).resolve().parent;CP=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json')
+for client in ('bex','render'):subprocess.run(['python3',str(P/'sweep338-joint-node-acceptance.py'),'http',client],check=True)
+c=json.loads(CP.read_text());now=datetime.datetime.now(datetime.timezone.utc)
+for x in [v for v in c['resources'] if v.get('sweep')==338]:
+ receipts=x['runtime_receipts'];first=next(v for v in receipts if v['pass']);last=receipts[-1];elapsed=(datetime.datetime.fromisoformat(last['at'])-datetime.datetime.fromisoformat(first['at'])).total_seconds();expected={x['first_deploy_id']}
+ if x['client']=='bex':expected|=set(x['runtime_observer_update']['fresh_ids'])|set(x['corrected_observer']['fresh_ids'])
+ passed=last['pass'] and elapsed>=60 and set(x['recorded_child_ids'])==expected
+ if x['client']=='bex':passed=passed and 'elapsed_ms' in last['raw'] and last['latest']['id'] in x['corrected_observer']['fresh_ids']
+ x['late_stability']={'at':last['at'],'first_full_pass_at':first['at'],'last_receipt_index':len(receipts)-1,'elapsed_since_pass_seconds':elapsed,'expected_children':sorted(expected),'pass':bool(passed)};print(json.dumps({'client':x['client'],**x['late_stability']}));assert passed
+c['last_updated']=now.isoformat();CP.write_text(json.dumps(c,indent=2));CP.chmod(0o600)

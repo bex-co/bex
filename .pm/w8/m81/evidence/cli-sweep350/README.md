@@ -1,0 +1,31 @@
+# Native Python root-lock projects lack uv — sweep350
+
+[Results](results.json) · [complete captured native POSTs, API/readback/runtime/log/cleanup receipts](native-wire-API-runtime-cleanup.json) · [primary Git/file reference](primary-public-source.json) · [resolver events](resolver-observation-events.jsonl) · [actual generated-image observation](generated-image-observation.json) · [final baseline](final-inventory.json) · [dedupe](dedupe.json).
+
+Research source c84c348b0e4a2248ee0f80a09cc15165275e14d7; [fresh origin comparison](fresh-main-comparison.json) finds only a newer webhook QA note and identical lego source, with no UV implementation/scheduled item. Desired platform pin remains5a39b80ff05a, serving revision unobserved. Published Bex0.3.2/a6350da0 and unchanged Render2.27.0/a764810a7682 point to api.bex.co with the existing isolated human QA identity in bex-canary.
+
+## First native failures
+
+Each client creates one fresh explicit Free Python3.12 web service with Astral's public uv-docker-example/main, rootDir omitted/root, autoDeploy false and no UV_VERSION/PATH/installer setting. Actual unchanged native POSTs are captured through owned loopback relays:201/native0, exact returned name/ID/workspace/Free/runtime and pre-inventory absence prove ownership. Relays/copied config are removed. Historical exact commands are retained for [Bex](bex-initial-command.sh.txt) and [Render](render-initial-command.sh.txt); replace deleted names/IDs for any fresh replay.
+
+The independent checkout fixes commit3c23b2cd3a2baf090d52ba2a5699249ab9499808, a root uv.lock158319bytes/SHA25643f07524f1b045e3377854cc2e1d6d1a919d5ba20ad3112f6ac3e74938f5b3fa, and pyproject.toml402bytes/SHA25692913b1e3c2e38d54d19941f47a878bd499ea6317a6fd8b8d83332247da9d461. The project and lock both require Python>=3.11, compatible with requested3.12. There is no root .python-version override.
+
+Each original build first uses ordinary Python to assert both exact source-file hashes and prints its nonce_ROOT_LOCK_CONFIRMED as an executed output line. It then invokes **uv --version**, before any probe-writing command. Both first deployments end build_failed; native build logs show the executed root proof, uv not found and exit127. The observer decodes concatenated native log JSON and matches a standalone output marker, not the echoed build-command text. The first failure is missing uv, not a repository/root/version mismatch or a dependency-download error. Native create exit0 is ordinary asynchronous acceptance, not the reported defect.
+
+## Isolated diagnostic recovery
+
+After preserving both failures, each native services update removes **only** the uv --version requirement. Exact string equality after removing that one line and an unchanged start command are checked. No package installation, PATH change, runtime/repo/branch/env edit or platform deployment is supplied. Each update exits0 and opens one diagnostic child; both become Live/HTTP200 at the exact independent Git commit.
+
+The harmless probe reads only known settings/tool versions and the two public source files. It caches one build snapshot and one startup snapshot. Both phases retain the expected nonce and file hashes, Python3.12, working Python/pip/Poetry, and uv FileNotFoundError/ENOENT. The source and runtime are otherwise healthy. These recovery controls intentionally bypass the failing requirement; they are not successful uv applications or a product repair. Six API-only REST/GraphQL/MCP reads agree on the own source/Python/Free/autoDeploy-off and exact commands; MCP explicitly names the QA workspace.
+
+## Current-source execution
+
+The [private real-resolver observation](resolver-observation.go.txt) exports four cases: no lock control, root lock default, root lock plus UV_VERSION0.12.10, and nested selected-root lock. All select Python3.12, Poetry2.1.3 and Node24; no uv supply is added. Five named Go observation events pass with no skips; this is inspection of current behavior, not a passing uv regression. The fixed private cache revision makes no cache-defect claim. Per-case choices and resolved Dockerfiles are retained; nested is resolver scope, not a hosted nested application.
+
+One actual generated root-lock image builds with an explicitly diagnostic build command permitting uv absence. Its runtime snapshot independently proves the exact lock file, selected Python and absent uv path. Default CMD prints working Python/pip/Poetry then fails uv with127. Runtime network is disabled and QA adds no installer. [Build output](generated-image-build.log) and [finite driver](generated-image-driver.py.txt) are retained. Only that exact owned image tag is removed; its absence is verified and shared bases/cache remain. This is one executed image, not four image executions or a full operator suite. No repository Go file is changed; the overlay target is virtual.
+
+## Cleanup and qualifications
+
+Both native service deletes exit0. Both parent details/former URLs and all4 deployment children are404/absent: first failed build and diagnostic recovery for each. Original6 service IDs/original Blueprint remain, service quota used6/terminating0, PostgreSQL/KeyValue0, groups/projects empty. No paid fixture, cron or remote source change. Temporary copied configs/request files are removed; the isolated login remains for the continuing authorized loop. A local progress read overlapped an old non-atomic checkpoint write; that read is excluded, subsequent saves use atomic replacement, and no API mutation was replayed.
+
+The [uv-specific Render contract](https://render.com/docs/uv-version) conditions automatic Python uv supply on root uv.lock and describes UV_VERSION selection. No authenticated Render account is tested. Live scope is default uv setting and two Free Python3.12 web fixtures. Explicit UV_VERSION, other Python lines, live nested roots, paid hosting kinds, actual uv sync/run dependencies and browser UI are unverified and assigned to the fix. Baseline configuration is projected out and credentials masked before filing. Helpers: [finite native journey](finite-native-journey.py.txt), [probe](harmless-runtime-probe.py.txt), [capture/client functions](isolated-native-capture-helpers.py.txt), [shared reads](shared-API-readbacks.py.txt). Uncommitted.

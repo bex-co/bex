@@ -1,0 +1,494 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 810B done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 DONE 0.6s
+
+#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e done
+#3 CACHED
+
+#4 [internal] load metadata for docker.io/library/elixir:1.18@sha256:f3cc81b7f0f897763f7c74e8f526ddaf18b68f0cdbea6dd65b58f2c5c5629fbd
+#4 DONE 0.0s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 2B done
+#5 DONE 0.0s
+
+#6 [stage-0 1/5] FROM docker.io/library/elixir:1.18@sha256:f3cc81b7f0f897763f7c74e8f526ddaf18b68f0cdbea6dd65b58f2c5c5629fbd
+#6 resolve docker.io/library/elixir:1.18@sha256:f3cc81b7f0f897763f7c74e8f526ddaf18b68f0cdbea6dd65b58f2c5c5629fbd 0.0s done
+#6 DONE 0.0s
+
+#7 [internal] preparing inline document
+#7 CACHED
+
+#8 [stage-0 2/5] WORKDIR /opt/render/project/src
+#8 CACHED
+
+#9 [internal] load build context
+#9 transferring context: 15.85kB done
+#9 DONE 0.0s
+
+#10 [stage-0 3/5] COPY . .
+#10 DONE 0.0s
+
+#11 [stage-0 4/5] COPY <<BEX_LOAD_ENV /opt/bex/load-env
+#11 DONE 0.0s
+
+#12 [stage-0 5/5] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c",". /opt/bex/load-env\nmix deps.get --only prod"]
+#12 0.955 * creating /root/.mix/archives/hex-2.5.3
+#12 0.969 * Getting heroicons (https://github.com/tailwindlabs/heroicons.git - v2.1.1)
+#12 1.539 remote: Enumerating objects: 9314, done.
+#12 1.539 remote: Counting objects:   0% (1/9314)
+remote: Counting objects:   1% (94/9314)
+remote: Counting objects:   2% (187/9314)
+remote: Counting objects:   3% (280/9314)
+remote: Counting objects:   4% (373/9314)
+remote: Counting objects:   5% (466/9314)
+remote: Counting objects:   6% (559/9314)
+remote: Counting objects:   7% (652/9314)
+remote: Counting objects:   8% (746/9314)
+remote: Counting objects:   9% (839/9314)
+remote: Counting objects:  10% (932/9314)
+remote: Counting objects:  11% (1025/9314)
+remote: Counting objects:  12% (1118/9314)
+remote: Counting objects:  13% (1211/9314)
+remote: Counting objects:  14% (1304/9314)
+remote: Counting objects:  15% (1398/9314)
+remote: Counting objects:  16% (1491/9314)
+remote: Counting objects:  17% (1584/9314)
+remote: Counting objects:  18% (1677/9314)
+remote: Counting objects:  19% (1770/9314)
+remote: Counting objects:  20% (1863/9314)
+remote: Counting objects:  21% (1956/9314)
+remote: Counting objects:  22% (2050/9314)
+remote: Counting objects:  23% (2143/9314)
+remote: Counting objects:  24% (2236/9314)
+remote: Counting objects:  25% (2329/9314)
+remote: Counting objects:  26% (2422/9314)
+remote: Counting objects:  27% (2515/9314)
+remote: Counting objects:  28% (2608/9314)
+remote: Counting objects:  29% (2702/9314)
+remote: Counting objects:  30% (2795/9314)
+remote: Counting objects:  31% (2888/9314)
+remote: Counting objects:  32% (2981/9314)
+remote: Counting objects:  33% (3074/9314)
+remote: Counting objects:  34% (3167/9314)
+remote: Counting objects:  35% (3260/9314)
+remote: Counting objects:  36% (3354/9314)
+remote: Counting objects:  37% (3447/9314)
+remote: Counting objects:  38% (3540/9314)
+remote: Counting objects:  39% (3633/9314)
+remote: Counting objects:  40% (3726/9314)
+remote: Counting objects:  41% (3819/9314)
+remote: Counting objects:  42% (3912/9314)
+remote: Counting objects:  43% (4006/9314)
+remote: Counting objects:  44% (4099/9314)
+remote: Counting objects:  45% (4192/9314)
+remote: Counting objects:  46% (4285/9314)
+remote: Counting objects:  47% (4378/9314)
+remote: Counting objects:  48% (4471/9314)
+remote: Counting objects:  49% (4564/9314)
+remote: Counting objects:  50% (4657/9314)
+remote: Counting objects:  51% (4751/9314)
+remote: Counting objects:  52% (4844/9314)
+remote: Counting objects:  53% (4937/9314)
+remote: Counting objects:  54% (5030/9314)
+remote: Counting objects:  55% (5123/9314)
+remote: Counting objects:  56% (5216/9314)
+remote: Counting objects:  57% (5309/9314)
+remote: Counting objects:  58% (5403/9314)
+remote: Counting objects:  59% (5496/9314)
+remote: Counting objects:  60% (5589/9314)
+remote: Counting objects:  61% (5682/9314)
+remote: Counting objects:  62% (5775/9314)
+remote: Counting objects:  63% (5868/9314)
+remote: Counting objects:  64% (5961/9314)
+remote: Counting objects:  65% (6055/9314)
+remote: Counting objects:  66% (6148/9314)
+remote: Counting objects:  67% (6241/9314)
+remote: Counting objects:  68% (6334/9314)
+remote: Counting objects:  69% (6427/9314)
+remote: Counting objects:  70% (6520/9314)
+remote: Counting objects:  71% (6613/9314)
+remote: Counting objects:  72% (6707/9314)
+remote: Counting objects:  73% (6800/9314)
+remote: Counting objects:  74% (6893/9314)
+remote: Counting objects:  75% (6986/9314)
+remote: Counting objects:  76% (7079/9314)
+remote: Counting objects:  77% (7172/9314)
+remote: Counting objects:  78% (7265/9314)
+remote: Counting objects:  79% (7359/9314)
+remote: Counting objects:  80% (7452/9314)
+remote: Counting objects:  81% (7545/9314)
+remote: Counting objects:  82% (7638/9314)
+remote: Counting objects:  83% (7731/9314)
+remote: Counting objects:  84% (7824/9314)
+remote: Counting objects:  85% (7917/9314)
+remote: Counting objects:  86% (8011/9314)
+remote: Counting objects:  87% (8104/9314)
+remote: Counting objects:  88% (8197/9314)
+remote: Counting objects:  89% (8290/9314)
+remote: Counting objects:  90% (8383/9314)
+remote: Counting objects:  91% (8476/9314)
+remote: Counting objects:  92% (8569/9314)
+remote: Counting objects:  93% (8663/9314)
+remote: Counting objects:  94% (8756/9314)
+remote: Counting objects:  95% (8849/9314)
+remote: Counting objects:  96% (8942/9314)
+remote: Counting objects:  97% (9035/9314)
+remote: Counting objects:  98% (9128/9314)
+remote: Counting objects:  99% (9221/9314)
+remote: Counting objects: 100% (9314/9314)
+remote: Counting objects: 100% (9314/9314), done.
+#12 1.539 remote: Compressing objects:   0% (1/5403)
+remote: Compressing objects:   1% (55/5403)
+remote: Compressing objects:   2% (109/5403)
+remote: Compressing objects:   3% (163/5403)
+remote: Compressing objects:   4% (217/5403)
+remote: Compressing objects:   5% (271/5403)
+remote: Compressing objects:   6% (325/5403)
+remote: Compressing objects:   7% (379/5403)
+remote: Compressing objects:   8% (433/5403)
+remote: Compressing objects:   9% (487/5403)
+remote: Compressing objects:  10% (541/5403)
+remote: Compressing objects:  11% (595/5403)
+remote: Compressing objects:  12% (649/5403)
+remote: Compressing objects:  13% (703/5403)
+remote: Compressing objects:  14% (757/5403)
+remote: Compressing objects:  15% (811/5403)
+remote: Compressing objects:  16% (865/5403)
+remote: Compressing objects:  17% (919/5403)
+remote: Compressing objects:  18% (973/5403)
+remote: Compressing objects:  19% (1027/5403)
+remote: Compressing objects:  20% (1081/5403)
+remote: Compressing objects:  21% (1135/5403)
+remote: Compressing objects:  22% (1189/5403)
+remote: Compressing objects:  23% (1243/5403)
+remote: Compressing objects:  24% (1297/5403)
+remote: Compressing objects:  25% (1351/5403)
+remote: Compressing objects:  26% (1405/5403)
+remote: Compressing objects:  27% (1459/5403)
+remote: Compressing objects:  28% (1513/5403)
+remote: Compressing objects:  29% (1567/5403)
+remote: Compressing objects:  30% (1621/5403)
+remote: Compressing objects:  31% (1675/5403)
+remote: Compressing objects:  32% (1729/5403)
+remote: Compressing objects:  33% (1783/5403)
+remote: Compressing objects:  34% (1838/5403)
+remote: Compressing objects:  35% (1892/5403)
+remote: Compressing objects:  36% (1946/5403)
+remote: Compressing objects:  37% (2000/5403)
+remote: Compressing objects:  38% (2054/5403)
+remote: Compressing objects:  39% (2108/5403)
+remote: Compressing objects:  40% (2162/5403)
+remote: Compressing objects:  41% (2216/5403)
+remote: Compressing objects:  42% (2270/5403)
+remote: Compressing objects:  43% (2324/5403)
+remote: Compressing objects:  44% (2378/5403)
+remote: Compressing objects:  45% (2432/5403)
+remote: Compressing objects:  46% (2486/5403)
+remote: Compressing objects:  47% (2540/5403)
+remote: Compressing objects:  48% (2594/5403)
+remote: Compressing objects:  49% (2648/5403)
+remote: Compressing objects:  50% (2702/5403)
+remote: Compressing objects:  51% (2756/5403)
+remote: Compressing objects:  52% (2810/5403)
+remote: Compressing objects:  53% (2864/5403)
+remote: Compressing objects:  54% (2918/5403)
+remote: Compressing objects:  55% (2972/5403)
+remote: Compressing objects:  56% (3026/5403)
+remote: Compressing objects:  57% (3080/5403)
+remote: Compressing objects:  58% (3134/5403)
+remote: Compressing objects:  59% (3188/5403)
+remote: Compressing objects:  60% (3242/5403)
+remote: Compressing objects:  61% (3296/5403)
+remote: Compressing objects:  62% (3350/5403)
+remote: Compressing objects:  63% (3404/5403)
+remote: Compressing objects:  64% (3458/5403)
+remote: Compressing objects:  65% (3512/5403)
+remote: Compressing objects:  66% (3566/5403)
+remote: Compressing objects:  67% (3621/5403)
+remote: Compressing objects:  68% (3675/5403)
+remote: Compressing objects:  69% (3729/5403)
+remote: Compressing objects:  70% (3783/5403)
+remote: Compressing objects:  71% (3837/5403)
+remote: Compressing objects:  72% (3891/5403)
+remote: Compressing objects:  73% (3945/5403)
+remote: Compressing objects:  74% (3999/5403)
+remote: Compressing objects:  75% (4053/5403)
+remote: Compressing objects:  76% (4107/5403)
+remote: Compressing objects:  77% (4161/5403)
+remote: Compressing objects:  78% (4215/5403)
+remote: Compressing objects:  79% (4269/5403)
+remote: Compressing objects:  80% (4323/5403)
+remote: Compressing objects:  81% (4377/5403)
+remote: Compressing objects:  82% (4431/5403)
+remote: Compressing objects:  83% (4485/5403)
+remote: Compressing objects:  84% (4539/5403)
+remote: Compressing objects:  85% (4593/5403)
+remote: Compressing objects:  86% (4647/5403)
+remote: Compressing objects:  87% (4701/5403)
+remote: Compressing objects:  88% (4755/5403)
+remote: Compressing objects:  89% (4809/5403)
+remote: Compressing objects:  90% (4863/5403)
+remote: Compressing objects:  91% (4917/5403)
+remote: Compressing objects:  92% (4971/5403)
+remote: Compressing objects:  93% (5025/5403)
+remote: Compressing objects:  94% (5079/5403)
+remote: Compressing objects:  95% (5133/5403)
+remote: Compressing objects:  96% (5187/5403)
+remote: Compressing objects:  97% (5241/5403)
+remote: Compressing objects:  98% (5295/5403)
+remote: Compressing objects:  99% (5349/5403)
+remote: Compressing objects: 100% (5403/5403)
+remote: Compressing objects: 100% (5403/5403), done.
+#12 1.761 remote: Total 9314 (delta 4193), reused 8343 (delta 3849), pack-reused 0 (from 0)
+#12 2.253 Resolving Hex dependencies...
+#12 2.334 Resolution completed in 0.078s
+#12 2.343 Unchanged:
+#12 2.343   bandit 1.10.1 VULNERABLE!
+#12 2.345     EEF-CVE-2026-75484 (MEDIUM)
+#12 2.345     aka: CVE-2026-75484, GHSA-x3gh-xhj4-3vq8
+#12 2.345     HTTP/2 header field values containing CR, LF or NUL are passed to the application unvalidated in Bandit
+#12 2.345     https://osv.dev/vulnerability/EEF-CVE-2026-75484
+#12 2.345
+#12 2.345     EEF-CVE-2026-39805 (MEDIUM)
+#12 2.345     aka: CVE-2026-39805, GHSA-c67r-gc9j-2qf7
+#12 2.345     CL.CL HTTP request smuggling via duplicate Content-Length in bandit
+#12 2.345     https://osv.dev/vulnerability/EEF-CVE-2026-39805
+#12 2.345
+#12 2.346     EEF-CVE-2026-39807 (MEDIUM)
+#12 2.346     aka: CVE-2026-39807, GHSA-375f-4r2h-f99j
+#12 2.346     Client-supplied URI scheme trusted without transport verification in bandit
+#12 2.346     https://osv.dev/vulnerability/EEF-CVE-2026-39807
+#12 2.346
+#12 2.346     EEF-CVE-2026-39804 (HIGH)
+#12 2.346     aka: CVE-2026-39804, GHSA-frh3-6pv6-rc8j
+#12 2.346     WebSocket permessage-deflate inflate has no output-size cap in bandit
+#12 2.346     https://osv.dev/vulnerability/EEF-CVE-2026-39804
+#12 2.346
+#12 2.347     EEF-CVE-2026-39803 (HIGH)
+#12 2.347     aka: CVE-2026-39803, GHSA-9q9q-324x-93r2
+#12 2.347     HTTP/1 chunked body reader ignores length cap in bandit
+#12 2.347     https://osv.dev/vulnerability/EEF-CVE-2026-39803
+#12 2.347
+#12 2.347     EEF-CVE-2026-39806 (HIGH)
+#12 2.347     aka: CVE-2026-39806, GHSA-rf5q-vwxw-gmrf
+#12 2.347     HTTP/1 chunked decoder infinite loop on requests with trailer fields in bandit
+#12 2.347     https://osv.dev/vulnerability/EEF-CVE-2026-39806
+#12 2.347
+#12 2.347     EEF-CVE-2026-42786 (HIGH)
+#12 2.347     aka: CVE-2026-42786, GHSA-pf94-94m9-536p
+#12 2.347     WebSocket fragmented message reassembly unbounded in bandit
+#12 2.347     https://osv.dev/vulnerability/EEF-CVE-2026-42786
+#12 2.348
+#12 2.348     EEF-CVE-2026-42788 (MEDIUM)
+#12 2.348     aka: CVE-2026-42788, GHSA-q6v9-r226-v65f
+#12 2.348     HTTP/2 frame size limit checked after body is buffered in bandit
+#12 2.348     https://osv.dev/vulnerability/EEF-CVE-2026-42788
+#12 2.348
+#12 2.348     EEF-CVE-2026-74836 (HIGH)
+#12 2.348     aka: CVE-2026-74836, GHSA-xj8g-532w-jv94
+#12 2.348     HTTP/2 connection-window starvation pins Plug processes indefinitely in Bandit
+#12 2.348     https://osv.dev/vulnerability/EEF-CVE-2026-74836
+#12 2.348
+#12 2.348     EEF-CVE-2026-105659 (HIGH)
+#12 2.348     aka: CVE-2026-105659, GHSA-69m6-wcv4-rwcf
+#12 2.348     HTTP/2 blocked-send deadlines reset on every WINDOW_UPDATE, letting a trickle pin stream processes indefinitely in Bandit
+#12 2.348     https://osv.dev/vulnerability/EEF-CVE-2026-105659
+#12 2.348
+#12 2.348     EEF-CVE-2026-105660 (MEDIUM)
+#12 2.348     aka: CVE-2026-105660, GHSA-v53v-9hvg-37jf
+#12 2.348     Unvalidated HTTP/1 request-target authority lets a client choose conn.host and conn.port in Bandit
+#12 2.348     https://osv.dev/vulnerability/EEF-CVE-2026-105660
+#12 2.348   castore 1.0.17
+#12 2.348   dns_cluster 0.1.3
+#12 2.348   esbuild 0.10.0
+#12 2.348   expo 1.1.1
+#12 2.348   finch 0.20.0
+#12 2.348   gettext 0.26.2
+#12 2.348   hpax 1.0.3 VULNERABLE!
+#12 2.348     EEF-CVE-2026-58226 (HIGH)
+#12 2.348     aka: CVE-2026-58226, GHSA-jj2p-32j7-whj2
+#12 2.348     Unauthenticated denial-of-service via unbounded HPACK integer decoding in hpax
+#12 2.348     https://osv.dev/vulnerability/EEF-CVE-2026-58226
+#12 2.348   idna 6.1.1
+#12 2.349   jason 1.4.4
+#12 2.349   mime 2.0.7
+#12 2.349   mint 1.7.1 VULNERABLE!
+#12 2.349     EEF-CVE-2026-82672 (MEDIUM)
+#12 2.349     aka: CVE-2026-82672, GHSA-rj5m-69wp-cxq9
+#12 2.349     Unvalidated chunk-size line tail in Mint HTTP/1 client enables response smuggling against strict intermediaries on pooled connections
+#12 2.349     https://osv.dev/vulnerability/EEF-CVE-2026-82672
+#12 2.349
+#12 2.349     EEF-CVE-2026-49754 (HIGH)
+#12 2.349     aka: CVE-2026-49754, GHSA-2p26-p43x-fhp8
+#12 2.349     HTTP/2 CONTINUATION flood in Mint client via unbounded header-block accumulation
+#12 2.349     https://osv.dev/vulnerability/EEF-CVE-2026-49754
+#12 2.349
+#12 2.349     EEF-CVE-2026-48861 (LOW)
+#12 2.349     aka: CVE-2026-48861, GHSA-2pg6-44cx-c49v
+#12 2.349     CRLF injection in HTTP/1 request line via unvalidated method in Mint
+#12 2.349     https://osv.dev/vulnerability/EEF-CVE-2026-48861
+#12 2.349
+#12 2.350     EEF-CVE-2026-48862 (HIGH)
+#12 2.350     aka: CVE-2026-48862, GHSA-g586-ccqf-7x4r
+#12 2.350     Unbounded conn.streams growth in Mint HTTP/2 client via unenforced PUSH_PROMISE concurrency
+#12 2.350     https://osv.dev/vulnerability/EEF-CVE-2026-48862
+#12 2.350
+#12 2.350     EEF-CVE-2026-49753 (MEDIUM)
+#12 2.350     aka: CVE-2026-49753, GHSA-mjqx-c6f6-7rc2
+#12 2.350     HTTP response smuggling in Mint HTTP/1 client via lenient Content-Length parsing
+#12 2.350     https://osv.dev/vulnerability/EEF-CVE-2026-49753
+#12 2.350
+#12 2.350     EEF-CVE-2026-91043 (HIGH)
+#12 2.350     aka: CVE-2026-91043, GHSA-9x8p-qrf4-jq7g
+#12 2.350     HPACK-indexed cookie fields in Mint HTTP/2 responses bypass max_header_list_size and exhaust client memory
+#12 2.350     https://osv.dev/vulnerability/EEF-CVE-2026-91043
+#12 2.350
+#12 2.350     EEF-CVE-2026-58229 (HIGH)
+#12 2.350     aka: CVE-2026-58229, GHSA-qrfr-wh4c-3qhw
+#12 2.350     Unbounded HTTP/1 response-header and chunked-trailer accumulation in Mint causes memory-exhaustion DoS
+#12 2.350     https://osv.dev/vulnerability/EEF-CVE-2026-58229
+#12 2.351
+#12 2.351     EEF-CVE-2026-92103 (MEDIUM)
+#12 2.351     aka: CVE-2026-92103, GHSA-q95c-ccq6-j5j6
+#12 2.351     Mint HTTP/2 client buffers oversized frames up to 16 MiB before enforcing max_frame_size
+#12 2.351     https://osv.dev/vulnerability/EEF-CVE-2026-92103
+#12 2.351
+#12 2.351     EEF-CVE-2026-94194 (MEDIUM)
+#12 2.351     aka: CVE-2026-94194, GHSA-gvrc-75rc-7gj9
+#12 2.351     Mint HTTP/1 client applies chunked framing when chunked is not the final transfer coding, enabling response smuggling through intermediaries
+#12 2.351     https://osv.dev/vulnerability/EEF-CVE-2026-94194
+#12 2.351
+#12 2.351     EEF-CVE-2026-59246 (MEDIUM)
+#12 2.351     aka: CVE-2026-59246, GHSA-8pf6-g464-h6h9
+#12 2.351     Zero-length HTTP/2 CONTINUATION frames bypass Mint's header-block byte-size cap and exhaust client memory
+#12 2.351     https://osv.dev/vulnerability/EEF-CVE-2026-59246
+#12 2.351
+#12 2.351     EEF-CVE-2026-56810 (HIGH)
+#12 2.351     aka: CVE-2026-56810, GHSA-c59h-fq4p-r36r
+#12 2.351     mint buffers an entire chunked response chunk in memory in Mint.HTTP1.decode_body/5
+#12 2.351     https://osv.dev/vulnerability/EEF-CVE-2026-56810
+#12 2.351
+#12 2.351     EEF-CVE-2026-82728 (HIGH)
+#12 2.351     aka: CVE-2026-82728, GHSA-g83f-2j6r-q6m4
+#12 2.351     Unbounded HTTP/1 status-line and chunk-extension buffering in Mint causes memory-exhaustion DoS
+#12 2.351     https://osv.dev/vulnerability/EEF-CVE-2026-82728
+#12 2.351
+#12 2.352     EEF-CVE-2026-59249 (MEDIUM)
+#12 2.352     aka: CVE-2026-59249, GHSA-x3x7-96vm-6h2w
+#12 2.352     Sign-tolerant HTTP/1 chunk-size parser in Mint enables response smuggling against strict intermediaries on pooled connections
+#12 2.352     https://osv.dev/vulnerability/EEF-CVE-2026-59249
+#12 2.352   nimble_options 1.1.1
+#12 2.352   nimble_pool 1.1.0
+#12 2.352   phoenix 1.7.21 VULNERABLE!
+#12 2.352     EEF-CVE-2026-32689 (HIGH)
+#12 2.352     aka: CVE-2026-32689, GHSA-628h-q48j-jr6q
+#12 2.352     Long-poll NDJSON body splitting causes unbounded memory allocation in Phoenix
+#12 2.352     https://osv.dev/vulnerability/EEF-CVE-2026-32689
+#12 2.352
+#12 2.352     EEF-CVE-2026-56811 (HIGH)
+#12 2.352     aka: CVE-2026-56811, GHSA-6983-jfq8-485w
+#12 2.352     Phoenix transports do not limit channel joins per connection, enabling process-exhaustion denial of service
+#12 2.352     https://osv.dev/vulnerability/EEF-CVE-2026-56811
+#12 2.352
+#12 2.352     EEF-CVE-2026-56812 (MEDIUM)
+#12 2.352     aka: CVE-2026-56812, GHSA-63mc-hw7g-86rr
+#12 2.352     Phoenix JavaScript presence client crashes on presence keys colliding with Object.prototype members in Presence.syncState/syncDiff
+#12 2.352     https://osv.dev/vulnerability/EEF-CVE-2026-56812
+#12 2.353   phoenix_html 4.3.0
+#12 2.353   phoenix_live_dashboard 0.8.7
+#12 2.353   phoenix_live_view 1.0.18 VULNERABLE!
+#12 2.353     EEF-CVE-2026-64941 (LOW)
+#12 2.353     aka: CVE-2026-64941, GHSA-36m4-rm57-3prf
+#12 2.353     Open redirect in Phoenix.LiveView.validate_local_url!/2 via ASCII tab, LF and CR
+#12 2.353     https://osv.dev/vulnerability/EEF-CVE-2026-64941
+#12 2.353   phoenix_pubsub 2.2.0
+#12 2.353   phoenix_template 1.0.4
+#12 2.353   plug 1.19.1 VULNERABLE!
+#12 2.354     EEF-CVE-2026-54892 (HIGH)
+#12 2.354     aka: CVE-2026-54892, GHSA-j43x-5hjq-rgxf
+#12 2.354     Plug: quadratic-time decoding of nested query/body parameters enables denial of service
+#12 2.354     https://osv.dev/vulnerability/EEF-CVE-2026-54892
+#12 2.354
+#12 2.354     EEF-CVE-2026-8468 (HIGH)
+#12 2.354     aka: CVE-2026-8468, GHSA-468c-vq7p-gh64
+#12 2.354     Unbounded buffer accumulation in multipart header parsing causes denial of service in plug
+#12 2.354     https://osv.dev/vulnerability/EEF-CVE-2026-8468
+#12 2.354
+#12 2.354     EEF-CVE-2026-56813 (LOW)
+#12 2.354     aka: CVE-2026-56813, GHSA-wpmj-jh88-rpgm
+#12 2.354     Cookie attribute injection in Plug.Conn.Cookies.encode/2
+#12 2.354     https://osv.dev/vulnerability/EEF-CVE-2026-56813
+#12 2.354
+#12 2.354     EEF-CVE-2026-56814 (MEDIUM)
+#12 2.354     aka: CVE-2026-56814, GHSA-95qv-c9g9-rm63
+#12 2.354     Plug: multipart :length limit is not charged for part headers, enabling unbounded temp-file creation (denial of service)
+#12 2.354     https://osv.dev/vulnerability/EEF-CVE-2026-56814
+#12 2.354   plug_crypto 2.1.1
+#12 2.354   swoosh 1.20.0 VULNERABLE!
+#12 2.354     EEF-CVE-2026-54893 (LOW)
+#12 2.354     aka: CVE-2026-54893, GHSA-754j-98wh-57rf
+#12 2.354     Email-derived URL path injection in the Swoosh Microsoft Graph adapter
+#12 2.354     https://osv.dev/vulnerability/EEF-CVE-2026-54893
+#12 2.354   tailwind 0.4.1
+#12 2.354   telemetry 1.3.0
+#12 2.354   telemetry_metrics 1.1.0
+#12 2.354   telemetry_poller 1.3.0
+#12 2.354   thousand_island 1.4.3
+#12 2.354   unicode_util_compat 0.7.1
+#12 2.354   websock 0.5.3
+#12 2.354   websock_adapter 0.5.9
+#12 2.360 * Getting phoenix (Hex package)
+#12 2.532 * Getting phoenix_html (Hex package)
+#12 2.539 * Getting phoenix_live_view (Hex package)
+#12 2.643 * Getting phoenix_live_dashboard (Hex package)
+#12 2.666 * Getting esbuild (Hex package)
+#12 2.672 * Getting tailwind (Hex package)
+#12 2.678 * Getting swoosh (Hex package)
+#12 2.709 * Getting finch (Hex package)
+#12 2.723 * Getting telemetry_metrics (Hex package)
+#12 2.730 * Getting telemetry_poller (Hex package)
+#12 3.204 * creating /root/.mix/elixir/1-18-otp-28/rebar3
+#12 3.205 * Getting gettext (Hex package)
+#12 3.221 * Getting jason (Hex package)
+#12 3.230 * Getting dns_cluster (Hex package)
+#12 3.241 * Getting bandit (Hex package)
+#12 3.276 * Getting hpax (Hex package)
+#12 3.285 * Getting plug (Hex package)
+#12 3.315 * Getting telemetry (Hex package)
+#12 3.326 * Getting thousand_island (Hex package)
+#12 3.341 * Getting websock (Hex package)
+#12 3.348 * Getting mime (Hex package)
+#12 3.354 * Getting plug_crypto (Hex package)
+#12 3.362 * Getting expo (Hex package)
+#12 3.386 * Getting mint (Hex package)
+#12 3.411 * Getting nimble_options (Hex package)
+#12 3.422 * Getting nimble_pool (Hex package)
+#12 3.429 * Getting idna (Hex package)
+#12 3.445 * Getting unicode_util_compat (Hex package)
+#12 3.459 * Getting phoenix_template (Hex package)
+#12 3.468 * Getting castore (Hex package)
+#12 3.478 * Getting phoenix_pubsub (Hex package)
+#12 3.495 * Getting websock_adapter (Hex package)
+#12 3.503 Found packages with security advisories, see above for details
+#12 DONE 3.6s
+
+#13 exporting to image
+#13 exporting layers
+#13 exporting layers 0.6s done
+#13 exporting manifest sha256:395022c47f6b9cd6bbc4602de058fe42d39596897bcd54900b3a0a640555f213 done
+#13 exporting config sha256:26432ed708ed79d14af915ec790e48b54424180d7f449793f3165fb5f82798c3 done
+#13 exporting attestation manifest sha256:3151633b8e68b575623e7d1ae1570b908d292ae63b3b650a4997d44a6878e802 done
+#13 exporting manifest list sha256:5847df9fd834436406aec63805004f7096ec04990449b83523d8c96e6eb380b2 done
+#13 naming to docker.io/library/bex-qa336-elixir-hex:95352 done
+#13 unpacking to docker.io/library/bex-qa336-elixir-hex:95352
+#13 unpacking to docker.io/library/bex-qa336-elixir-hex:95352 0.3s done
+#13 DONE 0.9s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/q0ljecef45gitsmo481xbs6ci

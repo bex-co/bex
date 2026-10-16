@@ -1,0 +1,52 @@
+bex CLI v0.2.1
+
+Create a new service or clone an existing one
+
+USAGE
+  bex services create [flags]
+
+FLAGS
+      --auto-deploy                         Enable auto-deploy (default: true)
+      --branch <BRANCH>                     Set the Git branch
+      --build-command <COMMAND>             Set the build command
+      --build-filter-ignored-path <PATHS>   Set build filter ignored paths (can be specified multiple times)
+      --build-filter-path <PATHS>           Set build filter paths (can be specified multiple times)
+      --cron-command <COMMAND>              Set the cron command
+      --cron-schedule <SCHEDULE>            Set the cron schedule
+      --env-var <KEY_VALUE>                 Set environment variables in KEY=VALUE format (can be specified multiple times)
+      --environment-id <ENVIRONMENT_ID>     Set the environment ID
+      --from <SERVICE_ID>                   Clone configuration from an existing service ID or name and override cloned values with other flags
+      --health-check-path <PATH>            Set the health check path
+  -h, --help                                Show help for this command
+      --image <IMAGE_URL>                   Set the Docker image URL
+      --ip-allow-list <CIDR_DESCRIPTION>    Set IP allow list entries in cidr=..., description=... format (can be specified multiple times)
+      --maintenance-mode                    Enable maintenance mode
+      --maintenance-mode-uri <URI>          Set the maintenance mode URI
+      --max-shutdown-delay <SECONDS>        Set max shutdown delay in seconds (default: 0)
+      --name <NAME>                         Set the service name
+      --num-instances <COUNT>               Set the number of instances (default: 0)
+      --plan <PLAN>                         Set the service plan
+      --pre-deploy-command <COMMAND>        Set the pre-deploy command
+      --previews <PREVIEWS>                 Set preview generation mode
+      --publish-directory <PATH>            Set the publish directory
+      --region <REGION>                     Set the deployment region
+      --registry-credential <CREDENTIAL>    Set the registry credential
+      --repo <REPO_URL>                     Set the Git repository URL
+      --root-directory <PATH>               Set the root directory
+      --runtime <RUNTIME>                   Set the runtime environment
+      --secret-file <NAME_PATH>             Set secret files in NAME:LOCAL_PATH format (can be specified multiple times)
+      --start-command <COMMAND>             Set the start command
+      --type <TYPE>                         Set the service type
+      --confirm                             Skip all confirmation prompts
+  -o, --output <FORMAT>                     Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: "interactive")
+
+EXAMPLES
+  # Create a service from repository configuration
+  bex services create --name my-api --type web_service --repo https://github.com/org/repo --runtime node --build-command "npm install" --start-command "npm start" --output json
+
+  # Clone configuration from an existing service
+  bex services create --from srv-abc123 --name my-api-clone --output json
+
+DETAILS
+Create a new service on Bex. This command only runs in non-interactive modes.
+Provide configuration options with flags.

@@ -1,0 +1,13 @@
+{
+  "actual_line": "3.4",
+  "case": "ruby-file-control",
+  "choice": {
+    "Label": "Ruby",
+    "Line": "3.4",
+    "Image": "ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172",
+    "Source": ".ruby-version"
+  },
+  "expected_line": "3.4",
+  "pass": true,
+  "qualification": "unchanged actual resolver; public root lock plus authored contract neighbors/positive controls; not a fixed regression"
+}

@@ -1,0 +1,35 @@
+{
+  "at": "2026-10-16T08:10:31.457030+00:00",
+  "tested_source_head": "013418ce3cae21b318d66b39549f65ae502f8e7e",
+  "fresh_origin_main": "013418ce3cae21b318d66b39549f65ae502f8e7e",
+  "intervening_history": "",
+  "product_diff_stat": "",
+  "contract": {
+    "url": "https://render.com/docs/static-sites",
+    "scope": "Dependency installation: defaults to dependency detection/installation; explicit SKIP_INSTALL_DEPS=true permits authored installation"
+  },
+  "dedupe": {
+    "SKIP_INSTALL_DEPS_PM_matches": "completed m79 uses explicit true to isolate static compression; no automatic-install acceptance",
+    "m73": "pnpm executable supply, application install/lockfile behavior explicitly unverified",
+    "distinctive_automatic_install_missing_cross_env_PM_matches": 0,
+    "targeted_install_flag_source_history": "none"
+  },
+  "actual_source_observations": {
+    "cases": 5,
+    "named_pass_events": 8,
+    "fail": 0,
+    "skip": 0,
+    "Docker_execution": false,
+    "qualification": "real unchanged generator/resolver; fixed synthetic env revision; no install execution/cache-defect/fixed-regression claim"
+  },
+  "source_trace": {
+    "backend_strategy": "lego/backend/internal/apps/build_strategy.go:44\u201375; static nonempty build selects native",
+    "operator_strategy": "lego/operator/internal/controller/app_controller.go:1486\u20131489",
+    "options": "app_controller.go:1030\u20131045 carries StaticSite and exact authored command",
+    "generator": "lego/operator/internal/build/native.go:261 emits only env loader plus authored build;268 RUN;271\u2013274 static return",
+    "tools": "nativepnpm.go:42\u201355 supplies global pnpm, not application dependencies",
+    "resolver": "nativeresolve.go:50\u2013102 chooses image/companions only",
+    "consumer": "build.go:941\u2013946 consumes generated Dockerfile and env secret; app_controller.go:3704/3745 publishes selected path after successful build; publish/publish.go:517\u2013533 copies already built path without installing anything",
+    "blast_radius": "one nativeDockerfile production caller/nativeBuildPreparer, one nativeVersionResolver build-job seam; scope static native Node, root/no-runtime default included; primary compute, Dockerfile/image, direct raw publication unchanged"
+  }
+}

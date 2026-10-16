@@ -1,0 +1,39 @@
+envVarGroups:
+- name: qa-20261016-dc787f-env
+  envVars:
+  - key: QA347_GROUP
+    value: "QA347_dc787f\n\u2603=group"
+  - key: QA347_COLLISION
+    value: group-default
+  - key: QA347_EMPTY
+    value: group-nonempty
+  - key: QA347_GROUP_EMPTY
+    value: ''
+services:
+- name: qa-20261016-dc787f-web
+  type: web
+  runtime: node
+  repo: https://github.com/expressjs/serve-static
+  branch: master
+  plan: free
+  region: frankfurt
+  autoDeploy: false
+  rootDir: ''
+  buildCommand: /usr/local/bin/node -e 'const fs=require('"'"'node:fs'"'"');const
+    keys=["QA347_GROUP", "QA347_COLLISION", "QA347_EMPTY", "QA347_GROUP_EMPTY", "QA347_ABSENT"];const
+    read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));fs.writeFileSync('"'"'qa347-built.json'"'"',JSON.stringify(read()));'
+  startCommand: /usr/local/bin/node -e 'const fs=require('"'"'node:fs'"'"'),http=require('"'"'node:http'"'"'),crypto=require('"'"'node:crypto'"'"');const
+    keys=["QA347_GROUP", "QA347_COLLISION", "QA347_EMPTY", "QA347_GROUP_EMPTY", "QA347_ABSENT"];const
+    read=()=>Object.fromEntries(keys.map(k=>[k,{present:Object.prototype.hasOwnProperty.call(process.env,k),value:process.env[k]??null}]));const
+    built=JSON.parse(fs.readFileSync('"'"'/opt/render/project/src/qa347-built.json'"'"')),boot=crypto.randomUUID();http.createServer((q,r)=>{r.setHeader('"'"'Content-Type'"'"','"'"'application/json'"'"');r.end(JSON.stringify({built,runtime:read(),boot}));}).listen(Number(process.env.PORT||3000),'"'"'0.0.0.0'"'"');'
+  healthCheckPath: /
+  envVars:
+  - fromGroup: qa-20261016-dc787f-env
+  - key: QA347_COLLISION
+    value: QA347_dc787f_service
+  - key: QA347_EMPTY
+    value: ''
+  - key: NODE_VERSION
+    value: '24'
+  - key: SKIP_INSTALL_DEPS
+    value: 'true'

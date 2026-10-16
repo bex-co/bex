@@ -1,0 +1,33 @@
+{
+  "source_head": "ae5f8cada22510baa1e6a79cb2c09b8346103ccf",
+  "serving_revision": "unobserved",
+  "native_Free_PG18_create_delete_exit0": true,
+  "total_native_SQL_commands": 14,
+  "successful_native_SQL_commands": 13,
+  "expected_invalid_numeric_COPY_exit1": 1,
+  "cross_client_zero_rows_after_failed_COPY": true,
+  "native_successful_CSV_imports": 3,
+  "native_successful_CSV_exports": 2,
+  "rows_per_table": 37,
+  "matching_tables": 3,
+  "both_clients_full_three_table_comparisons_pass": 2,
+  "null_empty_literal_marker_counts": [
+    5,
+    6,
+    6
+  ],
+  "ordered_exports_bytes": 6879,
+  "ordered_exports_sha256": "601fdd3f25925072d87bc386d17f29170f4f1c36c08a33593c53313d5a4c2afe",
+  "ordered_exports_byte_equal": true,
+  "paths_with_spaces_and_Unicode": true,
+  "four_private_CSV_files_removed": true,
+  "cached_SQL_before1_after_exit2": true,
+  "private_connection_and_CA_removed": true,
+  "owned_PG_deleted": "dpg-db8u1di9cl7s73ae4d10",
+  "baseline_services": 6,
+  "baseline_Blueprints": 1,
+  "PG_used": 0,
+  "PG_terminating": 0,
+  "new_issue": false,
+  "uncommitted": true
+}

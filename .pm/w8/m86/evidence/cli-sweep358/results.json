@@ -1,0 +1,31 @@
+{
+  "source_head": "013418ce3cae21b318d66b39549f65ae502f8e7e",
+  "serving_revision": "unobserved",
+  "native_Free_static_creates_exit0": 2,
+  "captured_Bex_create_HTTP201": 1,
+  "Render_create_wire": "not captured",
+  "exact_first_build_missing_cross_env_exit127": 2,
+  "exact_first_build_source_proofs": 2,
+  "SKIP_INSTALL_DEPS_absent": true,
+  "authored_npm_ci_controls_Live_HTTP200_pass": 2,
+  "separate_served_index_hash_comparisons_pass": 2,
+  "exact_public_commit": "cf0cc1f1b5972d9d7d06b9a0f0488e61839f3207",
+  "API_only_shared_configuration_reads_pass": 6,
+  "real_generator_resolver_observation_cases": 5,
+  "source_named_pass_events": 8,
+  "source_fail": 0,
+  "source_skip": 0,
+  "Docker_execution": false,
+  "observer_snapshot_timing_qualified_no_mutation_replay": true,
+  "owned_services_deleted": [
+    "srv-db8tlfq9cl7s73ae4ch0",
+    "srv-db8tlji9cl7s73ae4cj0"
+  ],
+  "owned_children_deleted": 4,
+  "baseline_services": 6,
+  "baseline_Blueprints": 1,
+  "terminating": 0,
+  "new_issue": "w8/m86",
+  "estimate_minutes": 160,
+  "uncommitted": true
+}

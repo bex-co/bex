@@ -1,0 +1,20 @@
+from pathlib import Path
+import sys,json
+f=Path(__file__).with_name('sweep343-source-switch.py');sys.argv=[str(f),'shared-source-reads','persistent'];exec(compile(f.read_text().split("if mode=='create':")[0],str(f),'exec'));xs=[v for v in c['resources'] if v.get('sweep')==343 and v.get('type')=='web_service'];assert len(xs)==2
+def decode(r):
+ raw=r['response']
+ if not raw.lstrip().startswith(('{','[')):
+  vs=[z[5:].strip() for z in raw.splitlines() if z.startswith('data:')];assert len(vs)==1;raw=vs[0]
+ return json.loads(raw)
+for x in xs:
+ case=x['case'];own(x);sid=x['id'];cmd={'build':x['build_command'],'start':x['start_command']};query='query QA343 { service(id:'+json.dumps(sid)+') { id repo branch imagePath runtime buildCommand startCommand autoDeploy } }'
+ for surface,method,path,body in [('REST','GET','/v1/services/'+sid,None),('GraphQL','POST','/graphql',{'query':query}),('MCP','POST','/mcp',{'jsonrpc':'2.0','id':343,'method':'tools/call','params':{'name':'get_service','arguments':{'serviceId':sid,'workspaceId':ws}}})]:
+  assert not any(z['surface']==surface for z in x.get('shared_readbacks',[]));r=api(method,path,body);e={'at':now(),'surface':surface,'result':r};x.setdefault('shared_readbacks',[]).append(e);save();assert r['status']=='200';v=decode(r)
+  if surface=='GraphQL':assert not v.get('errors');v=v['data']['service']
+  elif surface=='MCP':
+   assert not v.get('error') and not v['result'].get('isError');z=v['result'];v=z.get('structuredContent')
+   if v is None:v=json.loads(next(a['text'] for a in z['content'] if a['type']=='text'))
+   v=v.get('service',v)
+  d=v.get('serviceDetails',{});ec=d.get('envSpecificDetails',{});runtime=v.get('runtime') or d.get('runtime');build=v.get('buildCommand') if surface=='GraphQL' else ec.get('buildCommand');start=v.get('startCommand') if surface=='GraphQL' else ec.get('startCommand');e['projection']={'id':v['id'],'repo':v.get('repo'),'branch':v.get('branch'),'imagePath':v.get('imagePath'),'runtime':runtime,'autoDeploy':v.get('autoDeploy'),'build_matches':build==cmd['build'],'start_matches':start==cmd['start']};e['pass']=v['id']==sid and v['repo']==EXPRESS and v['branch']=='master' and not v.get('imagePath') and runtime=='node' and v.get('autoDeploy') in (False,'no') and build==cmd['build'] and start==cmd['start'];save();print(json.dumps({'case':case,'surface':surface,'pass':e['pass']}),flush=True);assert e['pass']
+
+b=next(v for v in c['resources'] if v.get('sweep')==343 and v.get('type')=='blueprint');x=next(v for v in xs if v['case']=='persistent');r=api('GET','/v1/blueprints/'+b['id']+'?ownerId='+ws);e={'at':now(),'result':r};b.setdefault('manifest_readbacks',[]).append(e);save();assert r['status']=='200';v=decode(r);e['pass']=v['id']==b['id'] and v['repo']==BP_REPO and v['branch']==BP_BRANCH and v['autoSync'] is False and v['manifest']==x['sync_intent']['body']['bexYaml'];save();assert e['pass'];print(json.dumps({'own_Blueprint_containing_source_and_exact_manifest_preserved':True}),flush=True)

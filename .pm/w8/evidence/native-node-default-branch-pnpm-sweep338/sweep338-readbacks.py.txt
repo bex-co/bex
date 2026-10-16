@@ -1,0 +1,18 @@
+from pathlib import Path
+import sys,json
+f=Path(__file__).with_name('sweep338-joint-node-acceptance.py');sys.argv=[str(f),'shared','bex'];exec(compile(f.read_text().split("if mode=='create':")[0],str(f),'exec'))
+xs=[v for v in c['resources'] if v.get('sweep')==338];assert len(xs)==2
+for x in xs:
+ CLIENT=x['client'];own(x);sid=x['id'];cmd=x['commands']['omitted-branch'];start=x.get('corrected_observer',{}).get('start',x.get('runtime_observer_update',{}).get('new_start',cmd['start']))
+ r,vs=inventory();v=next(z for z in vs if z['id']==sid);e={'at':now(),'surface':'native inventory','result':r,'selected':v,'pass':v['repo']==reference['repo'] and v['branch']=='master'};x.setdefault('shared_readbacks',[]).append(e);save();assert e['pass'];history(x)
+ query='query QA338 { service(id: '+json.dumps(sid)+') { id repo branch imagePath runtime buildCommand startCommand autoDeploy } }'
+ for surface,method,path,body in [('REST','GET','/v1/services/'+sid,None),('GraphQL','POST','/graphql',{'query':query}),('MCP','POST','/mcp',{'jsonrpc':'2.0','id':338,'method':'tools/call','params':{'name':'get_service','arguments':{'serviceId':sid}}})]:
+  r=api(method,path,body);e={'at':now(),'surface':surface,'result':r};x['shared_readbacks'].append(e);save();assert r['status']=='200';v=decode(r)
+  if surface=='GraphQL':assert not v.get('errors');v=v['data']['service']
+  elif surface=='MCP':
+   assert not v.get('error') and not v['result'].get('isError');z=v['result'];v=z.get('structuredContent')
+   if v is None:v=json.loads(next(a['text'] for a in z['content'] if a['type']=='text'))
+   v=v.get('service',v)
+  d=v.get('serviceDetails',{});ec=d.get('envSpecificDetails',{});runtime=v.get('runtime') or d.get('runtime');build=v.get('buildCommand') if surface=='GraphQL' else ec.get('buildCommand');got_start=v.get('startCommand') if surface=='GraphQL' else ec.get('startCommand');e['projection']={'id':v['id'],'repo':v.get('repo'),'branch':v.get('branch'),'imagePath':v.get('imagePath'),'runtime':runtime,'autoDeploy':v.get('autoDeploy'),'build_matches':build==cmd['build'],'start_matches':got_start==start};e['pass']=v['id']==sid and v['repo']==reference['repo'] and v['branch']=='master' and not v.get('imagePath') and runtime=='node' and v.get('autoDeploy') in (False,'no') and build==cmd['build'] and got_start==start;save();print(json.dumps({'client':CLIENT,'surface':surface,'pass':e['pass']}),flush=True);assert e['pass']
+if c.get('sweep338_export'):c.setdefault('sweep338_export_history',[]).append(c['sweep338_export'])
+query='query QA338Export { generateBlueprint(ownerId:'+json.dumps(ws)+', serviceIds:'+json.dumps([x['id'] for x in xs])+') { manifest filename } }';r=api('POST','/graphql',{'query':query});e={'at':now(),'API_only':True,'result':r};c['sweep338_export']=e;save();assert r['status']=='200';v=decode(r);assert not v.get('errors');out=v['data']['generateBlueprint'];doc=yaml.safe_load(out['manifest']);sv=doc['services'];e['projection']={'filename':out['filename'],'services':[{'name':v['name'],'repo':v.get('repo'),'branch':v.get('branch'),'runtime':v.get('runtime')} for v in sv]};e['pass']=out['filename']=='render.yaml' and len(sv)==2 and {z['name'] for z in sv}=={x['name'] for x in xs} and all(v.get('repo')==reference['repo'] and v.get('branch')=='master' and v.get('runtime')=='node' for v in sv);save();print(json.dumps({'surface':'GraphQL generateBlueprint','selected_services':len(sv),'pass':e['pass']}),flush=True);assert e['pass']

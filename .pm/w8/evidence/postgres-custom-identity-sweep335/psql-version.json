@@ -1,0 +1,4 @@
+{
+  "executable": "/opt/homebrew/opt/libpq/bin/psql",
+  "version": "psql (PostgreSQL) 18.6"
+}

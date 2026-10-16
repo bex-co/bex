@@ -1,0 +1,18 @@
+{
+  "source_head": "a1adb0cdf138a71edcaaeea58c71cd04d88ca2d3",
+  "scope": "current-source generated artifacts and local Docker execution; no hosted Elixir fixture",
+  "resolved_artifact_variants": 4,
+  "executed_line": "1.18 / OTP28",
+  "base_Mix_version": "1.18.4",
+  "initial_base_Hex_task_absence": "not a finding; normal dependency command automatically bootstraps Hex/Rebar",
+  "Docker_dependency_build_executions": 3,
+  "final_execution_no_cache": true,
+  "final_runtime_tool_checks_pass": 2,
+  "hosted_resources_created": 0,
+  "no_new_issue": true,
+  "static_candidates_excluded": [
+    "404.html handling/implicit SPA policy is a recorded future option and divergence",
+    "incoming query strings deliberately not forwarded by redirects",
+    "clean-URL contract not established; no live test or finding"
+  ]
+}

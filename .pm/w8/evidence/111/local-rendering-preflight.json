@@ -1,0 +1,166 @@
+[
+  {
+    "marker": "QA357_LOCAL",
+    "node": "v22.17.1",
+    "express_version": "5.3.0",
+    "node_env_present": false,
+    "node_env": null,
+    "framework_env": "development",
+    "view_cache_enabled": false,
+    "view_cache_entries": 0,
+    "render_cache_options": [
+      false,
+      false
+    ],
+    "rendered": [
+      "QA357_LOCAL",
+      "QA357_LOCAL"
+    ],
+    "files": {
+      "package.json": {
+        "bytes": 2731,
+        "sha256": "9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe"
+      },
+      "package-lock.json": {
+        "absent": true
+      },
+      "lib/application.js": {
+        "bytes": 13953,
+        "sha256": "6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04"
+      },
+      "index.js": {
+        "bytes": 224,
+        "sha256": "4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140"
+      },
+      ".nvmrc": {
+        "absent": true
+      },
+      ".node-version": {
+        "absent": true
+      }
+    }
+  },
+  {
+    "marker": "QA357_LOCAL",
+    "node": "v22.17.1",
+    "express_version": "5.3.0",
+    "node_env_present": true,
+    "node_env": "production",
+    "framework_env": "production",
+    "view_cache_enabled": true,
+    "view_cache_entries": 1,
+    "render_cache_options": [
+      true,
+      true
+    ],
+    "rendered": [
+      "QA357_LOCAL",
+      "QA357_LOCAL"
+    ],
+    "files": {
+      "package.json": {
+        "bytes": 2731,
+        "sha256": "9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe"
+      },
+      "package-lock.json": {
+        "absent": true
+      },
+      "lib/application.js": {
+        "bytes": 13953,
+        "sha256": "6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04"
+      },
+      "index.js": {
+        "bytes": 224,
+        "sha256": "4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140"
+      },
+      ".nvmrc": {
+        "absent": true
+      },
+      ".node-version": {
+        "absent": true
+      }
+    }
+  },
+  {
+    "marker": "QA357_LOCAL",
+    "node": "v22.17.1",
+    "express_version": "5.3.0",
+    "node_env_present": true,
+    "node_env": "staging",
+    "framework_env": "staging",
+    "view_cache_enabled": false,
+    "view_cache_entries": 0,
+    "render_cache_options": [
+      false,
+      false
+    ],
+    "rendered": [
+      "QA357_LOCAL",
+      "QA357_LOCAL"
+    ],
+    "files": {
+      "package.json": {
+        "bytes": 2731,
+        "sha256": "9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe"
+      },
+      "package-lock.json": {
+        "absent": true
+      },
+      "lib/application.js": {
+        "bytes": 13953,
+        "sha256": "6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04"
+      },
+      "index.js": {
+        "bytes": 224,
+        "sha256": "4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140"
+      },
+      ".nvmrc": {
+        "absent": true
+      },
+      ".node-version": {
+        "absent": true
+      }
+    }
+  },
+  {
+    "marker": "QA357_LOCAL",
+    "node": "v22.17.1",
+    "express_version": "5.3.0",
+    "node_env_present": true,
+    "node_env": "",
+    "framework_env": "development",
+    "view_cache_enabled": false,
+    "view_cache_entries": 0,
+    "render_cache_options": [
+      false,
+      false
+    ],
+    "rendered": [
+      "QA357_LOCAL",
+      "QA357_LOCAL"
+    ],
+    "files": {
+      "package.json": {
+        "bytes": 2731,
+        "sha256": "9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe"
+      },
+      "package-lock.json": {
+        "absent": true
+      },
+      "lib/application.js": {
+        "bytes": 13953,
+        "sha256": "6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04"
+      },
+      "index.js": {
+        "bytes": 224,
+        "sha256": "4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140"
+      },
+      ".nvmrc": {
+        "absent": true
+      },
+      ".node-version": {
+        "absent": true
+      }
+    }
+  }
+]

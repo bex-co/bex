@@ -1,0 +1,15 @@
+{
+  "CMD_present": true,
+  "actual_generator_runtime_NODE_ENV_default_present": false,
+  "case": "web26",
+  "choices": [
+    {
+      "Label": "Node",
+      "Line": "26",
+      "Image": "node:26-bookworm@sha256:f1233c415b41ffcf237c717b3dea92e9d4ea006e0e4c71edcb790605d74f5404",
+      "Source": "NODE_VERSION=26"
+    }
+  ],
+  "qualification": "unchanged real generator and resolver observation; no Docker execution or passing fixed regression claimed",
+  "static": false
+}

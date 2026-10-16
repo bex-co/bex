@@ -1,0 +1,24 @@
+{
+  "at": "2026-10-16T03:42:06.480763+00:00",
+  "checks": [
+    {
+      "command": [
+        "/bin/bash",
+        "-n"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "ruby",
+        "-c"
+      ],
+      "exit": 0,
+      "stdout": "Syntax OK\n",
+      "stderr": ""
+    }
+  ],
+  "qualification": "syntax only; authored build and probes not executed locally"
+}

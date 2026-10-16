@@ -1,0 +1,4236 @@
+{
+  "at": "2026-10-16T01:37:57.288182+00:00",
+  "source_head": "a1adb0cdf138a71edcaaeea58c71cd04d88ca2d3",
+  "nonce": "3ce4bb",
+  "scope": "native Blueprint validation only; server Starter and disk declarations are syntax inputs, no paid or free resource is created",
+  "cases": [
+    {
+      "case": "web-base",
+      "kind": "web",
+      "expected_valid": true,
+      "manifest": "services:\n- type: web\n  name: qa334-3ce4bb-web\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n"
+    },
+    {
+      "case": "web-healthCheckPath",
+      "kind": "web",
+      "field": "healthCheckPath",
+      "expected_valid": true,
+      "manifest": "services:\n- type: web\n  name: qa334-3ce4bb-web\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  healthCheckPath: /health\n"
+    },
+    {
+      "case": "web-maxShutdownDelaySeconds",
+      "kind": "web",
+      "field": "maxShutdownDelaySeconds",
+      "expected_valid": true,
+      "manifest": "services:\n- type: web\n  name: qa334-3ce4bb-web\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  maxShutdownDelaySeconds: 8\n"
+    },
+    {
+      "case": "web-routes",
+      "kind": "web",
+      "field": "routes",
+      "expected_valid": false,
+      "manifest": "services:\n- type: web\n  name: qa334-3ce4bb-web\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  routes:\n  - type: redirect\n    source: /old\n    destination: /new\n"
+    },
+    {
+      "case": "web-headers",
+      "kind": "web",
+      "field": "headers",
+      "expected_valid": false,
+      "manifest": "services:\n- type: web\n  name: qa334-3ce4bb-web\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  headers:\n  - path: /*\n    name: X-QA-Corpus\n    value: qa334\n"
+    },
+    {
+      "case": "web-staticPublishPath",
+      "kind": "web",
+      "field": "staticPublishPath",
+      "expected_valid": false,
+      "manifest": "services:\n- type: web\n  name: qa334-3ce4bb-web\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  staticPublishPath: public\n"
+    },
+    {
+      "case": "web-schedule",
+      "kind": "web",
+      "field": "schedule",
+      "expected_valid": false,
+      "manifest": "services:\n- type: web\n  name: qa334-3ce4bb-web\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  schedule: 0 * * * *\n"
+    },
+    {
+      "case": "web-startCommand",
+      "kind": "web",
+      "field": "startCommand",
+      "expected_valid": true,
+      "manifest": "services:\n- type: web\n  name: qa334-3ce4bb-web\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n"
+    },
+    {
+      "case": "web-disk",
+      "kind": "web",
+      "field": "disk",
+      "expected_valid": true,
+      "manifest": "services:\n- type: web\n  name: qa334-3ce4bb-web\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  disk:\n    name: qa334-data\n    mountPath: /var/data\n    sizeGB: 10\n"
+    },
+    {
+      "case": "pserv-base",
+      "kind": "pserv",
+      "expected_valid": true,
+      "manifest": "services:\n- type: pserv\n  name: qa334-3ce4bb-pserv\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n"
+    },
+    {
+      "case": "pserv-healthCheckPath",
+      "kind": "pserv",
+      "field": "healthCheckPath",
+      "expected_valid": true,
+      "manifest": "services:\n- type: pserv\n  name: qa334-3ce4bb-pserv\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  healthCheckPath: /health\n"
+    },
+    {
+      "case": "pserv-maxShutdownDelaySeconds",
+      "kind": "pserv",
+      "field": "maxShutdownDelaySeconds",
+      "expected_valid": true,
+      "manifest": "services:\n- type: pserv\n  name: qa334-3ce4bb-pserv\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  maxShutdownDelaySeconds: 8\n"
+    },
+    {
+      "case": "pserv-routes",
+      "kind": "pserv",
+      "field": "routes",
+      "expected_valid": false,
+      "manifest": "services:\n- type: pserv\n  name: qa334-3ce4bb-pserv\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  routes:\n  - type: redirect\n    source: /old\n    destination: /new\n"
+    },
+    {
+      "case": "pserv-headers",
+      "kind": "pserv",
+      "field": "headers",
+      "expected_valid": false,
+      "manifest": "services:\n- type: pserv\n  name: qa334-3ce4bb-pserv\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  headers:\n  - path: /*\n    name: X-QA-Corpus\n    value: qa334\n"
+    },
+    {
+      "case": "pserv-staticPublishPath",
+      "kind": "pserv",
+      "field": "staticPublishPath",
+      "expected_valid": false,
+      "manifest": "services:\n- type: pserv\n  name: qa334-3ce4bb-pserv\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  staticPublishPath: public\n"
+    },
+    {
+      "case": "pserv-schedule",
+      "kind": "pserv",
+      "field": "schedule",
+      "expected_valid": false,
+      "manifest": "services:\n- type: pserv\n  name: qa334-3ce4bb-pserv\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  schedule: 0 * * * *\n"
+    },
+    {
+      "case": "pserv-startCommand",
+      "kind": "pserv",
+      "field": "startCommand",
+      "expected_valid": true,
+      "manifest": "services:\n- type: pserv\n  name: qa334-3ce4bb-pserv\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n"
+    },
+    {
+      "case": "pserv-disk",
+      "kind": "pserv",
+      "field": "disk",
+      "expected_valid": true,
+      "manifest": "services:\n- type: pserv\n  name: qa334-3ce4bb-pserv\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  disk:\n    name: qa334-data\n    mountPath: /var/data\n    sizeGB: 10\n"
+    },
+    {
+      "case": "worker-base",
+      "kind": "worker",
+      "expected_valid": true,
+      "manifest": "services:\n- type: worker\n  name: qa334-3ce4bb-worker\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n"
+    },
+    {
+      "case": "worker-healthCheckPath",
+      "kind": "worker",
+      "field": "healthCheckPath",
+      "expected_valid": false,
+      "manifest": "services:\n- type: worker\n  name: qa334-3ce4bb-worker\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  healthCheckPath: /health\n"
+    },
+    {
+      "case": "worker-maxShutdownDelaySeconds",
+      "kind": "worker",
+      "field": "maxShutdownDelaySeconds",
+      "expected_valid": true,
+      "manifest": "services:\n- type: worker\n  name: qa334-3ce4bb-worker\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  maxShutdownDelaySeconds: 8\n"
+    },
+    {
+      "case": "worker-routes",
+      "kind": "worker",
+      "field": "routes",
+      "expected_valid": false,
+      "manifest": "services:\n- type: worker\n  name: qa334-3ce4bb-worker\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  routes:\n  - type: redirect\n    source: /old\n    destination: /new\n"
+    },
+    {
+      "case": "worker-headers",
+      "kind": "worker",
+      "field": "headers",
+      "expected_valid": false,
+      "manifest": "services:\n- type: worker\n  name: qa334-3ce4bb-worker\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  headers:\n  - path: /*\n    name: X-QA-Corpus\n    value: qa334\n"
+    },
+    {
+      "case": "worker-staticPublishPath",
+      "kind": "worker",
+      "field": "staticPublishPath",
+      "expected_valid": false,
+      "manifest": "services:\n- type: worker\n  name: qa334-3ce4bb-worker\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  staticPublishPath: public\n"
+    },
+    {
+      "case": "worker-schedule",
+      "kind": "worker",
+      "field": "schedule",
+      "expected_valid": false,
+      "manifest": "services:\n- type: worker\n  name: qa334-3ce4bb-worker\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  schedule: 0 * * * *\n"
+    },
+    {
+      "case": "worker-startCommand",
+      "kind": "worker",
+      "field": "startCommand",
+      "expected_valid": true,
+      "manifest": "services:\n- type: worker\n  name: qa334-3ce4bb-worker\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n"
+    },
+    {
+      "case": "worker-disk",
+      "kind": "worker",
+      "field": "disk",
+      "expected_valid": true,
+      "manifest": "services:\n- type: worker\n  name: qa334-3ce4bb-worker\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  disk:\n    name: qa334-data\n    mountPath: /var/data\n    sizeGB: 10\n"
+    },
+    {
+      "case": "cron-base",
+      "kind": "cron",
+      "expected_valid": true,
+      "manifest": "services:\n- type: cron\n  name: qa334-3ce4bb-cron\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  schedule: 0 0 * * *\n"
+    },
+    {
+      "case": "cron-healthCheckPath",
+      "kind": "cron",
+      "field": "healthCheckPath",
+      "expected_valid": false,
+      "manifest": "services:\n- type: cron\n  name: qa334-3ce4bb-cron\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  schedule: 0 0 * * *\n  healthCheckPath: /health\n"
+    },
+    {
+      "case": "cron-maxShutdownDelaySeconds",
+      "kind": "cron",
+      "field": "maxShutdownDelaySeconds",
+      "expected_valid": false,
+      "manifest": "services:\n- type: cron\n  name: qa334-3ce4bb-cron\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  schedule: 0 0 * * *\n  maxShutdownDelaySeconds: 8\n"
+    },
+    {
+      "case": "cron-routes",
+      "kind": "cron",
+      "field": "routes",
+      "expected_valid": false,
+      "manifest": "services:\n- type: cron\n  name: qa334-3ce4bb-cron\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  schedule: 0 0 * * *\n  routes:\n  - type: redirect\n    source: /old\n    destination: /new\n"
+    },
+    {
+      "case": "cron-headers",
+      "kind": "cron",
+      "field": "headers",
+      "expected_valid": false,
+      "manifest": "services:\n- type: cron\n  name: qa334-3ce4bb-cron\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  schedule: 0 0 * * *\n  headers:\n  - path: /*\n    name: X-QA-Corpus\n    value: qa334\n"
+    },
+    {
+      "case": "cron-staticPublishPath",
+      "kind": "cron",
+      "field": "staticPublishPath",
+      "expected_valid": false,
+      "manifest": "services:\n- type: cron\n  name: qa334-3ce4bb-cron\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  schedule: 0 0 * * *\n  staticPublishPath: public\n"
+    },
+    {
+      "case": "cron-schedule",
+      "kind": "cron",
+      "field": "schedule",
+      "expected_valid": true,
+      "manifest": "services:\n- type: cron\n  name: qa334-3ce4bb-cron\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  schedule: 0 * * * *\n"
+    },
+    {
+      "case": "cron-startCommand",
+      "kind": "cron",
+      "field": "startCommand",
+      "expected_valid": true,
+      "manifest": "services:\n- type: cron\n  name: qa334-3ce4bb-cron\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  schedule: 0 0 * * *\n"
+    },
+    {
+      "case": "cron-disk",
+      "kind": "cron",
+      "field": "disk",
+      "expected_valid": false,
+      "manifest": "services:\n- type: cron\n  name: qa334-3ce4bb-cron\n  runtime: node\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  plan: starter\n  startCommand: date\n  schedule: 0 0 * * *\n  disk:\n    name: qa334-data\n    mountPath: /var/data\n    sizeGB: 10\n"
+    },
+    {
+      "case": "static-base",
+      "kind": "static",
+      "expected_valid": true,
+      "manifest": "services:\n- type: web\n  name: qa334-3ce4bb-static\n  runtime: static\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  staticPublishPath: public\n"
+    },
+    {
+      "case": "static-healthCheckPath",
+      "kind": "static",
+      "field": "healthCheckPath",
+      "expected_valid": false,
+      "manifest": "services:\n- type: web\n  name: qa334-3ce4bb-static\n  runtime: static\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  staticPublishPath: public\n  healthCheckPath: /health\n"
+    },
+    {
+      "case": "static-maxShutdownDelaySeconds",
+      "kind": "static",
+      "field": "maxShutdownDelaySeconds",
+      "expected_valid": false,
+      "manifest": "services:\n- type: web\n  name: qa334-3ce4bb-static\n  runtime: static\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  staticPublishPath: public\n  maxShutdownDelaySeconds: 8\n"
+    },
+    {
+      "case": "static-routes",
+      "kind": "static",
+      "field": "routes",
+      "expected_valid": true,
+      "manifest": "services:\n- type: web\n  name: qa334-3ce4bb-static\n  runtime: static\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  staticPublishPath: public\n  routes:\n  - type: redirect\n    source: /old\n    destination: /new\n"
+    },
+    {
+      "case": "static-headers",
+      "kind": "static",
+      "field": "headers",
+      "expected_valid": true,
+      "manifest": "services:\n- type: web\n  name: qa334-3ce4bb-static\n  runtime: static\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  staticPublishPath: public\n  headers:\n  - path: /*\n    name: X-QA-Corpus\n    value: qa334\n"
+    },
+    {
+      "case": "static-staticPublishPath",
+      "kind": "static",
+      "field": "staticPublishPath",
+      "expected_valid": true,
+      "manifest": "services:\n- type: web\n  name: qa334-3ce4bb-static\n  runtime: static\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  staticPublishPath: public\n"
+    },
+    {
+      "case": "static-schedule",
+      "kind": "static",
+      "field": "schedule",
+      "expected_valid": false,
+      "manifest": "services:\n- type: web\n  name: qa334-3ce4bb-static\n  runtime: static\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  staticPublishPath: public\n  schedule: 0 * * * *\n"
+    },
+    {
+      "case": "static-startCommand",
+      "kind": "static",
+      "field": "startCommand",
+      "expected_valid": false,
+      "manifest": "services:\n- type: web\n  name: qa334-3ce4bb-static\n  runtime: static\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  staticPublishPath: public\n  startCommand: date\n"
+    },
+    {
+      "case": "static-disk",
+      "kind": "static",
+      "field": "disk",
+      "expected_valid": false,
+      "manifest": "services:\n- type: web\n  name: qa334-3ce4bb-static\n  runtime: static\n  repo: https://github.com/bex-co/bex\n  branch: main\n  buildCommand: 'true'\n  autoDeploy: false\n  staticPublishPath: public\n  disk:\n    name: qa334-data\n    mountPath: /var/data\n    sizeGB: 10\n"
+    }
+  ],
+  "results": [
+    {
+      "at": "2026-10-16T01:37:57.663889+00:00",
+      "client": "published Bex0.3.2",
+      "case": "web-base",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 1.232,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:37:59.603884+00:00",
+      "client": "published Bex0.3.2",
+      "case": "web-healthCheckPath",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.659,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:01.360787+00:00",
+      "client": "published Bex0.3.2",
+      "case": "web-maxShutdownDelaySeconds",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.582,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:02.880700+00:00",
+      "client": "published Bex0.3.2",
+      "case": "web-routes",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.896,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"at '/services/0': additional properties 'routes' not allowed\",\n      \"line\": 12,\n      \"path\": \"services[0].routes\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "at '/services/0': additional properties 'routes' not allowed",
+            "line": 12,
+            "path": "services[0].routes"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:04.545517+00:00",
+      "client": "published Bex0.3.2",
+      "case": "web-headers",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.611,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"at '/services/0': additional properties 'headers' not allowed\",\n      \"line\": 12,\n      \"path\": \"services[0].headers\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "at '/services/0': additional properties 'headers' not allowed",
+            "line": 12,
+            "path": "services[0].headers"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:05.865273+00:00",
+      "client": "published Bex0.3.2",
+      "case": "web-staticPublishPath",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.746,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 22,\n      \"error\": \"at '/services/0': additional properties 'staticPublishPath' not allowed\",\n      \"line\": 11,\n      \"path\": \"services[0].staticPublishPath\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 22,
+            "error": "at '/services/0': additional properties 'staticPublishPath' not allowed",
+            "line": 11,
+            "path": "services[0].staticPublishPath"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:07.466841+00:00",
+      "client": "published Bex0.3.2",
+      "case": "web-schedule",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.65,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"at '/services/0': additional properties 'schedule' not allowed\",\n      \"line\": 11,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "at '/services/0': additional properties 'schedule' not allowed",
+            "line": 11,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:08.915753+00:00",
+      "client": "published Bex0.3.2",
+      "case": "web-startCommand",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.609,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:10.310884+00:00",
+      "client": "published Bex0.3.2",
+      "case": "web-disk",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.551,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:11.674384+00:00",
+      "client": "published Bex0.3.2",
+      "case": "pserv-base",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.688,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-pserv\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-pserv"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:13.099994+00:00",
+      "client": "published Bex0.3.2",
+      "case": "pserv-healthCheckPath",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.497,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-pserv\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-pserv"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:14.313262+00:00",
+      "client": "published Bex0.3.2",
+      "case": "pserv-maxShutdownDelaySeconds",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.554,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-pserv\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-pserv"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:15.612414+00:00",
+      "client": "published Bex0.3.2",
+      "case": "pserv-routes",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.577,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"at '/services/0': additional properties 'routes' not allowed\",\n      \"line\": 12,\n      \"path\": \"services[0].routes\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "at '/services/0': additional properties 'routes' not allowed",
+            "line": 12,
+            "path": "services[0].routes"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:16.956151+00:00",
+      "client": "published Bex0.3.2",
+      "case": "pserv-headers",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.557,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"at '/services/0': additional properties 'headers' not allowed\",\n      \"line\": 12,\n      \"path\": \"services[0].headers\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "at '/services/0': additional properties 'headers' not allowed",
+            "line": 12,
+            "path": "services[0].headers"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:18.263786+00:00",
+      "client": "published Bex0.3.2",
+      "case": "pserv-staticPublishPath",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.615,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 22,\n      \"error\": \"at '/services/0': additional properties 'staticPublishPath' not allowed\",\n      \"line\": 11,\n      \"path\": \"services[0].staticPublishPath\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 22,
+            "error": "at '/services/0': additional properties 'staticPublishPath' not allowed",
+            "line": 11,
+            "path": "services[0].staticPublishPath"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:19.672895+00:00",
+      "client": "published Bex0.3.2",
+      "case": "pserv-schedule",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.658,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"at '/services/0': additional properties 'schedule' not allowed\",\n      \"line\": 11,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "at '/services/0': additional properties 'schedule' not allowed",
+            "line": 11,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:21.050910+00:00",
+      "client": "published Bex0.3.2",
+      "case": "pserv-startCommand",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.61,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-pserv\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-pserv"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:22.422826+00:00",
+      "client": "published Bex0.3.2",
+      "case": "pserv-disk",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.561,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-pserv\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-pserv"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:23.774761+00:00",
+      "client": "published Bex0.3.2",
+      "case": "worker-base",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.743,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-worker\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-worker"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:25.271892+00:00",
+      "client": "published Bex0.3.2",
+      "case": "worker-healthCheckPath",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.568,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"service \\\"qa334-3ce4bb-worker\\\": health check path is not applicable to a background_worker\",\n      \"line\": 11,\n      \"path\": \"services[0].healthCheckPath\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 20,
+            "error": "service \"qa334-3ce4bb-worker\": health check path is not applicable to a background_worker",
+            "line": 11,
+            "path": "services[0].healthCheckPath"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:26.598581+00:00",
+      "client": "published Bex0.3.2",
+      "case": "worker-maxShutdownDelaySeconds",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.642,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-worker\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-worker"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:28.005726+00:00",
+      "client": "published Bex0.3.2",
+      "case": "worker-routes",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.601,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"at '/services/0': additional properties 'routes' not allowed\",\n      \"line\": 12,\n      \"path\": \"services[0].routes\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "at '/services/0': additional properties 'routes' not allowed",
+            "line": 12,
+            "path": "services[0].routes"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:29.368993+00:00",
+      "client": "published Bex0.3.2",
+      "case": "worker-headers",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.695,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"at '/services/0': additional properties 'headers' not allowed\",\n      \"line\": 12,\n      \"path\": \"services[0].headers\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "at '/services/0': additional properties 'headers' not allowed",
+            "line": 12,
+            "path": "services[0].headers"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:30.820356+00:00",
+      "client": "published Bex0.3.2",
+      "case": "worker-staticPublishPath",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.517,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 22,\n      \"error\": \"at '/services/0': additional properties 'staticPublishPath' not allowed\",\n      \"line\": 11,\n      \"path\": \"services[0].staticPublishPath\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 22,
+            "error": "at '/services/0': additional properties 'staticPublishPath' not allowed",
+            "line": 11,
+            "path": "services[0].staticPublishPath"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:32.089617+00:00",
+      "client": "published Bex0.3.2",
+      "case": "worker-schedule",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.551,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"at '/services/0': additional properties 'schedule' not allowed\",\n      \"line\": 11,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "at '/services/0': additional properties 'schedule' not allowed",
+            "line": 11,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:33.418645+00:00",
+      "client": "published Bex0.3.2",
+      "case": "worker-startCommand",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.581,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-worker\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-worker"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:34.732565+00:00",
+      "client": "published Bex0.3.2",
+      "case": "worker-disk",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.624,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-worker\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-worker"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:36.579109+00:00",
+      "client": "published Bex0.3.2",
+      "case": "cron-base",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.655,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:37.954718+00:00",
+      "client": "published Bex0.3.2",
+      "case": "cron-healthCheckPath",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.679,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"at '/services/0': additional properties 'healthCheckPath' not allowed\",\n      \"line\": 12,\n      \"path\": \"services[0].healthCheckPath\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 20,
+            "error": "at '/services/0': additional properties 'healthCheckPath' not allowed",
+            "line": 12,
+            "path": "services[0].healthCheckPath"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:39.403397+00:00",
+      "client": "published Bex0.3.2",
+      "case": "cron-maxShutdownDelaySeconds",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.571,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 28,\n      \"error\": \"at '/services/0': additional properties 'maxShutdownDelaySeconds' not allowed\",\n      \"line\": 12,\n      \"path\": \"services[0].maxShutdownDelaySeconds\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 28,
+            "error": "at '/services/0': additional properties 'maxShutdownDelaySeconds' not allowed",
+            "line": 12,
+            "path": "services[0].maxShutdownDelaySeconds"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:40.733779+00:00",
+      "client": "published Bex0.3.2",
+      "case": "cron-routes",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.576,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"at '/services/0': additional properties 'routes' not allowed\",\n      \"line\": 13,\n      \"path\": \"services[0].routes\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "at '/services/0': additional properties 'routes' not allowed",
+            "line": 13,
+            "path": "services[0].routes"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:42.016938+00:00",
+      "client": "published Bex0.3.2",
+      "case": "cron-headers",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.546,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"at '/services/0': additional properties 'headers' not allowed\",\n      \"line\": 13,\n      \"path\": \"services[0].headers\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "at '/services/0': additional properties 'headers' not allowed",
+            "line": 13,
+            "path": "services[0].headers"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:43.256745+00:00",
+      "client": "published Bex0.3.2",
+      "case": "cron-staticPublishPath",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.553,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 22,\n      \"error\": \"at '/services/0': additional properties 'staticPublishPath' not allowed\",\n      \"line\": 12,\n      \"path\": \"services[0].staticPublishPath\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 22,
+            "error": "at '/services/0': additional properties 'staticPublishPath' not allowed",
+            "line": 12,
+            "path": "services[0].staticPublishPath"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:44.501501+00:00",
+      "client": "published Bex0.3.2",
+      "case": "cron-schedule",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.559,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:45.750657+00:00",
+      "client": "published Bex0.3.2",
+      "case": "cron-startCommand",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.603,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:47.051059+00:00",
+      "client": "published Bex0.3.2",
+      "case": "cron-disk",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.557,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"at '/services/0': additional properties 'disk' not allowed\",\n      \"line\": 13,\n      \"path\": \"services[0].disk\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "at '/services/0': additional properties 'disk' not allowed",
+            "line": 13,
+            "path": "services[0].disk"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:48.308422+00:00",
+      "client": "published Bex0.3.2",
+      "case": "static-base",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.438,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-static"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:49.465331+00:00",
+      "client": "published Bex0.3.2",
+      "case": "static-healthCheckPath",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.49,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"at '/services/0': additional properties 'healthCheckPath' not allowed\",\n      \"line\": 10,\n      \"path\": \"services[0].healthCheckPath\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 20,
+            "error": "at '/services/0': additional properties 'healthCheckPath' not allowed",
+            "line": 10,
+            "path": "services[0].healthCheckPath"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:50.663019+00:00",
+      "client": "published Bex0.3.2",
+      "case": "static-maxShutdownDelaySeconds",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.604,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 28,\n      \"error\": \"at '/services/0': additional properties 'maxShutdownDelaySeconds' not allowed\",\n      \"line\": 10,\n      \"path\": \"services[0].maxShutdownDelaySeconds\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 28,
+            "error": "at '/services/0': additional properties 'maxShutdownDelaySeconds' not allowed",
+            "line": 10,
+            "path": "services[0].maxShutdownDelaySeconds"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:51.981951+00:00",
+      "client": "published Bex0.3.2",
+      "case": "static-routes",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.68,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-static"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:53.481244+00:00",
+      "client": "published Bex0.3.2",
+      "case": "static-headers",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.527,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-static"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:54.729938+00:00",
+      "client": "published Bex0.3.2",
+      "case": "static-staticPublishPath",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.746,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-static"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:56.180044+00:00",
+      "client": "published Bex0.3.2",
+      "case": "static-schedule",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.616,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"at '/services/0': additional properties 'schedule' not allowed\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "at '/services/0': additional properties 'schedule' not allowed",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:57.501250+00:00",
+      "client": "published Bex0.3.2",
+      "case": "static-startCommand",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.595,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 17,\n      \"error\": \"at '/services/0': additional properties 'startCommand' not allowed\",\n      \"line\": 10,\n      \"path\": \"services[0].startCommand\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 17,
+            "error": "at '/services/0': additional properties 'startCommand' not allowed",
+            "line": 10,
+            "path": "services[0].startCommand"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:58.779629+00:00",
+      "client": "published Bex0.3.2",
+      "case": "static-disk",
+      "command": [
+        "published Bex0.3.2",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "elapsed": 0.432,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"at '/services/0': additional properties 'disk' not allowed\",\n      \"line\": 11,\n      \"path\": \"services[0].disk\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "at '/services/0': additional properties 'disk' not allowed",
+            "line": 11,
+            "path": "services[0].disk"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:38:59.906139+00:00",
+      "client": "unchanged Render2.27",
+      "case": "web-base",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.814,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:01.448936+00:00",
+      "client": "unchanged Render2.27",
+      "case": "web-healthCheckPath",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.516,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:02.658892+00:00",
+      "client": "unchanged Render2.27",
+      "case": "web-maxShutdownDelaySeconds",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.602,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:04.362701+00:00",
+      "client": "unchanged Render2.27",
+      "case": "web-routes",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.557,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"at '/services/0': additional properties 'routes' not allowed\",\n      \"line\": 12,\n      \"path\": \"services[0].routes\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "at '/services/0': additional properties 'routes' not allowed",
+            "line": 12,
+            "path": "services[0].routes"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:05.601923+00:00",
+      "client": "unchanged Render2.27",
+      "case": "web-headers",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.527,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"at '/services/0': additional properties 'headers' not allowed\",\n      \"line\": 12,\n      \"path\": \"services[0].headers\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "at '/services/0': additional properties 'headers' not allowed",
+            "line": 12,
+            "path": "services[0].headers"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:06.813281+00:00",
+      "client": "unchanged Render2.27",
+      "case": "web-staticPublishPath",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.593,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 22,\n      \"error\": \"at '/services/0': additional properties 'staticPublishPath' not allowed\",\n      \"line\": 11,\n      \"path\": \"services[0].staticPublishPath\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 22,
+            "error": "at '/services/0': additional properties 'staticPublishPath' not allowed",
+            "line": 11,
+            "path": "services[0].staticPublishPath"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:08.104872+00:00",
+      "client": "unchanged Render2.27",
+      "case": "web-schedule",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.581,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"at '/services/0': additional properties 'schedule' not allowed\",\n      \"line\": 11,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "at '/services/0': additional properties 'schedule' not allowed",
+            "line": 11,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:09.366864+00:00",
+      "client": "unchanged Render2.27",
+      "case": "web-startCommand",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.548,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:10.600266+00:00",
+      "client": "unchanged Render2.27",
+      "case": "web-disk",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 1.211,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-web\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-web"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:12.492875+00:00",
+      "client": "unchanged Render2.27",
+      "case": "pserv-base",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.618,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-pserv\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-pserv"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:13.819868+00:00",
+      "client": "unchanged Render2.27",
+      "case": "pserv-healthCheckPath",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.528,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-pserv\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-pserv"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:15.044242+00:00",
+      "client": "unchanged Render2.27",
+      "case": "pserv-maxShutdownDelaySeconds",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 1.004,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-pserv\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-pserv"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:16.802896+00:00",
+      "client": "unchanged Render2.27",
+      "case": "pserv-routes",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 1.06,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"at '/services/0': additional properties 'routes' not allowed\",\n      \"line\": 12,\n      \"path\": \"services[0].routes\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "at '/services/0': additional properties 'routes' not allowed",
+            "line": 12,
+            "path": "services[0].routes"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:18.583547+00:00",
+      "client": "unchanged Render2.27",
+      "case": "pserv-headers",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.558,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"at '/services/0': additional properties 'headers' not allowed\",\n      \"line\": 12,\n      \"path\": \"services[0].headers\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "at '/services/0': additional properties 'headers' not allowed",
+            "line": 12,
+            "path": "services[0].headers"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:19.868963+00:00",
+      "client": "unchanged Render2.27",
+      "case": "pserv-staticPublishPath",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.511,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 22,\n      \"error\": \"at '/services/0': additional properties 'staticPublishPath' not allowed\",\n      \"line\": 11,\n      \"path\": \"services[0].staticPublishPath\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 22,
+            "error": "at '/services/0': additional properties 'staticPublishPath' not allowed",
+            "line": 11,
+            "path": "services[0].staticPublishPath"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:21.080030+00:00",
+      "client": "unchanged Render2.27",
+      "case": "pserv-schedule",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.501,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"at '/services/0': additional properties 'schedule' not allowed\",\n      \"line\": 11,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "at '/services/0': additional properties 'schedule' not allowed",
+            "line": 11,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:22.267508+00:00",
+      "client": "unchanged Render2.27",
+      "case": "pserv-startCommand",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.48,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-pserv\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-pserv"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:23.977169+00:00",
+      "client": "unchanged Render2.27",
+      "case": "pserv-disk",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.493,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-pserv\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-pserv"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:25.166988+00:00",
+      "client": "unchanged Render2.27",
+      "case": "worker-base",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.565,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-worker\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-worker"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:26.450175+00:00",
+      "client": "unchanged Render2.27",
+      "case": "worker-healthCheckPath",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.476,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"service \\\"qa334-3ce4bb-worker\\\": health check path is not applicable to a background_worker\",\n      \"line\": 11,\n      \"path\": \"services[0].healthCheckPath\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 20,
+            "error": "service \"qa334-3ce4bb-worker\": health check path is not applicable to a background_worker",
+            "line": 11,
+            "path": "services[0].healthCheckPath"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:27.624555+00:00",
+      "client": "unchanged Render2.27",
+      "case": "worker-maxShutdownDelaySeconds",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.657,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-worker\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-worker"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:28.993408+00:00",
+      "client": "unchanged Render2.27",
+      "case": "worker-routes",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.571,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"at '/services/0': additional properties 'routes' not allowed\",\n      \"line\": 12,\n      \"path\": \"services[0].routes\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "at '/services/0': additional properties 'routes' not allowed",
+            "line": 12,
+            "path": "services[0].routes"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:30.256290+00:00",
+      "client": "unchanged Render2.27",
+      "case": "worker-headers",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.624,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"at '/services/0': additional properties 'headers' not allowed\",\n      \"line\": 12,\n      \"path\": \"services[0].headers\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "at '/services/0': additional properties 'headers' not allowed",
+            "line": 12,
+            "path": "services[0].headers"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:31.562190+00:00",
+      "client": "unchanged Render2.27",
+      "case": "worker-staticPublishPath",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.606,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 22,\n      \"error\": \"at '/services/0': additional properties 'staticPublishPath' not allowed\",\n      \"line\": 11,\n      \"path\": \"services[0].staticPublishPath\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 22,
+            "error": "at '/services/0': additional properties 'staticPublishPath' not allowed",
+            "line": 11,
+            "path": "services[0].staticPublishPath"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:32.903589+00:00",
+      "client": "unchanged Render2.27",
+      "case": "worker-schedule",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.623,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"at '/services/0': additional properties 'schedule' not allowed\",\n      \"line\": 11,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "at '/services/0': additional properties 'schedule' not allowed",
+            "line": 11,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:34.229316+00:00",
+      "client": "unchanged Render2.27",
+      "case": "worker-startCommand",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.686,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-worker\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-worker"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:35.614797+00:00",
+      "client": "unchanged Render2.27",
+      "case": "worker-disk",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.575,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-worker\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-worker"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:36.878628+00:00",
+      "client": "unchanged Render2.27",
+      "case": "cron-base",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.545,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:38.144217+00:00",
+      "client": "unchanged Render2.27",
+      "case": "cron-healthCheckPath",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.674,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"at '/services/0': additional properties 'healthCheckPath' not allowed\",\n      \"line\": 12,\n      \"path\": \"services[0].healthCheckPath\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 20,
+            "error": "at '/services/0': additional properties 'healthCheckPath' not allowed",
+            "line": 12,
+            "path": "services[0].healthCheckPath"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:39.915295+00:00",
+      "client": "unchanged Render2.27",
+      "case": "cron-maxShutdownDelaySeconds",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.475,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 28,\n      \"error\": \"at '/services/0': additional properties 'maxShutdownDelaySeconds' not allowed\",\n      \"line\": 12,\n      \"path\": \"services[0].maxShutdownDelaySeconds\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 28,
+            "error": "at '/services/0': additional properties 'maxShutdownDelaySeconds' not allowed",
+            "line": 12,
+            "path": "services[0].maxShutdownDelaySeconds"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:41.108182+00:00",
+      "client": "unchanged Render2.27",
+      "case": "cron-routes",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.519,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"at '/services/0': additional properties 'routes' not allowed\",\n      \"line\": 13,\n      \"path\": \"services[0].routes\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "at '/services/0': additional properties 'routes' not allowed",
+            "line": 13,
+            "path": "services[0].routes"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:42.328010+00:00",
+      "client": "unchanged Render2.27",
+      "case": "cron-headers",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.402,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 3,\n      \"error\": \"at '/services/0': additional properties 'headers' not allowed\",\n      \"line\": 13,\n      \"path\": \"services[0].headers\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 3,
+            "error": "at '/services/0': additional properties 'headers' not allowed",
+            "line": 13,
+            "path": "services[0].headers"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:43.420271+00:00",
+      "client": "unchanged Render2.27",
+      "case": "cron-staticPublishPath",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.595,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 22,\n      \"error\": \"at '/services/0': additional properties 'staticPublishPath' not allowed\",\n      \"line\": 12,\n      \"path\": \"services[0].staticPublishPath\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 22,
+            "error": "at '/services/0': additional properties 'staticPublishPath' not allowed",
+            "line": 12,
+            "path": "services[0].staticPublishPath"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:44.707268+00:00",
+      "client": "unchanged Render2.27",
+      "case": "cron-schedule",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.582,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:45.990935+00:00",
+      "client": "unchanged Render2.27",
+      "case": "cron-startCommand",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.527,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-cron\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-cron"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:47.289578+00:00",
+      "client": "unchanged Render2.27",
+      "case": "cron-disk",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.605,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"at '/services/0': additional properties 'disk' not allowed\",\n      \"line\": 13,\n      \"path\": \"services[0].disk\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "at '/services/0': additional properties 'disk' not allowed",
+            "line": 13,
+            "path": "services[0].disk"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:48.597515+00:00",
+      "client": "unchanged Render2.27",
+      "case": "static-base",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.645,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-static"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:49.977300+00:00",
+      "client": "unchanged Render2.27",
+      "case": "static-healthCheckPath",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.532,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 20,\n      \"error\": \"at '/services/0': additional properties 'healthCheckPath' not allowed\",\n      \"line\": 10,\n      \"path\": \"services[0].healthCheckPath\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 20,
+            "error": "at '/services/0': additional properties 'healthCheckPath' not allowed",
+            "line": 10,
+            "path": "services[0].healthCheckPath"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:51.224098+00:00",
+      "client": "unchanged Render2.27",
+      "case": "static-maxShutdownDelaySeconds",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 1.185,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 28,\n      \"error\": \"at '/services/0': additional properties 'maxShutdownDelaySeconds' not allowed\",\n      \"line\": 10,\n      \"path\": \"services[0].maxShutdownDelaySeconds\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 28,
+            "error": "at '/services/0': additional properties 'maxShutdownDelaySeconds' not allowed",
+            "line": 10,
+            "path": "services[0].maxShutdownDelaySeconds"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:53.136758+00:00",
+      "client": "unchanged Render2.27",
+      "case": "static-routes",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.645,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-static"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:54.647160+00:00",
+      "client": "unchanged Render2.27",
+      "case": "static-headers",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.608,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-static"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:56.295875+00:00",
+      "client": "unchanged Render2.27",
+      "case": "static-staticPublishPath",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.566,
+        "stdout": "{\n  \"plan\": {\n    \"services\": [\n      \"qa334-3ce4bb-static\"\n    ],\n    \"totalActions\": 1\n  },\n  \"valid\": true\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "plan": {
+          "services": [
+            "qa334-3ce4bb-static"
+          ],
+          "totalActions": 1
+        },
+        "valid": true
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:57.579101+00:00",
+      "client": "unchanged Render2.27",
+      "case": "static-schedule",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.643,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 13,\n      \"error\": \"at '/services/0': additional properties 'schedule' not allowed\",\n      \"line\": 10,\n      \"path\": \"services[0].schedule\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 13,
+            "error": "at '/services/0': additional properties 'schedule' not allowed",
+            "line": 10,
+            "path": "services[0].schedule"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:39:58.991158+00:00",
+      "client": "unchanged Render2.27",
+      "case": "static-startCommand",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.546,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 17,\n      \"error\": \"at '/services/0': additional properties 'startCommand' not allowed\",\n      \"line\": 10,\n      \"path\": \"services[0].startCommand\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 17,
+            "error": "at '/services/0': additional properties 'startCommand' not allowed",
+            "line": 10,
+            "path": "services[0].startCommand"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    },
+    {
+      "at": "2026-10-16T01:40:00.285353+00:00",
+      "client": "unchanged Render2.27",
+      "case": "static-disk",
+      "command": [
+        "unchanged Render2.27",
+        "blueprints",
+        "validate",
+        "<owned-temp>/sweep334-render.yaml",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "state": "native validation complete; file/config copy removed",
+      "native": {
+        "binary": "unmodified Render pin a764810a7682",
+        "command": [
+          "render",
+          "blueprints",
+          "validate",
+          "<owned-temp>/sweep334-render.yaml",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 1,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.556,
+        "stdout": "{\n  \"errors\": [\n    {\n      \"column\": 5,\n      \"error\": \"at '/services/0': additional properties 'disk' not allowed\",\n      \"line\": 11,\n      \"path\": \"services[0].disk\"\n    }\n  ],\n  \"valid\": false\n}",
+        "stderr": ""
+      },
+      "decoded": {
+        "errors": [
+          {
+            "column": 5,
+            "error": "at '/services/0': additional properties 'disk' not allowed",
+            "line": 11,
+            "path": "services[0].disk"
+          }
+        ],
+        "valid": false
+      },
+      "validity_and_exit_match": true
+    }
+  ],
+  "input_removed": true,
+  "copied_render_config_removed": true,
+  "post_inventory": {
+    "at": "2026-10-16T01:41:37.012631+00:00",
+    "native": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.112,
+      "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-16T01:41:05Z\",\n        \"nextRunAt\": \"2026-10-16T01:42:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-16T01:41:05Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-16T01:41:05Z\",\n        \"nextRunAt\": \"2026-10-16T01:42:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-16T01:41:05Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-16T01:41:04Z\",\n        \"nextRunAt\": \"2026-10-16T01:42:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-16T01:41:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T22:54:15Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T12:22:37Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T22:14:51Z\"\n    }\n  }\n]",
+      "stderr": ""
+    },
+    "quota": {
+      "at": "2026-10-16T01:41:37.002461+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.727,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4b35cb6ed44cce4-SJC"
+      },
+      "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n"
+    },
+    "baseline_preserved": true,
+    "authored_names_absent": true
+  }
+}

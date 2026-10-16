@@ -1,0 +1,13 @@
+from pathlib import Path
+import subprocess,json,os,socket,time,shutil,hashlib
+P=Path(__file__).resolve().parent;c=json.loads(Path('.playwright-mcp/cli-qa-w8-checkpoint.json').read_text());x=next(v for v in c['resources'] if v.get('sweep')==352 and v.get('client')=='bex');ctx=P/'sweep352-local-http-context';ctx.mkdir(mode=0o700);shutil.copyfile(P/'sweep343-source-reference/package.json',ctx/'package.json');assert hashlib.sha256((ctx/'package.json').read_bytes()).hexdigest()=='4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8';(ctx/'qa352-server.js').write_text(x['commands']['initial']['program']);r=subprocess.run(['node','qa352-server.js','--build'],cwd=ctx,text=True,capture_output=True,timeout=5);assert r.returncode==0;s=socket.socket();s.bind(('127.0.0.1',0));port=s.getsockname()[1];s.close();child=subprocess.Popen(['node','qa352-server.js'],cwd=ctx,env={**os.environ,'PORT':str(port)},stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
+try:
+ for attempt in range(20):
+  try:
+   s=socket.create_connection(('127.0.0.1',port),timeout=.1);s.close();break
+  except OSError:time.sleep(.1)
+ r=subprocess.run(['node',str(P/'sweep352-stream-client.js'),'http://127.0.0.1:'+str(port)+'/stream',x['marker'],'identity'],text=True,capture_output=True,timeout=15);d=json.loads(r.stdout);(P/'sweep352-stream-local-preflight.json').write_text(json.dumps(d,indent=2));assert r.returncode==0 and d['pass'] and d['events'][0]['at_ms']<1000;print(json.dumps({'local_stream_pass':True,'arrival_ms':[z['at_ms'] for z in d['events']],'duration_ms':d['elapsed_ms'],'host_Node_only':True}))
+finally:
+ child.terminate()
+ try:child.communicate(timeout=2)
+ except subprocess.TimeoutExpired:child.kill();child.communicate(timeout=2)

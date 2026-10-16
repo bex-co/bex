@@ -1,0 +1,11 @@
+{
+  "redis-cli": {
+    "path": "/opt/homebrew/bin/redis-cli",
+    "exit": 0,
+    "stdout": "redis-cli 8.10.1\n",
+    "stderr": ""
+  },
+  "valkey-cli": {
+    "path": null
+  }
+}

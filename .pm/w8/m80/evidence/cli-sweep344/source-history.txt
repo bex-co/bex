@@ -1,0 +1,5 @@
+e5ff3a6f013e6060c09b9ce7291515f1b14bd1e4 docs(pm): add streaming request activity follow-up to w4 m164
+7ee5a95fd1d88dd8766072f497e8e191d51a06cb docs(pm): file datastore log search cutoff
+45d809f99c41a0426b9bcbf9eefd95237e08ff04 chore(deploy): pin platform images to 5a39b80ff05a [skip ci]
+5a39b80ff05a1e6c2b58458e99c0d455d58b730a feat(staticserver): serve automatic Brotli for eligible static assets (w8/m79)
+fef60e605a2d44e4d14401d21e42c0546afe8619 fix(blueprints): a persistent Blueprint keeps each service's declared Git source (w8/m78)

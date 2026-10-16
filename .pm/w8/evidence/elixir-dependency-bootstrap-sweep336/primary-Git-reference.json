@@ -1,0 +1,8 @@
+{
+  "repo": "https://github.com/render-examples/phoenix_hello",
+  "commit": "d95c60fd4aa2f0f468298b7aa3fcc384f6069b8f",
+  "remote_HEAD": "ref: refs/heads/master\tHEAD\nd95c60fd4aa2f0f468298b7aa3fcc384f6069b8f\tHEAD\n",
+  "mix_exs_sha256": "aeb9583f2860f6afd35a93b51225c5dc12143208432ac9c544c56cc7ca91b492",
+  "mix_lock_present": true,
+  "anonymous_primary_reference": true
+}

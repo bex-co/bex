@@ -1,0 +1,11 @@
+{
+  "image": "ghcr.io/cloudnative-pg/postgresql:18@sha256:d7a81cb5da3182d95d0da5fabfb9e484e375db899dcd54b684105f1e8966e9ca",
+  "execution": false,
+  "bounded_anonymous_pull": {
+    "exit": null,
+    "timeout": true
+  },
+  "own_container_absent": true,
+  "anonymous_config_removed": true,
+  "qualification": "no local-image filesystem or PostgreSQL execution claim; hosted catalog directly proves vector0.8.6 is packaged"
+}

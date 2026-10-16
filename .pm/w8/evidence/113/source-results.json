@@ -1,0 +1,30 @@
+{
+  "exit": 0,
+  "passes": [
+    "TestNativeDockerfilePreservesRenderCommands",
+    "TestNativeDockerfileEnvRevisionBustsCacheKey",
+    "TestNativeDockerfileKeepsToolchainPATH",
+    "TestNativeDockerfileRunNamesOnlyTheBuildCommand",
+    "TestNativeDockerfileClearsTheToolchainEntrypoint",
+    "TestNativeDockerfileSuppliesPnpmToNodeOnly",
+    "TestResolveNativeBuildRewritesTheBase",
+    "TestResolveNativeBuildKeepsPnpmOnEveryNodeLine",
+    "TestResolveNativeBuildIgnoresSymlinkedVersionFiles",
+    "TestResolveNativeBuildRefusesAForeignDockerfile",
+    "TestResolveNativeBuildAddsAnOptedInBun",
+    "TestResolveNativeBuildAddsPoetryToPython",
+    "TestResolveNativeBuildAddsJSToolsToRubyAndPython",
+    "TestQA362GunicornDefaultObservation/python310-default",
+    "TestQA362GunicornDefaultObservation/python311-default",
+    "TestQA362GunicornDefaultObservation/python312-default",
+    "TestQA362GunicornDefaultObservation/python313-default",
+    "TestQA362GunicornDefaultObservation/python314-default",
+    "TestQA362GunicornDefaultObservation/python312-user-custom",
+    "TestQA362GunicornDefaultObservation/python312-user-empty",
+    "TestQA362GunicornDefaultObservation/python312-static",
+    "TestQA362GunicornDefaultObservation"
+  ],
+  "fails": [],
+  "skips": [],
+  "qualification": "actual unchanged generator/resolver observation and maintained neighboring tests; no fixed implementation/regression or generated Dockerfile execution"
+}

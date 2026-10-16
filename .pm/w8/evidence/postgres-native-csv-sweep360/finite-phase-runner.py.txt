@@ -1,0 +1,6 @@
+from pathlib import Path
+import subprocess,sys,json,time
+p=Path(__file__).resolve().parent;phase=sys.argv[1];steps={'import':[('seed','bex'),('bad-import','bex'),('bad-count','render'),('good-import','bex'),('snapshot-a','render')],'roundtrip':[('export-render','render'),('import-b','render'),('snapshot-b','bex'),('export-bex','bex'),('import-c','bex'),('final','bex'),('final','render'),('remove','bex')]};assert phase in steps
+for mode,actor in steps[phase]:
+ started=time.monotonic();r=subprocess.run(['python3',str(p/'sweep360-csv.py'),mode,actor],text=True,capture_output=True,timeout=85);(p/f'sweep360-{mode}-{actor}.stdout.log').write_text(r.stdout);(p/f'sweep360-{mode}-{actor}.stderr.log').write_text(r.stderr);print(json.dumps({'stage':mode,'client':actor,'driver_exit':r.returncode,'seconds':round(time.monotonic()-started,3)}),flush=True)
+ if r.returncode:raise SystemExit(r.returncode)

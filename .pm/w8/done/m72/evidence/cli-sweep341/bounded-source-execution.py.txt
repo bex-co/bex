@@ -1,0 +1,12 @@
+from pathlib import Path
+import subprocess,os,signal,json,datetime
+P=Path(__file__).resolve().parent;root=Path('/Volumes/nvme4tbfish/projects/bex8');f=P/'sweep341-source-execution.jsonl';meta=P/'sweep341-source-runner.json';assert not f.exists() and not meta.exists();cmd=['go','test','-json','./internal/build','-run','^(TestResolveNativePoetry|TestResolveNativeBuildAddsPoetryToPython|TestResolveNativeBuildAddsJSToolsToRubyAndPython|TestNativeImageRunsPoetry|TestNativeImageRunsJSToolsBesideRubyAndPython)$','-count=1','-timeout=9m'];env={**os.environ,'GOWORK':'off','BEX_BUILDKIT_INTEGRATION':'1'};record={'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'source_head':subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),'command':cmd,'BEX_BUILDKIT_INTEGRATION':'1'}
+with f.open('w') as log:
+ p=subprocess.Popen(cmd,cwd=root/'lego/operator',env=env,stdout=log,stderr=subprocess.STDOUT,start_new_session=True);record['runner_pid']=p.pid;meta.write_text(json.dumps(record,indent=2))
+ try:record.update(exit=p.wait(timeout=570),harness_timeout=False)
+ except subprocess.TimeoutExpired:
+  os.killpg(p.pid,signal.SIGTERM)
+  try:p.wait(timeout=5)
+  except subprocess.TimeoutExpired:os.killpg(p.pid,signal.SIGKILL);p.wait(timeout=5)
+  record.update(exit=None,harness_timeout=True)
+meta.write_text(json.dumps(record,indent=2));print(json.dumps(record));raise SystemExit(0 if record.get('exit')==0 and not record['harness_timeout'] else 1)

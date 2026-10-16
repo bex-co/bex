@@ -1,0 +1,22 @@
+{
+  "source_head": "c84c348b0e4a2248ee0f80a09cc15165275e14d7",
+  "serving_revision": "unobserved",
+  "native_Free_PG18_create_exit0": true,
+  "native_SQL_identity_and_readiness_pass": 1,
+  "native_failing_file_runs_nonzero": 2,
+  "cross_client_complete_rollback_checks_pass": 2,
+  "native_successful_file_runs_exit0": 2,
+  "cross_client_exact_five_row_checks_pass": 2,
+  "native_SQL_journey_comparisons_pass": 9,
+  "file_paths_with_spaces_forwarded": true,
+  "temporary_SQL_inputs_removed": 8,
+  "JSON_null_empty_multiline_Unicode_exact": true,
+  "cached_SQL_positive_then_no_SQL_after_delete": true,
+  "private_connection_and_CA_files_removed": true,
+  "owned_PG_deleted": "dpg-db8r2d29cl7s73ae49b0",
+  "baseline_services": 6,
+  "PG_used": 0,
+  "PG_terminating": 0,
+  "new_issue": false,
+  "uncommitted": true
+}

@@ -1,0 +1,20 @@
+from pathlib import Path
+import json,os,subprocess,shutil,socket,time,signal,urllib.request
+p=Path(__file__).resolve().parent;dest=p/'sweep362-local-app';assert not dest.exists();shutil.copytree(p/'sweep362-public-source',dest,ignore=shutil.ignore_patterns('.git'));ref=json.loads((p/'sweep362-primary-reference.json').read_text());(dest/'qa362-reference.json').write_text(json.dumps(ref));(dest/'qa362-marker.json').write_text(json.dumps('QA362_LOCAL'));shutil.copyfile(p/'sweep362-observer.py',dest/'qa362-observer.py');py=str(p/'sweep362-venv/bin/python');g=str(p/'sweep362-venv/bin/gunicorn');results=[]
+for phase in ['default','control']:
+ s=socket.socket();s.bind(('127.0.0.1',0));port=s.getsockname()[1];s.close();env={k:v for k,v in os.environ.items() if k not in ['GUNICORN_CMD_ARGS','PORT']};env['PORT']=str(port)
+ if phase=='control':env['GUNICORN_CMD_ARGS']='--preload --access-logfile - --bind=127.0.0.1:'+str(port)
+ r=subprocess.run([py,'qa362-observer.py','runtime'],cwd=dest,env=env,text=True,capture_output=True,timeout=15);assert r.returncode==0,r.stderr;v=json.loads(r.stdout.split('QA362_OBSERVER ')[1]);assert v['accesslog']==('-' if phase=='control' else None) and v['preload_app']==(phase=='control');log=p/('sweep362-local-'+phase+'.log');f=log.open('w');proc=subprocess.Popen([g,'app:app'],cwd=dest,env=env,stdout=f,stderr=f,start_new_session=True)
+ try:
+  for _ in range(60):
+   try:
+    with urllib.request.urlopen('http://127.0.0.1:'+str(port)+'/',timeout=1) as reply:assert reply.read()==b'Hello, World!'
+    break
+   except OSError:time.sleep(.1)
+  else:raise RuntimeError('local gunicorn startup failed')
+  for i in range(3):
+   with urllib.request.urlopen('http://127.0.0.1:'+str(port)+'/?qa362_local_'+phase+'_'+str(i),timeout=3) as reply:assert reply.read()==b'Hello, World!'
+ finally:
+  os.killpg(proc.pid,signal.SIGTERM);proc.wait(timeout=10);f.close()
+ messages=log.read_text();counts=[messages.count('GET /?qa362_local_'+phase+'_'+str(i)+' HTTP/') for i in range(3)];assert counts==([1]*3 if phase=='control' else [0]*3);results.append({'phase':phase,'observer':v,'counts':counts,'native_exit_after_SIGTERM':proc.returncode,'pass':True})
+(p/'sweep362-local-results.json').write_text(json.dumps(results,indent=2));print(json.dumps({'local_rounds_passed':len(results),'gunicorn':results[0]['observer']['gunicorn'],'flask':results[0]['observer']['flask'],'all_own_processes_reaped':True}))

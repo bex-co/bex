@@ -1,0 +1,39 @@
+require 'json'
+require 'socket'
+require 'open3'
+def tool(args)
+ started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+ out, err, status = Open3.capture3('timeout','60',*args)
+ { 'argv' => ['timeout','60']+args, 'exit' => status.exitstatus, 'stdout' => out, 'stderr' => err, 'error' => (status.exitstatus == 124 ? 'ETIMEDOUT' : nil), 'elapsed_ms' => ((Process.clock_gettime(Process::CLOCK_MONOTONIC)-started)*1000).round }
+rescue Errno::ENOENT
+ { 'argv' => ['timeout','60']+args, 'exit' => nil, 'stdout' => '', 'stderr' => '', 'error' => 'observer_timeout_command_ENOENT' }
+end
+def snapshot
+ { 'marker' => MARKER, 'runtime' => 'ruby', 'version' => RUBY_VERSION, 'tools' => {
+ 'node' => tool(['node','--version']), 'npm' => tool(['npm','--version']),
+ 'yarn' => tool(['yarn','--version']), 'pnpm' => tool(['pnpm','--version']),
+ 'ruby' => tool(['ruby','--version']), 'bundle' => tool(['bundle','--version']),
+ 'gem' => tool(['gem','--version']) } }
+end
+if ARGV.first == '--build'
+ value = snapshot
+ File.write('qa342-build.json', JSON.generate(value))
+ puts 'QA342_BUILD ' + JSON.generate(value)
+else
+ built = JSON.parse(File.read('qa342-build.json'))
+ current = snapshot
+ body = JSON.generate(current.merge('built' => built))
+ TCPServer.open('0.0.0.0', Integer(ENV.fetch('PORT','8080'))) do |server|
+  loop do
+   connection = server.accept
+   begin
+    while (line = connection.gets) && line != "\r\n"; end
+    connection.write("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: #{body.bytesize}\r\nConnection: close\r\n\r\n")
+    connection.write(body)
+   rescue IOError, SystemCallError
+   ensure
+    connection.close
+   end
+  end
+ end
+end

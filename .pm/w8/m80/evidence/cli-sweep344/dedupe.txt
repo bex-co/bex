@@ -1,0 +1,56 @@
+.pm/w8/README.md:24:[Omitted long matching line]
+.pm/w11/blocked/m6/done/t003.md:16:- Reuse repo/default-branch contracts; deterministic server-owned `bex-agent/*` branch policy; never expose raw credentials/model endpoint/template/broad egress.
+.pm/w8/done/m75/finding.md:26:[Omitted long matching line]
+.pm/w4/blocked/282.md:74:[Omitted long matching line]
+.pm/w4/blocked/282.md:81:[Omitted long matching line]
+.pm/w3/done/m10/t008.md:23:- [ ] Tests cover both the present and omitted branches for each series.
+.pm/w4/blocked/302.md:27:[Omitted long matching line]
+.pm/w8/done/m76/finding.md:20:[Omitted long matching line]
+.pm/w8/done/m76/finding.md:29:[Omitted long matching line]
+.pm/w8/done/m76/finding.md:31:[Omitted long matching line]
+.pm/w8/done/m76/finding.md:32:[Omitted long matching line]
+.pm/w3/done/m45/README.md:22:[Omitted long matching line]
+.pm/w8/done/m76/README.md:1:# w8 · m76 — Honor a GitHub repository's default branch on create
+.pm/w8/done/m76/README.md:27:- **Expected outcome:** an omitted branch resolves to the actual repository default before any persisted service/first build uses it.
+.pm/w8/done/m76/README.md:36:[Omitted long matching line]
+.pm/w4/done/275.md:29:[Omitted long matching line]
+.pm/w8/done/m73/README.md:36:[Omitted long matching line]
+.pm/w8/done/m76/done/t002.md:20:[Omitted long matching line]
+.pm/w8/done/m76/done/t002.md:40:[Omitted long matching line]
+.pm/w3/done/m45/done/t002.md:16:[Omitted long matching line]
+.pm/w8/done/m76/done/t006.md:14:Verify fresh native omitted-branch creation and close only after the full DoD holds.
+.pm/w8/done/m76/done/t006.md:31:[Omitted long matching line]
+.pm/w8/done/m76/done/t001.md:32:- [x] Fresh omitted-branch public GitHub creates select/return/persist master for the recorded repo, while explicit branch/image controls and first-build pinning remain correct.
+.pm/w8/done/m76/done/t001.md:38:[Omitted long matching line]
+.pm/w8/done/m76/evidence/cli-sweep319/README.md:5:[Omitted long matching line]
+.pm/w8/done/m76/evidence/cli-sweep319/README.md:9:[Omitted long matching line]
+.pm/w8/evidence/native-node-default-branch-pnpm-sweep338/README.md:7:## First omitted-branch deployments
+.pm/w8/done/m70/finding.md:15:[Omitted long matching line]
+.pm/w8/done/m70/done/t001.md:12:[Omitted long matching line]
+.pm/w8/done/m70/done/t001.md:31:[Omitted long matching line]
+.pm/w8/done/m70/evidence/cli-sweep294/README.md:15:[Omitted long matching line]
+.pm/w8/done/m70/evidence/cli-sweep294/README.md:17:[Omitted long matching line]
+.pm/w1/done/046.md:46:[Omitted long matching line]
+.pm/w2/done/m62/done/t008.md:12:[Omitted long matching line]
+.pm/w8/done/088.md:62:[Omitted long matching line]
+.pm/w7/done/050.md:72:[Omitted long matching line]
+.pm/w8/done/m78/finding.md:7:[Omitted long matching line]
+.pm/w8/done/m78/finding.md:13:[Omitted long matching line]
+.pm/w8/done/m78/finding.md:18:[Omitted long matching line]
+.pm/w8/done/m78/finding.md:24:[Omitted long matching line]
+.pm/w8/done/m78/README.md:19:[Omitted long matching line]
+.pm/w8/done/m78/done/t003.md:40:[Omitted long matching line]
+.pm/w4/done/040.md:9:[Omitted long matching line]
+.pm/w8/done/m78/done/t001.md:12:[Omitted long matching line]
+.pm/w8/done/m78/done/t001.md:35:[Omitted long matching line]
+.pm/w8/done/m78/evidence/cli-sweep343/README.md:25:[Omitted long matching line]
+.pm/w4/done/240.md:16:[Omitted long matching line]
+.pm/w4/done/240.md:95:[Omitted long matching line]
+.pm/w1/done/m69/README.md:37:[Omitted long matching line]
+.pm/w5/done/m15/t002.md:3:title: Repo picker over repos query — search, default branch, connect-prompt empty state
+.pm/w5/done/m15/t002.md:12:[Omitted long matching line]
+.pm/w5/done/m15/t002.md:23:2. List UI: search box, repo rows (fullName, private badge, default branch), loading/empty/error states.
+.pm/w5/done/m15/t002.md:25:4. Selection → wizard state (`repo`, `branch` = default branch).
+.pm/w5/done/m15/README.md:10:| t002 | Repo picker over `repos` — search, default branch, connect-prompt empty state               | 45m | t001       |
+.pm/w4/done/189.md:30:[Omitted long matching line]
+.pm/w6/done/m114/t002.md:18:[Omitted long matching line]

@@ -1,0 +1,56 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package apps
+
+import (
+ "testing"
+ appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+)
+
+func TestQA344BlueprintOwnRepoDefaultBranch(t *testing.T) {
+ for _, tc := range []struct{name string; existing, explicit, nested bool}{
+  {"existing-image-omitted-root",true,false,false},
+  {"existing-image-omitted-nested",true,false,true},
+  {"existing-image-explicit-master-root",true,true,false},
+  {"existing-image-explicit-master-nested",true,true,true},
+  {"new-service-omitted-root",false,false,false},
+  {"new-service-omitted-nested",false,false,true},
+ } {
+  t.Run(tc.name,func(t *testing.T){
+   b:=containingBlueprint();fs:=newFakeBlueprintStore(b);rec:=&recordingStore{}
+   var apps []*appv1alpha1.App
+   if tc.existing { a:=ownImageBornApp();a.Spec.Branch=appv1alpha1.DefaultBranch;apps=append(apps,a) }
+   svc,ctx:=ownSourceService(fs,rec,apps...)
+   svc.GitHub=&fakeCloneTokens{defaultBranch:"master"}
+   commits:=&commitsByRef{tips:map[string]string{"master":"1111111111111111111111111111111111111111"}};svc.Commits=commits
+   declaration:="    repo: "+declaredRepo+"\n"
+   if tc.explicit { declaration+="    branch: master\n" }
+   manifest:=sourceServiceManifest(declaration);if tc.nested {manifest=nestSourceManifest(manifest)}
+   result,err:=svc.SyncBlueprint(ctx,b.ID,b.TenantID,manifest,"",nil);if err!=nil {t.Fatalf("sync: %v",err)}
+   if !tc.existing {
+    if len(result.Stack.Services)!=1 || len(rec.appCreates)!=1 {t.Fatalf("new service response=%+v canonical creates=%+v",result.Stack.Services,rec.appCreates)}
+    v:=result.Stack.Services[0];row:=rec.appCreates[0]
+    t.Logf("new returned branch=%q canonical row branch=%q first commit=%q refs=%v metadata lookups=%d",v.Branch,row.Branch,row.FirstDeployCommit.Hash,commits.asked,svc.GitHub.(*fakeCloneTokens).validateCalls)
+    if v.Branch!="master" || row.Branch!="master" {t.Errorf("new branch returned=%q stored=%q, want master",v.Branch,row.Branch)}
+    return
+   }
+   got:=getApp(t,svc.Client,"own-source").Spec
+   t.Logf("actual repo=%q branch=%q image=%q commit refs=%v canonical writes=%+v",got.Repo,got.Branch,got.Image,commits.asked,rec.sourceWrites)
+   if got.Repo!=declaredRepo || got.Branch!="master" || got.Image!="" {t.Errorf("source=(%q,%q,%q), want own repo/default master/no image",got.Repo,got.Branch,got.Image)}
+  })
+ }
+}

@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-16T03:52:52.612656+00:00",
+  "repo": "https://github.com/expressjs/serve-static",
+  "branch": "master",
+  "commit": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+  "package_name": "serve-static",
+  "package_sha256": "4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8",
+  "containing_repo": "https://github.com/nodejs/node",
+  "containing_branch": "v24.x",
+  "containing_branch_public_ref": "0d10bfe3cb961ef997490f5c060bd1466b5affea\trefs/heads/v24.x",
+  "qualification": "anonymous primary Git references; no package source copied to the PM board"
+}

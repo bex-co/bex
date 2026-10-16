@@ -1,0 +1,10 @@
+import hashlib,json,os,platform,sys
+from pathlib import Path
+from importlib.metadata import version
+from gunicorn.app.wsgiapp import WSGIApplication
+reference=json.loads(Path('qa362-reference.json').read_text()); marker=json.loads(Path('qa362-marker.json').read_text())
+files={n:{'bytes':len((b:=Path(n).read_bytes())),'sha256':hashlib.sha256(b).hexdigest()} for n in reference['files']}
+assert files==reference['files']
+phase=sys.argv[1];sys.argv=['gunicorn','app:app'];a=WSGIApplication()
+v={'marker':marker,'phase':phase,'python':platform.python_version(),'gunicorn':version('Gunicorn'),'flask':version('Flask'),'files':files,'gunicorn_cmd_args_present':'GUNICORN_CMD_ARGS' in os.environ,'gunicorn_cmd_args':os.environ.get('GUNICORN_CMD_ARGS'),'accesslog':a.cfg.accesslog,'preload_app':a.cfg.preload_app,'bind':a.cfg.bind}
+Path('qa362-'+phase+'.json').write_text(json.dumps(v)); print('QA362_OBSERVER '+json.dumps(v,separators=(',',':')),flush=True)

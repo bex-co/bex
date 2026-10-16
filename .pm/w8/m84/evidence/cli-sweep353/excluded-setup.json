@@ -1,0 +1,160 @@
+[
+  {
+    "sweep": 353,
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "postgres",
+    "name": "qa-20261016-84e2c7-pgextensions",
+    "nonce": "84e2c7",
+    "time": "2026-10-16T06:22:37.570955+00:00",
+    "source_head": "bd0ffac525f2ff1dfb4d7c7add9f81000fed8036",
+    "capacity": {
+      "at": "2026-10-16T06:22:35.691899+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.717,
+      "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+      "stderr": ""
+    },
+    "pre_inventory": {
+      "at": "2026-10-16T06:22:36.840759+00:00",
+      "binary": "released Bex0.3.2",
+      "command": [
+        "bex",
+        "postgres",
+        "list",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "client_setup": null,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 1.148,
+      "stdout": "{\"data\": []}",
+      "stderr": ""
+    },
+    "pre_service_inventory": {
+      "at": "2026-10-16T06:22:37.570795+00:00",
+      "binary": "released Bex0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "client_setup": null,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.73,
+      "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline identity only; configuration omitted\"}}]",
+      "stderr": ""
+    },
+    "pre_ids": [],
+    "dependency_ids": [],
+    "recorded_child_ids": [],
+    "database_name": "qa353_db_84e2c7",
+    "database_user": "qa353_user_84e2c7",
+    "create_command": [
+      "bex",
+      "postgres",
+      "create",
+      "--name",
+      "qa-20261016-84e2c7-pgextensions",
+      "--plan",
+      "free",
+      "--version",
+      "18",
+      "--region",
+      "frankfurt",
+      "--connection-pool",
+      "none",
+      "--database-name",
+      "qa353_db_84e2c7",
+      "--database-user",
+      "qa353_user_84e2c7",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "state": "rejected: native400 RESOURCE_NAME_INVALID; native list empty and PGquota0/terminating0; no fixture allocated",
+    "create_result": {
+      "at": "2026-10-16T06:22:38.118285+00:00",
+      "binary": "released Bex0.3.2",
+      "command": [
+        "bex",
+        "postgres",
+        "create",
+        "--name",
+        "qa-20261016-84e2c7-pgextensions",
+        "--plan",
+        "free",
+        "--version",
+        "18",
+        "--region",
+        "frankfurt",
+        "--connection-pool",
+        "none",
+        "--database-name",
+        "qa353_db_84e2c7",
+        "--database-user",
+        "qa353_user_84e2c7",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "client_setup": null,
+      "native_exit": 1,
+      "harness_timeout": false,
+      "elapsed": 0.331,
+      "stdout": "",
+      "stderr": "Error: received response code 400 (RESOURCE_NAME_INVALID): name must use lowercase letters, digits, and hyphens, be at most 30 characters, and not start or end with a hyphen\n"
+    },
+    "excluded_setup": true,
+    "rejected_reconciliation": {
+      "at": "2026-10-16T06:24:15.892979+00:00",
+      "native_list": {
+        "at": "2026-10-16T06:24:15.169997+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "list",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.876,
+        "stdout": "{\"data\": []}",
+        "stderr": ""
+      },
+      "quota": {
+        "at": "2026-10-16T06:24:15.892836+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.71,
+        "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+        "stderr": ""
+      }
+    }
+  }
+]
