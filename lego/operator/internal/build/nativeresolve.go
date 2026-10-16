@@ -128,10 +128,10 @@ func addNativeBun(dockerfile, baseImage, bunImage string) (string, error) {
 
 // nativeJSCompanionRuntimes are the primary runtimes whose native builds also
 // carry Render's documented JavaScript tools — Node, npm, Yarn and pnpm, at
-// build and runtime (w8/m77): a Rails or Django app builds its frontend
-// assets with them. Primary Node already has them; the other runtimes are
-// left as they were.
-var nativeJSCompanionRuntimes = map[string]bool{"ruby": true, "python": true}
+// build and runtime: a Rails, Django, Phoenix or Go/Rust web app builds its
+// frontend assets with them (w8/m77 Ruby/Python, w4/m213 Go/Rust/Elixir).
+// Primary Node already has them.
+var nativeJSCompanionRuntimes = map[string]bool{"ruby": true, "python": true, "go": true, "rust": true, "elixir": true}
 
 // nativeYarnDir is Yarn 1 as the official Node 22/24 images ship it. Yarn 1
 // is plain JavaScript, so it is always taken from the pinned default Node
@@ -142,10 +142,12 @@ const nativeYarnDir = "/opt/yarn-v1.22.22"
 // node_modules (npm, plus Corepack where the line has it) out of that line's
 // pinned image, Yarn from the default Node image, and installs the pinned
 // pnpm — right after the primary FROM, before the source and the authored
-// build, with the links the official node images use. The primary and Node
-// images share one Debian release, so the copied binary's libraries are the
-// primary image's own. --link keeps these layers cached when the primary
-// line changes.
+// build, with the links the official node images use. The Node images are
+// Debian bookworm; every primary image is bookworm or (Elixir 1.18/1.19)
+// trixie, whose glibc and libstdc++ are newer and backward compatible, so the
+// copied binary runs on the primary image's own libraries — the real-image
+// gate executes it on every line. --link keeps these layers cached when the
+// primary line changes.
 func addNativeJSTools(dockerfile, baseImage, nodeImage string) (string, error) {
 	return afterNativeBase(dockerfile, baseImage, nativeJSToolLines(nodeImage))
 }

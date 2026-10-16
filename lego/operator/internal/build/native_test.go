@@ -1035,13 +1035,16 @@ func TestNativeImageRunsPnpm(t *testing.T) {
 	})
 }
 
-// TestNativeImageRunsJSToolsBesideRubyAndPython is w8/m77's execution gate:
-// sweeps 321/328's Ruby and Python services died on `node: command not
-// found`. On every Ruby line and on Python 3.12 the authored build runs node,
-// npm, Yarn and pnpm (each running a package.json script) beside the primary
-// toolchain's own tools, and the started service finds them all again.
-// Opt-in: needs Docker, pulls the pinned toolchain images and pnpm tarball.
-func TestNativeImageRunsJSToolsBesideRubyAndPython(t *testing.T) {
+// TestNativeImageRunsJSToolsBesidePrimaries is the JS companion's execution
+// gate: Ruby/Python (w8/m77) and Go/Rust/Elixir (w4/m213) services died on
+// `node: command not found`. On every Ruby, Go, Rust and Elixir line and on
+// Python 3.12 the authored build runs node, npm, Yarn and pnpm (each running a
+// package.json script) beside the primary toolchain's own tools, and the
+// started service finds them all again. Elixir 1.18/1.19 are Debian trixie,
+// the rest bookworm, so this is what proves the copied Node binary runs on
+// each base. Opt-in: needs Docker, pulls the pinned toolchain images and pnpm
+// tarball.
+func TestNativeImageRunsJSToolsBesidePrimaries(t *testing.T) {
 	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
 		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the generated image")
 	}
@@ -1051,27 +1054,36 @@ func TestNativeImageRunsJSToolsBesideRubyAndPython(t *testing.T) {
 	node24, _ := nativeToolchains["node"].find("24")
 	wantJS := "node=v" + node24.version + " npm=" // npm's own version varies with the Node line's bundle
 	wantRuns := "yarn=1.22.22 pnpm=" + nativePnpm.version + " npm-run=script-ran yarn-run=script-ran pnpm-run=script-ran"
-	type tc struct{ name, runtime, primary, wantPrimary string }
-	cases := make([]tc, 0, len(nativeToolchains["ruby"].lines)+1)
+	type tc struct {
+		name, runtime, primary, wantPrimary string
+		env, files                          map[string]string
+	}
+	cases := make([]tc, 0, len(nativeToolchains["ruby"].lines)+1+len(nativeToolchains["go"].lines)+1+len(nativeToolchains["elixir"].lines))
 	for _, l := range nativeToolchains["ruby"].lines {
-		cases = append(cases, tc{"ruby-" + l.line, "ruby", `ruby=$(ruby -e 'print RUBY_VERSION') bundler=$(bundle --version | cut -d' ' -f3) gem=$(gem --version)`, "ruby=" + l.version + " bundler="})
+		cases = append(cases, tc{"ruby-" + l.line, "ruby", `ruby=$(ruby -e 'print RUBY_VERSION') bundler=$(bundle --version | cut -d' ' -f3) gem=$(gem --version)`, "ruby=" + l.version + " bundler=",
+			nil, map[string]string{".ruby-version": l.version + "\n"}})
 	}
 	py312, _ := nativeToolchains["python"].find("3.12")
-	cases = append(cases, tc{"python-3.12", "python", `python=$(python -c 'import platform; print(platform.python_version())') pip=$(pip --version | cut -d' ' -f2) $(poetry --version)`, "python=" + py312.version + " pip="})
+	cases = append(cases, tc{"python-3.12", "python", `python=$(python -c 'import platform; print(platform.python_version())') pip=$(pip --version | cut -d' ' -f2) $(poetry --version)`, "python=" + py312.version + " pip=",
+		map[string]string{"PYTHON_VERSION": "3.12"}, nil})
+	for _, l := range nativeToolchains["go"].lines {
+		cases = append(cases, tc{"go-" + l.line, "go", `go=$(go version | cut -d' ' -f3)`, "go=go" + l.line + ".", nil, nil})
+	}
+	cases = append(cases, tc{"rust-1", "rust", `rustc=$(rustc --version | cut -d' ' -f2) cargo=$(cargo --version | cut -d' ' -f2)`, "rustc=1.", nil, nil})
+	for _, l := range nativeToolchains["elixir"].lines {
+		cases = append(cases, tc{"elixir-" + l.line, "elixir",
+			`elixir=$(elixir -e 'IO.write System.version()') otp=$(erl -noshell -eval 'io:put_chars(erlang:system_info(otp_release)), halt().')`,
+			"elixir=" + l.version + " otp=" + l.otp, map[string]string{"ELIXIR_VERSION": l.version}, nil})
+	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			o := nativeOptions()
 			o.Runtime = c.runtime
 			o.BuildCommand = `echo "` + c.primary + ` ` + js + `" > built.txt`
 			o.StartCommand = `echo "runtime ` + c.primary + ` ` + js + `"; echo "built $(cat built.txt)"`
-			env, files := map[string]string{}, map[string]string{"package.json": pkg}
-			if c.runtime == "ruby" {
-				l, _ := nativeToolchains["ruby"].find(strings.TrimPrefix(c.name, "ruby-"))
-				files[".ruby-version"] = l.version + "\n"
-			} else {
-				env["PYTHON_VERSION"] = "3.12"
-			}
-			bundle, dockerfile, src := writeResolveFixture(t, o, env, files)
+			files := map[string]string{"package.json": pkg}
+			maps.Copy(files, c.files)
+			bundle, dockerfile, src := writeResolveFixture(t, o, c.env, files)
 			if _, err := ResolveNativeBuild(c.runtime, bundle, dockerfile, src); err != nil {
 				t.Fatal(err)
 			}

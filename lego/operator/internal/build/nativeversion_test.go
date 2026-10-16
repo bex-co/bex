@@ -457,24 +457,26 @@ func TestResolveNativeBuildAddsPoetryToPython(t *testing.T) {
 	}
 }
 
-// Ruby and Python builds carry Render's JavaScript tools (w8/m77): the
-// selected Node line's node/npm, Yarn and pnpm land between the primary FROM
-// and the source/build on every primary line, NODE_VERSION picks the Node
-// line, a refused Node request leaves the Dockerfile alone, and runtimes
-// outside the set gain nothing.
-func TestResolveNativeBuildAddsJSToolsToRubyAndPython(t *testing.T) {
-	for _, runtime := range []string{"ruby", "python"} {
+// Every non-Node native build carries Render's JavaScript tools (w8/m77
+// Ruby/Python, w4/m213 Go/Rust/Elixir): the selected Node line's node/npm,
+// Yarn and pnpm land between the primary FROM and the source/build on every
+// primary line, NODE_VERSION picks the Node line, a refused Node request
+// leaves the Dockerfile alone, and primary Node gains no second copy.
+func TestResolveNativeBuildAddsJSToolsToNonNodeRuntimes(t *testing.T) {
+	for _, runtime := range []string{"ruby", "python", "go", "rust", "elixir"} {
 		o := nativeOptions()
 		o.Runtime = runtime
 		for _, line := range nativeToolchains[runtime].lines {
-			versionEnv := map[string]string{"python": "PYTHON_VERSION"}[runtime]
 			env := map[string]string{}
 			files := map[string]string{}
-			if versionEnv != "" {
-				env[versionEnv] = line.line
-			} else {
+			switch runtime {
+			case "python":
+				env["PYTHON_VERSION"] = line.line
+			case "elixir":
+				env["ELIXIR_VERSION"] = line.version
+			case "ruby":
 				files[".ruby-version"] = line.version + "\n"
-			}
+			} // Go and Rust each have one reviewed line: no signal selects it
 			bundle, dockerfile, src := writeResolveFixture(t, o, env, files)
 			choices, err := ResolveNativeBuild(runtime, bundle, dockerfile, src)
 			if err != nil || choices[0].Line != line.line || choices[len(choices)-1].Label != "Node" || choices[len(choices)-1].Line != "24" {
@@ -507,15 +509,13 @@ func TestResolveNativeBuildAddsJSToolsToRubyAndPython(t *testing.T) {
 			t.Errorf("%s: a refused Node request rewrote the Dockerfile", runtime)
 		}
 	}
-	for _, runtime := range []string{"go", "rust", "elixir"} {
-		o := nativeOptions()
-		o.Runtime = runtime
-		bundle, dockerfile, src := writeResolveFixture(t, o, nil, nil)
-		if _, err := ResolveNativeBuild(runtime, bundle, dockerfile, src); err != nil {
-			t.Fatal(err)
-		}
-		if df, _ := os.ReadFile(dockerfile); strings.Contains(string(df), "/usr/local/bin/node") {
-			t.Fatalf("%s gained the JS companion:\n%s", runtime, df)
-		}
+	o := nativeOptions()
+	o.Runtime = "node"
+	bundle, dockerfile, src := writeResolveFixture(t, o, nil, nil)
+	if _, err := ResolveNativeBuild("node", bundle, dockerfile, src); err != nil {
+		t.Fatal(err)
+	}
+	if df, _ := os.ReadFile(dockerfile); strings.Contains(string(df), " /usr/local/bin/node /usr/local/bin/node\n") {
+		t.Fatalf("primary Node gained a second node binary:\n%s", df)
 	}
 }
