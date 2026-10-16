@@ -1,0 +1,1095 @@
+{
+  "finding": "w4/319",
+  "pass": "a662",
+  "researchHead": "45d809f99c41a0426b9bcbf9eefd95237e08ff04",
+  "resource": "dpg-db8oscsdp0tc73djg5ng",
+  "nativeGraphQLEndpoint": "https://api.bex.co/graphql",
+  "proof": {
+    "a662CreateDatabase": {
+      "at": "2026-10-16T02:38:43.992Z",
+      "request": {
+        "operationName": "CreateDatabase",
+        "variables": {
+          "name": "qa-20261016-a662-logs",
+          "databaseName": "qa_a662_logs",
+          "databaseUser": "qa_a662_owner",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "plan": "free",
+          "version": "18",
+          "public": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateDatabase($name: String!, $databaseName: String, $databaseUser: String, $ownerId: String, $environmentId: String, $plan: String, $version: String, $diskSizeGB: Int, $public: Boolean) {\n  createDatabase(\n    name: $name\n    databaseName: $databaseName\n    databaseUser: $databaseUser\n    ownerId: $ownerId\n    environmentId: $environmentId\n    plan: $plan\n    version: $version\n    diskSizeGB: $diskSizeGB\n    public: $public\n  ) {\n    id\n    name\n    databaseName\n    databaseUser\n    plan\n    status\n    projectId\n    environmentId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createDatabase": {
+            "__typename": "Database",
+            "databaseName": "qa_a662_logs",
+            "databaseUser": "qa_a662_owner",
+            "environmentId": null,
+            "id": "dpg-db8oscsdp0tc73djg5ng",
+            "name": "qa-20261016-a662-logs",
+            "plan": "free",
+            "projectId": null,
+            "status": "creating"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792118322883.837,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.18,
+        "responseStart": 390.32,
+        "responseEnd": 390.759
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db8oscsdp0tc73djg5ng"
+    },
+    "a662SqlErrorAlpha": {
+      "at": "2026-10-16T02:41:25.163Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8oscsdp0tc73djg5ng",
+          "sql": "SELECT qa_a662_error_alpha;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": null
+        },
+        "errors": [
+          {
+            "message": "bad request: column \"qa_a662_error_alpha\" does not exist (at character 8)",
+            "locations": [
+              {
+                "line": 2,
+                "column": 3
+              }
+            ],
+            "path": ["executeDatabaseQuery"]
+          }
+        ]
+      },
+      "timing": {
+        "startTime": 1792118483711.8088,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.143,
+        "responseStart": 748.787,
+        "responseEnd": 749.214
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db8oscsdp0tc73djg5ng#sql-console"
+    },
+    "a662SqlErrorBeta": {
+      "at": "2026-10-16T02:41:28.077Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8oscsdp0tc73djg5ng",
+          "sql": "SELECT qa_a662_error_beta;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": null
+        },
+        "errors": [
+          {
+            "message": "bad request: column \"qa_a662_error_beta\" does not exist (at character 8)",
+            "locations": [
+              {
+                "line": 2,
+                "column": 3
+              }
+            ],
+            "path": ["executeDatabaseQuery"]
+          }
+        ]
+      },
+      "timing": {
+        "startTime": 1792118486310.9941,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.199,
+        "responseStart": 1063.239,
+        "responseEnd": 1063.765
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db8oscsdp0tc73djg5ng#sql-console"
+    },
+    "a662SqlErrorGamma": {
+      "at": "2026-10-16T02:41:30.820Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8oscsdp0tc73djg5ng",
+          "sql": "SELECT * FROM qa_a662_error_gamma;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": null
+        },
+        "errors": [
+          {
+            "message": "bad request: relation \"qa_a662_error_gamma\" does not exist (at character 15)",
+            "locations": [
+              {
+                "line": 2,
+                "column": 3
+              }
+            ],
+            "path": ["executeDatabaseQuery"]
+          }
+        ]
+      },
+      "timing": {
+        "startTime": 1792118489227.36,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.143,
+        "responseStart": 890.93,
+        "responseEnd": 891.406
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db8oscsdp0tc73djg5ng#sql-console"
+    },
+    "a662SqlRecovery": {
+      "at": "2026-10-16T02:41:33.110Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8oscsdp0tc73djg5ng",
+          "sql": "SELECT current_database(), current_user, 'QA_A662_RECOVERY'::text AS marker;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["current_database", "current_user", "marker"],
+            "rowCount": 1,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["qa_a662_logs", "qa_a662_owner", "QA_A662_RECOVERY"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792118491960.2717,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.153,
+        "responseStart": 445.071,
+        "responseEnd": 445.46
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db8oscsdp0tc73djg5ng#sql-console"
+    },
+    "a662MarkedErrorsReady": {
+      "at": "2026-10-16T02:42:22.891Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db8oscsdp0tc73djg5ng?tab=logs&text=qa_a662_error_",
+      "input": "qa_a662_error_",
+      "latest": {
+        "request": {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "dpg-db8oscsdp0tc73djg5ng",
+            "text": "qa_a662_error_",
+            "startTime": "2026-10-16T01:41:34.505Z",
+            "endTime": "2026-10-16T02:41:34.505Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [
+                {
+                  "__typename": "LogEntry",
+                  "instance": "dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u",
+                  "level": "error",
+                  "message": "2026-10-16 02:41:24.311 UTC [159] ERROR:  column \"qa_a662_error_alpha\" does not exist",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-16T02:41:24.439497816Z",
+                  "type": "postgres"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u",
+                  "level": "error",
+                  "message": "2026-10-16 02:41:27.005 UTC [169] ERROR:  column \"qa_a662_error_beta\" does not exist",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-16T02:41:27.006132235Z",
+                  "type": "postgres"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u",
+                  "level": "error",
+                  "message": "2026-10-16 02:41:29.839 UTC [171] ERROR:  relation \"qa_a662_error_gamma\" does not exist",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-16T02:41:30.039841729Z",
+                  "type": "postgres"
+                }
+              ],
+              "nextEndTime": "2026-10-16T02:41:24.439497815Z",
+              "nextStartTime": "2026-10-16T01:41:34.505Z"
+            }
+          }
+        }
+      },
+      "errors": [],
+      "pending": [],
+      "rows": [
+        "07:41:24 PM[dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u]2026-10-16 02:41:24.311 UTC [159] ERROR:  column \"qa_a662_error_alpha\" does not exist",
+        "07:41:27 PM[dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u]2026-10-16 02:41:27.005 UTC [169] ERROR:  column \"qa_a662_error_beta\" does not exist",
+        "07:41:30 PM[dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u]2026-10-16 02:41:29.839 UTC [171] ERROR:  relation \"qa_a662_error_gamma\" does not exist"
+      ],
+      "geometry": {
+        "viewport": 1440,
+        "document": 1440
+      }
+    },
+    "a662SqlErrorDelta": {
+      "at": "2026-10-16T02:43:51.582Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8oscsdp0tc73djg5ng",
+          "sql": "SELECT qa_a662_error_delta;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": null
+        },
+        "errors": [
+          {
+            "message": "bad request: column \"qa_a662_error_delta\" does not exist (at character 8)",
+            "locations": [
+              {
+                "line": 2,
+                "column": 3
+              }
+            ],
+            "path": ["executeDatabaseQuery"]
+          }
+        ]
+      },
+      "timing": {
+        "startTime": 1792118629912.884,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.125,
+        "responseStart": 966.002,
+        "responseEnd": 966.452
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db8oscsdp0tc73djg5ng#sql-console"
+    },
+    "a662DeltaSearchReady": {
+      "at": "2026-10-16T02:44:01.063Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db8oscsdp0tc73djg5ng?tab=logs&text=qa_a662_error_delta&instance=dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u",
+      "input": "qa_a662_error_delta",
+      "latest": {
+        "request": {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "dpg-db8oscsdp0tc73djg5ng",
+            "text": "qa_a662_error_delta",
+            "instance": ["dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u"],
+            "startTime": "2026-10-16T01:41:34.505Z",
+            "endTime": "2026-10-16T02:41:34.505Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [],
+              "nextEndTime": "2026-10-16T02:41:34Z",
+              "nextStartTime": "2026-10-16T01:41:34Z"
+            }
+          }
+        }
+      },
+      "errors": [],
+      "pending": [],
+      "rows": [],
+      "geometry": {
+        "viewport": 1440,
+        "document": 1440
+      }
+    },
+    "a662DeltaCurrentEndControl": {
+      "at": "2026-10-16T02:44:14.615Z",
+      "request": {
+        "operationName": "QaA662CurrentEnd",
+        "variables": {
+          "resource": "dpg-db8oscsdp0tc73djg5ng",
+          "text": "qa_a662_error_delta",
+          "instance": ["dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u"],
+          "startTime": "2026-10-16T01:41:34.505Z",
+          "endTime": "2026-10-16T02:44:14.209Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query QaA662CurrentEnd($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "instance": "dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u",
+                "level": "error",
+                "message": "2026-10-16 02:43:50.739 UTC [251] ERROR:  column \"qa_a662_error_delta\" does not exist",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T02:43:50.742126518Z",
+                "type": "postgres"
+              }
+            ],
+            "nextEndTime": "2026-10-16T02:43:50.742126517Z",
+            "nextStartTime": "2026-10-16T01:41:34.505Z"
+          }
+        }
+      }
+    },
+    "a662DeltaStillMissingAfterControl": {
+      "at": "2026-10-16T02:44:15.715Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db8oscsdp0tc73djg5ng?tab=logs&text=qa_a662_error_delta&instance=dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u",
+      "input": "qa_a662_error_delta",
+      "aria": "- main:\n  - navigation \"Breadcrumbs\": Database qa-20261016-a662-logs\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - heading \"qa-20261016-a662-logs\" [level=1]\n  - text: Available\n  - button \"Open actions menu\"\n  - navigation \"Database details\":\n    - button \"Overview\"\n    - button \"Logs\"\n  - combobox \"Time range\": Last hour\n  - combobox \"Database instance\": dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u\n  - textbox \"Search database logs\": qa_a662_error_delta\n  - paragraph: No matching logs\n  - paragraph: No logs match these filters."
+    },
+    "a662DesktopReloadControl": {
+      "at": "2026-10-16T02:44:52.479Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db8oscsdp0tc73djg5ng?tab=logs&text=qa_a662_error_delta&instance=dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u",
+      "rows": [
+        "07:43:50 PM[dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u]2026-10-16 02:43:50.739 UTC [251] ERROR:  column \"qa_a662_error_delta\" does not exist"
+      ]
+    },
+    "a662ReloadQuery": {
+      "at": "2026-10-16T02:44:53.088Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db8oscsdp0tc73djg5ng?tab=logs&text=qa_a662_error_delta&instance=dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u",
+      "input": "qa_a662_error_delta",
+      "latest": {
+        "request": {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "dpg-db8oscsdp0tc73djg5ng",
+            "text": "qa_a662_error_delta",
+            "instance": ["dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u"],
+            "startTime": "2026-10-16T01:44:51.756Z",
+            "endTime": "2026-10-16T02:44:51.756Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [
+                {
+                  "__typename": "LogEntry",
+                  "instance": "dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u",
+                  "level": "error",
+                  "message": "2026-10-16 02:43:50.739 UTC [251] ERROR:  column \"qa_a662_error_delta\" does not exist",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-16T02:43:50.742126518Z",
+                  "type": "postgres"
+                }
+              ],
+              "nextEndTime": "2026-10-16T02:43:50.742126517Z",
+              "nextStartTime": "2026-10-16T01:44:51.756Z"
+            }
+          }
+        }
+      },
+      "errors": [],
+      "pending": [],
+      "rows": [
+        "07:43:50 PM[dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u]2026-10-16 02:43:50.739 UTC [251] ERROR:  column \"qa_a662_error_delta\" does not exist"
+      ],
+      "geometry": {
+        "viewport": 1440,
+        "document": 1440
+      }
+    },
+    "a662MobileFreshDelta": {
+      "at": "2026-10-16T02:45:07.633Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db8oscsdp0tc73djg5ng?tab=logs&text=qa_a662_error_delta&instance=dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u",
+      "rows": [
+        "07:43:50 PM[dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u]2026-10-16 02:43:50.739 UTC [251] ERROR:  column \"qa_a662_error_delta\" does not exist"
+      ],
+      "geometry": {
+        "viewport": 390,
+        "document": 390
+      }
+    },
+    "a662MobileFreshBounds": {
+      "at": "2026-10-16T02:45:08.248Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db8oscsdp0tc73djg5ng?tab=logs&text=qa_a662_error_delta&instance=dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u",
+      "input": "qa_a662_error_delta",
+      "latest": {
+        "request": {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "dpg-db8oscsdp0tc73djg5ng",
+            "text": "qa_a662_error_delta",
+            "instance": ["dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u"],
+            "startTime": "2026-10-16T01:45:06.385Z",
+            "endTime": "2026-10-16T02:45:06.385Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [
+                {
+                  "__typename": "LogEntry",
+                  "instance": "dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u",
+                  "level": "error",
+                  "message": "2026-10-16 02:43:50.739 UTC [251] ERROR:  column \"qa_a662_error_delta\" does not exist",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-16T02:43:50.742126518Z",
+                  "type": "postgres"
+                }
+              ],
+              "nextEndTime": "2026-10-16T02:43:50.742126517Z",
+              "nextStartTime": "2026-10-16T01:45:06.385Z"
+            }
+          }
+        }
+      },
+      "errors": [],
+      "pending": [],
+      "rows": [
+        "07:43:50 PM[dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u]2026-10-16 02:43:50.739 UTC [251] ERROR:  column \"qa_a662_error_delta\" does not exist"
+      ],
+      "geometry": {
+        "viewport": 390,
+        "document": 390
+      }
+    },
+    "a662SqlErrorEpsilon": {
+      "at": "2026-10-16T02:45:10.332Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db8oscsdp0tc73djg5ng",
+          "sql": "SELECT qa_a662_error_epsilon;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": null
+        },
+        "errors": [
+          {
+            "message": "bad request: column \"qa_a662_error_epsilon\" does not exist (at character 8)",
+            "locations": [
+              {
+                "line": 2,
+                "column": 3
+              }
+            ],
+            "path": ["executeDatabaseQuery"]
+          }
+        ]
+      },
+      "timing": {
+        "startTime": 1792118708903.2422,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.139,
+        "responseStart": 722.834,
+        "responseEnd": 723.254
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db8oscsdp0tc73djg5ng#sql-console"
+    },
+    "a662EpsilonSearchReady": {
+      "at": "2026-10-16T02:45:24.127Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db8oscsdp0tc73djg5ng?tab=logs&text=qa_a662_error_epsilon&instance=dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u",
+      "input": "qa_a662_error_epsilon",
+      "latest": {
+        "request": {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "dpg-db8oscsdp0tc73djg5ng",
+            "text": "qa_a662_error_epsilon",
+            "instance": ["dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u"],
+            "startTime": "2026-10-16T01:45:06.385Z",
+            "endTime": "2026-10-16T02:45:06.385Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [],
+              "nextEndTime": "2026-10-16T02:45:06Z",
+              "nextStartTime": "2026-10-16T01:45:06Z"
+            }
+          }
+        }
+      },
+      "errors": [],
+      "pending": [],
+      "rows": [],
+      "geometry": {
+        "viewport": 390,
+        "document": 390
+      }
+    },
+    "a662EpsilonCurrentEndControl": {
+      "at": "2026-10-16T02:45:25.107Z",
+      "request": {
+        "operationName": "QaA662MobileCurrentEnd",
+        "variables": {
+          "resource": "dpg-db8oscsdp0tc73djg5ng",
+          "text": "qa_a662_error_epsilon",
+          "instance": ["dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u"],
+          "startTime": "2026-10-16T01:45:06.385Z",
+          "endTime": "2026-10-16T02:45:24.726Z",
+          "limit": 100
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query QaA662MobileCurrentEnd($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "logs": {
+            "__typename": "LogList",
+            "hasMore": false,
+            "logs": [
+              {
+                "__typename": "LogEntry",
+                "instance": "dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u",
+                "level": "error",
+                "message": "2026-10-16 02:45:09.346 UTC [310] ERROR:  column \"qa_a662_error_epsilon\" does not exist",
+                "method": "",
+                "statusCode": "",
+                "timestamp": "2026-10-16T02:45:09.439720771Z",
+                "type": "postgres"
+              }
+            ],
+            "nextEndTime": "2026-10-16T02:45:09.43972077Z",
+            "nextStartTime": "2026-10-16T01:45:06.385Z"
+          }
+        }
+      }
+    },
+    "a662MobileStillMissing": {
+      "at": "2026-10-16T02:46:42.568Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db8oscsdp0tc73djg5ng?tab=logs&text=qa_a662_error_epsilon&instance=dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u",
+      "aria": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\": qa-20261016-a662-logs\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - heading \"qa-20261016-a662-logs\" [level=1]\n  - text: Available\n  - button \"Open actions menu\"\n  - navigation \"Database details\":\n    - button \"Overview\"\n    - button \"Logs\"\n  - combobox \"Time range\": Last hour\n  - combobox \"Database instance\": dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u\n  - textbox \"Search database logs\": qa_a662_error_epsilon\n  - paragraph: No matching logs\n  - paragraph: No logs match these filters.",
+      "geometry": {
+        "viewport": 390,
+        "document": 390
+      }
+    },
+    "a662RangeChangeControl": {
+      "at": "2026-10-16T02:46:45.193Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db8oscsdp0tc73djg5ng?tab=logs&text=qa_a662_error_epsilon&instance=dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u&range=30m",
+      "rows": [
+        "07:45:09 PM[dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u]2026-10-16 02:45:09.346 UTC [310] ERROR:  column \"qa_a662_error_epsilon\" does not exist"
+      ]
+    },
+    "a662RangeChangeQuery": {
+      "at": "2026-10-16T02:46:46.304Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db8oscsdp0tc73djg5ng?tab=logs&text=qa_a662_error_epsilon&instance=dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u&range=30m",
+      "input": "qa_a662_error_epsilon",
+      "latest": {
+        "request": {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "dpg-db8oscsdp0tc73djg5ng",
+            "text": "qa_a662_error_epsilon",
+            "instance": ["dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u"],
+            "startTime": "2026-10-16T02:16:44.313Z",
+            "endTime": "2026-10-16T02:46:44.313Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [
+                {
+                  "__typename": "LogEntry",
+                  "instance": "dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u",
+                  "level": "error",
+                  "message": "2026-10-16 02:45:09.346 UTC [310] ERROR:  column \"qa_a662_error_epsilon\" does not exist",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-16T02:45:09.439720771Z",
+                  "type": "postgres"
+                }
+              ],
+              "nextEndTime": "2026-10-16T02:45:09.43972077Z",
+              "nextStartTime": "2026-10-16T02:16:44.313Z"
+            }
+          }
+        }
+      },
+      "errors": [],
+      "pending": [],
+      "rows": [
+        "07:45:09 PM[dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u]2026-10-16 02:45:09.346 UTC [310] ERROR:  column \"qa_a662_error_epsilon\" does not exist"
+      ],
+      "geometry": {
+        "viewport": 390,
+        "document": 390
+      }
+    },
+    "a662CustomEpsilonReady": {
+      "at": "2026-10-16T02:48:11.118Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db8oscsdp0tc73djg5ng?tab=logs&text=qa_a662_error_epsilon&instance=dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u&range=custom&rangeStart=2026-10-16T02%3A00%3A00.000Z&rangeEnd=2026-10-16T02%3A40%3A00.000Z",
+      "input": "qa_a662_error_epsilon",
+      "latest": {
+        "request": {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "dpg-db8oscsdp0tc73djg5ng",
+            "text": "qa_a662_error_epsilon",
+            "instance": ["dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u"],
+            "startTime": "2026-10-16T02:00:00.000Z",
+            "endTime": "2026-10-16T02:40:00.000Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [],
+              "nextEndTime": "2026-10-16T02:40:00Z",
+              "nextStartTime": "2026-10-16T02:00:00Z"
+            }
+          }
+        }
+      },
+      "errors": [],
+      "pending": [],
+      "rows": [],
+      "geometry": {
+        "viewport": 390,
+        "document": 390
+      }
+    },
+    "a662CustomDeltaReady": {
+      "at": "2026-10-16T02:48:42.468Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db8oscsdp0tc73djg5ng?tab=logs&text=qa_a662_error_delta&instance=dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u&range=custom&rangeStart=2026-10-16T02%3A00%3A00.000Z&rangeEnd=2026-10-16T02%3A40%3A00.000Z",
+      "input": "qa_a662_error_delta",
+      "latest": {
+        "request": {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "dpg-db8oscsdp0tc73djg5ng",
+            "text": "qa_a662_error_delta",
+            "instance": ["dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u"],
+            "startTime": "2026-10-16T02:00:00.000Z",
+            "endTime": "2026-10-16T02:40:00.000Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [],
+              "nextEndTime": "2026-10-16T02:40:00Z",
+              "nextStartTime": "2026-10-16T02:00:00Z"
+            }
+          }
+        }
+      },
+      "errors": [],
+      "pending": [],
+      "rows": [],
+      "geometry": {
+        "viewport": 390,
+        "document": 390
+      }
+    },
+    "a662FinalFiveErrors": {
+      "at": "2026-10-16T02:49:29.609Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db8oscsdp0tc73djg5ng?tab=logs&text=qa_a662_error_&instance=dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u&range=1h",
+      "input": "qa_a662_error_",
+      "latest": {
+        "request": {
+          "operationName": "Logs",
+          "variables": {
+            "resource": "dpg-db8oscsdp0tc73djg5ng",
+            "text": "qa_a662_error_",
+            "instance": ["dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u"],
+            "startTime": "2026-10-16T01:49:09.652Z",
+            "endTime": "2026-10-16T02:49:09.652Z",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query Logs($resource: String!, $type: String, $text: String, $textMode: String, $level: [String!], $instance: [String!], $statusCode: [String!], $method: [String!], $path: [String!], $startTime: String, $endTime: String, $limit: Int) {\n  logs(\n    resource: $resource\n    type: $type\n    text: $text\n    textMode: $textMode\n    level: $level\n    instance: $instance\n    statusCode: $statusCode\n    method: $method\n    path: $path\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    hasMore\n    nextStartTime\n    nextEndTime\n    logs {\n      timestamp\n      message\n      type\n      instance\n      level\n      method\n      statusCode\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "logs": {
+              "__typename": "LogList",
+              "hasMore": false,
+              "logs": [
+                {
+                  "__typename": "LogEntry",
+                  "instance": "dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u",
+                  "level": "error",
+                  "message": "2026-10-16 02:41:24.311 UTC [159] ERROR:  column \"qa_a662_error_alpha\" does not exist",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-16T02:41:24.439497816Z",
+                  "type": "postgres"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u",
+                  "level": "error",
+                  "message": "2026-10-16 02:41:27.005 UTC [169] ERROR:  column \"qa_a662_error_beta\" does not exist",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-16T02:41:27.006132235Z",
+                  "type": "postgres"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u",
+                  "level": "error",
+                  "message": "2026-10-16 02:41:29.839 UTC [171] ERROR:  relation \"qa_a662_error_gamma\" does not exist",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-16T02:41:30.039841729Z",
+                  "type": "postgres"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u",
+                  "level": "error",
+                  "message": "2026-10-16 02:43:50.739 UTC [251] ERROR:  column \"qa_a662_error_delta\" does not exist",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-16T02:43:50.742126518Z",
+                  "type": "postgres"
+                },
+                {
+                  "__typename": "LogEntry",
+                  "instance": "dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u",
+                  "level": "error",
+                  "message": "2026-10-16 02:45:09.346 UTC [310] ERROR:  column \"qa_a662_error_epsilon\" does not exist",
+                  "method": "",
+                  "statusCode": "",
+                  "timestamp": "2026-10-16T02:45:09.439720771Z",
+                  "type": "postgres"
+                }
+              ],
+              "nextEndTime": "2026-10-16T02:41:24.439497815Z",
+              "nextStartTime": "2026-10-16T01:49:09.652Z"
+            }
+          }
+        }
+      },
+      "errors": [],
+      "pending": [],
+      "rows": [
+        "07:41:24 PM[dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u]2026-10-16 02:41:24.311 UTC [159] ERROR:  column \"qa_a662_error_alpha\" does not exist",
+        "07:41:27 PM[dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u]2026-10-16 02:41:27.005 UTC [169] ERROR:  column \"qa_a662_error_beta\" does not exist",
+        "07:41:30 PM[dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u]2026-10-16 02:41:29.839 UTC [171] ERROR:  relation \"qa_a662_error_gamma\" does not exist",
+        "07:43:50 PM[dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u]2026-10-16 02:43:50.739 UTC [251] ERROR:  column \"qa_a662_error_delta\" does not exist",
+        "07:45:09 PM[dpg-db8oscsdp0tc73djg5ng-jnf0c8g75jknakhg5e7u]2026-10-16 02:45:09.346 UTC [310] ERROR:  column \"qa_a662_error_epsilon\" does not exist"
+      ],
+      "geometry": {
+        "viewport": 390,
+        "document": 390
+      }
+    },
+    "a662DeleteDatabase": {
+      "at": "2026-10-16T02:49:49.465Z",
+      "request": {
+        "operationName": "DeleteDatabase",
+        "variables": {
+          "id": "dpg-db8oscsdp0tc73djg5ng"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteDatabase($id: String!, $confirm: String) {\n  deleteDatabase(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteDatabase": true
+        }
+      },
+      "timing": {
+        "startTime": 1792118988351.748,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.161,
+        "responseStart": 317.954,
+        "responseEnd": 318.351
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "a662SessionCleared": {
+      "at": "2026-10-16T02:50:26.224Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  },
+  "screenshots": {
+    "qa-a662-desktop-stale-search.png": {
+      "bytes": 57207,
+      "sha256": "61a60bc1255c00b420737f01a615193e1ed81d43fe86fab0506afebe8a1b1a4a",
+      "visuallyInspected": true
+    },
+    "qa-a662-mobile-stale-search.png": {
+      "bytes": 31415,
+      "sha256": "1764b236def983fed6fcffb76aff2a8023b07a28b65653a00464432bdf1d731e",
+      "visuallyInspected": true
+    }
+  },
+  "cleanup": {
+    "deleteAcceptedAt": "2026-10-16T02:49:49.465Z",
+    "rest404At": "2026-10-16T02:50:02.857Z",
+    "podsPVCAbsentAt": "2026-10-16T02:50:28Z",
+    "allBaselineIDSetsRestored": {
+      "blueprints": true,
+      "databases": true,
+      "envGroups": true,
+      "keyValues": true,
+      "projects": true,
+      "services": true,
+      "webhookEndpoints": true
+    },
+    "logoutExit": 0,
+    "whoami": 401,
+    "cookies": 0,
+    "pages": 1,
+    "url": "about:blank",
+    "sessionHandlesRemoved": true
+  },
+  "dependency": {
+    "lockReactDOM": "19.3.1",
+    "lockApollo": "4.3.3",
+    "artifact": "react-dom-npm-19.3.1-9c943efb7d-10c0.zip",
+    "module": "qa-a662-mobile-stale-search.png",
+    "source": {
+      "function updateMemo(": {
+        "line": 9173,
+        "source": "    function updateMemo(nextCreate, deps) {\n      var hook = updateWorkInProgressHook();\n      deps = void 0 === deps ? null : deps;\n      var prevState = hook.memoizedState;\n      if (null !== deps && areHookInputsEqual(deps, prevState[1]))\n        return prevState[0];\n      prevState = nextCreate();\n      if (shouldDoubleInvokeUserFnsInHooksDEV) {\n        setIsStrictModeForDevtools(!0);\n        try {\n          nextCreate();\n        } finally {\n          setIsStrictModeForDevtools(!1);\n        }\n      }\n      hook.memoizedState = [prevState, deps];\n      return prevState;\n    }\n    function mountDeferredValue(value, initialValue) {\n      var hook = mountWorkInProgressHook();\n      return mountDeferredValueImpl(hook, value, initialValue);\n    }\n    function updateDeferredValue(value, initialValue) {\n      var hook = updateWorkInProgressHook();\n      return updateDeferredValueImpl("
+      },
+      "function areHookInputsEqual(": {
+        "line": 7969,
+        "source": "    function areHookInputsEqual(nextDeps, prevDeps) {\n      if (ignorePreviousDependencies) return !1;\n      if (null === prevDeps)\n        return (\n          console.error(\n            \"%s received a final argument during this render, but not during the previous render. Even though the final argument is optional, its type cannot change between renders.\",\n            currentHookNameInDev\n          ),\n          !1\n        );\n      nextDeps.length !== prevDeps.length &&\n        console.error(\n          \"The final argument passed to %s changed size between renders. The order and size of this array must remain constant.\\n\\nPrevious: %s\\nIncoming: %s\",\n          currentHookNameInDev,\n          \"[\" + prevDeps.join(\", \") + \"]\",\n          \"[\" + nextDeps.join(\", \") + \"]\"\n        );\n      for (var i = 0; i < prevDeps.length && i < nextDeps.length; i++)\n        if (!objectIs(nextDeps[i], prevDeps[i])) return !1;\n      return !0;\n    }\n    function renderWithHooks(\n      current,\n      workInProgress,\n      Component,"
+      }
+    },
+    "localNodeModulesExcluded": true
+  },
+  "limits": [
+    "Only Postgres live; shared Key Value caller inferred.",
+    "No periodic datastore refresh proposed.",
+    "No product implementation or product suite run in filing pass."
+  ]
+}
