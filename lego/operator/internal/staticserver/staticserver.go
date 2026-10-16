@@ -193,6 +193,9 @@ type Handler struct {
 	// written to clients, extending memory accounting from fetch until the
 	// response write completes (the fetch gate alone releases at read time).
 	liveBodies *semaphore.Weighted
+	// encodes bounds concurrent Brotli encodes (CPU), globally and per site;
+	// their working memory is leased from liveBodies (encoding.go).
+	encodes *fetchGate
 }
 
 // New builds a Handler over a Resolver and Origin. cacheBytes caps the in-memory
@@ -204,6 +207,7 @@ func New(resolver Resolver, origin Origin, cacheBytes int64) *Handler {
 		cache:      newCache(cacheBytes),
 		gate:       newFetchGate(defaultMaxConcurrentFetches, defaultMaxInflightBytes, defaultMaxSiteFetches),
 		liveBodies: semaphore.NewWeighted(defaultMaxLiveBodyBytes),
+		encodes:    newFetchGate(defaultMaxConcurrentEncodes, 0, defaultMaxSiteEncodes),
 	}
 }
 
@@ -365,11 +369,39 @@ func (h *Handler) serveObject(w http.ResponseWriter, r *http.Request, site Site,
 	// Custom headers win over the defaults above (last-write for a given key).
 	applyHeaders(hdr, site.Headers, requestPath)
 
+	// Automatic Brotli (w8/m79). The representation is chosen before
+	// ServeContent, so its preconditions and byte ranges apply to the bytes
+	// actually sent. An eligible object varies by Accept-Encoding whichever
+	// coding this request gets; anything short of a ready, useful variant
+	// within budget falls back to identity.
+	body := obj.Body
+	if brotliCandidate(hdr, len(obj.Body)) {
+		varyAcceptEncoding(hdr)
+		if acceptsBrotli(r.Header) {
+			if encoded, ok := h.brotliVariant(site.AppID, site.keyFor(servedPath), obj.Body); ok {
+				// The encoded body leases its own bytes on top of the identity
+				// lease (the identity body stays referenced); HEAD writes none.
+				// Without room, serve identity rather than shed.
+				lease := int64(len(encoded))
+				if r.Method == http.MethodHead {
+					lease = 0
+				}
+				if h.liveBodies.TryAcquire(lease) {
+					defer h.liveBodies.Release(lease)
+					body = encoded
+					hdr.Set("Content-Encoding", "br")
+					weakenETag(hdr)
+					w = &brotliResponseWriter{ResponseWriter: w, size: len(encoded)}
+				}
+			}
+		}
+	}
+
 	// ServeContent evaluates the request against a saved ETag rule (304 for a
 	// matching If-None-Match, 412 for a failed If-Match — RFC 9110 §13) and
 	// serves byte ranges; HEAD gets headers only. The zero modtime keeps it
 	// from inventing a Last-Modified validator (w4/272).
-	http.ServeContent(w, r, servedPath, time.Time{}, bytes.NewReader(obj.Body))
+	http.ServeContent(w, r, servedPath, time.Time{}, bytes.NewReader(body))
 }
 
 // safeRedirectTarget validates the final, expanded Location at the output sink.
