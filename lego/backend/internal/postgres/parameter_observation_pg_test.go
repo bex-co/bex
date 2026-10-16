@@ -59,6 +59,39 @@ func TestParameterSpecObservationIntegration(t *testing.T) {
 	}
 }
 
+// A lowercase declaration is corroborated by PostgreSQL's canonical
+// `TimeZone` row (w4/317), keeping its own spelling and value.
+func TestParameterSpecObservationNameCaseIntegration(t *testing.T) {
+	uri, err := url.Parse(testDBURI(t))
+	if err != nil {
+		t.Fatal("parse test database URI")
+	}
+	query := uri.Query()
+	query.Set("TimeZone", "Europe/Berlin")
+	uri.RawQuery = query.Encode()
+	ctx := context.Background()
+	svc, _ := newService()
+	seedDatabaseAt(t, svc, "observed-case", uri.String())
+	for _, name := range []string{"timezone", "TimeZone"} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := svc.SetParameterOverrides(ctx, "observed-case", map[string]string{name: "Europe/Berlin"}); err != nil {
+				t.Fatal(err)
+			}
+			rows, err := svc.ParameterSpec(ctx, "observed-case")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(rows) != 1 {
+				t.Fatalf("declared rows=%d", len(rows))
+			}
+			row := rows[0]
+			if row.Name != name || row.Value != "Europe/Berlin" || row.ObservationStatus != "observed" || row.ObservedSetting == nil || *row.ObservedSetting != "Europe/Berlin" || row.ObservedUnit != nil {
+				t.Fatalf("time zone observation=%+v", row)
+			}
+		})
+	}
+}
+
 func TestParameterSpecObservationConnectionFailureIntegration(t *testing.T) {
 	uri, err := url.Parse(testDBURI(t))
 	if err != nil {

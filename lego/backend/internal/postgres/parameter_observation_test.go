@@ -22,6 +22,7 @@ import (
 	"errors"
 	"maps"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -62,6 +63,38 @@ func TestParameterObservationsPreserveDeclarations(t *testing.T) {
 	for _, row := range parameterSpecViews(declared, observed, errors.New("runtime unavailable")) {
 		if row.Value != declared[row.Name] || row.ObservationStatus != "unavailable" || row.ObservedSetting != nil || row.ObservedUnit != nil {
 			t.Fatalf("unavailable observation = %+v", row)
+		}
+	}
+}
+
+// PostgreSQL parameter names are case-insensitive (w4/317): a lowercase
+// declaration is corroborated by the runtime's canonical spelling, and the
+// declaration keeps its own name and value either way.
+func TestParameterObservationsIgnoreNameCase(t *testing.T) {
+	observed := []ParameterOverrideView{
+		{Name: "TimeZone", Setting: "Europe/Berlin"},
+		{Name: "work_mem", Setting: "6144", Unit: "kB"},
+	}
+	for _, declared := range []map[string]string{
+		{"timezone": "Europe/Berlin", "WORK_MEM": "6MB"},
+		{"TimeZone": "Europe/Berlin", "work_mem": "6MB"},
+	} {
+		rows := parameterSpecViews(declared, observed, nil)
+		if len(rows) != 2 {
+			t.Fatalf("rows = %+v", rows)
+		}
+		for _, row := range rows {
+			value, ok := declared[row.Name]
+			if !ok || row.Value != value || row.ObservationStatus != "observed" || row.ObservedSetting == nil {
+				t.Fatalf("declaration %v observed as %+v", declared, row)
+			}
+		}
+		zone := rows[0]
+		if strings.EqualFold(rows[1].Name, "timezone") {
+			zone = rows[1]
+		}
+		if *zone.ObservedSetting != "Europe/Berlin" || zone.ObservedUnit != nil {
+			t.Fatalf("time zone observation = %+v", zone)
 		}
 	}
 }

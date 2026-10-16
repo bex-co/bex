@@ -264,7 +264,7 @@ Until w6/m133 the declared set was reachable on **no** surface: it could be writ
 
 The declared parameter list now includes `observationStatus`, nullable `observedSetting`, and nullable `observedUnit` on REST, GraphQL and MCP. The editor displays these beside the saved values. The diagnostic reads the same non-default `pg_settings` rows as the existing observed-configuration endpoint:
 
-- `observed`: a row with this name is present; its current value and unit are shown. This does **not** assert that the requested value was applied.
+- `observed`: a row with this name is present; its current value and unit are shown. Names match case-insensitively, as in PostgreSQL itself, so a declared `timezone` is corroborated by the runtime's `TimeZone`; the declaration keeps its own spelling (w4/317). This does **not** assert that the requested value was applied.
 - `not_observed`: the name is absent from that non-default view. The override may still be pending or may be invalid; it is not confirmed as applied.
 - `unavailable`: runtime observation failed. The declared value stays readable so users can inspect and repair configuration during a database outage.
 
