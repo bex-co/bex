@@ -23,7 +23,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -472,5 +474,41 @@ func TestREST_CreateEnvGroupInvalidServiceIsNamed404WithNoOrphan(t *testing.T) {
 	}
 	if ids, _ := store.List(context.Background(), "env-groups"); len(ids) != 0 {
 		t.Fatalf("invalid serviceId left orphan groups: %v", ids)
+	}
+}
+
+// TestRevealedEmptyGroupFileCarriesItsContent (w4/326, a725): reading a present
+// zero-byte group file answered {"name":…} with no content field over REST and
+// MCP — indistinguishable from a names-only metadata row — while GraphQL said
+// "". A content read now always carries content; metadata and the masked write
+// acknowledgement stay names-only, and a missing file stays 404.
+func TestRevealedEmptyGroupFileCarriesItsContent(t *testing.T) {
+	svc := newService(newFakeStore(), sampleApp("web"))
+	w := serveREST(svc, "POST", "/v1/env-groups", `{"name":"a725"}`)
+	var g EnvGroupView
+	if err := json.Unmarshal(w.Body.Bytes(), &g); w.Code != 201 || err != nil {
+		t.Fatalf("create => %d %s", w.Code, w.Body.String())
+	}
+	for name, content := range map[string]string{"qa-a725-empty.txt": "", "qa-a725.txt": "雪\n"} {
+		ack := serveREST(svc, "PUT", "/v1/env-groups/"+g.ID+"/secret-files/"+name, `{"content":`+strconv.Quote(content)+`}`)
+		if ack.Code != 200 || strings.Contains(ack.Body.String(), `"content"`) {
+			t.Fatalf("PUT %s => %d %s, want a names-only acknowledgement", name, ack.Code, ack.Body.String())
+		}
+	}
+	for name, want := range map[string]string{"qa-a725-empty.txt": `{"name":"qa-a725-empty.txt","content":""}`, "qa-a725.txt": `{"name":"qa-a725.txt","content":"雪\n"}`} {
+		read := serveREST(svc, "GET", "/v1/env-groups/"+g.ID+"/secret-files/"+name, "")
+		var got, wantObj map[string]any
+		_ = json.Unmarshal(read.Body.Bytes(), &got)
+		_ = json.Unmarshal([]byte(want), &wantObj)
+		if read.Code != 200 || !reflect.DeepEqual(got, wantObj) {
+			t.Fatalf("GET %s => %d %s, want %s", name, read.Code, read.Body.String(), want)
+		}
+	}
+	if c := serveREST(svc, "GET", "/v1/env-groups/"+g.ID+"/secret-files/missing.txt", "").Code; c != 404 {
+		t.Fatalf("missing file => %d, want 404", c)
+	}
+	detail := serveREST(svc, "GET", "/v1/env-groups/"+g.ID, "")
+	if detail.Code != 200 || strings.Contains(detail.Body.String(), `"content"`) {
+		t.Fatalf("group detail => %d %s, want names-only files", detail.Code, detail.Body.String())
 	}
 }
