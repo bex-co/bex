@@ -45,7 +45,8 @@ const (
 // ResolveNativeBuild is the resolve phase: env bundle and Dockerfile paths,
 // the service's root directory in the checkout, and the runtime. It returns
 // the choices it applied, the primary toolchain first, then Python's Poetry
-// (w8/m72) and any opted-in companion (Bun); an *UnsupportedVersionError is tenant input.
+// (w8/m72), Ruby's and Python's Node (w8/m77) and any opted-in companion
+// (Bun); an *UnsupportedVersionError is tenant input.
 func ResolveNativeBuild(runtime, bundlePath, dockerfilePath, sourceDir string) ([]NativeChoice, error) {
 	env, err := readEnvBundle(bundlePath)
 	if err != nil {
@@ -79,6 +80,16 @@ func ResolveNativeBuild(runtime, bundlePath, dockerfilePath, sourceDir string) (
 		}
 		choices = append(choices, poetry)
 	}
+	if nativeJSCompanionRuntimes[runtime] {
+		node, err := ResolveNativeVersion(nativeNodeRuntime, env, readFile)
+		if err != nil {
+			return nil, err
+		}
+		if rewritten, err = addNativeJSTools(rewritten, choice.Image, node.Image); err != nil {
+			return nil, err
+		}
+		choices = append(choices, node)
+	}
 	if withBun {
 		if rewritten, err = addNativeBun(rewritten, choice.Image, bun.Image); err != nil {
 			return nil, err
@@ -98,6 +109,41 @@ func ResolveNativeBuild(runtime, bundlePath, dockerfilePath, sourceDir string) (
 func addNativeBun(dockerfile, baseImage, bunImage string) (string, error) {
 	return afterNativeBase(dockerfile, baseImage, "COPY --link --from="+bunImage+" /usr/local/bin/bun /usr/local/bin/bun\n"+
 		"RUN ln -sf bun /usr/local/bin/bunx\n")
+}
+
+// nativeJSCompanionRuntimes are the primary runtimes whose native builds also
+// carry Render's documented JavaScript tools — Node, npm, Yarn and pnpm, at
+// build and runtime (w8/m77): a Rails or Django app builds its frontend
+// assets with them. Primary Node already has them; the other runtimes are
+// left as they were.
+var nativeJSCompanionRuntimes = map[string]bool{"ruby": true, "python": true}
+
+// nativeYarnDir is Yarn 1 as the official Node 22/24 images ship it. Yarn 1
+// is plain JavaScript, so it is always taken from the pinned default Node
+// image — Node 26's image ships no Yarn.
+const nativeYarnDir = "/opt/yarn-v1.22.22"
+
+// addNativeJSTools copies the selected Node line's node binary and its global
+// node_modules (npm, plus Corepack where the line has it) out of that line's
+// pinned image, Yarn from the default Node image, and installs the pinned
+// pnpm — right after the primary FROM, before the source and the authored
+// build, with the links the official node images use. The primary and Node
+// images share one Debian release, so the copied binary's libraries are the
+// primary image's own. --link keeps these layers cached when the primary
+// line changes.
+func addNativeJSTools(dockerfile, baseImage, nodeImage string) (string, error) {
+	return afterNativeBase(dockerfile, baseImage, nativeJSToolLines(nodeImage))
+}
+
+func nativeJSToolLines(nodeImage string) string {
+	yarnImage := nativeToolchains[nativeNodeRuntime].defaultImage()
+	return "COPY --link --from=" + nodeImage + " /usr/local/bin/node /usr/local/bin/node\n" +
+		"COPY --link --from=" + nodeImage + " /usr/local/lib/node_modules /usr/local/lib/node_modules\n" +
+		"COPY --link --from=" + yarnImage + " " + nativeYarnDir + " " + nativeYarnDir + "\n" +
+		"RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm" +
+		" && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx" +
+		" && ln -sf " + nativeYarnDir + "/bin/yarn /usr/local/bin/yarn && ln -sf " + nativeYarnDir + "/bin/yarnpkg /usr/local/bin/yarnpkg\n" +
+		nativePnpmInstall()
 }
 
 // nativePoetryHome is the Poetry tool's own virtualenv: the application's

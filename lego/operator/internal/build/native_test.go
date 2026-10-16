@@ -1046,3 +1046,72 @@ func TestNativeImageRunsPnpm(t *testing.T) {
 		}
 	})
 }
+
+// TestNativeImageRunsJSToolsBesideRubyAndPython is w8/m77's execution gate:
+// sweeps 321/328's Ruby and Python services died on `node: command not
+// found`. On every Ruby line and on Python 3.12 the authored build runs node,
+// npm, Yarn and pnpm (each running a package.json script) beside the primary
+// toolchain's own tools, and the started service finds them all again.
+// Opt-in: needs Docker, pulls the pinned toolchain images and pnpm tarball.
+func TestNativeImageRunsJSToolsBesideRubyAndPython(t *testing.T) {
+	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
+		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the generated image")
+	}
+	pkg := `{"name":"bex-js-companion","version":"1.0.0","private":true,"scripts":{"marker":"node -e \"process.stdout.write('script-ran')\""}}`
+	js := `node=$(node --version) npm=$(npm --version) yarn=$(yarn --version) pnpm=$(pnpm --version)` +
+		` npm-run=$(npm run --silent marker) yarn-run=$(yarn --silent run marker) pnpm-run=$(pnpm run --silent marker)`
+	node24, _ := nativeToolchains["node"].find("24")
+	wantJS := "node=v" + node24.version + " npm=" // npm's own version varies with the Node line's bundle
+	wantRuns := "yarn=1.22.22 pnpm=" + nativePnpm.version + " npm-run=script-ran yarn-run=script-ran pnpm-run=script-ran"
+	type tc struct{ name, runtime, primary, wantPrimary string }
+	cases := make([]tc, 0, len(nativeToolchains["ruby"].lines)+1)
+	for _, l := range nativeToolchains["ruby"].lines {
+		cases = append(cases, tc{"ruby-" + l.line, "ruby", `ruby=$(ruby -e 'print RUBY_VERSION') bundler=$(bundle --version | cut -d' ' -f3) gem=$(gem --version)`, "ruby=" + l.version + " bundler="})
+	}
+	py312, _ := nativeToolchains["python"].find("3.12")
+	cases = append(cases, tc{"python-3.12", "python", `python=$(python -c 'import platform; print(platform.python_version())') pip=$(pip --version | cut -d' ' -f2) $(poetry --version)`, "python=" + py312.version + " pip="})
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			o := nativeOptions()
+			o.Runtime = c.runtime
+			o.BuildCommand = `echo "` + c.primary + ` ` + js + `" > built.txt`
+			o.StartCommand = `echo "runtime ` + c.primary + ` ` + js + `"; echo "built $(cat built.txt)"`
+			env, files := map[string]string{}, map[string]string{"package.json": pkg}
+			if c.runtime == "ruby" {
+				l, _ := nativeToolchains["ruby"].find(strings.TrimPrefix(c.name, "ruby-"))
+				files[".ruby-version"] = l.version + "\n"
+			} else {
+				env["PYTHON_VERSION"] = "3.12"
+			}
+			bundle, dockerfile, src := writeResolveFixture(t, o, env, files)
+			if _, err := ResolveNativeBuild(c.runtime, bundle, dockerfile, src); err != nil {
+				t.Fatal(err)
+			}
+			must(t, os.Rename(dockerfile, filepath.Join(src, "Dockerfile")))
+			tag := fmt.Sprintf("bex-native-js-it-%s:%d", c.name, os.Getpid())
+			t.Cleanup(func() { _ = exec.Command("docker", "image", "rm", "-f", tag).Run() })
+			build := exec.Command("docker", "build", "-q", "-t", tag, "--secret", "id=render-env,src="+bundle, src)
+			build.Env = append(os.Environ(), "DOCKER_BUILDKIT=1")
+			if out, err := build.CombinedOutput(); err != nil {
+				t.Fatalf("build: %v\n%s", err, out)
+			}
+			out, err := exec.Command("docker", "run", "--rm", tag).CombinedOutput()
+			for _, prefix := range []string{"runtime ", "built "} {
+				line := ""
+				for l := range strings.SplitSeq(string(out), "\n") {
+					if strings.HasPrefix(l, prefix) {
+						line = l
+					}
+				}
+				for _, want := range []string{c.wantPrimary, wantJS, wantRuns} {
+					if err != nil || !strings.Contains(line, want) {
+						t.Fatalf("%sline = %q (run err %v)\n%s\nwant %q", prefix, line, err, out, want)
+					}
+				}
+				if c.runtime == "python" && !strings.Contains(line, "Poetry (version "+defaultPoetryVersion+")") {
+					t.Fatalf("%sline lost Poetry: %q", prefix, line)
+				}
+			}
+		})
+	}
+}
