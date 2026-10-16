@@ -1,0 +1,606 @@
+{
+  "pass": "a664",
+  "observedAtUTC": "2026-10-16",
+  "sourceHead": "7ee5a95fd1d88dd8766072f497e8e191d51a06cb",
+  "scope": "Two owned Free Node24 web services, one SSE request each; no product changes.",
+  "fixtureSource": "const http=require('node:http'),crypto=require('node:crypto');const boot=crypto.randomUUID();http.createServer((q,s)=>{if(q.url==='/events'){s.writeHead(200,{'Content-Type':'text/event-stream','Cache-Control':'no-cache','Connection':'keep-alive','X-Accel-Buffering':'no'});s.flushHeaders();let seq=0;const emit=()=>s.write('event: ping\\ndata: '+JSON.stringify({marker:'QA_A664',boot,seq:seq++,at:new Date().toISOString()})+'\\n\\n');emit();const timer=setInterval(emit,15000);const end=setTimeout(()=>{clearInterval(timer);s.end('event: done\\ndata: '+JSON.stringify({marker:'QA_A664_DONE',boot,seq})+'\\n\\n')},380000);s.on('close',()=>{clearInterval(timer);clearTimeout(end)})}else{s.writeHead(200,{'Content-Type':'application/json'});s.end(JSON.stringify({marker:'QA_A664',boot}))}}).listen(8080,'0.0.0.0');\n",
+  "clientSource": "const https=require('node:https'),fs=require('node:fs');const out='.playwright-mcp/qa-a664-stream-results.json';const start=Date.now();const state={startedAt:new Date(start).toISOString(),status:'connecting',frames:[],errors:[]};let finished=false,buffer='',timer;\nfunction save(){fs.writeFileSync(out,JSON.stringify({...state,updatedAt:new Date().toISOString(),elapsedMs:Date.now()-start},null,2)+'\\n')}\nfunction finish(reason,error){if(finished)return;finished=true;clearTimeout(timer);state.status='finished';state.finishedAt=new Date().toISOString();state.reason=reason;if(error)state.errors.push(String(error));state.pings=state.frames.filter(f=>f.event==='ping').length;state.sawDone=state.frames.some(f=>f.event==='done'&&f.data?.marker==='QA_A664_DONE');state.complete=reason==='end'&&state.sawDone;save();console.log(JSON.stringify({finishedAt:state.finishedAt,reason,elapsedMs:Date.now()-start,pings:state.pings,sawDone:state.sawDone,complete:state.complete,errors:state.errors}));}\nconst req=https.get('https://qa-20261016-a664-stream.onbex.co/events',{headers:{'Accept':'text/event-stream','User-Agent':'Mozilla/5.0'}},res=>{state.status='streaming';state.httpStatus=res.statusCode;state.headers=res.headers;state.headersAt=new Date().toISOString();state.firstHeaderMs=Date.now()-start;save();console.log(JSON.stringify({headersAt:state.headersAt,status:res.statusCode,firstHeaderMs:state.firstHeaderMs,type:res.headers['content-type']}));res.setEncoding('utf8');res.on('data',chunk=>{buffer+=chunk;let end;while((end=buffer.indexOf('\\n\\n'))>=0){const raw=buffer.slice(0,end);buffer=buffer.slice(end+2);const event=raw.split('\\n').find(l=>l.startsWith('event: '))?.slice(7);const data=raw.split('\\n').find(l=>l.startsWith('data: '))?.slice(6);let parsed;try{parsed=JSON.parse(data)}catch{state.errors.push('unparsed event');continue}state.frames.push({receivedAt:new Date().toISOString(),elapsedMs:Date.now()-start,event,data:parsed});save();if(state.frames.length===1||state.frames.length%2===0||event==='done')console.log(JSON.stringify({at:new Date().toISOString(),frames:state.frames.length,event,seq:parsed.seq,elapsedMs:Date.now()-start}))}});res.on('end',()=>finish('end'));res.on('aborted',()=>finish('aborted'));res.on('error',e=>finish('response-error',e))});req.setTimeout(25000,()=>req.destroy(new Error('no stream data for25seconds')));req.on('error',e=>finish('request-error',e));timer=setTimeout(()=>{finish('total-timeout');req.destroy()},410000);save();\n\n",
+  "fixtures": [
+    {
+      "id": "srv-db8pasi9cl7s73ae46c0",
+      "kind": "web_service",
+      "name": "qa-20261016-a664-stream",
+      "deployId": "dep-db8pasi9cl7s73ae46cg"
+    },
+    {
+      "id": "srv-db8perfdbg8c73dgh8fg",
+      "kind": "web_service",
+      "name": "qa-20261016-a664-stream-b",
+      "deployId": "dep-db8perfdbg8c73dgh8g0",
+      "idleTTLSeconds": 120,
+      "idleSettingSurface": "documented API extension; native UI minimum5min"
+    }
+  ],
+  "streams": {
+    "A": {
+      "startedAt": "2026-10-16T03:12:13.395Z",
+      "status": "finished",
+      "frames": [
+        {
+          "receivedAt": "2026-10-16T03:12:14.024Z",
+          "elapsedMs": 629,
+          "event": "ping",
+          "data": {
+            "marker": "QA_A664",
+            "boot": "0febdeee-57f4-4184-ad8c-e751eae54dbc",
+            "seq": 0,
+            "at": "2026-10-16T03:12:13.938Z"
+          }
+        },
+        {
+          "receivedAt": "2026-10-16T03:12:29.109Z",
+          "elapsedMs": 15714,
+          "event": "ping",
+          "data": {
+            "marker": "QA_A664",
+            "boot": "0febdeee-57f4-4184-ad8c-e751eae54dbc",
+            "seq": 1,
+            "at": "2026-10-16T03:12:28.941Z"
+          }
+        },
+        {
+          "receivedAt": "2026-10-16T03:12:44.025Z",
+          "elapsedMs": 30630,
+          "event": "ping",
+          "data": {
+            "marker": "QA_A664",
+            "boot": "0febdeee-57f4-4184-ad8c-e751eae54dbc",
+            "seq": 2,
+            "at": "2026-10-16T03:12:43.941Z"
+          }
+        },
+        {
+          "receivedAt": "2026-10-16T03:12:59.027Z",
+          "elapsedMs": 45632,
+          "event": "ping",
+          "data": {
+            "marker": "QA_A664",
+            "boot": "0febdeee-57f4-4184-ad8c-e751eae54dbc",
+            "seq": 3,
+            "at": "2026-10-16T03:12:58.942Z"
+          }
+        },
+        {
+          "receivedAt": "2026-10-16T03:13:14.032Z",
+          "elapsedMs": 60637,
+          "event": "ping",
+          "data": {
+            "marker": "QA_A664",
+            "boot": "0febdeee-57f4-4184-ad8c-e751eae54dbc",
+            "seq": 4,
+            "at": "2026-10-16T03:13:13.947Z"
+          }
+        },
+        {
+          "receivedAt": "2026-10-16T03:13:29.031Z",
+          "elapsedMs": 75636,
+          "event": "ping",
+          "data": {
+            "marker": "QA_A664",
+            "boot": "0febdeee-57f4-4184-ad8c-e751eae54dbc",
+            "seq": 5,
+            "at": "2026-10-16T03:13:28.948Z"
+          }
+        },
+        {
+          "receivedAt": "2026-10-16T03:13:44.086Z",
+          "elapsedMs": 90691,
+          "event": "ping",
+          "data": {
+            "marker": "QA_A664",
+            "boot": "0febdeee-57f4-4184-ad8c-e751eae54dbc",
+            "seq": 6,
+            "at": "2026-10-16T03:13:43.952Z"
+          }
+        },
+        {
+          "receivedAt": "2026-10-16T03:13:59.037Z",
+          "elapsedMs": 105642,
+          "event": "ping",
+          "data": {
+            "marker": "QA_A664",
+            "boot": "0febdeee-57f4-4184-ad8c-e751eae54dbc",
+            "seq": 7,
+            "at": "2026-10-16T03:13:58.952Z"
+          }
+        },
+        {
+          "receivedAt": "2026-10-16T03:14:14.041Z",
+          "elapsedMs": 120646,
+          "event": "ping",
+          "data": {
+            "marker": "QA_A664",
+            "boot": "0febdeee-57f4-4184-ad8c-e751eae54dbc",
+            "seq": 8,
+            "at": "2026-10-16T03:14:13.953Z"
+          }
+        },
+        {
+          "receivedAt": "2026-10-16T03:14:29.038Z",
+          "elapsedMs": 135643,
+          "event": "ping",
+          "data": {
+            "marker": "QA_A664",
+            "boot": "0febdeee-57f4-4184-ad8c-e751eae54dbc",
+            "seq": 9,
+            "at": "2026-10-16T03:14:28.954Z"
+          }
+        },
+        {
+          "receivedAt": "2026-10-16T03:14:44.047Z",
+          "elapsedMs": 150652,
+          "event": "ping",
+          "data": {
+            "marker": "QA_A664",
+            "boot": "0febdeee-57f4-4184-ad8c-e751eae54dbc",
+            "seq": 10,
+            "at": "2026-10-16T03:14:43.959Z"
+          }
+        },
+        {
+          "receivedAt": "2026-10-16T03:14:59.060Z",
+          "elapsedMs": 165665,
+          "event": "ping",
+          "data": {
+            "marker": "QA_A664",
+            "boot": "0febdeee-57f4-4184-ad8c-e751eae54dbc",
+            "seq": 11,
+            "at": "2026-10-16T03:14:58.960Z"
+          }
+        },
+        {
+          "receivedAt": "2026-10-16T03:15:14.052Z",
+          "elapsedMs": 180657,
+          "event": "ping",
+          "data": {
+            "marker": "QA_A664",
+            "boot": "0febdeee-57f4-4184-ad8c-e751eae54dbc",
+            "seq": 12,
+            "at": "2026-10-16T03:15:13.965Z"
+          }
+        }
+      ],
+      "errors": [],
+      "httpStatus": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "text/event-stream",
+        "date": "Fri, 16 Oct 2026 03:12:13 GMT",
+        "x-accel-buffering": "no",
+        "transfer-encoding": "chunked"
+      },
+      "headersAt": "2026-10-16T03:12:14.023Z",
+      "firstHeaderMs": 628,
+      "finishedAt": "2026-10-16T03:15:28.271Z",
+      "reason": "aborted",
+      "pings": 13,
+      "sawDone": false,
+      "complete": false,
+      "updatedAt": "2026-10-16T03:15:28.271Z",
+      "elapsedMs": 194876
+    },
+    "B": {
+      "startedAt": "2026-10-16T03:19:29.893Z",
+      "status": "finished",
+      "frames": [
+        {
+          "receivedAt": "2026-10-16T03:19:30.644Z",
+          "elapsedMs": 751,
+          "event": "ping",
+          "data": {
+            "marker": "QA_A664",
+            "boot": "22f1f4e1-5e4c-4e49-a508-d55e3faaf18e",
+            "seq": 0,
+            "at": "2026-10-16T03:19:30.467Z"
+          }
+        },
+        {
+          "receivedAt": "2026-10-16T03:19:45.620Z",
+          "elapsedMs": 15727,
+          "event": "ping",
+          "data": {
+            "marker": "QA_A664",
+            "boot": "22f1f4e1-5e4c-4e49-a508-d55e3faaf18e",
+            "seq": 1,
+            "at": "2026-10-16T03:19:45.469Z"
+          }
+        },
+        {
+          "receivedAt": "2026-10-16T03:20:00.559Z",
+          "elapsedMs": 30666,
+          "event": "ping",
+          "data": {
+            "marker": "QA_A664",
+            "boot": "22f1f4e1-5e4c-4e49-a508-d55e3faaf18e",
+            "seq": 2,
+            "at": "2026-10-16T03:20:00.472Z"
+          }
+        },
+        {
+          "receivedAt": "2026-10-16T03:20:15.561Z",
+          "elapsedMs": 45668,
+          "event": "ping",
+          "data": {
+            "marker": "QA_A664",
+            "boot": "22f1f4e1-5e4c-4e49-a508-d55e3faaf18e",
+            "seq": 3,
+            "at": "2026-10-16T03:20:15.474Z"
+          }
+        },
+        {
+          "receivedAt": "2026-10-16T03:20:30.567Z",
+          "elapsedMs": 60674,
+          "event": "ping",
+          "data": {
+            "marker": "QA_A664",
+            "boot": "22f1f4e1-5e4c-4e49-a508-d55e3faaf18e",
+            "seq": 4,
+            "at": "2026-10-16T03:20:30.479Z"
+          }
+        },
+        {
+          "receivedAt": "2026-10-16T03:20:45.615Z",
+          "elapsedMs": 75722,
+          "event": "ping",
+          "data": {
+            "marker": "QA_A664",
+            "boot": "22f1f4e1-5e4c-4e49-a508-d55e3faaf18e",
+            "seq": 5,
+            "at": "2026-10-16T03:20:45.483Z"
+          }
+        }
+      ],
+      "errors": [],
+      "httpStatus": 200,
+      "headers": {
+        "cache-control": "no-cache",
+        "content-type": "text/event-stream",
+        "date": "Fri, 16 Oct 2026 03:19:30 GMT",
+        "x-accel-buffering": "no",
+        "transfer-encoding": "chunked"
+      },
+      "headersAt": "2026-10-16T03:19:30.643Z",
+      "firstHeaderMs": 750,
+      "finishedAt": "2026-10-16T03:20:56.217Z",
+      "reason": "aborted",
+      "pings": 6,
+      "sawDone": false,
+      "complete": false,
+      "updatedAt": "2026-10-16T03:20:56.217Z",
+      "elapsedMs": 86324
+    }
+  },
+  "conditions": [
+    {
+      "at": "2026-10-16T03:23:42.172754+00:00",
+      "name": "tea-d98210cbbpdc73dcrkvg-qa-20261016-a664-stream",
+      "appPhase": "Hibernated",
+      "lastActive": "2026-10-16T03:09:48Z",
+      "idleTTLSeconds": 300,
+      "appConditions": [
+        {
+          "lastTransitionTime": "2026-10-16T03:14:48Z",
+          "message": "idle \u2265300s on free tier; wakes on next request",
+          "observedGeneration": 2,
+          "reason": "AutoHibernated",
+          "status": "False",
+          "type": "Ready"
+        },
+        {
+          "lastTransitionTime": "2026-10-16T03:09:38Z",
+          "message": "serving at qa-20261016-a664-stream.onbex.co",
+          "observedGeneration": 2,
+          "reason": "Routed",
+          "status": "True",
+          "type": "PublicRouting"
+        },
+        {
+          "lastTransitionTime": "2026-10-16T03:09:38Z",
+          "message": "serving revision has not been observed",
+          "observedGeneration": 1,
+          "reason": "ServingUnobserved",
+          "status": "Unknown",
+          "type": "Serving"
+        }
+      ],
+      "deploymentReplicas": 0,
+      "deploymentAvailable": null
+    },
+    {
+      "at": "2026-10-16T03:23:43.760920+00:00",
+      "name": "tea-d98210cbbpdc73dcrkvg-qa-20261016-a664-stream-b",
+      "appPhase": "Hibernated",
+      "lastActive": "2026-10-16T03:18:16Z",
+      "idleTTLSeconds": 120,
+      "appConditions": [
+        {
+          "lastTransitionTime": "2026-10-16T03:20:16Z",
+          "message": "idle \u2265120s on free tier; wakes on next request",
+          "observedGeneration": 2,
+          "reason": "AutoHibernated",
+          "status": "False",
+          "type": "Ready"
+        },
+        {
+          "lastTransitionTime": "2026-10-16T03:18:05Z",
+          "message": "serving at qa-20261016-a664-stream-b.onbex.co",
+          "observedGeneration": 2,
+          "reason": "Routed",
+          "status": "True",
+          "type": "PublicRouting"
+        },
+        {
+          "lastTransitionTime": "2026-10-16T03:18:05Z",
+          "message": "serving revision has not been observed",
+          "observedGeneration": 1,
+          "reason": "ServingUnobserved",
+          "status": "Unknown",
+          "type": "Serving"
+        }
+      ],
+      "deploymentReplicas": 0,
+      "deploymentAvailable": null
+    }
+  ],
+  "requestLogsProjected": [
+    {
+      "at": "2026-10-16T03:25:41.893Z",
+      "request": {
+        "operationName": "QaA664RequestTimeline",
+        "query": "query QaA664RequestTimeline($resource:String!,$startTime:String!){logs(resource:$resource,type:\"request\",startTime:$startTime,limit:100){hasMore logs{timestamp message}}}",
+        "variables": {
+          "resource": "srv-db8pasi9cl7s73ae46c0",
+          "startTime": "2026-10-16T03:09:00Z"
+        }
+      },
+      "status": 200,
+      "hasMore": false,
+      "projection": [
+        {
+          "timestamp": "2026-10-16T03:15:28.18941534Z",
+          "method": "GET",
+          "path": "/events",
+          "status": 200,
+          "startUTC": "2026-10-16T03:12:13.873032724Z",
+          "durationNs": 194315962896
+        }
+      ]
+    },
+    {
+      "at": "2026-10-16T03:25:42.181Z",
+      "request": {
+        "operationName": "QaA664RequestTimeline",
+        "query": "query QaA664RequestTimeline($resource:String!,$startTime:String!){logs(resource:$resource,type:\"request\",startTime:$startTime,limit:100){hasMore logs{timestamp message}}}",
+        "variables": {
+          "resource": "srv-db8perfdbg8c73dgh8fg",
+          "startTime": "2026-10-16T03:09:00Z"
+        }
+      },
+      "status": 200,
+      "hasMore": false,
+      "projection": [
+        {
+          "timestamp": "2026-10-16T03:20:56.129793127Z",
+          "method": "GET",
+          "path": "/events",
+          "status": 200,
+          "startUTC": "2026-10-16T03:19:30.455815648Z",
+          "durationNs": 85673515170
+        }
+      ]
+    }
+  ],
+  "requestLogProjectionLimit": "Only timestamp/method/path/status/startUTC/durationNs persisted; original message IP fields omitted. Not a complete raw logs response.",
+  "nativeIdle300": {
+    "at": "2026-10-16T03:11:21.662Z",
+    "request": {
+      "operationName": "SetIdleTimeout",
+      "variables": {
+        "id": "srv-db8pasi9cl7s73ae46c0",
+        "idleTTLSeconds": 300
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.3.3"
+        }
+      },
+      "query": "mutation SetIdleTimeout($id: String!, $idleTTLSeconds: Int!) {\n  setIdleTimeout(id: $id, idleTTLSeconds: $idleTTLSeconds) {\n    id\n    idleTTLSeconds\n    phase\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "setIdleTimeout": {
+          "__typename": "Service",
+          "id": "srv-db8pasi9cl7s73ae46c0",
+          "idleTTLSeconds": 300,
+          "phase": "Running"
+        }
+      }
+    },
+    "timing": {
+      "startTime": 1792120280647.726,
+      "domainLookupStart": -1,
+      "domainLookupEnd": -1,
+      "connectStart": -1,
+      "secureConnectionStart": -1,
+      "connectEnd": -1,
+      "requestStart": 0.147,
+      "responseStart": 303.996,
+      "responseEnd": 304.447
+    },
+    "url": "https://dashboard.bex.co/services/srv-db8pasi9cl7s73ae46c0/settings"
+  },
+  "apiIdle120": {
+    "at": "2026-10-16T03:18:55.064Z",
+    "request": {
+      "operationName": "QaA664RepeatIdle",
+      "query": "mutation QaA664RepeatIdle($id:String!,$idleTTLSeconds:Int!){setIdleTimeout(id:$id,idleTTLSeconds:$idleTTLSeconds){id idleTTLSeconds phase}}",
+      "variables": {
+        "id": "srv-db8perfdbg8c73dgh8fg",
+        "idleTTLSeconds": 120
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "setIdleTimeout": {
+          "id": "srv-db8perfdbg8c73dgh8fg",
+          "idleTTLSeconds": 120,
+          "phase": "Running"
+        }
+      }
+    }
+  },
+  "freshDesktop": {
+    "at": "2026-10-16T03:24:03.500Z",
+    "url": "https://dashboard.bex.co/services/srv-db8pasi9cl7s73ae46c0/settings",
+    "headings": ["qa-20261016-a664-stream"],
+    "idle": "5 min",
+    "sleepText": [],
+    "deleteReady": 1
+  },
+  "freshMobile": {
+    "at": "2026-10-16T03:25:45.656Z",
+    "idle": "2 min",
+    "header": "Toggle Sidebar\nqa-20261016-a664-stream-b\nNew\nP\nWEB SERVICE\nqa-20261016-a664-stream-b\nService\nSleeping\nRuntime\nImage\nConnect\nManual Deploy\n",
+    "geometry": {
+      "viewport": 390,
+      "document": 390
+    }
+  },
+  "deleteA": {
+    "at": "2026-10-16T03:27:10.705Z",
+    "request": {
+      "operationName": "DeleteService",
+      "variables": {
+        "id": "srv-db8pasi9cl7s73ae46c0"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.3.3"
+        }
+      },
+      "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deleteService": true
+      }
+    },
+    "timing": {
+      "startTime": 1792121229610.153,
+      "domainLookupStart": -1,
+      "domainLookupEnd": -1,
+      "connectStart": -1,
+      "secureConnectionStart": -1,
+      "connectEnd": -1,
+      "requestStart": 0.141,
+      "responseStart": 378.652,
+      "responseEnd": 379.073
+    },
+    "url": "https://dashboard.bex.co/"
+  },
+  "deleteB": {
+    "at": "2026-10-16T03:27:05.281Z",
+    "request": {
+      "operationName": "DeleteService",
+      "variables": {
+        "id": "srv-db8perfdbg8c73dgh8fg"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.3.3"
+        }
+      },
+      "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deleteService": true
+      }
+    },
+    "timing": {
+      "startTime": 1792121224243.136,
+      "domainLookupStart": -1,
+      "domainLookupEnd": -1,
+      "connectStart": -1,
+      "secureConnectionStart": -1,
+      "connectEnd": -1,
+      "requestStart": 0.146,
+      "responseStart": 316.447,
+      "responseEnd": 316.868
+    },
+    "url": "https://dashboard.bex.co/"
+  },
+  "sessionCleared": {
+    "at": "2026-10-16T03:28:51.647Z",
+    "whoami": 401,
+    "cookies": 0,
+    "pages": 1,
+    "url": "about:blank"
+  },
+  "cleanup": {
+    "deleteAAt": "2026-10-16T03:27:10.705Z",
+    "deleteBAt": "2026-10-16T03:27:05.281Z",
+    "restBoth404At": "2026-10-16T03:28:00.425Z",
+    "publicBoth404": true,
+    "bothAppsAbsent": true,
+    "bothPodsAbsentBeforeDelete": true,
+    "allBaselineIDSetsRestored": {
+      "blueprints": true,
+      "databases": true,
+      "envGroups": true,
+      "keyValues": true,
+      "projects": true,
+      "services": true,
+      "webhookEndpoints": true
+    },
+    "logoutExit": 0,
+    "whoami": 401,
+    "cookies": 0,
+    "pages": 1,
+    "url": "about:blank",
+    "ownHandlesRemoved": true,
+    "statMatchedSharedRemoved": true
+  },
+  "console": {
+    "errors": 3,
+    "message": "Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://api.bex.co/graphql:0",
+    "disposition": "Transient polling failures; not independently reproduced or filed."
+  },
+  "unverified": [
+    "Raw live Prometheus series and exact running Traefik binary version",
+    "Plain HTTP streaming, custom domains, paid tiers, non-web types, HTTP/2 and default900s TTL",
+    "Outgoing-only SSE heartbeats extending the idle window indefinitely is not asserted"
+  ],
+  "pinnedDependency": {
+    "chartVersion": "41.0.0",
+    "chartSHA256": "e0a2be6c76bd0592428cb00930ff6b3c8934e1f210c1095105fdb0f10ab8665b",
+    "appVersion": "v3.7.5",
+    "sources": [
+      {
+        "url": "https://raw.githubusercontent.com/traefik/traefik/v3.7.5/pkg/middlewares/metrics/metrics.go",
+        "sha256": "dd903dd2b465f3036a70e71bf0d9de49faf46f9c58f0e989a5e4d753733e6568"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/traefik/traefik/v3.7.5/pkg/observability/metrics/prometheus.go",
+        "sha256": "b7bc15542d2bf21642cf2396e907c3da4e932eb688c5723f64bf8b17e010d86d"
+      }
+    ]
+  }
+}
