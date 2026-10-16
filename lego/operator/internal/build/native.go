@@ -81,9 +81,9 @@ const (
 // outside this table is ever pulled.
 var nativeToolchains = map[string]nativeToolchain{
 	"elixir": {label: "Elixir", defaultLine: "1.18", lines: []nativeLine{
-		{line: "1.17", version: "1.17.3", otp: "27", image: "elixir:1.17@sha256:0bdcc080e296103b68fd5eaf0b39aa947b5c53433894c2a1af6467f9f32245c0"},
-		{line: "1.18", version: "1.18.4", otp: "28", image: "elixir:1.18@sha256:f3cc81b7f0f897763f7c74e8f526ddaf18b68f0cdbea6dd65b58f2c5c5629fbd"},
-		{line: "1.19", version: "1.19.6", otp: "28", image: "elixir:1.19@sha256:ead2215da1c6756a4cef5526e55a967e355c345ab3c6c03722618143bc9faa6a"},
+		{line: "1.17", version: "1.17.3", otp: "27", image: "elixir:1.17@sha256:c65f0bdd8827df171963e3558a1461b04efc086d0d52ee7c6900fcddb4467e08"},
+		{line: "1.18", version: "1.18.4", otp: "28", image: "elixir:1.18@sha256:a68defc35f664d1d02de0dc36b12e750bd558b594eed3d0909534317796df749"},
+		{line: "1.19", version: "1.19.6", otp: "28", image: "elixir:1.19@sha256:db1cbca0b49e26e65dd804c75f27ec5f01835f1d29f8b8e4cc8a51f01f986f9f"},
 	}},
 	// Render offers no Go version selection for native services; neither does bex.
 	"go": {label: "Go", defaultLine: "1.24", lines: []nativeLine{
@@ -91,8 +91,8 @@ var nativeToolchains = map[string]nativeToolchain{
 	}},
 	nativeNodeRuntime: {label: "Node", defaultLine: "24", lines: []nativeLine{
 		{line: "22", version: "22.23.3", image: "node:22-bookworm@sha256:0e5f906573693feaa1e21057ebdcfdb5bd5021f050b2dc7c9deceb629c7da2a8"},
-		{line: "24", version: "24.21.0", image: "node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0"},
-		{line: "26", version: "26.11.1", image: "node:26-bookworm@sha256:f1233c415b41ffcf237c717b3dea92e9d4ea006e0e4c71edcb790605d74f5404"},
+		{line: "24", version: "24.22.0", image: "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0"},
+		{line: "26", version: "26.12.0", image: "node:26-bookworm@sha256:a856ae5e25d498bbe5ec85fde88f00f5ed99908fda803ba39d7735ab8574f58c"},
 	}},
 	"python": {label: "Python", defaultLine: "3.13", lines: []nativeLine{
 		{line: "3.10", version: "3.10.22", image: "python:3.10-bookworm@sha256:f72a86806f92fe13a49f49aeca1db0b19ea5cf4a0470b842a01b0e14314945b8"},

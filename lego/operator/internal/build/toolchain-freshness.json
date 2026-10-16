@@ -5,8 +5,8 @@
       "id": "cnb-builder",
       "kind": "builder",
       "upstream": "docker.io/paketobuildpacks/builder-jammy-base:latest",
-      "committed": "paketobuildpacks/builder-jammy-base@sha256:36c91de1fd14a3f4e5434659c4a8d9f8f379f46408117234b0c77b3f7e35d078",
-      "resolved_at": "2026-10-11T02:05:00Z",
+      "committed": "paketobuildpacks/builder-jammy-base@sha256:c0642791404793f276f92c926c4fe910c0fa5f9dce6b3de8b693323a5962236b",
+      "resolved_at": "2026-10-16T10:25:13Z",
       "source": "Docker Hub paketobuildpacks/builder-jammy-base:latest single-platform linux/amd64 Docker manifest (stack io.buildpacks.stacks.jammy; not an index)",
       "files": [
         "lego/operator/cmd/manager/main.go",
@@ -18,8 +18,8 @@
       "id": "cnb-stack-build",
       "kind": "stack",
       "upstream": "docker.io/paketobuildpacks/build-jammy-base:latest",
-      "committed": "paketobuildpacks/build-jammy-base@sha256:bea90980583a314c499cb747596c22b42217c81c6efc8d38ac5561a2cbad70b1",
-      "resolved_at": "2026-10-11T02:05:00Z",
+      "committed": "paketobuildpacks/build-jammy-base@sha256:b8f6a39ca0764598885087bdc0a034c195e4f63a72de8945d7201d9a3234d7f8",
+      "resolved_at": "2026-10-16T10:25:13Z",
       "source": "Docker Hub paketobuildpacks/build-jammy-base:latest multi-arch index",
       "files": ["deploy/gitops/charts/kpack/platform.yaml"]
     },
@@ -27,8 +27,8 @@
       "id": "cnb-stack-run",
       "kind": "stack",
       "upstream": "docker.io/paketobuildpacks/run-jammy-base:latest",
-      "committed": "paketobuildpacks/run-jammy-base@sha256:b795be25d01ec25cc9f8aa6980ad98d9a2c09f2caea24aef5c9a26c16f674356",
-      "resolved_at": "2026-10-11T02:05:00Z",
+      "committed": "paketobuildpacks/run-jammy-base@sha256:49b919098f0119809eaf93cb11ca1d73fe9850070301cea856a35dfd5160bf6b",
+      "resolved_at": "2026-10-16T10:25:13Z",
       "source": "Docker Hub paketobuildpacks/run-jammy-base:latest multi-arch index",
       "files": ["deploy/cnb-run/Dockerfile"]
     },
@@ -105,8 +105,8 @@
       "id": "native-elixir",
       "kind": "native-base",
       "upstream": "docker.io/library/elixir:1.18",
-      "committed": "elixir:1.18@sha256:f3cc81b7f0f897763f7c74e8f526ddaf18b68f0cdbea6dd65b58f2c5c5629fbd",
-      "resolved_at": "2026-10-11T02:05:00Z",
+      "committed": "elixir:1.18@sha256:a68defc35f664d1d02de0dc36b12e750bd558b594eed3d0909534317796df749",
+      "resolved_at": "2026-10-16T10:25:13Z",
       "source": "Docker Hub library/elixir:1.18 multi-arch index",
       "files": ["lego/operator/internal/build/native.go"]
     },
@@ -150,8 +150,8 @@
       "id": "native-node",
       "kind": "native-base",
       "upstream": "docker.io/library/node:24-bookworm",
-      "committed": "node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0",
-      "resolved_at": "2026-10-11T02:05:00Z",
+      "committed": "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+      "resolved_at": "2026-10-16T10:25:13Z",
       "source": "Docker Hub library/node:24-bookworm multi-arch index",
       "files": ["lego/operator/internal/build/native.go"]
     },
@@ -231,8 +231,8 @@
       "id": "native-node-26",
       "kind": "native-base",
       "upstream": "docker.io/library/node:26-bookworm",
-      "committed": "node:26-bookworm@sha256:f1233c415b41ffcf237c717b3dea92e9d4ea006e0e4c71edcb790605d74f5404",
-      "resolved_at": "2026-10-11T02:05:00Z",
+      "committed": "node:26-bookworm@sha256:a856ae5e25d498bbe5ec85fde88f00f5ed99908fda803ba39d7735ab8574f58c",
+      "resolved_at": "2026-10-16T10:25:13Z",
       "source": "Docker Hub library/node:26-bookworm multi-arch index (w8/m51 version line)",
       "files": ["lego/operator/internal/build/native.go"]
     },
@@ -258,8 +258,8 @@
       "id": "native-elixir-1-17",
       "kind": "native-base",
       "upstream": "docker.io/library/elixir:1.17",
-      "committed": "elixir:1.17@sha256:0bdcc080e296103b68fd5eaf0b39aa947b5c53433894c2a1af6467f9f32245c0",
-      "resolved_at": "2026-10-11T02:05:00Z",
+      "committed": "elixir:1.17@sha256:c65f0bdd8827df171963e3558a1461b04efc086d0d52ee7c6900fcddb4467e08",
+      "resolved_at": "2026-10-16T10:25:13Z",
       "source": "Docker Hub library/elixir:1.17 multi-arch index (w8/m51 version line)",
       "files": ["lego/operator/internal/build/native.go"]
     },
@@ -267,8 +267,8 @@
       "id": "native-elixir-1-19",
       "kind": "native-base",
       "upstream": "docker.io/library/elixir:1.19",
-      "committed": "elixir:1.19@sha256:ead2215da1c6756a4cef5526e55a967e355c345ab3c6c03722618143bc9faa6a",
-      "resolved_at": "2026-10-11T02:05:00Z",
+      "committed": "elixir:1.19@sha256:db1cbca0b49e26e65dd804c75f27ec5f01835f1d29f8b8e4cc8a51f01f986f9f",
+      "resolved_at": "2026-10-16T10:25:13Z",
       "source": "Docker Hub library/elixir:1.19 multi-arch index (w8/m51 version line)",
       "files": ["lego/operator/internal/build/native.go"]
     }
