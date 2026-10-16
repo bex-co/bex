@@ -1653,14 +1653,14 @@ func (s *Service) SetProjectID(ctx context.Context, name, projectID string) erro
 // ClearProjectID removes only the placement observed by the caller. A
 // reassignment since the caller listed the resource is left intact.
 func (s *Service) ClearProjectID(ctx context.Context, name, expectedProjectID string) error {
-	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
-	if err != nil {
-		return err
-	}
-	if d.Labels[core.LabelProject] != expectedProjectID {
-		return nil
-	}
-	return s.setProjectID(ctx, d, "")
+	return core.RetryPlacementClear(ctx,
+		func() (*appv1alpha1.Database, error) { return s.fetchDatabase(ctx, core.RelCanCreate, name) },
+		func(d *appv1alpha1.Database) error {
+			if d.Labels[core.LabelProject] != expectedProjectID {
+				return nil
+			}
+			return s.setProjectID(ctx, d, "")
+		})
 }
 
 func (s *Service) setProjectID(ctx context.Context, d *appv1alpha1.Database, projectID string) error {
@@ -1714,14 +1714,14 @@ func (s *Service) SetEnvironmentID(ctx context.Context, name, environmentID stri
 
 // ClearEnvironmentID removes only the environment observed by the caller.
 func (s *Service) ClearEnvironmentID(ctx context.Context, name, expectedEnvironmentID string) error {
-	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
-	if err != nil {
-		return err
-	}
-	if d.Labels[core.LabelEnvironment] != expectedEnvironmentID {
-		return nil
-	}
-	return s.setEnvironmentID(ctx, d, "")
+	return core.RetryPlacementClear(ctx,
+		func() (*appv1alpha1.Database, error) { return s.fetchDatabase(ctx, core.RelCanCreate, name) },
+		func(d *appv1alpha1.Database) error {
+			if d.Labels[core.LabelEnvironment] != expectedEnvironmentID {
+				return nil
+			}
+			return s.setEnvironmentID(ctx, d, "")
+		})
 }
 
 func (s *Service) setEnvironmentID(ctx context.Context, d *appv1alpha1.Database, environmentID string) error {
