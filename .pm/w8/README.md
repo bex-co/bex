@@ -239,7 +239,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **112** — [Native Elixir omits production build/runtime MIX_ENV](112.md) (55m, major) ← functional CLI sweep361; both default builds fail in dev, build-only/runtime-prefix controls isolate both phases; own fixtures cleaned.
 
-- [ ] **111** — [Native Node services omit runtime NODE_ENV=production](111.md) (55m, major) ← functional CLI sweep357; both clients reproduce development mode/cache off, runtime-prefix controls pass; fixtures cleaned.
+- [ ] **111** — [Native Node services omit runtime NODE_ENV=production](blocked/111.md) (55m, major) — **BLOCKED (2026-10-16: implemented — primary Node serving images default NODE_ENV=production after the build RUN, every configured value (incl. empty) overriding it, build unset; BuildKit gate + fail-before verified; needs the operator deployed plus the hosted both-client Express replay, runnable with the QA login)**
 
 - [x] **109** — [Environment-group bulk writes are rejected as a missing single-key parameter](done/109.md) — **DONE 2026-10-15:** hosted sweep324 accepts the bulk short route, atomic value refusal and strict single-key/unknown/method neighbors; shared value readbacks and exact unlinked-group cleanup pass.
 
