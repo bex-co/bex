@@ -202,6 +202,21 @@ func writeResolveFixture(t *testing.T, o Options, env, src map[string]string) (b
 	return bundle, dockerfile, sourceDir
 }
 
+// resolvedDockerfile is o's generated Dockerfile after the resolve phase, for
+// env and an empty source.
+func resolvedDockerfile(t *testing.T, o Options, env map[string]string) string {
+	t.Helper()
+	bundle, dockerfile, src := writeResolveFixture(t, o, env, nil)
+	if _, err := ResolveNativeBuild(nativeRuntime(o), bundle, dockerfile, src); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(dockerfile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(raw)
+}
+
 func must(t *testing.T, err error) {
 	t.Helper()
 	if err != nil {
