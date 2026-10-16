@@ -1,0 +1,820 @@
+{
+  "source": "Functional qa-find-bugs w4 a725, research main1f6efd4b1 after sync. Two native owned unlinked groups, synthetic values only.",
+  "receipts": {
+    "SourcePrepared": {
+      "at": "2026-10-16T13:40:23.527Z",
+      "checked": 0,
+      "scope": "Workspace (no Environment)",
+      "createEnabled": true
+    },
+    "CreateSource": {
+      "at": "2026-10-16T13:40:46.156Z",
+      "request": {
+        "operationName": "CreateEnvGroup",
+        "variables": {
+          "name": "qa-20261016-a725-source",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "envVars": [
+            {
+              "key": "QA_A725_EMPTY",
+              "value": ""
+            },
+            {
+              "key": "QA_A725_NOTE",
+              "value": "CLONE 雪"
+            }
+          ],
+          "secretFiles": [
+            {
+              "name": "qa-a725-empty.txt",
+              "content": ""
+            },
+            {
+              "name": "qa-a725-control.txt",
+              "content": "CONTROL 雪\n"
+            }
+          ],
+          "serviceIds": [],
+          "environmentId": null
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateEnvGroup($name: String!, $ownerId: String, $envVars: [EnvGroupVarInput!], $secretFiles: [EnvGroupSecretFileInput!], $serviceIds: [String!], $environmentId: String) {\n  createEnvGroup(\n    name: $name\n    ownerId: $ownerId\n    envVars: $envVars\n    secretFiles: $secretFiles\n    serviceIds: $serviceIds\n    environmentId: $environmentId\n  ) {\n    id\n    name\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createEnvGroup": {
+            "__typename": "EnvGroup",
+            "id": "evg-db92ika7231s73bq1dq0",
+            "name": "qa-20261016-a725-source"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792158024217.5242,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.149,
+        "responseStart": 21231.984,
+        "responseEnd": 21232.752
+      },
+      "url": "https://dashboard.bex.co/env-groups"
+    },
+    "CloneSource": {
+      "at": "2026-10-16T13:41:46.751Z",
+      "request": {
+        "operationName": "CloneEnvGroup",
+        "variables": {
+          "id": "evg-db92ika7231s73bq1dq0",
+          "name": "qa-20261016-a725-clone",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "environmentId": null
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CloneEnvGroup($id: String!, $name: String!, $ownerId: String, $environmentId: String) {\n  cloneEnvGroup(\n    id: $id\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n  ) {\n    id\n    name\n    ownerId\n    environmentId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "cloneEnvGroup": {
+            "__typename": "EnvGroup",
+            "environmentId": null,
+            "id": "evg-db92j3kj7hos73a49lq0",
+            "name": "qa-20261016-a725-clone",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792158084648.612,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.159,
+        "responseStart": 21398.451,
+        "responseEnd": 21398.943
+      },
+      "url": "https://dashboard.bex.co/env-groups/evg-db92j3kj7hos73a49lq0"
+    },
+    "SourceCloneReads": {
+      "results": [
+        {
+          "at": "2026-10-16T13:41:48.317Z",
+          "path": "/v1/env-groups/evg-db92ika7231s73bq1dq0",
+          "status": 200,
+          "body": {
+            "id": "evg-db92ika7231s73bq1dq0",
+            "name": "qa-20261016-a725-source",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "envVars": [
+              {
+                "key": "QA_A725_EMPTY"
+              },
+              {
+                "key": "QA_A725_NOTE"
+              }
+            ],
+            "secretFiles": [
+              {
+                "name": "qa-a725-control.txt"
+              },
+              {
+                "name": "qa-a725-empty.txt"
+              }
+            ],
+            "createdAt": "2026-10-16T13:40:43.664295932Z",
+            "updatedAt": "2026-10-16T13:40:43.664295932Z",
+            "revision": "egr1_AAAAAAAAAAE",
+            "serviceLinks": []
+          }
+        },
+        {
+          "at": "2026-10-16T13:41:48.568Z",
+          "path": "/v1/env-groups/evg-db92j3kj7hos73a49lq0",
+          "status": 200,
+          "body": {
+            "id": "evg-db92j3kj7hos73a49lq0",
+            "name": "qa-20261016-a725-clone",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "envVars": [
+              {
+                "key": "QA_A725_EMPTY"
+              },
+              {
+                "key": "QA_A725_NOTE"
+              }
+            ],
+            "secretFiles": [
+              {
+                "name": "qa-a725-control.txt"
+              },
+              {
+                "name": "qa-a725-empty.txt"
+              }
+            ],
+            "createdAt": "2026-10-16T13:41:44.482726618Z",
+            "updatedAt": "2026-10-16T13:41:44.482726618Z",
+            "revision": "egr1_AAAAAAAAAAE",
+            "serviceLinks": []
+          }
+        }
+      ]
+    },
+    "CloneItemValues": {
+      "records": [
+        {
+          "at": "2026-10-16T13:42:08.415Z",
+          "path": "/v1/env-groups/evg-db92ika7231s73bq1dq0/env-vars/QA_A725_EMPTY",
+          "status": 200,
+          "body": {
+            "key": "QA_A725_EMPTY",
+            "value": ""
+          }
+        },
+        {
+          "at": "2026-10-16T13:42:08.708Z",
+          "path": "/v1/env-groups/evg-db92ika7231s73bq1dq0/env-vars/QA_A725_NOTE",
+          "status": 200,
+          "body": {
+            "key": "QA_A725_NOTE",
+            "value": "CLONE 雪"
+          }
+        },
+        {
+          "at": "2026-10-16T13:42:08.955Z",
+          "path": "/v1/env-groups/evg-db92ika7231s73bq1dq0/secret-files/qa-a725-empty.txt",
+          "status": 200,
+          "body": {
+            "name": "qa-a725-empty.txt"
+          }
+        },
+        {
+          "at": "2026-10-16T13:42:09.192Z",
+          "path": "/v1/env-groups/evg-db92ika7231s73bq1dq0/secret-files/qa-a725-control.txt",
+          "status": 200,
+          "body": {
+            "name": "qa-a725-control.txt",
+            "content": "CONTROL 雪\n"
+          }
+        },
+        {
+          "at": "2026-10-16T13:42:09.434Z",
+          "path": "/v1/env-groups/evg-db92j3kj7hos73a49lq0/env-vars/QA_A725_EMPTY",
+          "status": 200,
+          "body": {
+            "key": "QA_A725_EMPTY",
+            "value": ""
+          }
+        },
+        {
+          "at": "2026-10-16T13:42:09.714Z",
+          "path": "/v1/env-groups/evg-db92j3kj7hos73a49lq0/env-vars/QA_A725_NOTE",
+          "status": 200,
+          "body": {
+            "key": "QA_A725_NOTE",
+            "value": "CLONE 雪"
+          }
+        },
+        {
+          "at": "2026-10-16T13:42:10.153Z",
+          "path": "/v1/env-groups/evg-db92j3kj7hos73a49lq0/secret-files/qa-a725-empty.txt",
+          "status": 200,
+          "body": {
+            "name": "qa-a725-empty.txt"
+          }
+        },
+        {
+          "at": "2026-10-16T13:42:10.755Z",
+          "path": "/v1/env-groups/evg-db92j3kj7hos73a49lq0/secret-files/qa-a725-control.txt",
+          "status": 200,
+          "body": {
+            "name": "qa-a725-control.txt",
+            "content": "CONTROL 雪\n"
+          }
+        }
+      ]
+    },
+    "CloneEmptyEdited": {
+      "at": "2026-10-16T13:42:38.851Z",
+      "originalContentsLength": 0,
+      "saveEnabled": true,
+      "width": 390
+    },
+    "RecoverCloneEdit": {
+      "at": "2026-10-16T13:44:36.065Z",
+      "records": [
+        {
+          "at": "2026-10-16T13:44:35.555Z",
+          "path": "/v1/env-groups/evg-db92ika7231s73bq1dq0/secret-files/qa-a725-empty.txt",
+          "status": 200,
+          "body": {
+            "name": "qa-a725-empty.txt"
+          }
+        },
+        {
+          "at": "2026-10-16T13:44:36.050Z",
+          "path": "/v1/env-groups/evg-db92j3kj7hos73a49lq0/secret-files/qa-a725-empty.txt",
+          "status": 200,
+          "body": {
+            "name": "qa-a725-empty.txt",
+            "content": "CLONE ONLY 雪\n"
+          }
+        }
+      ],
+      "writes": [
+        {
+          "request": {
+            "operationName": "PatchEnvGroupEnvironment",
+            "variables": {
+              "id": "evg-db92j3kj7hos73a49lq0",
+              "envVars": [],
+              "secretFiles": [
+                {
+                  "name": "qa-a725-empty.txt",
+                  "content": "CLONE ONLY 雪\n"
+                }
+              ],
+              "saveMode": "save_only",
+              "expectedRevision": "egr1_AAAAAAAAAAE"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "mutation PatchEnvGroupEnvironment($id: String!, $envVars: [EnvGroupVarPatchInput!], $secretFiles: [EnvGroupSecretFilePatchInput!], $saveMode: String!, $expectedRevision: String) {\n  patchEnvGroupEnvironment(\n    id: $id\n    envVars: $envVars\n    secretFiles: $secretFiles\n    saveMode: $saveMode\n    expectedRevision: $expectedRevision\n  ) {\n    envVarKeys\n    secretFileNames\n    revision\n    affectedServiceIds\n    failedServiceIds\n    pendingServiceIds\n    rolledOut\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "patchEnvGroupEnvironment": {
+                "__typename": "EnvGroupEnvironmentPatchResult",
+                "affectedServiceIds": [],
+                "envVarKeys": ["QA_A725_EMPTY", "QA_A725_NOTE"],
+                "failedServiceIds": [],
+                "pendingServiceIds": [],
+                "revision": "egr1_AAAAAAAAAAI",
+                "rolledOut": false,
+                "secretFileNames": ["qa-a725-control.txt", "qa-a725-empty.txt"]
+              }
+            }
+          },
+          "timing": {
+            "startTime": 1792158187394.267,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.131,
+            "responseStart": 1539.543,
+            "responseEnd": 1540.179
+          }
+        }
+      ],
+      "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - link \"Environment Groups\":\n      - /url: /env-groups\n    - text: qa-20261016-a725-clone\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - link \"Back to environment groups\":\n    - /url: /env-groups\n  - heading \"qa-20261016-a725-clone\" [level=1]\n  - paragraph: evg-db92j3kj7hos73a49lq0\n  - button \"Manage\"\n  - text: Group Metadata\n  - term: Owner\n  - definition: tea-d98210cbbpdc73dcrkvg\n  - term: Environment\n  - definition: Workspace (no Environment)\n  - term: Created\n  - definition:\n    - time: October 16, 2026 at 6:41 AM\n  - term: Updated\n  - definition:\n    - time: October 16, 2026 at 6:43 AM\n  - text: Environment Variables Values are encrypted and applied to every linked service.\n  - button \"Export\"\n  - button \"Edit\"\n  - code: QA_A725_EMPTY\n  - code: ••••••••••••\n  - button \"Reveal\"\n  - button \"Copy QA_A725_EMPTY\"\n  - code: QA_A725_NOTE\n  - code: ••••••••••••\n  - button \"Reveal\"\n  - button \"Copy QA_A725_NOTE\"\n  - text: Secret Files Encrypted files are mounted into every linked service at /etc/secrets.\n  - code: qa-a725-control.txt\n  - code: ••••••••••••\n  - button \"Reveal\"\n  - button \"Copy qa-a725-control.txt\"\n  - code: qa-a725-empty.txt\n  - code: ••••••••••••\n  - button \"Reveal\"\n  - button \"Copy qa-a725-empty.txt\"\n  - text: Linked Services Linking or unlinking changes service configuration and can restart services even when auto-deploy is off.\n  - combobox \"Select a service\"\n  - button \"Link Service\" [disabled]\n  - text: This group isn't linked to any services yet. It is still fully editable."
+    },
+    "FreshSource": {
+      "at": "2026-10-16T13:45:42.732Z",
+      "url": "https://dashboard.bex.co/env-groups/evg-db92ika7231s73bq1dq0"
+    },
+    "SourceGraphQLControl": {
+      "at": "2026-10-16T13:45:44.420Z",
+      "request": {
+        "operationName": "EnvGroupSecretFileContent",
+        "variables": {
+          "id": "evg-db92ika7231s73bq1dq0",
+          "name": "qa-a725-empty.txt"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query EnvGroupSecretFileContent($id: String!, $name: String!) {\n  envGroupSecretFile(id: $id, name: $name) {\n    name\n    content\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "envGroupSecretFile": {
+            "__typename": "EnvGroupSecretFile",
+            "content": "",
+            "name": "qa-a725-empty.txt"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792158343421.6863,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.13,
+        "responseStart": 294.666,
+        "responseEnd": 295.06
+      },
+      "url": "https://dashboard.bex.co/env-groups/evg-db92ika7231s73bq1dq0"
+    },
+    "FreshRestReproduction": {
+      "at": "2026-10-16T13:45:46.395Z",
+      "length": 0,
+      "saveDisabled": true,
+      "records": [
+        {
+          "at": "2026-10-16T13:45:45.847Z",
+          "path": "/v1/env-groups/evg-db92ika7231s73bq1dq0/secret-files/qa-a725-empty.txt",
+          "status": 200,
+          "body": {
+            "name": "qa-a725-empty.txt"
+          }
+        },
+        {
+          "at": "2026-10-16T13:45:46.164Z",
+          "path": "/v1/env-groups/evg-db92ika7231s73bq1dq0/secret-files/qa-a725-control.txt",
+          "status": 200,
+          "body": {
+            "name": "qa-a725-control.txt",
+            "content": "CONTROL 雪\n"
+          }
+        },
+        {
+          "at": "2026-10-16T13:45:46.395Z",
+          "path": "/v1/env-groups/evg-db92ika7231s73bq1dq0/secret-files/qa-a725-missing.txt",
+          "status": 404,
+          "body": {
+            "code": "NOT_FOUND",
+            "error": "not found",
+            "id": "not_found",
+            "message": "not found",
+            "params": null
+          }
+        }
+      ]
+    },
+    "ItemScreenshot": {
+      "at": "2026-10-16T13:46:16.429Z",
+      "url": "https://api.bex.co/v1/env-groups/evg-db92ika7231s73bq1dq0/secret-files/qa-a725-empty.txt",
+      "text": "{\"name\":\"qa-a725-empty.txt\"}\n"
+    },
+    "SourceDeleteDialog": {
+      "at": "2026-10-16T13:46:19.567Z",
+      "metadata": {
+        "path": "/v1/env-groups/evg-db92ika7231s73bq1dq0",
+        "status": 200,
+        "body": {
+          "id": "evg-db92ika7231s73bq1dq0",
+          "name": "qa-20261016-a725-source",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "envVars": [
+            {
+              "key": "QA_A725_EMPTY"
+            },
+            {
+              "key": "QA_A725_NOTE"
+            }
+          ],
+          "secretFiles": [
+            {
+              "name": "qa-a725-control.txt"
+            },
+            {
+              "name": "qa-a725-empty.txt"
+            }
+          ],
+          "createdAt": "2026-10-16T13:40:43.664295932Z",
+          "updatedAt": "2026-10-16T13:40:43.664295932Z",
+          "revision": "egr1_AAAAAAAAAAE",
+          "serviceLinks": []
+        }
+      },
+      "dialog": "- alertdialog \"Delete qa-20261016-a725-source?\":\n  - heading \"Delete qa-20261016-a725-source?\" [level=2]\n  - paragraph: This action cannot be undone. Are you sure you want to delete this environment group? It will be unlinked from every service.\n  - paragraph:\n    - text: Type\n    - strong: sudo delete env group qa-20261016-a725-source\n    - text: below to confirm.\n  - text: Sudo Command\n  - textbox \"Sudo Command\":\n    - /placeholder: sudo delete env group qa-20261016-a725-source\n  - button \"Cancel\"\n  - button \"Delete Environment Group\" [disabled]"
+    },
+    "DeleteSource": {
+      "at": "2026-10-16T13:46:47.940Z",
+      "request": {
+        "operationName": "DeleteEnvGroup",
+        "variables": {
+          "id": "evg-db92ika7231s73bq1dq0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteEnvGroup($id: String!) {\n  deleteEnvGroup(id: $id)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792158406525.5608,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.145,
+        "responseStart": 702.279,
+        "responseEnd": 702.887
+      },
+      "url": "https://dashboard.bex.co/env-groups"
+    },
+    "CloneDeleteDialog": {
+      "at": "2026-10-16T13:46:56.666Z",
+      "metadata": {
+        "path": "/v1/env-groups/evg-db92j3kj7hos73a49lq0",
+        "status": 200,
+        "body": {
+          "id": "evg-db92j3kj7hos73a49lq0",
+          "name": "qa-20261016-a725-clone",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "envVars": [
+            {
+              "key": "QA_A725_EMPTY"
+            },
+            {
+              "key": "QA_A725_NOTE"
+            }
+          ],
+          "secretFiles": [
+            {
+              "name": "qa-a725-control.txt"
+            },
+            {
+              "name": "qa-a725-empty.txt"
+            }
+          ],
+          "createdAt": "2026-10-16T13:41:44.482726618Z",
+          "updatedAt": "2026-10-16T13:43:08.394281158Z",
+          "revision": "egr1_AAAAAAAAAAI",
+          "serviceLinks": []
+        }
+      },
+      "dialog": "- alertdialog \"Delete qa-20261016-a725-clone?\":\n  - heading \"Delete qa-20261016-a725-clone?\" [level=2]\n  - paragraph: This action cannot be undone. Are you sure you want to delete this environment group? It will be unlinked from every service.\n  - paragraph:\n    - text: Type\n    - strong: sudo delete env group qa-20261016-a725-clone\n    - text: below to confirm.\n  - text: Sudo Command\n  - textbox \"Sudo Command\":\n    - /placeholder: sudo delete env group qa-20261016-a725-clone\n  - button \"Cancel\"\n  - button \"Delete Environment Group\" [disabled]"
+    },
+    "DeleteClone": {
+      "at": "2026-10-16T13:46:58.883Z",
+      "request": {
+        "operationName": "DeleteEnvGroup",
+        "variables": {
+          "id": "evg-db92j3kj7hos73a49lq0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteEnvGroup($id: String!) {\n  deleteEnvGroup(id: $id)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792158417397.0183,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.14,
+        "responseStart": 777.84,
+        "responseEnd": 778.35
+      },
+      "url": "https://dashboard.bex.co/env-groups"
+    },
+    "Cleanup": {
+      "at": "2026-10-16T13:47:53.518Z",
+      "checks": [
+        {
+          "path": "/v1/env-groups/evg-db92ika7231s73bq1dq0",
+          "status": 404
+        },
+        {
+          "path": "/v1/env-groups/evg-db92ika7231s73bq1dq0/env-vars/QA_A725_EMPTY",
+          "status": 404
+        },
+        {
+          "path": "/v1/env-groups/evg-db92ika7231s73bq1dq0/env-vars/QA_A725_NOTE",
+          "status": 404
+        },
+        {
+          "path": "/v1/env-groups/evg-db92ika7231s73bq1dq0/secret-files/qa-a725-empty.txt",
+          "status": 404
+        },
+        {
+          "path": "/v1/env-groups/evg-db92ika7231s73bq1dq0/secret-files/qa-a725-control.txt",
+          "status": 404
+        },
+        {
+          "path": "/v1/env-groups/evg-db92j3kj7hos73a49lq0",
+          "status": 404
+        },
+        {
+          "path": "/v1/env-groups/evg-db92j3kj7hos73a49lq0/env-vars/QA_A725_EMPTY",
+          "status": 404
+        },
+        {
+          "path": "/v1/env-groups/evg-db92j3kj7hos73a49lq0/env-vars/QA_A725_NOTE",
+          "status": 404
+        },
+        {
+          "path": "/v1/env-groups/evg-db92j3kj7hos73a49lq0/secret-files/qa-a725-empty.txt",
+          "status": 404
+        },
+        {
+          "path": "/v1/env-groups/evg-db92j3kj7hos73a49lq0/secret-files/qa-a725-control.txt",
+          "status": 404
+        }
+      ],
+      "inventory": {
+        "request": {
+          "operationName": "Qaa467Inventory",
+          "variables": {
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          },
+          "query": "query Qaa467Inventory($ownerId:String!){ services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "blueprints": [
+              {
+                "id": "blp-d9nqg95cavls73fp8m10",
+                "name": "discourse_docker"
+              }
+            ],
+            "databases": [
+              {
+                "id": "dpg-d9nqg95cavls73fp8m20",
+                "name": "beancount-forum-db"
+              },
+              {
+                "id": "dpg-d9rrkoc4h4mc73edurp0",
+                "name": "tianpan-forum-db"
+              },
+              {
+                "id": "dpg-d9rs3ee0ccis738kc7c0",
+                "name": "blockeden-forum-db"
+              },
+              {
+                "id": "dpg-db34l9bor55s73cqpq9g",
+                "name": "qa-20261007-r16-owner-f208ab"
+              }
+            ],
+            "envGroups": [
+              {
+                "id": "evg-db0s94c48ccs739jikr0",
+                "name": "qa-20261003-keys-r85"
+              }
+            ],
+            "keyValues": [
+              {
+                "id": "red-d9p49kdrtmes73c34ovg",
+                "name": "beancount-forum-redis"
+              },
+              {
+                "id": "red-da4086iii7bs73drbqh0",
+                "name": "blockeden-forum-redis"
+              }
+            ],
+            "projects": [
+              {
+                "id": "prj-d9dgeo0bd9nc73a0vh1g",
+                "name": "bex.co"
+              },
+              {
+                "id": "prj-d9e5qct5qe4s73b1mjn0",
+                "name": "beancount.io"
+              },
+              {
+                "id": "prj-d9sgfnbjghus73cg6hg0",
+                "name": "forums"
+              }
+            ],
+            "services": [
+              {
+                "id": "srv-d9bkcspg9s7c73d0n8ug",
+                "name": "agentmarketcap-1",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9bj8s3eg85c7390eb9g",
+                "name": "beancount-cms-v2",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9nqg9dcavls73fp8m2g",
+                "name": "beancount-forum",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9ndt8hmcglc739fkp50",
+                "name": "eden-dash-v3",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9e40ei9086p3l1jri30",
+                "name": "eden-cms-v2",
+                "type": "web_service"
+              }
+            ],
+            "webhookEndpoints": []
+          }
+        }
+      },
+      "baselineMatches": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "consoleErrors": []
+    },
+    "SessionCleared": {
+      "at": "2026-10-16T13:47:59.108Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  },
+  "pinnedMcpDependency": {
+    "module": "github.com/modelcontextprotocol/go-sdk",
+    "version": "v1.6.1",
+    "source": {
+      "server.go": {
+        "sha256": "f34bf2b74cc9620cd557a9456fd2979d0806cef96853b14150b2f39512cbf201",
+        "startLine": 350,
+        "endLine": 394,
+        "text": "\t\t\t// For regular errors, embed them in the tool result as per MCP spec\n\t\t\tvar errRes CallToolResult\n\t\t\terrRes.SetError(err)\n\t\t\treturn &errRes, nil\n\t\t}\n\n\t\tif res == nil {\n\t\t\tres = &CallToolResult{}\n\t\t}\n\n\t\t// Marshal the output and put the RawMessage in the StructuredContent field.\n\t\tvar outval any = out\n\t\tif elemZero != nil {\n\t\t\t// Avoid typed nil, which will serialize as JSON null.\n\t\t\t// Instead, use the zero value of the unpointered type.\n\t\t\tvar z Out\n\t\t\tif any(out) == any(z) { // zero is only non-nil if Out is a pointer type\n\t\t\t\toutval = elemZero\n\t\t\t}\n\t\t}\n\t\tif outval != nil {\n\t\t\toutbytes, err := json.Marshal(outval)\n\t\t\tif err != nil {\n\t\t\t\treturn nil, fmt.Errorf(\"marshaling output: %w\", err)\n\t\t\t}\n\t\t\toutJSON := json.RawMessage(outbytes)\n\t\t\t// Validate the output JSON, and apply defaults.\n\t\t\t//\n\t\t\t// We validate against the JSON, rather than the output value, as\n\t\t\t// some types may have custom JSON marshalling (issue #447).\n\t\t\toutJSON, err = applySchema(outJSON, outputResolved)\n\t\t\tif err != nil {\n\t\t\t\treturn nil, fmt.Errorf(\"validating tool output: %w\", err)\n\t\t\t}\n\t\t\tres.StructuredContent = outJSON // avoid a second marshal over the wire\n\n\t\t\t// If the Content field isn't being used, return the serialized JSON in a\n\t\t\t// TextContent block, as the spec suggests:\n\t\t\t// https://modelcontextprotocol.io/specification/2025-06-18/server/tools#structured-content.\n\t\t\tif res.Content == nil {\n\t\t\t\tres.Content = []Content{&TextContent{\n\t\t\t\t\tText: string(outJSON),\n\t\t\t\t}}\n\t\t\t}\n\t\t}"
+      },
+      "tool.go": {
+        "sha256": "d4fc7ebd263db93e6d464af13b676f661d3c8ca0706ac0f722d6f3d0dcc85a33",
+        "startLine": 69,
+        "endLine": 104,
+        "text": "func applySchema(data json.RawMessage, resolved *jsonschema.Resolved) (json.RawMessage, error) {\n\t// TODO: use reflection to create the struct type to unmarshal into.\n\t// Separate validation from assignment.\n\n\t// Use default JSON marshalling for validation.\n\t//\n\t// This avoids inconsistent representation due to custom marshallers, such as\n\t// time.Time (issue #449).\n\t//\n\t// Additionally, unmarshalling into a map ensures that the resulting JSON is\n\t// at least {}, even if data is empty. For example, arguments is technically\n\t// an optional property of callToolParams, and we still want to apply the\n\t// defaults in this case.\n\t//\n\t// TODO(rfindley): in which cases can resolved be nil?\n\tif resolved != nil {\n\t\tv := make(map[string]any)\n\t\tif len(data) > 0 {\n\t\t\tif err := internaljson.Unmarshal(data, &v); err != nil {\n\t\t\t\treturn nil, fmt.Errorf(\"unmarshaling arguments: %w\", err)\n\t\t\t}\n\t\t}\n\t\tif err := resolved.ApplyDefaults(&v); err != nil {\n\t\t\treturn nil, fmt.Errorf(\"applying schema defaults:\\n%w\", err)\n\t\t}\n\t\tif err := resolved.Validate(&v); err != nil {\n\t\t\treturn nil, err\n\t\t}\n\t\t// We must re-marshal with the default values applied.\n\t\tvar err error\n\t\tdata, err = json.Marshal(v)\n\t\tif err != nil {\n\t\t\treturn nil, fmt.Errorf(\"marshalling with defaults: %v\", err)\n\t\t}\n\t}\n\treturn data, nil"
+      }
+    },
+    "liveExercised": false
+  },
+  "independentServiceControl": {
+    "pass": "a724",
+    "itemRead": {
+      "at": "2026-10-16T13:37:10.869Z",
+      "request": {
+        "method": "GET",
+        "path": "/v1/services/srv-db92gn2vofqc73c5lrl0/secret-files/qa-a724-empty.txt"
+      },
+      "status": 200,
+      "body": {
+        "name": "qa-a724-empty.txt",
+        "content": ""
+      },
+      "dialog": "- dialog \"Contents of qa-a724-empty.txt\":\n  - heading \"Contents of qa-a724-empty.txt\" [level=2]\n  - paragraph: This file is mounted read-only at /etc/secrets after the next deploy.\n  - text: Loading contents…\n  - button \"Cancel\"\n  - button \"Done\" [disabled]\n  - button \"Close\"",
+      "contentsLength": 0
+    },
+    "firstRuntime": {
+      "at": "2026-10-16T13:36:59.329556+00:00",
+      "exit": 0,
+      "status": "200",
+      "body": {
+        "marker": "QA_A724",
+        "upper": null,
+        "lower": null,
+        "files": {
+          "upper": {
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "lower": {
+            "bytes": 20,
+            "sha256": "a3cbf8569232d3f1fd3c8ef339064e23e77d7a70325162dda8284cd802609d55"
+          }
+        }
+      },
+      "expected": {
+        "marker": "QA_A724",
+        "upper": null,
+        "lower": null,
+        "files": {
+          "upper": {
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "lower": {
+            "bytes": 20,
+            "sha256": "a3cbf8569232d3f1fd3c8ef339064e23e77d7a70325162dda8284cd802609d55"
+          }
+        }
+      },
+      "pass": true
+    },
+    "cleanup": {
+      "pass": "a724",
+      "status": "complete-no-new-finding",
+      "scope": "Zero-byte secret file from native initial create with nonempty control",
+      "resources": [
+        {
+          "__typename": "Service",
+          "environmentId": null,
+          "id": "srv-db92gn2vofqc73c5lrl0",
+          "latestDeployId": "dep-db92gn2vofqc73c5lrlg",
+          "name": "qa-20261016-a724-empty",
+          "phase": "",
+          "projectId": null,
+          "registryCredentialId": "",
+          "type": "web_service"
+        }
+      ],
+      "baselineReceipt": "qa-recovered-a724Baseline.json",
+      "result": "Zero-byte file retained from native create, first process sees0 bytes/e3b0 SHA;20-byte control correct. Item API explicitly content empty and no-op View/Done leaves Save disabled.",
+      "deployIds": ["dep-db92gn2vofqc73c5lrlg"],
+      "cleanup": {
+        "serviceAndDeploy404": true,
+        "baselineAllSevenSets": true,
+        "public404": true,
+        "appAbsent": true,
+        "podsAbsentAt": "2026-10-16T13:38:32.788022+00:00",
+        "logoutExit": 0,
+        "whoami": 401,
+        "cookies": 0,
+        "ownHandlesRemoved": true
+      }
+    }
+  },
+  "limits": [
+    "Confirmed live REST empty-field omission and native GraphQL empty string; no demonstrated clone data loss or dashboard reader failure. MCP is source-traced, not live-replayed.",
+    "Initial observer expected PatchEnvGroupContents rather than actual PatchEnvGroupEnvironment and timed out after the native Save only was already accepted. The exact successful request/response and changed clone state were recovered before continuing. No second write was dispatched.",
+    "Metadata/list and write acknowledgements intentionally mask file contents and must remain distinct. Do not globally remove omitempty from their shared type.",
+    "This pass created no app or datastore. Group/item REST deletion and all seven inventory sets were checked; no independent Vault purge inspection is claimed."
+  ]
+}
