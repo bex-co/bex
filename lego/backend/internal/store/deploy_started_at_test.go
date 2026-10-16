@@ -35,29 +35,27 @@ import (
 // in-progress path — correct today — keeps stamping the clock.
 func TestTransitionDeployFailureSkipStartedAt(t *testing.T) {
 	ctx := context.Background()
-	s := newMemStore()
-	ten, _ := s.CreateTenant(ctx, "acme", "free")
-	app, _ := s.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+	s, appID := startedAtMemApp(t)
 
 	// Terminal skip without evidence: null start, real finish. CreateApp
 	// auto-opens the app's first deploy row (status created); take that one.
-	d1, ok, err := openDeployFor(ctx, s, app.ID)
+	d1, ok, err := openDeployFor(ctx, s, appID)
 	if err != nil || !ok {
 		t.Fatalf("open deploy: ok=%v err=%v", ok, err)
 	}
 	mustTransition(t, s, d1.ID, DeployQueued, nil)
 	mustTransition(t, s, d1.ID, DeployBuildFailed, nil)
-	closed, _ := s.GetDeploy(ctx, app.ID, d1.ID)
+	closed, _ := s.GetDeploy(ctx, appID, d1.ID)
 	if closed.StartedAt != nil || closed.FinishedAt == nil {
 		t.Fatalf("skip close: started=%v finished=%v, want null start and a finish", closed.StartedAt, closed.FinishedAt)
 	}
 
 	// Terminal skip with the operator's recorded window: the real start.
 	start := time.Date(2026, 8, 27, 19, 56, 10, 0, time.UTC)
-	d2, _ := s.CreateDeploy(ctx, app.ID, "web", "img:2", 2, CommitInfo{}, "")
+	d2, _ := s.CreateDeploy(ctx, appID, "web", "img:2", 2, CommitInfo{}, "")
 	mustTransition(t, s, d2.ID, DeployQueued, nil)
 	mustTransition(t, s, d2.ID, DeployBuildFailed, &start)
-	evidenced, _ := s.GetDeploy(ctx, app.ID, d2.ID)
+	evidenced, _ := s.GetDeploy(ctx, appID, d2.ID)
 	if evidenced.StartedAt == nil || !evidenced.StartedAt.Equal(start) {
 		t.Fatalf("evidenced close: started=%v, want %v", evidenced.StartedAt, start)
 	}
@@ -66,18 +64,18 @@ func TestTransitionDeployFailureSkipStartedAt(t *testing.T) {
 	}
 
 	// Canceled while queued keeps its null start (correct today, regression).
-	d3, _ := s.CreateDeploy(ctx, app.ID, "web", "img:3", 3, CommitInfo{}, "")
+	d3, _ := s.CreateDeploy(ctx, appID, "web", "img:3", 3, CommitInfo{}, "")
 	mustTransition(t, s, d3.ID, DeployQueued, nil)
 	mustTransition(t, s, d3.ID, DeployCanceled, nil)
-	canceled, _ := s.GetDeploy(ctx, app.ID, d3.ID)
+	canceled, _ := s.GetDeploy(ctx, appID, d3.ID)
 	if canceled.StartedAt != nil {
 		t.Fatalf("canceled deploy grew a start: %v", canceled.StartedAt)
 	}
 
 	// The dispatch-observing path still stamps the clock (correct today).
-	d4, _ := s.CreateDeploy(ctx, app.ID, "web", "img:4", 4, CommitInfo{}, "")
+	d4, _ := s.CreateDeploy(ctx, appID, "web", "img:4", 4, CommitInfo{}, "")
 	mustTransition(t, s, d4.ID, DeployBuildInProgress, nil)
-	dispatched, _ := s.GetDeploy(ctx, app.ID, d4.ID)
+	dispatched, _ := s.GetDeploy(ctx, appID, d4.ID)
 	if dispatched.StartedAt == nil {
 		t.Fatal("in-progress transition no longer stamps started_at")
 	}
@@ -91,10 +89,25 @@ func mustTransition(t *testing.T, s Store, id, status string, startedAt *time.Ti
 	}
 }
 
-// TestPGTransitionDeployFailureSkipStartedAt is the same contract against the
-// real SQL — the CASE that used to read COALESCE(started_at, clock_timestamp())
-// for every executing status, build_failed included.
-func TestPGTransitionDeployFailureSkipStartedAt(t *testing.T) {
+// startedAtMemApp is a memStore with one free image app, whose first deploy
+// row CreateApp has already opened.
+func startedAtMemApp(t *testing.T) (*memStore, string) {
+	t.Helper()
+	ctx := context.Background()
+	s := newMemStore()
+	ten, _ := s.CreateTenant(ctx, "acme", "free")
+	app, err := s.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+	if err != nil {
+		t.Fatalf("app: %v", err)
+	}
+	return s, app.ID
+}
+
+// startedAtPGApp is startedAtMemApp against a freshly truncated real
+// database; the pool is returned for direct SQL reads. Requires
+// BEX_TEST_DB_URI.
+func startedAtPGApp(t *testing.T, tenant string) (*pgxpool.Pool, *PGStore, string) {
+	t.Helper()
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
 		testenv.Skip(t, "BEX_TEST_DB_URI not set")
@@ -107,13 +120,12 @@ func TestPGTransitionDeployFailureSkipStartedAt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer pool.Close()
+	t.Cleanup(pool.Close)
 	if _, err := pool.Exec(ctx, `TRUNCATE tenants CASCADE`); err != nil {
 		t.Fatal(err)
 	}
 	s := NewPGStore(pool)
-
-	ten, err := s.CreateTenantWithMember(ctx, "m123-started-at", PlanHobby)
+	ten, err := s.CreateTenantWithMember(ctx, tenant, PlanHobby)
 	if err != nil {
 		t.Fatalf("tenant: %v", err)
 	}
@@ -121,16 +133,34 @@ func TestPGTransitionDeployFailureSkipStartedAt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("app: %v", err)
 	}
+	return pool, s, app.ID
+}
+
+func mustGetDeploy(t *testing.T, s Store, appID, id string) Deploy {
+	t.Helper()
+	d, err := s.GetDeploy(context.Background(), appID, id)
+	if err != nil {
+		t.Fatalf("get deploy %s: %v", id, err)
+	}
+	return d
+}
+
+// TestPGTransitionDeployFailureSkipStartedAt is the same contract against the
+// real SQL — the CASE that used to read COALESCE(started_at, clock_timestamp())
+// for every executing status, build_failed included.
+func TestPGTransitionDeployFailureSkipStartedAt(t *testing.T) {
+	ctx := context.Background()
+	_, s, appID := startedAtPGApp(t, "m123-started-at")
 
 	// Without evidence: the failure skip leaves started_at NULL. CreateApp
 	// auto-opens the app's first deploy row (status created); take that one.
-	d1, ok, err := openDeployFor(ctx, s, app.ID)
+	d1, ok, err := openDeployFor(ctx, s, appID)
 	if err != nil || !ok {
 		t.Fatalf("open deploy: ok=%v err=%v", ok, err)
 	}
 	mustTransition(t, s, d1.ID, DeployQueued, nil)
 	mustTransition(t, s, d1.ID, DeployBuildFailed, nil)
-	closed, err := s.GetDeploy(ctx, app.ID, d1.ID)
+	closed, err := s.GetDeploy(ctx, appID, d1.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,13 +170,13 @@ func TestPGTransitionDeployFailureSkipStartedAt(t *testing.T) {
 
 	// With evidence: the recorded window's start, exactly.
 	start := time.Date(2026, 8, 27, 19, 56, 10, 0, time.UTC)
-	d2, err := s.CreateDeploy(ctx, app.ID, "web", "img:2", 2, CommitInfo{}, "")
+	d2, err := s.CreateDeploy(ctx, appID, "web", "img:2", 2, CommitInfo{}, "")
 	if err != nil {
 		t.Fatalf("deploy: %v", err)
 	}
 	mustTransition(t, s, d2.ID, DeployQueued, nil)
 	mustTransition(t, s, d2.ID, DeployBuildFailed, &start)
-	evidenced, err := s.GetDeploy(ctx, app.ID, d2.ID)
+	evidenced, err := s.GetDeploy(ctx, appID, d2.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,17 +189,17 @@ func TestPGTransitionDeployFailureSkipStartedAt(t *testing.T) {
 
 	// An in-progress transition still stamps, and a later failure close must
 	// not overwrite it with the (older) evidence.
-	d3, err := s.CreateDeploy(ctx, app.ID, "web", "img:3", 3, CommitInfo{}, "")
+	d3, err := s.CreateDeploy(ctx, appID, "web", "img:3", 3, CommitInfo{}, "")
 	if err != nil {
 		t.Fatalf("deploy: %v", err)
 	}
 	mustTransition(t, s, d3.ID, DeployBuildInProgress, nil)
-	inProgress, _ := s.GetDeploy(ctx, app.ID, d3.ID)
+	inProgress, _ := s.GetDeploy(ctx, appID, d3.ID)
 	if inProgress.StartedAt == nil {
 		t.Fatal("in-progress transition no longer stamps started_at")
 	}
 	mustTransition(t, s, d3.ID, DeployBuildFailed, &start)
-	kept, _ := s.GetDeploy(ctx, app.ID, d3.ID)
+	kept, _ := s.GetDeploy(ctx, appID, d3.ID)
 	if kept.StartedAt == nil || !kept.StartedAt.Equal(*inProgress.StartedAt) {
 		t.Fatalf("failure close moved an already-stamped start: %v -> %v", inProgress.StartedAt, kept.StartedAt)
 	}
@@ -187,14 +217,7 @@ func TestPGTransitionDeployFailureSkipStartedAt(t *testing.T) {
 func assertSuccessfulSkipStartedAt(t *testing.T, s Store, appID string) map[string]*time.Time {
 	t.Helper()
 	ctx := context.Background()
-	get := func(id string) Deploy {
-		t.Helper()
-		d, err := s.GetDeploy(ctx, appID, id)
-		if err != nil {
-			t.Fatalf("get deploy %s: %v", id, err)
-		}
-		return d
-	}
+	get := func(id string) Deploy { t.Helper(); return mustGetDeploy(t, s, appID, id) }
 
 	// created → live with no evidence: unknown start, real finish.
 	first, ok, err := openDeployFor(ctx, s, appID)
@@ -265,11 +288,8 @@ func assertSuccessfulSkipStartedAt(t *testing.T, s Store, appID string) map[stri
 }
 
 func TestTransitionDeploySuccessfulSkipStartedAt(t *testing.T) {
-	ctx := context.Background()
-	s := newMemStore()
-	ten, _ := s.CreateTenant(ctx, "acme", "free")
-	app, _ := s.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
-	assertSuccessfulSkipStartedAt(t, s, app.ID)
+	s, appID := startedAtMemApp(t)
+	assertSuccessfulSkipStartedAt(t, s, appID)
 }
 
 // TestPGTransitionDeploySuccessfulSkipStartedAt runs the same contract against
@@ -277,32 +297,9 @@ func TestTransitionDeploySuccessfulSkipStartedAt(t *testing.T) {
 // whose start is unknown records an unknown (NULL) duration, never zero, while
 // the evidenced deploys keep a real one.
 func TestPGTransitionDeploySuccessfulSkipStartedAt(t *testing.T) {
-	uri := os.Getenv("BEX_TEST_DB_URI")
-	if uri == "" {
-		testenv.Skip(t, "BEX_TEST_DB_URI not set")
-	}
 	ctx := context.Background()
-	if err := Migrate(uri); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
-	pool, err := pgxpool.New(ctx, uri)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer pool.Close()
-	if _, err := pool.Exec(ctx, `TRUNCATE tenants CASCADE`); err != nil {
-		t.Fatal(err)
-	}
-	s := NewPGStore(pool)
-	ten, err := s.CreateTenantWithMember(ctx, "m156-started-at", PlanHobby)
-	if err != nil {
-		t.Fatalf("tenant: %v", err)
-	}
-	app, err := s.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
-	if err != nil {
-		t.Fatalf("app: %v", err)
-	}
-	for id, start := range assertSuccessfulSkipStartedAt(t, s, app.ID) {
+	pool, s, appID := startedAtPGApp(t, "m156-started-at")
+	for id, start := range assertSuccessfulSkipStartedAt(t, s, appID) {
 		var duration *float64
 		if err := pool.QueryRow(ctx,
 			`SELECT duration_ms::float8 FROM product_activity_events WHERE source_key = $1`,
@@ -316,4 +313,57 @@ func TestPGTransitionDeploySuccessfulSkipStartedAt(t *testing.T) {
 			t.Errorf("deploy %s with an evidenced start recorded no duration", id)
 		}
 	}
+}
+
+// assertFailedPreDeployStartedAt is the store half of w4/316: a created →
+// pre_deploy_failed close carrying the failed step's recorded start stamps
+// exactly that start, one without evidence stays unknown, and a start an
+// in-progress observation already recorded is never moved by the evidence.
+func assertFailedPreDeployStartedAt(t *testing.T, s Store, appID string) {
+	t.Helper()
+	ctx := context.Background()
+	get := func(id string) Deploy { t.Helper(); return mustGetDeploy(t, s, appID, id) }
+	start := time.Date(2026, 10, 15, 21, 12, 42, 0, time.UTC)
+
+	fast, ok, err := openDeployFor(ctx, s, appID)
+	if err != nil || !ok {
+		t.Fatalf("open deploy: ok=%v err=%v", ok, err)
+	}
+	mustTransition(t, s, fast.ID, DeployPreDeployFailed, &start)
+	if got := get(fast.ID); got.StartedAt == nil || !got.StartedAt.Equal(start) || got.FinishedAt == nil {
+		t.Fatalf("evidenced fast failure: started=%v finished=%v, want %v and a finish", got.StartedAt, got.FinishedAt, start)
+	}
+
+	bare, err := s.CreateDeploy(ctx, appID, TriggerAPI, "img:2", 2, CommitInfo{}, "")
+	if err != nil {
+		t.Fatalf("deploy: %v", err)
+	}
+	mustTransition(t, s, bare.ID, DeployPreDeployFailed, nil)
+	if got := get(bare.ID); got.StartedAt != nil || got.FinishedAt == nil {
+		t.Fatalf("unevidenced fast failure: started=%v finished=%v, want unknown start and a finish", got.StartedAt, got.FinishedAt)
+	}
+
+	slow, err := s.CreateDeploy(ctx, appID, TriggerAPI, "img:3", 3, CommitInfo{}, "")
+	if err != nil {
+		t.Fatalf("deploy: %v", err)
+	}
+	mustTransition(t, s, slow.ID, DeployPreDeployInProgress, nil)
+	stamped := get(slow.ID).StartedAt
+	if stamped == nil {
+		t.Fatal("pre_deploy_in_progress no longer stamps started_at")
+	}
+	mustTransition(t, s, slow.ID, DeployPreDeployFailed, &start)
+	if got := get(slow.ID); got.StartedAt == nil || !got.StartedAt.Equal(*stamped) {
+		t.Fatalf("slow failure moved its observed start: %v -> %v", stamped, got.StartedAt)
+	}
+}
+
+func TestTransitionDeployFailedPreDeployStartedAt(t *testing.T) {
+	s, appID := startedAtMemApp(t)
+	assertFailedPreDeployStartedAt(t, s, appID)
+}
+
+func TestPGTransitionDeployFailedPreDeployStartedAt(t *testing.T) {
+	_, s, appID := startedAtPGApp(t, "w4-316-started-at")
+	assertFailedPreDeployStartedAt(t, s, appID)
 }

@@ -918,10 +918,17 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	// stamps started_at from the operator's recorded build window
 	// (generation-attributed, so it is this row's own even when the release
 	// has moved past it) — never from this transition's clock, which is the
-	// close's observation time. Without that evidence the start stays unknown.
+	// close's observation time. A pre_deploy_failed close falls back to its own
+	// failed step's recorded start (w4/316). Without that evidence the start
+	// stays unknown.
 	var startedAt *time.Time
-	if status == DeployBuildFailed || status == DeployLive {
+	switch status {
+	case DeployBuildFailed, DeployLive:
 		startedAt = buildRunStart(cur, open)
+	case DeployPreDeployFailed:
+		if startedAt = buildRunStart(cur, open); startedAt == nil {
+			startedAt = failedPreDeployStart(cur, open)
+		}
 	}
 	ok, err := r.Store.TransitionDeploy(ctx, open.ID, status, resolvedImage, failureReason, failureCode, cancelReason, startedAt)
 	if err != nil {
@@ -1584,6 +1591,22 @@ func recordedBuildRun(app *appv1alpha1.App, generation int64) (start, finish tim
 // the row's generation.
 func buildRunStart(app *appv1alpha1.App, open Deploy) *time.Time {
 	if start, _, ok := recordedBuildRun(app, open.Generation); ok {
+		return &start
+	}
+	return nil
+}
+
+// failedPreDeployStart is the recorded start of the failed pre-deploy step
+// attributed to the row's own release generation (w4/316): a step that failed
+// between two observations was never seen executing, but the operator's Job
+// start says when it began. nil when the record is absent, another
+// generation's, not a failure, or carries no parseable start — never
+// preDeployTimes's fallback clock.
+func failedPreDeployStart(app *appv1alpha1.App, open Deploy) *time.Time {
+	if open.Generation <= 0 || preDeployStatusAt(app, open.Generation) != PreDeployFailed {
+		return nil
+	}
+	if start, ok := parseObservedTime(app.Status.PreDeploy.StartedAt); ok && !start.IsZero() {
 		return &start
 	}
 	return nil
