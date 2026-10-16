@@ -1,0 +1,37 @@
+package staticserver
+
+import (
+ "bytes"
+ "compress/gzip"
+ "net/http"
+ "strings"
+ "testing"
+ appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+)
+
+func TestQASweep326AutomaticStaticBrotli(t *testing.T) {
+ for _, tc := range []struct {name,path,ctype,text string}{
+  {"text","/payload.txt","text/plain","QA326 ordinary static content\n"},
+  {"javascript","/app.js","text/javascript","console.log('QA326 ordinary asset');\n"},
+  {"css","/app.css","text/css",".example { color: blue; padding: 1px; }\n"},
+ } {
+  body:=[]byte(strings.Repeat(tc.text,4096))
+  for _, encoding:=range []string{"br","identity"} {
+   t.Run(tc.name+"/"+encoding,func(t *testing.T){
+    h,_:=newTestHandler(t,Site{},map[string]Object{key(strings.TrimPrefix(tc.path,"/")):{Body:body,ContentType:tc.ctype}})
+    got:=doWith(h,http.MethodGet,tc.path,http.Header{"Accept-Encoding":{encoding}})
+    if got.Code!=200 {t.Fatalf("status=%d",got.Code)}
+    if encoding=="br" {
+     if got.Header().Get("Content-Encoding")!="br" {t.Fatalf("eligible %d-byte %s asset offered br: Content-Encoding=%q, actual bytes=%d",len(body),tc.ctype,got.Header().Get("Content-Encoding"),got.Body.Len())}
+    } else if got.Header().Get("Content-Encoding")!="" || !bytes.Equal(got.Body.Bytes(),body) {t.Fatal("identity control changed")}
+   })
+  }
+ }
+ t.Run("saved-precompressed-gzip-control",func(t *testing.T){
+  var compressed bytes.Buffer
+  z:=gzip.NewWriter(&compressed);_,err:=z.Write([]byte(strings.Repeat("QA326 precompressed asset\n",4096)));if err!=nil{t.Fatal(err)};if err:=z.Close();err!=nil{t.Fatal(err)}
+  h,_:=newTestHandler(t,Site{Headers:[]appv1alpha1.StaticHeader{{Path:"/*",Name:"Content-Encoding",Value:"gzip"}}},map[string]Object{key("app.js"):{Body:compressed.Bytes(),ContentType:"text/javascript"}})
+  got:=doWith(h,http.MethodGet,"/app.js",http.Header{"Accept-Encoding":{"br, gzip"}})
+  if got.Code!=200 || got.Header().Get("Content-Encoding")!="gzip" || !bytes.Equal(got.Body.Bytes(),compressed.Bytes()){t.Fatal("authored precompressed body changed")}
+ })
+}

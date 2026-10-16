@@ -1,0 +1,44 @@
+{
+  "at": "2026-10-15T22:18:43.968160+00:00",
+  "includes_open_blocked_done": true,
+  "searches": [
+    {
+      "query": "(ruby|rails).*(node|yarn|javascript).*(missing|unavailable|not found)|(missing|unavailable).*(node|yarn).*(ruby|rails)",
+      "matches": [],
+      "exit": 1
+    },
+    {
+      "query": "Ruby PATH|Ruby runtime|pnpm|Poetry|Bun executable",
+      "matches": [
+        ".pm/w8/m72/t002.md",
+        ".pm/w8/m72/finding.md",
+        ".pm/w8/m72/evidence/cli-sweep307/README.md",
+        ".pm/w8/m72/README.md",
+        ".pm/w8/m73/t002.md",
+        ".pm/w8/m72/t007.md",
+        ".pm/w8/m73/t006.md",
+        ".pm/w8/m72/t004.md",
+        ".pm/w8/m73/finding.md",
+        ".pm/w8/m72/t001.md",
+        ".pm/w8/m73/README.md",
+        ".pm/w8/m73/t003.md",
+        ".pm/w8/m73/t001.md",
+        ".pm/w8/m73/t005.md",
+        ".pm/w8/m73/evidence/cli-sweep315/README.md",
+        ".pm/w8/README.md",
+        ".pm/w8/evidence/native-ruby-sweep238/README.md",
+        ".pm/w2/done/m88/evidence/2026-09-05-ci-recovery.md"
+      ],
+      "exit": 0
+    }
+  ],
+  "related": [
+    "w8/m73 pnpm in primary Node",
+    "w8/m71 Bun executable",
+    "w8/m72 Poetry in Python",
+    "w8/done/m61 authored PATH and file transport",
+    "w8/done/m51 primary runtime version selection",
+    "w8/evidence/native-ruby-sweep238 Ruby-only PATH/file controls"
+  ],
+  "disposition": "No matching Ruby secondary JavaScript-toolchain item found; related contexts reviewed separately; not exhaustive of all tooling gaps"
+}

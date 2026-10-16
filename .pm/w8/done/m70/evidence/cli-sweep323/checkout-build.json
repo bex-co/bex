@@ -1,0 +1,8 @@
+{
+  "source_head": "a4e95b87394c57dcaa8ccd10c82cbc218d7e252c",
+  "binary": "<owned-temp>/bex-current-322",
+  "sha256": "3cd118406e8b888c4f3a9beccbc58155f62bf0d862b2b84e2dcdd4dee9e65dc1",
+  "built_from_checkout": true,
+  "installed_binary_untouched": true,
+  "go_build_exit": 0
+}

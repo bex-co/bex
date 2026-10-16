@@ -1,0 +1,2045 @@
+{
+  "sweep": 324,
+  "type": "env_group",
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "name": "qa-20261015-5945c6-bulk",
+  "nonce": "5945c6",
+  "literal": "QA324_5945c6\n日本語 🐟",
+  "time": "2026-10-15T23:12:47.340510+00:00",
+  "source_head": "c1e83ee783af15c634daab78a11487aaa6d05710",
+  "pre_inventory": {
+    "at": "2026-10-15T23:12:46.187500+00:00",
+    "API_only": true,
+    "request": {
+      "method": "GET",
+      "path": "/v1/env-groups?ownerId=tea-daif693dqjvc73e7as3g",
+      "body": null,
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "status": "200",
+    "curl_exit": 0,
+    "elapsed": 2.239,
+    "response": "[]\n",
+    "stderr": ""
+  },
+  "pre_service_inventory": {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "exit": 0,
+    "elapsed": 1.105,
+    "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T23:12:04Z\",\n        \"nextRunAt\": \"2026-10-15T23:13:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T23:12:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T23:12:05Z\",\n        \"nextRunAt\": \"2026-10-15T23:13:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T23:12:05Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T23:12:04Z\",\n        \"nextRunAt\": \"2026-10-15T23:13:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T23:12:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T22:54:15Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T12:22:37Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T22:14:51Z\"\n    }\n  }\n]",
+    "stderr": "",
+    "native_exit": 0
+  },
+  "pre_ids": [],
+  "dependency_ids": [],
+  "recorded_child_ids": [],
+  "create_intent": {
+    "ownerId": "tea-daif693dqjvc73e7as3g",
+    "name": "qa-20261015-5945c6-bulk",
+    "envVars": [
+      {
+        "key": "QA_LITERAL",
+        "value": "QA324_5945c6\n日本語 🐟"
+      }
+    ],
+    "serviceIds": [],
+    "secretFiles": []
+  },
+  "state": "deleted: API204/detail404/group list baseline/native baseline services/quota terminating0",
+  "create_result": {
+    "at": "2026-10-15T23:12:51.019720+00:00",
+    "API_only": true,
+    "request": {
+      "method": "POST",
+      "path": "/v1/env-groups",
+      "body": {
+        "ownerId": "tea-daif693dqjvc73e7as3g",
+        "name": "qa-20261015-5945c6-bulk",
+        "envVars": [
+          {
+            "key": "QA_LITERAL",
+            "value": "QA324_5945c6\n日本語 🐟"
+          }
+        ],
+        "serviceIds": [],
+        "secretFiles": []
+      },
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "status": "201",
+    "curl_exit": 0,
+    "elapsed": 3.551,
+    "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:12:50.384928896Z\",\"revision\":\"egr1_AAAAAAAAAAE\",\"serviceLinks\":[]}\n",
+    "stderr": ""
+  },
+  "id": "evg-db8lrs03260c738as730",
+  "create_view": {
+    "id": "evg-db8lrs03260c738as730",
+    "name": "qa-20261015-5945c6-bulk",
+    "ownerId": "tea-daif693dqjvc73e7as3g",
+    "envVars": [
+      {
+        "key": "QA_LITERAL"
+      }
+    ],
+    "secretFiles": [],
+    "createdAt": "2026-10-15T23:12:50.384928896Z",
+    "updatedAt": "2026-10-15T23:12:50.384928896Z",
+    "revision": "egr1_AAAAAAAAAAE",
+    "serviceLinks": []
+  },
+  "detail_receipts": [
+    {
+      "at": "2026-10-15T23:12:52.233674+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.975,
+      "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:12:50.384928896Z\",\"revision\":\"egr1_AAAAAAAAAAE\",\"serviceLinks\":[]}\n",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-15T23:13:59.231468+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.403,
+      "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:12:50.384928896Z\",\"revision\":\"egr1_AAAAAAAAAAE\",\"serviceLinks\":[]}\n",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-15T23:14:01.855218+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.418,
+      "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:12:50.384928896Z\",\"revision\":\"egr1_AAAAAAAAAAE\",\"serviceLinks\":[]}\n",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-15T23:14:03.014897+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.381,
+      "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:12:50.384928896Z\",\"revision\":\"egr1_AAAAAAAAAAE\",\"serviceLinks\":[]}\n",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-15T23:14:06.821062+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.37,
+      "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:05.766894487Z\",\"revision\":\"egr1_AAAAAAAAAAI\",\"serviceLinks\":[]}\n",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-15T23:14:08.778593+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.593,
+      "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:05.766894487Z\",\"revision\":\"egr1_AAAAAAAAAAI\",\"serviceLinks\":[]}\n",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-15T23:14:10.702007+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.424,
+      "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:05.766894487Z\",\"revision\":\"egr1_AAAAAAAAAAI\",\"serviceLinks\":[]}\n",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-15T23:14:12.450897+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.602,
+      "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:05.766894487Z\",\"revision\":\"egr1_AAAAAAAAAAI\",\"serviceLinks\":[]}\n",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-15T23:14:17.193335+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.669,
+      "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:15.725676075Z\",\"revision\":\"egr1_AAAAAAAAAAM\",\"serviceLinks\":[]}\n",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-15T23:14:19.588524+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.529,
+      "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:15.725676075Z\",\"revision\":\"egr1_AAAAAAAAAAM\",\"serviceLinks\":[]}\n",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-15T23:14:22.423931+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.809,
+      "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:15.725676075Z\",\"revision\":\"egr1_AAAAAAAAAAM\",\"serviceLinks\":[]}\n",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-15T23:14:24.764120+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.856,
+      "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:15.725676075Z\",\"revision\":\"egr1_AAAAAAAAAAM\",\"serviceLinks\":[]}\n",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-15T23:14:28.267631+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.697,
+      "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:15.725676075Z\",\"revision\":\"egr1_AAAAAAAAAAM\",\"serviceLinks\":[]}\n",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-15T23:14:30.276148+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.491,
+      "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:15.725676075Z\",\"revision\":\"egr1_AAAAAAAAAAM\",\"serviceLinks\":[]}\n",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-15T23:14:33.047154+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.535,
+      "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:15.725676075Z\",\"revision\":\"egr1_AAAAAAAAAAM\",\"serviceLinks\":[]}\n",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-15T23:14:35.118728+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.456,
+      "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:15.725676075Z\",\"revision\":\"egr1_AAAAAAAAAAM\",\"serviceLinks\":[]}\n",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-15T23:14:40.348749+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.761,
+      "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:37.85153177Z\",\"revision\":\"egr1_AAAAAAAAAAQ\",\"serviceLinks\":[]}\n",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-15T23:14:40.962203+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.344,
+      "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:37.85153177Z\",\"revision\":\"egr1_AAAAAAAAAAQ\",\"serviceLinks\":[]}\n",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-15T23:14:46.564066+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.526,
+      "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:43.259803865Z\",\"revision\":\"egr1_AAAAAAAAAAU\",\"serviceLinks\":[]}\n",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-15T23:15:05.771639+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.538,
+      "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:43.259803865Z\",\"revision\":\"egr1_AAAAAAAAAAU\",\"serviceLinks\":[]}\n",
+      "stderr": ""
+    }
+  ],
+  "initial_snapshot": {
+    "at": "2026-10-15T23:12:52.759679+00:00",
+    "detail": {
+      "at": "2026-10-15T23:12:52.233674+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.975,
+      "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:12:50.384928896Z\",\"revision\":\"egr1_AAAAAAAAAAE\",\"serviceLinks\":[]}\n",
+      "stderr": ""
+    },
+    "value_receipts": [
+      {
+        "at": "2026-10-15T23:12:52.759567+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_LITERAL",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.394,
+        "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA324_5945c6\\n日本語 🐟\"}\n",
+        "stderr": ""
+      }
+    ],
+    "values": {
+      "QA_LITERAL": "QA324_5945c6\n日本語 🐟"
+    }
+  },
+  "matrix_intent": {
+    "at": "2026-10-15T23:13:58.694862+00:00",
+    "scope": "normal own unlinked group bulk route/value/readback/neighbor checks"
+  },
+  "matrix": [
+    {
+      "at": "2026-10-15T23:14:00.058731+00:00",
+      "label": "bulk-same-value",
+      "expected_HTTP": "200",
+      "expected_code": null,
+      "before": {
+        "at": "2026-10-15T23:14:00.058722+00:00",
+        "detail": {
+          "at": "2026-10-15T23:13:59.231468+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.403,
+          "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:12:50.384928896Z\",\"revision\":\"egr1_AAAAAAAAAAE\",\"serviceLinks\":[]}\n",
+          "stderr": ""
+        },
+        "value_receipts": [
+          {
+            "at": "2026-10-15T23:14:00.058588+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.681,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA324_5945c6\\n日本語 🐟\"}\n",
+            "stderr": ""
+          }
+        ],
+        "values": {
+          "QA_LITERAL": "QA324_5945c6\n日本語 🐟"
+        }
+      },
+      "intent": {
+        "method": "PUT",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars",
+        "body": [
+          {
+            "key": "QA_LITERAL",
+            "value": "QA324_5945c6\n日本語 🐟"
+          }
+        ]
+      },
+      "result": {
+        "at": "2026-10-15T23:14:01.295443+00:00",
+        "API_only": true,
+        "request": {
+          "method": "PUT",
+          "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars",
+          "body": [
+            {
+              "key": "QA_LITERAL",
+              "value": "QA324_5945c6\n日本語 🐟"
+            }
+          ],
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 1.09,
+        "response": "[{\"key\":\"QA_LITERAL\"}]\n",
+        "stderr": ""
+      },
+      "after": {
+        "at": "2026-10-15T23:14:02.340759+00:00",
+        "detail": {
+          "at": "2026-10-15T23:14:01.855218+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.418,
+          "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:12:50.384928896Z\",\"revision\":\"egr1_AAAAAAAAAAE\",\"serviceLinks\":[]}\n",
+          "stderr": ""
+        },
+        "value_receipts": [
+          {
+            "at": "2026-10-15T23:14:02.340663+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.343,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA324_5945c6\\n日本語 🐟\"}\n",
+            "stderr": ""
+          }
+        ],
+        "values": {
+          "QA_LITERAL": "QA324_5945c6\n日本語 🐟"
+        }
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-15T23:14:03.641843+00:00",
+      "label": "bulk-two-values",
+      "expected_HTTP": "200",
+      "expected_code": null,
+      "before": {
+        "at": "2026-10-15T23:14:03.641832+00:00",
+        "detail": {
+          "at": "2026-10-15T23:14:03.014897+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.381,
+          "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:12:50.384928896Z\",\"revision\":\"egr1_AAAAAAAAAAE\",\"serviceLinks\":[]}\n",
+          "stderr": ""
+        },
+        "value_receipts": [
+          {
+            "at": "2026-10-15T23:14:03.641732+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.487,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA324_5945c6\\n日本語 🐟\"}\n",
+            "stderr": ""
+          }
+        ],
+        "values": {
+          "QA_LITERAL": "QA324_5945c6\n日本語 🐟"
+        }
+      },
+      "intent": {
+        "method": "PUT",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars",
+        "body": [
+          {
+            "key": "QA_LITERAL",
+            "value": "QA324_5945c6\n日本語 🐟"
+          },
+          {
+            "key": "QA_EMPTY",
+            "value": ""
+          }
+        ]
+      },
+      "result": {
+        "at": "2026-10-15T23:14:06.311265+00:00",
+        "API_only": true,
+        "request": {
+          "method": "PUT",
+          "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars",
+          "body": [
+            {
+              "key": "QA_LITERAL",
+              "value": "QA324_5945c6\n日本語 🐟"
+            },
+            {
+              "key": "QA_EMPTY",
+              "value": ""
+            }
+          ],
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 2.533,
+        "response": "[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}]\n",
+        "stderr": ""
+      },
+      "after": {
+        "at": "2026-10-15T23:14:08.052022+00:00",
+        "detail": {
+          "at": "2026-10-15T23:14:06.821062+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.37,
+          "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:05.766894487Z\",\"revision\":\"egr1_AAAAAAAAAAI\",\"serviceLinks\":[]}\n",
+          "stderr": ""
+        },
+        "value_receipts": [
+          {
+            "at": "2026-10-15T23:14:07.623950+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_EMPTY",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.667,
+            "response": "{\"key\":\"QA_EMPTY\",\"value\":\"\"}\n",
+            "stderr": ""
+          },
+          {
+            "at": "2026-10-15T23:14:08.051928+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.415,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA324_5945c6\\n日本語 🐟\"}\n",
+            "stderr": ""
+          }
+        ],
+        "values": {
+          "QA_EMPTY": "",
+          "QA_LITERAL": "QA324_5945c6\n日本語 🐟"
+        }
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-15T23:14:09.665132+00:00",
+      "label": "bulk-invalid-value-atomic",
+      "expected_HTTP": "400",
+      "expected_code": "ENVIRONMENT_VARIABLE_VALUE_INVALID",
+      "before": {
+        "at": "2026-10-15T23:14:09.665110+00:00",
+        "detail": {
+          "at": "2026-10-15T23:14:08.778593+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.593,
+          "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:05.766894487Z\",\"revision\":\"egr1_AAAAAAAAAAI\",\"serviceLinks\":[]}\n",
+          "stderr": ""
+        },
+        "value_receipts": [
+          {
+            "at": "2026-10-15T23:14:09.303636+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_EMPTY",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.376,
+            "response": "{\"key\":\"QA_EMPTY\",\"value\":\"\"}\n",
+            "stderr": ""
+          },
+          {
+            "at": "2026-10-15T23:14:09.664967+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.349,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA324_5945c6\\n日本語 🐟\"}\n",
+            "stderr": ""
+          }
+        ],
+        "values": {
+          "QA_EMPTY": "",
+          "QA_LITERAL": "QA324_5945c6\n日本語 🐟"
+        }
+      },
+      "intent": {
+        "method": "PUT",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars",
+        "body": [
+          {
+            "key": "QA_LITERAL",
+            "value": "must-not-land"
+          },
+          {
+            "key": "QA_BAD",
+            "value": "a\u0000b"
+          }
+        ]
+      },
+      "result": {
+        "at": "2026-10-15T23:14:10.138607+00:00",
+        "API_only": true,
+        "request": {
+          "method": "PUT",
+          "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars",
+          "body": [
+            {
+              "key": "QA_LITERAL",
+              "value": "must-not-land"
+            },
+            {
+              "key": "QA_BAD",
+              "value": "a\u0000b"
+            }
+          ],
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "400",
+        "curl_exit": 0,
+        "elapsed": 0.331,
+        "response": "{\"code\":\"ENVIRONMENT_VARIABLE_VALUE_INVALID\",\"error\":\"environment variable \\\"QA_BAD\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\",\"id\":\"bad_request\",\"message\":\"environment variable \\\"QA_BAD\\\" contains a NUL byte, which a process environment cannot carry; use a secret file for binary content\",\"params\":{\"key\":\"QA_BAD\"}}\n",
+        "stderr": ""
+      },
+      "after": {
+        "at": "2026-10-15T23:14:11.706565+00:00",
+        "detail": {
+          "at": "2026-10-15T23:14:10.702007+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.424,
+          "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:05.766894487Z\",\"revision\":\"egr1_AAAAAAAAAAI\",\"serviceLinks\":[]}\n",
+          "stderr": ""
+        },
+        "value_receipts": [
+          {
+            "at": "2026-10-15T23:14:11.230223+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_EMPTY",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.392,
+            "response": "{\"key\":\"QA_EMPTY\",\"value\":\"\"}\n",
+            "stderr": ""
+          },
+          {
+            "at": "2026-10-15T23:14:11.706472+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.464,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA324_5945c6\\n日本語 🐟\"}\n",
+            "stderr": ""
+          }
+        ],
+        "values": {
+          "QA_EMPTY": "",
+          "QA_LITERAL": "QA324_5945c6\n日本語 🐟"
+        }
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-15T23:14:13.500303+00:00",
+      "label": "single-key-valid",
+      "expected_HTTP": "200",
+      "expected_code": null,
+      "before": {
+        "at": "2026-10-15T23:14:13.500283+00:00",
+        "detail": {
+          "at": "2026-10-15T23:14:12.450897+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.602,
+          "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:05.766894487Z\",\"revision\":\"egr1_AAAAAAAAAAI\",\"serviceLinks\":[]}\n",
+          "stderr": ""
+        },
+        "value_receipts": [
+          {
+            "at": "2026-10-15T23:14:12.992270+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_EMPTY",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.318,
+            "response": "{\"key\":\"QA_EMPTY\",\"value\":\"\"}\n",
+            "stderr": ""
+          },
+          {
+            "at": "2026-10-15T23:14:13.500163+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.496,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA324_5945c6\\n日本語 🐟\"}\n",
+            "stderr": ""
+          }
+        ],
+        "values": {
+          "QA_EMPTY": "",
+          "QA_LITERAL": "QA324_5945c6\n日本語 🐟"
+        }
+      },
+      "intent": {
+        "method": "PUT",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_LITERAL",
+        "body": {
+          "value": "QA324_5945c6\n日本語 🐟 single"
+        }
+      },
+      "result": {
+        "at": "2026-10-15T23:14:16.379725+00:00",
+        "API_only": true,
+        "request": {
+          "method": "PUT",
+          "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_LITERAL",
+          "body": {
+            "value": "QA324_5945c6\n日本語 🐟 single"
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 2.729,
+        "response": "{\"key\":\"QA_LITERAL\"}\n",
+        "stderr": ""
+      },
+      "after": {
+        "at": "2026-10-15T23:14:18.917067+00:00",
+        "detail": {
+          "at": "2026-10-15T23:14:17.193335+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.669,
+          "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:15.725676075Z\",\"revision\":\"egr1_AAAAAAAAAAM\",\"serviceLinks\":[]}\n",
+          "stderr": ""
+        },
+        "value_receipts": [
+          {
+            "at": "2026-10-15T23:14:18.286182+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_EMPTY",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.954,
+            "response": "{\"key\":\"QA_EMPTY\",\"value\":\"\"}\n",
+            "stderr": ""
+          },
+          {
+            "at": "2026-10-15T23:14:18.916877+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.607,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA324_5945c6\\n日本語 🐟 single\"}\n",
+            "stderr": ""
+          }
+        ],
+        "values": {
+          "QA_EMPTY": "",
+          "QA_LITERAL": "QA324_5945c6\n日本語 🐟 single"
+        }
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-15T23:14:20.658832+00:00",
+      "label": "single-key-wrong-type",
+      "expected_HTTP": "400",
+      "expected_code": null,
+      "before": {
+        "at": "2026-10-15T23:14:20.658818+00:00",
+        "detail": {
+          "at": "2026-10-15T23:14:19.588524+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.529,
+          "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:15.725676075Z\",\"revision\":\"egr1_AAAAAAAAAAM\",\"serviceLinks\":[]}\n",
+          "stderr": ""
+        },
+        "value_receipts": [
+          {
+            "at": "2026-10-15T23:14:20.184897+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_EMPTY",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.453,
+            "response": "{\"key\":\"QA_EMPTY\",\"value\":\"\"}\n",
+            "stderr": ""
+          },
+          {
+            "at": "2026-10-15T23:14:20.658724+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.456,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA324_5945c6\\n日本語 🐟 single\"}\n",
+            "stderr": ""
+          }
+        ],
+        "values": {
+          "QA_EMPTY": "",
+          "QA_LITERAL": "QA324_5945c6\n日本語 🐟 single"
+        }
+      },
+      "intent": {
+        "method": "PUT",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_LITERAL",
+        "body": {
+          "value": 7
+        }
+      },
+      "result": {
+        "at": "2026-10-15T23:14:21.475907+00:00",
+        "API_only": true,
+        "request": {
+          "method": "PUT",
+          "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_LITERAL",
+          "body": {
+            "value": 7
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "400",
+        "curl_exit": 0,
+        "elapsed": 0.577,
+        "response": "{\"error\":\"request body does not match the Render API schema\",\"id\":\"bad_request\",\"message\":\"request body does not match the Render API schema\"}\n",
+        "stderr": ""
+      },
+      "after": {
+        "at": "2026-10-15T23:14:23.764841+00:00",
+        "detail": {
+          "at": "2026-10-15T23:14:22.423931+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.809,
+          "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:15.725676075Z\",\"revision\":\"egr1_AAAAAAAAAAM\",\"serviceLinks\":[]}\n",
+          "stderr": ""
+        },
+        "value_receipts": [
+          {
+            "at": "2026-10-15T23:14:23.180139+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_EMPTY",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.605,
+            "response": "{\"key\":\"QA_EMPTY\",\"value\":\"\"}\n",
+            "stderr": ""
+          },
+          {
+            "at": "2026-10-15T23:14:23.764621+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.566,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA324_5945c6\\n日本語 🐟 single\"}\n",
+            "stderr": ""
+          }
+        ],
+        "values": {
+          "QA_EMPTY": "",
+          "QA_LITERAL": "QA324_5945c6\n日本語 🐟 single"
+        }
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-15T23:14:26.691238+00:00",
+      "label": "unknown-own-route",
+      "expected_HTTP": "404",
+      "expected_code": null,
+      "before": {
+        "at": "2026-10-15T23:14:26.691203+00:00",
+        "detail": {
+          "at": "2026-10-15T23:14:24.764120+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.856,
+          "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:15.725676075Z\",\"revision\":\"egr1_AAAAAAAAAAM\",\"serviceLinks\":[]}\n",
+          "stderr": ""
+        },
+        "value_receipts": [
+          {
+            "at": "2026-10-15T23:14:25.715818+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_EMPTY",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.81,
+            "response": "{\"key\":\"QA_EMPTY\",\"value\":\"\"}\n",
+            "stderr": ""
+          },
+          {
+            "at": "2026-10-15T23:14:26.690983+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.959,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA324_5945c6\\n日本語 🐟 single\"}\n",
+            "stderr": ""
+          }
+        ],
+        "values": {
+          "QA_EMPTY": "",
+          "QA_LITERAL": "QA324_5945c6\n日本語 🐟 single"
+        }
+      },
+      "intent": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730/qa324-missing",
+        "body": null
+      },
+      "result": {
+        "at": "2026-10-15T23:14:27.421186+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/env-groups/evg-db8lrs03260c738as730/qa324-missing",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "404",
+        "curl_exit": 0,
+        "elapsed": 0.592,
+        "response": "{\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\"}\n",
+        "stderr": ""
+      },
+      "after": {
+        "at": "2026-10-15T23:14:29.640166+00:00",
+        "detail": {
+          "at": "2026-10-15T23:14:28.267631+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.697,
+          "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:15.725676075Z\",\"revision\":\"egr1_AAAAAAAAAAM\",\"serviceLinks\":[]}\n",
+          "stderr": ""
+        },
+        "value_receipts": [
+          {
+            "at": "2026-10-15T23:14:29.023356+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_EMPTY",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.605,
+            "response": "{\"key\":\"QA_EMPTY\",\"value\":\"\"}\n",
+            "stderr": ""
+          },
+          {
+            "at": "2026-10-15T23:14:29.640067+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.589,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA324_5945c6\\n日本語 🐟 single\"}\n",
+            "stderr": ""
+          }
+        ],
+        "values": {
+          "QA_EMPTY": "",
+          "QA_LITERAL": "QA324_5945c6\n日本語 🐟 single"
+        }
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-15T23:14:31.850661+00:00",
+      "label": "bulk-wrong-method",
+      "expected_HTTP": "405",
+      "expected_code": null,
+      "before": {
+        "at": "2026-10-15T23:14:31.850644+00:00",
+        "detail": {
+          "at": "2026-10-15T23:14:30.276148+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.491,
+          "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:15.725676075Z\",\"revision\":\"egr1_AAAAAAAAAAM\",\"serviceLinks\":[]}\n",
+          "stderr": ""
+        },
+        "value_receipts": [
+          {
+            "at": "2026-10-15T23:14:31.340377+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_EMPTY",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.912,
+            "response": "{\"key\":\"QA_EMPTY\",\"value\":\"\"}\n",
+            "stderr": ""
+          },
+          {
+            "at": "2026-10-15T23:14:31.850526+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.497,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA324_5945c6\\n日本語 🐟 single\"}\n",
+            "stderr": ""
+          }
+        ],
+        "values": {
+          "QA_EMPTY": "",
+          "QA_LITERAL": "QA324_5945c6\n日本語 🐟 single"
+        }
+      },
+      "intent": {
+        "method": "POST",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars",
+        "body": []
+      },
+      "result": {
+        "at": "2026-10-15T23:14:32.373950+00:00",
+        "API_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars",
+          "body": [],
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "405",
+        "curl_exit": 0,
+        "elapsed": 0.377,
+        "response": "{\"error\":\"method not allowed\",\"id\":\"method_not_allowed\",\"message\":\"method not allowed\"}\n",
+        "stderr": ""
+      },
+      "after": {
+        "at": "2026-10-15T23:14:34.519648+00:00",
+        "detail": {
+          "at": "2026-10-15T23:14:33.047154+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.535,
+          "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:15.725676075Z\",\"revision\":\"egr1_AAAAAAAAAAM\",\"serviceLinks\":[]}\n",
+          "stderr": ""
+        },
+        "value_receipts": [
+          {
+            "at": "2026-10-15T23:14:33.947142+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_EMPTY",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.658,
+            "response": "{\"key\":\"QA_EMPTY\",\"value\":\"\"}\n",
+            "stderr": ""
+          },
+          {
+            "at": "2026-10-15T23:14:34.519541+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.559,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA324_5945c6\\n日本語 🐟 single\"}\n",
+            "stderr": ""
+          }
+        ],
+        "values": {
+          "QA_EMPTY": "",
+          "QA_LITERAL": "QA324_5945c6\n日本語 🐟 single"
+        }
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-15T23:14:36.057662+00:00",
+      "label": "bulk-empty-array",
+      "expected_HTTP": "200",
+      "expected_code": null,
+      "before": {
+        "at": "2026-10-15T23:14:36.057647+00:00",
+        "detail": {
+          "at": "2026-10-15T23:14:35.118728+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.456,
+          "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:15.725676075Z\",\"revision\":\"egr1_AAAAAAAAAAM\",\"serviceLinks\":[]}\n",
+          "stderr": ""
+        },
+        "value_receipts": [
+          {
+            "at": "2026-10-15T23:14:35.725398+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_EMPTY",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.426,
+            "response": "{\"key\":\"QA_EMPTY\",\"value\":\"\"}\n",
+            "stderr": ""
+          },
+          {
+            "at": "2026-10-15T23:14:36.057538+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.32,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA324_5945c6\\n日本語 🐟 single\"}\n",
+            "stderr": ""
+          }
+        ],
+        "values": {
+          "QA_EMPTY": "",
+          "QA_LITERAL": "QA324_5945c6\n日本語 🐟 single"
+        }
+      },
+      "intent": {
+        "method": "PUT",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars",
+        "body": []
+      },
+      "result": {
+        "at": "2026-10-15T23:14:39.451556+00:00",
+        "API_only": true,
+        "request": {
+          "method": "PUT",
+          "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars",
+          "body": [],
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 3.256,
+        "response": "[]\n",
+        "stderr": ""
+      },
+      "after": {
+        "at": "2026-10-15T23:14:40.487264+00:00",
+        "detail": {
+          "at": "2026-10-15T23:14:40.348749+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.761,
+          "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:37.85153177Z\",\"revision\":\"egr1_AAAAAAAAAAQ\",\"serviceLinks\":[]}\n",
+          "stderr": ""
+        },
+        "value_receipts": [],
+        "values": {}
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-15T23:14:41.108931+00:00",
+      "label": "bulk-restore-two-values",
+      "expected_HTTP": "200",
+      "expected_code": null,
+      "before": {
+        "at": "2026-10-15T23:14:41.108920+00:00",
+        "detail": {
+          "at": "2026-10-15T23:14:40.962203+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.344,
+          "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:37.85153177Z\",\"revision\":\"egr1_AAAAAAAAAAQ\",\"serviceLinks\":[]}\n",
+          "stderr": ""
+        },
+        "value_receipts": [],
+        "values": {}
+      },
+      "intent": {
+        "method": "PUT",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars",
+        "body": [
+          {
+            "key": "QA_LITERAL",
+            "value": "QA324_5945c6\n日本語 🐟"
+          },
+          {
+            "key": "QA_EMPTY",
+            "value": ""
+          }
+        ]
+      },
+      "result": {
+        "at": "2026-10-15T23:14:45.625901+00:00",
+        "API_only": true,
+        "request": {
+          "method": "PUT",
+          "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars",
+          "body": [
+            {
+              "key": "QA_LITERAL",
+              "value": "QA324_5945c6\n日本語 🐟"
+            },
+            {
+              "key": "QA_EMPTY",
+              "value": ""
+            }
+          ],
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 4.336,
+        "response": "[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}]\n",
+        "stderr": ""
+      },
+      "after": {
+        "at": "2026-10-15T23:14:48.109950+00:00",
+        "detail": {
+          "at": "2026-10-15T23:14:46.564066+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.526,
+          "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:43.259803865Z\",\"revision\":\"egr1_AAAAAAAAAAU\",\"serviceLinks\":[]}\n",
+          "stderr": ""
+        },
+        "value_receipts": [
+          {
+            "at": "2026-10-15T23:14:47.655259+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_EMPTY",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.532,
+            "response": "{\"key\":\"QA_EMPTY\",\"value\":\"\"}\n",
+            "stderr": ""
+          },
+          {
+            "at": "2026-10-15T23:14:48.109681+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/env-groups/evg-db8lrs03260c738as730/env-vars/QA_LITERAL",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "200",
+            "curl_exit": 0,
+            "elapsed": 0.389,
+            "response": "{\"key\":\"QA_LITERAL\",\"value\":\"QA324_5945c6\\n日本語 🐟\"}\n",
+            "stderr": ""
+          }
+        ],
+        "values": {
+          "QA_EMPTY": "",
+          "QA_LITERAL": "QA324_5945c6\n日本語 🐟"
+        }
+      },
+      "pass": true
+    }
+  ],
+  "native_literal_neighbor": {
+    "at": "2026-10-15T23:14:48.667219+00:00",
+    "API_only": true,
+    "request": {
+      "method": "GET",
+      "path": "/v1/webhooks/event-types",
+      "body": null,
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "status": "200",
+    "curl_exit": 0,
+    "elapsed": 0.311,
+    "response": "[\"auto_deploy_disabled\",\"auto_deploy_enabled\",\"autoscaling_config_changed\",\"autoscaling_ended\",\"autoscaling_started\",\"branch_changed\",\"branch_deleted\",\"build_ended\",\"build_started\",\"commit_ignored\",\"cron_job_run_ended\",\"cron_job_run_started\",\"deploy_ended\",\"deploy_started\",\"disk_created\",\"disk_deleted\",\"disk_updated\",\"image_pull_failed\",\"instance_count_changed\",\"job_run_ended\",\"key_value_available\",\"key_value_config_restart\",\"key_value_unhealthy\",\"maintenance_mode_enabled\",\"maintenance_mode_uri_updated\",\"plan_changed\",\"postgres_available\",\"postgres_backup_completed\",\"postgres_backup_failed\",\"postgres_backup_started\",\"postgres_connection_pool_enabled_changed\",\"postgres_created\",\"postgres_credentials_created\",\"postgres_credentials_deleted\",\"postgres_disk_size_changed\",\"postgres_ha_status_changed\",\"postgres_restarted\",\"postgres_restore_failed\",\"postgres_restore_succeeded\",\"postgres_unavailable\",\"postgres_upgrade_failed\",\"postgres_upgrade_started\",\"postgres_upgrade_succeeded\",\"pre_deploy_ended\",\"pre_deploy_started\",\"server_available\",\"server_failed\",\"server_restarted\",\"service_hibernated\",\"service_moved\",\"service_resumed\",\"service_suspended\",\"service_woken\"]\n",
+    "stderr": ""
+  },
+  "shared_value_reads": [
+    {
+      "at": "2026-10-15T23:14:49.679053+00:00",
+      "surface": "GraphQL",
+      "key": "QA_EMPTY",
+      "result": {
+        "at": "2026-10-15T23:14:49.678639+00:00",
+        "API_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA324 { envGroupVar(id: \"evg-db8lrs03260c738as730\", key: \"QA_EMPTY\") { key value } }"
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.714,
+        "response": "{\"data\":{\"envGroupVar\":{\"key\":\"QA_EMPTY\",\"value\":\"\"}}}\n",
+        "stderr": ""
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-15T23:14:51.042117+00:00",
+      "surface": "MCP",
+      "key": "QA_EMPTY",
+      "result": {
+        "at": "2026-10-15T23:14:51.041943+00:00",
+        "API_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/mcp",
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 324,
+            "method": "tools/call",
+            "params": {
+              "name": "get_env_group_var",
+              "arguments": {
+                "id": "evg-db8lrs03260c738as730",
+                "key": "QA_EMPTY"
+              }
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.536,
+        "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":324,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"key\\\":\\\"QA_EMPTY\\\",\\\"value\\\":\\\"\\\"}\"}],\"structuredContent\":{\"key\":\"QA_EMPTY\",\"value\":\"\"}}}\n\n",
+        "stderr": ""
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-15T23:14:51.839431+00:00",
+      "surface": "GraphQL",
+      "key": "QA_LITERAL",
+      "result": {
+        "at": "2026-10-15T23:14:51.838635+00:00",
+        "API_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/graphql",
+          "body": {
+            "query": "query QA324 { envGroupVar(id: \"evg-db8lrs03260c738as730\", key: \"QA_LITERAL\") { key value } }"
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.487,
+        "response": "{\"data\":{\"envGroupVar\":{\"key\":\"QA_LITERAL\",\"value\":\"QA324_5945c6\\n日本語 🐟\"}}}\n",
+        "stderr": ""
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-15T23:14:52.641582+00:00",
+      "surface": "MCP",
+      "key": "QA_LITERAL",
+      "result": {
+        "at": "2026-10-15T23:14:52.641241+00:00",
+        "API_only": true,
+        "request": {
+          "method": "POST",
+          "path": "/mcp",
+          "body": {
+            "jsonrpc": "2.0",
+            "id": 324,
+            "method": "tools/call",
+            "params": {
+              "name": "get_env_group_var",
+              "arguments": {
+                "id": "evg-db8lrs03260c738as730",
+                "key": "QA_LITERAL"
+              }
+            }
+          },
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.32,
+        "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":324,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"key\\\":\\\"QA_LITERAL\\\",\\\"value\\\":\\\"QA324_5945c6\\\\n日本語 🐟\\\"}\"}],\"structuredContent\":{\"key\":\"QA_LITERAL\",\"value\":\"QA324_5945c6\\n日本語 🐟\"}}}\n\n",
+        "stderr": ""
+      },
+      "pass": true
+    }
+  ],
+  "matrix_complete": true,
+  "delete_link_proof": {
+    "detail": {
+      "at": "2026-10-15T23:15:05.771639+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.538,
+      "response": "{\"id\":\"evg-db8lrs03260c738as730\",\"name\":\"qa-20261015-5945c6-bulk\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"envVars\":[{\"key\":\"QA_EMPTY\"},{\"key\":\"QA_LITERAL\"}],\"secretFiles\":[],\"createdAt\":\"2026-10-15T23:12:50.384928896Z\",\"updatedAt\":\"2026-10-15T23:14:43.259803865Z\",\"revision\":\"egr1_AAAAAAAAAAU\",\"serviceLinks\":[]}\n",
+      "stderr": ""
+    },
+    "GraphQL": {
+      "at": "2026-10-15T23:15:06.241652+00:00",
+      "API_only": true,
+      "request": {
+        "method": "POST",
+        "path": "/graphql",
+        "body": {
+          "query": "query QA324 { envGroup(id: \"evg-db8lrs03260c738as730\") { id serviceLinks } }"
+        },
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.332,
+      "response": "{\"data\":{\"envGroup\":{\"id\":\"evg-db8lrs03260c738as730\",\"serviceLinks\":[]}}}\n",
+      "stderr": ""
+    }
+  },
+  "delete_intent": {
+    "at": "2026-10-15T23:15:06.368725+00:00",
+    "exact_id": "evg-db8lrs03260c738as730",
+    "unlinked": true
+  },
+  "delete_result": {
+    "at": "2026-10-15T23:15:07.330778+00:00",
+    "API_only": true,
+    "request": {
+      "method": "DELETE",
+      "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+      "body": null,
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "status": "204",
+    "curl_exit": 0,
+    "elapsed": 0.831,
+    "response": "",
+    "stderr": ""
+  },
+  "cleanup_receipts": [
+    {
+      "at": "2026-10-15T23:15:10.183653+00:00",
+      "detail": {
+        "at": "2026-10-15T23:15:08.031542+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/env-groups/evg-db8lrs03260c738as730",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "404",
+        "curl_exit": 0,
+        "elapsed": 0.333,
+        "response": "{\"code\":\"NOT_FOUND\",\"error\":\"not found\",\"id\":\"not_found\",\"message\":\"not found\",\"params\":null}\n",
+        "stderr": ""
+      },
+      "group_inventory": {
+        "at": "2026-10-15T23:15:08.865751+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/env-groups?ownerId=tea-daif693dqjvc73e7as3g",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.821,
+        "response": "[]\n",
+        "stderr": ""
+      },
+      "native_service_inventory": {
+        "binary": "released v0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "exit": 0,
+        "elapsed": 0.909,
+        "stdout": "[\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:43:05Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3v694dm7c7390q930\",\n      \"id\": \"srv-dap3v694dm7c7390q930\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-boundary\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_BOUNDARY_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_BOUNDARY_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T23:15:06Z\",\n        \"nextRunAt\": \"2026-10-15T23:16:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-boundary\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T23:15:06Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-09-22T08:42:03Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3umrbdpcs73f5eeug\",\n      \"id\": \"srv-dap3umrbdpcs73f5eeug\",\n      \"imagePath\": \"docker.io/library/busybox:1.37\",\n      \"name\": \"qa-20260922-cd9361-longcronxx\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_LONG_CRON\",\n        \"env\": \"image\",\n        \"envSpecificDetails\": {\n          \"startCommand\": \"echo QA_LONG_CRON\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T23:15:05Z\",\n        \"nextRunAt\": \"2026-10-15T23:16:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"image\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-longcronxx\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T23:15:05Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-22T08:34:36Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/cron/srv-dap3r714dm7c7390q91g\",\n      \"id\": \"srv-dap3r714dm7c7390q91g\",\n      \"name\": \"qa-20260922-cd9361-nativecron\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"command\": \"echo QA_NATIVE_CRON_cd9361\",\n        \"env\": \"go\",\n        \"envSpecificDetails\": {\n          \"buildCommand\": \"go build -o app .\",\n          \"preDeployCommand\": \"\",\n          \"startCommand\": \"echo QA_NATIVE_CRON_cd9361\"\n        },\n        \"lastSuccessfulRunAt\": \"2026-10-15T23:15:04Z\",\n        \"nextRunAt\": \"2026-10-15T23:16:00Z\",\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"region\": \"fsn1\",\n        \"runtime\": \"go\",\n        \"schedule\": \"* * * * *\"\n      },\n      \"slug\": \"qa-20260922-cd9361-nativecron\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"cron_job\",\n      \"updatedAt\": \"2026-10-15T23:15:04Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"yes\",\n      \"autoDeployTrigger\": \"commit\",\n      \"branch\": \"main\",\n      \"createdAt\": \"2026-09-12T06:37:43Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-daif6dsmg29s73d1umvg\",\n      \"id\": \"srv-daif6dsmg29s73d1umvg\",\n      \"name\": \"hello-go\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"repo\": \"https://github.com/bex-co/bex\",\n      \"rootDir\": \"examples/hello-go\",\n      \"serviceDetails\": {\n        \"env\": \"docker\",\n        \"envSpecificDetails\": {\n          \"dockerCommand\": \"\",\n          \"dockerContext\": \"examples/hello-go\",\n          \"dockerfilePath\": \"\"\n        },\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"hello-go:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"docker\",\n        \"url\": \"https://hello-go.onbex.co\"\n      },\n      \"slug\": \"hello-go\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T22:54:15Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:24:46Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09vbgehcmc739j12i0\",\n      \"id\": \"srv-db09vbgehcmc739j12i0\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-c63833-zero-head\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-c63833-zero-head:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-c63833-zero-head.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-c63833-zero-head\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T12:22:37Z\"\n    }\n  },\n  {\n    \"service\": {\n      \"autoDeploy\": \"no\",\n      \"autoDeployTrigger\": \"off\",\n      \"createdAt\": \"2026-10-03T06:22:29Z\",\n      \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db09u90ehcmc739j12cg\",\n      \"id\": \"srv-db09u90ehcmc739j12cg\",\n      \"imagePath\": \"mendhak/http-https-echo:35\",\n      \"name\": \"qa-20261003-f592c7-zero\",\n      \"notifyOnFail\": \"default\",\n      \"ownerId\": \"tea-daif693dqjvc73e7as3g\",\n      \"rootDir\": \"\",\n      \"serviceDetails\": {\n        \"env\": \"image\",\n        \"healthCheckPath\": \"/\",\n        \"internalAddress\": \"qa-20261003-f592c7-zero:3000\",\n        \"maintenanceMode\": {\n          \"enabled\": false,\n          \"uri\": \"\"\n        },\n        \"maxShutdownDelaySeconds\": 30,\n        \"numInstances\": 1,\n        \"plan\": \"free\",\n        \"port\": 3000,\n        \"region\": \"fsn1\",\n        \"renderSubdomainPolicy\": \"enabled\",\n        \"runtime\": \"image\",\n        \"url\": \"https://qa-20261003-f592c7-zero.onbex.co\"\n      },\n      \"slug\": \"qa-20261003-f592c7-zero\",\n      \"suspended\": \"not_suspended\",\n      \"suspenders\": [],\n      \"type\": \"web_service\",\n      \"updatedAt\": \"2026-10-15T22:14:51Z\"\n    }\n  }\n]",
+        "stderr": "",
+        "native_exit": 0
+      },
+      "quota": {
+        "at": "2026-10-15T23:15:10.183550+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.344,
+        "response": "{\"services\":{\"used\":6,\"terminating\":0,\"limit\":25},\"postgres\":{\"used\":0,\"terminating\":0,\"limit\":1},\"keyValues\":{\"used\":0,\"terminating\":0,\"limit\":1}}\n",
+        "stderr": ""
+      },
+      "baseline_services_preserved": true
+    }
+  ]
+}

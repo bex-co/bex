@@ -1,0 +1,8 @@
+{"Time":"2026-10-15T16:34:18.716804-07:00","Action":"start","Package":"github.com/bex-co/bex/lego/backend/internal/postgres"}
+{"Time":"2026-10-15T16:34:19.405396-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Test":"TestParameterSpecIsTheDeclaredSet"}
+{"Time":"2026-10-15T16:34:19.40555-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Test":"TestParameterSpecIsTheDeclaredSet","Output":"=== RUN   TestParameterSpecIsTheDeclaredSet\n"}
+{"Time":"2026-10-15T16:34:19.453457-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Test":"TestParameterSpecIsTheDeclaredSet","Output":"--- PASS: TestParameterSpecIsTheDeclaredSet (0.05s)\n"}
+{"Time":"2026-10-15T16:34:19.45349-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Test":"TestParameterSpecIsTheDeclaredSet","Elapsed":0.05}
+{"Time":"2026-10-15T16:34:19.453792-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Output":"PASS\n"}
+{"Time":"2026-10-15T16:34:19.456184-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Output":"ok  \tgithub.com/bex-co/bex/lego/backend/internal/postgres\t0.738s\n"}
+{"Time":"2026-10-15T16:34:19.45621-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/backend/internal/postgres","Elapsed":0.739}

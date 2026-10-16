@@ -1,0 +1,118 @@
+from pathlib import Path
+import datetime, json, os, secrets, shutil, subprocess, sys, time, re, yaml
+os.umask(0o077)
+P=Path(__file__).resolve().parent
+ROOT=Path('/Volumes/nvme4tbfish/projects/bex8');CP=ROOT/'.playwright-mcp/cli-qa-w8-checkpoint.json'
+c=json.loads(CP.read_text());assert c.get('sync329_result')==0 and not c.get('active_sync_stash')
+mode=sys.argv[1];client=sys.argv[2] if len(sys.argv)>2 else 'bex';assert client in ('bex','render')
+WS='tea-daif693dqjvc73e7as3g'
+def unwrap(v):
+ for key in ('service','postgres','keyValue'):
+  if isinstance(v.get(key),dict):return v[key]
+ return v
+BASE={v if isinstance(v,str) else unwrap(v)['id'] for v in c['baseline']['services']}
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():
+ c['last_updated']=now();f=CP.with_name('.'+CP.name+'.qa329.tmp');f.write_text(json.dumps(c,indent=2,ensure_ascii=False));f.chmod(0o600);f.replace(CP)
+def cli(args,bound=40):
+ cfg=P/'render-config/cli.yaml'
+ try:
+  if client=='render':assert not cfg.exists();shutil.copyfile(P/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  env={k:v for k,v in os.environ.items() if not k.startswith(('RENDER_','BEX_','QA_','PG'))}
+  prefix='BEX' if client=='bex' else 'RENDER';directory=P/('config' if client=='bex' else 'render-config')
+  env.update({prefix+'_HOST':'https://api.bex.co/v1/',prefix+'_CLI_CONFIG_DIR':str(directory),prefix+'_CLI_CONFIG_PATH':str(directory/'cli.yaml'),prefix+'_WORKSPACE':WS,prefix+'_NO_UPDATE_NOTIFIER':'1','BEX_CLI_DISABLE_ANALYTICS':'1','DO_NOT_TRACK':'1','BROWSER':'/usr/bin/true','PGCONNECT_TIMEOUT':'10','PGCLIENTENCODING':'UTF8'})
+  start=time.monotonic();timedout=False
+  try:r=subprocess.run([str(P/('release/bex' if client=='bex' else 'render-pin')),*args],env=env,text=True,capture_output=True,timeout=bound);code=r.returncode;out=r.stdout;err=r.stderr
+  except subprocess.TimeoutExpired as e:
+   timedout=True;code=None;out=e.stdout or '';err=e.stderr or ''
+   if isinstance(out,bytes):out=out.decode(errors='replace')
+   if isinstance(err,bytes):err=err.decode(errors='replace')
+  private=yaml.safe_load((P/'config/cli.yaml').read_text())['api'];token=private.get('token') or private.get('key') or private.get('access_token');assert token
+  out=out.replace(token,'QA_TOKEN_REDACTED');err=err.replace(token,'QA_TOKEN_REDACTED')
+  for line in (ROOT/'muse.env').read_text().splitlines():
+   k,sep,v=line.partition('=')
+   if sep and k.strip() in ('QA_EMAIL','QA_PASSWORD') and v.strip().strip('\"\''):
+    secret=v.strip().strip('\"\'');out=out.replace(secret,'QA_PRIVATE_REDACTED');err=err.replace(secret,'QA_PRIVATE_REDACTED')
+  out=re.sub(r'(?:postgres(?:ql)?|rediss?)://[^\s\"\']+','[CONNECTION URI REDACTED]',out);err=re.sub(r'(?:postgres(?:ql)?|rediss?)://[^\s\"\']+','[CONNECTION URI REDACTED]',err)
+  return {'at':now(),'binary':'released Bex0.3.2' if client=='bex' else 'unchanged Render2.27.0/a764810a7682','command':[client,*args],'native_exit':code,'harness_timeout':timedout,'elapsed':round(time.monotonic()-start,3),'stdout':out,'stderr':err}
+ finally:
+  if client=='render':cfg.unlink(missing_ok=True)
+def api(method,path,body=None):
+ cfg=yaml.safe_load((P/'config/cli.yaml').read_text());token=cfg['api'].get('token') or cfg['api'].get('key') or cfg['api'].get('access_token');assert token;ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')';auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+WS+'"\n';f=P/'sweep329-request.json';assert not f.exists();args=['curl','--disable','-sS','--max-time','30','--config','-','-X',method,'-H','Accept: application/json, text/event-stream','-H','MCP-Protocol-Version: 2025-03-26']
+ if body is not None:f.write_text(json.dumps(body));args+=['-H','Content-Type: application/json','--data-binary','@'+str(f)]
+ start=time.monotonic()
+ try:r=subprocess.run([*args,'-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=36)
+ finally:f.unlink(missing_ok=True)
+ raw,_,status=r.stdout.rpartition('\n');out={'at':now(),'API_only':True,'request':{'method':method,'path':path,'body':body,'workspace':WS,'user_agent':ua,'authorization':'REDACTED'},'status':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-start,3),'response':raw,'stderr':r.stderr};assert token not in json.dumps(out);return out
+def rows(args):
+ r=cli([*args,'--confirm','-o','json']);assert r['native_exit']==0,r['stderr'];v=json.loads(r['stdout']);v=v.get('data',v) if isinstance(v,dict) else v;return r,[unwrap(z) for z in (v or [])]
+def pgval(r):
+ v=json.loads(r['stdout']);v=v.get('data',v);return unwrap(v)
+def detail():
+ r=api('GET','/v1/key-value/'+x['id']);x.setdefault('details',[]).append(r);save();assert r['status']=='200';v=json.loads(r['response']);v={**v,**v.get('options',{})};assert v['id']==x['id'] and (v.get('ownerId') or v.get('owner',{}).get('id'))==WS and v['plan']=='free' and v['persistenceMode']=='off';return r,v
+
+def terminal(command):
+ cfg=P/'render-config/cli.yaml';assert (P/'workspace.txt').read_text().strip()==WS
+ try:
+  if client=='render':assert not cfg.exists();shutil.copyfile(P/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  args=['python3',str(P/'pty-bounded.py'),*(['--render'] if client=='render' else []),*command]
+  r=subprocess.run(args,text=True,capture_output=True,timeout=38);assert r.returncode==0,r.stderr
+  v=json.loads(r.stdout);v['native_exit']=None if v['timeout'] else v['exit'];return v
+ finally:
+  if client=='render':cfg.unlink(missing_ok=True)
+
+if mode=='create':
+ assert client=='bex' and not any(v.get('sweep')==329 for v in c['resources'])
+ q=api('GET','/v1/owners/'+WS+'/limits');assert q['status']=='200';limit=json.loads(q['response'])['keyValues'];assert limit['used']==0 and limit['terminating']==0 and limit['limit']>0
+ inv,kv=rows(['keyvalues','list']);sr,services=rows(['services']);assert not kv and BASE<={v['id'] for v in services}
+ nonce=secrets.token_hex(3);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-kvpolicy'
+ args=['keyvalues','create','--name',name,'--plan','free','--region','frankfurt','--memory-policy','cache','--persistence-mode','off','--confirm','-o','json']
+ x={'sweep':329,'workspace':WS,'client':client,'type':'keyvalue','name':name,'nonce':nonce,'time':now(),'source_head':c['head'],'capacity':q,'pre_inventory':inv,'pre_service_inventory':sr,'pre_ids':[],'dependency_ids':[],'recorded_child_ids':[],'expected_policy':'allkeys_lru','create_command':[client,*args],'state':'native explicit Free/off/cache create intent persisted'};c['resources'].append(x);save()
+ r=cli(args);x['create_result']=r;x['state']='create returned; reconcile before retry';save();assert r['native_exit']==0
+ v=pgval(r);assert v['id'] not in x['pre_ids'] and (v.get('ownerId') or v.get('owner',{}).get('id'))==WS and v['plan']=='free' and v['name']==name and v['maxmemoryPolicy']=='allkeys_lru' and v['persistenceMode']=='off'
+ x.update(id=v['id'],create_response=v,state='created: native0/ID/workspace/Free/off/cache ownership proved');save();print(json.dumps({'id':x['id'],'native_create_exit':0,'policy':v['maxmemoryPolicy'],'persistence':v['persistenceMode']}),flush=True);raise SystemExit(0)
+x=next(v for v in c['resources'] if v.get('sweep')==329);sid=x['id'];assert x['workspace']==WS and sid not in x['pre_ids'] and x['create_result']['native_exit']==0 and x['create_response']['id']==sid
+if mode=='ready':
+ r=cli(['keyvalues','get',sid,'--confirm','-o','json']);x.setdefault('native_readiness',[]).append(r);save();d,v=detail();print(json.dumps({'client':client,'native_exit':r['native_exit'],'status':v['status'],'policy':v['maxmemoryPolicy']}),flush=True)
+elif mode=='publish':
+ assert client=='bex' and 'publish_intent' not in x;d,v=detail();assert v['status']=='available' and not v['public'];x['publish_intent']={'at':now(),'API_only':True,'body':{'public':True},'reason':'native create defaults private; normal external connection setup on exact own Free cache'};save();x['publish_result']=api('PATCH','/v1/key-value/'+sid,{'public':True});save();assert x['publish_result']['status']=='200';print(json.dumps({'API_only_external_setup_HTTP':'200'}),flush=True)
+elif mode=='endpoint':
+ import urllib.parse
+ assert 'publish_result' in x and x['publish_result']['status']=='200';d,v=detail();r=api('GET','/v1/key-value/'+sid+'/connection-info');e={k:z for k,z in r.items() if k!='response'}
+ if r['status']=='200':
+  data=json.loads(r['response']);u=urllib.parse.urlsplit(data.get('externalConnectionString',''));command=data.get('cliCommand','');redacted=re.sub(r'(?:postgres(?:ql)?|rediss?)://[^\s\"\']+','[CONNECTION URI REDACTED]',command);assert not u.password or u.password not in redacted;e.update(external_scheme=u.scheme,external_host=u.hostname,cli_command_redacted=redacted,ready=u.scheme=='rediss' and u.hostname==sid+'.kv.bex.co' and '--sni '+u.hostname in command)
+ else:e.update(ready=False,error_response=r['response'])
+ x.setdefault('endpoint_receipts',[]).append(e);save();print(json.dumps({'endpoint_HTTP':r['status'],'ready':e['ready']}),flush=True)
+elif mode=='connect':
+ d,v=detail();assert v['status']=='available' and v['public'] and x['endpoint_receipts'][-1]['ready'];label=sys.argv[3];assert label in ('PING','policy','SET','GET','server');selector=x.get('current_name',x['name']) if len(sys.argv)>4 and sys.argv[4]=='name' else sid
+ if selector!=sid:
+  inv,kvs=rows(['keyvalues','list']);matches=[z['id'] for z in kvs if z['name']==selector];x.setdefault('selector_receipts',[]).append({'at':now(),'native':inv,'selector':selector,'matches':matches});save();assert matches==[sid]
+ key='qa329:'+x['nonce']+':rename';payload='QA329_'+x['nonce']+'_KEEP'
+ if label=='GET':assert any(z['label']=='SET' and z.get('pass') for z in x.get('native_connections',[]))
+ arguments={'PING':['PING'],'policy':['INFO','memory'],'SET':['SET',key,payload],'GET':['GET',key],'server':['INFO','server']}[label]
+ command=['kv-cli',selector,'-o','interactive','--','--raw',*arguments]
+ e={'at':now(),'label':label,'client':client,'before':d,'expected_policy':x['expected_policy'],'intent':'ordinary bounded native redis-cli PING or memory INFO on exact own Free cache'};x.setdefault('native_connections',[]).append(e);save();r=terminal(command);e['result']=r;save()
+ text=re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]','',r['output']);text=re.sub(r'\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)','',text)
+ e['clean_output']=text;e['observed_policy']=next(iter(re.findall(r'maxmemory_policy:([^\r\n]+)',text)),None)
+ e['server_run_id']=next(iter(re.findall(r'run_id:([0-9a-f]{40})',text)),None)
+ e['scratch_key']=key if label in ('SET','GET') else None;e['scratch_value']=payload if label in ('SET','GET') else None
+ e['pass']=r['native_exit']==0 and (bool(re.search(r'(?m)^PONG\r?$',text)) if label=='PING' else e['observed_policy']==x['expected_policy'].replace('_','-') if label=='policy' else bool(re.search(r'(?m)^OK\r?$',text)) if label=='SET' else bool(re.search(r'(?m)^'+re.escape(payload)+r'\r?$',text)) if label=='GET' else bool(e['server_run_id']));save();print(json.dumps({'client':client,'label':label,'native_exit':r['native_exit'],'harness_timeout':r['timeout'],'pass':e['pass'],'observed_policy':e['observed_policy']}),flush=True)
+elif mode=='update':
+ policies=[z for z in x.get('native_connections',[]) if z['label']=='policy'];assert policies and policies[-1]['pass'] and policies[-1]['expected_policy']==x['expected_policy']
+ label=sys.argv[3];assert label in ('queue','volatile','rename','cache');assert not any(z['label']==label for z in x.get('updates',[]))
+ if label=='rename':
+  assert any(z['label']=='SET' and z.get('pass') for z in x.get('native_connections',[])) and next(z for z in reversed(x['native_connections']) if z['label']=='GET')['pass']
+ d,v=detail();assert v['status']=='available'
+ target=x.get('current_name',x['name']) if client=='render' else sid
+ if target!=sid:
+  inv,kvs=rows(['keyvalues','list']);assert [z['id'] for z in kvs if z['name']==target]==[sid];x.setdefault('selector_receipts',[]).append({'at':now(),'native':inv,'selector':target,'matches':[sid]});save()
+ new_name=x['name']+'-r';assert len(new_name)<=30;requested={'queue':'queue','volatile':'volatile_ttl','cache':'cache'};args=['keyvalues','update',target,*( ['--name',new_name] if label=='rename' else ['--memory-policy',requested[label]]),'--confirm','-o','json']
+ e={'at':now(),'label':label,'client':client,'before':d,'command':[client,*args],'intent':'native policy or rename only; Free plan and persistence omitted'};x.setdefault('updates',[]).append(e);save();e['result']=cli(args);save();assert e['result']['native_exit']==0
+ d,v=detail();e['after']=d;wanted=x['expected_policy'] if label=='rename' else {'queue':'noeviction','volatile':'volatile_ttl','cache':'allkeys_lru'}[label];e['pass']=v['maxmemoryPolicy']==wanted and (label!='rename' or v['name']==new_name);x['expected_policy']=wanted;x['current_name']=v['name'];save();print(json.dumps({'client':client,'label':label,'native_exit':0,'metadata_pass':e['pass'],'expected_runtime_policy':wanted.replace('_','-')}),flush=True)
+elif mode=='invalid':
+ assert 'invalid_policy' not in x;d,v=detail();e={'at':now(),'before':d,'intent':'unsupported policy refusal on exact owned fixture'};x['invalid_policy']=e;save();e['result']=cli(['keyvalues','update',sid,'--memory-policy','qa-invalid-policy','--confirm','-o','json']);save();after,z=detail();e['after']=after;e['pass']=e['result']['native_exit'] not in (None,0) and z['maxmemoryPolicy']==v['maxmemoryPolicy'] and z['name']==v['name'] and z['persistenceMode']=='off';save();print(json.dumps({'invalid_native_exit':e['result']['native_exit'],'expected_refusal_and_no_metadata_change':e['pass']}),flush=True)
+elif mode=='delete':
+ assert 'delete_intent' not in x;d,v=detail();assert not any(sid in z.get('dependency_ids',[]) and not z['state'].startswith('deleted:') for z in c['resources']);x['delete_intent']={'at':now(),'id':sid,'detail':d,'no_ledger_dependents':True};save();x['delete_result']=cli(['keyvalues','delete',sid,'--confirm','-o','json']);save();print(json.dumps({'native_delete_exit':x['delete_result']['native_exit'],'stderr':x['delete_result']['stderr']}),flush=True)
+elif mode=='reconcile':
+ assert 'delete_result' in x;d=api('GET','/v1/key-value/'+sid);inv,kvs=rows(['keyvalues','list']);sr,services=rows(['services']);q=api('GET','/v1/owners/'+WS+'/limits');e={'at':now(),'detail':d,'native_inventory':inv,'native_service_inventory':sr,'quota':q,'baseline_preserved':BASE<={v['id'] for v in services}};x.setdefault('cleanup_receipts',[]).append(e);save();assert q['status']=='200';limit=json.loads(q['response'])['keyValues'];done=d['status']=='404' and not kvs and e['baseline_preserved'] and limit['used']==0 and limit['terminating']==0;x['state']='deleted: native0/detail404/listempty/baseline6/KVquota0/terminating0' if done and x['delete_result']['native_exit']==0 else 'cleanup pending: reconcile required';save();print(json.dumps({'cleanup_complete':done,'native_delete_exit':x['delete_result']['native_exit'],'KV_used':limit['used'],'terminating':limit['terminating']}),flush=True)
+else:raise ValueError(mode)

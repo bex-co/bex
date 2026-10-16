@@ -1,0 +1,1527 @@
+{
+  "head": "4ae5ae08e01de319cf91e1257a05e289e77dbc87",
+  "implementation": "760502dad",
+  "package_passes": 2,
+  "unit_named_passes": 243,
+  "unit_optin_skips": 5,
+  "real_Docker_execution_passes": 3,
+  "results": [
+    {
+      "file": "sweep327-build-source-tests.jsonl",
+      "results": [
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestReclaimAppArtifactsInventoriesEveryKindAndIsolatesRecreation",
+          "Action": "pass",
+          "Elapsed": 0.04
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestReclaimAppArtifactsRequiresAppUID",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestReclaimAppArtifactsRequiresCanonicalLifetimeLabels",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildCacheGateOffLeavesTheBuildJobUntouched",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildCacheAddsOnlyWhatItClaimsToAdd/dockerfile",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildCacheAddsOnlyWhatItClaimsToAdd/native+signing",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildCacheAddsOnlyWhatItClaimsToAdd",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildCacheRefComesFromTheAppIdentity",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildCacheKeepsRegistryCredentialsOutOfBuildKit",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildCachePhasesCannotFailTheBuild",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildCacheShellIsValidAndSurvivesAFailedStep",
+          "Action": "pass",
+          "Elapsed": 0.19
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildCacheExportIsMaxModeAndNeverFailsTheBuild",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildCacheRestoreRetagsTheLayoutForBuildKit",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildCacheSaveRunsBesideThePushRatherThanBeforeIt",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildCacheWithSigningKeepsSigningAfterThePush",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildCacheOccupiesExactlyOneTag",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildCacheKeepsThePodDiskCeilingBounded",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildCacheTransfersCannotHangPastTheirOwnBudget",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildCacheSkipImportPurgesAndStillExports",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestImageRefAndJobName",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestImageRefWorkspaceScoped",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestKpackNamesBindUIDRevisionAndPurpose",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestKpackReleasesShareTheirAppsCache",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestCredentialBearingPlatformImagesAreDigestPinned",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildJobShape",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildJobCustomDockerfilePath",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildJobSigningMovesBuildToInitAndSignsAfterPush",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildJobCloneSecret",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildReusesOwnedCompletedJobAndReturnsImage",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildRequiresAppUID",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildRejectsExistingJobWithoutAppUID",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildReportsFailedJob",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildTimeoutClassification",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildFailureWindowFromJobClock",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildFailureReadsTerminationTail",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestFailureTailKeepsTheEnd",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildCreatesJobWhenAbsentAndReportsNonTerminal",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildJobPushSecret",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildJobPushSecretWithSigning",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildJobPrivateBasePullCredentialIsReadOnlyAndSeparate",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildJobResourceLimits",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildpackImageShapeAndSuccess",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildpackFailureUsesBuildCondition",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildpackCreatesImageWhenAbsentAndReportsNonTerminal",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestKpackCredentialAdaptation",
+          "Action": "pass",
+          "Elapsed": 0.01
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestKpackCredentialObjectsRejectMismatchedIdentity/uid",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestKpackCredentialObjectsRejectMismatchedIdentity/revision",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestKpackCredentialObjectsRejectMismatchedIdentity/purpose",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestKpackCredentialObjectsRejectMismatchedIdentity",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildNilClient",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildJobWorkspaceLabel",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestObservingAppBuild/a_running_build",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestObservingAppBuild/the_release's_own_finished_Job",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestObservingAppBuild/another_release's_finished_Job",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestObservingAppBuild/a_same-named_App's_build_elsewhere",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestObservingAppBuild/a_running_kpack_build",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestObservingAppBuild/the_release's_own_built_kpack_Image",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestObservingAppBuild/the_release's_own_failed_kpack_Image",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestObservingAppBuild/another_release's_finished_kpack_Image",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestObservingAppBuild/a_same-named_App's_kpack_Image_elsewhere",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestObservingAppBuild",
+          "Action": "pass",
+          "Elapsed": 0.01
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestActiveWorkspaceBuilds",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildQueuedSeparatesWaitingForCapacityFromBuilding/unplaced_pod_is_queued_and_carries_the_scheduler's_reason",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildQueuedSeparatesWaitingForCapacityFromBuilding/scheduled_pod_still_Pending_is_building,_not_queued",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildQueuedSeparatesWaitingForCapacityFromBuilding/a_spent_attempt_does_not_mask_the_live_one",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildQueuedSeparatesWaitingForCapacityFromBuilding/a_job_with_no_pod_yet_is_queued,_not_building",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildQueuedSeparatesWaitingForCapacityFromBuilding/a_failed_pod_list_is_not_reported_as_queued",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildQueuedSeparatesWaitingForCapacityFromBuilding",
+          "Action": "pass",
+          "Elapsed": 0.01
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildJobDockerContextMovesOnlyTheContext",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestClassifyPreludeUsesReservedCodes",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestReservedExitCodesCannotCollideWithSignalsOrShellErrors",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestClassifyingPhasesPassTenantArgsAsPositionalParameters",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildPhasesCaptureFailureTail",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestOnlyTenantInputPhasesClassify",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildPodFailurePolicyAbsorbsDisruptionAndFailsTenantErrors",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildJobNoLongerPinsNodesAgainstTheAutoscaler",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestBuildBackoffAllowsRetryOnlyForUnclassifiedFailures",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestFaultFromJobReadsTheClassOffTheJobReason",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestFaultClassesAreDistinct",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestPushRetriesTransientRegistryFailures",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestPushTLSVerificationIsConditional",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestClassifyPreludeExecutes/success_passes_through",
+          "Action": "pass",
+          "Elapsed": 0.02
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestClassifyPreludeExecutes/tenant_error_by_default",
+          "Action": "pass",
+          "Elapsed": 0.03
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestClassifyPreludeExecutes/network_failure_classified_transient",
+          "Action": "pass",
+          "Elapsed": 0.03
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestClassifyPreludeExecutes/registry_5xx_classified_transient",
+          "Action": "pass",
+          "Elapsed": 0.03
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestClassifyPreludeExecutes/bad_git_ref_stays_tenant",
+          "Action": "pass",
+          "Elapsed": 0.02
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestClassifyPreludeExecutes",
+          "Action": "pass",
+          "Elapsed": 0.12
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestClassifyPreludeSurvivesRepeatedUse",
+          "Action": "pass",
+          "Elapsed": 0.04
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/cmd/native-resolve",
+          "Test": "TestRunNarratesOrRefusesAsTenantError",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/cmd/native-resolve",
+          "Test": "TestRunNarratesAnOptedInBun",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestTenantOutputCannotForgeAnInfraClassification",
+          "Action": "pass",
+          "Elapsed": 0.05
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestClassifyBufferIsBounded",
+          "Action": "pass",
+          "Elapsed": 0.58
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestDispatchedJobWithNoPodObservesAsWaitingNotBuilding",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeBuildFailureTailNamesTheCommand",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestCountBuildsSeparatesQueuedFromRunning",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestCountBuildsIdleFleetIsZero",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestActiveBuildsIsClusterWide",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestTrimOvershootDeletesTheNewest",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestTrimOvershootIsInertWithinTheCap/unset_cap_is_unlimited",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestTrimOvershootIsInertWithinTheCap/exactly_at_the_cap",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestTrimOvershootIsInertWithinTheCap/under_the_cap",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestTrimOvershootIsInertWithinTheCap",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestTrimOvershootClusterWideIgnoresWorkspaces",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestTrimOvershootNeverDeletesFinishedBuilds",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestLoadToolchainInventory",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestParseToolchainInventoryFailsClosed",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestToolchainInventoryMatchesCommittedPins",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestJobNameCrossModuleContract/short_name",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestJobNameCrossModuleContract/uppercase_is_lowered",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestJobNameCrossModuleContract/empty_revision_defaults",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestJobNameCrossModuleContract/just_under_the_limit",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestJobNameCrossModuleContract/just_over_the_limit",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestJobNameCrossModuleContract/far_over_the_limit",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestJobNameCrossModuleContract",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestKpackImageReleaseLabelsCrossModuleContract",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestPruneKpackRevisions",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestStopRevision/its_retrying_Job",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestStopRevision/its_finished_Job",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestStopRevision/a_namesake's_running_Job",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestStopRevision/its_running_Job",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestStopRevision",
+          "Action": "pass",
+          "Elapsed": 0.01
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeDockerfilePreservesRenderCommands",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeDockerfileEnvRevisionBustsCacheKey",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeDockerfileKeepsToolchainPATH",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeRuntimeImagesAreDigestPinned",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeBuildJobPreparesDockerfileAndSecretEnv",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestValidateNativeOptions",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeStaticSiteBuild",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentRoundTrip//literal=false",
+          "Action": "pass",
+          "Elapsed": 0.03
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentRoundTrip//literal=true",
+          "Action": "pass",
+          "Elapsed": 0.04
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentRoundTrip/61/literal=false",
+          "Action": "pass",
+          "Elapsed": 0.03
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentRoundTrip/61/literal=true",
+          "Action": "pass",
+          "Elapsed": 0.04
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentRoundTrip/6162/literal=false",
+          "Action": "pass",
+          "Elapsed": 0.03
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentRoundTrip/6162/literal=true",
+          "Action": "pass",
+          "Elapsed": 0.04
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentRoundTrip/616263/literal=false",
+          "Action": "pass",
+          "Elapsed": 0.03
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentRoundTrip/616263/literal=true",
+          "Action": "pass",
+          "Elapsed": 0.05
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentRoundTrip/71612d6275696c640a/literal=false",
+          "Action": "pass",
+          "Elapsed": 0.03
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentRoundTrip/71612d6275696c640a/literal=true",
+          "Action": "pass",
+          "Elapsed": 0.04
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentRoundTrip/74776f0a0a/literal=false",
+          "Action": "pass",
+          "Elapsed": 0.03
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentRoundTrip/74776f0a0a/literal=true",
+          "Action": "pass",
+          "Elapsed": 0.04
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentRoundTrip/656d6265646465640a6c696e65/literal=false",
+          "Action": "pass",
+          "Elapsed": 0.03
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentRoundTrip/656d6265646465640a6c696e65/literal=true",
+          "Action": "pass",
+          "Elapsed": 0.04
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentRoundTrip/6c69746572616c2024484f4d452071756f7465272e/literal=false",
+          "Action": "pass",
+          "Elapsed": 0.03
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentRoundTrip/6c69746572616c2024484f4d452071756f7465272e/literal=true",
+          "Action": "pass",
+          "Elapsed": 0.04
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentRoundTrip",
+          "Action": "pass",
+          "Elapsed": 0.6
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentKeepsApplicationPATH/narrow/literal=false",
+          "Action": "pass",
+          "Elapsed": 0.04
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentKeepsApplicationPATH/narrow/literal=true",
+          "Action": "pass",
+          "Elapsed": 0.04
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentKeepsApplicationPATH/empty/literal=false",
+          "Action": "pass",
+          "Elapsed": 0.04
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentKeepsApplicationPATH/empty/literal=true",
+          "Action": "pass",
+          "Elapsed": 0.04
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentKeepsApplicationPATH/omitted/literal=false",
+          "Action": "pass",
+          "Elapsed": 0.03
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentKeepsApplicationPATH/omitted/literal=true",
+          "Action": "pass",
+          "Elapsed": 0.03
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentKeepsApplicationPATH",
+          "Action": "pass",
+          "Elapsed": 0.23
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeSecretFilesTransport",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestValidateNativeSecretFiles/traversal",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestValidateNativeSecretFiles/slash",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestValidateNativeSecretFiles/space",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestValidateNativeSecretFiles/comma_breaks_CSV",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestValidateNativeSecretFiles/equals_breaks_CSV",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestValidateNativeSecretFiles/quote",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestValidateNativeSecretFiles/glob",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestValidateNativeSecretFiles/dot",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestValidateNativeSecretFiles/secret_volume_reserved",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestValidateNativeSecretFiles/empty",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestValidateNativeSecretFiles/unsorted",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestValidateNativeSecretFiles/duplicate",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestValidateNativeSecretFiles/files_without_Secret",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestValidateNativeSecretFiles/Secret_without_files",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestValidateNativeSecretFiles",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeSecretFilesRoundTrip",
+          "Action": "pass",
+          "Elapsed": 0.08
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeSecretFilesPinnedBuildKit",
+          "Action": "skip",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeEnvironmentRejectsInvalidBase64",
+          "Action": "pass",
+          "Elapsed": 0.01
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeDockerfileRunNamesOnlyTheBuildCommand",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeCommandFailureNamesTheCommand",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeImageStartsWithEmptyPATH",
+          "Action": "skip",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeDockerfileClearsTheToolchainEntrypoint",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeDockerfileSuppliesPnpmToNodeOnly",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativePnpmPinKeysTheCache",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeImageRunsAnOptedInBun",
+          "Action": "skip",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeImageRunsPoetry",
+          "Action": "skip",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeImageRunsPnpm",
+          "Action": "skip",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/python_default",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/python_env,_full_patch_→_minor_line",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/python_env_beats_file",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/python_file",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/node_default",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/node_env_major",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/node_env_full",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/node_.node-version_beats_.nvmrc",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/node_.nvmrc_lts",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/node_.nvmrc_codename",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/node_.nvmrc_beats_engines",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/node_bounded_engines_range",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/node_caret_engines",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/node_open_engines_→_newest",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/node_or-range",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/node_package.json_without_engines",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/ruby_Gemfile_beats_.ruby-version",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/ruby_pessimistic_minor",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/ruby_pessimistic_major",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/ruby_file",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/ruby_file:_directive_falls_through",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/elixir_env",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/elixir_with_matching_erlang",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/go_ignores_go.mod_(Render_parity)",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion/rust_stays_on_rustup",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersion",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeVersionRefusesUnsupportedByName",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeChoiceNarration",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeToolchainLinesAreInventoried",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeBuildRewritesTheBase",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeBuildKeepsPnpmOnEveryNodeLine",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeBuildIgnoresSymlinkedVersionFiles",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeBuildRefusesAForeignDockerfile",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeBuildJobRunsTheResolverAfterThePreparer",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeBun/sweep306_BUN_VERSION",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeBun/BUN_VERSION_wins_over_the_file",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeBun/.bun-version",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeBun/bare_major",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeBun/latest",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeBun/range",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeBun/text_lockfile",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeBun/binary_lockfile",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeBun/file_wins_over_a_lockfile",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeBun/no_opt-in",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeBun/unsupported",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeBun",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeBuildAddsAnOptedInBun",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativePoetry/default",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativePoetry/sweep307_override",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativePoetry/older_1.x",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativePoetry/v_prefix",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativePoetry/range",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativePoetry/major_only",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativePoetry/shell_text",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativePoetry",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestResolveNativeBuildAddsPoetryToPython",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestSignalsQueueSecondsIsAdmissionToFirstPlacement",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestSignalsUnscheduledBuildHasNoQueueObservation",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestSignalsRetryReasons/eviction_beats_the_exit_code_it_also_produces",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestSignalsRetryReasons/oom_is_never_absorbed_as_a_disruption",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestSignalsRetryReasons/a_classified_transient",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestSignalsRetryReasons/a_tenant_exit_that_somehow_retried",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestSignalsRetryReasons/an_unrecognised_signal_exit",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestSignalsRetryReasons",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestSignalsOOMOnAnEvictedPodStaysDisruption",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestSignalsPushPhaseFoundInEitherSlice",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestSignalsNoPodsIsSilent",
+          "Action": "pass",
+          "Elapsed": 0
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestCloneRefusesMissingSourcePaths",
+          "Action": "pass",
+          "Elapsed": 0.06
+        }
+      ]
+    },
+    {
+      "file": "sweep327-bun-execution.jsonl",
+      "results": [
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeImageRunsAnOptedInBun/node",
+          "Action": "pass",
+          "Elapsed": 3.62
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeImageRunsAnOptedInBun/python",
+          "Action": "pass",
+          "Elapsed": 4.09
+        },
+        {
+          "Package": "github.com/bex-co/bex/lego/operator/internal/build",
+          "Test": "TestNativeImageRunsAnOptedInBun",
+          "Action": "pass",
+          "Elapsed": 7.71
+        }
+      ]
+    }
+  ],
+  "scope": "build/native-resolve packages plus opt-in Bun image execution on node and python; no new product test or implementation, no full operator/envtest suite rerun"
+}

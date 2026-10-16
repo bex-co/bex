@@ -1,0 +1,9 @@
+{
+  "repo": "https://github.com/expressjs/serve-favicon",
+  "branch": "master",
+  "commit": "1d9a8e7261557ec9a40463fd54e99b601016598c",
+  "package_name": "serve-favicon",
+  "package_sha256": "46dd2069300082210c2ee9a92f4812d3336eb31c39e386b6874ac0ab58de70e7",
+  "remote_HEAD": "ref: refs/heads/master\tHEAD\n1d9a8e7261557ec9a40463fd54e99b601016598c\tHEAD\n",
+  "anonymous_readonly_reference": true
+}

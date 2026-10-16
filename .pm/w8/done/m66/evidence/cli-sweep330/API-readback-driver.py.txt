@@ -1,0 +1,31 @@
+from pathlib import Path
+import datetime,json,os,re,subprocess,time,yaml
+os.umask(0o077);P=Path(__file__).resolve().parent;CP=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(CP.read_text());x=next(v for v in c['resources'] if v.get('sweep')==330 and v.get('type')=='web_service');sid=x['id'];WS='tea-daif693dqjvc73e7as3g';assert x['create_result']['native_exit']==0 and x['create_response']['id']==sid and x['create_response']['ownerId']==WS and x['create_response']['serviceDetails']['plan']=='free';assert any(v['stage']=='changed' and v['pass'] for v in x['observations'])
+def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+def save():
+ c['last_updated']=now();f=CP.with_name('.'+CP.name+'.qa330read.tmp');f.write_text(json.dumps(c,indent=2));f.chmod(0o600);f.replace(CP)
+def api(method,path,body=None):
+ config=yaml.safe_load((P/'config/cli.yaml').read_text());token=config['api'].get('token') or config['api'].get('key') or config['api'].get('access_token');assert token
+ ua='render-cli/2.27.0 (macOS - '+subprocess.check_output(['sw_vers','-productVersion'],text=True).strip()+')';auth='header = "Authorization: Bearer '+token+'"\nheader = "User-Agent: '+ua+'"\nheader = "X-Bex-Workspace: '+WS+'"\n';f=P/'sweep330-read-request.json';assert not f.exists();args=['curl','--disable','-sS','--max-time','25','--config','-','-X',method];headers={}
+ if path=='/mcp':headers={'Accept':'application/json, text/event-stream','MCP-Protocol-Version':'2025-03-26'}
+ for k,v in headers.items():args+=['-H',k+': '+v]
+ if body is not None:f.write_text(json.dumps(body));args+=['-H','Content-Type: application/json','--data-binary','@'+str(f)]
+ start=time.monotonic()
+ try:r=subprocess.run([*args,'-w','\n%{http_code}','https://api.bex.co'+path],input=auth,text=True,capture_output=True,timeout=30)
+ finally:f.unlink(missing_ok=True)
+ text,_,status=r.stdout.rpartition('\n');out={'at':now(),'API_only_read':True,'request':{'method':method,'path':path,'body':body,'workspace':WS,'headers':headers,'authorization':'REDACTED','user_agent':ua},'status':status,'curl_exit':r.returncode,'elapsed':round(time.monotonic()-start,3),'response':text,'stderr':r.stderr};assert token not in json.dumps(out);return out
+assert re.fullmatch(r'srv-[a-z0-9]+',sid)
+query='query QA330 { service(id: '+json.dumps(sid)+') { id repo branch imagePath runtime buildCommand startCommand } }'
+for surface,method,path,body in [('REST','GET','/v1/services/'+sid,None),('GraphQL','POST','/graphql',{'query':query}),('MCP','POST','/mcp',{'jsonrpc':'2.0','id':330,'method':'tools/call','params':{'name':'get_service','arguments':{'serviceId':sid}}})]:
+ r=api(method,path,body);entry={'at':now(),'surface':surface,'result':r};x.setdefault('API_source_readbacks',[]).append(entry);save();assert r['status']=='200'
+ raw=r['response']
+ if not raw.lstrip().startswith('{'):
+  payloads=[line[5:].strip() for line in raw.splitlines() if line.startswith('data:')];assert len(payloads)==1;raw=payloads[0]
+ v=json.loads(raw)
+ if surface=='GraphQL':assert not v.get('errors');v=v['data']['service']
+ elif surface=='MCP':
+  assert not v.get('error');result=v['result'];assert not result.get('isError');v=result.get('structuredContent')
+  if v is None:
+   items=[item['text'] for item in result.get('content',[]) if item.get('type')=='text'];assert len(items)==1;v=json.loads(items[0])
+  v=v.get('service',v)
+ details=v.get('serviceDetails',{});commands=details.get('envSpecificDetails',{});runtime=v.get('runtime') or details.get('runtime');source_image=v.get('imagePath');build=v.get('buildCommand') if surface=='GraphQL' else commands.get('buildCommand');start=v.get('startCommand') if surface=='GraphQL' else commands.get('startCommand');ok=v['id']==sid and v['repo']=='https://github.com/expressjs/serve-favicon' and v['branch']=='master' and not source_image and runtime=='node' and build==x['build_command'] and start==x['start_command'];entry['projection']={'id':v['id'],'repo':v.get('repo'),'branch':v.get('branch'),'imagePath':source_image,'runtime':runtime,'build_matches':build==x['build_command'],'start_matches':start==x['start_command']};entry['pass']=ok;save();print(json.dumps({'surface':surface,'HTTP':'200','effective_source_and_commands_match':ok}),flush=True);assert ok

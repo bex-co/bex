@@ -1,0 +1,44 @@
+import os,sys,subprocess,time,json,pathlib,re,yaml
+p=pathlib.Path(__file__).parent;args=sys.argv[1:];binary=str(p/'bex-current-330');label='checkout Bex 27d516be80b31fdda1f6f79221350f4dbcc6f0e7';bound=45
+while args and args[0].startswith('--'):
+ if args[0]=='--release':binary=str(p/'release/bex');label='released v0.3.2';args.pop(0)
+ elif args[0]=='--head':binary=str(p/'bex-head-150');label='checkout build 3f86c85a8a77e8633f00d5514a343267f6c1c9c2';args.pop(0)
+ elif args[0].startswith('--bound='):bound=int(args.pop(0).split('=',1)[1]);assert 1<=bound<=240
+ else:break
+assert args
+private_values=set()
+def gather(v,keys=()):
+ if isinstance(v,dict):
+  for k,t in v.items():
+   path='.'.join([*keys,str(k)])
+   if isinstance(t,str) and re.search(r'token|secret|password|api[._-]?key|email',path,re.I) and len(t)>=8:private_values.add(t)
+   gather(t,(*keys,str(k)))
+ elif isinstance(v,list):
+  for t in v:gather(t,keys)
+gather(yaml.safe_load((p/'config/cli.yaml').read_text()))
+email_env=pathlib.Path('/Volumes/nvme4tbfish/projects/bex8/muse.env')
+if email_env.exists():
+ for line in email_env.read_text().splitlines():
+  match=re.match(r'\s*(?:export\s+)?QA_EMAIL=(.*)',line)
+  if match:
+   value=match[1].strip().strip('"\'')
+   if value:private_values.add(value)
+def redact(s):
+ for value in private_values:s=s.replace(value,'QA_PRIVATE_VALUE_REDACTED')
+ return re.sub(r'(?:postgres(?:ql)?|rediss?)://[^\s]+','[CONNECTION URL REDACTED]',s)
+env={k:v for k,v in os.environ.items() if not k.startswith(('RENDER_','BEX_','QA_'))};env.update(BEX_HOST='https://api.bex.co/v1/',BEX_CLI_CONFIG_DIR=str(p/'config'),BEX_CLI_CONFIG_PATH=str(p/'config/cli.yaml'),BEX_WORKSPACE=(p/'workspace.txt').read_text().strip(),BEX_NO_UPDATE_NOTIFIER='1',BEX_CLI_DISABLE_ANALYTICS='1',DO_NOT_TRACK='1',BROWSER='/usr/bin/true')
+t=time.monotonic()
+try:
+ r=subprocess.run([binary,*args],env=env,text=True,capture_output=True,timeout=bound);code=r.returncode;stdout=r.stdout;stderr=r.stderr
+except subprocess.TimeoutExpired as err:
+ code=124;stdout=err.stdout or '';stderr=err.stderr or ''
+ if isinstance(stdout,bytes):stdout=stdout.decode(errors='replace')
+ if isinstance(stderr,bytes):stderr=stderr.decode(errors='replace')
+ stderr+='\nBounded native command timed out; reconcile mutations before retrying.'
+raw={'binary':label,'command':['bex',*args],'exit':code,'elapsed':round(time.monotonic()-t,3),'stdout':stdout,'stderr':stderr}
+f=p/'commands-recovered.jsonl';oldmask=os.umask(0o077)
+try:
+ with f.open('a') as out:out.write(json.dumps(raw)+'\n')
+finally:os.umask(oldmask)
+f.chmod(0o600)
+print(json.dumps({**raw,'stdout':redact(stdout),'stderr':redact(stderr)}))

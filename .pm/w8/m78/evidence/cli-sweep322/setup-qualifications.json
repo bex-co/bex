@@ -1,0 +1,89 @@
+[
+  {
+    "sweep": 322,
+    "case": "persistent",
+    "type": "blueprint",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "time": "2026-10-15T22:27:24.069020+00:00",
+    "repo": "https://github.com/expressjs/serve-static",
+    "branch": "master",
+    "path": "render.yaml",
+    "name": "qa-20261015-dc4fc0-source-bp",
+    "dependency_ids": [
+      "srv-db8l5vd5hbds738pbpog"
+    ],
+    "before_inventory": {
+      "at": "2026-10-15T22:27:22.719877+00:00",
+      "request": {
+        "method": "GET",
+        "path": "/v1/blueprints?ownerId=tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "[REDACTED]"
+      },
+      "status": "200",
+      "elapsed": 0.382,
+      "curl_exit": 0,
+      "stderr": "",
+      "headers": {
+        "content-type": "application/json",
+        "cf-ray": "a4b24031b95d6b48-DFW"
+      },
+      "response": "[{\"blueprint\": {\"id\": \"blp-db136288mmqc73d4hpug\", \"name\": \"bex\", \"status\": \"in_sync\", \"autoSync\": true, \"repo\": \"https://github.com/bex-co/bex\", \"branch\": \"main\", \"path\": \"render.yaml\"}, \"cursor\": \"blp-db136288mmqc73d4hpug\"}]"
+    },
+    "registration_body": {
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/expressjs/serve-static",
+      "branch": "master",
+      "bexYaml": "services:\n- name: qa-20261015-dc4fc0-source\n  type: web\n  runtime: image\n  image:\n    url: docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\n  plan: free\n  healthCheckPath: /\n  autoDeploy: false\n  envVars:\n  - key: QA_LITERAL\n    value: \"QA322_dc4fc0\\n\\u2603=literal\"\n  - key: HTTP_PORT\n    value: '3000'\n  - key: WHOAMI_PORT_NUMBER\n    value: '3000'\n"
+    },
+    "state": "not created: native service remains owned; provided image apply200 but no new Blueprint metadata",
+    "registration_result": {
+      "at": "2026-10-15T22:27:24.903376+00:00",
+      "api_only": true,
+      "request": {
+        "method": "POST",
+        "path": "/v1/blueprints/deploy",
+        "body": {
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "repo": "https://github.com/expressjs/serve-static",
+          "branch": "master",
+          "bexYaml": "services:\n- name: qa-20261015-dc4fc0-source\n  type: web\n  runtime: image\n  image:\n    url: docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\n  plan: free\n  healthCheckPath: /\n  autoDeploy: false\n  envVars:\n  - key: QA_LITERAL\n    value: \"QA322_dc4fc0\\n\\u2603=literal\"\n  - key: HTTP_PORT\n    value: '3000'\n  - key: WHOAMI_PORT_NUMBER\n    value: '3000'\n"
+        },
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "authorization": "REDACTED",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.725,
+      "response": "{\"services\": [{\"id\": \"srv-db8l5vd5hbds738pbpog\", \"name\": \"qa-20261015-dc4fc0-source\", \"slug\": \"qa-20261015-dc4fc0-source\", \"displayName\": \"\", \"type\": \"web_service\", \"phase\": \"Running\", \"undeployedChanges\": false, \"undeployedChangesApplying\": false, \"url\": \"https://qa-20261015-dc4fc0-source.onbex.co\", \"urls\": [\"https://qa-20261015-dc4fc0-source.onbex.co\"], \"image\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\", \"sourceImage\": \"docker.io/mendhak/http-https-echo@sha256:440ca6b810bc04606aac700e461caca5543eaa882c4e0af96a33424d05a23592\", \"runtime\": \"image\", \"builder\": \"auto\", \"replicas\": 1, \"suspended\": false, \"plan\": \"free\", \"revision\": \"rev-1\", \"internalAddress\": \"qa-20261015-dc4fc0-source:3000\", \"port\": 3000, \"createdAt\": \"2026-10-15T22:26:05Z\", \"updatedAt\": \"2026-10-15T22:27:24.809469841Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db8l5vd5hbds738pbpog\", \"region\": \"fsn1\", \"idleTTLSeconds\": 0, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"autoDeploy\": false, \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\", \"renderSubdomainPolicy\": \"enabled\", \"healthCheckPath\": \"/\", \"maxShutdownDelaySeconds\": 30, \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}}], \"databases\": null, \"keyValues\": null, \"envGroups\": null}",
+      "stderr": ""
+    },
+    "registration_reconciliation_reads": [
+      {
+        "at": "2026-10-15T22:28:08.673457+00:00",
+        "inventory": {
+          "at": "2026-10-15T22:28:08.662317+00:00",
+          "request": {
+            "method": "GET",
+            "path": "/v1/blueprints?ownerId=tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "authorization": "[REDACTED]"
+          },
+          "status": "200",
+          "elapsed": 0.424,
+          "curl_exit": 0,
+          "stderr": "",
+          "headers": {
+            "content-type": "application/json",
+            "cf-ray": "a4b241504c2a9976-PDX"
+          },
+          "response": "[{\"blueprint\": {\"id\": \"blp-db136288mmqc73d4hpug\", \"name\": \"bex\", \"status\": \"in_sync\", \"autoSync\": true, \"repo\": \"https://github.com/bex-co/bex\", \"branch\": \"main\", \"path\": \"render.yaml\"}, \"cursor\": \"blp-db136288mmqc73d4hpug\"}]"
+        }
+      }
+    ],
+    "qualification": "Earlier run disconnected this repo/branch. Current UpsertBlueprint intentionally refuses disconnected rows. This is consistent with the absent row; no DB-error observation or new defect is claimed."
+  }
+]

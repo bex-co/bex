@@ -1,0 +1,12 @@
+{
+  "binary": "released v0.3.2",
+  "command": [
+    "bex",
+    "services",
+    "--help"
+  ],
+  "exit": 0,
+  "elapsed": 0.035,
+  "stdout": "bex CLI v0.3.2\n\nList services and datastores for the active workspace\n\nUSAGE\n  bex services [subcommand] [flags]\n\nSUBCOMMANDS\n  create               Create a new service or clone an existing one\n  delete               Delete a service\n  instances            List instances for a service\n  update               Update configuration for an existing service\n\nFLAGS\n  -e, --environment-ids <ENV_IDS>   Filter services by comma-separated environment IDs\n  -h, --help                        Show help for this command\n      --include-previews            Include preview environments\n      --confirm                     Skip all confirmation prompts\n  -o, --output <FORMAT>             Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n\nEXAMPLES\n  # List all services\n  bex services\n\n  # Output as JSON\n  bex services --output json\n\n  # Filter by environment\n  bex services -e env-abc123\n\n  # Include preview environments\n  bex services --include-previews\n\n  # Combine filters\n  bex services -e env-abc123,env-def456 --include-previews --output json\n\nDETAILS\nLists all services and datastores for the active workspace. In interactive mode,\nyou can view logs, restart services, trigger deploys, SSH into instances, and\nconnect to Bex Postgres databases and Bex Key Value instances.\n\nUse \"bex services [subcommand] --help\" for more information about a command.\n",
+  "stderr": ""
+}

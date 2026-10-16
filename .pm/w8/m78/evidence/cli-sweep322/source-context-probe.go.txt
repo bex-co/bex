@@ -1,0 +1,47 @@
+package apps
+
+import (
+ "context"
+ "fmt"
+ "strings"
+ "testing"
+ "time"
+
+ "github.com/bex-co/bex/lego/backend/internal/core"
+ "github.com/bex-co/bex/lego/backend/internal/store"
+)
+
+func TestQA322PersistentBlueprintSourceContext(t *testing.T) {
+ const parentRepo="https://github.com/nodejs/node"
+ const targetRepo="https://github.com/expressjs/serve-static"
+ base:="services:\n  - name: qa322\n    type: web\n    runtime: node\n    plan: free\n    buildCommand: node --version\n    startCommand: node app.js\n"
+ explicit:=base+"    repo: "+targetRepo+"\n    branch: master\n"
+ nested:="projects:\n  - name: qa322project\n    environments:\n      - name: qa322env\n        "+strings.ReplaceAll(strings.TrimSuffix(explicit,"\n"),"\n","\n        ")+"\n"
+ cases:=[]struct{name,manifest,repo,branch string}{
+  {"explicit-other-repo-and-branch",explicit,targetRepo,"master"},
+  {"explicit-other-repo-only-difference",base+"    repo: "+targetRepo+"\n    branch: main\n",targetRepo,"main"},
+  {"same-repo-explicit-other-branch",base+"    repo: "+parentRepo+"\n    branch: master\n",parentRepo,"master"},
+  {"nested-explicit-other-source",nested,targetRepo,"master"},
+  {"omitted-source-inherits-parent",base,parentRepo,"main"},
+  {"explicit-same-source-control",base+"    repo: "+parentRepo+"\n    branch: main\n",parentRepo,"main"},
+ }
+ for _,tc:=range cases {t.Run(tc.name,func(t *testing.T){
+  b:=store.Blueprint{ID:"blp-qa322",TenantID:"tea-a",Repo:parentRepo,Branch:"main",Path:CanonicalBlueprintFilename,Status:store.BlueprintStatusInSync}
+  fs:=newFakeBlueprintStore(b);svc:=newBlueprintValidator(t);svc.Blueprints=fs
+  ctx:=core.WithWorkspace(context.Background(),"tea-a")
+  admitted,run,err:=fs.AdmitBlueprintSyncRun(ctx,b.ID,b.TenantID,store.BlueprintSync{State:store.BlueprintSyncStateRunning,StartedAt:time.Now().UTC()});if err!=nil {t.Fatal(err)}
+  staged,parsed,err:=svc.prepareSyncManifest(ctx,admitted,run,tc.manifest,svc.newWorkspaceSnapshot(ctx));if err!=nil {t.Fatal(err)}
+  if staged.Manifest!=tc.manifest || len(parsed.services)!=1 {t.Fatal("staging did not retain the exact authored manifest and one service")}
+  got:=parsed.services[0].req
+  if got.Repo!=tc.repo || got.Branch!=tc.branch {t.Errorf("prepared source=(%q,%q), authored/default source=(%q,%q)",got.Repo,got.Branch,tc.repo,tc.branch)}
+ })}
+ t.Run("direct-deploy-explicit-override-control",func(t *testing.T){
+  parsed,_,err:=compileStack(DeployRequest{Repo:parentRepo,Branch:"main",Manifest:explicit});if err!=nil {t.Fatal(err)}
+  got:=parsed.services[0].req;if got.Repo!=parentRepo || got.Branch!="main" {t.Fatalf("existing explicit-deploy override changed: %+v",got)}
+ })
+ t.Run("image-source-control",func(t *testing.T){
+  text:=fmt.Sprintf("services:\n  - {name: qa322image, type: web, runtime: image, plan: free, image: {url: %s}}\n","docker.io/library/nginx:1.27")
+  b:=store.Blueprint{ID:"blp-qa322-image",TenantID:"tea-a",Repo:parentRepo,Branch:"main",Path:CanonicalBlueprintFilename,Status:store.BlueprintStatusInSync};fs:=newFakeBlueprintStore(b);svc:=newBlueprintValidator(t);svc.Blueprints=fs;ctx:=core.WithWorkspace(context.Background(),"tea-a");admitted,run,err:=fs.AdmitBlueprintSyncRun(ctx,b.ID,b.TenantID,store.BlueprintSync{State:store.BlueprintSyncStateRunning,StartedAt:time.Now().UTC()});if err!=nil {t.Fatal(err)}
+  _,parsed,err:=svc.prepareSyncManifest(ctx,admitted,run,text,svc.newWorkspaceSnapshot(ctx));if err!=nil {t.Fatal(err)};got:=parsed.services[0].req;if got.Repo!="" || got.Image!="docker.io/library/nginx:1.27" {t.Fatalf("image source affected: %+v",got)}
+ })
+}

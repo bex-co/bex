@@ -1,0 +1,58 @@
+{
+  "head": "5977e4f98c1355cd9dfa5917d3f38d4a49772ea2",
+  "source_probe_exit": 1,
+  "expected_failure": true,
+  "results": [
+    {
+      "Test": "TestQA328PythonGeneratedToolchainObservation/default",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA328PythonGeneratedToolchainObservation/3.10",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA328PythonGeneratedToolchainObservation/3.11",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA328PythonGeneratedToolchainObservation/3.12",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA328PythonGeneratedToolchainObservation/3.13",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA328PythonGeneratedToolchainObservation/3.14",
+      "Action": "pass",
+      "Elapsed": 0
+    },
+    {
+      "Test": "TestQA328PythonGeneratedToolchainObservation",
+      "Action": "pass",
+      "Elapsed": 0.01
+    },
+    {
+      "Test": "TestQA328PythonJavaScriptBuildExecution",
+      "Action": "fail",
+      "Elapsed": 1.49
+    }
+  ],
+  "generated_python_cases": [
+    "default",
+    "3.10",
+    "3.11",
+    "3.12",
+    "3.13",
+    "3.14"
+  ],
+  "local_execution": "one actual generated Python3.12 Docker build fails on node before authored Python; Docker exit1, inner BuildKit exit127",
+  "no_fixed_candidate": true,
+  "existing_checks": "same lego tree as sweep327: build/native-resolve unit packages243 named passes,5 opt-in skips; Bun node/python actual image execution also passes; referenced rather than rerun"
+}

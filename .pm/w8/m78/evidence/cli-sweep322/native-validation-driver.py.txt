@@ -1,0 +1,10 @@
+from pathlib import Path
+import datetime,json,shutil,subprocess
+P=Path(__file__).resolve().parent;CP=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json');c=json.loads(CP.read_text());x=next(v for v in c['resources'] if v.get('sweep')==322 and v.get('case')=='persistent' and v.get('type')=='web_service');f=P/'sweep322-m78-native.yaml';f.write_text(x['sync_intent']['body']['bexYaml']);f.chmod(0o600)
+for client in ('bex','render','current'):
+ cfg=P/'render-config/cli.yaml'
+ try:
+  if client=='render':assert not cfg.exists();shutil.copyfile(P/'config/cli.yaml',cfg);cfg.chmod(0o600)
+  runner=['python3',str(P/'run-render.py')] if client=='render' else ['python3',str(P/'run-current322.py')] if client=='current' else ['python3',str(P/'run.py'),'--release'];r=json.loads(subprocess.check_output([*runner,'blueprints','validate',str(f),'--confirm','-o','json'],text=True));x.setdefault('m78_after_validations',[]).append({'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'client':client,'manifest':f.read_text(),'result':r});tmp=CP.with_name('.'+CP.name+'.qa322valid.tmp');tmp.write_text(json.dumps(c,indent=2));tmp.chmod(0o600);tmp.replace(CP);assert r['exit']==0 and json.loads(r['stdout'])['valid'];print(json.dumps({'client':client,'native_exit':0,'authored_explicit_repo_branch_valid':True}),flush=True)
+ finally:
+  if client=='render':cfg.unlink(missing_ok=True)

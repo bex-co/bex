@@ -1,0 +1,40 @@
+[
+  {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "keyvalues",
+      "create",
+      "--help"
+    ],
+    "exit": 0,
+    "elapsed": 0.096,
+    "stdout": "bex CLI v0.3.2\n\nCreate a new Bex Key Value instance\n\nUSAGE\n  bex keyvalues create [flags]\n\nFLAGS\n      --environment <ENVIRONMENT>             Set the environment to create the Key Value in (ID or name, optional). Example: Production or evm-abc123def456\n  -h, --help                                  Show help for this command\n      --ip-allow-list <CIDR_DESCRIPTION>      Restrict inbound traffic to specific IP ranges (format: cidr=<range>,description=<label>). Repeat the flag for multiple entries\n      --memory-policy <MAXMEMORY_POLICY>      Set the eviction policy used when the instance runs out of memory.\nAccepts a friendly alias — cache (= allkeys_lru, for caching) or queue (= noeviction, for job queues) —\nor any raw policy: noeviction | allkeys_lru | allkeys_lfu | allkeys_random | volatile_lru | volatile_lfu | volatile_random | volatile_ttl\n      --name <NAME>                           Set the Key Value instance name (generated if not provided)\n      --persistence-mode <PERSISTENCE_MODE>   Set the on-disk persistence mode: journal_snapshot | snapshot | off (off loses data on restart; omit to use the plan default)\n      --plan <PLAN>                           Set the plan to one of: free | 256mb | 1g | 5g | 10g | 20g | 40g. Custom enterprise plan names are also accepted\n      --project <PROJECT>                     Scope environment lookup to a project (ID or name, optional); if the project has exactly one environment it is used automatically\n      --region <REGION>                       Set the region: frankfurt | ohio | oregon | singapore | virginia\n      --workspace <WORKSPACE>                 Set the workspace to create the Key Value in (ID or name). Defaults to the active workspace (set via 'bex workspace set')\n      --confirm                               Skip all confirmation prompts\n  -o, --output <FORMAT>                       Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n\nEXAMPLES\n  # Interactive wizard (guided prompts for each option)\n  bex kv create\n\n  # Specify all options; wizard still asks for confirmation before creating\n  bex kv create --name my-cache --plan 256mb --region oregon\n\n  # Skip all prompts and create immediately (no confirmation)\n  bex kv create --name my-cache --plan free --confirm\n\n  # Machine-readable output (non-interactive, no prompts)\n  bex kv create --name my-cache --plan 256mb --output json\n\n  # Use as a cache with no on-disk persistence\n  bex kv create --name my-cache --plan 256mb --persistence-mode off\n\n  # With IP allow-listing (repeat the flag for multiple entries)\n  bex kv create --name my-cache \\\n    --ip-allow-list \"cidr=203.0.113.5/32,description=office\" \\\n    --ip-allow-list \"cidr=10.0.0.0/8,description=internal\"\n\nDETAILS\nCreate a new Bex Key Value instance.\n\nIn interactive mode, a prompt guides you through each option one at a time.\nIn non-interactive mode (--output text/json/yaml), flags use defaults if not\nsupplied.\nUse --confirm to skip all prompts (including final confirmation) and create\nimmediately.\nOutput will be human-readable; use --output json/yaml/text for machine-readable\noutput.\n\n",
+    "stderr": ""
+  },
+  {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "keyvalues",
+      "update",
+      "--help"
+    ],
+    "exit": 0,
+    "elapsed": 0.039,
+    "stdout": "bex CLI v0.3.2\n\nUpdate a Bex Key Value instance\n\nUSAGE\n  bex keyvalues update <keyValueID|keyValueName> [flags]\n\nFLAGS\n      --clear-ip-allow-list                   Remove all IP allow-list entries. Mutually exclusive with --ip-allow-list\n      --environment <ENVIRONMENT>             Narrow lookup to an environment (ID or name, optional) when the same Key Value name exists in multiple environments\n  -h, --help                                  Show help for this command\n      --ip-allow-list <CIDR_DESCRIPTION>      Replace the IP allow-list with the supplied entries (format: cidr=<range>,description=<label>). Repeat the flag for multiple entries\n      --memory-policy <MAXMEMORY_POLICY>      Set the eviction policy used when the instance runs out of memory.\nAccepts a friendly alias — cache (= allkeys_lru, for caching) or queue (= noeviction, for job queues) —\nor any raw policy: noeviction | allkeys_lru | allkeys_lfu | allkeys_random | volatile_lru | volatile_lfu | volatile_random | volatile_ttl\n      --name <NAME>                           Rename the Key Value instance\n      --persistence-mode <PERSISTENCE_MODE>   Set the on-disk persistence mode: journal_snapshot | snapshot | off (off loses data on restart)\n      --plan <PLAN>                           Set the plan to one of: free | 256mb | 1g | 5g | 10g | 20g | 40g. Custom enterprise plan names are also accepted\n      --confirm                               Skip all confirmation prompts\n  -o, --output <FORMAT>                       Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n\nEXAMPLES\n  # Rename\n  bex kv update red-abc123def456ghi789jkl0 --name new-cache-name\n\n  # Change plan\n  bex kv update my-cache --plan 1g\n\n  # Replace the IP allow-list (entire list, not append)\n  bex kv update my-cache \\\n    --ip-allow-list \"cidr=203.0.113.5/32,description=office\" \\\n    --ip-allow-list \"cidr=10.0.0.0/8,description=internal\"\n\n  # Clear the IP allow-list\n  bex kv update my-cache --clear-ip-allow-list\n\n  # Disambiguate a name that exists in multiple environments\n  bex kv update my-cache --environment production --memory-policy queue\n\n  # Turn off on-disk persistence\n  bex kv update my-cache --persistence-mode off\n\n  # JSON output\n  bex kv update red-abc123def456ghi789jkl0 --plan 5g --output json\n\nDETAILS\nUpdate an existing Bex Key Value instance.\n\nThe positional argument is the target Key Value (ID red-... or name). At least\none mutating flag must be supplied. Use --name to rename the instance; the\npositional argument always identifies the target and is never the new name.\n\nEnvironment, project, workspace, and region are immutable. A Key Value instance\ncannot be moved between them; the --environment flag is for name disambiguation\nonly.\n\nName lookup is scoped to your active workspace. If a name isn't found, switch\nworkspaces with 'bex workspace set <name|ID>' and try again, or pass the\nKey Value ID instead (which works across workspaces). If a name matches more\nthan one instance, narrow the search with --environment <id|name>.\n\nThe --ip-allow-list flag replaces the server-side list; pass it once per entry.\nTo remove all allow-list entries, pass --clear-ip-allow-list. The two flags are\nmutually exclusive.\n\n",
+    "stderr": ""
+  },
+  {
+    "binary": "released v0.3.2",
+    "command": [
+      "bex",
+      "kv-cli",
+      "--help"
+    ],
+    "exit": 0,
+    "elapsed": 0.037,
+    "stdout": "bex CLI v0.3.2\n\nOpen a session for a Bex Key Value instance\n\nUSAGE\n  bex kv-cli [keyValueID|keyValueName] [flags]\n\nFLAGS\n  -h, --help              Show help for this command\n      --confirm           Skip all confirmation prompts\n  -o, --output <FORMAT>   Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n\nEXAMPLES\n  # Open an interactive kv-cli session\n  bex kv-cli kv-abc123\n\n  # Pass through redis-cli arguments\n  bex kv-cli kv-abc123 -- --scan\n\nDETAILS\nOpen a redis-cli or valkey-cli session for a Bex Key Value instance. This\ncommand only supports interactive mode.\n\nYou can optionally pass the key value ID or name as an argument. To pass\narguments to redis-cli or valkey-cli, use:\n  bex kv-cli [keyValueID|keyValueName] -- [redis-cli args]\n\n",
+    "stderr": ""
+  }
+]

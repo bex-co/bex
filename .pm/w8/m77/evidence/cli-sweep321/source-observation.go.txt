@@ -1,0 +1,28 @@
+package build
+
+import (
+ "encoding/json"
+ "os"
+ "path/filepath"
+ "testing"
+)
+
+func TestQA321RubyGeneratedToolchainObservation(t *testing.T) {
+ out:=os.Getenv("QA321_OUTPUT");if out=="" {t.Fatal("private output required")}
+ observations:=[]map[string]any{}
+ for _,line:=range []string{"default","3.3","3.4","4.0"} {
+  t.Run(line,func(t *testing.T) {
+   o:=nativeOptions();o.Runtime="ruby";o.BuildCommand="ruby --version";o.StartCommand="ruby qa.rb"
+   files:=map[string]string{};want:=line
+   if line=="default" {want="3.4"} else {files[".ruby-version"]=line+"\n"}
+   bundle,dockerfile,src:=writeResolveFixture(t,o,nil,files)
+   choice,err:=ResolveNativeBuild("ruby",bundle,dockerfile,src);if err!=nil {t.Fatal(err)}
+   if choice.Line!=want {t.Fatalf("line %s want %s",choice.Line,want)}
+   content,err:=os.ReadFile(dockerfile);if err!=nil {t.Fatal(err)}
+   if err=os.WriteFile(filepath.Join(out,line+".Dockerfile"),content,0600);err!=nil {t.Fatal(err)}
+   observations=append(observations,map[string]any{"case":line,"choice":choice,"runtime":"ruby","scope":"actual generated/resolved Dockerfile; no local image execution or fixed candidate"})
+  })
+ }
+ b,err:=json.MarshalIndent(observations,"","  ");if err!=nil {t.Fatal(err)}
+ if err=os.WriteFile(filepath.Join(out,"observations.json"),b,0600);err!=nil {t.Fatal(err)}
+}

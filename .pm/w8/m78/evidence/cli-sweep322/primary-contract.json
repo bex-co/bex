@@ -1,0 +1,7 @@
+{
+  "source": "https://render.com/docs/blueprint-spec",
+  "checked": "2026-10-15",
+  "repo": "For Git-based services, an explicit repo chooses that service repository; omission uses the repository containing the Blueprint.",
+  "branch": "An explicit branch chooses the service branch. Omission uses the Blueprint branch for a shared repo and the service repo default when the repos differ.",
+  "scope": "This hosted failure and four failing source cases use explicit declared repo/branch. Different-repo omitted-branch resolution is a neighboring default-branch concern, not certified fixed here."
+}

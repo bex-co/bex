@@ -1,0 +1,16 @@
+{"Time":"2026-10-15T16:47:51.252691-07:00","Action":"start","Package":"github.com/bex-co/bex/lego/operator/internal/build"}
+{"Time":"2026-10-15T16:47:51.702898-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/operator/internal/build","Test":"TestNativeImageRunsAnOptedInBun"}
+{"Time":"2026-10-15T16:47:51.702989-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/build","Test":"TestNativeImageRunsAnOptedInBun","Output":"=== RUN   TestNativeImageRunsAnOptedInBun\n"}
+{"Time":"2026-10-15T16:47:51.703018-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/operator/internal/build","Test":"TestNativeImageRunsAnOptedInBun/node"}
+{"Time":"2026-10-15T16:47:51.703023-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/build","Test":"TestNativeImageRunsAnOptedInBun/node","Output":"=== RUN   TestNativeImageRunsAnOptedInBun/node\n"}
+{"Time":"2026-10-15T16:47:55.319496-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/build","Test":"TestNativeImageRunsAnOptedInBun/node","Output":"--- PASS: TestNativeImageRunsAnOptedInBun/node (3.62s)\n"}
+{"Time":"2026-10-15T16:47:55.319556-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/build","Test":"TestNativeImageRunsAnOptedInBun/node","Elapsed":3.62}
+{"Time":"2026-10-15T16:47:55.320864-07:00","Action":"run","Package":"github.com/bex-co/bex/lego/operator/internal/build","Test":"TestNativeImageRunsAnOptedInBun/python"}
+{"Time":"2026-10-15T16:47:55.320917-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/build","Test":"TestNativeImageRunsAnOptedInBun/python","Output":"=== RUN   TestNativeImageRunsAnOptedInBun/python\n"}
+{"Time":"2026-10-15T16:47:59.409725-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/build","Test":"TestNativeImageRunsAnOptedInBun/python","Output":"--- PASS: TestNativeImageRunsAnOptedInBun/python (4.09s)\n"}
+{"Time":"2026-10-15T16:47:59.410118-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/build","Test":"TestNativeImageRunsAnOptedInBun/python","Elapsed":4.09}
+{"Time":"2026-10-15T16:47:59.410166-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/build","Test":"TestNativeImageRunsAnOptedInBun","Output":"--- PASS: TestNativeImageRunsAnOptedInBun (7.71s)\n"}
+{"Time":"2026-10-15T16:47:59.410177-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/build","Test":"TestNativeImageRunsAnOptedInBun","Elapsed":7.71}
+{"Time":"2026-10-15T16:47:59.410183-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/build","Output":"PASS\n"}
+{"Time":"2026-10-15T16:47:59.411311-07:00","Action":"output","Package":"github.com/bex-co/bex/lego/operator/internal/build","Output":"ok  \tgithub.com/bex-co/bex/lego/operator/internal/build\t8.158s\n"}
+{"Time":"2026-10-15T16:47:59.411352-07:00","Action":"pass","Package":"github.com/bex-co/bex/lego/operator/internal/build","Elapsed":8.159}
