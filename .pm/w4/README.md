@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m214** — [Recover datastore cleanup from transient lock conflicts](m214/README.md) (7 tasks · 165m) — native project delete stops partially with internal error; fresh retry succeeds. Four local two-kind/two-label probes isolate one-attempt lock conflicts. [Finding and evidence](m214/finding.md); exact fixtures and session cleaned.
+
 - [ ] **m213** — [Supply JavaScript companions in native Go, Rust and Elixir](m213/README.md) (7 tasks · 150m) — promoted from321 after six missing-Node build failures and three Live primary-only controls. Reuse the reviewed supplier; verify Elixir distro/line compatibility and shared controls. [Finding](m213/finding.md); all owned fixtures and exact-run sessions cleaned.
 
 - [ ] **m212** — [Keep webhook disable intervals consistent](m212/README.md) (7 tasks, 3h 50m) ← functional QA a675, 2026-10-16 UTC; two re-enable sequences replay a disabled-period deploy event, while a second enabled endpoint causes A to skip its event. Persist source-time eligibility while preserving eligible backlog and admitted retries. [Finding](m212/finding.md) · [durable probes](m212/evidence-a675.json).

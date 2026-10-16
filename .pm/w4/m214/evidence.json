@@ -1,0 +1,1853 @@
+{
+  "pass": "a698",
+  "date": "2026-10-16 UTC",
+  "researchMain": "781ec11c5",
+  "scope": "Native production dashboard project deletion; exact owned Free resources. Local annotation-only conflict probe is separate from live cause attribution.",
+  "receipts": {
+    "CreateProject": {
+      "at": "2026-10-16T09:26:53.461Z",
+      "request": {
+        "operationName": "CreateProject",
+        "variables": {
+          "name": "qa-20261016-a698-moves",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateProject($name: String!, $ownerId: String!) {\n  createProject(name: $name, ownerId: $ownerId) {\n    ...ProjectFields\n    __typename\n  }\n}\n\nfragment ProjectFields on Project {\n  id\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  __typename\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createProject": {
+            "__typename": "Project",
+            "createdAt": "2026-10-16T09:26:52Z",
+            "databaseIds": [],
+            "id": "prj-db8urn29cl7s73ae4e20",
+            "keyValueIds": [],
+            "name": "qa-20261016-a698-moves",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "serviceIds": []
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792142812512.421,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.142,
+        "responseStart": 232.022,
+        "responseEnd": 232.426
+      },
+      "url": "https://dashboard.bex.co/project/prj-db8urn29cl7s73ae4e20"
+    },
+    "CreateDev": {
+      "at": "2026-10-16T09:27:33.376Z",
+      "request": {
+        "operationName": "CreateEnvironment",
+        "variables": {
+          "name": "qa-20261016-a698-dev",
+          "projectId": "prj-db8urn29cl7s73ae4e20"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateEnvironment($name: String!, $projectId: String!) {\n  createEnvironment(name: $name, projectId: $projectId) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createEnvironment": {
+            "__typename": "Environment",
+            "createdAt": "2026-10-16T09:27:32Z",
+            "databaseIds": [],
+            "envGroupIds": [],
+            "id": "evm-db8us17dbg8c73dghfng",
+            "ipAllowList": [
+              "0.0.0.0/0",
+              "::/0"
+            ],
+            "ipAllowListEntries": [
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "0.0.0.0/0",
+                "description": "Allow all (default)"
+              },
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "::/0",
+                "description": "Allow all (default)"
+              }
+            ],
+            "ipAllowListProxiedDomains": [],
+            "keyValueIds": [],
+            "name": "qa-20261016-a698-dev",
+            "networkIsolationEnabled": false,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "projectId": "prj-db8urn29cl7s73ae4e20",
+            "protectedStatus": "unprotected",
+            "serviceIds": []
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792142852327.6838,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.139,
+        "responseStart": 343.978,
+        "responseEnd": 344.455
+      },
+      "url": "https://dashboard.bex.co/project/prj-db8urn29cl7s73ae4e20"
+    },
+    "CreateProd": {
+      "at": "2026-10-16T09:27:38.059Z",
+      "request": {
+        "operationName": "CreateEnvironment",
+        "variables": {
+          "name": "qa-20261016-a698-prod",
+          "projectId": "prj-db8urn29cl7s73ae4e20"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateEnvironment($name: String!, $projectId: String!) {\n  createEnvironment(name: $name, projectId: $projectId) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createEnvironment": {
+            "__typename": "Environment",
+            "createdAt": "2026-10-16T09:27:37Z",
+            "databaseIds": [],
+            "envGroupIds": [],
+            "id": "evm-db8us2a9cl7s73ae4e3g",
+            "ipAllowList": [
+              "0.0.0.0/0",
+              "::/0"
+            ],
+            "ipAllowListEntries": [
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "0.0.0.0/0",
+                "description": "Allow all (default)"
+              },
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "::/0",
+                "description": "Allow all (default)"
+              }
+            ],
+            "ipAllowListProxiedDomains": [],
+            "keyValueIds": [],
+            "name": "qa-20261016-a698-prod",
+            "networkIsolationEnabled": false,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "projectId": "prj-db8urn29cl7s73ae4e20",
+            "protectedStatus": "unprotected",
+            "serviceIds": []
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792142856561.435,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.125,
+        "responseStart": 793.59,
+        "responseEnd": 794.014
+      },
+      "url": "https://dashboard.bex.co/project/prj-db8urn29cl7s73ae4e20"
+    },
+    "CreatePG": {
+      "at": "2026-10-16T09:28:17.921Z",
+      "request": {
+        "operationName": "CreateDatabase",
+        "variables": {
+          "name": "qa-20261016-a698-pg",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "environmentId": "evm-db8us17dbg8c73dghfng",
+          "plan": "free",
+          "public": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateDatabase($name: String!, $databaseName: String, $databaseUser: String, $ownerId: String, $environmentId: String, $plan: String, $version: String, $diskSizeGB: Int, $public: Boolean) {\n  createDatabase(\n    name: $name\n    databaseName: $databaseName\n    databaseUser: $databaseUser\n    ownerId: $ownerId\n    environmentId: $environmentId\n    plan: $plan\n    version: $version\n    diskSizeGB: $diskSizeGB\n    public: $public\n  ) {\n    id\n    name\n    databaseName\n    databaseUser\n    plan\n    status\n    projectId\n    environmentId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createDatabase": {
+            "__typename": "Database",
+            "databaseName": "dpg_db8uscfdbg8c73dghfo0",
+            "databaseUser": "dpg_db8uscfdbg8c73dghfo0_user",
+            "environmentId": "evm-db8us17dbg8c73dghfng",
+            "id": "dpg-db8uscfdbg8c73dghfo0",
+            "name": "qa-20261016-a698-pg",
+            "plan": "free",
+            "projectId": "prj-db8urn29cl7s73ae4e20",
+            "status": "creating"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792142896909.5068,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.139,
+        "responseStart": 297.89,
+        "responseEnd": 298.284
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db8uscfdbg8c73dghfo0"
+    },
+    "CreateKV": {
+      "at": "2026-10-16T09:28:47.841Z",
+      "request": {
+        "operationName": "CreateKeyValue",
+        "variables": {
+          "name": "qa-20261016-a698-kv",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "environmentId": "evm-db8us17dbg8c73dghfng",
+          "plan": "free",
+          "public": false,
+          "maxmemoryPolicy": "allkeys-lru",
+          "persistenceMode": "journal-snapshot"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateKeyValue($name: String!, $ownerId: String, $environmentId: String, $plan: String, $version: String, $storageGB: Int, $public: Boolean, $maxmemoryPolicy: String, $persistenceMode: String) {\n  createKeyValue(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    plan: $plan\n    version: $version\n    storageGB: $storageGB\n    public: $public\n    maxmemoryPolicy: $maxmemoryPolicy\n    persistenceMode: $persistenceMode\n  ) {\n    id\n    name\n    plan\n    status\n    projectId\n    environmentId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createKeyValue": {
+            "__typename": "KeyValue",
+            "environmentId": "evm-db8us17dbg8c73dghfng",
+            "id": "red-db8usjvdbg8c73dghfp0",
+            "name": "qa-20261016-a698-kv",
+            "plan": "free",
+            "projectId": "prj-db8urn29cl7s73ae4e20",
+            "status": "creating"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792142926857.595,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.141,
+        "responseStart": 275.385,
+        "responseEnd": 275.787
+      },
+      "url": "https://dashboard.bex.co/keyvalue/red-db8usjvdbg8c73dghfp0"
+    },
+    "CreateWebA": {
+      "at": "2026-10-16T09:30:28.532Z",
+      "request": {
+        "operationName": "CreateService",
+        "variables": {
+          "image": "node:24-bookworm-slim",
+          "name": "qa-20261016-a698-web-a",
+          "type": "web_service",
+          "environmentId": "evm-db8us17dbg8c73dghfng",
+          "registryCredentialId": "",
+          "runtime": "image",
+          "startCommand": "node -e 'const http=require('\\''http'\\'');http.createServer((req,res)=>{res.end('\\''QA_A698_PROJECT_WEB'\\'');}).listen(Number(process.env.PORT||8080),'\\''0.0.0.0'\\'');'",
+          "plan": "free",
+          "port": 8080,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": "evm-db8us17dbg8c73dghfng",
+            "id": "srv-db8utcvdbg8c73dghfs0",
+            "latestDeployId": "dep-db8utcvdbg8c73dghfsg",
+            "name": "qa-20261016-a698-web-a",
+            "phase": "",
+            "projectId": "prj-db8urn29cl7s73ae4e20",
+            "registryCredentialId": "",
+            "type": "web_service"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792143027320.7112,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.135,
+        "responseStart": 501.46,
+        "responseEnd": 501.844
+      },
+      "url": "https://dashboard.bex.co/services/srv-db8utcvdbg8c73dghfs0/deploys/dep-db8utcvdbg8c73dghfsg"
+    },
+    "CreateWebB": {
+      "at": "2026-10-16T09:31:52.865Z",
+      "request": {
+        "operationName": "CreateService",
+        "variables": {
+          "image": "node:24-bookworm-slim",
+          "name": "qa-20261016-a698-web-b",
+          "type": "web_service",
+          "environmentId": "evm-db8us2a9cl7s73ae4e3g",
+          "registryCredentialId": "",
+          "runtime": "image",
+          "startCommand": "node -e 'const http=require('\\''http'\\'');http.createServer((req,res)=>{res.end('\\''QA_A698_PROJECT_WEB'\\'');}).listen(Number(process.env.PORT||8080),'\\''0.0.0.0'\\'');'",
+          "plan": "free",
+          "port": 8080,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": "evm-db8us2a9cl7s73ae4e3g",
+            "id": "srv-db8uu1q9cl7s73ae4e70",
+            "latestDeployId": "dep-db8uu1q9cl7s73ae4e7g",
+            "name": "qa-20261016-a698-web-b",
+            "phase": "",
+            "projectId": "prj-db8urn29cl7s73ae4e20",
+            "registryCredentialId": "",
+            "type": "web_service"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792143111616.627,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.169,
+        "responseStart": 540.529,
+        "responseEnd": 540.959
+      },
+      "url": "https://dashboard.bex.co/services/srv-db8uu1q9cl7s73ae4e70/deploys/dep-db8uu1q9cl7s73ae4e7g"
+    },
+    "ReadyMembership": {
+      "at": "2026-10-16T09:32:49.041Z",
+      "request": {
+        "operationName": "QaA698Membership",
+        "variables": {
+          "project": "prj-db8urn29cl7s73ae4e20",
+          "pg": "dpg-db8uscfdbg8c73dghfo0",
+          "kv": "red-db8usjvdbg8c73dghfp0",
+          "a": "srv-db8utcvdbg8c73dghfs0",
+          "b": "srv-db8uu1q9cl7s73ae4e70"
+        },
+        "query": "query QaA698Membership($project:String!,$pg:String!,$kv:String!,$a:String!,$b:String!){project(id:$project){id name serviceIds databaseIds keyValueIds}environments(projectId:$project){id name serviceIds databaseIds keyValueIds envGroupIds}database(id:$pg){id name status plan projectId environmentId}keyValue(id:$kv){id name status plan projectId environmentId}webA:server(id:$a){id name phase plan projectId environmentId}webB:server(id:$b){id name phase plan projectId environmentId}}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "database": {
+            "environmentId": "evm-db8us17dbg8c73dghfng",
+            "id": "dpg-db8uscfdbg8c73dghfo0",
+            "name": "qa-20261016-a698-pg",
+            "plan": "free",
+            "projectId": "prj-db8urn29cl7s73ae4e20",
+            "status": "available"
+          },
+          "environments": [
+            {
+              "databaseIds": [
+                "dpg-db8uscfdbg8c73dghfo0"
+              ],
+              "envGroupIds": [],
+              "id": "evm-db8us17dbg8c73dghfng",
+              "keyValueIds": [
+                "red-db8usjvdbg8c73dghfp0"
+              ],
+              "name": "qa-20261016-a698-dev",
+              "serviceIds": [
+                "srv-db8utcvdbg8c73dghfs0"
+              ]
+            },
+            {
+              "databaseIds": [],
+              "envGroupIds": [],
+              "id": "evm-db8us2a9cl7s73ae4e3g",
+              "keyValueIds": [],
+              "name": "qa-20261016-a698-prod",
+              "serviceIds": [
+                "srv-db8uu1q9cl7s73ae4e70"
+              ]
+            }
+          ],
+          "keyValue": {
+            "environmentId": "evm-db8us17dbg8c73dghfng",
+            "id": "red-db8usjvdbg8c73dghfp0",
+            "name": "qa-20261016-a698-kv",
+            "plan": "free",
+            "projectId": "prj-db8urn29cl7s73ae4e20",
+            "status": "available"
+          },
+          "project": {
+            "databaseIds": [
+              "dpg-db8uscfdbg8c73dghfo0"
+            ],
+            "id": "prj-db8urn29cl7s73ae4e20",
+            "keyValueIds": [
+              "red-db8usjvdbg8c73dghfp0"
+            ],
+            "name": "qa-20261016-a698-moves",
+            "serviceIds": [
+              "srv-db8utcvdbg8c73dghfs0",
+              "srv-db8uu1q9cl7s73ae4e70"
+            ]
+          },
+          "webA": {
+            "environmentId": "evm-db8us17dbg8c73dghfng",
+            "id": "srv-db8utcvdbg8c73dghfs0",
+            "name": "qa-20261016-a698-web-a",
+            "phase": "Running",
+            "plan": "free",
+            "projectId": "prj-db8urn29cl7s73ae4e20"
+          },
+          "webB": {
+            "environmentId": "evm-db8us2a9cl7s73ae4e3g",
+            "id": "srv-db8uu1q9cl7s73ae4e70",
+            "name": "qa-20261016-a698-web-b",
+            "phase": "Running",
+            "plan": "free",
+            "projectId": "prj-db8urn29cl7s73ae4e20"
+          }
+        }
+      }
+    },
+    "FirstMixedMove": {
+      "at": "2026-10-16T09:34:24.864Z",
+      "request": [
+        {
+          "operationName": "SetEnvironmentServices",
+          "variables": {
+            "id": "evm-db8us2a9cl7s73ae4e3g",
+            "serviceIds": [
+              "srv-db8uu1q9cl7s73ae4e70",
+              "srv-db8utcvdbg8c73dghfs0"
+            ]
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation SetEnvironmentServices($id: String!, $serviceIds: [String!]!) {\n  setEnvironmentServices(id: $id, serviceIds: $serviceIds) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+        },
+        {
+          "operationName": "SetEnvironmentDatabases",
+          "variables": {
+            "id": "evm-db8us2a9cl7s73ae4e3g",
+            "databaseIds": [
+              "dpg-db8uscfdbg8c73dghfo0"
+            ]
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation SetEnvironmentDatabases($id: String!, $databaseIds: [String!]!) {\n  setEnvironmentDatabases(id: $id, databaseIds: $databaseIds) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+        },
+        {
+          "operationName": "SetEnvironmentKeyValues",
+          "variables": {
+            "id": "evm-db8us2a9cl7s73ae4e3g",
+            "keyValueIds": [
+              "red-db8usjvdbg8c73dghfp0"
+            ]
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation SetEnvironmentKeyValues($id: String!, $keyValueIds: [String!]!) {\n  setEnvironmentKeyValues(id: $id, keyValueIds: $keyValueIds) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "setEnvironmentServices": {
+              "__typename": "Environment",
+              "createdAt": "2026-10-16T09:27:37Z",
+              "databaseIds": [],
+              "envGroupIds": [],
+              "id": "evm-db8us2a9cl7s73ae4e3g",
+              "ipAllowList": [
+                "0.0.0.0/0",
+                "::/0"
+              ],
+              "ipAllowListEntries": [
+                {
+                  "__typename": "IPAllowListEntry",
+                  "cidrBlock": "0.0.0.0/0",
+                  "description": "Allow all (default)"
+                },
+                {
+                  "__typename": "IPAllowListEntry",
+                  "cidrBlock": "::/0",
+                  "description": "Allow all (default)"
+                }
+              ],
+              "ipAllowListProxiedDomains": [],
+              "keyValueIds": [],
+              "name": "qa-20261016-a698-prod",
+              "networkIsolationEnabled": false,
+              "ownerId": "tea-d98210cbbpdc73dcrkvg",
+              "projectId": "prj-db8urn29cl7s73ae4e20",
+              "protectedStatus": "unprotected",
+              "serviceIds": [
+                "srv-db8utcvdbg8c73dghfs0",
+                "srv-db8uu1q9cl7s73ae4e70"
+              ]
+            }
+          }
+        },
+        {
+          "data": {
+            "setEnvironmentDatabases": {
+              "__typename": "Environment",
+              "createdAt": "2026-10-16T09:27:37Z",
+              "databaseIds": [
+                "dpg-db8uscfdbg8c73dghfo0"
+              ],
+              "envGroupIds": [],
+              "id": "evm-db8us2a9cl7s73ae4e3g",
+              "ipAllowList": [
+                "0.0.0.0/0",
+                "::/0"
+              ],
+              "ipAllowListEntries": [
+                {
+                  "__typename": "IPAllowListEntry",
+                  "cidrBlock": "0.0.0.0/0",
+                  "description": "Allow all (default)"
+                },
+                {
+                  "__typename": "IPAllowListEntry",
+                  "cidrBlock": "::/0",
+                  "description": "Allow all (default)"
+                }
+              ],
+              "ipAllowListProxiedDomains": [],
+              "keyValueIds": [],
+              "name": "qa-20261016-a698-prod",
+              "networkIsolationEnabled": false,
+              "ownerId": "tea-d98210cbbpdc73dcrkvg",
+              "projectId": "prj-db8urn29cl7s73ae4e20",
+              "protectedStatus": "unprotected",
+              "serviceIds": [
+                "srv-db8utcvdbg8c73dghfs0",
+                "srv-db8uu1q9cl7s73ae4e70"
+              ]
+            }
+          }
+        },
+        {
+          "data": {
+            "setEnvironmentKeyValues": {
+              "__typename": "Environment",
+              "createdAt": "2026-10-16T09:27:37Z",
+              "databaseIds": [
+                "dpg-db8uscfdbg8c73dghfo0"
+              ],
+              "envGroupIds": [],
+              "id": "evm-db8us2a9cl7s73ae4e3g",
+              "ipAllowList": [
+                "0.0.0.0/0",
+                "::/0"
+              ],
+              "ipAllowListEntries": [
+                {
+                  "__typename": "IPAllowListEntry",
+                  "cidrBlock": "0.0.0.0/0",
+                  "description": "Allow all (default)"
+                },
+                {
+                  "__typename": "IPAllowListEntry",
+                  "cidrBlock": "::/0",
+                  "description": "Allow all (default)"
+                }
+              ],
+              "ipAllowListProxiedDomains": [],
+              "keyValueIds": [
+                "red-db8usjvdbg8c73dghfp0"
+              ],
+              "name": "qa-20261016-a698-prod",
+              "networkIsolationEnabled": false,
+              "ownerId": "tea-d98210cbbpdc73dcrkvg",
+              "projectId": "prj-db8urn29cl7s73ae4e20",
+              "protectedStatus": "unprotected",
+              "serviceIds": [
+                "srv-db8utcvdbg8c73dghfs0",
+                "srv-db8uu1q9cl7s73ae4e70"
+              ]
+            }
+          }
+        }
+      ],
+      "timing": {
+        "startTime": 1792143241913.805,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.132,
+        "responseStart": 22243.274,
+        "responseEnd": 22243.793
+      },
+      "url": "https://dashboard.bex.co/project/prj-db8urn29cl7s73ae4e20?env=evm-db8us17dbg8c73dghfng",
+      "main": "qa-20261016-a698-moves\nSearch\n⌘ K\nNew\nP\n\nPROJECT\n\nqa-20261016-a698-moves\nEnvironments\nqa-20261016-a698-dev\nNew Service\nNew Environment\nqa-20261016-a698-dev\n3 resources\nManage resources\nAll (3)\nServices (1)\nDatabases (1)\nKey Values (1)\nEnv Groups (0)\nSelected: 3\nqa-20261016-a698-prod\nMove\n\tName\tStatus\tRuntime\tRegion\tUpdated\t\nActions\n\n\n\t\nqa-20261016-a698-web-a\nWeb Service\n\tRunning\tImage\tfsn1\t3m\t\n\n\n\t\nqa-20261016-a698-pg\nDatabase\n\tAvailable\tPostgreSQL 18\tfsn1\t4m\t\n\n\n\t\nqa-20261016-a698-kv\nKey Value\n\tAvailable\tValkey 8\tfsn1\t4m\t"
+    },
+    "AfterFirstMixedMembership": {
+      "at": "2026-10-16T09:35:27.706Z",
+      "request": {
+        "operationName": "QaA698Membership",
+        "variables": {
+          "project": "prj-db8urn29cl7s73ae4e20",
+          "pg": "dpg-db8uscfdbg8c73dghfo0",
+          "kv": "red-db8usjvdbg8c73dghfp0",
+          "a": "srv-db8utcvdbg8c73dghfs0",
+          "b": "srv-db8uu1q9cl7s73ae4e70"
+        },
+        "query": "query QaA698Membership($project:String!,$pg:String!,$kv:String!,$a:String!,$b:String!){project(id:$project){id name serviceIds databaseIds keyValueIds}environments(projectId:$project){id name serviceIds databaseIds keyValueIds envGroupIds}database(id:$pg){id name status plan projectId environmentId}keyValue(id:$kv){id name status plan projectId environmentId}webA:server(id:$a){id name phase plan projectId environmentId}webB:server(id:$b){id name phase plan projectId environmentId}}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "database": {
+            "environmentId": "evm-db8us2a9cl7s73ae4e3g",
+            "id": "dpg-db8uscfdbg8c73dghfo0",
+            "name": "qa-20261016-a698-pg",
+            "plan": "free",
+            "projectId": "prj-db8urn29cl7s73ae4e20",
+            "status": "available"
+          },
+          "environments": [
+            {
+              "databaseIds": [],
+              "envGroupIds": [],
+              "id": "evm-db8us17dbg8c73dghfng",
+              "keyValueIds": [],
+              "name": "qa-20261016-a698-dev",
+              "serviceIds": []
+            },
+            {
+              "databaseIds": [
+                "dpg-db8uscfdbg8c73dghfo0"
+              ],
+              "envGroupIds": [],
+              "id": "evm-db8us2a9cl7s73ae4e3g",
+              "keyValueIds": [
+                "red-db8usjvdbg8c73dghfp0"
+              ],
+              "name": "qa-20261016-a698-prod",
+              "serviceIds": [
+                "srv-db8utcvdbg8c73dghfs0",
+                "srv-db8uu1q9cl7s73ae4e70"
+              ]
+            }
+          ],
+          "keyValue": {
+            "environmentId": "evm-db8us2a9cl7s73ae4e3g",
+            "id": "red-db8usjvdbg8c73dghfp0",
+            "name": "qa-20261016-a698-kv",
+            "plan": "free",
+            "projectId": "prj-db8urn29cl7s73ae4e20",
+            "status": "available"
+          },
+          "project": {
+            "databaseIds": [
+              "dpg-db8uscfdbg8c73dghfo0"
+            ],
+            "id": "prj-db8urn29cl7s73ae4e20",
+            "keyValueIds": [
+              "red-db8usjvdbg8c73dghfp0"
+            ],
+            "name": "qa-20261016-a698-moves",
+            "serviceIds": [
+              "srv-db8utcvdbg8c73dghfs0",
+              "srv-db8uu1q9cl7s73ae4e70"
+            ]
+          },
+          "webA": {
+            "environmentId": "evm-db8us2a9cl7s73ae4e3g",
+            "id": "srv-db8utcvdbg8c73dghfs0",
+            "name": "qa-20261016-a698-web-a",
+            "phase": "Running",
+            "plan": "free",
+            "projectId": "prj-db8urn29cl7s73ae4e20"
+          },
+          "webB": {
+            "environmentId": "evm-db8us2a9cl7s73ae4e3g",
+            "id": "srv-db8uu1q9cl7s73ae4e70",
+            "name": "qa-20261016-a698-web-b",
+            "phase": "Running",
+            "plan": "free",
+            "projectId": "prj-db8urn29cl7s73ae4e20"
+          }
+        }
+      }
+    },
+    "FilteredReturnMove": {
+      "at": "2026-10-16T09:36:11.508Z",
+      "request": [
+        {
+          "operationName": "SetEnvironmentDatabases",
+          "variables": {
+            "id": "evm-db8us17dbg8c73dghfng",
+            "databaseIds": [
+              "dpg-db8uscfdbg8c73dghfo0"
+            ]
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation SetEnvironmentDatabases($id: String!, $databaseIds: [String!]!) {\n  setEnvironmentDatabases(id: $id, databaseIds: $databaseIds) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+        },
+        {
+          "operationName": "SetEnvironmentKeyValues",
+          "variables": {
+            "id": "evm-db8us17dbg8c73dghfng",
+            "keyValueIds": [
+              "red-db8usjvdbg8c73dghfp0"
+            ]
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation SetEnvironmentKeyValues($id: String!, $keyValueIds: [String!]!) {\n  setEnvironmentKeyValues(id: $id, keyValueIds: $keyValueIds) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "setEnvironmentDatabases": {
+              "__typename": "Environment",
+              "createdAt": "2026-10-16T09:27:32Z",
+              "databaseIds": [
+                "dpg-db8uscfdbg8c73dghfo0"
+              ],
+              "envGroupIds": [],
+              "id": "evm-db8us17dbg8c73dghfng",
+              "ipAllowList": [
+                "0.0.0.0/0",
+                "::/0"
+              ],
+              "ipAllowListEntries": [
+                {
+                  "__typename": "IPAllowListEntry",
+                  "cidrBlock": "0.0.0.0/0",
+                  "description": "Allow all (default)"
+                },
+                {
+                  "__typename": "IPAllowListEntry",
+                  "cidrBlock": "::/0",
+                  "description": "Allow all (default)"
+                }
+              ],
+              "ipAllowListProxiedDomains": [],
+              "keyValueIds": [],
+              "name": "qa-20261016-a698-dev",
+              "networkIsolationEnabled": false,
+              "ownerId": "tea-d98210cbbpdc73dcrkvg",
+              "projectId": "prj-db8urn29cl7s73ae4e20",
+              "protectedStatus": "unprotected",
+              "serviceIds": []
+            }
+          }
+        },
+        {
+          "data": {
+            "setEnvironmentKeyValues": {
+              "__typename": "Environment",
+              "createdAt": "2026-10-16T09:27:32Z",
+              "databaseIds": [
+                "dpg-db8uscfdbg8c73dghfo0"
+              ],
+              "envGroupIds": [],
+              "id": "evm-db8us17dbg8c73dghfng",
+              "ipAllowList": [
+                "0.0.0.0/0",
+                "::/0"
+              ],
+              "ipAllowListEntries": [
+                {
+                  "__typename": "IPAllowListEntry",
+                  "cidrBlock": "0.0.0.0/0",
+                  "description": "Allow all (default)"
+                },
+                {
+                  "__typename": "IPAllowListEntry",
+                  "cidrBlock": "::/0",
+                  "description": "Allow all (default)"
+                }
+              ],
+              "ipAllowListProxiedDomains": [],
+              "keyValueIds": [
+                "red-db8usjvdbg8c73dghfp0"
+              ],
+              "name": "qa-20261016-a698-dev",
+              "networkIsolationEnabled": false,
+              "ownerId": "tea-d98210cbbpdc73dcrkvg",
+              "projectId": "prj-db8urn29cl7s73ae4e20",
+              "protectedStatus": "unprotected",
+              "serviceIds": []
+            }
+          }
+        }
+      ],
+      "timing": {
+        "startTime": 1792143349925.721,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.138,
+        "responseStart": 20875.501,
+        "responseEnd": 20875.953
+      },
+      "url": "https://dashboard.bex.co/project/prj-db8urn29cl7s73ae4e20?env=evm-db8us2a9cl7s73ae4e3g&kind=keyvalues",
+      "main": "qa-20261016-a698-moves\nSearch\n⌘ K\nNew\nP\n\nPROJECT\n\nqa-20261016-a698-moves\nEnvironments\nqa-20261016-a698-prod\nNew Service\nNew Environment\nqa-20261016-a698-prod\n4 resources\nManage resources\nAll (4)\nServices (2)\nDatabases (1)\nKey Values (1)\nEnv Groups (0)\nSelected: 2\nqa-20261016-a698-dev\nMove\n\tName\tStatus\tRuntime\tRegion\tUpdated\t\nActions\n\n\n\t\nqa-20261016-a698-kv\nKey Value\n\tAvailable\tValkey 8\tfsn1\t1m\t"
+    },
+    "ReturnMembership": {
+      "at": "2026-10-16T09:37:30.923Z",
+      "request": {
+        "operationName": "QaA698Membership",
+        "variables": {
+          "project": "prj-db8urn29cl7s73ae4e20",
+          "pg": "dpg-db8uscfdbg8c73dghfo0",
+          "kv": "red-db8usjvdbg8c73dghfp0",
+          "a": "srv-db8utcvdbg8c73dghfs0",
+          "b": "srv-db8uu1q9cl7s73ae4e70"
+        },
+        "query": "query QaA698Membership($project:String!,$pg:String!,$kv:String!,$a:String!,$b:String!){project(id:$project){id name serviceIds databaseIds keyValueIds}environments(projectId:$project){id name serviceIds databaseIds keyValueIds envGroupIds}database(id:$pg){id name status plan projectId environmentId}keyValue(id:$kv){id name status plan projectId environmentId}webA:server(id:$a){id name phase plan projectId environmentId}webB:server(id:$b){id name phase plan projectId environmentId}}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "database": {
+            "environmentId": "evm-db8us17dbg8c73dghfng",
+            "id": "dpg-db8uscfdbg8c73dghfo0",
+            "name": "qa-20261016-a698-pg",
+            "plan": "free",
+            "projectId": "prj-db8urn29cl7s73ae4e20",
+            "status": "available"
+          },
+          "environments": [
+            {
+              "databaseIds": [
+                "dpg-db8uscfdbg8c73dghfo0"
+              ],
+              "envGroupIds": [],
+              "id": "evm-db8us17dbg8c73dghfng",
+              "keyValueIds": [
+                "red-db8usjvdbg8c73dghfp0"
+              ],
+              "name": "qa-20261016-a698-dev",
+              "serviceIds": []
+            },
+            {
+              "databaseIds": [],
+              "envGroupIds": [],
+              "id": "evm-db8us2a9cl7s73ae4e3g",
+              "keyValueIds": [],
+              "name": "qa-20261016-a698-prod",
+              "serviceIds": [
+                "srv-db8utcvdbg8c73dghfs0",
+                "srv-db8uu1q9cl7s73ae4e70"
+              ]
+            }
+          ],
+          "keyValue": {
+            "environmentId": "evm-db8us17dbg8c73dghfng",
+            "id": "red-db8usjvdbg8c73dghfp0",
+            "name": "qa-20261016-a698-kv",
+            "plan": "free",
+            "projectId": "prj-db8urn29cl7s73ae4e20",
+            "status": "available"
+          },
+          "project": {
+            "databaseIds": [
+              "dpg-db8uscfdbg8c73dghfo0"
+            ],
+            "id": "prj-db8urn29cl7s73ae4e20",
+            "keyValueIds": [
+              "red-db8usjvdbg8c73dghfp0"
+            ],
+            "name": "qa-20261016-a698-moves",
+            "serviceIds": [
+              "srv-db8utcvdbg8c73dghfs0",
+              "srv-db8uu1q9cl7s73ae4e70"
+            ]
+          },
+          "webA": {
+            "environmentId": "evm-db8us2a9cl7s73ae4e3g",
+            "id": "srv-db8utcvdbg8c73dghfs0",
+            "name": "qa-20261016-a698-web-a",
+            "phase": "Running",
+            "plan": "free",
+            "projectId": "prj-db8urn29cl7s73ae4e20"
+          },
+          "webB": {
+            "environmentId": "evm-db8us2a9cl7s73ae4e3g",
+            "id": "srv-db8uu1q9cl7s73ae4e70",
+            "name": "qa-20261016-a698-web-b",
+            "phase": "Running",
+            "plan": "free",
+            "projectId": "prj-db8urn29cl7s73ae4e20"
+          }
+        }
+      }
+    },
+    "FreshForwardMove": {
+      "at": "2026-10-16T09:38:15.349Z",
+      "request": [
+        {
+          "operationName": "SetEnvironmentDatabases",
+          "variables": {
+            "id": "evm-db8us2a9cl7s73ae4e3g",
+            "databaseIds": [
+              "dpg-db8uscfdbg8c73dghfo0"
+            ]
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation SetEnvironmentDatabases($id: String!, $databaseIds: [String!]!) {\n  setEnvironmentDatabases(id: $id, databaseIds: $databaseIds) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+        },
+        {
+          "operationName": "SetEnvironmentKeyValues",
+          "variables": {
+            "id": "evm-db8us2a9cl7s73ae4e3g",
+            "keyValueIds": [
+              "red-db8usjvdbg8c73dghfp0"
+            ]
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation SetEnvironmentKeyValues($id: String!, $keyValueIds: [String!]!) {\n  setEnvironmentKeyValues(id: $id, keyValueIds: $keyValueIds) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+        }
+      ],
+      "status": 200,
+      "body": [
+        {
+          "data": {
+            "setEnvironmentDatabases": {
+              "__typename": "Environment",
+              "createdAt": "2026-10-16T09:27:37Z",
+              "databaseIds": [
+                "dpg-db8uscfdbg8c73dghfo0"
+              ],
+              "envGroupIds": [],
+              "id": "evm-db8us2a9cl7s73ae4e3g",
+              "ipAllowList": [
+                "0.0.0.0/0",
+                "::/0"
+              ],
+              "ipAllowListEntries": [
+                {
+                  "__typename": "IPAllowListEntry",
+                  "cidrBlock": "0.0.0.0/0",
+                  "description": "Allow all (default)"
+                },
+                {
+                  "__typename": "IPAllowListEntry",
+                  "cidrBlock": "::/0",
+                  "description": "Allow all (default)"
+                }
+              ],
+              "ipAllowListProxiedDomains": [],
+              "keyValueIds": [],
+              "name": "qa-20261016-a698-prod",
+              "networkIsolationEnabled": false,
+              "ownerId": "tea-d98210cbbpdc73dcrkvg",
+              "projectId": "prj-db8urn29cl7s73ae4e20",
+              "protectedStatus": "unprotected",
+              "serviceIds": [
+                "srv-db8utcvdbg8c73dghfs0",
+                "srv-db8uu1q9cl7s73ae4e70"
+              ]
+            }
+          }
+        },
+        {
+          "data": null,
+          "errors": [
+            {
+              "message": "the change ran out of time and may have been applied in part or in full; reload to see its outcome before trying again",
+              "locations": [],
+              "extensions": {
+                "code": "WRITE_OUTCOME_UNKNOWN"
+              }
+            }
+          ]
+        }
+      ],
+      "timing": {
+        "startTime": 1792143469255.627,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.219,
+        "responseStart": 25383.54,
+        "responseEnd": 25384.191
+      },
+      "url": "https://dashboard.bex.co/project/prj-db8urn29cl7s73ae4e20?env=evm-db8us17dbg8c73dghfng",
+      "main": "qa-20261016-a698-moves\nSearch\n⌘ K\nNew\nP\n\nPROJECT\n\nqa-20261016-a698-moves\nEnvironments\nqa-20261016-a698-dev\nNew Service\nNew Environment\nqa-20261016-a698-dev\n2 resources\nManage resources\nAll (2)\nServices (0)\nDatabases (1)\nKey Values (1)\nEnv Groups (0)\nSelected: 2\nqa-20261016-a698-prod\nMove\n\tName\tStatus\tRuntime\tRegion\tUpdated\t\nActions\n\n\n\t\nqa-20261016-a698-pg\nDatabase\n\tAvailable\tPostgreSQL 18\tfsn1\t1m\t\n\n\n\t\nqa-20261016-a698-kv\nKey Value\n\tAvailable\tValkey 8\tfsn1\t1m\t"
+    },
+    "AfterUnknownMembership": {
+      "at": "2026-10-16T09:39:14.735Z",
+      "request": {
+        "operationName": "QaA698Membership",
+        "variables": {
+          "project": "prj-db8urn29cl7s73ae4e20",
+          "pg": "dpg-db8uscfdbg8c73dghfo0",
+          "kv": "red-db8usjvdbg8c73dghfp0",
+          "a": "srv-db8utcvdbg8c73dghfs0",
+          "b": "srv-db8uu1q9cl7s73ae4e70"
+        },
+        "query": "query QaA698Membership($project:String!,$pg:String!,$kv:String!,$a:String!,$b:String!){project(id:$project){id name serviceIds databaseIds keyValueIds}environments(projectId:$project){id name serviceIds databaseIds keyValueIds envGroupIds}database(id:$pg){id name status plan projectId environmentId}keyValue(id:$kv){id name status plan projectId environmentId}webA:server(id:$a){id name phase plan projectId environmentId}webB:server(id:$b){id name phase plan projectId environmentId}}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "database": {
+            "environmentId": "evm-db8us2a9cl7s73ae4e3g",
+            "id": "dpg-db8uscfdbg8c73dghfo0",
+            "name": "qa-20261016-a698-pg",
+            "plan": "free",
+            "projectId": "prj-db8urn29cl7s73ae4e20",
+            "status": "available"
+          },
+          "environments": [
+            {
+              "databaseIds": [],
+              "envGroupIds": [],
+              "id": "evm-db8us17dbg8c73dghfng",
+              "keyValueIds": [],
+              "name": "qa-20261016-a698-dev",
+              "serviceIds": []
+            },
+            {
+              "databaseIds": [
+                "dpg-db8uscfdbg8c73dghfo0"
+              ],
+              "envGroupIds": [],
+              "id": "evm-db8us2a9cl7s73ae4e3g",
+              "keyValueIds": [
+                "red-db8usjvdbg8c73dghfp0"
+              ],
+              "name": "qa-20261016-a698-prod",
+              "serviceIds": [
+                "srv-db8utcvdbg8c73dghfs0",
+                "srv-db8uu1q9cl7s73ae4e70"
+              ]
+            }
+          ],
+          "keyValue": {
+            "environmentId": "evm-db8us2a9cl7s73ae4e3g",
+            "id": "red-db8usjvdbg8c73dghfp0",
+            "name": "qa-20261016-a698-kv",
+            "plan": "free",
+            "projectId": "prj-db8urn29cl7s73ae4e20",
+            "status": "available"
+          },
+          "project": {
+            "databaseIds": [
+              "dpg-db8uscfdbg8c73dghfo0"
+            ],
+            "id": "prj-db8urn29cl7s73ae4e20",
+            "keyValueIds": [
+              "red-db8usjvdbg8c73dghfp0"
+            ],
+            "name": "qa-20261016-a698-moves",
+            "serviceIds": [
+              "srv-db8utcvdbg8c73dghfs0",
+              "srv-db8uu1q9cl7s73ae4e70"
+            ]
+          },
+          "webA": {
+            "environmentId": "evm-db8us2a9cl7s73ae4e3g",
+            "id": "srv-db8utcvdbg8c73dghfs0",
+            "name": "qa-20261016-a698-web-a",
+            "phase": "Running",
+            "plan": "free",
+            "projectId": "prj-db8urn29cl7s73ae4e20"
+          },
+          "webB": {
+            "environmentId": "evm-db8us2a9cl7s73ae4e3g",
+            "id": "srv-db8uu1q9cl7s73ae4e70",
+            "name": "qa-20261016-a698-web-b",
+            "phase": "Running",
+            "plan": "free",
+            "projectId": "prj-db8urn29cl7s73ae4e20"
+          }
+        }
+      }
+    },
+    "ProjectSettings": {
+      "at": "2026-10-16T09:42:59.446Z",
+      "url": "https://dashboard.bex.co/project/prj-db8urn29cl7s73ae4e20/settings",
+      "text": "prj-db8urn29cl7s73ae4e20\nSearch\n⌘ K\nNew\nP\nProject settings\nProject Name\nA unique name for your project\nEdit\nDelete Project\nIts environments and their configuration are deleted with it. Its services, databases, and key value stores are not deleted — they become unassigned. This action cannot be undone.\nDelete Project",
+      "buttons": [
+        "prj-db8urn29cl7s73ae4e20",
+        "Search⌘ K",
+        "NewNew",
+        "",
+        "P",
+        "Edit",
+        "Delete Project"
+      ]
+    },
+    "DeleteProjectReady": {
+      "at": "2026-10-16T09:43:05.200Z",
+      "dialog": "Delete project \"qa-20261016-a698-moves\"?\n\nIts environments and their configuration are deleted. Its services, databases, and key value stores become unassigned, not deleted.\n\nCancel\nDelete Project",
+      "inputs": [],
+      "buttons": [
+        "Cancel",
+        "Delete Project"
+      ]
+    },
+    "DeleteProject": {
+      "at": "2026-10-16T09:43:24.693Z",
+      "request": {
+        "operationName": "DeleteProject",
+        "variables": {
+          "id": "prj-db8urn29cl7s73ae4e20"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteProject($id: String!) {\n  deleteProject(id: $id)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteProject": null
+        },
+        "errors": [
+          {
+            "message": "internal error",
+            "locations": [
+              {
+                "line": 2,
+                "column": 3
+              }
+            ],
+            "path": [
+              "deleteProject"
+            ]
+          }
+        ]
+      },
+      "timing": {
+        "startTime": 1792143788776.305,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.252,
+        "responseStart": 15211.818,
+        "responseEnd": 15212.908
+      },
+      "url": "https://dashboard.bex.co/project/prj-db8urn29cl7s73ae4e20/settings"
+    },
+    "AfterProjectDelete": {
+      "at": "2026-10-16T09:43:43.688Z",
+      "request": {
+        "operationName": "QaA698Membership",
+        "query": "query QaA698Membership($project:String!,$pg:String!,$kv:String!,$a:String!,$b:String!){project(id:$project){id name serviceIds databaseIds keyValueIds}environments(projectId:$project){id name serviceIds databaseIds keyValueIds envGroupIds}database(id:$pg){id name status plan projectId environmentId}keyValue(id:$kv){id name status plan projectId environmentId}webA:server(id:$a){id name phase plan projectId environmentId}webB:server(id:$b){id name phase plan projectId environmentId}}",
+        "variables": {
+          "project": "prj-db8urn29cl7s73ae4e20",
+          "pg": "dpg-db8uscfdbg8c73dghfo0",
+          "kv": "red-db8usjvdbg8c73dghfp0",
+          "a": "srv-db8utcvdbg8c73dghfs0",
+          "b": "srv-db8uu1q9cl7s73ae4e70"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "database": {
+            "environmentId": null,
+            "id": "dpg-db8uscfdbg8c73dghfo0",
+            "name": "qa-20261016-a698-pg",
+            "plan": "free",
+            "projectId": "prj-db8urn29cl7s73ae4e20",
+            "status": "available"
+          },
+          "environments": [
+            {
+              "databaseIds": [],
+              "envGroupIds": [],
+              "id": "evm-db8us17dbg8c73dghfng",
+              "keyValueIds": [],
+              "name": "qa-20261016-a698-dev",
+              "serviceIds": []
+            },
+            {
+              "databaseIds": [],
+              "envGroupIds": [],
+              "id": "evm-db8us2a9cl7s73ae4e3g",
+              "keyValueIds": [],
+              "name": "qa-20261016-a698-prod",
+              "serviceIds": [
+                "srv-db8utcvdbg8c73dghfs0",
+                "srv-db8uu1q9cl7s73ae4e70"
+              ]
+            }
+          ],
+          "keyValue": {
+            "environmentId": null,
+            "id": "red-db8usjvdbg8c73dghfp0",
+            "name": "qa-20261016-a698-kv",
+            "plan": "free",
+            "projectId": "prj-db8urn29cl7s73ae4e20",
+            "status": "available"
+          },
+          "project": {
+            "databaseIds": [
+              "dpg-db8uscfdbg8c73dghfo0"
+            ],
+            "id": "prj-db8urn29cl7s73ae4e20",
+            "keyValueIds": [
+              "red-db8usjvdbg8c73dghfp0"
+            ],
+            "name": "qa-20261016-a698-moves",
+            "serviceIds": [
+              "srv-db8utcvdbg8c73dghfs0",
+              "srv-db8uu1q9cl7s73ae4e70"
+            ]
+          },
+          "webA": {
+            "environmentId": "evm-db8us2a9cl7s73ae4e3g",
+            "id": "srv-db8utcvdbg8c73dghfs0",
+            "name": "qa-20261016-a698-web-a",
+            "phase": "Running",
+            "plan": "free",
+            "projectId": "prj-db8urn29cl7s73ae4e20"
+          },
+          "webB": {
+            "environmentId": "evm-db8us2a9cl7s73ae4e3g",
+            "id": "srv-db8uu1q9cl7s73ae4e70",
+            "name": "qa-20261016-a698-web-b",
+            "phase": "Running",
+            "plan": "free",
+            "projectId": "prj-db8urn29cl7s73ae4e20"
+          }
+        }
+      },
+      "main": "qa-20261016-a698-moves\nSearch\n⌘ K\nNew\nP\nProject settings\nProject Name\nA unique name for your project\nEdit\nDelete Project\nIts environments and their configuration are deleted with it. Its services, databases, and key value stores are not deleted — they become unassigned. This action cannot be undone.\nDelete Project"
+    },
+    "DeleteProjectRetryReady": {
+      "at": "2026-10-16T09:44:00.683Z",
+      "url": "https://dashboard.bex.co/project/prj-db8urn29cl7s73ae4e20/settings",
+      "dialog": "Delete project \"qa-20261016-a698-moves\"?\n\nIts environments and their configuration are deleted. Its services, databases, and key value stores become unassigned, not deleted.\n\nCancel\nDelete Project"
+    },
+    "DeleteProjectRetry": {
+      "at": "2026-10-16T09:44:25.400Z",
+      "request": {
+        "operationName": "DeleteProject",
+        "variables": {
+          "id": "prj-db8urn29cl7s73ae4e20"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteProject($id: String!) {\n  deleteProject(id: $id)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteProject": "prj-db8urn29cl7s73ae4e20"
+        }
+      },
+      "timing": {
+        "startTime": 1792143847439.826,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.146,
+        "responseStart": 16101.766,
+        "responseEnd": 16103.342
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "AfterProjectDeleteRetry": {
+      "at": "2026-10-16T09:44:36.659Z",
+      "request": {
+        "operationName": "QaA698Membership",
+        "query": "query QaA698Membership($project:String!,$pg:String!,$kv:String!,$a:String!,$b:String!){project(id:$project){id name serviceIds databaseIds keyValueIds}environments(projectId:$project){id name serviceIds databaseIds keyValueIds envGroupIds}database(id:$pg){id name status plan projectId environmentId}keyValue(id:$kv){id name status plan projectId environmentId}webA:server(id:$a){id name phase plan projectId environmentId}webB:server(id:$b){id name phase plan projectId environmentId}}",
+        "variables": {
+          "project": "prj-db8urn29cl7s73ae4e20",
+          "pg": "dpg-db8uscfdbg8c73dghfo0",
+          "kv": "red-db8usjvdbg8c73dghfp0",
+          "a": "srv-db8utcvdbg8c73dghfs0",
+          "b": "srv-db8uu1q9cl7s73ae4e70"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "database": {
+            "environmentId": null,
+            "id": "dpg-db8uscfdbg8c73dghfo0",
+            "name": "qa-20261016-a698-pg",
+            "plan": "free",
+            "projectId": null,
+            "status": "available"
+          },
+          "environments": null,
+          "keyValue": {
+            "environmentId": null,
+            "id": "red-db8usjvdbg8c73dghfp0",
+            "name": "qa-20261016-a698-kv",
+            "plan": "free",
+            "projectId": null,
+            "status": "available"
+          },
+          "project": null,
+          "webA": {
+            "environmentId": null,
+            "id": "srv-db8utcvdbg8c73dghfs0",
+            "name": "qa-20261016-a698-web-a",
+            "phase": "Running",
+            "plan": "free",
+            "projectId": null
+          },
+          "webB": {
+            "environmentId": null,
+            "id": "srv-db8uu1q9cl7s73ae4e70",
+            "name": "qa-20261016-a698-web-b",
+            "phase": "Running",
+            "plan": "free",
+            "projectId": null
+          }
+        },
+        "errors": [
+          {
+            "message": "project not found",
+            "locations": [
+              {
+                "line": 1,
+                "column": 88
+              }
+            ],
+            "path": [
+              "project"
+            ],
+            "extensions": {
+              "code": "NOT_FOUND"
+            }
+          },
+          {
+            "message": "project not found",
+            "locations": [
+              {
+                "line": 1,
+                "column": 152
+              }
+            ],
+            "path": [
+              "environments"
+            ],
+            "extensions": {
+              "code": "NOT_FOUND"
+            }
+          }
+        ]
+      }
+    },
+    "DeleteWebA": {
+      "at": "2026-10-16T09:44:54.660Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db8utcvdbg8c73dghfs0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "timing": {
+        "startTime": 1792143893589.6777,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.733,
+        "responseStart": 352.7,
+        "responseEnd": 353.798
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "DeleteWebB": {
+      "at": "2026-10-16T09:45:28.741Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db8uu1q9cl7s73ae4e70"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "timing": {
+        "startTime": 1792143927636.9749,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.147,
+        "responseStart": 385.386,
+        "responseEnd": 385.828
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "DeletePG": {
+      "at": "2026-10-16T09:47:05.098Z",
+      "request": {
+        "operationName": "DeleteDatabase",
+        "variables": {
+          "id": "dpg-db8uscfdbg8c73dghfo0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteDatabase($id: String!, $confirm: String) {\n  deleteDatabase(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteDatabase": true
+        }
+      },
+      "timing": {
+        "startTime": 1792144024101.6099,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.147,
+        "responseStart": 285.998,
+        "responseEnd": 286.575
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "DeleteKV": {
+      "at": "2026-10-16T09:47:32.544Z",
+      "request": {
+        "operationName": "DeleteKeyValue",
+        "variables": {
+          "id": "red-db8usjvdbg8c73dghfp0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteKeyValue($id: String!, $confirm: String) {\n  deleteKeyValue(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteKeyValue": true
+        }
+      },
+      "timing": {
+        "startTime": 1792144051567.209,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.141,
+        "responseStart": 269.267,
+        "responseEnd": 269.725
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "CleanInventory": {
+      "at": "2026-10-16T09:47:44.746Z",
+      "reads": [
+        {
+          "path": "/v1/projects/prj-db8urn29cl7s73ae4e20",
+          "status": 404
+        },
+        {
+          "path": "/v1/environments/evm-db8us17dbg8c73dghfng",
+          "status": 404
+        },
+        {
+          "path": "/v1/environments/evm-db8us2a9cl7s73ae4e3g",
+          "status": 404
+        },
+        {
+          "path": "/v1/postgres/dpg-db8uscfdbg8c73dghfo0",
+          "status": 404
+        },
+        {
+          "path": "/v1/key-value/red-db8usjvdbg8c73dghfp0",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db8utcvdbg8c73dghfs0",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db8uu1q9cl7s73ae4e70",
+          "status": 404
+        }
+      ],
+      "request": {
+        "operationName": "Qaa467Inventory",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "query": "query Qaa467Inventory($ownerId:String!){ services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name}}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      },
+      "ids": {
+        "blueprints": [
+          "blp-d9nqg95cavls73fp8m10"
+        ],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": [
+          "evg-db0s94c48ccs739jikr0"
+        ],
+        "keyValues": [
+          "red-d9p49kdrtmes73c34ovg",
+          "red-da4086iii7bs73drbqh0"
+        ],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "baselineEqual": true
+    },
+    "SessionCleared": {
+      "at": "2026-10-16T09:48:24.211Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "NetworkCensus3": {
+      "at": "2026-10-16T09:50:18.678Z",
+      "scope": "retained100requestbuffer afterlogout; expected cleanup404andwhoami401 included; not full pass census",
+      "total": 97,
+      "pending": 1,
+      "failed": 0,
+      "bad": [
+        {
+          "method": "POST",
+          "path": "/graphql",
+          "status": 401
+        },
+        {
+          "method": "GET",
+          "path": "/sessions/whoami",
+          "status": 401
+        },
+        {
+          "method": "GET",
+          "path": "/sessions/whoami",
+          "status": 401
+        },
+        {
+          "method": "GET",
+          "path": "/sessions/whoami",
+          "status": 401
+        },
+        {
+          "method": "POST",
+          "path": "/graphql",
+          "status": 401
+        },
+        {
+          "method": "GET",
+          "path": "/self-service/login/flows",
+          "status": 403
+        }
+      ]
+    }
+  },
+  "ownedApiLog": {
+    "capturedAt": "2026-10-16T09:46:21.523293+00:00",
+    "commandScope": "hetzner-prod/bex-system deployment/bex-api all pods, since12m tail6000; exact owned ID plus conflict phrase filter",
+    "ownId": "dpg-db8uscfdbg8c73dghfo0",
+    "matches": [
+      "Operation cannot be fulfilled on databases.app.bex.co \"dpg-db8uscfdbg8c73dghfo0\": the object has been modified; please apply your changes to the latest version and try again"
+    ],
+    "limits": "Original log timestamp/request correlation unavailable in filtered continuation line. Correlation is exact owned ID within pass; failing clear stage not proven."
+  },
+  "physicalCleanup": {
+    "at": "2026-10-16T09:47:59.225045+00:00",
+    "checks": [
+      {
+        "selector": "app.bex.co/app=tea-d98210cbbpdc73dcrkvg-qa-20261016-a698-web-a",
+        "remaining": []
+      },
+      {
+        "selector": "app.bex.co/app=tea-d98210cbbpdc73dcrkvg-qa-20261016-a698-web-b",
+        "remaining": []
+      },
+      {
+        "selector": "cnpg.io/cluster=dpg-db8uscfdbg8c73dghfo0",
+        "remaining": []
+      },
+      {
+        "selector": "app.bex.co/keyvalue=red-db8usjvdbg8c73dghfp0",
+        "remaining": []
+      },
+      {
+        "publicHost": "qa-20261016-a698-web-a.onbex.co",
+        "status": "404",
+        "exitCode": 0
+      },
+      {
+        "publicHost": "qa-20261016-a698-web-b.onbex.co",
+        "status": "404",
+        "exitCode": 0
+      }
+    ],
+    "limits": "Build Jobs and object storage GC not inventoried"
+  },
+  "localDiagnostic": {
+    "method": "Append this function through Go -overlay to existing postgres/placement_test.go and keyvalue/placement_test.go; existing fixtures/imports are used. Product sources unchanged. Both baseline test files identical before/after sync.",
+    "function": "func TestQaA698UnrelatedWriteInterruptsConditionalCleanup(t *testing.T) {\n for _, kind := range []string{\"project\", \"environment\"} {\n  t.Run(kind, func(t *testing.T) {\n   svc, cl := newService(placementResource())\n   tracking := &placementPatchClient{Client: cl}\n   tracking.beforePatch = func() {\n    updated := readPlacement(t, cl)\n    if updated.Annotations == nil { updated.Annotations = map[string]string{} }\n    updated.Annotations[\"qa-a698-unrelated\"] = \"preserve\"\n    if err := cl.Update(context.Background(), updated); err != nil { t.Fatal(err) }\n   }\n   svc.Client = tracking\n   clear, expected := svc.ClearProjectID, \"prj-a\"\n   if kind == \"environment\" { clear, expected = svc.ClearEnvironmentID, \"env-a\" }\n   err := clear(ctxAs(\"user-a\"), \"placement\", expected)\n   if !apierrors.IsConflict(err) || tracking.patches != 1 { t.Fatalf(\"expected observed one-attempt conflict: err=%v attempts=%d\", err, tracking.patches) }\n   after := readPlacement(t, cl)\n   if after.Labels[core.LabelProject] != \"prj-a\" || after.Labels[core.LabelEnvironment] != \"env-a\" { t.Fatal(\"failed attempt changed placement\") }\n   if err := clear(ctxAs(\"user-a\"), \"placement\", expected); err != nil { t.Fatal(err) }\n   final := readPlacement(t, cl)\n   if final.Labels[core.LabelEnvironment] != \"\" || (kind == \"project\" && final.Labels[core.LabelProject] != \"\") || final.Annotations[\"qa-a698-unrelated\"] != \"preserve\" || !slices.Equal(final.Spec.IPAllowList, after.Spec.IPAllowList) { t.Fatal(\"retry lost unrelated state or did not clear expected placement\") }\n   t.Logf(\"first call: raw Kubernetes conflict, 1 patch; explicit second call succeeds, unrelated annotation and owned rules retained; total patches=%d\", tracking.patches)\n  })\n }\n}\n",
+    "command": "GOWORK=off go test -overlay ../../.playwright-mcp/qa-a698-go-overlay.json -run ^TestQaA698UnrelatedWriteInterruptsConditionalCleanup$ -count=1 -v ./internal/postgres ./internal/keyvalue",
+    "exitCode": 0,
+    "output": "=== RUN   TestQaA698UnrelatedWriteInterruptsConditionalCleanup\n=== RUN   TestQaA698UnrelatedWriteInterruptsConditionalCleanup/project\n    placement_test.go:405: first call: raw Kubernetes conflict, 1 patch; explicit second call succeeds, unrelated annotation and owned rules retained; total patches=2\n=== RUN   TestQaA698UnrelatedWriteInterruptsConditionalCleanup/environment\n    placement_test.go:405: first call: raw Kubernetes conflict, 1 patch; explicit second call succeeds, unrelated annotation and owned rules retained; total patches=2\n--- PASS: TestQaA698UnrelatedWriteInterruptsConditionalCleanup (0.04s)\n    --- PASS: TestQaA698UnrelatedWriteInterruptsConditionalCleanup/project (0.04s)\n    --- PASS: TestQaA698UnrelatedWriteInterruptsConditionalCleanup/environment (0.00s)\nPASS\nok  \tgithub.com/bex-co/bex/lego/backend/internal/postgres\t0.719s\n=== RUN   TestQaA698UnrelatedWriteInterruptsConditionalCleanup\n=== RUN   TestQaA698UnrelatedWriteInterruptsConditionalCleanup/project\n    placement_test.go:405: first call: raw Kubernetes conflict, 1 patch; explicit second call succeeds, unrelated annotation and owned rules retained; total patches=2\n=== RUN   TestQaA698UnrelatedWriteInterruptsConditionalCleanup/environment\n    placement_test.go:405: first call: raw Kubernetes conflict, 1 patch; explicit second call succeeds, unrelated annotation and owned rules retained; total patches=2\n--- PASS: TestQaA698UnrelatedWriteInterruptsConditionalCleanup (0.04s)\n    --- PASS: TestQaA698UnrelatedWriteInterruptsConditionalCleanup/project (0.04s)\n    --- PASS: TestQaA698UnrelatedWriteInterruptsConditionalCleanup/environment (0.00s)\nPASS\nok  \tgithub.com/bex-co/bex/lego/backend/internal/keyvalue\t1.268s\n",
+    "limits": "Real controller-runtime fake-client resourceVersion check, not a real API server or production conflict injection. Annotation-only update proves the mechanism; it does not identify the production concurrent writer."
+  },
+  "sessionCleanup": {
+    "logoutExitCode": 0,
+    "logoutOutput": "ok logged-out",
+    "ownedHandlesRemoved": true,
+    "sharedJarRemovedOnlyOnExactMtimeNsAndSize": true
+  },
+  "limits": [
+    "No live REST/MCP deletion mutations, direct environment deletion, denied-role, replacement-UID or exhausted-retry probe.",
+    "No data-plane query/read before and after deletion; available/running metadata only. No claim of data loss or continuous serving.",
+    "No full-pass console/network census; retained post-logout buffer includes expected auth rejection. Two read-only diagnostic snippets failed before producing a census.",
+    "No production fault injection, paid fixtures, foreign mutations or product changes. Build Jobs and object storage GC not inventoried."
+  ]
+}
