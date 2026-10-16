@@ -292,6 +292,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **323** — [Keep prefixed Settings inputs readable while editing on mobile](323.md) (minor · 55m) — fresh360/390 Publish directory input collapses to26px with no text area; Save extends to x449. Desktop/plain-input and a reversible local layout control isolate the prefixed variant. [Durable evidence](evidence/323-prefixed-input-mobile.json); Free fixture, public route and exact-run session cleaned.
+
 - [ ] **322** — [Refresh service precedence after linking an environment group](322.md) (minor · 55m) — fresh desktop/mobile links use A at runtime while cached ordering briefly crosses out A and names Z as winner; poll repairs it. Local panel refresh/pending/error follow-up to w2/m94/t003. [Durable evidence](evidence/322-env-group-precedence-refresh.json); all three fixtures and exact-run session cleaned.
 
 - [ ] **321** — [Supply JavaScript asset tools in native Go builds and runtime](321.md) (major · 55m) — two native Go builds fail on missing Node/exit127; a Go-only Live control confirms all four JS tools absent at runtime. Reuse the Ruby/Python supplier for the newly exercised Go scope. [Durable evidence](evidence/321-native-go-js-tools.json); owned service, four deploys and exact-run session cleaned.

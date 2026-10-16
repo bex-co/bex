@@ -1,0 +1,1077 @@
+{
+  "pass": "a686",
+  "sourceHead": "779c825e2b6b99c8e3b697b20355781880da7fc8",
+  "finding": "Prefixed plain Input edit row gives zero text-content width and clips Save on narrow mobile",
+  "severity": "minor",
+  "resources": {
+    "static": {
+      "id": "srv-db8sucfdbg8c73dghe00",
+      "name": "qa-20261016-a686-publish",
+      "firstDeploy": "dep-db8sucfdbg8c73dghe0g",
+      "publishBDeploy": "dep-db8svmi9cl7s73ae4br0"
+    }
+  },
+  "records": {
+    "CreateStatic": {
+      "at": "2026-10-16T07:16:03.243Z",
+      "request": {
+        "operationName": "CreateService",
+        "variables": {
+          "repo": "https://github.com/bex-co/bex",
+          "branch": "main",
+          "name": "qa-20261016-a686-publish",
+          "type": "static_site",
+          "rootDir": "examples/static-site",
+          "buildCommand": "mkdir -p qa-dist-a qa-dist-b && printf '%s\\n' 'QA_A686_OUTPUT_A' > qa-dist-a/index.html && printf '%s\\n' 'QA_A686_OUTPUT_B 雪' > qa-dist-b/index.html",
+          "autoDeploy": false,
+          "publishPath": "qa-dist-a",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db8sucfdbg8c73dghe00",
+            "latestDeployId": "dep-db8sucfdbg8c73dghe0g",
+            "name": "qa-20261016-a686-publish",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": null,
+            "type": "static_site"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792134960361.9468,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.143,
+        "responseStart": 2168.757,
+        "responseEnd": 2169.336
+      },
+      "url": "https://dashboard.bex.co/services/srv-db8sucfdbg8c73dghe00/deploys/dep-db8sucfdbg8c73dghe0g"
+    },
+    "BeforePublishChangeApi": {
+      "at": "2026-10-16T07:18:49.003Z",
+      "request": {
+        "query": "query($id:String!,$dep:String!){server(id:$id){id phase plan publishPath revision buildCommand} deploy(serviceId:$id,deployId:$dep){id status failureReason stallReason createdAt startedAt updatedAt image commitId}}",
+        "variables": {
+          "id": "srv-db8sucfdbg8c73dghe00",
+          "dep": "dep-db8sucfdbg8c73dghe0g"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploy": {
+            "commitId": "779c825e2b6b99c8e3b697b20355781880da7fc8",
+            "createdAt": "2026-10-16T07:16:01.776579Z",
+            "failureReason": "",
+            "id": "dep-db8sucfdbg8c73dghe0g",
+            "image": "",
+            "stallReason": "",
+            "startedAt": "2026-10-16T07:17:13.221248Z",
+            "status": "live",
+            "updatedAt": "2026-10-16T07:18:32.273664Z"
+          },
+          "server": {
+            "buildCommand": "mkdir -p qa-dist-a qa-dist-b && printf '%s\\n' 'QA_A686_OUTPUT_A' > qa-dist-a/index.html && printf '%s\\n' 'QA_A686_OUTPUT_B 雪' > qa-dist-b/index.html",
+            "id": "srv-db8sucfdbg8c73dghe00",
+            "phase": "Running",
+            "plan": "free",
+            "publishPath": "qa-dist-a",
+            "revision": "rev-1"
+          }
+        }
+      }
+    },
+    "InitialAReady": {
+      "at": "2026-10-16T07:18:34.461Z",
+      "ready": true,
+      "rows": [
+        {
+          "at": "2026-10-16T07:18:34.461Z",
+          "status": 200,
+          "body": "QA_A686_OUTPUT_A\n"
+        }
+      ],
+      "draft": "qa-dist-b"
+    },
+    "SetPublishBRecovered": {
+      "at": "2026-10-16T07:19:20.367Z",
+      "request": {
+        "operationName": "SetPublishPath",
+        "variables": {
+          "id": "srv-db8sucfdbg8c73dghe00",
+          "publishPath": "qa-dist-b"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetPublishPath($id: String!, $publishPath: String!) {\n  setPublishPath(id: $id, publishPath: $publishPath) {\n    id\n    publishPath\n    revision\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setPublishPath": {
+            "__typename": "Service",
+            "id": "srv-db8sucfdbg8c73dghe00",
+            "publishPath": "qa-dist-b",
+            "revision": "rev-1"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792135130223.298,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.137,
+        "responseStart": 358.505,
+        "responseEnd": 358.926
+      },
+      "recovered": true
+    },
+    "PublishBWait2": {
+      "at": "2026-10-16T07:20:18.277Z",
+      "ready": true,
+      "rows": [
+        {
+          "at": "2026-10-16T07:20:18.277Z",
+          "status": 200,
+          "body": "QA_A686_OUTPUT_B 雪\n"
+        }
+      ]
+    },
+    "AfterPublishChangeApi": {
+      "at": "2026-10-16T07:20:16.187Z",
+      "request": {
+        "query": "query($id:String!){server(id:$id){id phase plan publishPath revision undeployedChanges undeployedChangesApplying} deploys(serviceId:$id){id status trigger failureReason stallReason createdAt startedAt finishedAt}}",
+        "variables": {
+          "id": "srv-db8sucfdbg8c73dghe00"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "createdAt": "2026-10-16T07:18:50.403716Z",
+              "failureReason": "",
+              "finishedAt": "2026-10-16T07:20:02.380243Z",
+              "id": "dep-db8svmi9cl7s73ae4br0",
+              "stallReason": "",
+              "startedAt": "2026-10-16T07:19:02.574199Z",
+              "status": "live",
+              "trigger": "config_change"
+            },
+            {
+              "createdAt": "2026-10-16T07:16:01.776579Z",
+              "failureReason": "",
+              "finishedAt": "2026-10-16T07:18:32.273663Z",
+              "id": "dep-db8sucfdbg8c73dghe0g",
+              "stallReason": "",
+              "startedAt": "2026-10-16T07:17:13.221248Z",
+              "status": "deactivated",
+              "trigger": "create"
+            }
+          ],
+          "server": {
+            "id": "srv-db8sucfdbg8c73dghe00",
+            "phase": "Running",
+            "plan": "free",
+            "publishPath": "qa-dist-b",
+            "revision": "rev-2",
+            "undeployedChanges": false,
+            "undeployedChangesApplying": false
+          }
+        }
+      },
+      "buttons": [
+        "Bbex",
+        "Toggle Sidebar",
+        "qa-20261016-a686-publish",
+        "Search⌘ K",
+        "NewNew",
+        "",
+        "P",
+        "Manual Deploy",
+        "",
+        "",
+        "",
+        "",
+        "",
+        " Add included path",
+        " Add ignored path",
+        "Save Build Filters",
+        "",
+        "",
+        "",
+        "Regenerate Hook",
+        "",
+        " Add Custom Domain",
+        "Add",
+        "Save",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "Suspend",
+        "Delete Service"
+      ]
+    },
+    "FreshMobileB": {
+      "at": "2026-10-16T07:20:46.518Z",
+      "value": "qa-dist-b",
+      "width": {
+        "viewport": 390,
+        "document": 390
+      },
+      "drafts": 0
+    },
+    "SetPublishAAgain": {
+      "at": "2026-10-16T07:20:48.864Z",
+      "request": {
+        "operationName": "SetPublishPath",
+        "variables": {
+          "id": "srv-db8sucfdbg8c73dghe00",
+          "publishPath": "qa-dist-a"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetPublishPath($id: String!, $publishPath: String!) {\n  setPublishPath(id: $id, publishPath: $publishPath) {\n    id\n    publishPath\n    revision\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setPublishPath": {
+            "__typename": "Service",
+            "id": "srv-db8sucfdbg8c73dghe00",
+            "publishPath": "qa-dist-a",
+            "revision": "rev-2"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792135247836.91,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.147,
+        "responseStart": 318.507,
+        "responseEnd": 318.948
+      },
+      "url": "https://dashboard.bex.co/static/srv-db8sucfdbg8c73dghe00/settings"
+    },
+    "PublishAAgainWait": {
+      "at": "2026-10-16T07:21:56.768Z",
+      "ready": true,
+      "rows": [
+        {
+          "at": "2026-10-16T07:21:41.394Z",
+          "status": 200,
+          "body": "QA_A686_OUTPUT_B 雪\n"
+        },
+        {
+          "at": "2026-10-16T07:21:43.563Z",
+          "status": 200,
+          "body": "QA_A686_OUTPUT_B 雪\n"
+        },
+        {
+          "at": "2026-10-16T07:21:45.757Z",
+          "status": 200,
+          "body": "QA_A686_OUTPUT_B 雪\n"
+        },
+        {
+          "at": "2026-10-16T07:21:47.927Z",
+          "status": 200,
+          "body": "QA_A686_OUTPUT_B 雪\n"
+        },
+        {
+          "at": "2026-10-16T07:21:50.115Z",
+          "status": 200,
+          "body": "QA_A686_OUTPUT_B 雪\n"
+        },
+        {
+          "at": "2026-10-16T07:21:52.287Z",
+          "status": 200,
+          "body": "QA_A686_OUTPUT_B 雪\n"
+        },
+        {
+          "at": "2026-10-16T07:21:54.460Z",
+          "status": 200,
+          "body": "QA_A686_OUTPUT_B 雪\n"
+        },
+        {
+          "at": "2026-10-16T07:21:56.768Z",
+          "status": 200,
+          "body": "QA_A686_OUTPUT_A\n"
+        }
+      ]
+    },
+    "FreshMobileEditGeometry": {
+      "at": "2026-10-16T07:22:27.945Z",
+      "width": {
+        "viewport": 390,
+        "document": 390,
+        "x": 0
+      },
+      "input": {
+        "value": "qa-dist-a",
+        "width": 26,
+        "left": 222.015625,
+        "right": 248.015625,
+        "clientWidth": 24,
+        "scrollWidth": 100,
+        "title": null
+      },
+      "cancel": {
+        "x": 256.015625,
+        "y": 430,
+        "width": 69.359375,
+        "height": 32
+      },
+      "save": {
+        "x": 333.375,
+        "y": 430,
+        "width": 115.421875,
+        "height": 32
+      }
+    },
+    "MobilePublishEditRepeat": {
+      "draft390": {
+        "at": "2026-10-16T07:23:27.896Z",
+        "width": {
+          "viewport": 390,
+          "document": 390
+        },
+        "input": {
+          "value": "qa-dist-b",
+          "x": 222.015625,
+          "width": 26,
+          "right": 248.015625,
+          "clientWidth": 24,
+          "scrollWidth": 100,
+          "paddingLeft": "12px",
+          "paddingRight": "12px",
+          "font": "14px / 20px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+          "title": "",
+          "disabled": false
+        },
+        "cancel": {
+          "x": 256.015625,
+          "y": 430,
+          "width": 69.359375,
+          "height": 32
+        },
+        "save": {
+          "box": {
+            "x": 333.375,
+            "y": 430,
+            "width": 115.421875,
+            "height": 32
+          },
+          "enabled": true
+        }
+      },
+      "fresh360": {
+        "at": "2026-10-16T07:23:30.408Z",
+        "width": {
+          "viewport": 360,
+          "document": 360
+        },
+        "input": {
+          "value": "qa-dist-b",
+          "x": 222.015625,
+          "width": 26,
+          "right": 248.015625,
+          "clientWidth": 24,
+          "scrollWidth": 100,
+          "paddingLeft": "12px",
+          "paddingRight": "12px",
+          "font": "14px / 20px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+          "title": "",
+          "disabled": false
+        },
+        "cancel": {
+          "x": 256.015625,
+          "y": 408,
+          "width": 69.359375,
+          "height": 32
+        },
+        "save": {
+          "box": {
+            "x": 333.375,
+            "y": 408,
+            "width": 115.421875,
+            "height": 32
+          },
+          "enabled": true
+        }
+      }
+    },
+    "PublishGeometryControls": {
+      "desktop": {
+        "at": "2026-10-16T07:25:35.669Z",
+        "width": {
+          "viewport": 1440,
+          "document": 1440
+        },
+        "input": {
+          "value": "qa-dist-b",
+          "x": 486.015625,
+          "width": 460.203125,
+          "right": 946.21875,
+          "clientWidth": 458,
+          "scrollWidth": 458,
+          "paddingLeft": "12px",
+          "paddingRight": "12px",
+          "flex": "1 1 0%",
+          "minWidth": "0px"
+        },
+        "cancel": {
+          "x": 954.21875,
+          "y": 458,
+          "width": 69.359375,
+          "height": 32
+        },
+        "save": {
+          "x": 1031.578125,
+          "y": 458,
+          "width": 115.421875,
+          "height": 32
+        }
+      },
+      "plainMobile": {
+        "at": "2026-10-16T07:25:36.768Z",
+        "width": {
+          "viewport": 360,
+          "document": 360
+        },
+        "input": {
+          "value": "qa-20261016-a686-publish-x",
+          "x": 37,
+          "width": 85.21875,
+          "right": 122.21875,
+          "clientWidth": 83,
+          "scrollWidth": 242,
+          "paddingLeft": "12px",
+          "paddingRight": "12px",
+          "flex": "1 1 0%",
+          "minWidth": "0px"
+        },
+        "cancel": {
+          "x": 130.21875,
+          "y": 408,
+          "width": 69.359375,
+          "height": 32
+        },
+        "save": {
+          "x": 207.578125,
+          "y": 408,
+          "width": 115.421875,
+          "height": 32
+        }
+      }
+    },
+    "ReversibleLayoutControl": {
+      "before": {
+        "at": "2026-10-16T07:25:38.485Z",
+        "viewport": 390,
+        "input": {
+          "x": 222.015625,
+          "y": 392,
+          "width": 26,
+          "height": 36
+        },
+        "save": {
+          "x": 333.375,
+          "y": 394,
+          "width": 115.421875,
+          "height": 32
+        },
+        "row": {
+          "display": "flex",
+          "flexWrap": "nowrap",
+          "clientWidth": 316,
+          "scrollWidth": 412,
+          "prefix": "examples/static-site/"
+        }
+      },
+      "after": {
+        "at": "2026-10-16T07:25:38.503Z",
+        "viewport": 390,
+        "input": {
+          "x": 37,
+          "y": 420,
+          "width": 316,
+          "height": 36
+        },
+        "save": {
+          "x": 114.359375,
+          "y": 464,
+          "width": 115.421875,
+          "height": 32
+        },
+        "row": {
+          "display": "flex",
+          "flexWrap": "wrap",
+          "clientWidth": 316,
+          "scrollWidth": 316,
+          "prefix": "examples/static-site/"
+        }
+      },
+      "scope": "temporary owned-page DOM styles only; discarded by reload"
+    },
+    "PanAndFinalApi": {
+      "at": "2026-10-16T07:27:57.325Z",
+      "geometry": {
+        "ancestors": [
+          {
+            "tag": "DIV",
+            "classes": "min-h-0 flex-1 overflow-auto",
+            "overflowX": "auto",
+            "client": 390,
+            "scroll": 449,
+            "left": 0
+          }
+        ],
+        "pan": {
+          "inputWidth": 26,
+          "panLeft": 59
+        },
+        "inputWidthAfter": 26
+      },
+      "saveAfterPan": {
+        "x": 274.375,
+        "y": 394,
+        "width": 115.421875,
+        "height": 32
+      },
+      "request": {
+        "query": "query($id:String!){server(id:$id){id phase plan publishPath revision undeployedChanges undeployedChangesApplying} deploys(serviceId:$id){id status trigger failureReason}}",
+        "variables": {
+          "id": "srv-db8sucfdbg8c73dghe00"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "failureReason": "",
+              "id": "dep-db8t0jvdbg8c73dghe20",
+              "status": "live",
+              "trigger": "config_change"
+            },
+            {
+              "failureReason": "",
+              "id": "dep-db8svmi9cl7s73ae4br0",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "failureReason": "",
+              "id": "dep-db8sucfdbg8c73dghe0g",
+              "status": "deactivated",
+              "trigger": "create"
+            }
+          ],
+          "server": {
+            "id": "srv-db8sucfdbg8c73dghe00",
+            "phase": "Running",
+            "plan": "free",
+            "publishPath": "qa-dist-a",
+            "revision": "rev-3",
+            "undeployedChanges": false,
+            "undeployedChangesApplying": false
+          }
+        }
+      },
+      "errors": []
+    },
+    "DeleteDialog": {
+      "at": "2026-10-16T07:29:04.566Z",
+      "bad": [],
+      "pending": [
+        {
+          "url": "https://api.bex.co/graphql"
+        }
+      ],
+      "dialog": "- alertdialog \"Delete qa-20261016-a686-publish?\":\n  - heading \"Delete qa-20261016-a686-publish?\" [level=2]\n  - paragraph: This action cannot be undone. Are you sure you want to delete this static site?\n  - paragraph:\n    - text: Type\n    - strong: sudo delete static site qa-20261016-a686-publish\n    - text: below to confirm.\n  - text: Sudo Command\n  - textbox \"Sudo Command\":\n    - /placeholder: sudo delete static site qa-20261016-a686-publish\n  - button \"Cancel\"\n  - button \"Delete Service\" [disabled]"
+    },
+    "DeleteStatic": {
+      "at": "2026-10-16T07:29:06.881Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db8sucfdbg8c73dghe00"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "timing": {
+        "startTime": 1792135745740.1921,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.128,
+        "responseStart": 423.352,
+        "responseEnd": 423.752
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "CleanupRecords": {
+      "at": "2026-10-16T07:30:02.559Z",
+      "request": {
+        "operationName": "Qaa467Inventory",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "query": "query Qaa467Inventory($ownerId:String!){ services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name}}"
+      },
+      "owned": {
+        "status": 404,
+        "body": {
+          "code": "NOT_FOUND",
+          "error": "not found",
+          "id": "not_found",
+          "message": "not found",
+          "params": null
+        }
+      },
+      "status": 200,
+      "inventory": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      },
+      "restored": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      }
+    },
+    "ClearBrowser": {
+      "at": "2026-10-16T07:30:57.375Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  },
+  "outsideBrowserB": {
+    "at": "2026-10-16T07:20:47.671747+00:00",
+    "status": 200,
+    "body": "QA_A686_OUTPUT_B 雪\n"
+  },
+  "sourceResearch": [
+    {
+      "path": "dashboard/src/features/services/components/editable-field-row.tsx",
+      "sha256": "d7456faf0cf322dedbfa9ef549270987d7acb09585f915fa05f7102abc80e06a",
+      "excerpts": [
+        {
+          "startLine": 64,
+          "endLine": 71,
+          "text": "   * Present ⇒ render a searchable Combobox (typeahead over these options, with\n   * free-text fallback) instead of an Input — the combobox variant used by the\n   * Branch row (w5/m54). An empty list degrades to plain free-text entry.\n   */\n  comboboxOptions?: readonly ComboboxOption[];\n  /** Display-only prefix shown before the value (e.g. \"app/ $\"); never saved. */\n  valuePrefix?: string;\n  /**"
+        },
+        {
+          "startLine": 143,
+          "endLine": 161,
+          "text": "  // save (w4/293).\n  const restoreFocusRef = useRef(false);\n  const editable = !disabled;\n  // The disabled control always shows the persisted value; the draft only\n  // exists while editing (seeded on Edit), so an external value update never\n  // clobbers an in-progress edit.\n  const shown = editing ? draft : value;\n\n  // Focus (and select, for inputs) the control once editing enables it.\n  useEffect(() => {\n    if (!editing) return;\n    if (options) triggerRef.current?.focus();\n    else {\n      inputRef.current?.focus();\n      inputRef.current?.select();\n    }\n  }, [editing, options]);\n\n  // Cancel disables the focused control and unmounts Cancel/Save, which would"
+        },
+        {
+          "startLine": 214,
+          "endLine": 232,
+          "text": "      </div>\n\n      <div\n        className={cn(\n          \"flex items-center gap-2\",\n          // A long select label must not push the actions off a narrow\n          // screen: the select wraps its label, and while editing it takes\n          // the whole first line so Cancel/Save wrap beneath it (w4/251).\n          options && \"flex-wrap sm:flex-nowrap\",\n        )}\n      >\n        {/* The value prefix (e.g. \"app/ $\") only makes sense before a text\n            input, never a select. */}\n        {!options && valuePrefix && (\n          <code className=\"text-muted-foreground shrink-0 font-mono text-sm\">\n            {valuePrefix}\n          </code>\n        )}\n        {comboboxOptions ? ("
+        },
+        {
+          "startLine": 278,
+          "endLine": 328,
+          "text": "                </SelectItem>\n              ))}\n            </SelectContent>\n          </Select>\n        ) : (\n          <Input\n            ref={inputRef}\n            type={type}\n            min={min}\n            max={max}\n            step={step}\n            value={shown}\n            disabled={disabled || !editing || busy}\n            aria-label={label}\n            aria-invalid={validationError !== null || undefined}\n            aria-describedby={validationError !== null ? errorId : undefined}\n            placeholder={placeholder}\n            autoComplete=\"off\"\n            className={cn(\"flex-1\", mono && \"font-mono text-sm\")}\n            onChange={(event) => setDraft(event.target.value)}\n            onKeyDown={(event) => {\n              if (event.key === \"Enter\") {\n                event.preventDefault();\n                requestSave();\n              }\n              if (event.key === \"Escape\") cancel();\n            }}\n          />\n        )}\n\n        {editing ? (\n          <>\n            <Button variant=\"ghost\" size=\"sm\" disabled={busy} onClick={cancel}>\n              {t(\"services.editRowCancel\")}\n            </Button>\n            <Button size=\"sm\" disabled={busy || !canSave} onClick={requestSave}>\n              {busy && <Loader2 className=\"animate-spin\" />}\n              {t(\"services.editRowSave\")}\n            </Button>\n          </>\n        ) : (\n          editable && (\n            <Button\n              ref={editButtonRef}\n              size=\"icon\"\n              variant=\"ghost\"\n              aria-label={editLabel}\n              onClick={startEdit}\n            >\n              <Pencil />\n            </Button>"
+        }
+      ]
+    },
+    {
+      "path": "dashboard/src/features/services/components/static-site-section.tsx",
+      "sha256": "f8628945d8a24c37ea8c809caa32ea3b073262f0f822b4175ccb9e03fbe3412e",
+      "excerpts": [
+        {
+          "startLine": 163,
+          "endLine": 186,
+          "text": "  publishPath,\n  rootDir,\n  onSave,\n  busy,\n}: {\n  publishPath: string | null;\n  rootDir?: string | null;\n  onSave: (v: string) => Promise<boolean>;\n  busy: boolean;\n}) {\n  const { t } = useTranslations();\n  const current = publishPath ?? \"\";\n  const prefix = rootDirPrefix(rootDir);\n\n  return (\n    <EditableFieldRow\n      label={t(\"services.publishPathLabel\")}\n      hint={t(\"services.publishPathHint\")}\n      value={current}\n      placeholder={t(\"services.publishPathPlaceholder\")}\n      editLabel={t(\"services.publishPathEdit\")}\n      valuePrefix={prefix || undefined}\n      mono\n      busy={busy}"
+        }
+      ]
+    },
+    {
+      "path": "dashboard/src/common/components/ui/input.tsx",
+      "sha256": "c9db2a4ccf315911d32a749e3bb8e4f19143bbe78d530ca2521f2d0f3eacf616",
+      "excerpts": [
+        {
+          "startLine": 5,
+          "endLine": 19,
+          "text": "function Input({ className, type, ...props }: React.ComponentProps<\"input\">) {\n  return (\n    <input\n      type={type}\n      data-slot=\"input\"\n      className={cn(\n        \"file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input flex h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm\",\n        \"focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]\",\n        \"aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive\",\n        className,\n      )}\n      {...props}\n    />\n  );\n}"
+        }
+      ]
+    },
+    {
+      "path": "dashboard/src/common/components/ui/button.tsx",
+      "sha256": "485aff78a33f5063c16fc7f18f342ca51327f6ece688d76575041b65f272675b",
+      "excerpts": [
+        {
+          "startLine": 6,
+          "endLine": 10,
+          "text": "\nconst buttonVariants = cva(\n  \"inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer\",\n  {\n    variants: {"
+        }
+      ]
+    },
+    {
+      "path": "dashboard/src/features/services/components/build-deploy-section.tsx",
+      "sha256": "83b626fd1913b031a91c0f6c0d4c07e2f1da588df12a98b67bd08e07496bb8fd",
+      "excerpts": [
+        {
+          "startLine": 231,
+          "endLine": 242,
+          "text": "            <EditableFieldRow\n              label={t(\"services.buildCommandLabel\")}\n              hint={t(\"services.buildCommandHint\")}\n              // Render's root-directory affordance (w5/m48/t004, w5/m51): the\n              // command runs from rootDir, so the input carries an \"<rootDir>/ $\"\n              // prompt (bare \"$\" when no root dir is set).\n              valuePrefix={commandPromptPrefix(rootDir)}\n              value={buildCommand ?? \"\"}\n              placeholder={t(\"services.buildCommandPlaceholder\")}\n              editLabel={t(\"services.buildCommandEdit\")}\n              optional\n              mono"
+        }
+      ]
+    },
+    {
+      "path": "dashboard/src/features/services/components/deploy-card.tsx",
+      "sha256": "a857456b9b2466e9284cacac64c8ea5224ce22ccbb66b56c11caa6c2172cb428",
+      "excerpts": [
+        {
+          "startLine": 101,
+          "endLine": 113,
+          "text": "      <CardContent className=\"space-y-6\">\n        {showPreDeployCommand && (\n          <EditableFieldRow\n            label={t(\"services.preDeployLabel\")}\n            hint={t(\"services.preDeployHint\")}\n            value={preDeployCommand ?? \"\"}\n            // Pre-deploy runs from rootDir too: the same \"<rootDir>/ $\" prompt (w5/m51).\n            valuePrefix={commandPromptPrefix(rootDir)}\n            placeholder={t(\"services.preDeployPlaceholder\")}\n            editLabel={t(\"services.preDeployEdit\")}\n            optional\n            mono\n            normalize={commandText}"
+        },
+        {
+          "startLine": 121,
+          "endLine": 135,
+          "text": "        {showCommand && (\n          <EditableFieldRow\n            label={t(copy.label)}\n            hint={t(copy.hint)}\n            value={command ?? \"\"}\n            // A native Start Command runs from rootDir (Render's \"<rootDir>/ $\"\n            // prompt); a Docker Command overrides the container's CMD and is\n            // not a rootDir shell command, so it carries no prompt (w5/m51).\n            valuePrefix={\n              startCommand ? commandPromptPrefix(rootDir) : undefined\n            }\n            placeholder={t(copy.placeholder)}\n            editLabel={t(copy.edit)}\n            optional={!startCommand}\n            mono"
+        }
+      ]
+    },
+    {
+      "path": "dashboard/src/common/lib/utils/utils.ts",
+      "sha256": "fe0f8b505fe6717c3b5f454f64e8504c44a9e8fb5724d706be634682f46a448c",
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 18,
+          "text": "import { clsx, type ClassValue } from \"clsx\";\nimport { twMerge } from \"tailwind-merge\";\n\n/**\n * Merge class names with Tailwind CSS conflict resolution\n * Combines multiple class names and resolves Tailwind CSS conflicts\n * @param inputs - Class names to merge (strings, arrays, objects, etc.)\n * @returns Merged class names as a single string\n * @example\n * cn(\"px-2\", \"py-1\") // => \"px-2 py-1\"\n * cn(\"px-2\", \"px-4\") // => \"px-4\" (later class wins)\n * cn(\"base\", { active: true, disabled: false }) // => \"base active\"\n */\nexport function cn(...inputs: ClassValue[]): string {\n  return twMerge(clsx(inputs));\n}"
+        }
+      ]
+    },
+    {
+      "path": "dashboard/package.json",
+      "sha256": "4e77608aaf47d6ffc43c5e156cd284b4942e87cdbaa55ccfd6da805baeb085a1",
+      "excerpts": [
+        {
+          "startLine": 69,
+          "endLine": 72,
+          "text": "    \"ai\": \"6.0.241\",\n    \"class-variance-authority\": \"^0.7.1\",\n    \"clsx\": \"^2.1.1\",\n    \"cmdk\": \"^1.1.1\","
+        },
+        {
+          "startLine": 89,
+          "endLine": 92,
+          "text": "    \"rxjs\": \"^7.8.2\",\n    \"sonner\": \"^2.0.8\",\n    \"tailwind-merge\": \"^3.7.0\",\n    \"tailwindcss\": \"^4.3.3\","
+        }
+      ]
+    },
+    {
+      "path": "dashboard/yarn.lock",
+      "sha256": "e3eb7681438c9cc6027a030f6c30cbdec02bd18319547ffac9cd662b5c02ca73",
+      "excerpts": [
+        {
+          "startLine": 6694,
+          "endLine": 6698,
+          "text": "\"clsx@npm:2.1.1, clsx@npm:^2.1.1\":\n  version: 2.1.1\n  resolution: \"clsx@npm:2.1.1\"\n  checksum: 10c0/c4c8eb865f8c82baab07e71bfa8897c73454881c4f99d6bc81585aecd7c441746c1399d08363dc096c550cceaf97bd4ce1e8854e1771e9998d9f94c4fe075839\n  languageName: node"
+        },
+        {
+          "startLine": 11521,
+          "endLine": 11525,
+          "text": "\"tailwind-merge@npm:^3.7.0\":\n  version: 3.7.0\n  resolution: \"tailwind-merge@npm:3.7.0\"\n  checksum: 10c0/1b1439fe30b6ee63fc3abc1c985bf9beb8529eb2db21cc321bd8c7cf73f36cd4ec80846ea10af8ae09175810f385336c22a6ce355a0b5cce69432d49672f90c1\n  languageName: node"
+        }
+      ]
+    }
+  ],
+  "productionCensus": [
+    {
+      "path": "dashboard/src/routes/services.$serviceId.settings.tsx",
+      "line": 124
+    },
+    {
+      "path": "dashboard/src/features/services/components/max-shutdown-delay-row.tsx",
+      "line": 23
+    },
+    {
+      "path": "dashboard/src/features/services/components/service-port-row.tsx",
+      "line": 32
+    },
+    {
+      "path": "dashboard/src/features/services/components/health-check-path-row.tsx",
+      "line": 31
+    },
+    {
+      "path": "dashboard/src/features/services/components/deploy-card.tsx",
+      "line": 103
+    },
+    {
+      "path": "dashboard/src/features/services/components/deploy-card.tsx",
+      "line": 122
+    },
+    {
+      "path": "dashboard/src/features/services/components/static-site-section.tsx",
+      "line": 178
+    },
+    {
+      "path": "dashboard/src/features/services/components/maintenance-mode-section.tsx",
+      "line": 84
+    },
+    {
+      "path": "dashboard/src/features/services/components/build-deploy-section.tsx",
+      "line": 179
+    },
+    {
+      "path": "dashboard/src/features/services/components/build-deploy-section.tsx",
+      "line": 210
+    },
+    {
+      "path": "dashboard/src/features/services/components/build-deploy-section.tsx",
+      "line": 231
+    },
+    {
+      "path": "dashboard/src/features/services/components/build-deploy-section.tsx",
+      "line": 262
+    },
+    {
+      "path": "dashboard/src/features/services/components/build-deploy-section.tsx",
+      "line": 345
+    },
+    {
+      "path": "dashboard/src/features/services/components/build-deploy-section.tsx",
+      "line": 363
+    },
+    {
+      "path": "dashboard/src/features/services/components/display-name-row.tsx",
+      "line": 34
+    },
+    {
+      "path": "dashboard/src/features/services/components/service-notifications-row.tsx",
+      "line": 34
+    },
+    {
+      "path": "dashboard/src/features/services/components/cron-deploy-section.tsx",
+      "line": 95
+    },
+    {
+      "path": "dashboard/src/features/services/components/cron-deploy-section.tsx",
+      "line": 131
+    },
+    {
+      "path": "dashboard/src/features/keyvalue/components/key-value-persistence-mode-section.tsx",
+      "line": 106
+    },
+    {
+      "path": "dashboard/src/features/keyvalue/components/key-value-name-row.tsx",
+      "line": 24
+    },
+    {
+      "path": "dashboard/src/features/keyvalue/components/key-value-maxmemory-policy-section.tsx",
+      "line": 69
+    },
+    {
+      "path": "dashboard/src/features/databases/components/database-name-row.tsx",
+      "line": 24
+    }
+  ],
+  "prefixedMounts": [
+    {
+      "path": "dashboard/src/features/services/components/static-site-section.tsx",
+      "line": 178,
+      "field": "Publish directory"
+    },
+    {
+      "path": "dashboard/src/features/services/components/build-deploy-section.tsx",
+      "line": 231,
+      "field": "Build Command"
+    },
+    {
+      "path": "dashboard/src/features/services/components/deploy-card.tsx",
+      "line": 103,
+      "field": "Pre-Deploy Command"
+    },
+    {
+      "path": "dashboard/src/features/services/components/deploy-card.tsx",
+      "line": 122,
+      "field": "Start Command; Docker Command has no prefix"
+    }
+  ],
+  "dependencyResearch": {
+    "rootLockedTailwindMerge": "3.7.0",
+    "staleLocalInstalledTailwindMerge": "3.4.0; not used as3.7implementationevidence",
+    "tarballSha256": "6b1add695cf419b29b82843cdcaaafe49157dc90d4d1772dcc0e7672da538c42",
+    "actualSourceOpened": "tailwind-merge3.7.0 src/lib/merge-classlist.ts:6-126; clsx2.1.1 dist/clsx.mjs",
+    "mechanism": "clsx concatenates supplied truthy classes; mergeClassList resolves class groups. Exact locked execution retains row without flex-wrap, input min-w-0/px-3/flex-1, and shrink-0 prefix/buttons. Native browser measurements corroborate effective CSS.",
+    "execution": {
+      "tailwindMerge": "3.7.0",
+      "clsx": "2.1.1",
+      "input": "flex h-9 w-full min-w-0 px-3 py-1 md:text-sm flex-1 font-mono text-sm",
+      "prefix": "text-muted-foreground shrink-0 font-mono text-sm",
+      "buttons": "inline-flex whitespace-nowrap shrink-0",
+      "row": "flex items-center gap-2"
+    }
+  },
+  "cleanup": {
+    "record": "404",
+    "baseline": "all7sortedIDsetsrestored",
+    "runtime": {
+      "at": "2026-10-16T07:30:58.756394+00:00",
+      "appAbsent": true,
+      "publicStatus": 404
+    },
+    "logout": "exit0",
+    "browser": {
+      "at": "2026-10-16T07:30:57.375Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "handles": "removed; sharedonlyexactstamp",
+    "limits": "BuildJobs/object-storegarbagecollectionnotseparatelyinventoried"
+  },
+  "limits": [
+    "Only Publish directory live-reproduced; other prefixed consumers source-traced, not failed live claims.",
+    "Route horizontal pan59px makes Save visible; input remains26px. Physical touch panning not tested.",
+    "Temporary DOM layout trial discarded by reload; no deployed/product CSS fix.",
+    "Browser APIRequestContext decodes response bodies; HTTP bodies shown are decoded text.",
+    "No continuous availability claim between sampled public reads.",
+    "Object-store garbage collection and build Jobs not separately inventoried.",
+    "No authenticated Render pixel-layout comparison, translated layout, or fixed UI measured."
+  ]
+}
