@@ -1,0 +1,2214 @@
+{
+  "source": "Functional live qa-find-bugs w4/a720; no product edits, interception, altered requests or foreign mutations. Research main e620e74e9, synced before filing.",
+  "receipts": {
+    "CreateProject": {
+      "at": "2026-10-16T12:56:49.883Z",
+      "request": {
+        "operationName": "CreateProject",
+        "variables": {
+          "name": "qa-20261016-a720-project",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateProject($name: String!, $ownerId: String!) {\n  createProject(name: $name, ownerId: $ownerId) {\n    ...ProjectFields\n    __typename\n  }\n}\n\nfragment ProjectFields on Project {\n  id\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  __typename\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createProject": {
+            "__typename": "Project",
+            "createdAt": "2026-10-16T12:56:49Z",
+            "databaseIds": [],
+            "id": "prj-db91u48v92mc73ag1f60",
+            "keyValueIds": [],
+            "name": "qa-20261016-a720-project",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "serviceIds": []
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792155408926.978,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.15,
+        "responseStart": 233.407,
+        "responseEnd": 233.926
+      },
+      "url": "https://dashboard.bex.co/project/prj-db91u48v92mc73ag1f60"
+    },
+    "CreateStage": {
+      "at": "2026-10-16T12:57:16.058Z",
+      "request": {
+        "operationName": "CreateEnvironment",
+        "variables": {
+          "name": "qa-20261016-a720-stage",
+          "projectId": "prj-db91u48v92mc73ag1f60"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateEnvironment($name: String!, $projectId: String!) {\n  createEnvironment(name: $name, projectId: $projectId) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createEnvironment": {
+            "__typename": "Environment",
+            "createdAt": "2026-10-16T12:57:15Z",
+            "databaseIds": [],
+            "envGroupIds": [],
+            "id": "evm-db91uaqvofqc73c5lqvg",
+            "ipAllowList": ["0.0.0.0/0", "::/0"],
+            "ipAllowListEntries": [
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "0.0.0.0/0",
+                "description": "Allow all (default)"
+              },
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "::/0",
+                "description": "Allow all (default)"
+              }
+            ],
+            "ipAllowListProxiedDomains": [],
+            "keyValueIds": [],
+            "name": "qa-20261016-a720-stage",
+            "networkIsolationEnabled": false,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "projectId": "prj-db91u48v92mc73ag1f60",
+            "protectedStatus": "unprotected",
+            "serviceIds": []
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792155435092.248,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.132,
+        "responseStart": 258.661,
+        "responseEnd": 259.248
+      },
+      "url": "https://dashboard.bex.co/project/prj-db91u48v92mc73ag1f60"
+    },
+    "CreateProd": {
+      "at": "2026-10-16T12:57:32.820Z",
+      "request": {
+        "operationName": "CreateEnvironment",
+        "variables": {
+          "name": "qa-20261016-a720-prod",
+          "projectId": "prj-db91u48v92mc73ag1f60"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateEnvironment($name: String!, $projectId: String!) {\n  createEnvironment(name: $name, projectId: $projectId) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createEnvironment": {
+            "__typename": "Environment",
+            "createdAt": "2026-10-16T12:57:32Z",
+            "databaseIds": [],
+            "envGroupIds": [],
+            "id": "evm-db91uf2vofqc73c5lr0g",
+            "ipAllowList": ["0.0.0.0/0", "::/0"],
+            "ipAllowListEntries": [
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "0.0.0.0/0",
+                "description": "Allow all (default)"
+              },
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "::/0",
+                "description": "Allow all (default)"
+              }
+            ],
+            "ipAllowListProxiedDomains": [],
+            "keyValueIds": [],
+            "name": "qa-20261016-a720-prod",
+            "networkIsolationEnabled": false,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "projectId": "prj-db91u48v92mc73ag1f60",
+            "protectedStatus": "unprotected",
+            "serviceIds": []
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792155451891.955,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.118,
+        "responseStart": 221.628,
+        "responseEnd": 222.131
+      },
+      "url": "https://dashboard.bex.co/project/prj-db91u48v92mc73ag1f60?env=evm-db91uaqvofqc73c5lqvg"
+    },
+    "FreeScopedConfirmed": {
+      "at": "2026-10-16T12:58:28.417Z",
+      "name": "qa-20261016-a720-data",
+      "type": "Free — 256 MB RAM, 0.1 CPU, 1 GB · $0.00/month",
+      "project": "qa-20261016-a720-project",
+      "environment": "qa-20261016-a720-stage",
+      "public": false
+    },
+    "CreateDatabase": {
+      "at": "2026-10-16T12:58:30.314Z",
+      "request": {
+        "operationName": "CreateDatabase",
+        "variables": {
+          "name": "qa-20261016-a720-data",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "environmentId": "evm-db91uaqvofqc73c5lqvg",
+          "plan": "free",
+          "public": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateDatabase($name: String!, $databaseName: String, $databaseUser: String, $ownerId: String, $environmentId: String, $plan: String, $version: String, $diskSizeGB: Int, $public: Boolean) {\n  createDatabase(\n    name: $name\n    databaseName: $databaseName\n    databaseUser: $databaseUser\n    ownerId: $ownerId\n    environmentId: $environmentId\n    plan: $plan\n    version: $version\n    diskSizeGB: $diskSizeGB\n    public: $public\n  ) {\n    id\n    name\n    databaseName\n    databaseUser\n    plan\n    status\n    projectId\n    environmentId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createDatabase": {
+            "__typename": "Database",
+            "databaseName": "dpg_db91ut8v92mc73ag1f6g",
+            "databaseUser": "dpg_db91ut8v92mc73ag1f6g_user",
+            "environmentId": "evm-db91uaqvofqc73c5lqvg",
+            "id": "dpg-db91ut8v92mc73ag1f6g",
+            "name": "qa-20261016-a720-data",
+            "plan": "free",
+            "projectId": "prj-db91u48v92mc73ag1f60",
+            "status": "creating"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792155509289.8691,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.141,
+        "responseStart": 299.39,
+        "responseEnd": 300.026
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db91ut8v92mc73ag1f6g"
+    },
+    "PlacementRead": {
+      "at": "2026-10-16T12:59:27.260Z",
+      "request": {
+        "operationName": "QaA720Placement",
+        "query": "query QaA720Placement($project:String!,$id:String!){project(id:$project){id name databaseIds keyValueIds serviceIds} environments(projectId:$project){id name projectId databaseIds keyValueIds serviceIds} database(id:$id){id status version projectId environmentId plan public}}",
+        "variables": {
+          "project": "prj-db91u48v92mc73ag1f60",
+          "id": "dpg-db91ut8v92mc73ag1f6g"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "database": {
+            "environmentId": "evm-db91uaqvofqc73c5lqvg",
+            "id": "dpg-db91ut8v92mc73ag1f6g",
+            "plan": "free",
+            "projectId": "prj-db91u48v92mc73ag1f60",
+            "public": false,
+            "status": "creating",
+            "version": "18"
+          },
+          "environments": [
+            {
+              "databaseIds": ["dpg-db91ut8v92mc73ag1f6g"],
+              "id": "evm-db91uaqvofqc73c5lqvg",
+              "keyValueIds": [],
+              "name": "qa-20261016-a720-stage",
+              "projectId": "prj-db91u48v92mc73ag1f60",
+              "serviceIds": []
+            },
+            {
+              "databaseIds": [],
+              "id": "evm-db91uf2vofqc73c5lr0g",
+              "keyValueIds": [],
+              "name": "qa-20261016-a720-prod",
+              "projectId": "prj-db91u48v92mc73ag1f60",
+              "serviceIds": []
+            }
+          ],
+          "project": {
+            "databaseIds": ["dpg-db91ut8v92mc73ag1f6g"],
+            "id": "prj-db91u48v92mc73ag1f60",
+            "keyValueIds": [],
+            "name": "qa-20261016-a720-project",
+            "serviceIds": []
+          }
+        }
+      },
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261016-a720-project\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - paragraph: Project\n  - heading \"qa-20261016-a720-project\" [level=1]\n  - button \"Edit\"\n  - heading \"Environments\" [level=2]\n  - combobox \"Selected environment\": qa-20261016-a720-stage\n  - link \"New Service\":\n    - /url: /services/new?projectId=prj-db91u48v92mc73ag1f60&environmentId=evm-db91uaqvofqc73c5lqvg\n  - button \"New Environment\"\n  - text: qa-20261016-a720-stage 1 resource\n  - button \"Manage resources\"\n  - button \"More actions\"\n  - button \"All (1)\"\n  - button \"Services (0)\"\n  - button \"Databases (1)\"\n  - button \"Key Values (0)\"\n  - button \"Env Groups (0)\"\n  - searchbox \"Search resources in qa-20261016-a720-stage\"\n  - text: \"Selected: 0\"\n  - combobox \"Move selected resources to environment\": Choose environment\n  - button \"Move\" [disabled]\n  - table:\n    - rowgroup:\n      - row \"Select all visible resources Name Status Runtime Region Updated Actions\":\n        - columnheader \"Select all visible resources\":\n          - checkbox \"Select all visible resources\"\n        - columnheader \"Name\"\n        - columnheader \"Status\"\n        - columnheader \"Runtime\"\n        - columnheader \"Region\"\n        - columnheader \"Updated\"\n        - columnheader \"Actions\"\n    - rowgroup:\n      - row \"Select qa-20261016-a720-data qa-20261016-a720-data Database Creating PostgreSQL 18 fsn1 now Open actions menu\":\n        - cell \"Select qa-20261016-a720-data\":\n          - checkbox \"Select qa-20261016-a720-data\"\n        - cell \"qa-20261016-a720-data Database\":\n          - link \"qa-20261016-a720-data\":\n            - /url: /databases/dpg-db91ut8v92mc73ag1f6g\n          - text: Database\n        - cell \"Creating\"\n        - cell \"PostgreSQL 18\"\n        - cell \"fsn1\"\n        - cell \"now\":\n          - time: now\n        - cell \"Open actions menu\":\n          - button \"Open actions menu\""
+    },
+    "DatabaseProvisioning": {
+      "rows": [
+        {
+          "at": "2026-10-16T12:59:38.806Z",
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "environmentId": "evm-db91uaqvofqc73c5lqvg",
+                "id": "dpg-db91ut8v92mc73ag1f6g",
+                "plan": "free",
+                "projectId": "prj-db91u48v92mc73ag1f60",
+                "public": false,
+                "status": "available",
+                "version": "18"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "SeedData": {
+      "at": "2026-10-16T13:00:00.309Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db91ut8v92mc73ag1f6g",
+          "sql": "CREATE TABLE qa_a720_placement AS SELECT * FROM (VALUES (1, 'snow 雪'::text, 12.3400::numeric(12,4), '{\"state\":\"one\",\"items\":[1,null,\"雪\"]}'::jsonb), (2, NULL::text, NULL::numeric(12,4), NULL::jsonb), (3, ''::text, -0.1250::numeric(12,4), '[]'::jsonb)) AS seed(id,label,amount,doc);",
+          "allowWrites": true
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": [],
+            "rowCount": 3,
+            "rows": [],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792155592219.6719,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.152,
+        "responseStart": 7377.839,
+        "responseEnd": 7378.444
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db91ut8v92mc73ag1f6g#sql-console"
+    },
+    "InitialRows": {
+      "at": "2026-10-16T13:00:02.088Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db91ut8v92mc73ag1f6g",
+          "sql": "SELECT current_setting('server_version_num') AS version_num, id, label, amount::text AS amount, doc::text AS doc FROM qa_a720_placement ORDER BY id;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["version_num", "id", "label", "amount", "doc"],
+            "rowCount": 3,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "180004",
+                  "1",
+                  "snow 雪",
+                  "12.3400",
+                  "{\"items\": [1, null, \"雪\"], \"state\": \"one\"}"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["180004", "2", null, null, null]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["180004", "3", "", "-0.1250", "[]"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792155601054.139,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.144,
+        "responseStart": 320.748,
+        "responseEnd": 321.279
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db91ut8v92mc73ag1f6g#sql-console"
+    },
+    "MoveStageToProd": {
+      "at": "2026-10-16T13:00:49.937Z",
+      "request": {
+        "operationName": "SetEnvironmentDatabases",
+        "variables": {
+          "id": "evm-db91uf2vofqc73c5lr0g",
+          "databaseIds": ["dpg-db91ut8v92mc73ag1f6g"]
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetEnvironmentDatabases($id: String!, $databaseIds: [String!]!) {\n  setEnvironmentDatabases(id: $id, databaseIds: $databaseIds) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setEnvironmentDatabases": {
+            "__typename": "Environment",
+            "createdAt": "2026-10-16T12:57:32Z",
+            "databaseIds": ["dpg-db91ut8v92mc73ag1f6g"],
+            "envGroupIds": [],
+            "id": "evm-db91uf2vofqc73c5lr0g",
+            "ipAllowList": ["0.0.0.0/0", "::/0"],
+            "ipAllowListEntries": [
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "0.0.0.0/0",
+                "description": "Allow all (default)"
+              },
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "::/0",
+                "description": "Allow all (default)"
+              }
+            ],
+            "ipAllowListProxiedDomains": [],
+            "keyValueIds": [],
+            "name": "qa-20261016-a720-prod",
+            "networkIsolationEnabled": false,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "projectId": "prj-db91u48v92mc73ag1f60",
+            "protectedStatus": "unprotected",
+            "serviceIds": []
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792155636617.126,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.137,
+        "responseStart": 12611.521,
+        "responseEnd": 12612.348
+      },
+      "url": "https://dashboard.bex.co/project/prj-db91u48v92mc73ag1f60?env=evm-db91uaqvofqc73c5lqvg"
+    },
+    "MoveSourceResult": {
+      "at": "2026-10-16T13:01:07.722Z",
+      "request": {
+        "operationName": "QaA720AfterMove",
+        "query": "query QaA720AfterMove($project:String!,$id:String!){project(id:$project){id databaseIds} environments(projectId:$project){id name databaseIds} database(id:$id){id status projectId environmentId}}",
+        "variables": {
+          "project": "prj-db91u48v92mc73ag1f60",
+          "id": "dpg-db91ut8v92mc73ag1f6g"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "database": {
+            "environmentId": "evm-db91uf2vofqc73c5lr0g",
+            "id": "dpg-db91ut8v92mc73ag1f6g",
+            "projectId": "prj-db91u48v92mc73ag1f60",
+            "status": "available"
+          },
+          "environments": [
+            {
+              "databaseIds": [],
+              "id": "evm-db91uaqvofqc73c5lqvg",
+              "name": "qa-20261016-a720-stage"
+            },
+            {
+              "databaseIds": ["dpg-db91ut8v92mc73ag1f6g"],
+              "id": "evm-db91uf2vofqc73c5lr0g",
+              "name": "qa-20261016-a720-prod"
+            }
+          ],
+          "project": {
+            "databaseIds": ["dpg-db91ut8v92mc73ag1f6g"],
+            "id": "prj-db91u48v92mc73ag1f60"
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/project/prj-db91u48v92mc73ag1f60?env=evm-db91uaqvofqc73c5lqvg",
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261016-a720-project\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - paragraph: Project\n  - heading \"qa-20261016-a720-project\" [level=1]\n  - button \"Edit\"\n  - heading \"Environments\" [level=2]\n  - combobox \"Selected environment\": qa-20261016-a720-stage\n  - link \"New Service\":\n    - /url: /services/new?projectId=prj-db91u48v92mc73ag1f60&environmentId=evm-db91uaqvofqc73c5lqvg\n  - button \"New Environment\"\n  - text: qa-20261016-a720-stage 1 resource\n  - button \"Manage resources\"\n  - button \"More actions\"\n  - button \"All (1)\"\n  - button \"Services (0)\"\n  - button \"Databases (1)\"\n  - button \"Key Values (0)\"\n  - button \"Env Groups (0)\"\n  - searchbox \"Search resources in qa-20261016-a720-stage\"\n  - text: \"Selected: 0\"\n  - combobox \"Move selected resources to environment\": qa-20261016-a720-prod\n  - button \"Move\" [disabled]\n  - table:\n    - rowgroup:\n      - row \"Select all visible resources Name Status Runtime Region Updated Actions\":\n        - columnheader \"Select all visible resources\":\n          - checkbox \"Select all visible resources\"\n        - columnheader \"Name\"\n        - columnheader \"Status\"\n        - columnheader \"Runtime\"\n        - columnheader \"Region\"\n        - columnheader \"Updated\"\n        - columnheader \"Actions\"\n    - rowgroup:\n      - row \"Select qa-20261016-a720-data qa-20261016-a720-data Database Available PostgreSQL 18 fsn1 now Open actions menu\":\n        - cell \"Select qa-20261016-a720-data\":\n          - checkbox \"Select qa-20261016-a720-data\"\n        - cell \"qa-20261016-a720-data Database\":\n          - link \"qa-20261016-a720-data\":\n            - /url: /databases/dpg-db91ut8v92mc73ag1f6g\n          - text: Database\n        - cell \"Available\"\n        - cell \"PostgreSQL 18\"\n        - cell \"fsn1\"\n        - cell \"now\":\n          - time: now\n        - cell \"Open actions menu\":\n          - button \"Open actions menu\""
+    },
+    "TargetObserved": {
+      "at": "2026-10-16T13:01:58.025Z",
+      "url": "https://dashboard.bex.co/project/prj-db91u48v92mc73ag1f60?env=evm-db91uf2vofqc73c5lr0g",
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261016-a720-project\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - paragraph: Project\n  - heading \"qa-20261016-a720-project\" [level=1]\n  - button \"Edit\"\n  - heading \"Environments\" [level=2]\n  - combobox \"Selected environment\": qa-20261016-a720-prod\n  - link \"New Service\":\n    - /url: /services/new?projectId=prj-db91u48v92mc73ag1f60&environmentId=evm-db91uf2vofqc73c5lr0g\n  - button \"New Environment\"\n  - text: qa-20261016-a720-prod 1 resource\n  - button \"Manage resources\"\n  - button \"More actions\"\n  - button \"All (1)\"\n  - button \"Services (0)\"\n  - button \"Databases (1)\"\n  - button \"Key Values (0)\"\n  - button \"Env Groups (0)\"\n  - searchbox \"Search resources in qa-20261016-a720-prod\"\n  - text: \"Selected: 0\"\n  - combobox \"Move selected resources to environment\": Choose environment\n  - button \"Move\" [disabled]\n  - table:\n    - rowgroup:\n      - row \"Select all visible resources Name Status Runtime Region Updated Actions\":\n        - columnheader \"Select all visible resources\":\n          - checkbox \"Select all visible resources\"\n        - columnheader \"Name\"\n        - columnheader \"Status\"\n        - columnheader \"Runtime\"\n        - columnheader \"Region\"\n        - columnheader \"Updated\"\n        - columnheader \"Actions\"\n    - rowgroup:\n      - row \"Select qa-20261016-a720-data qa-20261016-a720-data Database Available PostgreSQL 18 fsn1 1m Open actions menu\":\n        - cell \"Select qa-20261016-a720-data\":\n          - checkbox \"Select qa-20261016-a720-data\"\n        - cell \"qa-20261016-a720-data Database\":\n          - link \"qa-20261016-a720-data\":\n            - /url: /databases/dpg-db91ut8v92mc73ag1f6g\n          - text: Database\n        - cell \"Available\"\n        - cell \"PostgreSQL 18\"\n        - cell \"fsn1\"\n        - cell \"1m\":\n          - time: 1m\n        - cell \"Open actions menu\":\n          - button \"Open actions menu\"",
+      "consoleErrors": []
+    },
+    "FreshTarget": {
+      "at": "2026-10-16T13:02:14.519Z",
+      "url": "https://dashboard.bex.co/project/prj-db91u48v92mc73ag1f60?env=evm-db91uf2vofqc73c5lr0g",
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261016-a720-project\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - paragraph: Project\n  - heading \"qa-20261016-a720-project\" [level=1]\n  - button \"Edit\"\n  - heading \"Environments\" [level=2]\n  - combobox \"Selected environment\": qa-20261016-a720-prod\n  - link \"New Service\":\n    - /url: /services/new?projectId=prj-db91u48v92mc73ag1f60&environmentId=evm-db91uf2vofqc73c5lr0g\n  - button \"New Environment\"\n  - text: qa-20261016-a720-prod 1 resource\n  - button \"Manage resources\"\n  - button \"More actions\"\n  - button \"All (1)\"\n  - button \"Services (0)\"\n  - button \"Databases (1)\"\n  - button \"Key Values (0)\"\n  - button \"Env Groups (0)\"\n  - searchbox \"Search resources in qa-20261016-a720-prod\"\n  - text: \"Selected: 0\"\n  - combobox \"Move selected resources to environment\": Choose environment\n  - button \"Move\" [disabled]\n  - table:\n    - rowgroup:\n      - row \"Select all visible resources Name Status Runtime Region Updated Actions\":\n        - columnheader \"Select all visible resources\":\n          - checkbox \"Select all visible resources\"\n        - columnheader \"Name\"\n        - columnheader \"Status\"\n        - columnheader \"Runtime\"\n        - columnheader \"Region\"\n        - columnheader \"Updated\"\n        - columnheader \"Actions\"\n    - rowgroup:\n      - row \"Select qa-20261016-a720-data qa-20261016-a720-data Database Available PostgreSQL 18 fsn1 1m Open actions menu\":\n        - cell \"Select qa-20261016-a720-data\":\n          - checkbox \"Select qa-20261016-a720-data\"\n        - cell \"qa-20261016-a720-data Database\":\n          - link \"qa-20261016-a720-data\":\n            - /url: /databases/dpg-db91ut8v92mc73ag1f6g\n          - text: Database\n        - cell \"Available\"\n        - cell \"PostgreSQL 18\"\n        - cell \"fsn1\"\n        - cell \"1m\":\n          - time: 1m\n        - cell \"Open actions menu\":\n          - button \"Open actions menu\""
+    },
+    "FreshMoveBackTarget": {
+      "url": "https://dashboard.bex.co/project/prj-db91u48v92mc73ag1f60?env=evm-db91uf2vofqc73c5lr0g",
+      "target": "qa-20261016-a720-stage"
+    },
+    "MoveProdToStage": {
+      "at": "2026-10-16T13:02:44.734Z",
+      "request": {
+        "operationName": "SetEnvironmentDatabases",
+        "variables": {
+          "id": "evm-db91uaqvofqc73c5lqvg",
+          "databaseIds": ["dpg-db91ut8v92mc73ag1f6g"]
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetEnvironmentDatabases($id: String!, $databaseIds: [String!]!) {\n  setEnvironmentDatabases(id: $id, databaseIds: $databaseIds) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setEnvironmentDatabases": {
+            "__typename": "Environment",
+            "createdAt": "2026-10-16T12:57:15Z",
+            "databaseIds": ["dpg-db91ut8v92mc73ag1f6g"],
+            "envGroupIds": [],
+            "id": "evm-db91uaqvofqc73c5lqvg",
+            "ipAllowList": ["0.0.0.0/0", "::/0"],
+            "ipAllowListEntries": [
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "0.0.0.0/0",
+                "description": "Allow all (default)"
+              },
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "::/0",
+                "description": "Allow all (default)"
+              }
+            ],
+            "ipAllowListProxiedDomains": [],
+            "keyValueIds": [],
+            "name": "qa-20261016-a720-stage",
+            "networkIsolationEnabled": false,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "projectId": "prj-db91u48v92mc73ag1f60",
+            "protectedStatus": "unprotected",
+            "serviceIds": []
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792155756281.61,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.131,
+        "responseStart": 7747.403,
+        "responseEnd": 7748.077
+      },
+      "url": "https://dashboard.bex.co/project/prj-db91u48v92mc73ag1f60?env=evm-db91uf2vofqc73c5lr0g"
+    },
+    "MoveBackTimeline": {
+      "samples": [
+        {
+          "at": "2026-10-16T13:03:02.684Z",
+          "request": {
+            "operationName": "QaA720AfterMoveFast",
+            "query": "query QaA720AfterMoveFast($id:String!){database(id:$id){id status environmentId projectId}}",
+            "variables": {
+              "id": "dpg-db91ut8v92mc73ag1f6g"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "environmentId": "evm-db91uaqvofqc73c5lqvg",
+                "id": "dpg-db91ut8v92mc73ag1f6g",
+                "projectId": "prj-db91u48v92mc73ag1f60",
+                "status": "available"
+              }
+            }
+          },
+          "ui": {
+            "url": "https://dashboard.bex.co/project/prj-db91u48v92mc73ag1f60?env=evm-db91uf2vofqc73c5lr0g",
+            "selected": ["Selected: 0"],
+            "ownRows": 1,
+            "countLabels": ["All (1)", "Databases (1)"],
+            "moveDisabled": true
+          }
+        },
+        {
+          "at": "2026-10-16T13:03:04.931Z",
+          "request": {
+            "operationName": "QaA720AfterMoveFast",
+            "query": "query QaA720AfterMoveFast($id:String!){database(id:$id){id status environmentId projectId}}",
+            "variables": {
+              "id": "dpg-db91ut8v92mc73ag1f6g"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "environmentId": "evm-db91uaqvofqc73c5lqvg",
+                "id": "dpg-db91ut8v92mc73ag1f6g",
+                "projectId": "prj-db91u48v92mc73ag1f60",
+                "status": "available"
+              }
+            }
+          },
+          "ui": {
+            "url": "https://dashboard.bex.co/project/prj-db91u48v92mc73ag1f60?env=evm-db91uf2vofqc73c5lr0g",
+            "selected": ["Selected: 0"],
+            "ownRows": 1,
+            "countLabels": ["All (1)", "Databases (1)"],
+            "moveDisabled": true
+          }
+        },
+        {
+          "at": "2026-10-16T13:03:07.173Z",
+          "request": {
+            "operationName": "QaA720AfterMoveFast",
+            "query": "query QaA720AfterMoveFast($id:String!){database(id:$id){id status environmentId projectId}}",
+            "variables": {
+              "id": "dpg-db91ut8v92mc73ag1f6g"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "environmentId": "evm-db91uaqvofqc73c5lqvg",
+                "id": "dpg-db91ut8v92mc73ag1f6g",
+                "projectId": "prj-db91u48v92mc73ag1f60",
+                "status": "available"
+              }
+            }
+          },
+          "ui": {
+            "url": "https://dashboard.bex.co/project/prj-db91u48v92mc73ag1f60?env=evm-db91uf2vofqc73c5lr0g",
+            "selected": ["Selected: 0"],
+            "ownRows": 1,
+            "countLabels": ["All (1)", "Databases (1)"],
+            "moveDisabled": true
+          }
+        },
+        {
+          "at": "2026-10-16T13:03:09.426Z",
+          "request": {
+            "operationName": "QaA720AfterMoveFast",
+            "query": "query QaA720AfterMoveFast($id:String!){database(id:$id){id status environmentId projectId}}",
+            "variables": {
+              "id": "dpg-db91ut8v92mc73ag1f6g"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "environmentId": "evm-db91uaqvofqc73c5lqvg",
+                "id": "dpg-db91ut8v92mc73ag1f6g",
+                "projectId": "prj-db91u48v92mc73ag1f60",
+                "status": "available"
+              }
+            }
+          },
+          "ui": {
+            "url": "https://dashboard.bex.co/project/prj-db91u48v92mc73ag1f60?env=evm-db91uf2vofqc73c5lr0g",
+            "selected": ["Selected: 0"],
+            "ownRows": 1,
+            "countLabels": ["All (1)", "Databases (1)"],
+            "moveDisabled": true
+          }
+        },
+        {
+          "at": "2026-10-16T13:03:11.683Z",
+          "request": {
+            "operationName": "QaA720AfterMoveFast",
+            "query": "query QaA720AfterMoveFast($id:String!){database(id:$id){id status environmentId projectId}}",
+            "variables": {
+              "id": "dpg-db91ut8v92mc73ag1f6g"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "environmentId": "evm-db91uaqvofqc73c5lqvg",
+                "id": "dpg-db91ut8v92mc73ag1f6g",
+                "projectId": "prj-db91u48v92mc73ag1f60",
+                "status": "available"
+              }
+            }
+          },
+          "ui": {
+            "url": "https://dashboard.bex.co/project/prj-db91u48v92mc73ag1f60?env=evm-db91uf2vofqc73c5lr0g",
+            "selected": ["Selected: 0"],
+            "ownRows": 1,
+            "countLabels": ["All (1)", "Databases (1)"],
+            "moveDisabled": true
+          }
+        },
+        {
+          "at": "2026-10-16T13:03:13.917Z",
+          "request": {
+            "operationName": "QaA720AfterMoveFast",
+            "query": "query QaA720AfterMoveFast($id:String!){database(id:$id){id status environmentId projectId}}",
+            "variables": {
+              "id": "dpg-db91ut8v92mc73ag1f6g"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "environmentId": "evm-db91uaqvofqc73c5lqvg",
+                "id": "dpg-db91ut8v92mc73ag1f6g",
+                "projectId": "prj-db91u48v92mc73ag1f60",
+                "status": "available"
+              }
+            }
+          },
+          "ui": {
+            "url": "https://dashboard.bex.co/project/prj-db91u48v92mc73ag1f60?env=evm-db91uf2vofqc73c5lr0g",
+            "selected": ["Selected: 0"],
+            "ownRows": 1,
+            "countLabels": ["All (1)", "Databases (1)"],
+            "moveDisabled": true
+          }
+        },
+        {
+          "at": "2026-10-16T13:03:16.146Z",
+          "request": {
+            "operationName": "QaA720AfterMoveFast",
+            "query": "query QaA720AfterMoveFast($id:String!){database(id:$id){id status environmentId projectId}}",
+            "variables": {
+              "id": "dpg-db91ut8v92mc73ag1f6g"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "environmentId": "evm-db91uaqvofqc73c5lqvg",
+                "id": "dpg-db91ut8v92mc73ag1f6g",
+                "projectId": "prj-db91u48v92mc73ag1f60",
+                "status": "available"
+              }
+            }
+          },
+          "ui": {
+            "url": "https://dashboard.bex.co/project/prj-db91u48v92mc73ag1f60?env=evm-db91uf2vofqc73c5lr0g",
+            "selected": ["Selected: 0"],
+            "ownRows": 1,
+            "countLabels": ["All (1)", "Databases (1)"],
+            "moveDisabled": true
+          }
+        },
+        {
+          "at": "2026-10-16T13:03:18.393Z",
+          "request": {
+            "operationName": "QaA720AfterMoveFast",
+            "query": "query QaA720AfterMoveFast($id:String!){database(id:$id){id status environmentId projectId}}",
+            "variables": {
+              "id": "dpg-db91ut8v92mc73ag1f6g"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "environmentId": "evm-db91uaqvofqc73c5lqvg",
+                "id": "dpg-db91ut8v92mc73ag1f6g",
+                "projectId": "prj-db91u48v92mc73ag1f60",
+                "status": "available"
+              }
+            }
+          },
+          "ui": {
+            "url": "https://dashboard.bex.co/project/prj-db91u48v92mc73ag1f60?env=evm-db91uf2vofqc73c5lr0g",
+            "selected": ["Selected: 0"],
+            "ownRows": 1,
+            "countLabels": ["All (1)", "Databases (1)"],
+            "moveDisabled": true
+          }
+        },
+        {
+          "at": "2026-10-16T13:03:20.623Z",
+          "request": {
+            "operationName": "QaA720AfterMoveFast",
+            "query": "query QaA720AfterMoveFast($id:String!){database(id:$id){id status environmentId projectId}}",
+            "variables": {
+              "id": "dpg-db91ut8v92mc73ag1f6g"
+            }
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "database": {
+                "environmentId": "evm-db91uaqvofqc73c5lqvg",
+                "id": "dpg-db91ut8v92mc73ag1f6g",
+                "projectId": "prj-db91u48v92mc73ag1f60",
+                "status": "available"
+              }
+            }
+          },
+          "ui": {
+            "url": "https://dashboard.bex.co/project/prj-db91u48v92mc73ag1f60?env=evm-db91uf2vofqc73c5lr0g",
+            "selected": ["Selected: 0"],
+            "ownRows": 1,
+            "countLabels": ["All (1)", "Databases (1)"],
+            "moveDisabled": true
+          }
+        }
+      ]
+    },
+    "MoveWatchers": {
+      "at": "2026-10-16T13:03:48.300Z",
+      "records": [
+        {
+          "at": "2026-10-16T12:59:52.219Z",
+          "request": {
+            "operationName": "Environments",
+            "variables": {
+              "projectId": "prj-db91u48v92mc73ag1f60"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Environments($projectId: String!) {\n  environments(projectId: $projectId) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+          },
+          "response": {
+            "data": {
+              "environments": [
+                {
+                  "__typename": "Environment",
+                  "createdAt": "2026-10-16T12:57:15Z",
+                  "databaseIds": ["dpg-db91ut8v92mc73ag1f6g"],
+                  "envGroupIds": [],
+                  "id": "evm-db91uaqvofqc73c5lqvg",
+                  "ipAllowList": ["0.0.0.0/0", "::/0"],
+                  "ipAllowListEntries": [
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "0.0.0.0/0",
+                      "description": "Allow all (default)"
+                    },
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "::/0",
+                      "description": "Allow all (default)"
+                    }
+                  ],
+                  "ipAllowListProxiedDomains": [],
+                  "keyValueIds": [],
+                  "name": "qa-20261016-a720-stage",
+                  "networkIsolationEnabled": false,
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "projectId": "prj-db91u48v92mc73ag1f60",
+                  "protectedStatus": "unprotected",
+                  "serviceIds": []
+                },
+                {
+                  "__typename": "Environment",
+                  "createdAt": "2026-10-16T12:57:32Z",
+                  "databaseIds": [],
+                  "envGroupIds": [],
+                  "id": "evm-db91uf2vofqc73c5lr0g",
+                  "ipAllowList": ["0.0.0.0/0", "::/0"],
+                  "ipAllowListEntries": [
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "0.0.0.0/0",
+                      "description": "Allow all (default)"
+                    },
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "::/0",
+                      "description": "Allow all (default)"
+                    }
+                  ],
+                  "ipAllowListProxiedDomains": [],
+                  "keyValueIds": [],
+                  "name": "qa-20261016-a720-prod",
+                  "networkIsolationEnabled": false,
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "projectId": "prj-db91u48v92mc73ag1f60",
+                  "protectedStatus": "unprotected",
+                  "serviceIds": []
+                }
+              ]
+            }
+          },
+          "status": 200,
+          "timing": {
+            "startTime": 1792155592219.6719,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.152,
+            "responseStart": 7377.839,
+            "responseEnd": 7378.444
+          }
+        },
+        {
+          "at": "2026-10-16T13:00:04.348Z",
+          "status": 200,
+          "bodyUnavailable": true
+        },
+        {
+          "at": "2026-10-16T13:00:34.367Z",
+          "status": 200,
+          "bodyUnavailable": true
+        },
+        {
+          "at": "2026-10-16T13:01:24.732Z",
+          "status": 200,
+          "bodyUnavailable": true
+        },
+        {
+          "at": "2026-10-16T13:01:59.642Z",
+          "request": {
+            "operationName": "Environments",
+            "variables": {
+              "projectId": "prj-db91u48v92mc73ag1f60"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Environments($projectId: String!) {\n  environments(projectId: $projectId) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+          },
+          "response": {
+            "data": {
+              "environments": [
+                {
+                  "__typename": "Environment",
+                  "createdAt": "2026-10-16T12:57:15Z",
+                  "databaseIds": [],
+                  "envGroupIds": [],
+                  "id": "evm-db91uaqvofqc73c5lqvg",
+                  "ipAllowList": ["0.0.0.0/0", "::/0"],
+                  "ipAllowListEntries": [
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "0.0.0.0/0",
+                      "description": "Allow all (default)"
+                    },
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "::/0",
+                      "description": "Allow all (default)"
+                    }
+                  ],
+                  "ipAllowListProxiedDomains": [],
+                  "keyValueIds": [],
+                  "name": "qa-20261016-a720-stage",
+                  "networkIsolationEnabled": false,
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "projectId": "prj-db91u48v92mc73ag1f60",
+                  "protectedStatus": "unprotected",
+                  "serviceIds": []
+                },
+                {
+                  "__typename": "Environment",
+                  "createdAt": "2026-10-16T12:57:32Z",
+                  "databaseIds": ["dpg-db91ut8v92mc73ag1f6g"],
+                  "envGroupIds": [],
+                  "id": "evm-db91uf2vofqc73c5lr0g",
+                  "ipAllowList": ["0.0.0.0/0", "::/0"],
+                  "ipAllowListEntries": [
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "0.0.0.0/0",
+                      "description": "Allow all (default)"
+                    },
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "::/0",
+                      "description": "Allow all (default)"
+                    }
+                  ],
+                  "ipAllowListProxiedDomains": [],
+                  "keyValueIds": [],
+                  "name": "qa-20261016-a720-prod",
+                  "networkIsolationEnabled": false,
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "projectId": "prj-db91u48v92mc73ag1f60",
+                  "protectedStatus": "unprotected",
+                  "serviceIds": []
+                }
+              ]
+            }
+          },
+          "status": 200,
+          "timing": {
+            "startTime": 1792155719642.325,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.096,
+            "responseStart": 14845.527,
+            "responseEnd": 14846.365
+          }
+        },
+        {
+          "at": "2026-10-16T13:02:29.650Z",
+          "request": {
+            "operationName": "Environments",
+            "variables": {
+              "projectId": "prj-db91u48v92mc73ag1f60"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Environments($projectId: String!) {\n  environments(projectId: $projectId) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+          },
+          "response": {
+            "data": {
+              "environments": [
+                {
+                  "__typename": "Environment",
+                  "createdAt": "2026-10-16T12:57:15Z",
+                  "databaseIds": [],
+                  "envGroupIds": [],
+                  "id": "evm-db91uaqvofqc73c5lqvg",
+                  "ipAllowList": ["0.0.0.0/0", "::/0"],
+                  "ipAllowListEntries": [
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "0.0.0.0/0",
+                      "description": "Allow all (default)"
+                    },
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "::/0",
+                      "description": "Allow all (default)"
+                    }
+                  ],
+                  "ipAllowListProxiedDomains": [],
+                  "keyValueIds": [],
+                  "name": "qa-20261016-a720-stage",
+                  "networkIsolationEnabled": false,
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "projectId": "prj-db91u48v92mc73ag1f60",
+                  "protectedStatus": "unprotected",
+                  "serviceIds": []
+                },
+                {
+                  "__typename": "Environment",
+                  "createdAt": "2026-10-16T12:57:32Z",
+                  "databaseIds": ["dpg-db91ut8v92mc73ag1f6g"],
+                  "envGroupIds": [],
+                  "id": "evm-db91uf2vofqc73c5lr0g",
+                  "ipAllowList": ["0.0.0.0/0", "::/0"],
+                  "ipAllowListEntries": [
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "0.0.0.0/0",
+                      "description": "Allow all (default)"
+                    },
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "::/0",
+                      "description": "Allow all (default)"
+                    }
+                  ],
+                  "ipAllowListProxiedDomains": [],
+                  "keyValueIds": [],
+                  "name": "qa-20261016-a720-prod",
+                  "networkIsolationEnabled": false,
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "projectId": "prj-db91u48v92mc73ag1f60",
+                  "protectedStatus": "unprotected",
+                  "serviceIds": []
+                }
+              ]
+            }
+          },
+          "status": 200,
+          "timing": {
+            "startTime": 1792155749650.978,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.226,
+            "responseStart": 17366.099,
+            "responseEnd": 17367.04
+          }
+        },
+        {
+          "at": "2026-10-16T13:03:17.047Z",
+          "request": {
+            "operationName": "Environments",
+            "variables": {
+              "projectId": "prj-db91u48v92mc73ag1f60"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Environments($projectId: String!) {\n  environments(projectId: $projectId) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+          },
+          "response": {
+            "data": {
+              "environments": [
+                {
+                  "__typename": "Environment",
+                  "createdAt": "2026-10-16T12:57:15Z",
+                  "databaseIds": ["dpg-db91ut8v92mc73ag1f6g"],
+                  "envGroupIds": [],
+                  "id": "evm-db91uaqvofqc73c5lqvg",
+                  "ipAllowList": ["0.0.0.0/0", "::/0"],
+                  "ipAllowListEntries": [
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "0.0.0.0/0",
+                      "description": "Allow all (default)"
+                    },
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "::/0",
+                      "description": "Allow all (default)"
+                    }
+                  ],
+                  "ipAllowListProxiedDomains": [],
+                  "keyValueIds": [],
+                  "name": "qa-20261016-a720-stage",
+                  "networkIsolationEnabled": false,
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "projectId": "prj-db91u48v92mc73ag1f60",
+                  "protectedStatus": "unprotected",
+                  "serviceIds": []
+                },
+                {
+                  "__typename": "Environment",
+                  "createdAt": "2026-10-16T12:57:32Z",
+                  "databaseIds": [],
+                  "envGroupIds": [],
+                  "id": "evm-db91uf2vofqc73c5lr0g",
+                  "ipAllowList": ["0.0.0.0/0", "::/0"],
+                  "ipAllowListEntries": [
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "0.0.0.0/0",
+                      "description": "Allow all (default)"
+                    },
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "::/0",
+                      "description": "Allow all (default)"
+                    }
+                  ],
+                  "ipAllowListProxiedDomains": [],
+                  "keyValueIds": [],
+                  "name": "qa-20261016-a720-prod",
+                  "networkIsolationEnabled": false,
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "projectId": "prj-db91u48v92mc73ag1f60",
+                  "protectedStatus": "unprotected",
+                  "serviceIds": []
+                }
+              ]
+            }
+          },
+          "status": 200,
+          "timing": {
+            "startTime": 1792155797047.086,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.37,
+            "responseStart": 21170.18,
+            "responseEnd": 21171.216
+          }
+        }
+      ],
+      "main": "- main:\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261016-a720-project\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - paragraph: Project\n  - heading \"qa-20261016-a720-project\" [level=1]\n  - button \"Edit\"\n  - heading \"Environments\" [level=2]\n  - combobox \"Selected environment\": qa-20261016-a720-prod\n  - link \"New Service\":\n    - /url: /services/new?projectId=prj-db91u48v92mc73ag1f60&environmentId=evm-db91uf2vofqc73c5lr0g\n  - button \"New Environment\"\n  - text: qa-20261016-a720-prod 0 resources\n  - button \"Manage resources\"\n  - button \"More actions\"\n  - button \"All (0)\"\n  - button \"Services (0)\"\n  - button \"Databases (0)\"\n  - button \"Key Values (0)\"\n  - button \"Env Groups (0)\"\n  - searchbox \"Search resources in qa-20261016-a720-prod\"\n  - paragraph: No resources in this environment yet."
+    },
+    "FreshMobileMoveTarget": {
+      "at": "2026-10-16T13:04:39.538Z",
+      "width": 390,
+      "url": "https://dashboard.bex.co/project/prj-db91u48v92mc73ag1f60?env=evm-db91uaqvofqc73c5lqvg"
+    },
+    "MobileMoveToProd": {
+      "at": "2026-10-16T13:04:52.837Z",
+      "request": {
+        "operationName": "SetEnvironmentDatabases",
+        "variables": {
+          "id": "evm-db91uf2vofqc73c5lr0g",
+          "databaseIds": ["dpg-db91ut8v92mc73ag1f6g"]
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetEnvironmentDatabases($id: String!, $databaseIds: [String!]!) {\n  setEnvironmentDatabases(id: $id, databaseIds: $databaseIds) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setEnvironmentDatabases": {
+            "__typename": "Environment",
+            "createdAt": "2026-10-16T12:57:32Z",
+            "databaseIds": ["dpg-db91ut8v92mc73ag1f6g"],
+            "envGroupIds": [],
+            "id": "evm-db91uf2vofqc73c5lr0g",
+            "ipAllowList": ["0.0.0.0/0", "::/0"],
+            "ipAllowListEntries": [
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "0.0.0.0/0",
+                "description": "Allow all (default)"
+              },
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "::/0",
+                "description": "Allow all (default)"
+              }
+            ],
+            "ipAllowListProxiedDomains": [],
+            "keyValueIds": [],
+            "name": "qa-20261016-a720-prod",
+            "networkIsolationEnabled": false,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "projectId": "prj-db91u48v92mc73ag1f60",
+            "protectedStatus": "unprotected",
+            "serviceIds": []
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792155880275.606,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.133,
+        "responseStart": 11854.725,
+        "responseEnd": 11855.565
+      },
+      "url": "https://dashboard.bex.co/project/prj-db91u48v92mc73ag1f60?env=evm-db91uaqvofqc73c5lqvg"
+    },
+    "MobileMovePending": {
+      "at": "2026-10-16T13:04:59.278Z",
+      "status": 200,
+      "body": {
+        "data": {
+          "database": {
+            "environmentId": "evm-db91uf2vofqc73c5lr0g",
+            "id": "dpg-db91ut8v92mc73ag1f6g",
+            "projectId": "prj-db91u48v92mc73ag1f60",
+            "status": "available"
+          }
+        }
+      },
+      "url": "https://dashboard.bex.co/project/prj-db91u48v92mc73ag1f60?env=evm-db91uaqvofqc73c5lqvg",
+      "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261016-a720-project\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - paragraph: Project\n  - heading \"qa-20261016-a720-project\" [level=1]\n  - button \"Edit\"\n  - heading \"Environments\" [level=2]\n  - combobox \"Selected environment\": qa-20261016-a720-stage\n  - link \"New Service\":\n    - /url: /services/new?projectId=prj-db91u48v92mc73ag1f60&environmentId=evm-db91uaqvofqc73c5lqvg\n  - button \"New Environment\"\n  - text: qa-20261016-a720-stage 1 resource\n  - button \"Manage resources\"\n  - button \"More actions\"\n  - button \"All (1)\"\n  - button \"Services (0)\"\n  - button \"Databases (1)\"\n  - button \"Key Values (0)\"\n  - button \"Env Groups (0)\"\n  - searchbox \"Search resources in qa-20261016-a720-stage\"\n  - text: \"Selected: 1\"\n  - combobox \"Move selected resources to environment\" [disabled]: qa-20261016-a720-prod\n  - button \"Move\" [disabled]\n  - table:\n    - rowgroup:\n      - row \"Select all visible resources Name Status Actions\":\n        - columnheader \"Select all visible resources\":\n          - checkbox \"Select all visible resources\" [checked]\n        - columnheader \"Name\"\n        - columnheader \"Status\"\n        - columnheader \"Actions\"\n    - rowgroup:\n      - row \"Select qa-20261016-a720-data qa-20261016-a720-data Database Available Open actions menu\":\n        - cell \"Select qa-20261016-a720-data\":\n          - checkbox \"Select qa-20261016-a720-data\" [checked]\n        - cell \"qa-20261016-a720-data Database\":\n          - link \"qa-20261016-a720-data\":\n            - /url: /databases/dpg-db91ut8v92mc73ag1f6g\n          - text: Database\n        - cell \"Available\"\n        - cell \"Open actions menu\":\n          - button \"Open actions menu\""
+    },
+    "MobileMoveSettled": {
+      "frames": [
+        {
+          "at": "2026-10-16T13:05:11.040Z",
+          "ownRows": 0,
+          "selected": [],
+          "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261016-a720-project\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - paragraph: Project\n  - heading \"qa-20261016-a720-project\" [level=1]\n  - button \"Edit\"\n  - heading \"Environments\" [level=2]\n  - combobox \"Selected environment\": qa-20261016-a720-stage\n  - link \"New Service\":\n    - /url: /services/new?projectId=prj-db91u48v92mc73ag1f60&environmentId=evm-db91uaqvofqc73c5lqvg\n  - button \"New Environment\"\n  - text: qa-20261016-a720-stage 0 resources\n  - button \"Manage resources\"\n  - button \"More actions\"\n  - button \"All (0)\"\n  - button \"Services (0)\"\n  - button \"Databases (0)\"\n  - button \"Key Values (0)\"\n  - button \"Env Groups (0)\"\n  - searchbox \"Search resources in qa-20261016-a720-stage\"\n  - paragraph: No resources in this environment yet."
+        }
+      ]
+    },
+    "ManageProdDatabases": "- dialog \"Manage resources in \\\"qa-20261016-a720-prod\\\"\":\n  - heading \"Manage resources in \\\"qa-20261016-a720-prod\\\"\" [level=2]\n  - paragraph: Check the resources that belong to this environment. Assigning a resource also adds it to this project.\n  - tablist:\n    - tab \"Services\"\n    - tab \"Databases\" [selected]\n    - tab \"Key Value\"\n    - tab \"Env Groups\"\n  - tabpanel \"Databases\":\n    - checkbox \"beancount-forum-db Available\"\n    - text: beancount-forum-db Available\n    - checkbox \"tianpan-forum-db Available\"\n    - text: tianpan-forum-db Available\n    - checkbox \"blockeden-forum-db Available\"\n    - text: blockeden-forum-db Available\n    - checkbox \"qa-20261007-r16-owner-f208ab Available\"\n    - text: qa-20261007-r16-owner-f208ab Available\n    - checkbox \"qa-20261016-a720-data Available\" [checked]\n    - text: qa-20261016-a720-data Available\n    - button \"Cancel\"\n    - button \"Save\"\n  - button \"Close\"",
+    "ManageRemove": {
+      "at": "2026-10-16T13:05:57.135Z",
+      "request": {
+        "operationName": "SetEnvironmentDatabases",
+        "variables": {
+          "id": "evm-db91uf2vofqc73c5lr0g",
+          "databaseIds": []
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetEnvironmentDatabases($id: String!, $databaseIds: [String!]!) {\n  setEnvironmentDatabases(id: $id, databaseIds: $databaseIds) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setEnvironmentDatabases": {
+            "__typename": "Environment",
+            "createdAt": "2026-10-16T12:57:32Z",
+            "databaseIds": [],
+            "envGroupIds": [],
+            "id": "evm-db91uf2vofqc73c5lr0g",
+            "ipAllowList": ["0.0.0.0/0", "::/0"],
+            "ipAllowListEntries": [
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "0.0.0.0/0",
+                "description": "Allow all (default)"
+              },
+              {
+                "__typename": "IPAllowListEntry",
+                "cidrBlock": "::/0",
+                "description": "Allow all (default)"
+              }
+            ],
+            "ipAllowListProxiedDomains": [],
+            "keyValueIds": [],
+            "name": "qa-20261016-a720-prod",
+            "networkIsolationEnabled": false,
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "projectId": "prj-db91u48v92mc73ag1f60",
+            "protectedStatus": "unprotected",
+            "serviceIds": []
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792155947106.535,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.098,
+        "responseStart": 9316.88,
+        "responseEnd": 9317.411
+      },
+      "url": "https://dashboard.bex.co/project/prj-db91u48v92mc73ag1f60?env=evm-db91uf2vofqc73c5lr0g"
+    },
+    "ManageRemoveSettled": {
+      "at": "2026-10-16T13:06:00.147Z",
+      "url": "https://dashboard.bex.co/project/prj-db91u48v92mc73ag1f60?env=evm-db91uf2vofqc73c5lr0g",
+      "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261016-a720-project\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - paragraph: Project\n  - heading \"qa-20261016-a720-project\" [level=1]\n  - button \"Edit\"\n  - heading \"Environments\" [level=2]\n  - combobox \"Selected environment\": qa-20261016-a720-prod\n  - link \"New Service\":\n    - /url: /services/new?projectId=prj-db91u48v92mc73ag1f60&environmentId=evm-db91uf2vofqc73c5lr0g\n  - button \"New Environment\"\n  - text: qa-20261016-a720-prod 1 resource\n  - button \"Manage resources\"\n  - button \"More actions\"\n  - button \"All (1)\"\n  - button \"Services (0)\"\n  - button \"Databases (1)\"\n  - button \"Key Values (0)\"\n  - button \"Env Groups (0)\"\n  - searchbox \"Search resources in qa-20261016-a720-prod\"\n  - text: \"Selected: 0\"\n  - combobox \"Move selected resources to environment\": Choose environment\n  - button \"Move\" [disabled]\n  - table:\n    - rowgroup:\n      - row \"Select all visible resources Name Status Actions\":\n        - columnheader \"Select all visible resources\":\n          - checkbox \"Select all visible resources\"\n        - columnheader \"Name\"\n        - columnheader \"Status\"\n        - columnheader \"Actions\"\n    - rowgroup:\n      - row \"Select qa-20261016-a720-data qa-20261016-a720-data Database Available Open actions menu\":\n        - cell \"Select qa-20261016-a720-data\":\n          - checkbox \"Select qa-20261016-a720-data\"\n        - cell \"qa-20261016-a720-data Database\":\n          - link \"qa-20261016-a720-data\":\n            - /url: /databases/dpg-db91ut8v92mc73ag1f6g\n          - text: Database\n        - cell \"Available\"\n        - cell \"Open actions menu\":\n          - button \"Open actions menu\""
+    },
+    "ManageRemovalStale": {
+      "at": "2026-10-16T13:06:10.844Z",
+      "request": {
+        "operationName": "QaA720UnassignedControl",
+        "query": "query QaA720UnassignedControl($id:String!){database(id:$id){id status projectId environmentId}}",
+        "variables": {
+          "id": "dpg-db91ut8v92mc73ag1f6g"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "database": {
+            "environmentId": null,
+            "id": "dpg-db91ut8v92mc73ag1f6g",
+            "projectId": "prj-db91u48v92mc73ag1f60",
+            "status": "available"
+          }
+        }
+      },
+      "main": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261016-a720-project\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - paragraph: Project\n  - heading \"qa-20261016-a720-project\" [level=1]\n  - button \"Edit\"\n  - heading \"Environments\" [level=2]\n  - combobox \"Selected environment\": qa-20261016-a720-prod\n  - link \"New Service\":\n    - /url: /services/new?projectId=prj-db91u48v92mc73ag1f60&environmentId=evm-db91uf2vofqc73c5lr0g\n  - button \"New Environment\"\n  - text: qa-20261016-a720-prod 1 resource\n  - button \"Manage resources\"\n  - button \"More actions\"\n  - button \"All (1)\"\n  - button \"Services (0)\"\n  - button \"Databases (1)\"\n  - button \"Key Values (0)\"\n  - button \"Env Groups (0)\"\n  - searchbox \"Search resources in qa-20261016-a720-prod\"\n  - text: \"Selected: 0\"\n  - combobox \"Move selected resources to environment\": Choose environment\n  - button \"Move\" [disabled]\n  - table:\n    - rowgroup:\n      - row \"Select all visible resources Name Status Actions\":\n        - columnheader \"Select all visible resources\":\n          - checkbox \"Select all visible resources\"\n        - columnheader \"Name\"\n        - columnheader \"Status\"\n        - columnheader \"Actions\"\n    - rowgroup:\n      - row \"Select qa-20261016-a720-data qa-20261016-a720-data Database Available Open actions menu\":\n        - cell \"Select qa-20261016-a720-data\":\n          - checkbox \"Select qa-20261016-a720-data\"\n        - cell \"qa-20261016-a720-data Database\":\n          - link \"qa-20261016-a720-data\":\n            - /url: /databases/dpg-db91ut8v92mc73ag1f6g\n          - text: Database\n        - cell \"Available\"\n        - cell \"Open actions menu\":\n          - button \"Open actions menu\"",
+      "screenshot": "qa-a720-manage-stale-mobile.png"
+    },
+    "ControlWatchers": {
+      "at": "2026-10-16T13:06:36.657Z",
+      "records": [
+        {
+          "at": "2026-10-16T13:03:17.047Z",
+          "batchOperations": [
+            "Projects",
+            "Environments",
+            "EnvGroups",
+            "Services",
+            "Databases",
+            "KeyValues"
+          ],
+          "request": {
+            "operationName": "Environments",
+            "variables": {
+              "projectId": "prj-db91u48v92mc73ag1f60"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Environments($projectId: String!) {\n  environments(projectId: $projectId) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "environments": [
+                {
+                  "__typename": "Environment",
+                  "createdAt": "2026-10-16T12:57:15Z",
+                  "databaseIds": ["dpg-db91ut8v92mc73ag1f6g"],
+                  "envGroupIds": [],
+                  "id": "evm-db91uaqvofqc73c5lqvg",
+                  "ipAllowList": ["0.0.0.0/0", "::/0"],
+                  "ipAllowListEntries": [
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "0.0.0.0/0",
+                      "description": "Allow all (default)"
+                    },
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "::/0",
+                      "description": "Allow all (default)"
+                    }
+                  ],
+                  "ipAllowListProxiedDomains": [],
+                  "keyValueIds": [],
+                  "name": "qa-20261016-a720-stage",
+                  "networkIsolationEnabled": false,
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "projectId": "prj-db91u48v92mc73ag1f60",
+                  "protectedStatus": "unprotected",
+                  "serviceIds": []
+                },
+                {
+                  "__typename": "Environment",
+                  "createdAt": "2026-10-16T12:57:32Z",
+                  "databaseIds": [],
+                  "envGroupIds": [],
+                  "id": "evm-db91uf2vofqc73c5lr0g",
+                  "ipAllowList": ["0.0.0.0/0", "::/0"],
+                  "ipAllowListEntries": [
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "0.0.0.0/0",
+                      "description": "Allow all (default)"
+                    },
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "::/0",
+                      "description": "Allow all (default)"
+                    }
+                  ],
+                  "ipAllowListProxiedDomains": [],
+                  "keyValueIds": [],
+                  "name": "qa-20261016-a720-prod",
+                  "networkIsolationEnabled": false,
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "projectId": "prj-db91u48v92mc73ag1f60",
+                  "protectedStatus": "unprotected",
+                  "serviceIds": []
+                }
+              ]
+            }
+          },
+          "timing": {
+            "startTime": 1792155797047.086,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.37,
+            "responseStart": 21170.18,
+            "responseEnd": 21171.216
+          }
+        },
+        {
+          "at": "1970-01-01T00:00:00.000Z",
+          "pending": true
+        },
+        {
+          "at": "2026-10-16T13:04:17.263Z",
+          "batchOperations": [
+            "Projects",
+            "BillingReadiness",
+            "Workspaces",
+            "Environments",
+            "EnvGroups",
+            "Services",
+            "Databases",
+            "KeyValues"
+          ],
+          "request": {
+            "operationName": "Environments",
+            "variables": {
+              "projectId": "prj-db91u48v92mc73ag1f60"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Environments($projectId: String!) {\n  environments(projectId: $projectId) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "environments": [
+                {
+                  "__typename": "Environment",
+                  "createdAt": "2026-10-16T12:57:15Z",
+                  "databaseIds": ["dpg-db91ut8v92mc73ag1f6g"],
+                  "envGroupIds": [],
+                  "id": "evm-db91uaqvofqc73c5lqvg",
+                  "ipAllowList": ["0.0.0.0/0", "::/0"],
+                  "ipAllowListEntries": [
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "0.0.0.0/0",
+                      "description": "Allow all (default)"
+                    },
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "::/0",
+                      "description": "Allow all (default)"
+                    }
+                  ],
+                  "ipAllowListProxiedDomains": [],
+                  "keyValueIds": [],
+                  "name": "qa-20261016-a720-stage",
+                  "networkIsolationEnabled": false,
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "projectId": "prj-db91u48v92mc73ag1f60",
+                  "protectedStatus": "unprotected",
+                  "serviceIds": []
+                },
+                {
+                  "__typename": "Environment",
+                  "createdAt": "2026-10-16T12:57:32Z",
+                  "databaseIds": [],
+                  "envGroupIds": [],
+                  "id": "evm-db91uf2vofqc73c5lr0g",
+                  "ipAllowList": ["0.0.0.0/0", "::/0"],
+                  "ipAllowListEntries": [
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "0.0.0.0/0",
+                      "description": "Allow all (default)"
+                    },
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "::/0",
+                      "description": "Allow all (default)"
+                    }
+                  ],
+                  "ipAllowListProxiedDomains": [],
+                  "keyValueIds": [],
+                  "name": "qa-20261016-a720-prod",
+                  "networkIsolationEnabled": false,
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "projectId": "prj-db91u48v92mc73ag1f60",
+                  "protectedStatus": "unprotected",
+                  "serviceIds": []
+                }
+              ]
+            }
+          },
+          "timing": {
+            "startTime": 1792155857263.7808,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.12,
+            "responseStart": 21521.938,
+            "responseEnd": 21522.67
+          }
+        },
+        {
+          "at": "2026-10-16T13:04:47.272Z",
+          "batchOperations": [
+            "Workspaces",
+            "Environments",
+            "EnvGroups",
+            "Services",
+            "Databases",
+            "KeyValues"
+          ],
+          "request": {
+            "operationName": "Environments",
+            "variables": {
+              "projectId": "prj-db91u48v92mc73ag1f60"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Environments($projectId: String!) {\n  environments(projectId: $projectId) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "environments": [
+                {
+                  "__typename": "Environment",
+                  "createdAt": "2026-10-16T12:57:15Z",
+                  "databaseIds": [],
+                  "envGroupIds": [],
+                  "id": "evm-db91uaqvofqc73c5lqvg",
+                  "ipAllowList": ["0.0.0.0/0", "::/0"],
+                  "ipAllowListEntries": [
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "0.0.0.0/0",
+                      "description": "Allow all (default)"
+                    },
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "::/0",
+                      "description": "Allow all (default)"
+                    }
+                  ],
+                  "ipAllowListProxiedDomains": [],
+                  "keyValueIds": [],
+                  "name": "qa-20261016-a720-stage",
+                  "networkIsolationEnabled": false,
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "projectId": "prj-db91u48v92mc73ag1f60",
+                  "protectedStatus": "unprotected",
+                  "serviceIds": []
+                },
+                {
+                  "__typename": "Environment",
+                  "createdAt": "2026-10-16T12:57:32Z",
+                  "databaseIds": ["dpg-db91ut8v92mc73ag1f6g"],
+                  "envGroupIds": [],
+                  "id": "evm-db91uf2vofqc73c5lr0g",
+                  "ipAllowList": ["0.0.0.0/0", "::/0"],
+                  "ipAllowListEntries": [
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "0.0.0.0/0",
+                      "description": "Allow all (default)"
+                    },
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "::/0",
+                      "description": "Allow all (default)"
+                    }
+                  ],
+                  "ipAllowListProxiedDomains": [],
+                  "keyValueIds": [],
+                  "name": "qa-20261016-a720-prod",
+                  "networkIsolationEnabled": false,
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "projectId": "prj-db91u48v92mc73ag1f60",
+                  "protectedStatus": "unprotected",
+                  "serviceIds": []
+                }
+              ]
+            }
+          },
+          "timing": {
+            "startTime": 1792155887272.135,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.114,
+            "responseStart": 20438.571,
+            "responseEnd": 20439.45
+          }
+        },
+        {
+          "at": "2026-10-16T13:05:37.738Z",
+          "batchOperations": [
+            "Workspaces",
+            "Environments",
+            "EnvGroups",
+            "Services",
+            "Databases",
+            "KeyValues"
+          ],
+          "request": {
+            "operationName": "Environments",
+            "variables": {
+              "projectId": "prj-db91u48v92mc73ag1f60"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "query Environments($projectId: String!) {\n  environments(projectId: $projectId) {\n    ...EnvironmentFields\n    __typename\n  }\n}\n\nfragment EnvironmentFields on Environment {\n  id\n  projectId\n  name\n  ownerId\n  createdAt\n  serviceIds\n  databaseIds\n  keyValueIds\n  envGroupIds\n  protectedStatus\n  networkIsolationEnabled\n  ipAllowList\n  ipAllowListEntries {\n    cidrBlock\n    description\n    __typename\n  }\n  ipAllowListProxiedDomains\n  __typename\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "environments": [
+                {
+                  "__typename": "Environment",
+                  "createdAt": "2026-10-16T12:57:15Z",
+                  "databaseIds": [],
+                  "envGroupIds": [],
+                  "id": "evm-db91uaqvofqc73c5lqvg",
+                  "ipAllowList": ["0.0.0.0/0", "::/0"],
+                  "ipAllowListEntries": [
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "0.0.0.0/0",
+                      "description": "Allow all (default)"
+                    },
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "::/0",
+                      "description": "Allow all (default)"
+                    }
+                  ],
+                  "ipAllowListProxiedDomains": [],
+                  "keyValueIds": [],
+                  "name": "qa-20261016-a720-stage",
+                  "networkIsolationEnabled": false,
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "projectId": "prj-db91u48v92mc73ag1f60",
+                  "protectedStatus": "unprotected",
+                  "serviceIds": []
+                },
+                {
+                  "__typename": "Environment",
+                  "createdAt": "2026-10-16T12:57:32Z",
+                  "databaseIds": ["dpg-db91ut8v92mc73ag1f6g"],
+                  "envGroupIds": [],
+                  "id": "evm-db91uf2vofqc73c5lr0g",
+                  "ipAllowList": ["0.0.0.0/0", "::/0"],
+                  "ipAllowListEntries": [
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "0.0.0.0/0",
+                      "description": "Allow all (default)"
+                    },
+                    {
+                      "__typename": "IPAllowListEntry",
+                      "cidrBlock": "::/0",
+                      "description": "Allow all (default)"
+                    }
+                  ],
+                  "ipAllowListProxiedDomains": [],
+                  "keyValueIds": [],
+                  "name": "qa-20261016-a720-prod",
+                  "networkIsolationEnabled": false,
+                  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+                  "projectId": "prj-db91u48v92mc73ag1f60",
+                  "protectedStatus": "unprotected",
+                  "serviceIds": []
+                }
+              ]
+            }
+          },
+          "timing": {
+            "startTime": 1792155937738.2178,
+            "domainLookupStart": -1,
+            "domainLookupEnd": -1,
+            "connectStart": -1,
+            "secureConnectionStart": -1,
+            "connectEnd": -1,
+            "requestStart": 0.358,
+            "responseStart": 21775.815,
+            "responseEnd": 21776.673
+          }
+        },
+        {
+          "at": "1970-01-01T00:00:00.000Z",
+          "pending": true
+        }
+      ],
+      "note": "Exact owned project Environments slots; other batch slots omitted."
+    },
+    "FinalRows": {
+      "at": "2026-10-16T13:06:40.871Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db91ut8v92mc73ag1f6g",
+          "sql": "SELECT current_setting('server_version_num') AS version_num, id, label, amount::text AS amount, doc::text AS doc FROM qa_a720_placement ORDER BY id;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["version_num", "id", "label", "amount", "doc"],
+            "rowCount": 3,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "180004",
+                  "1",
+                  "snow 雪",
+                  "12.3400",
+                  "{\"items\": [1, null, \"雪\"], \"state\": \"one\"}"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["180004", "2", null, null, null]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["180004", "3", "", "-0.1250", "[]"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792155999806.13,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.113,
+        "responseStart": 358.724,
+        "responseEnd": 359.349
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db91ut8v92mc73ag1f6g#sql-console"
+    },
+    "HistoryCleared": {
+      "historyRemoved": true
+    },
+    "DeleteDatabase": {
+      "at": "2026-10-16T13:06:58.001Z",
+      "request": {
+        "operationName": "DeleteDatabase",
+        "variables": {
+          "id": "dpg-db91ut8v92mc73ag1f6g"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteDatabase($id: String!, $confirm: String) {\n  deleteDatabase(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteDatabase": true
+        }
+      },
+      "timing": {
+        "startTime": 1792156017022.9011,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.137,
+        "responseStart": 268.48,
+        "responseEnd": 268.888
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "EmptyProjectDeleteDialog": {
+      "at": "2026-10-16T13:07:24.450Z",
+      "request": {
+        "operationName": "QaA720EmptyProject",
+        "query": "query QaA720EmptyProject($project:String!){project(id:$project){id serviceIds databaseIds keyValueIds} environments(projectId:$project){id serviceIds databaseIds keyValueIds envGroupIds}}",
+        "variables": {
+          "project": "prj-db91u48v92mc73ag1f60"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "environments": [
+            {
+              "databaseIds": [],
+              "envGroupIds": [],
+              "id": "evm-db91uaqvofqc73c5lqvg",
+              "keyValueIds": [],
+              "serviceIds": []
+            },
+            {
+              "databaseIds": [],
+              "envGroupIds": [],
+              "id": "evm-db91uf2vofqc73c5lr0g",
+              "keyValueIds": [],
+              "serviceIds": []
+            }
+          ],
+          "project": {
+            "databaseIds": [],
+            "id": "prj-db91u48v92mc73ag1f60",
+            "keyValueIds": [],
+            "serviceIds": []
+          }
+        }
+      },
+      "dialog": "- alertdialog \"Delete project \\\"qa-20261016-a720-project\\\"?\":\n  - heading \"Delete project \\\"qa-20261016-a720-project\\\"?\" [level=2]\n  - paragraph: Its environments and their configuration are deleted. Its services, databases, and key value stores become unassigned, not deleted.\n  - button \"Cancel\"\n  - button \"Delete Project\""
+    },
+    "DeleteProject": {
+      "at": "2026-10-16T13:07:55.709Z",
+      "request": {
+        "operationName": "DeleteProject",
+        "variables": {
+          "id": "prj-db91u48v92mc73ag1f60"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteProject($id: String!) {\n  deleteProject(id: $id)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteProject": "prj-db91u48v92mc73ag1f60"
+        }
+      },
+      "timing": {
+        "startTime": 1792156059520.9219,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.132,
+        "responseStart": 15474.31,
+        "responseEnd": 15474.944
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "Cleanup": {
+      "at": "2026-10-16T13:08:05.749Z",
+      "resourceChecks": [
+        {
+          "path": "/v1/postgres/dpg-db91ut8v92mc73ag1f6g",
+          "status": 404
+        },
+        {
+          "path": "/v1/projects/prj-db91u48v92mc73ag1f60",
+          "status": 404
+        },
+        {
+          "path": "/v1/environments/evm-db91uaqvofqc73c5lqvg",
+          "status": 404
+        },
+        {
+          "path": "/v1/environments/evm-db91uf2vofqc73c5lr0g",
+          "status": 404
+        }
+      ],
+      "inventory": {
+        "request": {
+          "operationName": "Qaa467Inventory",
+          "variables": {
+            "ownerId": "tea-d98210cbbpdc73dcrkvg"
+          },
+          "query": "query Qaa467Inventory($ownerId:String!){ services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "blueprints": [
+              {
+                "id": "blp-d9nqg95cavls73fp8m10",
+                "name": "discourse_docker"
+              }
+            ],
+            "databases": [
+              {
+                "id": "dpg-d9nqg95cavls73fp8m20",
+                "name": "beancount-forum-db"
+              },
+              {
+                "id": "dpg-d9rrkoc4h4mc73edurp0",
+                "name": "tianpan-forum-db"
+              },
+              {
+                "id": "dpg-d9rs3ee0ccis738kc7c0",
+                "name": "blockeden-forum-db"
+              },
+              {
+                "id": "dpg-db34l9bor55s73cqpq9g",
+                "name": "qa-20261007-r16-owner-f208ab"
+              }
+            ],
+            "envGroups": [
+              {
+                "id": "evg-db0s94c48ccs739jikr0",
+                "name": "qa-20261003-keys-r85"
+              }
+            ],
+            "keyValues": [
+              {
+                "id": "red-d9p49kdrtmes73c34ovg",
+                "name": "beancount-forum-redis"
+              },
+              {
+                "id": "red-da4086iii7bs73drbqh0",
+                "name": "blockeden-forum-redis"
+              }
+            ],
+            "projects": [
+              {
+                "id": "prj-d9dgeo0bd9nc73a0vh1g",
+                "name": "bex.co"
+              },
+              {
+                "id": "prj-d9e5qct5qe4s73b1mjn0",
+                "name": "beancount.io"
+              },
+              {
+                "id": "prj-d9sgfnbjghus73cg6hg0",
+                "name": "forums"
+              }
+            ],
+            "services": [
+              {
+                "id": "srv-d9bkcspg9s7c73d0n8ug",
+                "name": "agentmarketcap-1",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9bj8s3eg85c7390eb9g",
+                "name": "beancount-cms-v2",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9nqg9dcavls73fp8m2g",
+                "name": "beancount-forum",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9ndt8hmcglc739fkp50",
+                "name": "eden-dash-v3",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9e40ei9086p3l1jri30",
+                "name": "eden-cms-v2",
+                "type": "web_service"
+              }
+            ],
+            "webhookEndpoints": []
+          }
+        }
+      },
+      "baselineMatches": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "consoleErrors": []
+    },
+    "SessionCleared": {
+      "at": "2026-10-16T13:08:11.652Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  },
+  "cleanupMetadata": {
+    "at": "2026-10-16T13:08:06.873073+00:00",
+    "checks": [
+      {
+        "args": [
+          "get",
+          "databases.app.bex.co,clusters.postgresql.cnpg.io",
+          "--field-selector",
+          "metadata.name=dpg-db91ut8v92mc73ag1f6g",
+          "-o",
+          "name"
+        ],
+        "exit": 0,
+        "resources": [],
+        "error": ""
+      },
+      {
+        "args": [
+          "get",
+          "pods,pvc",
+          "-l",
+          "cnpg.io/cluster=dpg-db91ut8v92mc73ag1f6g",
+          "-o",
+          "name"
+        ],
+        "exit": 0,
+        "resources": [],
+        "error": ""
+      }
+    ]
+  },
+  "dependency": {
+    "package": "@apollo/client",
+    "lockfile": "dashboard/yarn.lock:65-67",
+    "version": "4.3.3",
+    "registryArchive": "https://registry.npmjs.org/@apollo/client/-/client-4.3.3.tgz",
+    "archiveSha256": "8ae35190f6a316dab925c110929d789957f663eff07ec3359a2883a44a1f295f",
+    "note": "Fetched the actual lockfile-pinned published package because installed local node_modules was stale4.1.3. Live request clientLibrary identifies4.3.3. No node_modules or lockfile was changed.",
+    "source": {
+      "core/QueryManager.js": {
+        "sha256": "7a9bee7aacb71e3c6a64bfa100af89751670e7515fb09638293267e86543484b",
+        "lines": [
+          {
+            "start": 515,
+            "end": 519,
+            "text": "    getObservableFromLink(query, context, variables, fetchPolicy, extensions, \n    // Prefer context.queryDeduplication if specified.\n    deduplication = context?.queryDeduplication ??\n        this.queryDeduplication) {\n        let entry = {};"
+          },
+          {
+            "start": 560,
+            "end": 582,
+            "text": "                if (deduplication) {\n                    const printedServerQuery = print(serverQuery);\n                    const varJson = canonicalStringify(variables);\n                    entry = inFlightLinkObservables.lookup(printedServerQuery, varJson);\n                    if (!entry.observable) {\n                        entry.observable = execute(link, operation, executeContext).pipe(withRestart, finalize(() => {\n                            if (inFlightLinkObservables.peek(printedServerQuery, varJson) ===\n                                entry) {\n                                inFlightLinkObservables.remove(printedServerQuery, varJson);\n                            }\n                        }), \n                        // We don't want to replay the last emitted value for\n                        // subscriptions and instead opt to wait to receive updates until\n                        // the subscription emits new values.\n                        operationType === OperationTypeNode.SUBSCRIPTION ?\n                            share()\n                            : shareReplay({ refCount: true }));\n                    }\n                }\n                else {\n                    entry.observable = execute(link, operation, executeContext).pipe(withRestart);\n                }\n            }"
+          },
+          {
+            "start": 902,
+            "end": 918,
+            "text": "                // queries, even the QueryOptions ones.\n                if (onQueryUpdated) {\n                    if (!diff) {\n                        diff = oq.getCacheDiff();\n                    }\n                    result = onQueryUpdated(oq, diff, lastDiff);\n                }\n                // Otherwise, we fall back to refetching.\n                if (!onQueryUpdated || result === true) {\n                    result = oq\n                        .refetch()\n                        .retain( /* create a persistent subscription on the query */);\n                }\n                if (result !== false) {\n                    results.set(oq, result);\n                }\n            });"
+          }
+        ]
+      },
+      "core/ObservableQuery.js": {
+        "sha256": "965e1e8164e75a972b59e8953e332ddd3f9071e34f54572efcc9392b86ba7b24",
+        "lines": [
+          {
+            "start": 395,
+            "end": 424,
+            "text": "    refetch(variables) {\n        const { fetchPolicy } = this.options;\n        const reobserveOptions = {\n            // Always disable polling for refetches.\n            pollInterval: 0,\n        };\n        // Unless the provided fetchPolicy always consults the network\n        // (no-cache, network-only, or cache-and-network), override it with\n        // network-only to force the refetch for this fetchQuery call.\n        if (fetchPolicy === \"no-cache\") {\n            reobserveOptions.fetchPolicy = \"no-cache\";\n        }\n        else {\n            reobserveOptions.fetchPolicy = \"network-only\";\n        }\n        if (__DEV__ && variables && hasOwnProperty.call(variables, \"variables\")) {\n            const queryDef = getQueryDefinition(this.query);\n            const vars = queryDef.variableDefinitions;\n            if (!vars || !vars.some((v) => v.variable.name.value === \"variables\")) {\n                __DEV__ && invariant.warn(85, variables, queryDef.name?.value || queryDef);\n            }\n        }\n        if (variables && !equal(this.variables, variables)) {\n            // Update the existing options with new variables\n            reobserveOptions.variables = this.options.variables =\n                this.getVariablesWithDefaults({ ...this.variables, ...variables });\n        }\n        return this._reobserve(reobserveOptions, {\n            newNetworkStatus: NetworkStatus.refetch,\n        });"
+          }
+        ]
+      },
+      "core/QueryInfo.js": {
+        "sha256": "f3363a788fa8b55c478bde5fb0c7229919e3b7fa672def2a599d7812a716c87f",
+        "lines": [
+          {
+            "start": 300,
+            "end": 316,
+            "text": "                // write the final non-optimistic result.\n                removeOptimistic: mutation.removeOptimistic,\n                // Let the caller of client.mutate optionally determine the refetching\n                // behavior for watched queries after the mutation.update function runs.\n                // If no onQueryUpdated function was provided for this mutation, pass\n                // null instead of undefined to disable the default refetching behavior.\n                onQueryUpdated: mutation.onQueryUpdated || null,\n            })\n                .forEach((result) => results.push(result));\n            if (mutation.awaitRefetchQueries || mutation.onQueryUpdated) {\n                // Returning a promise here makes the mutation await that promise, so we\n                // include results in that promise's work if awaitRefetchQueries or an\n                // onQueryUpdated function was specified.\n                return Promise.all(results).then(() => result);\n            }\n        }\n        return Promise.resolve(result);"
+          }
+        ]
+      },
+      "core/ApolloClient.js": {
+        "sha256": "6330f68c49f4f6c80dd264c9aa9303e7f8e2e43918e92f8b5c09cc8480048b8f",
+        "lines": [
+          {
+            "start": 74,
+            "end": 80,
+            "text": "            invariant(options.cache, 70);\n            invariant(options.link, 71);\n        }\n        const { cache, documentTransform, ssrMode = false, ssrForceFetchDelay = 0, queryDeduplication = true, defaultOptions, defaultContext, assumeImmutableResults = cache.assumeImmutableResults, localState, devtools, dataMasking, link, incrementalHandler = new NotImplementedHandler(), experiments = [], refetchEventManager, } = options;\n        this.link = link;\n        this.cache = cache;\n        this.queryDeduplication = queryDeduplication;"
+          }
+        ]
+      }
+    }
+  },
+  "limits": [
+    "First move Environments response bodies are unavailable; second fresh inverse and Manage removal retain the decisive list bodies and timing. Retained request entries with timing.startTime0 have no usable timestamp and are not ordering evidence.",
+    "Native factory at timestamps include700ms post-response settling; use timing.startTime+responseEnd for transport completion. Batched response receipt time is not individual resolver snapshot/commit time.",
+    "Mobile bulk move is a passing naturally overlapping control; no claim that every move fails or mobile is inherently affected. Screenshot covers the stale Manage removal, not the earlier desktop move.",
+    "Raw API query request in MobileMovePending was not captured in that return object; other receipts preserve their complete request. Watcher receipts retain the exact owned Environments operation slot and omit unrelated batch response slots.",
+    "REST/MCP membership, other setter kinds and error/retry cases were not induced live. Their contracts are implementation regression requirements."
+  ]
+}
