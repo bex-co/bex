@@ -1,0 +1,711 @@
+{
+  "pass": "a771",
+  "date": "2026-10-16",
+  "researchHead": "bb1ce319ae2299f3aad5e62c6935b7725d65d96c",
+  "scope": "Read-only Key Value Create mounted catalog preview",
+  "captures": [
+    {
+      "capture": "a771Desktop",
+      "at": "2026-10-16T20:14:30.496Z",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "url": "https://dashboard.bex.co/keyvalue/new",
+      "responseHold": "Held the successful native catalog response until pending measurement, then fulfilled its unchanged original response",
+      "catalog": {
+        "projection": "Complete selected operation and its complete corresponding response entry from the held native batch; unrelated sibling bodies omitted. Not a full HTTP body or isolated-operation delay.",
+        "batchOperationNames": [
+          "RouterAvailable",
+          "BillingReadiness",
+          "Workspaces",
+          "Projects",
+          "KeyValueInstanceTypes"
+        ],
+        "status": 200,
+        "operation": {
+          "operationName": "KeyValueInstanceTypes",
+          "variables": {},
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query KeyValueInstanceTypes {\n  keyValueInstanceTypes {\n    id\n    name\n    cpu\n    memory\n    storageGB\n    monthlyUsd\n    __typename\n  }\n}"
+        },
+        "responseEntry": {
+          "data": {
+            "keyValueInstanceTypes": [
+              {
+                "__typename": "KeyValueInstanceType",
+                "cpu": "100m",
+                "id": "free",
+                "memory": "128Mi",
+                "monthlyUsd": "0.00",
+                "name": "Free",
+                "storageGB": 1
+              },
+              {
+                "__typename": "KeyValueInstanceType",
+                "cpu": "100m",
+                "id": "starter",
+                "memory": "256Mi",
+                "monthlyUsd": "7.00",
+                "name": "Starter",
+                "storageGB": 1
+              },
+              {
+                "__typename": "KeyValueInstanceType",
+                "cpu": "500m",
+                "id": "standard",
+                "memory": "1Gi",
+                "monthlyUsd": "21.00",
+                "name": "Standard",
+                "storageGB": 5
+              }
+            ]
+          }
+        }
+      },
+      "pending": {
+        "at": "2026-10-16T20:14:30.019Z",
+        "geometry": {
+          "region": {
+            "x": 533,
+            "y": 243,
+            "width": 630,
+            "height": 22,
+            "bottom": 265
+          },
+          "grid": {
+            "rect": {
+              "x": 533,
+              "y": 265,
+              "width": 630,
+              "height": 0,
+              "bottom": 265
+            },
+            "columns": "202px 202px 202px",
+            "gap": "12px"
+          },
+          "skeletons": [],
+          "radios": [],
+          "followingVersion": {
+            "x": 533,
+            "y": 311,
+            "width": 630,
+            "height": 36,
+            "bottom": 347
+          },
+          "followingVersionOffsetFromPlanTop": 68
+        },
+        "snapshot": "- text: Instance type\n- radiogroup \"Instance type\""
+      },
+      "ready": {
+        "at": "2026-10-16T20:14:30.425Z",
+        "geometry": {
+          "region": {
+            "x": 533,
+            "y": 243,
+            "width": 630,
+            "height": 92,
+            "bottom": 335
+          },
+          "grid": {
+            "rect": {
+              "x": 533,
+              "y": 265,
+              "width": 630,
+              "height": 70,
+              "bottom": 335
+            },
+            "columns": "202px 202px 202px",
+            "gap": "12px"
+          },
+          "skeletons": [],
+          "radios": [
+            {
+              "rect": {
+                "x": 533,
+                "y": 265,
+                "width": 202,
+                "height": 70,
+                "bottom": 335
+              },
+              "label": "Free$0.00/month128 MB RAM · 0.1 CPU",
+              "checked": "true"
+            },
+            {
+              "rect": {
+                "x": 747,
+                "y": 265,
+                "width": 202,
+                "height": 70,
+                "bottom": 335
+              },
+              "label": "Starter$7.00/month256 MB RAM · 0.1 CPU",
+              "checked": "false"
+            },
+            {
+              "rect": {
+                "x": 961,
+                "y": 265,
+                "width": 202,
+                "height": 70,
+                "bottom": 335
+              },
+              "label": "Standard$21.00/month1 GB RAM · 0.5 CPU",
+              "checked": "false"
+            }
+          ],
+          "followingVersion": {
+            "x": 533,
+            "y": 381,
+            "width": 630,
+            "height": 36,
+            "bottom": 417
+          },
+          "followingVersionOffsetFromPlanTop": 138
+        },
+        "snapshot": "- text: Instance type\n- radiogroup \"Instance type\":\n  - radio \"Free $0.00/month 128 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $7.00/month 256 MB RAM · 0.1 CPU\"\n  - radio \"Standard $21.00/month 1 GB RAM · 0.5 CPU\""
+      },
+      "console": []
+    },
+    {
+      "capture": "a771Mobile",
+      "at": "2026-10-16T20:14:33.663Z",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "url": "https://dashboard.bex.co/keyvalue/new",
+      "responseHold": "Held the successful native catalog response until pending measurement, then fulfilled its unchanged original response",
+      "catalog": {
+        "projection": "Complete selected operation and its complete corresponding response entry from the held native batch; unrelated sibling bodies omitted. Not a full HTTP body or isolated-operation delay.",
+        "batchOperationNames": [
+          "BillingReadiness",
+          "Workspaces",
+          "Projects",
+          "KeyValueInstanceTypes"
+        ],
+        "status": 200,
+        "operation": {
+          "operationName": "KeyValueInstanceTypes",
+          "variables": {},
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query KeyValueInstanceTypes {\n  keyValueInstanceTypes {\n    id\n    name\n    cpu\n    memory\n    storageGB\n    monthlyUsd\n    __typename\n  }\n}"
+        },
+        "responseEntry": {
+          "data": {
+            "keyValueInstanceTypes": [
+              {
+                "__typename": "KeyValueInstanceType",
+                "cpu": "100m",
+                "id": "free",
+                "memory": "128Mi",
+                "monthlyUsd": "0.00",
+                "name": "Free",
+                "storageGB": 1
+              },
+              {
+                "__typename": "KeyValueInstanceType",
+                "cpu": "100m",
+                "id": "starter",
+                "memory": "256Mi",
+                "monthlyUsd": "7.00",
+                "name": "Starter",
+                "storageGB": 1
+              },
+              {
+                "__typename": "KeyValueInstanceType",
+                "cpu": "500m",
+                "id": "standard",
+                "memory": "1Gi",
+                "monthlyUsd": "21.00",
+                "name": "Standard",
+                "storageGB": 5
+              }
+            ]
+          }
+        }
+      },
+      "pending": {
+        "at": "2026-10-16T20:14:33.181Z",
+        "geometry": {
+          "region": {
+            "x": 37,
+            "y": 255,
+            "width": 316,
+            "height": 22,
+            "bottom": 277
+          },
+          "grid": {
+            "rect": {
+              "x": 37,
+              "y": 277,
+              "width": 316,
+              "height": 0,
+              "bottom": 277
+            },
+            "columns": "316px",
+            "gap": "12px"
+          },
+          "skeletons": [],
+          "radios": [],
+          "followingVersion": {
+            "x": 37,
+            "y": 323,
+            "width": 316,
+            "height": 36,
+            "bottom": 359
+          },
+          "followingVersionOffsetFromPlanTop": 68
+        },
+        "snapshot": "- text: Instance type\n- radiogroup \"Instance type\""
+      },
+      "ready": {
+        "at": "2026-10-16T20:14:33.587Z",
+        "geometry": {
+          "region": {
+            "x": 37,
+            "y": 255,
+            "width": 316,
+            "height": 256,
+            "bottom": 511
+          },
+          "grid": {
+            "rect": {
+              "x": 37,
+              "y": 277,
+              "width": 316,
+              "height": 234,
+              "bottom": 511
+            },
+            "columns": "316px",
+            "gap": "12px"
+          },
+          "skeletons": [],
+          "radios": [
+            {
+              "rect": {
+                "x": 37,
+                "y": 277,
+                "width": 316,
+                "height": 70,
+                "bottom": 347
+              },
+              "label": "Free$0.00/month128 MB RAM · 0.1 CPU",
+              "checked": "true"
+            },
+            {
+              "rect": {
+                "x": 37,
+                "y": 359,
+                "width": 316,
+                "height": 70,
+                "bottom": 429
+              },
+              "label": "Starter$7.00/month256 MB RAM · 0.1 CPU",
+              "checked": "false"
+            },
+            {
+              "rect": {
+                "x": 37,
+                "y": 441,
+                "width": 316,
+                "height": 70,
+                "bottom": 511
+              },
+              "label": "Standard$21.00/month1 GB RAM · 0.5 CPU",
+              "checked": "false"
+            }
+          ],
+          "followingVersion": {
+            "x": 37,
+            "y": 557,
+            "width": 316,
+            "height": 36,
+            "bottom": 593
+          },
+          "followingVersionOffsetFromPlanTop": 302
+        },
+        "snapshot": "- text: Instance type\n- radiogroup \"Instance type\":\n  - radio \"Free $0.00/month 128 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $7.00/month 256 MB RAM · 0.1 CPU\"\n  - radio \"Standard $21.00/month 1 GB RAM · 0.5 CPU\""
+      },
+      "console": []
+    },
+    {
+      "capture": "a771DraftControl",
+      "at": "2026-10-16T20:15:38.177Z",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "url": "https://dashboard.bex.co/keyvalue/new",
+      "responseHold": "Held the successful native catalog response until pending measurement, then fulfilled its unchanged original response",
+      "catalog": {
+        "projection": "Complete selected operation and its complete corresponding response entry from the held native batch; unrelated sibling bodies omitted. Not a full HTTP body or isolated-operation delay.",
+        "batchOperationNames": [
+          "BillingReadiness",
+          "Workspaces",
+          "Projects",
+          "KeyValueInstanceTypes"
+        ],
+        "status": 200,
+        "operation": {
+          "operationName": "KeyValueInstanceTypes",
+          "variables": {},
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query KeyValueInstanceTypes {\n  keyValueInstanceTypes {\n    id\n    name\n    cpu\n    memory\n    storageGB\n    monthlyUsd\n    __typename\n  }\n}"
+        },
+        "responseEntry": {
+          "data": {
+            "keyValueInstanceTypes": [
+              {
+                "__typename": "KeyValueInstanceType",
+                "cpu": "100m",
+                "id": "free",
+                "memory": "128Mi",
+                "monthlyUsd": "0.00",
+                "name": "Free",
+                "storageGB": 1
+              },
+              {
+                "__typename": "KeyValueInstanceType",
+                "cpu": "100m",
+                "id": "starter",
+                "memory": "256Mi",
+                "monthlyUsd": "7.00",
+                "name": "Starter",
+                "storageGB": 1
+              },
+              {
+                "__typename": "KeyValueInstanceType",
+                "cpu": "500m",
+                "id": "standard",
+                "memory": "1Gi",
+                "monthlyUsd": "21.00",
+                "name": "Standard",
+                "storageGB": 5
+              }
+            ]
+          }
+        }
+      },
+      "pending": {
+        "nameValue": "qa-20261016-a771-preview",
+        "createDisabled": true,
+        "at": "2026-10-16T20:15:37.706Z",
+        "geometry": {
+          "region": {
+            "x": 37,
+            "y": 255,
+            "width": 316,
+            "height": 22,
+            "bottom": 277
+          },
+          "grid": {
+            "rect": {
+              "x": 37,
+              "y": 277,
+              "width": 316,
+              "height": 0,
+              "bottom": 277
+            },
+            "columns": "316px",
+            "gap": "12px"
+          },
+          "skeletons": [],
+          "radios": [],
+          "followingVersion": {
+            "x": 37,
+            "y": 323,
+            "width": 316,
+            "height": 36,
+            "bottom": 359
+          },
+          "followingVersionOffsetFromPlanTop": 68
+        },
+        "snapshot": "- text: Instance type\n- radiogroup \"Instance type\""
+      },
+      "ready": {
+        "nameValue": "qa-20261016-a771-preview",
+        "createDisabled": false,
+        "at": "2026-10-16T20:15:38.106Z",
+        "geometry": {
+          "region": {
+            "x": 37,
+            "y": 255,
+            "width": 316,
+            "height": 256,
+            "bottom": 511
+          },
+          "grid": {
+            "rect": {
+              "x": 37,
+              "y": 277,
+              "width": 316,
+              "height": 234,
+              "bottom": 511
+            },
+            "columns": "316px",
+            "gap": "12px"
+          },
+          "skeletons": [],
+          "radios": [
+            {
+              "rect": {
+                "x": 37,
+                "y": 277,
+                "width": 316,
+                "height": 70,
+                "bottom": 347
+              },
+              "label": "Free$0.00/month128 MB RAM · 0.1 CPU",
+              "checked": "true"
+            },
+            {
+              "rect": {
+                "x": 37,
+                "y": 359,
+                "width": 316,
+                "height": 70,
+                "bottom": 429
+              },
+              "label": "Starter$7.00/month256 MB RAM · 0.1 CPU",
+              "checked": "false"
+            },
+            {
+              "rect": {
+                "x": 37,
+                "y": 441,
+                "width": 316,
+                "height": 70,
+                "bottom": 511
+              },
+              "label": "Standard$21.00/month1 GB RAM · 0.5 CPU",
+              "checked": "false"
+            }
+          ],
+          "followingVersion": {
+            "x": 37,
+            "y": 557,
+            "width": 316,
+            "height": 36,
+            "bottom": 593
+          },
+          "followingVersionOffsetFromPlanTop": 302
+        },
+        "snapshot": "- text: Instance type\n- radiogroup \"Instance type\":\n  - radio \"Free $0.00/month 128 MB RAM · 0.1 CPU\" [checked]\n  - radio \"Starter $7.00/month 256 MB RAM · 0.1 CPU\"\n  - radio \"Standard $21.00/month 1 GB RAM · 0.5 CPU\""
+      },
+      "console": []
+    }
+  ],
+  "sourceCensus": {
+    "PlanCardGridProductionMounts": [
+      "routes/services.new.tsx",
+      "routes/keyvalue.new.tsx",
+      "features/databases/components/database-plan-section.tsx",
+      "features/keyvalue/components/key-value-plan-section.tsx"
+    ],
+    "useKeyValueInstanceTypesProductionConsumers": [
+      "routes/keyvalue.new.tsx",
+      "features/keyvalue/components/key-value-metadata-card.tsx",
+      "features/keyvalue/components/key-value-plan-section.tsx"
+    ],
+    "PlanTierSlotsCurrentProductionCalls": 3,
+    "CreatePlanGridSkeletonCurrentProductionCalls": 2
+  },
+  "cleanup": {
+    "resourcesCreated": [],
+    "paidSubmissions": 0,
+    "baselineRequest": {
+      "operationName": "Qaa467Inventory",
+      "variables": {
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      },
+      "query": "query Qaa467Inventory($ownerId:String!){ services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name}}"
+    },
+    "baselineResponse": {
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      }
+    },
+    "allSevenIDSets": {
+      "blueprints": {
+        "before": ["blp-d9nqg95cavls73fp8m10"],
+        "after": ["blp-d9nqg95cavls73fp8m10"],
+        "equal": true
+      },
+      "databases": {
+        "before": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "after": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "equal": true
+      },
+      "envGroups": {
+        "before": ["evg-db0s94c48ccs739jikr0"],
+        "after": ["evg-db0s94c48ccs739jikr0"],
+        "equal": true
+      },
+      "keyValues": {
+        "before": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "after": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "equal": true
+      },
+      "projects": {
+        "before": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "after": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "equal": true
+      },
+      "services": {
+        "before": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "after": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "equal": true
+      },
+      "webhookEndpoints": {
+        "before": [],
+        "after": [],
+        "equal": true
+      }
+    },
+    "sessionCleared": {
+      "at": "2026-10-16T20:16:04.683Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "ownHandlesAbsent": true
+  },
+  "limits": [
+    "Whole native batches held and fulfilled unchanged; only complete selected-operation projections retained durably.",
+    "No lost input, bad selection, purchase, provisioning or backend catalog error observed.",
+    "Route-loader preview, cached refresh, empty/error, changed-catalog, other widths, translated or reduced-motion cases remain verification work.",
+    "Four original desktop/mobile plan crops were viewed; local images remain supporting evidence.",
+    "No authenticated Render loader comparison."
+  ]
+}
