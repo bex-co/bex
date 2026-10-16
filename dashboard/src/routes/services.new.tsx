@@ -27,7 +27,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/common/components/ui/select";
-import { Skeleton } from "@/common/components/ui/skeleton";
 import { TextField } from "@/common/components/text-field";
 import { PlanCardGrid } from "@/common/components/plan-card-grid";
 import { useCreateService } from "@/features/services/hooks/use-create-service";
@@ -60,6 +59,8 @@ import {
   serviceTypeCreateCopy,
 } from "@/features/services/lib/create-context";
 import { ServiceCreatePageSkeleton } from "@/common/components/route-skeletons";
+import { PlanTierSlots } from "@/common/components/datastore-plan-preview";
+import { servicePlanSlotCount } from "@/features/services/lib/instance-type";
 
 export const Route = createFileRoute("/services/new")({
   staticData: { chrome: true },
@@ -468,7 +469,10 @@ export function NewServicePage() {
                   <div className="space-y-2">
                     <Label>{t("services.createFieldPlan")}</Label>
                     {instanceTypes.length === 0 ? (
-                      <Skeleton className="h-20 w-full" />
+                      <PlanTierSlots
+                        count={servicePlanSlotCount(form.serviceType)}
+                        lastWraps
+                      />
                     ) : (
                       <PlanCardGrid
                         instanceTypes={instanceTypes}

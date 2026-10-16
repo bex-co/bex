@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { within, act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import i18n from "@/i18n/init";
 import {
@@ -1544,5 +1544,36 @@ describe("NewServicePage", () => {
       expect(router.state.location.pathname).toBe("/");
       expect(screen.getByLabelText("Name")).toHaveValue("web-frontend");
     });
+  });
+});
+
+// w4/329 (a770): while the compute catalog loads, the plan region rendered one
+// 80px block, then grew to the ready grid (280px desktop / 584px mobile for
+// Web) and pushed the Project control down. It now previews the ready grid's
+// slots for the service type — the full ladder, or the paid-only ladder — and
+// swaps to the real cards in place. The pixel match is a browser measurement
+// (compiled CSS: 258/562px Web, 176/480px Private, identical to the ready
+// grid); this pins the slots per type.
+describe("NewServicePage plan region while the catalog loads (w4/329)", () => {
+  it.each([
+    ["web_service", 7],
+    ["private_service", 6],
+    ["background_worker", 6],
+    ["cron_job", 6],
+  ])("%s previews %i inert tier slots", async (type, slots) => {
+    instanceTypesState.instanceTypes = [];
+    renderPage(`/?type=${type}`);
+    const label = await screen.findByText("Instance Type");
+    const region = label.parentElement!;
+    const preview = region.querySelector('[aria-hidden="true"]');
+    expect(preview?.children).toHaveLength(slots);
+    expect(within(region).queryByRole("radio")).toBeNull();
+  });
+
+  it("previews nothing for a static site", async () => {
+    instanceTypesState.instanceTypes = [];
+    renderPage("/?type=static_site");
+    await screen.findByRole("heading", { level: 1 });
+    expect(screen.queryByText("Instance Type")).toBeNull();
   });
 });
