@@ -197,6 +197,11 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     message: "更新“{name}”的数据库失败。",
     description: "Toast shown when updating an environment's databases fails",
   },
+  "environments.assignDatabasesRefreshFailed": {
+    message: "已更新“{name}”的数据库，但列表刷新失败。请重试或重新加载以查看。",
+    description:
+      "Warning after the database membership was saved but re-reading the environments list failed; the write must not be retried or reported as failed (w4/325)",
+  },
   "environments.assignKeyValuesSuccess": {
     message: "已更新“{name}”的键值存储实例。",
     description:

@@ -207,6 +207,12 @@ const enEnvironments: Record<string, TranslationEntry> = {
     message: 'Failed to update databases for "{name}".',
     description: "Toast shown when updating an environment's databases fails",
   },
+  "environments.assignDatabasesRefreshFailed": {
+    message:
+      'Databases for "{name}" updated, but the list couldn\'t refresh. Try again or reload to see it.',
+    description:
+      "Warning after the database membership was saved but re-reading the environments list failed; the write must not be retried or reported as failed (w4/325)",
+  },
   "environments.assignKeyValuesSuccess": {
     message: 'Key-value instances for "{name}" updated.',
     description:
