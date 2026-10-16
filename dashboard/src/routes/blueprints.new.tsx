@@ -59,6 +59,12 @@ export function NewBlueprintPage() {
   const [name, setName] = useState("");
   const [nameEdited, setNameEdited] = useState(false);
   const [branch, setBranch] = useState("");
+  // A Public Git Branch left behind by a tab switch, bound to its URL: the same
+  // URL restores it, any other starts blank (w4/331, as w4/240 for services).
+  const [gitBranchDraft, setGitBranchDraft] = useState<{
+    gitUrl: string;
+    branch: string;
+  } | null>(null);
   const [path, setPath] = useState("render.yaml");
   // The server's refusal awaiting its phrase: a protected environment, or a
   // Blueprint takeover that names what it replaces.
@@ -241,9 +247,16 @@ export function NewBlueprintPage() {
                 idPrefix="bp"
                 tab={tab}
                 onTabChange={(next) => {
+                  const draft =
+                    tab === "git" ? { gitUrl, branch } : gitBranchDraft;
+                  setGitBranchDraft(draft);
                   setTab(next);
                   setSelectedRepo(null);
-                  setBranch("");
+                  setBranch(
+                    next === "git" && draft?.gitUrl === gitUrl
+                      ? draft.branch
+                      : "",
+                  );
                 }}
                 selectedRepo={selectedRepo}
                 onSelectRepo={setSelectedRepo}
