@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Plus,
   ShieldAlert,
@@ -52,13 +52,39 @@ export function EnvGroupsPanel({
 }) {
   const { t } = useTranslations();
   const { groups, loading, error, refetch } = useEnvGroups();
-  const { linkGroup, unlinkGroup, busy } = useEnvGroupMutations(refetch);
   const {
     service,
     loading: serviceLoading,
     error: serviceError,
     refetch: refetchService,
   } = useServer(serviceId, { poll: false });
+  // Link order is a Server fact a link/unlink/create does not return (its
+  // result is a bare boolean or a group), so after one the group list and the
+  // Server are both re-read. Until the Server read lands, which group wins is
+  // unknown, and a failed read keeps it unknown with a retry — never the cached
+  // order painted over fresh membership (w4/322).
+  const [orderRead, setOrderRead] = useState<"settled" | "reading" | "failed">(
+    "settled",
+  );
+  const readOrder = useCallback(async () => {
+    setOrderRead("reading");
+    try {
+      const views = await refetchService();
+      setOrderRead(views.length > 0 ? "settled" : "failed");
+    } catch {
+      setOrderRead("failed");
+    }
+  }, [refetchService]);
+  const refreshMembership = useCallback(async () => {
+    const order = readOrder();
+    try {
+      return await refetch();
+    } finally {
+      await order;
+    }
+  }, [readOrder, refetch]);
+  const { linkGroup, unlinkGroup, busy } =
+    useEnvGroupMutations(refreshMembership);
   // The service's own env-var keys, to flag linked-group keys the service
   // overrides at runtime (w6/067; last envFrom source wins — the service's).
   // Same query the environment editor on this page runs, so Apollo shares it.
@@ -120,7 +146,7 @@ export function EnvGroupsPanel({
     environmentMissingFailed;
   const retryCompatibility = () => {
     scope.retry();
-    void refetchService().catch(() => undefined);
+    void readOrder();
   };
   const [internalCreateOpen, setInternalCreateOpen] = useState(false);
   const createOpen = createOpenProp ?? internalCreateOpen;
@@ -136,17 +162,29 @@ export function EnvGroupsPanel({
   // backend) — then we keep the server's order and claim no precedence at all
   // rather than inventing one, which is what the page did before w2/m94 when it
   // listed the LOSING group first purely by accident (w1/091).
-  const linkOrder = service?.linkedEnvGroupIds ?? null;
+  const reportedOrder = service?.linkedEnvGroupIds ?? null;
   const linked = useMemo(() => {
     const items = groups.filter((group) =>
       group.serviceLinks.includes(currentServiceId),
     );
+    // An order read in flight or failed, or one that disagrees with current
+    // membership, is not evidence of which group wins.
+    const orderKnown =
+      orderRead === "settled" &&
+      reportedOrder !== null &&
+      items.length === reportedOrder.length &&
+      items.every((group) => reportedOrder.includes(group.id));
+    return { items, order: orderKnown ? reportedOrder : null };
+  }, [groups, currentServiceId, reportedOrder, orderRead]);
+  const linkOrder = linked.order;
+  const linkedGroups = useMemo(() => {
+    const items = linked.items;
     if (!linkOrder) return items;
     const rank = new Map(linkOrder.map((id, index) => [id, index]));
     return [...items].sort(
       (a, b) => (rank.get(b.id) ?? -1) - (rank.get(a.id) ?? -1),
     );
-  }, [groups, currentServiceId, linkOrder]);
+  }, [linked.items, linkOrder]);
 
   // Walking the list in precedence order, the first group to claim a name wins
   // it; every later (lower-precedence) group's copy is shadowed and records the
@@ -159,7 +197,7 @@ export function EnvGroupsPanel({
     if (!linkOrder) return byGroup;
     const winningKey = new Map<string, string>();
     const winningFile = new Map<string, string>();
-    for (const group of linked) {
+    for (const group of linkedGroups) {
       const keys = new Map<string, string>();
       const files = new Map<string, string>();
       for (const key of group.envVarKeys) {
@@ -175,7 +213,7 @@ export function EnvGroupsPanel({
       byGroup.set(group.id, { keys, files });
     }
     return byGroup;
-  }, [linked, linkOrder]);
+  }, [linkedGroups, linkOrder]);
   // bex-api links a group only to services in its own Environment scope, so
   // only those are offered (w4/217: a group from another environment showed
   // an enabled Link that always failed). Until the service's relationship and
@@ -225,15 +263,46 @@ export function EnvGroupsPanel({
           <div className="space-y-6">
             <section className="space-y-2">
               <h3 className="text-sm font-medium">
-                {t("services.envGroupsLinkedCount", { count: linked.length })}
+                {t("services.envGroupsLinkedCount", {
+                  count: linkedGroups.length,
+                })}
               </h3>
-              {linked.length === 0 ? (
+              {orderRead !== "settled" && linkedGroups.length > 1 ? (
+                <div
+                  className="flex flex-wrap items-center gap-2 text-sm"
+                  role={orderRead === "failed" ? "alert" : "status"}
+                >
+                  <p
+                    className={
+                      orderRead === "failed"
+                        ? "text-destructive"
+                        : "text-muted-foreground"
+                    }
+                  >
+                    {t(
+                      orderRead === "failed"
+                        ? "services.envGroupsOrderFailed"
+                        : "services.envGroupsOrderReading",
+                    )}
+                  </p>
+                  {orderRead === "failed" ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void readOrder()}
+                    >
+                      {t("common.tryAgain")}
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
+              {linkedGroups.length === 0 ? (
                 <p className="text-muted-foreground rounded-md border border-dashed p-4 text-sm">
                   {t("services.envGroupsNoneLinked")}
                 </p>
               ) : (
                 <ul className="divide-y rounded-md border px-4">
-                  {linked.map((group) => (
+                  {linkedGroups.map((group) => (
                     <EnvGroupItem
                       key={group.id}
                       group={group}
@@ -320,8 +389,8 @@ export function EnvGroupsPanel({
         key={`${scope.ownerId}:${serviceId}`}
         open={createOpen}
         onOpenChange={setCreateOpen}
-        onCreated={() => void refetch()}
-        refetch={refetch}
+        onCreated={() => void refreshMembership()}
+        refetch={refreshMembership}
         services={service ? [service] : []}
         servicesLoading={serviceLoading}
         servicesError={serviceError}

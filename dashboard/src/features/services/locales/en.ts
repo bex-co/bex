@@ -4852,6 +4852,17 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Available groups wait for the service's environment scope (w4/217)",
   },
+  "services.envGroupsOrderReading": {
+    message: "Confirming which linked group wins…",
+    description:
+      "Link order is being re-read after a link change; no winner is claimed until it lands (w4/322)",
+  },
+  "services.envGroupsOrderFailed": {
+    message:
+      "Linked, but couldn't confirm which group wins. Reload the order to see it.",
+    description:
+      "The post-write Server read failed; the write stands, precedence stays unclaimed until a retry succeeds (w4/322)",
+  },
   "services.envGroupsScopeError": {
     message:
       "Couldn't load this service's environment, so no groups are offered to link.",

@@ -4731,6 +4731,16 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Available groups wait for the service's environment scope (w4/217)",
   },
+  "services.envGroupsOrderReading": {
+    message: "正在确认哪个已关联的环境组生效…",
+    description:
+      "Link order is being re-read after a link change; no winner is claimed until it lands (w4/322)",
+  },
+  "services.envGroupsOrderFailed": {
+    message: "已关联，但无法确认哪个环境组生效。请重新加载顺序以查看。",
+    description:
+      "The post-write Server read failed; the write stands, precedence stays unclaimed until a retry succeeds (w4/322)",
+  },
   "services.envGroupsScopeError": {
     message: "无法加载此服务的环境，因此暂不提供可关联的环境组。",
     description:
