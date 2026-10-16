@@ -94,7 +94,7 @@ rules:
     verbs: [get, list, watch]
   # CNPG cluster and backup status
   - apiGroups: [postgresql.cnpg.io]
-    resources: [clusters, backups, scheduledbackups, poolers]
+    resources: [clusters, backups, scheduledbackups, poolers, databases]
     verbs: [get, list, watch]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
