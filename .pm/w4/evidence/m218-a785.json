@@ -1,0 +1,1016 @@
+{
+  "pass": "a785",
+  "observed": "2026-10-16 UTC",
+  "researchHead": "4052136f3",
+  "scope": "Read-only browser-local fault injection of one native catalog GraphQL response entry. No resource creation or mutation submission. Real upstream catalogs succeeded.",
+  "receiptBoundary": "Each fault preserves the exact selected native request, complete corresponding native response entry and complete synthetic replacement entry, plus native batch operation names and unchanged sibling count. Unrelated sibling bodies are omitted from this durable evidence; they were preserved unchanged by the probe. Healthy controls preserve complete selected operations and entries. DOM/ARIA receipts are projections, not entire browser state.",
+  "replay": {
+    "service": "async(page)=>{await page.setViewportSize({width:390,height:1000});const operation=\"InstanceTypes\",mode=\"service\";let resolveFault;const done=new Promise(resolve=>{resolveFault=resolve});let handled=false;const pattern='https://api.bex.co/graphql';const handler=async route=>{const raw=route.request().postDataJSON();const qs=Array.isArray(raw)?raw:[raw];const index=qs.findIndex(q=>q.operationName===operation);if(index<0||handled){await route.continue();return;}handled=true;const response=await route.fetch();const body=await response.json(),bs=Array.isArray(body)?body:[body];if(response.status()!==200||bs[index]?.errors){await route.fulfill({response});resolveFault({nativeFailed:true,status:response.status()});return;}const injected={data:null,errors:[{message:'QA injected catalog read failure',path:[operation==='InstanceTypes'?'instanceTypes':operation==='DatabaseInstanceTypes'?'databaseInstanceTypes':'keyValueInstanceTypes'],extensions:{code:'INTERNAL_SERVER_ERROR'}}]};const next=bs.map((entry,i)=>i===index?injected:entry);const headers=response.headers();for(const key of ['content-encoding','content-length','transfer-encoding'])delete headers[key];headers['content-type']='application/json';await route.fulfill({status:200,headers,body:JSON.stringify(Array.isArray(raw)?next:next[0])});resolveFault({at:new Date().toISOString(),request:qs[index],nativeStatus:response.status(),nativeBody:bs[index],injectedStatus:200,injectedBody:injected,batchNames:qs.map(q=>q.operationName),unchangedSiblings:bs.length-1,onlySelectedEntryChanged:true});};await page.route(pattern,handler);await page.goto(\"https://dashboard.bex.co/services/new?type=web_service\");const fault=await Promise.race([done,page.waitForTimeout(20000).then(()=>null)]);await page.unroute(pattern,handler);if(!fault||fault.nativeFailed)return {at:new Date().toISOString(),fault,probeIncomplete:true};if(mode==='static'){await page.getByRole('tab',{name:'Public Git URL',exact:true}).click();await page.getByRole('textbox',{name:'Repository URL',exact:true}).fill('https://github.com/bex-co/bex');await page.getByRole('textbox',{name:'Branch',exact:true}).fill('main');await page.getByRole('textbox',{name:'Build Command',exact:true}).fill(\"node -e 'require(\\\"fs\\\").mkdirSync(\\\"qa-dist\\\",{recursive:true});require(\\\"fs\\\").writeFileSync(\\\"qa-dist/index.html\\\",\\\"qa-a785-static\\\")'\");await page.getByRole('textbox',{name:'Publish Directory',exact:true}).fill('qa-dist');}if(mode==='service'){await page.getByRole('tab',{name:'Existing Image',exact:true}).click();await page.getByRole('textbox',{name:'Docker Image',exact:true}).fill('node:24-alpine');}await page.getByRole('textbox',{name:'Name',exact:true}).fill(\"qa-20261016-a785-replay\");await page.waitForTimeout(1200);const primary=page.getByRole('button',{name:(mode==='service'||mode==='static')?'Deploy Service':mode==='pg'?'Create database':'Create Key Value Instance',exact:true});return {at:new Date().toISOString(),fault,url:page.url(),mode,name:await page.getByRole('textbox',{name:'Name',exact:true}).inputValue(),radios:await page.getByRole('radio').count(),skeletons:await page.locator('[data-slot=skeleton]').count(),alertTexts:await page.getByRole('alert').allTextContents(),retryButtons:await page.getByRole('button',{name:/retry|try again/i}).count(),primaryDisabled:await primary.isDisabled(),snapshot:(await (mode==='pg'?page.getByRole('dialog'):page.locator('main')).ariaSnapshot()).slice(-8500)};}",
+    "keyValue": "async(page)=>{await page.setViewportSize({width:390,height:1000});const operation=\"KeyValueInstanceTypes\",mode=\"kv\";let resolveFault;const done=new Promise(resolve=>{resolveFault=resolve});let handled=false;const pattern='https://api.bex.co/graphql';const handler=async route=>{const raw=route.request().postDataJSON();const qs=Array.isArray(raw)?raw:[raw];const index=qs.findIndex(q=>q.operationName===operation);if(index<0||handled){await route.continue();return;}handled=true;const response=await route.fetch();const body=await response.json(),bs=Array.isArray(body)?body:[body];if(response.status()!==200||bs[index]?.errors){await route.fulfill({response});resolveFault({nativeFailed:true,status:response.status()});return;}const injected={data:null,errors:[{message:'QA injected catalog read failure',path:[operation==='InstanceTypes'?'instanceTypes':operation==='DatabaseInstanceTypes'?'databaseInstanceTypes':'keyValueInstanceTypes'],extensions:{code:'INTERNAL_SERVER_ERROR'}}]};const next=bs.map((entry,i)=>i===index?injected:entry);const headers=response.headers();for(const key of ['content-encoding','content-length','transfer-encoding'])delete headers[key];headers['content-type']='application/json';await route.fulfill({status:200,headers,body:JSON.stringify(Array.isArray(raw)?next:next[0])});resolveFault({at:new Date().toISOString(),request:qs[index],nativeStatus:response.status(),nativeBody:bs[index],injectedStatus:200,injectedBody:injected,batchNames:qs.map(q=>q.operationName),unchangedSiblings:bs.length-1,onlySelectedEntryChanged:true});};await page.route(pattern,handler);await page.goto(\"https://dashboard.bex.co/keyvalue/new\");const fault=await Promise.race([done,page.waitForTimeout(20000).then(()=>null)]);await page.unroute(pattern,handler);if(!fault||fault.nativeFailed)return {at:new Date().toISOString(),fault,probeIncomplete:true};if(mode==='static'){await page.getByRole('tab',{name:'Public Git URL',exact:true}).click();await page.getByRole('textbox',{name:'Repository URL',exact:true}).fill('https://github.com/bex-co/bex');await page.getByRole('textbox',{name:'Branch',exact:true}).fill('main');await page.getByRole('textbox',{name:'Build Command',exact:true}).fill(\"node -e 'require(\\\"fs\\\").mkdirSync(\\\"qa-dist\\\",{recursive:true});require(\\\"fs\\\").writeFileSync(\\\"qa-dist/index.html\\\",\\\"qa-a785-static\\\")'\");await page.getByRole('textbox',{name:'Publish Directory',exact:true}).fill('qa-dist');}if(mode==='service'){await page.getByRole('tab',{name:'Existing Image',exact:true}).click();await page.getByRole('textbox',{name:'Docker Image',exact:true}).fill('node:24-alpine');}await page.getByRole('textbox',{name:'Name',exact:true}).fill(\"qa-20261016-a785-replay\");await page.waitForTimeout(1200);const primary=page.getByRole('button',{name:(mode==='service'||mode==='static')?'Deploy Service':mode==='pg'?'Create database':'Create Key Value Instance',exact:true});return {at:new Date().toISOString(),fault,url:page.url(),mode,name:await page.getByRole('textbox',{name:'Name',exact:true}).inputValue(),radios:await page.getByRole('radio').count(),skeletons:await page.locator('[data-slot=skeleton]').count(),alertTexts:await page.getByRole('alert').allTextContents(),retryButtons:await page.getByRole('button',{name:/retry|try again/i}).count(),primaryDisabled:await primary.isDisabled(),snapshot:(await (mode==='pg'?page.getByRole('dialog'):page.locator('main')).ariaSnapshot()).slice(-8500)};}",
+    "postgres": "async(page)=>{await page.setViewportSize({width:390,height:1000});const operation=\"DatabaseInstanceTypes\",mode=\"pg\";let resolveFault;const done=new Promise(resolve=>{resolveFault=resolve});let handled=false;const pattern='https://api.bex.co/graphql';const handler=async route=>{const raw=route.request().postDataJSON();const qs=Array.isArray(raw)?raw:[raw];const index=qs.findIndex(q=>q.operationName===operation);if(index<0||handled){await route.continue();return;}handled=true;const response=await route.fetch();const body=await response.json(),bs=Array.isArray(body)?body:[body];if(response.status()!==200||bs[index]?.errors){await route.fulfill({response});resolveFault({nativeFailed:true,status:response.status()});return;}const injected={data:null,errors:[{message:'QA injected catalog read failure',path:[operation==='InstanceTypes'?'instanceTypes':operation==='DatabaseInstanceTypes'?'databaseInstanceTypes':'keyValueInstanceTypes'],extensions:{code:'INTERNAL_SERVER_ERROR'}}]};const next=bs.map((entry,i)=>i===index?injected:entry);const headers=response.headers();for(const key of ['content-encoding','content-length','transfer-encoding'])delete headers[key];headers['content-type']='application/json';await route.fulfill({status:200,headers,body:JSON.stringify(Array.isArray(raw)?next:next[0])});resolveFault({at:new Date().toISOString(),request:qs[index],nativeStatus:response.status(),nativeBody:bs[index],injectedStatus:200,injectedBody:injected,batchNames:qs.map(q=>q.operationName),unchangedSiblings:bs.length-1,onlySelectedEntryChanged:true});};await page.route(pattern,handler);await page.goto(\"https://dashboard.bex.co/new/database\");const fault=await Promise.race([done,page.waitForTimeout(20000).then(()=>null)]);await page.unroute(pattern,handler);if(!fault||fault.nativeFailed)return {at:new Date().toISOString(),fault,probeIncomplete:true};if(mode==='static'){await page.getByRole('tab',{name:'Public Git URL',exact:true}).click();await page.getByRole('textbox',{name:'Repository URL',exact:true}).fill('https://github.com/bex-co/bex');await page.getByRole('textbox',{name:'Branch',exact:true}).fill('main');await page.getByRole('textbox',{name:'Build Command',exact:true}).fill(\"node -e 'require(\\\"fs\\\").mkdirSync(\\\"qa-dist\\\",{recursive:true});require(\\\"fs\\\").writeFileSync(\\\"qa-dist/index.html\\\",\\\"qa-a785-static\\\")'\");await page.getByRole('textbox',{name:'Publish Directory',exact:true}).fill('qa-dist');}if(mode==='service'){await page.getByRole('tab',{name:'Existing Image',exact:true}).click();await page.getByRole('textbox',{name:'Docker Image',exact:true}).fill('node:24-alpine');}await page.getByRole('textbox',{name:'Name',exact:true}).fill(\"qa-20261016-a785-replay\");await page.waitForTimeout(1200);const primary=page.getByRole('button',{name:(mode==='service'||mode==='static')?'Deploy Service':mode==='pg'?'Create database':'Create Key Value Instance',exact:true});return {at:new Date().toISOString(),fault,url:page.url(),mode,name:await page.getByRole('textbox',{name:'Name',exact:true}).inputValue(),radios:await page.getByRole('radio').count(),skeletons:await page.locator('[data-slot=skeleton]').count(),alertTexts:await page.getByRole('alert').allTextContents(),retryButtons:await page.getByRole('button',{name:/retry|try again/i}).count(),primaryDisabled:await primary.isDisabled(),snapshot:(await (mode==='pg'?page.getByRole('dialog'):page.locator('main')).ariaSnapshot()).slice(-8500)};}",
+    "staticControl": "async(page)=>{await page.setViewportSize({width:390,height:1000});const operation=\"InstanceTypes\",mode=\"static\";let resolveFault;const done=new Promise(resolve=>{resolveFault=resolve});let handled=false;const pattern='https://api.bex.co/graphql';const handler=async route=>{const raw=route.request().postDataJSON();const qs=Array.isArray(raw)?raw:[raw];const index=qs.findIndex(q=>q.operationName===operation);if(index<0||handled){await route.continue();return;}handled=true;const response=await route.fetch();const body=await response.json(),bs=Array.isArray(body)?body:[body];if(response.status()!==200||bs[index]?.errors){await route.fulfill({response});resolveFault({nativeFailed:true,status:response.status()});return;}const injected={data:null,errors:[{message:'QA injected catalog read failure',path:[operation==='InstanceTypes'?'instanceTypes':operation==='DatabaseInstanceTypes'?'databaseInstanceTypes':'keyValueInstanceTypes'],extensions:{code:'INTERNAL_SERVER_ERROR'}}]};const next=bs.map((entry,i)=>i===index?injected:entry);const headers=response.headers();for(const key of ['content-encoding','content-length','transfer-encoding'])delete headers[key];headers['content-type']='application/json';await route.fulfill({status:200,headers,body:JSON.stringify(Array.isArray(raw)?next:next[0])});resolveFault({at:new Date().toISOString(),request:qs[index],nativeStatus:response.status(),nativeBody:bs[index],injectedStatus:200,injectedBody:injected,batchNames:qs.map(q=>q.operationName),unchangedSiblings:bs.length-1,onlySelectedEntryChanged:true});};await page.route(pattern,handler);await page.goto(\"https://dashboard.bex.co/static/new\");const fault=await Promise.race([done,page.waitForTimeout(20000).then(()=>null)]);await page.unroute(pattern,handler);if(!fault||fault.nativeFailed)return {at:new Date().toISOString(),fault,probeIncomplete:true};if(mode==='static'){await page.getByRole('tab',{name:'Public Git URL',exact:true}).click();await page.getByRole('textbox',{name:'Repository URL',exact:true}).fill('https://github.com/bex-co/bex');await page.getByRole('textbox',{name:'Branch',exact:true}).fill('main');await page.getByRole('textbox',{name:'Build Command',exact:true}).fill(\"node -e 'require(\\\"fs\\\").mkdirSync(\\\"qa-dist\\\",{recursive:true});require(\\\"fs\\\").writeFileSync(\\\"qa-dist/index.html\\\",\\\"qa-a785-static\\\")'\");await page.getByRole('textbox',{name:'Publish Directory',exact:true}).fill('qa-dist');}if(mode==='service'){await page.getByRole('tab',{name:'Existing Image',exact:true}).click();await page.getByRole('textbox',{name:'Docker Image',exact:true}).fill('node:24-alpine');}await page.getByRole('textbox',{name:'Name',exact:true}).fill(\"qa-20261016-a785-replay\");await page.waitForTimeout(1200);const primary=page.getByRole('button',{name:(mode==='service'||mode==='static')?'Deploy Service':mode==='pg'?'Create database':'Create Key Value Instance',exact:true});return {at:new Date().toISOString(),fault,url:page.url(),mode,name:await page.getByRole('textbox',{name:'Name',exact:true}).inputValue(),radios:await page.getByRole('radio').count(),skeletons:await page.locator('[data-slot=skeleton]').count(),alertTexts:await page.getByRole('alert').allTextContents(),retryButtons:await page.getByRole('button',{name:/retry|try again/i}).count(),primaryDisabled:await primary.isDisabled(),snapshot:(await (mode==='pg'?page.getByRole('dialog'):page.locator('main')).ariaSnapshot()).slice(-8500)};}"
+  },
+  "probes": {
+    "a785ServiceFault": {
+      "at": "2026-10-16T21:55:04.091Z",
+      "fault": {
+        "at": "2026-10-16T21:55:02.806Z",
+        "request": {
+          "operationName": "InstanceTypes",
+          "variables": {},
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query InstanceTypes {\n  instanceTypes {\n    id\n    name\n    cpu\n    memory\n    monthlyUsd\n    __typename\n  }\n}"
+        },
+        "nativeStatus": 200,
+        "nativeBody": {
+          "data": {
+            "instanceTypes": [
+              {
+                "__typename": "InstanceType",
+                "cpu": "100m",
+                "id": "free",
+                "memory": "512Mi",
+                "monthlyUsd": "0.00",
+                "name": "Free"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "500m",
+                "id": "starter",
+                "memory": "512Mi",
+                "monthlyUsd": "4.90",
+                "name": "Starter"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "1",
+                "id": "standard",
+                "memory": "2Gi",
+                "monthlyUsd": "17.50",
+                "name": "Standard"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "2",
+                "id": "pro",
+                "memory": "4Gi",
+                "monthlyUsd": "59.50",
+                "name": "Pro"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "4",
+                "id": "pro_plus",
+                "memory": "8Gi",
+                "monthlyUsd": "122.50",
+                "name": "Pro Plus"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "4",
+                "id": "pro_max",
+                "memory": "16Gi",
+                "monthlyUsd": "157.50",
+                "name": "Pro Max"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "8",
+                "id": "pro_ultra",
+                "memory": "32Gi",
+                "monthlyUsd": "315.00",
+                "name": "Pro Ultra"
+              }
+            ]
+          }
+        },
+        "injectedStatus": 200,
+        "injectedBody": {
+          "data": null,
+          "errors": [
+            {
+              "message": "QA injected catalog read failure",
+              "path": ["instanceTypes"],
+              "extensions": {
+                "code": "INTERNAL_SERVER_ERROR"
+              }
+            }
+          ]
+        },
+        "batchNames": ["Repos", "GitConnections", "Projects", "InstanceTypes"],
+        "unchangedSiblings": 3,
+        "onlySelectedEntryChanged": true
+      },
+      "url": "https://dashboard.bex.co/services/new?type=web_service",
+      "mode": "service",
+      "name": "qa-20261016-a785-service",
+      "radios": 5,
+      "skeletons": 1,
+      "alertTexts": [],
+      "retryButtons": 0,
+      "primaryDisabled": true,
+      "snapshot": "- main:\n  - navigation \"Breadcrumbs\": New Service\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - heading \"New Web Service\" [level=1]\n  - text: Deploy a web service from a Git repo or Docker image. Service Type\n  - radiogroup \"Service Type\":\n    - radio \"Web Service Expose your service on a public URL\" [checked]\n    - radio \"Private Service Accessible only within the platform network\"\n    - radio \"Background Worker Run background processing with no port or URL\"\n    - radio \"Cron Job Run a command on a recurring schedule\"\n    - radio \"Static Site Build and serve a static site from object storage\"\n  - text: Source\n  - tablist:\n    - tab \"GitHub\"\n    - tab \"Public Git URL\"\n    - tab \"Existing Image\" [selected]\n  - tabpanel \"Existing Image\":\n    - text: Docker Image\n    - textbox \"Docker Image\":\n      - /placeholder: docker.io/library/nginx:latest\n      - text: node:24-alpine\n    - paragraph: The container must listen on the port set below — bex injects it as $PORT — and cannot bind ports below 1024.\n    - text: Registry credential\n    - combobox \"Registry credential\": No credential — public image\n    - paragraph:\n      - text: No stored registry credentials are available.\n      - link \"Manage registry credentials\":\n        - /url: /settings#registry-credentials\n  - paragraph: Settings\n  - text: Name\n  - textbox \"Name\":\n    - /placeholder: my-service\n    - text: qa-20261016-a785-service\n  - text: Docker Command\n  - textbox \"Docker Command\":\n    - /placeholder: Use the image's default command\n  - text: Port\n  - textbox \"Port\":\n    - /placeholder: \"3000\"\n    - text: \"3000\"\n  - paragraph: Your container must listen on port 3000 — bex routes traffic there and injects it as $PORT. Change it to match the image you are deploying.\n  - text: Instance Type Project and Environment\n  - combobox \"Project\": No project\n  - combobox \"Environment\" [disabled]: No environment\n  - paragraph: When creating a resource, selecting a Project filters its Environments. Choose an Environment to add the resource to that Project. Leaving No environment selected creates the resource outside any Project. If the Project has no Environment yet, create one from the Project's page first.\n  - text: Environment Variables\n  - button \"Add Variable\"\n  - text: Secret Files\n  - paragraph: Mounted read-only under /etc/secrets from the first deploy.\n  - button \"Add Secret File\"\n  - button \"Cancel\"\n  - button \"Deploy Service\" [disabled]"
+    },
+    "a785ServiceMobileFault": {
+      "at": "2026-10-16T21:55:45.757Z",
+      "fault": {
+        "at": "2026-10-16T21:55:44.484Z",
+        "request": {
+          "operationName": "InstanceTypes",
+          "variables": {},
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query InstanceTypes {\n  instanceTypes {\n    id\n    name\n    cpu\n    memory\n    monthlyUsd\n    __typename\n  }\n}"
+        },
+        "nativeStatus": 200,
+        "nativeBody": {
+          "data": {
+            "instanceTypes": [
+              {
+                "__typename": "InstanceType",
+                "cpu": "100m",
+                "id": "free",
+                "memory": "512Mi",
+                "monthlyUsd": "0.00",
+                "name": "Free"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "500m",
+                "id": "starter",
+                "memory": "512Mi",
+                "monthlyUsd": "4.90",
+                "name": "Starter"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "1",
+                "id": "standard",
+                "memory": "2Gi",
+                "monthlyUsd": "17.50",
+                "name": "Standard"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "2",
+                "id": "pro",
+                "memory": "4Gi",
+                "monthlyUsd": "59.50",
+                "name": "Pro"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "4",
+                "id": "pro_plus",
+                "memory": "8Gi",
+                "monthlyUsd": "122.50",
+                "name": "Pro Plus"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "4",
+                "id": "pro_max",
+                "memory": "16Gi",
+                "monthlyUsd": "157.50",
+                "name": "Pro Max"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "8",
+                "id": "pro_ultra",
+                "memory": "32Gi",
+                "monthlyUsd": "315.00",
+                "name": "Pro Ultra"
+              }
+            ]
+          }
+        },
+        "injectedStatus": 200,
+        "injectedBody": {
+          "data": null,
+          "errors": [
+            {
+              "message": "QA injected catalog read failure",
+              "path": ["instanceTypes"],
+              "extensions": {
+                "code": "INTERNAL_SERVER_ERROR"
+              }
+            }
+          ]
+        },
+        "batchNames": [
+          "BillingReadiness",
+          "Workspaces",
+          "Repos",
+          "GitConnections",
+          "Projects",
+          "InstanceTypes"
+        ],
+        "unchangedSiblings": 5,
+        "onlySelectedEntryChanged": true
+      },
+      "url": "https://dashboard.bex.co/services/new?type=web_service",
+      "mode": "service",
+      "name": "qa-20261016-a785-mobile",
+      "radios": 5,
+      "skeletons": 1,
+      "alertTexts": [],
+      "retryButtons": 0,
+      "primaryDisabled": true,
+      "snapshot": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\": New Service\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - heading \"New Web Service\" [level=1]\n  - text: Deploy a web service from a Git repo or Docker image. Service Type\n  - radiogroup \"Service Type\":\n    - radio \"Web Service Expose your service on a public URL\" [checked]\n    - radio \"Private Service Accessible only within the platform network\"\n    - radio \"Background Worker Run background processing with no port or URL\"\n    - radio \"Cron Job Run a command on a recurring schedule\"\n    - radio \"Static Site Build and serve a static site from object storage\"\n  - text: Source\n  - tablist:\n    - tab \"GitHub\"\n    - tab \"Public Git URL\"\n    - tab \"Existing Image\" [selected]\n  - tabpanel \"Existing Image\":\n    - text: Docker Image\n    - textbox \"Docker Image\":\n      - /placeholder: docker.io/library/nginx:latest\n      - text: node:24-alpine\n    - paragraph: The container must listen on the port set below — bex injects it as $PORT — and cannot bind ports below 1024.\n    - text: Registry credential\n    - combobox \"Registry credential\": No credential — public image\n    - paragraph:\n      - text: No stored registry credentials are available.\n      - link \"Manage registry credentials\":\n        - /url: /settings#registry-credentials\n  - paragraph: Settings\n  - text: Name\n  - textbox \"Name\":\n    - /placeholder: my-service\n    - text: qa-20261016-a785-mobile\n  - text: Docker Command\n  - textbox \"Docker Command\":\n    - /placeholder: Use the image's default command\n  - text: Port\n  - textbox \"Port\":\n    - /placeholder: \"3000\"\n    - text: \"3000\"\n  - paragraph: Your container must listen on port 3000 — bex routes traffic there and injects it as $PORT. Change it to match the image you are deploying.\n  - text: Instance Type Project and Environment\n  - combobox \"Project\": No project\n  - combobox \"Environment\" [disabled]: No environment\n  - paragraph: When creating a resource, selecting a Project filters its Environments. Choose an Environment to add the resource to that Project. Leaving No environment selected creates the resource outside any Project. If the Project has no Environment yet, create one from the Project's page first.\n  - text: Environment Variables\n  - button \"Add Variable\"\n  - text: Secret Files\n  - paragraph: Mounted read-only under /etc/secrets from the first deploy.\n  - button \"Add Secret File\"\n  - button \"Cancel\"\n  - button \"Deploy Service\" [disabled]"
+    },
+    "a785ServiceStillFailed": {
+      "at": "2026-10-16T21:56:08.155Z",
+      "name": "qa-20261016-a785-mobile",
+      "port": "3001",
+      "planGroupCount": 0,
+      "retryButtons": 0,
+      "alertTexts": [],
+      "primaryDisabled": true,
+      "region": "- text: Instance Type"
+    },
+    "a785HealthyServiceCatalog": {
+      "at": "2026-10-16T21:56:30.711Z",
+      "request": {
+        "operationName": "InstanceTypes",
+        "variables": {},
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query InstanceTypes {\n  instanceTypes {\n    id\n    name\n    cpu\n    memory\n    monthlyUsd\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "instanceTypes": [
+            {
+              "__typename": "InstanceType",
+              "cpu": "100m",
+              "id": "free",
+              "memory": "512Mi",
+              "monthlyUsd": "0.00",
+              "name": "Free"
+            },
+            {
+              "__typename": "InstanceType",
+              "cpu": "500m",
+              "id": "starter",
+              "memory": "512Mi",
+              "monthlyUsd": "4.90",
+              "name": "Starter"
+            },
+            {
+              "__typename": "InstanceType",
+              "cpu": "1",
+              "id": "standard",
+              "memory": "2Gi",
+              "monthlyUsd": "17.50",
+              "name": "Standard"
+            },
+            {
+              "__typename": "InstanceType",
+              "cpu": "2",
+              "id": "pro",
+              "memory": "4Gi",
+              "monthlyUsd": "59.50",
+              "name": "Pro"
+            },
+            {
+              "__typename": "InstanceType",
+              "cpu": "4",
+              "id": "pro_plus",
+              "memory": "8Gi",
+              "monthlyUsd": "122.50",
+              "name": "Pro Plus"
+            },
+            {
+              "__typename": "InstanceType",
+              "cpu": "4",
+              "id": "pro_max",
+              "memory": "16Gi",
+              "monthlyUsd": "157.50",
+              "name": "Pro Max"
+            },
+            {
+              "__typename": "InstanceType",
+              "cpu": "8",
+              "id": "pro_ultra",
+              "memory": "32Gi",
+              "monthlyUsd": "315.00",
+              "name": "Pro Ultra"
+            }
+          ]
+        }
+      },
+      "timing": {
+        "startTime": 1792187788156.5918,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.139,
+        "responseStart": 1839.279,
+        "responseEnd": 1839.768
+      },
+      "url": "https://dashboard.bex.co/services/new?type=web_service"
+    },
+    "a785HealthyServiceForm": {
+      "at": "2026-10-16T21:56:31.501Z",
+      "reset": {
+        "name": "",
+        "port": "3000"
+      },
+      "planRadios": 7,
+      "free": true,
+      "primaryEnabled": true
+    },
+    "a785KeyValueFault": {
+      "at": "2026-10-16T21:56:54.992Z",
+      "fault": {
+        "at": "2026-10-16T21:56:53.768Z",
+        "request": {
+          "operationName": "KeyValueInstanceTypes",
+          "variables": {},
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query KeyValueInstanceTypes {\n  keyValueInstanceTypes {\n    id\n    name\n    cpu\n    memory\n    storageGB\n    monthlyUsd\n    __typename\n  }\n}"
+        },
+        "nativeStatus": 200,
+        "nativeBody": {
+          "data": {
+            "keyValueInstanceTypes": [
+              {
+                "__typename": "KeyValueInstanceType",
+                "cpu": "100m",
+                "id": "free",
+                "memory": "128Mi",
+                "monthlyUsd": "0.00",
+                "name": "Free",
+                "storageGB": 1
+              },
+              {
+                "__typename": "KeyValueInstanceType",
+                "cpu": "100m",
+                "id": "starter",
+                "memory": "256Mi",
+                "monthlyUsd": "7.00",
+                "name": "Starter",
+                "storageGB": 1
+              },
+              {
+                "__typename": "KeyValueInstanceType",
+                "cpu": "500m",
+                "id": "standard",
+                "memory": "1Gi",
+                "monthlyUsd": "21.00",
+                "name": "Standard",
+                "storageGB": 5
+              }
+            ]
+          }
+        },
+        "injectedStatus": 200,
+        "injectedBody": {
+          "data": null,
+          "errors": [
+            {
+              "message": "QA injected catalog read failure",
+              "path": ["keyValueInstanceTypes"],
+              "extensions": {
+                "code": "INTERNAL_SERVER_ERROR"
+              }
+            }
+          ]
+        },
+        "batchNames": [
+          "BillingReadiness",
+          "Workspaces",
+          "Projects",
+          "KeyValueInstanceTypes"
+        ],
+        "unchangedSiblings": 3,
+        "onlySelectedEntryChanged": true
+      },
+      "url": "https://dashboard.bex.co/keyvalue/new",
+      "mode": "kv",
+      "name": "qa-20261016-a785-kv",
+      "radios": 0,
+      "skeletons": 0,
+      "alertTexts": [],
+      "retryButtons": 0,
+      "primaryDisabled": true,
+      "snapshot": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\": New Key Value\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - heading \"New Key Value\" [level=1]\n  - text: Provision a managed Valkey (Redis-compatible) instance. Name\n  - textbox \"Name\":\n    - /placeholder: example-key-value-name\n    - text: qa-20261016-a785-kv\n  - text: Instance type\n  - radiogroup \"Instance type\"\n  - text: Valkey version\n  - combobox \"Valkey version\": Default (latest)\n  - text: Maxmemory Policy\n  - combobox \"Maxmemory Policy\": allkeys-lru (recommended for caches)\n  - paragraph: How keys are evicted once the store reaches its memory limit.\n  - text: Persistence Mode\n  - combobox \"Persistence Mode\": Journal + Snapshot\n  - paragraph: How data is persisted to disk so it survives a restart.\n  - text: Project and Environment\n  - combobox \"Project\": No project\n  - combobox \"Environment\" [disabled]: No environment\n  - paragraph: When creating a resource, selecting a Project filters its Environments. Choose an Environment to add the resource to that Project. Leaving No environment selected creates the resource outside any Project. If the Project has no Environment yet, create one from the Project's page first.\n  - text: Public access\n  - paragraph: Allow connections from outside the cluster over TLS.\n  - switch \"Public access\"\n  - button \"Cancel\"\n  - button \"Create Key Value Instance\" [disabled]"
+    },
+    "a785KeyValueDesktopFault": {
+      "at": "2026-10-16T22:01:00.436Z",
+      "fault": {
+        "at": "2026-10-16T22:00:59.211Z",
+        "request": {
+          "operationName": "KeyValueInstanceTypes",
+          "variables": {},
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query KeyValueInstanceTypes {\n  keyValueInstanceTypes {\n    id\n    name\n    cpu\n    memory\n    storageGB\n    monthlyUsd\n    __typename\n  }\n}"
+        },
+        "nativeStatus": 200,
+        "nativeBody": {
+          "data": {
+            "keyValueInstanceTypes": [
+              {
+                "__typename": "KeyValueInstanceType",
+                "cpu": "100m",
+                "id": "free",
+                "memory": "128Mi",
+                "monthlyUsd": "0.00",
+                "name": "Free",
+                "storageGB": 1
+              },
+              {
+                "__typename": "KeyValueInstanceType",
+                "cpu": "100m",
+                "id": "starter",
+                "memory": "256Mi",
+                "monthlyUsd": "7.00",
+                "name": "Starter",
+                "storageGB": 1
+              },
+              {
+                "__typename": "KeyValueInstanceType",
+                "cpu": "500m",
+                "id": "standard",
+                "memory": "1Gi",
+                "monthlyUsd": "21.00",
+                "name": "Standard",
+                "storageGB": 5
+              }
+            ]
+          }
+        },
+        "injectedStatus": 200,
+        "injectedBody": {
+          "data": null,
+          "errors": [
+            {
+              "message": "QA injected catalog read failure",
+              "path": ["keyValueInstanceTypes"],
+              "extensions": {
+                "code": "INTERNAL_SERVER_ERROR"
+              }
+            }
+          ]
+        },
+        "batchNames": [
+          "RouterAvailable",
+          "BillingReadiness",
+          "Workspaces",
+          "Projects",
+          "KeyValueInstanceTypes"
+        ],
+        "unchangedSiblings": 4,
+        "onlySelectedEntryChanged": true
+      },
+      "url": "https://dashboard.bex.co/keyvalue/new",
+      "mode": "kv",
+      "name": "qa-20261016-a785-kv-wide",
+      "radios": 0,
+      "skeletons": 0,
+      "alertTexts": [],
+      "retryButtons": 0,
+      "primaryDisabled": true,
+      "snapshot": "- main:\n  - navigation \"Breadcrumbs\": New Key Value\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - heading \"New Key Value\" [level=1]\n  - text: Provision a managed Valkey (Redis-compatible) instance. Name\n  - textbox \"Name\":\n    - /placeholder: example-key-value-name\n    - text: qa-20261016-a785-kv-wide\n  - text: Instance type\n  - radiogroup \"Instance type\"\n  - text: Valkey version\n  - combobox \"Valkey version\": Default (latest)\n  - text: Maxmemory Policy\n  - combobox \"Maxmemory Policy\": allkeys-lru (recommended for caches)\n  - paragraph: How keys are evicted once the store reaches its memory limit.\n  - text: Persistence Mode\n  - combobox \"Persistence Mode\": Journal + Snapshot\n  - paragraph: How data is persisted to disk so it survives a restart.\n  - text: Project and Environment\n  - combobox \"Project\": No project\n  - combobox \"Environment\" [disabled]: No environment\n  - paragraph: When creating a resource, selecting a Project filters its Environments. Choose an Environment to add the resource to that Project. Leaving No environment selected creates the resource outside any Project. If the Project has no Environment yet, create one from the Project's page first.\n  - text: Public access\n  - paragraph: Allow connections from outside the cluster over TLS.\n  - switch \"Public access\"\n  - button \"Cancel\"\n  - button \"Create Key Value Instance\" [disabled]"
+    },
+    "a785KeyValueDesktopErrorRegion": {
+      "at": "2026-10-16T22:01:01.334Z",
+      "region": "- text: Instance type\n- radiogroup \"Instance type\""
+    },
+    "a785HealthyKeyValueCatalog": {
+      "at": "2026-10-16T22:01:04.694Z",
+      "request": {
+        "operationName": "KeyValueInstanceTypes",
+        "variables": {},
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query KeyValueInstanceTypes {\n  keyValueInstanceTypes {\n    id\n    name\n    cpu\n    memory\n    storageGB\n    monthlyUsd\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "keyValueInstanceTypes": [
+            {
+              "__typename": "KeyValueInstanceType",
+              "cpu": "100m",
+              "id": "free",
+              "memory": "128Mi",
+              "monthlyUsd": "0.00",
+              "name": "Free",
+              "storageGB": 1
+            },
+            {
+              "__typename": "KeyValueInstanceType",
+              "cpu": "100m",
+              "id": "starter",
+              "memory": "256Mi",
+              "monthlyUsd": "7.00",
+              "name": "Starter",
+              "storageGB": 1
+            },
+            {
+              "__typename": "KeyValueInstanceType",
+              "cpu": "500m",
+              "id": "standard",
+              "memory": "1Gi",
+              "monthlyUsd": "21.00",
+              "name": "Standard",
+              "storageGB": 5
+            }
+          ]
+        }
+      },
+      "timing": {
+        "startTime": 1792188062988.584,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.15,
+        "responseStart": 998.395,
+        "responseEnd": 998.842
+      },
+      "url": "https://dashboard.bex.co/keyvalue/new"
+    },
+    "a785HealthyKeyValueForm": {
+      "at": "2026-10-16T22:01:06.155Z",
+      "nameReset": "",
+      "tiers": 3,
+      "free": true,
+      "primaryDisabled": false
+    },
+    "a785PostgresFault": {
+      "at": "2026-10-16T21:57:14.482Z",
+      "fault": {
+        "at": "2026-10-16T21:57:13.257Z",
+        "request": {
+          "operationName": "DatabaseInstanceTypes",
+          "variables": {},
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query DatabaseInstanceTypes {\n  databaseInstanceTypes {\n    id\n    name\n    cpu\n    memory\n    storageGB\n    maxStorageGB\n    supportsDiskAutoscaling\n    supportsConnectionPooling\n    maxReadReplicas\n    supportsHighAvailability\n    monthlyUsd\n    __typename\n  }\n}"
+        },
+        "nativeStatus": 200,
+        "nativeBody": {
+          "data": {
+            "databaseInstanceTypes": [
+              {
+                "__typename": "DatabaseInstanceType",
+                "cpu": "100m",
+                "id": "free",
+                "maxReadReplicas": 0,
+                "maxStorageGB": 1,
+                "memory": "256Mi",
+                "monthlyUsd": "0.00",
+                "name": "Free",
+                "storageGB": 1,
+                "supportsConnectionPooling": false,
+                "supportsDiskAutoscaling": false,
+                "supportsHighAvailability": false
+              },
+              {
+                "__typename": "DatabaseInstanceType",
+                "cpu": "100m",
+                "id": "basic-256mb",
+                "maxReadReplicas": 0,
+                "maxStorageGB": 16384,
+                "memory": "256Mi",
+                "monthlyUsd": "4.90",
+                "name": "Basic 256MB",
+                "storageGB": 1,
+                "supportsConnectionPooling": true,
+                "supportsDiskAutoscaling": true,
+                "supportsHighAvailability": false
+              },
+              {
+                "__typename": "DatabaseInstanceType",
+                "cpu": "500m",
+                "id": "basic-1gb",
+                "maxReadReplicas": 5,
+                "maxStorageGB": 16384,
+                "memory": "1Gi",
+                "monthlyUsd": "14.00",
+                "name": "Basic 1GB",
+                "storageGB": 5,
+                "supportsConnectionPooling": true,
+                "supportsDiskAutoscaling": true,
+                "supportsHighAvailability": false
+              }
+            ]
+          }
+        },
+        "injectedStatus": 200,
+        "injectedBody": {
+          "data": null,
+          "errors": [
+            {
+              "message": "QA injected catalog read failure",
+              "path": ["databaseInstanceTypes"],
+              "extensions": {
+                "code": "INTERNAL_SERVER_ERROR"
+              }
+            }
+          ]
+        },
+        "batchNames": [
+          "BillingReadiness",
+          "Workspaces",
+          "DatabaseInstanceTypes"
+        ],
+        "unchangedSiblings": 2,
+        "onlySelectedEntryChanged": true
+      },
+      "url": "https://dashboard.bex.co/?new=database",
+      "mode": "pg",
+      "name": "qa-20261016-a785-pg",
+      "radios": 0,
+      "skeletons": 0,
+      "alertTexts": [],
+      "retryButtons": 0,
+      "primaryDisabled": true,
+      "snapshot": "- dialog \"New Postgres\":\n  - heading \"New Postgres\" [level=2]\n  - paragraph: Provision a managed PostgreSQL instance.\n  - text: Name\n  - textbox \"Name\":\n    - /placeholder: my-database\n    - text: qa-20261016-a785-pg\n  - paragraph: PostgreSQL names (optional)\n  - paragraph: Set these only at creation. Leave blank to generate stable names.\n  - text: Database name\n  - textbox \"Database name\":\n    - /placeholder: orders_data\n  - text: Database user\n  - textbox \"Database user\":\n    - /placeholder: orders_owner\n  - text: Instance type\n  - combobox \"Instance type\": Select an instance type\n  - text: PostgreSQL version\n  - combobox \"PostgreSQL version\": Default (latest)\n  - text: Disk size (GB)\n  - spinbutton \"Disk size (GB)\" [disabled]\n  - text: Project and Environment\n  - combobox \"Project\": No project\n  - combobox \"Environment\" [disabled]: No environment\n  - paragraph: When creating a resource, selecting a Project filters its Environments. Choose an Environment to add the resource to that Project. Leaving No environment selected creates the resource outside any Project. If the Project has no Environment yet, create one from the Project's page first.\n  - text: Public access\n  - paragraph: Allow connections from outside the cluster over TLS.\n  - switch \"Public access\"\n  - button \"Cancel\"\n  - button \"Create database\" [disabled]\n  - button \"Close\""
+    },
+    "a785PostgresDesktopFault": {
+      "at": "2026-10-16T22:04:13.346Z",
+      "fault": {
+        "at": "2026-10-16T22:04:12.127Z",
+        "request": {
+          "operationName": "DatabaseInstanceTypes",
+          "variables": {},
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query DatabaseInstanceTypes {\n  databaseInstanceTypes {\n    id\n    name\n    cpu\n    memory\n    storageGB\n    maxStorageGB\n    supportsDiskAutoscaling\n    supportsConnectionPooling\n    maxReadReplicas\n    supportsHighAvailability\n    monthlyUsd\n    __typename\n  }\n}"
+        },
+        "nativeStatus": 200,
+        "nativeBody": {
+          "data": {
+            "databaseInstanceTypes": [
+              {
+                "__typename": "DatabaseInstanceType",
+                "cpu": "100m",
+                "id": "free",
+                "maxReadReplicas": 0,
+                "maxStorageGB": 1,
+                "memory": "256Mi",
+                "monthlyUsd": "0.00",
+                "name": "Free",
+                "storageGB": 1,
+                "supportsConnectionPooling": false,
+                "supportsDiskAutoscaling": false,
+                "supportsHighAvailability": false
+              },
+              {
+                "__typename": "DatabaseInstanceType",
+                "cpu": "100m",
+                "id": "basic-256mb",
+                "maxReadReplicas": 0,
+                "maxStorageGB": 16384,
+                "memory": "256Mi",
+                "monthlyUsd": "4.90",
+                "name": "Basic 256MB",
+                "storageGB": 1,
+                "supportsConnectionPooling": true,
+                "supportsDiskAutoscaling": true,
+                "supportsHighAvailability": false
+              },
+              {
+                "__typename": "DatabaseInstanceType",
+                "cpu": "500m",
+                "id": "basic-1gb",
+                "maxReadReplicas": 5,
+                "maxStorageGB": 16384,
+                "memory": "1Gi",
+                "monthlyUsd": "14.00",
+                "name": "Basic 1GB",
+                "storageGB": 5,
+                "supportsConnectionPooling": true,
+                "supportsDiskAutoscaling": true,
+                "supportsHighAvailability": false
+              }
+            ]
+          }
+        },
+        "injectedStatus": 200,
+        "injectedBody": {
+          "data": null,
+          "errors": [
+            {
+              "message": "QA injected catalog read failure",
+              "path": ["databaseInstanceTypes"],
+              "extensions": {
+                "code": "INTERNAL_SERVER_ERROR"
+              }
+            }
+          ]
+        },
+        "batchNames": ["DatabaseInstanceTypes"],
+        "unchangedSiblings": 0,
+        "onlySelectedEntryChanged": true
+      },
+      "url": "https://dashboard.bex.co/?new=database",
+      "mode": "pg",
+      "name": "qa-20261016-a785-pg-wide",
+      "radios": 0,
+      "skeletons": 0,
+      "alertTexts": [],
+      "retryButtons": 0,
+      "primaryDisabled": true,
+      "snapshot": "- dialog \"New Postgres\":\n  - heading \"New Postgres\" [level=2]\n  - paragraph: Provision a managed PostgreSQL instance.\n  - text: Name\n  - textbox \"Name\":\n    - /placeholder: my-database\n    - text: qa-20261016-a785-pg-wide\n  - paragraph: PostgreSQL names (optional)\n  - paragraph: Set these only at creation. Leave blank to generate stable names.\n  - text: Database name\n  - textbox \"Database name\":\n    - /placeholder: orders_data\n  - text: Database user\n  - textbox \"Database user\":\n    - /placeholder: orders_owner\n  - text: Instance type\n  - combobox \"Instance type\": Select an instance type\n  - text: PostgreSQL version\n  - combobox \"PostgreSQL version\": Default (latest)\n  - text: Disk size (GB)\n  - spinbutton \"Disk size (GB)\" [disabled]\n  - text: Project and Environment\n  - combobox \"Project\": No project\n  - combobox \"Environment\" [disabled]: No environment\n  - paragraph: When creating a resource, selecting a Project filters its Environments. Choose an Environment to add the resource to that Project. Leaving No environment selected creates the resource outside any Project. If the Project has no Environment yet, create one from the Project's page first.\n  - text: Public access\n  - paragraph: Allow connections from outside the cluster over TLS.\n  - switch \"Public access\"\n  - button \"Cancel\"\n  - button \"Create database\" [disabled]\n  - button \"Close\""
+    },
+    "a785PostgresDesktopErrorRegion": {
+      "at": "2026-10-16T22:04:14.193Z",
+      "snapshot": "- dialog \"New Postgres\":\n  - heading \"New Postgres\" [level=2]\n  - paragraph: Provision a managed PostgreSQL instance.\n  - text: Name\n  - textbox \"Name\":\n    - /placeholder: my-database\n    - text: qa-20261016-a785-pg-wide\n  - paragraph: PostgreSQL names (optional)\n  - paragraph: Set these only at creation. Leave blank to generate stable names.\n  - text: Database name\n  - textbox \"Database name\":\n    - /placeholder: orders_data\n  - text: Database user\n  - textbox \"Database user\":\n    - /placeholder: orders_owner\n  - text: Instance type\n  - combobox \"Instance type\": Select an instance type\n  - text: PostgreSQL version\n  - combobox \"PostgreSQL version\": Default (latest)\n  - text: Disk size (GB)\n  - spinbutton \"Disk size (GB)\" [disabled]\n  - text: Project and Environment\n  - combobox \"Project\": No project\n  - combobox \"Environment\" [disabled]: No environment\n  - paragraph: When creating a resource, selecting a Project filters its Environments. Choose an Environment to add the resource to that Project. Leaving No environment selected creates the resource outside any Project. If the Project has no Environment yet, create one from the Project's page first.\n  - text: Public access\n  - paragraph: Allow connections from outside the cluster over TLS.\n  - switch \"Public access\"\n  - button \"Cancel\"\n  - button \"Create database\" [disabled]\n  - button \"Close\"",
+      "retry": 0
+    },
+    "a785PostgresEmptyOptions": {
+      "at": "2026-10-16T21:59:02.941Z",
+      "before": {
+        "listboxCount": 1,
+        "options": 0,
+        "listbox": "- listbox"
+      },
+      "dialogs": 0,
+      "url": "https://dashboard.bex.co/?new=database"
+    },
+    "a785HealthyPostgresCatalog": {
+      "at": "2026-10-16T21:59:15.211Z",
+      "request": {
+        "operationName": "DatabaseInstanceTypes",
+        "variables": {},
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query DatabaseInstanceTypes {\n  databaseInstanceTypes {\n    id\n    name\n    cpu\n    memory\n    storageGB\n    maxStorageGB\n    supportsDiskAutoscaling\n    supportsConnectionPooling\n    maxReadReplicas\n    supportsHighAvailability\n    monthlyUsd\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "databaseInstanceTypes": [
+            {
+              "__typename": "DatabaseInstanceType",
+              "cpu": "100m",
+              "id": "free",
+              "maxReadReplicas": 0,
+              "maxStorageGB": 1,
+              "memory": "256Mi",
+              "monthlyUsd": "0.00",
+              "name": "Free",
+              "storageGB": 1,
+              "supportsConnectionPooling": false,
+              "supportsDiskAutoscaling": false,
+              "supportsHighAvailability": false
+            },
+            {
+              "__typename": "DatabaseInstanceType",
+              "cpu": "100m",
+              "id": "basic-256mb",
+              "maxReadReplicas": 0,
+              "maxStorageGB": 16384,
+              "memory": "256Mi",
+              "monthlyUsd": "4.90",
+              "name": "Basic 256MB",
+              "storageGB": 1,
+              "supportsConnectionPooling": true,
+              "supportsDiskAutoscaling": true,
+              "supportsHighAvailability": false
+            },
+            {
+              "__typename": "DatabaseInstanceType",
+              "cpu": "500m",
+              "id": "basic-1gb",
+              "maxReadReplicas": 5,
+              "maxStorageGB": 16384,
+              "memory": "1Gi",
+              "monthlyUsd": "14.00",
+              "name": "Basic 1GB",
+              "storageGB": 5,
+              "supportsConnectionPooling": true,
+              "supportsDiskAutoscaling": true,
+              "supportsHighAvailability": false
+            }
+          ]
+        }
+      },
+      "timing": {
+        "startTime": 1792187953323.792,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.142,
+        "responseStart": 1176.344,
+        "responseEnd": 1176.786
+      },
+      "url": "https://dashboard.bex.co/?new=database"
+    },
+    "a785HealthyPostgresForm": {
+      "at": "2026-10-16T21:59:16.666Z",
+      "nameReset": "",
+      "plan": "Free — 256 MB RAM, 0.1 CPU, 1 GB · $0.00/month",
+      "primaryDisabled": false
+    },
+    "a785StaticFaultControl": {
+      "at": "2026-10-16T22:00:03.229Z",
+      "fault": {
+        "at": "2026-10-16T22:00:01.927Z",
+        "request": {
+          "operationName": "InstanceTypes",
+          "variables": {},
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query InstanceTypes {\n  instanceTypes {\n    id\n    name\n    cpu\n    memory\n    monthlyUsd\n    __typename\n  }\n}"
+        },
+        "nativeStatus": 200,
+        "nativeBody": {
+          "data": {
+            "instanceTypes": [
+              {
+                "__typename": "InstanceType",
+                "cpu": "100m",
+                "id": "free",
+                "memory": "512Mi",
+                "monthlyUsd": "0.00",
+                "name": "Free"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "500m",
+                "id": "starter",
+                "memory": "512Mi",
+                "monthlyUsd": "4.90",
+                "name": "Starter"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "1",
+                "id": "standard",
+                "memory": "2Gi",
+                "monthlyUsd": "17.50",
+                "name": "Standard"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "2",
+                "id": "pro",
+                "memory": "4Gi",
+                "monthlyUsd": "59.50",
+                "name": "Pro"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "4",
+                "id": "pro_plus",
+                "memory": "8Gi",
+                "monthlyUsd": "122.50",
+                "name": "Pro Plus"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "4",
+                "id": "pro_max",
+                "memory": "16Gi",
+                "monthlyUsd": "157.50",
+                "name": "Pro Max"
+              },
+              {
+                "__typename": "InstanceType",
+                "cpu": "8",
+                "id": "pro_ultra",
+                "memory": "32Gi",
+                "monthlyUsd": "315.00",
+                "name": "Pro Ultra"
+              }
+            ]
+          }
+        },
+        "injectedStatus": 200,
+        "injectedBody": {
+          "data": null,
+          "errors": [
+            {
+              "message": "QA injected catalog read failure",
+              "path": ["instanceTypes"],
+              "extensions": {
+                "code": "INTERNAL_SERVER_ERROR"
+              }
+            }
+          ]
+        },
+        "batchNames": [
+          "BillingReadiness",
+          "Workspaces",
+          "Repos",
+          "GitConnections",
+          "Projects",
+          "InstanceTypes"
+        ],
+        "unchangedSiblings": 5,
+        "onlySelectedEntryChanged": true
+      },
+      "url": "https://dashboard.bex.co/services/new?type=static_site",
+      "mode": "static",
+      "name": "qa-20261016-a785-static",
+      "radios": 5,
+      "skeletons": 0,
+      "alertTexts": [],
+      "retryButtons": 0,
+      "primaryDisabled": false,
+      "snapshot": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\": New Service\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - heading \"New Static Site\" [level=1]\n  - text: Build and deploy a static site from a Git repo. Service Type\n  - radiogroup \"Service Type\":\n    - radio \"Web Service Expose your service on a public URL\"\n    - radio \"Private Service Accessible only within the platform network\"\n    - radio \"Background Worker Run background processing with no port or URL\"\n    - radio \"Cron Job Run a command on a recurring schedule\"\n    - radio \"Static Site Build and serve a static site from object storage\" [checked]\n  - text: Source\n  - tablist:\n    - tab \"GitHub\"\n    - tab \"Public Git URL\" [selected]\n  - tabpanel \"Public Git URL\":\n    - text: Repository URL\n    - textbox \"Repository URL\":\n      - /placeholder: https://github.com/you/your-repo\n      - text: https://github.com/bex-co/bex\n  - paragraph: Settings\n  - text: Name\n  - textbox \"Name\":\n    - /placeholder: my-service\n    - text: qa-20261016-a785-static\n  - text: Branch\n  - textbox \"Branch\":\n    - /placeholder: Repository default branch\n    - text: main\n  - text: Root Directory\n  - textbox \"Root Directory\":\n    - /placeholder: e.g. backend\n  - paragraph: Subdirectory to build from. Leave blank to use the repo root.\n  - text: Build Command\n  - textbox \"Build Command\":\n    - /placeholder: npm run build\n    - text: \"node -e 'require(\\\"fs\\\").mkdirSync(\\\"qa-dist\\\",{recursive:true});require(\\\"fs\\\").writeFileSync(\\\"qa-dist/index.html\\\",\\\"qa-a785-static\\\")'\"\n  - paragraph: The command that builds your service (e.g., npm run build). Leave blank to use the runtime default.\n  - text: Build Filters Only trigger a deploy when a git push changes matching files. Paths are glob patterns relative to the repository root (e.g. src/**, **/*.md). Included Paths A push deploys only when a changed file matches one of these. Empty means every path is included.\n  - button \"Add included path\"\n  - text: Ignored Paths A changed file matching one of these never triggers a deploy, even if it also matches an included path.\n  - button \"Add ignored path\"\n  - text: Publish Directory\n  - textbox \"Publish Directory\":\n    - /placeholder: dist\n    - text: qa-dist\n  - paragraph: The built output directory to serve as the site root (e.g. dist, build, public).\n  - text: Project and Environment\n  - combobox \"Project\": No project\n  - combobox \"Environment\" [disabled]: No environment\n  - paragraph: When creating a resource, selecting a Project filters its Environments. Choose an Environment to add the resource to that Project. Leaving No environment selected creates the resource outside any Project. If the Project has no Environment yet, create one from the Project's page first.\n  - text: Auto-deploy on push\n  - paragraph: Automatically redeploy when you push to this branch.\n  - switch \"Auto-deploy on push\" [checked]\n  - text: Environment Variables\n  - button \"Add Variable\"\n  - text: Secret Files\n  - paragraph: Mounted read-only under /etc/secrets from the first deploy.\n  - button \"Add Secret File\"\n  - button \"Cancel\"\n  - button \"Deploy Service\""
+    },
+    "a785InventoryCleanup": {
+      "at": "2026-10-16T22:04:58.296Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [],
+      "consoleErrors": [],
+      "httpFailures": []
+    },
+    "a785SessionCleared": {
+      "at": "2026-10-16T22:05:30.159Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  }
+}
