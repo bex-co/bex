@@ -53,3 +53,16 @@ export function offeredInstanceTypes<T extends { id: string }>(
 export function offersFreeTier(serviceType: string): boolean {
   return !PAID_ONLY_SERVICE_TYPES.has(serviceType);
 }
+
+/** The compute ladder's tier count (lego/types/tiers/tiers.yaml, free through
+ *  pro-ultra), pinned by a test against that file. */
+export const COMPUTE_TIER_COUNT = 7;
+
+/** How many plan cards the create form offers this service type before its
+ *  catalog arrives — the ladder, less Free for a paid-only type — so the
+ *  pending grid has the ready grid's rows (w4/329). */
+export function servicePlanSlotCount(serviceType: string): number {
+  return offersFreeTier(serviceType)
+    ? COMPUTE_TIER_COUNT
+    : COMPUTE_TIER_COUNT - 1;
+}

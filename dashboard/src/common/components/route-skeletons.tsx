@@ -9,7 +9,11 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { DatastorePlanPreview } from "@/common/components/datastore-plan-preview";
+import {
+  DatastorePlanPreview,
+  PlanTierSlots,
+} from "@/common/components/datastore-plan-preview";
+import { servicePlanSlotCount } from "@/features/services/lib/instance-type";
 import {
   DatastoreConnectionsPreview,
   DatastoreMetadataPreview,
@@ -1400,7 +1404,10 @@ export function ServiceCreatePageSkeleton() {
             {!staticSite ? (
               <Region name="plan-picker" className="space-y-2">
                 <Skeleton className="h-4 w-28" />
-                <CreatePlanGridSkeleton count={7} />
+                <PlanTierSlots
+                  count={servicePlanSlotCount(serviceType)}
+                  lastWraps
+                />
               </Region>
             ) : null}
             <Region name="project-environment">
@@ -2315,8 +2322,16 @@ export function DatastoreLogsSkeleton() {
 }
 
 const DATASTORE_METRIC_SECTIONS = {
-  keyvalue: ["metrics.diskTitle", "metrics.memoryTitle", "metrics.kvConnectionsTitle"],
-  database: ["metrics.diskTitle", "metrics.connectionsTitle", "metrics.replicationLagTitle"],
+  keyvalue: [
+    "metrics.diskTitle",
+    "metrics.memoryTitle",
+    "metrics.kvConnectionsTitle",
+  ],
+  database: [
+    "metrics.diskTitle",
+    "metrics.connectionsTitle",
+    "metrics.replicationLagTitle",
+  ],
 } as const;
 
 /**
