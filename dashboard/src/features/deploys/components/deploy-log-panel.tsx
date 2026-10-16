@@ -28,6 +28,7 @@ import { LogEmptyState } from "@/features/logs/components/log-empty-state";
 import { LogLineList } from "@/features/logs/components/log-line-list";
 import { LogTruncationNotice } from "@/features/logs/components/log-truncation-notice";
 import { stripAnsi } from "@/features/logs/lib/ansi";
+import { goLowercase } from "@/features/logs/lib/go-lowercase";
 import type { EventSourceFactory } from "@/features/logs/hooks/use-live-logs";
 import { useDeployLogs } from "../hooks/use-deploy-logs";
 import { LOG_RANGES, RANGE_LABEL_KEYS, type LogRange } from "../lib/log-range";
@@ -133,10 +134,12 @@ export function DeployLogPanel({
     if (debouncedSearch) {
       // Match the *displayed* text, not the wire bytes: a build line's color
       // escapes sit between words, so a raw substring search silently misses
-      // any needle that straddles one.
-      const needle = debouncedSearch.toLowerCase();
+      // any needle that straddles one. Case folds the way the server's log
+      // search does (Go's per-rune lowercase), so the same term finds the
+      // same lines here as in service Logs (w4/m216).
+      const needle = goLowercase(debouncedSearch);
       out = out.filter((l) =>
-        stripAnsi(l.message).toLowerCase().includes(needle),
+        goLowercase(stripAnsi(l.message)).includes(needle),
       );
     }
     if (instanceFilter) {
