@@ -278,10 +278,23 @@ COPY <<'%s' %s
 	// looked up on the user's PATH, which may be empty or narrow; the absolute
 	// bash CMD needs none of it, so the generated image runs that alone (w8/m61).
 	start := shellJSON(o.StartCommand)
-	return base + fmt.Sprintf(`ENV PORT=10000
+	return base + fmt.Sprintf(`%sENV PORT=10000
 ENTRYPOINT []
 CMD %s
-`, start)
+`, nativeRuntimeDefaults(o), start)
+}
+
+// nativeRuntimeDefaults is the environment Render gives a native runtime's
+// running service by default, as image ENV after the build RUN: the build does
+// not see it, and as image configuration it yields to every value the service
+// configures — a literal, a linked group, an explicit empty one. Node runs
+// with NODE_ENV=production at runtime only (w8/111), so Express and its peers
+// leave development mode.
+func nativeRuntimeDefaults(o Options) string {
+	if nativeRuntime(o) == nativeNodeRuntime {
+		return "ENV NODE_ENV=production\n"
+	}
+	return ""
 }
 
 // shellJSON wraps a Render build/start command in a NON-login bash so the
