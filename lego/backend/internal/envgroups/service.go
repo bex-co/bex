@@ -147,8 +147,9 @@ type SecretFileContent struct {
 	Content string `json:"content"`
 }
 
-// RevealEnvGroupFile is GetEnvGroupFile in the content-read shape.
-func (s *Service) RevealEnvGroupFile(ctx context.Context, gid, name string) (SecretFileContent, error) {
+// revealEnvGroupFile is GetEnvGroupFile in the content-read shape — unexported:
+// it is the REST/MCP adapters' projection of that verb, not a verb of its own.
+func (s *Service) revealEnvGroupFile(ctx context.Context, gid, name string) (SecretFileContent, error) {
 	f, err := s.GetEnvGroupFile(ctx, gid, name)
 	if err != nil {
 		return SecretFileContent{}, err
