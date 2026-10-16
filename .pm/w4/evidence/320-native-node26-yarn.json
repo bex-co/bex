@@ -1,0 +1,732 @@
+{
+  "pass": "a671",
+  "sourceHead": "e5ff3a6f013e6060c09b9ce7291515f1b14bd1e4",
+  "observedAtUTC": "2026-10-16",
+  "scope": "Two owned Free native Node web services; missing primary-Node26 Yarn isolated from Bun and controlled against Node24; filing only.",
+  "yarnFixtureSource": "const http=require('node:http'),fs=require('node:fs'),cp=require('node:child_process');const data={marker:'QA_A671_YARN_RUNTIME',built:fs.readFileSync('qa_yarn_marker.txt','utf8'),node:process.version,yarn:cp.execFileSync('yarn',['--version'],{encoding:'utf8'}).trim()};http.createServer((q,r)=>{r.writeHead(200,{'Content-Type':'application/json'});r.end(JSON.stringify(data))}).listen(Number(process.env.PORT||3000),'0.0.0.0');",
+  "createYarn": {
+    "at": "2026-10-16T04:29:38.116Z",
+    "request": {
+      "operationName": "CreateService",
+      "variables": {
+        "repo": "https://github.com/bex-co/bex",
+        "name": "qa-20261016-a671-yarn",
+        "type": "web_service",
+        "rootDir": "examples/hello-node",
+        "runtime": "node",
+        "buildCommand": "printf %s 'Y29uc3QgaHR0cD1yZXF1aXJlKCdub2RlOmh0dHAnKSxmcz1yZXF1aXJlKCdub2RlOmZzJyksY3A9cmVxdWlyZSgnbm9kZTpjaGlsZF9wcm9jZXNzJyk7Y29uc3QgZGF0YT17bWFya2VyOidRQV9BNjcxX1lBUk5fUlVOVElNRScsYnVpbHQ6ZnMucmVhZEZpbGVTeW5jKCdxYV95YXJuX21hcmtlci50eHQnLCd1dGY4Jyksbm9kZTpwcm9jZXNzLnZlcnNpb24seWFybjpjcC5leGVjRmlsZVN5bmMoJ3lhcm4nLFsnLS12ZXJzaW9uJ10se2VuY29kaW5nOid1dGY4J30pLnRyaW0oKX07aHR0cC5jcmVhdGVTZXJ2ZXIoKHEscik9PntyLndyaXRlSGVhZCgyMDAseydDb250ZW50LVR5cGUnOidhcHBsaWNhdGlvbi9qc29uJ30pO3IuZW5kKEpTT04uc3RyaW5naWZ5KGRhdGEpKX0pLmxpc3RlbihOdW1iZXIocHJvY2Vzcy5lbnYuUE9SVHx8MzAwMCksJzAuMC4wLjAnKTs=' | base64 -d > qa_yarn.cjs && yarn --version && printf QA_A671_YARN_BUILT > qa_yarn_marker.txt",
+        "startCommand": "node qa_yarn.cjs",
+        "plan": "free",
+        "autoDeploy": false,
+        "port": 3000,
+        "envVars": [
+          {
+            "key": "NODE_VERSION",
+            "value": "26"
+          }
+        ],
+        "ownerId": "tea-d98210cbbpdc73dcrkvg"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.3.3"
+        }
+      },
+      "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "createService": {
+          "__typename": "Service",
+          "environmentId": null,
+          "id": "srv-db8qgc7dbg8c73dghabg",
+          "latestDeployId": "dep-db8qgc7dbg8c73dghac0",
+          "name": "qa-20261016-a671-yarn",
+          "phase": "",
+          "projectId": null,
+          "registryCredentialId": null,
+          "type": "web_service"
+        }
+      }
+    },
+    "timing": {
+      "startTime": 1792124974646.1233,
+      "domainLookupStart": -1,
+      "domainLookupEnd": -1,
+      "connectStart": -1,
+      "secureConnectionStart": -1,
+      "connectEnd": -1,
+      "requestStart": 0.148,
+      "responseStart": 2754.365,
+      "responseEnd": 2754.835
+    },
+    "url": "https://dashboard.bex.co/services/srv-db8qgc7dbg8c73dghabg/deploys/dep-db8qgc7dbg8c73dghac0"
+  },
+  "firstFailure": {
+    "at": "2026-10-16T04:31:35.531Z",
+    "request": {
+      "operationName": "QaA671Both",
+      "query": "query QaA671Both($bun:String!,$yarn:String!){bun:service(id:$bun){id phase revision} bunDeploys:deploys(serviceId:$bun,limit:3){id status failureReason finishedAt} yarn:service(id:$yarn){id phase revision} yarnDeploys:deploys(serviceId:$yarn,limit:3){id status failureReason finishedAt}}",
+      "variables": {
+        "bun": "srv-db8qeivdbg8c73dgha90",
+        "yarn": "srv-db8qgc7dbg8c73dghabg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "bun": {
+          "id": "srv-db8qeivdbg8c73dgha90",
+          "phase": "Building",
+          "revision": "rev-1"
+        },
+        "bunDeploys": [
+          {
+            "failureReason": "",
+            "finishedAt": "",
+            "id": "dep-db8qguq9cl7s73ae4800",
+            "status": "build_in_progress"
+          },
+          {
+            "failureReason": "",
+            "finishedAt": "2026-10-16T04:28:32.394272Z",
+            "id": "dep-db8qeivdbg8c73dgha9g",
+            "status": "live"
+          }
+        ],
+        "yarn": {
+          "id": "srv-db8qgc7dbg8c73dghabg",
+          "phase": "Failed",
+          "revision": ""
+        },
+        "yarnDeploys": [
+          {
+            "failureReason": "build failed in the docker build step:\n0.076 /bin/bash: line 2: yarn: command not found\n------\nerror: build command 'printf %s 'Y29uc3QgaHR0cD1yZXF1aXJlKCdub2RlOmh0dHAnKSxmcz1yZXF1aXJlKCdub2RlOmZzJyksY3A9cmVxdWlyZSgnbm9kZTpjaGlsZF9wcm9jZXNzJyk7Y29uc3QgZGF0YT17bWFya2VyOidRQV9BNjcxX1lBUk5fUlVOVElNRScsYnVpbHQ6ZnMucmVhZEZpbGVTeW5jKCdxYV95YXJuX21hcmtlci50eHQnLCd1dGY4Jyksbm9kZTpwcm9jZXNzLnZlcnNpb24seWFybjpjcC5leGVjRmlsZVN5bmMoJ3lhcm4nLFsnLS12ZXJzaW9uJ10se2VuY29kaW5nOid1dGY4J30pLnRyaW0oKX07aHR0cC5jcmVhdGVTZXJ2ZXIoKHEscik9PntyLndyaXRlSGVhZCgyMDAseydDb250ZW50LVR5cGUnOidhcHBsaWNhdGlvbi9qc29uJ30pO3IuZW5kKEpTT04uc3RyaW5naWZ5KGRhdGEpKX0pLmxpc3RlbihOdW1iZXIocHJvY2Vzcy5lbnYuUE9SVHx8MzAwMCksJzAuMC4wLjAnKTs=' | base64 -d > qa_yarn.cjs && yarn --version && printf QA_A671_YARN_BUILT > qa_yarn_marker.txt' exited with code 127",
+            "finishedAt": "2026-10-16T04:31:32.493078Z",
+            "id": "dep-db8qgc7dbg8c73dghac0",
+            "status": "build_failed"
+          }
+        ]
+      }
+    }
+  },
+  "freshFailureUI": {
+    "at": "2026-10-16T04:31:59.013Z",
+    "ui": "xited with code 127\n\ne5ff3a6 docs(pm): add streaming request activity follow-up to w4 m164\n\nCreated: October 15, 2026 at 9:29 PM\nUpdated: October 15, 2026 at 9:31 PM\nStarted: October 15, 2026 at 9:30 PM\nFinished: October 15, 2026 at 9:31 PM\nDuration: 49s\nStatus timeline\n\nDeploy created\n\nOctober 15, 2026 at 9:29 PM\n\nDeploy started\n\nOctober 15, 2026 at 9:30 PM\n\nBuild Failed\n\nOctober 15, 2026 at 9:31 PM\nAll logs\nOnly part of this time range is loaded. Load older to search earlier lines.\nLoad older\n09:31:22 PM\n[bmhnd]\n09:31:22 PM\n[bmhnd]\n#12 [stage-0 4/7] WORKDIR /opt/render/project/src\n09:31:22 PM\n[bmhnd]\n#12 DONE 0.1s\n09:31:22 PM\n[bmhnd]\n#13 [stage-0 5/7] COPY . .\n09:31:22 PM\n[bmhnd]\n#13 DONE 0.1s\n09:31:23 PM\n[bmhnd]\n09:31:23 PM\n[bmhnd]\n#14 [stage-0 6/7] COPY <<BEX_LOAD_ENV /opt/bex/load-env\n09:31:23 PM\n[bmhnd]\n#14 DONE 0.0s\n09:31:23 PM\n[bmhnd]\n#15 [stage-0 7/7] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\"/bin/bash\",\"-c\",\". /opt/bex/load-env\\nprintf %s 'Y29uc3QgaHR0cD1yZXF1aXJlKCdub2RlOmh0dHAnKSxmcz1yZXF1aXJlKCdub2RlOmZzJyksY3A9cmVxdWlyZSgnbm9kZTpjaGlsZF9wcm9jZXNzJyk7Y29uc3QgZGF0YT17bWFya2VyOidRQV9BNjcxX1lBUk5fUlVOVElNRScsYnVpbHQ6ZnMucmVhZEZpbGVTeW5jKCdxYV95YXJuX21hcmtlci50eHQnLCd1dGY4Jyksbm9kZTpwcm9jZXNzLnZlcnNpb24seWFybjpjcC5leGVjRmlsZVN5bmMoJ3lhcm4nLFsnLS12ZXJzaW9uJ10se2VuY29kaW5nOid1dGY4J30pLnRyaW0oKX07aHR0cC5jcmVhdGVTZXJ2ZXIoKHEscik9PntyLndyaXRlSGVhZCgyMDAseydDb250ZW50LVR5cGUnOidhcHBsaWNhdGlvbi9qc29uJ30pO3IuZW5kKEpTT04uc3RyaW5naWZ5KGRhdGEpKX0pLmxpc3RlbihOdW1iZXIocHJvY2Vzcy5lbnYuUE9SVHx8MzAwMCksJzAuMC4wLjAnKTs=' | base64 -d > qa_yarn.cjs && yarn --version && printf QA_A671_YARN_BUILT > qa_yarn_marker.txt\"]\n09:31:23 PM\n[bmhnd]\n#15 0.076 /bin/bash: line 2: yarn: command not found\n09:31:23 PM\n[bmhnd]\n#15 ERROR: process \"/bin/bash -c . /opt/bex/load-env\\nprintf %s 'Y29uc3QgaHR0cD1yZXF1aXJlKCdub2RlOmh0dHAnKSxmcz1yZXF1aXJlKCdub2RlOmZzJyksY3A9cmVxdWlyZSgnbm9kZTpjaGlsZF9wcm9jZXNzJyk7Y29uc3QgZGF0YT17bWFya2VyOidRQV9BNjcxX1lBUk5fUlVOVElNRScsYnVpbHQ6ZnMucmVhZEZpbGVTeW5jKCdxYV95YXJuX21hcmtlci50eHQnLCd1dGY4Jyksbm9kZTpwcm9jZXNzLnZlcnNpb24seWFybjpjcC5leGVjRmlsZVN5bmMoJ3lhcm4nLFsnLS12ZXJzaW9uJ10se2VuY29kaW5nOid1dGY4J30pLnRyaW0oKX07aHR0cC5jcmVhdGVTZXJ2ZXIoKHEscik9PntyLndyaXRlSGVhZCgyMDAseydDb250ZW50LVR5cGUnOidhcHBsaWNhdGlvbi9qc29uJ30pO3IuZW5kKEpTT04uc3RyaW5naWZ5KGRhdGEpKX0pLmxpc3RlbihOdW1iZXIocHJvY2Vzcy5lbnYuUE9SVHx8MzAwMCksJzAuMC4wLjAnKTs=' | base64 -d > qa_yarn.cjs && yarn --version && printf QA_A671_YARN_BUILT > qa_yarn_marker.txt\" did not complete successfully: exit code: 127\n09:31:23 PM\n[bmhnd]\n------\n09:31:23 PM\n[bmhnd]\n > [stage-0 7/7] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env [\"/bin/bash\",\"-c\",\". /opt/bex/load-env\\nprintf %s 'Y29uc3QgaHR0cD1yZXF1aXJlKCdub2RlOmh0dHAnKSxmcz1yZXF1aXJlKCdub2RlOmZzJyksY3A9cmVxdWlyZSgnbm9kZTpjaGlsZF9wcm9jZXNzJyk7Y29uc3QgZGF0YT17bWFya2VyOidRQV9BNjcxX1lBUk5fUlVOVElNRScsYnVpbHQ6ZnMucmVhZEZpbGVTeW5jKCdxYV95YXJuX21hcmtlci50eHQnLCd1dGY4Jyksbm9kZTpwcm9jZXNzLnZlcnNpb24seWFybjpjcC5leGVjRmlsZVN5bmMoJ3lhcm4nLFsnLS12ZXJzaW9uJ10se2VuY29kaW5nOid1dGY4J30pLnRyaW0oKX07aHR0cC5jcmVhdGVTZXJ2ZXIoKHEscik9PntyLndyaXRlSGVhZCgyMDAseydDb250ZW50LVR5cGUnOidhcHBsaWNhdGlvbi9qc29uJ30pO3IuZW5kKEpTT04uc3RyaW5naWZ5KGRhdGEpKX0pLmxpc3RlbihOdW1iZXIocHJvY2Vzcy5lbnYuUE9SVHx8MzAwMCksJzAuMC4wLjAnKTs=' | base64 -d > qa_yarn.cjs && yarn --version && printf QA_A671_YARN_BUILT > qa_yarn_marker.txt\"]:\n09:31:23 PM\n[bmhnd]\n0.076 /bin/bash: line 2: yarn: command not found\n09:31:23 PM\n[bmhnd]\nerror: failed to solve: process \"/bin/bash -c . /opt/bex/load-env\\nprintf %s 'Y29uc3QgaHR0cD1yZXF1aXJlKCdub2RlOmh0dHAnKSxmcz1yZXF1aXJlKCdub2RlOmZzJyksY3A9cmVxdWlyZSgnbm9kZTpjaGlsZF9wcm9jZXNzJyk7Y29uc3QgZGF0YT17bWFya2VyOidRQV9BNjcxX1lBUk5fUlVOVElNRScsYnVpbHQ6ZnMucmVhZEZpbGVTeW5jKCdxYV95YXJuX21hcmtlci50eHQnLCd1dGY4Jyksbm9kZTpwcm9jZXNzLnZlcnNpb24seWFybjpjcC5leGVjRmlsZVN5bmMoJ3lhcm4nLFsnLS12ZXJzaW9uJ10se2VuY29kaW5nOid1dGY4J30pLnRyaW0oKX07aHR0cC5jcmVhdGVTZXJ2ZXIoKHEscik9PntyLndyaXRlSGVhZCgyMDAseydDb250ZW50LVR5cGUnOidhcHBsaWNhdGlvbi9qc29uJ30pO3IuZW5kKEpTT04uc3RyaW5naWZ5KGRhdGEpKX0pLmxpc3RlbihOdW1iZXIocHJvY2Vzcy5lbnYuUE9SVHx8MzAwMCksJzAuMC4wLjAnKTs=' | base64 -d > qa_yarn.cjs && yarn --version && printf QA_A671_YARN_BUILT > qa_yarn_marker.txt\" did not complete successfully: exit code: 127\n09:31:32 PM\n[i47ca]\n==> Build failed: build failed in the docker build step:\n09:31:32 PM\n[i47ca]\n==> 0.076 /bin/bash: line 2: yarn: command not found\n09:31:32 PM\n[i47ca]\n==> ------\n09:31:32 PM\n[i47ca]\n==> error: build command 'printf %s 'Y29uc3QgaHR0cD1yZXF1aXJlKCdub2RlOmh0dHAnKSxmcz1yZXF1aXJlKCdub2RlOmZzJyksY3A9cmVxdWlyZSgnbm9kZTpjaGlsZF9wcm9jZXNzJyk7Y29uc3QgZGF0YT17bWFya2VyOidRQV9BNjcxX1lBUk5fUlVOVElNRScsYnVpbHQ6ZnMucmVhZEZpbGVTeW5jKCdxYV95YXJuX21hcmtlci50eHQnLCd1dGY4Jyksbm9kZTpwcm9jZXNzLnZlcnNpb24seWFybjpjcC5leGVjRmlsZVN5bmMoJ3lhcm4nLFsnLS12ZXJzaW9uJ10se2VuY29kaW5nOid1dGY4J30pLnRyaW0oKX07aHR0cC5jcmVhdGVTZXJ2ZXIoKHEscik9PntyLndyaXRlSGVhZCgyMDAseydDb250ZW50LVR5cGUnOidhcHBsaWNhdGlvbi9qc29uJ30pO3IuZW5kKEpTT04uc3RyaW5naWZ5KGRhdGEpKX0pLmxpc3RlbihOdW1iZXIocHJvY2Vzcy5lbnYuUE9SVHx8MzAwMCksJzAuMC4wLjAnKTs=' | base64 -d > qa_yarn.cjs && yarn --version && printf QA_A671_YARN_BUILT > qa_yarn_marker.txt' exited with code 127"
+  },
+  "node24SaveOnly": {
+    "at": "2026-10-16T04:32:17.093Z",
+    "request": {
+      "operationName": "PatchServiceEnvironment",
+      "variables": {
+        "serviceId": "srv-db8qgc7dbg8c73dghabg",
+        "envVars": [
+          {
+            "key": "NODE_VERSION",
+            "value": "24"
+          }
+        ],
+        "secretFiles": [],
+        "saveMode": "save_only"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.3.3"
+        }
+      },
+      "query": "mutation PatchServiceEnvironment($serviceId: String!, $envVars: [EnvironmentEnvVarPatchInput!], $secretFiles: [EnvironmentSecretFilePatchInput!], $saveMode: String!) {\n  patchServiceEnvironment(\n    serviceId: $serviceId\n    envVars: $envVars\n    secretFiles: $secretFiles\n    saveMode: $saveMode\n  ) {\n    envVarKeys\n    secretFileNames\n    rolledOut\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "patchServiceEnvironment": {
+          "__typename": "EnvironmentPatchResult",
+          "envVarKeys": ["NODE_VERSION"],
+          "rolledOut": false,
+          "secretFileNames": []
+        }
+      }
+    },
+    "timing": {
+      "startTime": 1792125136025.774,
+      "domainLookupStart": -1,
+      "domainLookupEnd": -1,
+      "connectStart": -1,
+      "secureConnectionStart": -1,
+      "connectEnd": -1,
+      "requestStart": 0.132,
+      "responseStart": 362.329,
+      "responseEnd": 362.798
+    },
+    "url": "https://dashboard.bex.co/services/srv-db8qgc7dbg8c73dghabg/env"
+  },
+  "node24Rebuild": {
+    "at": "2026-10-16T04:32:21.573Z",
+    "request": {
+      "operationName": "TriggerDeploy",
+      "variables": {
+        "serviceId": "srv-db8qgc7dbg8c73dghabg"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.3.3"
+        }
+      },
+      "query": "mutation TriggerDeploy($serviceId: String!, $commitId: String, $deployMode: String, $clearCache: String, $confirm: String) {\n  triggerDeploy(\n    serviceId: $serviceId\n    commitId: $commitId\n    deployMode: $deployMode\n    clearCache: $clearCache\n    confirm: $confirm\n  ) {\n    id\n    status\n    createdAt\n    trigger\n    rollbackOf\n    image\n    __typename\n  }\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "triggerDeploy": {
+          "__typename": "Deploy",
+          "createdAt": "2026-10-16T04:32:20.853256Z",
+          "id": "dep-db8qhl29cl7s73ae482g",
+          "image": "",
+          "rollbackOf": "",
+          "status": "created",
+          "trigger": "api"
+        }
+      }
+    },
+    "timing": {
+      "startTime": 1792125139114.491,
+      "domainLookupStart": -1,
+      "domainLookupEnd": -1,
+      "connectStart": -1,
+      "secureConnectionStart": -1,
+      "connectEnd": -1,
+      "requestStart": 0.129,
+      "responseStart": 1755.541,
+      "responseEnd": 1755.983
+    },
+    "url": "https://dashboard.bex.co/services/srv-db8qgc7dbg8c73dghabg/deploys/dep-db8qhl29cl7s73ae482g"
+  },
+  "node24ControlContract": {
+    "at": "2026-10-16T04:35:04.993Z",
+    "request": {
+      "operationName": "QaA671YarnContract",
+      "query": "query QaA671YarnContract($id:String!){service(id:$id){id runtime buildCommand startCommand rootDir repo branch phase revision} deploys(serviceId:$id,limit:3){id status commitId failureReason finishedAt}}",
+      "variables": {
+        "id": "srv-db8qgc7dbg8c73dghabg"
+      }
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deploys": [
+          {
+            "commitId": "e5ff3a6f013e6060c09b9ce7291515f1b14bd1e4",
+            "failureReason": "",
+            "finishedAt": "2026-10-16T04:33:43.224364Z",
+            "id": "dep-db8qhl29cl7s73ae482g",
+            "status": "live"
+          },
+          {
+            "commitId": "e5ff3a6f013e6060c09b9ce7291515f1b14bd1e4",
+            "failureReason": "build failed in the docker build step:\n0.076 /bin/bash: line 2: yarn: command not found\n------\nerror: build command 'printf %s 'Y29uc3QgaHR0cD1yZXF1aXJlKCdub2RlOmh0dHAnKSxmcz1yZXF1aXJlKCdub2RlOmZzJyksY3A9cmVxdWlyZSgnbm9kZTpjaGlsZF9wcm9jZXNzJyk7Y29uc3QgZGF0YT17bWFya2VyOidRQV9BNjcxX1lBUk5fUlVOVElNRScsYnVpbHQ6ZnMucmVhZEZpbGVTeW5jKCdxYV95YXJuX21hcmtlci50eHQnLCd1dGY4Jyksbm9kZTpwcm9jZXNzLnZlcnNpb24seWFybjpjcC5leGVjRmlsZVN5bmMoJ3lhcm4nLFsnLS12ZXJzaW9uJ10se2VuY29kaW5nOid1dGY4J30pLnRyaW0oKX07aHR0cC5jcmVhdGVTZXJ2ZXIoKHEscik9PntyLndyaXRlSGVhZCgyMDAseydDb250ZW50LVR5cGUnOidhcHBsaWNhdGlvbi9qc29uJ30pO3IuZW5kKEpTT04uc3RyaW5naWZ5KGRhdGEpKX0pLmxpc3RlbihOdW1iZXIocHJvY2Vzcy5lbnYuUE9SVHx8MzAwMCksJzAuMC4wLjAnKTs=' | base64 -d > qa_yarn.cjs && yarn --version && printf QA_A671_YARN_BUILT > qa_yarn_marker.txt' exited with code 127",
+            "finishedAt": "2026-10-16T04:31:32.493078Z",
+            "id": "dep-db8qgc7dbg8c73dghac0",
+            "status": "build_failed"
+          }
+        ],
+        "service": {
+          "branch": "main",
+          "buildCommand": "printf %s 'Y29uc3QgaHR0cD1yZXF1aXJlKCdub2RlOmh0dHAnKSxmcz1yZXF1aXJlKCdub2RlOmZzJyksY3A9cmVxdWlyZSgnbm9kZTpjaGlsZF9wcm9jZXNzJyk7Y29uc3QgZGF0YT17bWFya2VyOidRQV9BNjcxX1lBUk5fUlVOVElNRScsYnVpbHQ6ZnMucmVhZEZpbGVTeW5jKCdxYV95YXJuX21hcmtlci50eHQnLCd1dGY4Jyksbm9kZTpwcm9jZXNzLnZlcnNpb24seWFybjpjcC5leGVjRmlsZVN5bmMoJ3lhcm4nLFsnLS12ZXJzaW9uJ10se2VuY29kaW5nOid1dGY4J30pLnRyaW0oKX07aHR0cC5jcmVhdGVTZXJ2ZXIoKHEscik9PntyLndyaXRlSGVhZCgyMDAseydDb250ZW50LVR5cGUnOidhcHBsaWNhdGlvbi9qc29uJ30pO3IuZW5kKEpTT04uc3RyaW5naWZ5KGRhdGEpKX0pLmxpc3RlbihOdW1iZXIocHJvY2Vzcy5lbnYuUE9SVHx8MzAwMCksJzAuMC4wLjAnKTs=' | base64 -d > qa_yarn.cjs && yarn --version && printf QA_A671_YARN_BUILT > qa_yarn_marker.txt",
+          "id": "srv-db8qgc7dbg8c73dghabg",
+          "phase": "Running",
+          "repo": "https://github.com/bex-co/bex",
+          "revision": "rev-2",
+          "rootDir": "examples/hello-node",
+          "runtime": "node",
+          "startCommand": "node qa_yarn.cjs"
+        }
+      }
+    }
+  },
+  "node24Public": {
+    "request": {
+      "method": "GET",
+      "url": "https://qa-20261016-a671-yarn.onbex.co/",
+      "headers": {
+        "User-Agent": "Mozilla/5.0"
+      }
+    },
+    "response": {
+      "at": "2026-10-16T04:34:30.150Z",
+      "status": 200,
+      "body": {
+        "marker": "QA_A671_YARN_RUNTIME",
+        "built": "QA_A671_YARN_BUILT",
+        "node": "v24.21.0",
+        "yarn": "1.22.22"
+      }
+    }
+  },
+  "node26RuntimeWithBun12": {
+    "at": "2026-10-16T04:29:29.053Z",
+    "status": 200,
+    "body": {
+      "marker": "QA_A671_RUNTIME",
+      "boot": "84ca47fd-1827-4de8-9b1a-e33383c794ac",
+      "requestedBun": "1.2",
+      "tools": {
+        "node": {
+          "version": "v26.11.1"
+        },
+        "npm": {
+          "code": 0,
+          "stdout": "11.20.0",
+          "stderr": "",
+          "errorCode": null
+        },
+        "yarn": {
+          "code": null,
+          "stdout": "",
+          "stderr": "",
+          "errorCode": "ENOENT"
+        },
+        "pnpm": {
+          "code": 0,
+          "stdout": "10.34.6",
+          "stderr": "",
+          "errorCode": null
+        },
+        "bun": {
+          "code": 0,
+          "stdout": "1.2.23",
+          "stderr": "",
+          "errorCode": null
+        }
+      },
+      "build": {
+        "marker": "QA_A671_BUILD",
+        "requestedBun": "1.2",
+        "tools": {
+          "node": {
+            "version": "v26.11.1"
+          },
+          "npm": {
+            "code": 0,
+            "stdout": "11.20.0",
+            "stderr": "",
+            "errorCode": null
+          },
+          "yarn": {
+            "code": null,
+            "stdout": "",
+            "stderr": "",
+            "errorCode": "ENOENT"
+          },
+          "pnpm": {
+            "code": 0,
+            "stdout": "10.34.6",
+            "stderr": "",
+            "errorCode": null
+          },
+          "bun": {
+            "code": 0,
+            "stdout": "1.2.23",
+            "stderr": "",
+            "errorCode": null
+          }
+        }
+      }
+    }
+  },
+  "node26RuntimeWithoutBun": {
+    "at": "2026-10-16T04:35:18.666Z",
+    "status": 200,
+    "body": {
+      "marker": "QA_A671_RUNTIME",
+      "boot": "3d48ee1f-84c2-474d-899a-e092e9dafb0a",
+      "requestedBun": null,
+      "tools": {
+        "node": {
+          "version": "v26.11.1"
+        },
+        "npm": {
+          "code": 0,
+          "stdout": "11.20.0",
+          "stderr": "",
+          "errorCode": null
+        },
+        "yarn": {
+          "code": null,
+          "stdout": "",
+          "stderr": "",
+          "errorCode": "ENOENT"
+        },
+        "pnpm": {
+          "code": 0,
+          "stdout": "10.34.6",
+          "stderr": "",
+          "errorCode": null
+        },
+        "bun": {
+          "code": null,
+          "stdout": "",
+          "stderr": "",
+          "errorCode": "ENOENT"
+        }
+      },
+      "build": {
+        "marker": "QA_A671_BUILD",
+        "requestedBun": null,
+        "tools": {
+          "node": {
+            "version": "v26.11.1"
+          },
+          "npm": {
+            "code": 0,
+            "stdout": "11.20.0",
+            "stderr": "",
+            "errorCode": null
+          },
+          "yarn": {
+            "code": null,
+            "stdout": "",
+            "stderr": "",
+            "errorCode": "ENOENT"
+          },
+          "pnpm": {
+            "code": 0,
+            "stdout": "10.34.6",
+            "stderr": "",
+            "errorCode": null
+          },
+          "bun": {
+            "code": null,
+            "stdout": "",
+            "stderr": "",
+            "errorCode": "ENOENT"
+          }
+        }
+      }
+    }
+  },
+  "pinnedImageExecutions": [
+    {
+      "at": "2026-10-16T04:30:35.257644+00:00",
+      "line": "26",
+      "image": "node:26-bookworm@sha256:f1233c415b41ffcf237c717b3dea92e9d4ea006e0e4c71edcb790605d74f5404",
+      "exit": 0,
+      "observation": {
+        "node": "v26.11.1",
+        "arch": "arm64",
+        "tools": {
+          "npm": {
+            "code": 0,
+            "stdout": "11.20.0",
+            "error": null
+          },
+          "yarn": {
+            "code": null,
+            "stdout": "",
+            "error": "ENOENT"
+          },
+          "yarnpkg": {
+            "code": null,
+            "stdout": "",
+            "error": "ENOENT"
+          },
+          "corepack": {
+            "code": null,
+            "stdout": "",
+            "error": "ENOENT"
+          }
+        }
+      },
+      "error": ""
+    },
+    {
+      "at": "2026-10-16T04:30:36.109314+00:00",
+      "line": "24",
+      "image": "node:24-bookworm@sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0",
+      "exit": 0,
+      "observation": {
+        "node": "v24.21.0",
+        "arch": "arm64",
+        "tools": {
+          "npm": {
+            "code": 0,
+            "stdout": "11.19.0",
+            "error": null
+          },
+          "yarn": {
+            "code": 0,
+            "stdout": "1.22.22",
+            "error": null
+          },
+          "yarnpkg": {
+            "code": 0,
+            "stdout": "1.22.22",
+            "error": null
+          },
+          "corepack": {
+            "code": 0,
+            "stdout": "0.36.0",
+            "error": null
+          }
+        }
+      },
+      "error": ""
+    },
+    {
+      "at": "2026-10-16T04:30:36.929826+00:00",
+      "line": "22",
+      "image": "node:22-bookworm@sha256:0e5f906573693feaa1e21057ebdcfdb5bd5021f050b2dc7c9deceb629c7da2a8",
+      "exit": 0,
+      "observation": {
+        "node": "v22.23.3",
+        "arch": "arm64",
+        "tools": {
+          "npm": {
+            "code": 0,
+            "stdout": "10.9.9",
+            "error": null
+          },
+          "yarn": {
+            "code": 0,
+            "stdout": "1.22.22",
+            "error": null
+          },
+          "yarnpkg": {
+            "code": 0,
+            "stdout": "1.22.22",
+            "error": null
+          },
+          "corepack": {
+            "code": 0,
+            "stdout": "0.36.0",
+            "error": null
+          }
+        }
+      },
+      "error": ""
+    }
+  ],
+  "pinnedImageCommand": {
+    "prefix": [
+      "docker",
+      "run",
+      "--rm",
+      "--network",
+      "none",
+      "--read-only",
+      "--entrypoint",
+      "node"
+    ],
+    "suffix": [
+      "-e",
+      "const cp=require('node:child_process');const tools={};for(const n of ['npm','yarn','yarnpkg','corepack']){const r=cp.spawnSync(n,['--version'],{encoding:'utf8',timeout:10000});tools[n]={code:r.status,stdout:(r.stdout||'').trim(),error:r.error?.code??null}}console.log(JSON.stringify({node:process.version,arch:process.arch,tools}));"
+    ]
+  },
+  "earlierPythonCompanionNode26Control": {
+    "at": "2026-10-16T03:50:24.183Z",
+    "status": 200,
+    "body": {
+      "marker": "QA_A665_RUNTIME",
+      "tools": {
+        "python": {
+          "code": 0,
+          "stdout": "Python 3.12.15",
+          "stderr": ""
+        },
+        "pip": {
+          "code": 0,
+          "stdout": "pip 25.0.1 from /usr/local/lib/python3.12/site-packages/pip (python 3.12)",
+          "stderr": ""
+        },
+        "poetry": {
+          "code": 0,
+          "stdout": "Poetry (version 2.1.3)",
+          "stderr": ""
+        },
+        "node": {
+          "code": 0,
+          "stdout": "v26.11.1",
+          "stderr": ""
+        },
+        "npm": {
+          "code": 0,
+          "stdout": "11.20.0",
+          "stderr": ""
+        },
+        "yarn": {
+          "code": 0,
+          "stdout": "1.22.22",
+          "stderr": ""
+        },
+        "pnpm": {
+          "code": 0,
+          "stdout": "10.34.6",
+          "stderr": ""
+        }
+      },
+      "build": {
+        "marker": "QA_A665_BUILD",
+        "tools": {
+          "python": {
+            "code": 0,
+            "stdout": "Python 3.12.15",
+            "stderr": ""
+          },
+          "pip": {
+            "code": 0,
+            "stdout": "pip 25.0.1 from /usr/local/lib/python3.12/site-packages/pip (python 3.12)",
+            "stderr": ""
+          },
+          "poetry": {
+            "code": 0,
+            "stdout": "Poetry (version 2.1.3)",
+            "stderr": ""
+          },
+          "node": {
+            "code": 0,
+            "stdout": "v26.11.1",
+            "stderr": ""
+          },
+          "npm": {
+            "code": 0,
+            "stdout": "11.20.0",
+            "stderr": ""
+          },
+          "yarn": {
+            "code": 0,
+            "stdout": "1.22.22",
+            "stderr": ""
+          },
+          "pnpm": {
+            "code": 0,
+            "stdout": "10.34.6",
+            "stderr": ""
+          }
+        }
+      }
+    }
+  },
+  "assertions": {
+    "sameYarnCommandsSourceRootAndCommit": true,
+    "node24YarnBuildRuntimePass": true,
+    "bunOptOutBuildRuntimePass": true,
+    "node26YarnAbsentIndependentlyOfBun": true,
+    "pinnedImagesValidateDifference": true
+  },
+  "deleteYarn": {
+    "at": "2026-10-16T04:36:05.833Z",
+    "request": {
+      "operationName": "DeleteService",
+      "variables": {
+        "id": "srv-db8qgc7dbg8c73dghabg"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.3.3"
+        }
+      },
+      "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deleteService": true
+      }
+    },
+    "timing": {
+      "startTime": 1792125364008.977,
+      "domainLookupStart": -1,
+      "domainLookupEnd": -1,
+      "connectStart": -1,
+      "secureConnectionStart": -1,
+      "connectEnd": -1,
+      "requestStart": 0.15,
+      "responseStart": 1105.372,
+      "responseEnd": 1105.765
+    },
+    "url": "https://dashboard.bex.co/"
+  },
+  "deleteBun": {
+    "at": "2026-10-16T04:36:27.484Z",
+    "request": {
+      "operationName": "DeleteService",
+      "variables": {
+        "id": "srv-db8qeivdbg8c73dgha90"
+      },
+      "extensions": {
+        "clientLibrary": {
+          "name": "@apollo/client",
+          "version": "4.3.3"
+        }
+      },
+      "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+    },
+    "status": 200,
+    "body": {
+      "data": {
+        "deleteService": true
+      }
+    },
+    "timing": {
+      "startTime": 1792125386307.677,
+      "domainLookupStart": -1,
+      "domainLookupEnd": -1,
+      "connectStart": -1,
+      "secureConnectionStart": -1,
+      "connectEnd": -1,
+      "requestStart": 0.136,
+      "responseStart": 461.928,
+      "responseEnd": 462.338
+    },
+    "url": "https://dashboard.bex.co/"
+  },
+  "sessionCleared": {
+    "at": "2026-10-16T04:37:12.913Z",
+    "whoami": 401,
+    "cookies": 0,
+    "pages": 1,
+    "url": "about:blank"
+  },
+  "cleanup": {
+    "deleteYarnAt": "2026-10-16T04:36:05.833Z",
+    "deleteBunAt": "2026-10-16T04:36:27.484Z",
+    "bothREST404At": "2026-10-16T04:36:37.304Z",
+    "bothPublic404": true,
+    "all7BaselineIDSetsRestored": true,
+    "bothAppsAbsent": true,
+    "ownedPodCounts": {
+      "bun": 0,
+      "yarn": 0
+    },
+    "podsZeroAt": "2026-10-16T04:38:10.501757+00:00",
+    "logoutExit": 0,
+    "whoami": 401,
+    "cookies": 0,
+    "pages": 1,
+    "url": "about:blank",
+    "ownHandlesRemoved": true,
+    "statMatchedSharedRemoved": true
+  },
+  "console": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "nativeNetwork": {
+    "at": "2026-10-16T04:36:00.443Z",
+    "failures": [],
+    "pending": 1
+  },
+  "limits": [
+    "Only Node26/24 native web exercised in this pass; Node22 evidence is local pinned-image execution.",
+    "Local pinned images executed on arm64; hosted architecture was not queried.",
+    "Static/private/worker/cron propagation and Ruby companion were source-audited, not live-tested.",
+    "Earlier Python companion control is from a665, separately cleaned.",
+    "No authenticated Render tenant, modern Yarn/packageManager dispatch or YARN_VERSION selection was tested.",
+    "The first Bun12→Bun13 transition also adjusts the authored probe assertion; Bun13→omission holds that command fixed.",
+    "Current upstream docker-node main Dockerfile names26.12.0, newer than the pinned26.11.1; it is not used as evidence of the pinned image."
+  ]
+}

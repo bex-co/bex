@@ -290,6 +290,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **320** — [Supply Yarn in native Node 26 builds and runtime](320.md) (major · 55m) — fresh Node26/no-Bun Yarn build fails127; identical commands and commit are Live on Node24. Pinned-image execution isolates the missing supplier, with the existing Ruby/Python Yarn helper available for reuse. [Durable evidence](evidence/320-native-node26-yarn.json); both Free fixtures and exact-run session cleaned.
+
 - [ ] **319** — [Anchor a new datastore log search at the current time](319.md) (major · 55m) — desktop and fresh mobile searches reuse the mount-time cutoff and hide a stored Postgres error; same-query current-end, reload, range-selection and fixed-Custom controls isolate the viewer memo. [Durable evidence](evidence/319-datastore-log-cutoff.json); owned fixture and session cleaned.
 - [ ] **318** — [Keep parameter-editor headings inside the table scroller](318.md) (minor · 45m) — an unsaved row grows a 390px page to 637px through its hidden Actions heading; native root scrolling, fresh repeat, local-table and desktop controls isolate the unpositioned wrapper. [Durable evidence](evidence/318-parameter-scroll-containment.json); owned fixture and session cleaned.
 - [ ] **317** — [Match PostgreSQL parameter observations regardless of name case](317.md) (minor · 55m) — applied `timezone` reads as unobserved while canonical `TimeZone` works; native desktop/mobile, SQL, REST, GraphQL and MCP reproduce the shared lookup mismatch. [Durable evidence](evidence/317-parameter-name-case.json); owned fixture and session cleaned.
