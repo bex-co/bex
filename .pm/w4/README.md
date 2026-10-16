@@ -15,6 +15,8 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m213** — [Supply JavaScript companions in native Go, Rust and Elixir](m213/README.md) (7 tasks · 150m) — promoted from321 after six missing-Node build failures and three Live primary-only controls. Reuse the reviewed supplier; verify Elixir distro/line compatibility and shared controls. [Finding](m213/finding.md); all owned fixtures and exact-run sessions cleaned.
+
 - [ ] **m212** — [Keep webhook disable intervals consistent](m212/README.md) (7 tasks, 3h 50m) ← functional QA a675, 2026-10-16 UTC; two re-enable sequences replay a disabled-period deploy event, while a second enabled endpoint causes A to skip its event. Persist source-time eligibility while preserving eligible backlog and admitted retries. [Finding](m212/finding.md) · [durable probes](m212/evidence-a675.json).
 
 - [ ] **m211** — [Keep batched hosting changes inside one response budget](blocked/m211/README.md) (7 tasks) — **BLOCKED (release pipeline deploys the backend; QA replays the [finding.md](blocked/m211/finding.md) DoD with a disposable project, Alpha/Beta environments, a Free image web service and its linked synthetic-value group: Move both Alpha → Beta on desktop and back from a fresh 390px page; each native two-operation POST returns a readable ordered result array (successes kept, an interrupted write `WRITE_OUTCOME_UNKNOWN`, an undispatched one `OPERATION_NOT_STARTED`) instead of an edge 502; placements, link, value and Live deploy preserved; read controls pass; then cleans up (t007))**. t001–t006 done 2026-10-15: a GraphQL JSON-array request runs its members under one shared 25 s execution deadline; a member never dispatched answers `OPERATION_NOT_STARTED` and its resolver never runs; real-HTTP-deadline regression fails without the fix (`EOF`); ADR006 updated; backend suite + lint green.
@@ -298,7 +300,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [ ] **322** — [Refresh service precedence after linking an environment group](322.md) (minor · 55m) — fresh desktop/mobile links use A at runtime while cached ordering briefly crosses out A and names Z as winner; poll repairs it. Local panel refresh/pending/error follow-up to w2/m94/t003. [Durable evidence](evidence/322-env-group-precedence-refresh.json); all three fixtures and exact-run session cleaned.
 
-- [ ] **321** — [Supply JavaScript asset tools in native Go and Rust builds and runtime](321.md) (major · 60m) — both runtimes twice fail on missing Node/exit127; compiler-only Live controls show all four JS tools unavailable. Extend the same Ruby/Python supplier for Go/Rust, preserving Elixir. [Go evidence](evidence/321-native-go-js-tools.json) · [Rust evidence](evidence/321-native-rust-js-tools.json); owned fixtures/deploys and exact-run sessions cleaned.
+- [x] **321** — [Native Go/Rust JavaScript tooling finding](done/321.md) — promoted 2026-10-16 to [m213](m213/README.md), adding live-confirmed Elixir and the larger executable compatibility/regression matrix. Inbox closed by promotion; product fix remains todo in m213.
 
 - [ ] **320** — [Supply Yarn in native Node 26 builds and runtime](320.md) (major · 55m) — fresh Node26/no-Bun Yarn build fails127; identical commands and commit are Live on Node24. Pinned-image execution isolates the missing supplier, with the existing Ruby/Python Yarn helper available for reuse. [Durable evidence](evidence/320-native-node26-yarn.json); both Free fixtures and exact-run session cleaned.
 
