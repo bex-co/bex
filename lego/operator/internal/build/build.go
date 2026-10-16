@@ -339,6 +339,10 @@ type Options struct {
 	// run) and an undeclared runtime defaults to the node toolchain — Render's
 	// static build environment (ADR029, w8/m19).
 	StaticSite bool
+	// StaticPublishPath is a static site's publish directory, relative to its
+	// root directory; a site publishing the root itself gets no automatic
+	// dependency install (w8/m86).
+	StaticPublishPath string
 	// DockerContext moves the Docker build context to this repo-root-relative
 	// directory (Render's dockerContext; independent of RootDir). Empty keeps
 	// the RootDir-derived context. Dockerfile builds only.
@@ -732,7 +736,8 @@ var buildkitProcessFailure = regexp.MustCompile(`(?:failed to solve: )?process (
 // does not; group 2 keeps it.
 var buildkitNativeRunStep = regexp.MustCompile(`(?m)RUN --mount=type=secret,id=render-env,target=` +
 	regexp.QuoteMeta(nativeEnvSecretPath) + `(?: --mount=\S+)* \["/bin/bash","-c","` +
-	regexp.QuoteMeta(strings.ReplaceAll(nativeEnvLoaderPrefix, "\n", `\n`)) + `(.*)"\](:)?$`)
+	regexp.QuoteMeta(strings.ReplaceAll(nativeEnvLoaderPrefix, "\n", `\n`)) +
+	`(?:` + regexp.QuoteMeta(strings.ReplaceAll(nativeStaticInstallStep, "\n", `\n`)) + `)?(.*)"\](:)?$`)
 
 // nativeCommandFailure rewrites BuildKit's verdict on a native build's RUN
 // into the tenant's own terms — "build command '<cmd>' exited with code N",
@@ -757,6 +762,7 @@ func nativeCommandFailure(msg string) string {
 		if !ok {
 			return match
 		}
+		command = strings.TrimPrefix(command, nativeStaticInstallStep)
 		return fmt.Sprintf("build command '%s' exited with code %s", command, parts[2])
 	})
 }
