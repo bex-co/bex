@@ -1,0 +1,955 @@
+{
+  "schemaVersion": 1,
+  "pass": "a758",
+  "date": "2026-10-16",
+  "inspectedMain": "c1ed1eab182068afbedaf684ea8d1db3fee9c753",
+  "scope": "Functional native group-create timeout, same-name empty recovery, separate value/link operations and precedence controls; existing w4/m206/t009 evidence update",
+  "ownerId": "tea-d98210cbbpdc73dcrkvg",
+  "resources": {
+    "service": {
+      "__typename": "Service",
+      "environmentId": null,
+      "id": "srv-db96f9vfsf9s73epsib0",
+      "latestDeployId": "dep-db96f9vfsf9s73epsibg",
+      "name": "qa-20261016-a758-precedence",
+      "phase": "",
+      "projectId": null,
+      "registryCredentialId": "",
+      "type": "web_service"
+    },
+    "groups": [
+      {
+        "__typename": "EnvGroup",
+        "id": "evg-db96gnnfsf9s73epsieg",
+        "name": "qa-20261016-a758-group-a"
+      },
+      {
+        "__typename": "EnvGroup",
+        "id": "evg-db96huhkoksc73a7vk40",
+        "name": "qa-20261016-a758-group-b"
+      }
+    ]
+  },
+  "nativeAndReadReceipts": {
+    "a758GroupACreated": {
+      "at": "2026-10-16T18:07:32.463Z",
+      "request": {
+        "operationName": "CreateEnvGroup",
+        "variables": {
+          "name": "qa-20261016-a758-group-a",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "envVars": [
+            {
+              "key": "QA_A758_SHARED",
+              "value": "GROUP_A雨"
+            }
+          ],
+          "secretFiles": [],
+          "serviceIds": ["srv-db96f9vfsf9s73epsib0"],
+          "environmentId": null
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateEnvGroup($name: String!, $ownerId: String, $envVars: [EnvGroupVarInput!], $secretFiles: [EnvGroupSecretFileInput!], $serviceIds: [String!], $environmentId: String) {\n  createEnvGroup(\n    name: $name\n    ownerId: $ownerId\n    envVars: $envVars\n    secretFiles: $secretFiles\n    serviceIds: $serviceIds\n    environmentId: $environmentId\n  ) {\n    id\n    name\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": null,
+        "errors": [
+          {
+            "message": "the change ran out of time and may have been applied in part or in full; reload to see its outcome before trying again",
+            "locations": [],
+            "extensions": {
+              "code": "WRITE_OUTCOME_UNKNOWN"
+            }
+          }
+        ]
+      },
+      "timing": {
+        "startTime": 1792174026069.456,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.146,
+        "responseStart": 25682.433,
+        "responseEnd": 25683.24
+      },
+      "url": "https://dashboard.bex.co/services/srv-db96f9vfsf9s73epsib0/env"
+    },
+    "a758GroupAReadback": {
+      "at": "2026-10-16T18:08:01.697Z",
+      "request": {
+        "operationName": "Qaa467Inventory",
+        "variables": {
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "query": "query Qaa467Inventory($ownerId:String!){ services(ownerId:$ownerId){id name type} databases(ownerId:$ownerId){id name} keyValues(ownerId:$ownerId){id name} projects(ownerId:$ownerId){id name} envGroups(ownerId:$ownerId){id name} blueprints(ownerId:$ownerId){id name} webhookEndpoints(ownerId:$ownerId){id name}}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-db96f9vfsf9s73epsib0",
+              "name": "qa-20261016-a758-precedence",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      },
+      "snapshot": "- region \"Notifications alt+T\"\n- dialog \"Create environment group\":\n  - heading \"Create environment group\" [level=2]\n  - paragraph: Add variables, secret files, and service links now or leave them empty.\n  - text: Group name\n  - textbox \"Group name\":\n    - /placeholder: shared-production\n    - text: qa-20261016-a758-group-a\n  - heading \"Environment Variables\" [level=3]\n  - paragraph: Set literal values or generate strong secrets during creation.\n  - text: Key\n  - textbox \"Key\":\n    - /placeholder: API_TOKEN\n    - text: QA_A758_SHARED\n  - text: Value\n  - textbox \"Value\":\n    - /placeholder: Secret value\n    - text: GROUP_A雨\n  - button \"Generate\"\n  - button \"Remove variable 1\"\n  - button \"Add Environment Variable\"\n  - button \"Import from .env\"\n  - heading \"Secret Files\" [level=3]\n  - paragraph: Files are encrypted and mounted under /etc/secrets.\n  - button \"Add Secret File\"\n  - heading \"Linked Services\" [level=3]\n  - paragraph: Selected services receive this group as soon as it is created.\n  - text: Environment\n  - combobox \"Environment\": Workspace (no Environment)\n  - checkbox \"qa-20261016-a758-precedence srv-db96f9vfsf9s73epsib0\" [checked]\n  - text: qa-20261016-a758-precedence srv-db96f9vfsf9s73epsib0\n  - button \"Cancel\"\n  - button \"Create Environment Group\"\n  - button \"Close\""
+    },
+    "a758LinksReadCorrected": {
+      "at": "2026-10-16T18:08:58.575Z",
+      "request": {
+        "operationName": "Qaa758Links",
+        "variables": {
+          "id": "srv-db96f9vfsf9s73epsib0"
+        },
+        "query": "query Qaa758Links($id:String!){service(id:$id){id phase undeployedChanges linkedEnvGroupIds}deploys(serviceId:$id){id status trigger createdAt}}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "createdAt": "2026-10-16T18:06:31.916263Z",
+              "id": "dep-db96f9vfsf9s73epsibg",
+              "status": "live",
+              "trigger": "create"
+            }
+          ],
+          "service": {
+            "id": "srv-db96f9vfsf9s73epsib0",
+            "linkedEnvGroupIds": [],
+            "phase": "Running",
+            "undeployedChanges": false
+          }
+        }
+      },
+      "snapshot": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261016-a758-precedence\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261016-a758-precedence\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db96f9vfsf9s73epsib0/deploys/dep-db96f9vfsf9s73epsibg\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db96f9vfsf9s73epsib0/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db96f9vfsf9s73epsib0\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261016-a758-precedence.onbex.co\":\n    - /url: https://qa-20261016-a758-precedence.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261016-a758-precedence\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-1\n  - term: Created\n  - definition:\n    - time: 1m\n  - heading \"Environment\" [level=1]\n  - paragraph: Manage service-specific variables, secret files, and linked environment groups.\n  - button \"Create group\"\n  - text: Environment Variables Set environment-specific config and secrets, then read those values from your code.\n  - button \"Export\"\n  - button \"Edit\"\n  - code: QA_A758_SHARED\n  - code: ••••••••••••\n  - button \"Reveal\"\n  - button \"Copy QA_A758_SHARED\"\n  - text: Secret Files Store files with secret contents (certificates, credentials) mounted into this service at deploy time.\n  - paragraph: No secret files\n  - paragraph: Add a file to mount secret contents into this service.\n  - button \"Add secret file\"\n  - text: Linked Environment Groups Reusable bundles of environment variables and secret files you can link to this and other services.\n  - button \"Create group\"\n  - heading \"Linked (0)\" [level=3]\n  - paragraph: No environment groups are linked to this service.\n  - heading \"Available to link (1)\" [level=3]\n  - list:\n    - listitem:\n      - link \"qa-20261003-keys-r85\":\n        - /url: /env-groups/evg-db0s94c48ccs739jikr0\n      - text: QA_R85_NORMAL __proto__ constructor toString\n      - button \"Link\""
+    },
+    "a758GroupARecoveryCreated": {
+      "at": "2026-10-16T18:09:47.301Z",
+      "request": {
+        "operationName": "CreateEnvGroup",
+        "variables": {
+          "name": "qa-20261016-a758-group-a",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "envVars": [],
+          "secretFiles": [],
+          "serviceIds": [],
+          "environmentId": null
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateEnvGroup($name: String!, $ownerId: String, $envVars: [EnvGroupVarInput!], $secretFiles: [EnvGroupSecretFileInput!], $serviceIds: [String!], $environmentId: String) {\n  createEnvGroup(\n    name: $name\n    ownerId: $ownerId\n    envVars: $envVars\n    secretFiles: $secretFiles\n    serviceIds: $serviceIds\n    environmentId: $environmentId\n  ) {\n    id\n    name\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createEnvGroup": {
+            "__typename": "EnvGroup",
+            "id": "evg-db96gnnfsf9s73epsieg",
+            "name": "qa-20261016-a758-group-a"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792174162664.114,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.152,
+        "responseStart": 23928.203,
+        "responseEnd": 23928.83
+      },
+      "url": "https://dashboard.bex.co/services/srv-db96f9vfsf9s73epsib0/env"
+    },
+    "a758GroupBCreated": {
+      "at": "2026-10-16T18:12:23.147Z",
+      "request": {
+        "operationName": "CreateEnvGroup",
+        "variables": {
+          "name": "qa-20261016-a758-group-b",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "envVars": [],
+          "secretFiles": [],
+          "serviceIds": [],
+          "environmentId": null
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateEnvGroup($name: String!, $ownerId: String, $envVars: [EnvGroupVarInput!], $secretFiles: [EnvGroupSecretFileInput!], $serviceIds: [String!], $environmentId: String) {\n  createEnvGroup(\n    name: $name\n    ownerId: $ownerId\n    envVars: $envVars\n    secretFiles: $secretFiles\n    serviceIds: $serviceIds\n    environmentId: $environmentId\n  ) {\n    id\n    name\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createEnvGroup": {
+            "__typename": "EnvGroup",
+            "id": "evg-db96huhkoksc73a7vk40",
+            "name": "qa-20261016-a758-group-b"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792174318289.555,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.125,
+        "responseStart": 24148.461,
+        "responseEnd": 24149.074
+      },
+      "url": "https://dashboard.bex.co/services/srv-db96f9vfsf9s73epsib0/env"
+    },
+    "a758GroupAValueSaved": {
+      "at": "2026-10-16T18:11:27.316Z",
+      "request": {
+        "operationName": "PatchEnvGroupEnvironment",
+        "variables": {
+          "id": "evg-db96gnnfsf9s73epsieg",
+          "envVars": [
+            {
+              "key": "QA_A758_SHARED",
+              "value": "GROUP_A雨"
+            }
+          ],
+          "secretFiles": [],
+          "saveMode": "deploy",
+          "expectedRevision": "egr1_AAAAAAAAAAE"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation PatchEnvGroupEnvironment($id: String!, $envVars: [EnvGroupVarPatchInput!], $secretFiles: [EnvGroupSecretFilePatchInput!], $saveMode: String!, $expectedRevision: String) {\n  patchEnvGroupEnvironment(\n    id: $id\n    envVars: $envVars\n    secretFiles: $secretFiles\n    saveMode: $saveMode\n    expectedRevision: $expectedRevision\n  ) {\n    envVarKeys\n    secretFileNames\n    revision\n    affectedServiceIds\n    failedServiceIds\n    pendingServiceIds\n    rolledOut\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "patchEnvGroupEnvironment": {
+            "__typename": "EnvGroupEnvironmentPatchResult",
+            "affectedServiceIds": [],
+            "envVarKeys": ["QA_A758_SHARED"],
+            "failedServiceIds": [],
+            "pendingServiceIds": [],
+            "revision": "egr1_AAAAAAAAAAI",
+            "rolledOut": false,
+            "secretFileNames": []
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792174284692.394,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.157,
+        "responseStart": 1915.948,
+        "responseEnd": 1916.54
+      },
+      "url": "https://dashboard.bex.co/env-groups/evg-db96gnnfsf9s73epsieg"
+    },
+    "a758GroupALinked": {
+      "at": "2026-10-16T18:11:42.107Z",
+      "request": {
+        "operationName": "LinkEnvGroup",
+        "variables": {
+          "id": "evg-db96gnnfsf9s73epsieg",
+          "serviceId": "srv-db96f9vfsf9s73epsib0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation LinkEnvGroup($id: String!, $serviceId: String!) {\n  linkEnvGroup(id: $id, serviceId: $serviceId)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "linkEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792174300857.0017,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.133,
+        "responseStart": 541.427,
+        "responseEnd": 541.972
+      },
+      "url": "https://dashboard.bex.co/env-groups/evg-db96gnnfsf9s73epsieg"
+    },
+    "a758GroupBValueSaved": {
+      "at": "2026-10-16T18:12:44.141Z",
+      "request": {
+        "operationName": "PatchEnvGroupEnvironment",
+        "variables": {
+          "id": "evg-db96huhkoksc73a7vk40",
+          "envVars": [
+            {
+              "key": "QA_A758_SHARED",
+              "value": "GROUP_B風"
+            }
+          ],
+          "secretFiles": [],
+          "saveMode": "deploy",
+          "expectedRevision": "egr1_AAAAAAAAAAE"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation PatchEnvGroupEnvironment($id: String!, $envVars: [EnvGroupVarPatchInput!], $secretFiles: [EnvGroupSecretFilePatchInput!], $saveMode: String!, $expectedRevision: String) {\n  patchEnvGroupEnvironment(\n    id: $id\n    envVars: $envVars\n    secretFiles: $secretFiles\n    saveMode: $saveMode\n    expectedRevision: $expectedRevision\n  ) {\n    envVarKeys\n    secretFileNames\n    revision\n    affectedServiceIds\n    failedServiceIds\n    pendingServiceIds\n    rolledOut\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "patchEnvGroupEnvironment": {
+            "__typename": "EnvGroupEnvironmentPatchResult",
+            "affectedServiceIds": [],
+            "envVarKeys": ["QA_A758_SHARED"],
+            "failedServiceIds": [],
+            "pendingServiceIds": [],
+            "revision": "egr1_AAAAAAAAAAI",
+            "rolledOut": false,
+            "secretFileNames": []
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792174361789.3313,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.126,
+        "responseStart": 1645.472,
+        "responseEnd": 1645.996
+      },
+      "url": "https://dashboard.bex.co/env-groups/evg-db96huhkoksc73a7vk40"
+    },
+    "a758GroupBLinked": {
+      "at": "2026-10-16T18:12:47.818Z",
+      "request": {
+        "operationName": "LinkEnvGroup",
+        "variables": {
+          "id": "evg-db96huhkoksc73a7vk40",
+          "serviceId": "srv-db96f9vfsf9s73epsib0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation LinkEnvGroup($id: String!, $serviceId: String!) {\n  linkEnvGroup(id: $id, serviceId: $serviceId)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "linkEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792174366537.461,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.146,
+        "responseStart": 572.836,
+        "responseEnd": 573.347
+      },
+      "url": "https://dashboard.bex.co/env-groups/evg-db96huhkoksc73a7vk40"
+    },
+    "a758OwnRemovalReadback": {
+      "at": "2026-10-16T18:14:18.940Z",
+      "captured": [
+        {
+          "request": {
+            "operationName": "PatchServiceEnvironment",
+            "variables": {
+              "serviceId": "srv-db96f9vfsf9s73epsib0",
+              "envVars": [
+                {
+                  "key": "QA_A758_SHARED",
+                  "delete": true
+                }
+              ],
+              "secretFiles": [],
+              "saveMode": "deploy"
+            },
+            "extensions": {
+              "clientLibrary": {
+                "name": "@apollo/client",
+                "version": "4.3.3"
+              }
+            },
+            "query": "mutation PatchServiceEnvironment($serviceId: String!, $envVars: [EnvironmentEnvVarPatchInput!], $secretFiles: [EnvironmentSecretFilePatchInput!], $saveMode: String!) {\n  patchServiceEnvironment(\n    serviceId: $serviceId\n    envVars: $envVars\n    secretFiles: $secretFiles\n    saveMode: $saveMode\n  ) {\n    envVarKeys\n    secretFileNames\n    rolledOut\n    __typename\n  }\n}"
+          },
+          "status": 200,
+          "body": {
+            "data": {
+              "patchServiceEnvironment": {
+                "__typename": "EnvironmentPatchResult",
+                "envVarKeys": [],
+                "rolledOut": true,
+                "secretFileNames": []
+              }
+            }
+          }
+        }
+      ],
+      "request": {
+        "operationName": "Qaa758State",
+        "variables": {
+          "id": "srv-db96f9vfsf9s73epsib0"
+        },
+        "query": "query Qaa758State($id:String!){service(id:$id){id phase undeployedChanges linkedEnvGroupIds}deploys(serviceId:$id){id status trigger createdAt}}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "createdAt": "2026-10-16T18:13:16.530027Z",
+              "id": "dep-db96if7fsf9s73epsih0",
+              "status": "live",
+              "trigger": "config_change"
+            },
+            {
+              "createdAt": "2026-10-16T18:12:46.804986Z",
+              "id": "dep-db96i7nfsf9s73epsifg",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "createdAt": "2026-10-16T18:11:41.073076Z",
+              "id": "dep-db96hn9koksc73a7vk2g",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "createdAt": "2026-10-16T18:06:31.916263Z",
+              "id": "dep-db96f9vfsf9s73epsibg",
+              "status": "deactivated",
+              "trigger": "create"
+            }
+          ],
+          "service": {
+            "id": "srv-db96f9vfsf9s73epsib0",
+            "linkedEnvGroupIds": [
+              "evg-db96gnnfsf9s73epsieg",
+              "evg-db96huhkoksc73a7vk40"
+            ],
+            "phase": "Running",
+            "undeployedChanges": false
+          }
+        }
+      },
+      "snapshot": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261016-a758-precedence\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261016-a758-precedence\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db96f9vfsf9s73epsib0/deploys/dep-db96if7fsf9s73epsih0\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db96f9vfsf9s73epsib0/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db96f9vfsf9s73epsib0\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261016-a758-precedence.onbex.co\":\n    - /url: https://qa-20261016-a758-precedence.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261016-a758-precedence\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-4\n  - term: Created\n  - definition:\n    - time: 7m\n  - heading \"Environment\" [level=1]\n  - paragraph: Manage service-specific variables, secret files, and linked environment groups.\n  - button \"Create group\"\n  - text: Environment Variables Set environment-specific config and secrets, then read those values from your code.\n  - button \"Export\"\n  - button \"Edit\"\n  - paragraph: No environment variables\n  - paragraph: Add a variable to configure this service.\n  - text: Secret Files Store files with secret contents (certificates, credentials) mounted into this service at deploy time.\n  - paragraph: No secret files\n  - paragraph: Add a file to mount secret contents into this service.\n  - button \"Add secret file\"\n  - text: Linked Environment Groups Reusable bundles of environment variables and secret files you can link to this and other services.\n  - button \"Create group\"\n  - heading \"Linked (2)\" [level=3]\n  - list:\n    - listitem:\n      - link \"qa-20261016-a758-group-b\":\n        - /url: /env-groups/evg-db96huhkoksc73a7vk40\n      - text: Linked QA_A758_SHARED\n      - button \"Unlink\"\n    - listitem:\n      - link \"qa-20261016-a758-group-a\":\n        - /url: /env-groups/evg-db96gnnfsf9s73epsieg\n      - text: Linked QA_A758_SHARED\n      - button \"Unlink\"\n  - heading \"Available to link (1)\" [level=3]\n  - list:\n    - listitem:\n      - link \"qa-20261003-keys-r85\":\n        - /url: /env-groups/evg-db0s94c48ccs739jikr0\n      - text: QA_R85_NORMAL __proto__ constructor toString\n      - button \"Link\""
+    },
+    "a758GroupBDeleted": {
+      "at": "2026-10-16T18:14:41.927Z",
+      "request": {
+        "operationName": "DeleteEnvGroup",
+        "variables": {
+          "id": "evg-db96huhkoksc73a7vk40"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteEnvGroup($id: String!) {\n  deleteEnvGroup(id: $id)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792174480009.049,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.147,
+        "responseStart": 1207.215,
+        "responseEnd": 1207.785
+      },
+      "url": "https://dashboard.bex.co/env-groups"
+    },
+    "a758AfterGroupBDelete": {
+      "at": "2026-10-16T18:15:06.111Z",
+      "snapshot": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"qa-20261016-a758-precedence\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261016-a758-precedence\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db96f9vfsf9s73epsib0/deploys/dep-db96j41koksc73a7vk60\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db96f9vfsf9s73epsib0/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db96f9vfsf9s73epsib0\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261016-a758-precedence.onbex.co\":\n    - /url: https://qa-20261016-a758-precedence.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261016-a758-precedence\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-5\n  - term: Created\n  - definition:\n    - time: 8m\n  - heading \"Environment\" [level=1]\n  - paragraph: Manage service-specific variables, secret files, and linked environment groups.\n  - button \"Create group\"\n  - text: Environment Variables Set environment-specific config and secrets, then read those values from your code.\n  - button \"Export\"\n  - button \"Edit\"\n  - paragraph: No environment variables\n  - paragraph: Add a variable to configure this service.\n  - text: Secret Files Store files with secret contents (certificates, credentials) mounted into this service at deploy time.\n  - paragraph: No secret files\n  - paragraph: Add a file to mount secret contents into this service.\n  - button \"Add secret file\"\n  - text: Linked Environment Groups Reusable bundles of environment variables and secret files you can link to this and other services.\n  - button \"Create group\"\n  - heading \"Linked (1)\" [level=3]\n  - list:\n    - listitem:\n      - link \"qa-20261016-a758-group-a\":\n        - /url: /env-groups/evg-db96gnnfsf9s73epsieg\n      - text: Linked QA_A758_SHARED\n      - button \"Unlink\"\n  - heading \"Available to link (1)\" [level=3]\n  - list:\n    - listitem:\n      - link \"qa-20261003-keys-r85\":\n        - /url: /env-groups/evg-db0s94c48ccs739jikr0\n      - text: QA_R85_NORMAL __proto__ constructor toString\n      - button \"Link\"",
+      "docWidth": 390
+    },
+    "a758GroupADeleted": {
+      "at": "2026-10-16T18:15:26.747Z",
+      "request": {
+        "operationName": "DeleteEnvGroup",
+        "variables": {
+          "id": "evg-db96gnnfsf9s73epsieg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteEnvGroup($id: String!) {\n  deleteEnvGroup(id: $id)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteEnvGroup": true
+        }
+      },
+      "timing": {
+        "startTime": 1792174524114.7302,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.114,
+        "responseStart": 1922.341,
+        "responseEnd": 1922.959
+      },
+      "url": "https://dashboard.bex.co/env-groups"
+    },
+    "a758FinalState": {
+      "at": "2026-10-16T18:15:49.837Z",
+      "request": {
+        "operationName": "Qaa758FinalState",
+        "variables": {
+          "id": "srv-db96f9vfsf9s73epsib0"
+        },
+        "query": "query Qaa758FinalState($id:String!){service(id:$id){id phase undeployedChanges linkedEnvGroupIds}deploys(serviceId:$id){id status trigger createdAt}}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "createdAt": "2026-10-16T18:15:25.082588Z",
+              "id": "dep-db96jf9koksc73a7vk70",
+              "status": "live",
+              "trigger": "config_change"
+            },
+            {
+              "createdAt": "2026-10-16T18:14:40.675259Z",
+              "id": "dep-db96j41koksc73a7vk60",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "createdAt": "2026-10-16T18:13:16.530027Z",
+              "id": "dep-db96if7fsf9s73epsih0",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "createdAt": "2026-10-16T18:12:46.804986Z",
+              "id": "dep-db96i7nfsf9s73epsifg",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "createdAt": "2026-10-16T18:11:41.073076Z",
+              "id": "dep-db96hn9koksc73a7vk2g",
+              "status": "deactivated",
+              "trigger": "config_change"
+            },
+            {
+              "createdAt": "2026-10-16T18:06:31.916263Z",
+              "id": "dep-db96f9vfsf9s73epsibg",
+              "status": "deactivated",
+              "trigger": "create"
+            }
+          ],
+          "service": {
+            "id": "srv-db96f9vfsf9s73epsib0",
+            "linkedEnvGroupIds": [],
+            "phase": "Running",
+            "undeployedChanges": false
+          }
+        }
+      }
+    },
+    "a758ServiceDeleted": {
+      "at": "2026-10-16T18:16:02.061Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db96f9vfsf9s73epsib0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "timing": {
+        "startTime": 1792174560681.6108,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.182,
+        "responseStart": 658.377,
+        "responseEnd": 659.152
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "a758Cleanup": {
+      "at": "2026-10-16T18:16:32.699Z",
+      "statuses": [
+        {
+          "path": "/v1/services/srv-db96f9vfsf9s73epsib0",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db96f9vfsf9s73epsib0/deploys/dep-db96jf9koksc73a7vk70",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db96f9vfsf9s73epsib0/deploys/dep-db96j41koksc73a7vk60",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db96f9vfsf9s73epsib0/deploys/dep-db96if7fsf9s73epsih0",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db96f9vfsf9s73epsib0/deploys/dep-db96i7nfsf9s73epsifg",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db96f9vfsf9s73epsib0/deploys/dep-db96hn9koksc73a7vk2g",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db96f9vfsf9s73epsib0/deploys/dep-db96f9vfsf9s73epsibg",
+          "status": 404
+        },
+        {
+          "path": "/v1/env-groups/evg-db96gnnfsf9s73epsieg",
+          "status": 404
+        },
+        {
+          "path": "/v1/env-groups/evg-db96huhkoksc73a7vk40",
+          "status": 404
+        }
+      ],
+      "status": 200,
+      "body": {
+        "data": {
+          "blueprints": [
+            {
+              "id": "blp-d9nqg95cavls73fp8m10",
+              "name": "discourse_docker"
+            }
+          ],
+          "databases": [
+            {
+              "id": "dpg-d9nqg95cavls73fp8m20",
+              "name": "beancount-forum-db"
+            },
+            {
+              "id": "dpg-d9rrkoc4h4mc73edurp0",
+              "name": "tianpan-forum-db"
+            },
+            {
+              "id": "dpg-d9rs3ee0ccis738kc7c0",
+              "name": "blockeden-forum-db"
+            },
+            {
+              "id": "dpg-db34l9bor55s73cqpq9g",
+              "name": "qa-20261007-r16-owner-f208ab"
+            }
+          ],
+          "envGroups": [
+            {
+              "id": "evg-db0s94c48ccs739jikr0",
+              "name": "qa-20261003-keys-r85"
+            }
+          ],
+          "keyValues": [
+            {
+              "id": "red-d9p49kdrtmes73c34ovg",
+              "name": "beancount-forum-redis"
+            },
+            {
+              "id": "red-da4086iii7bs73drbqh0",
+              "name": "blockeden-forum-redis"
+            }
+          ],
+          "projects": [
+            {
+              "id": "prj-d9dgeo0bd9nc73a0vh1g",
+              "name": "bex.co"
+            },
+            {
+              "id": "prj-d9e5qct5qe4s73b1mjn0",
+              "name": "beancount.io"
+            },
+            {
+              "id": "prj-d9sgfnbjghus73cg6hg0",
+              "name": "forums"
+            }
+          ],
+          "services": [
+            {
+              "id": "srv-d9bkcspg9s7c73d0n8ug",
+              "name": "agentmarketcap-1",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9bj8s3eg85c7390eb9g",
+              "name": "beancount-cms-v2",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9nqg9dcavls73fp8m2g",
+              "name": "beancount-forum",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9ndt8hmcglc739fkp50",
+              "name": "eden-dash-v3",
+              "type": "web_service"
+            },
+            {
+              "id": "srv-d9e40ei9086p3l1jri30",
+              "name": "eden-cms-v2",
+              "type": "web_service"
+            }
+          ],
+          "webhookEndpoints": []
+        }
+      },
+      "sets": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "baselineMatch": true
+    },
+    "a758SessionCleared": {
+      "at": "2026-10-16T18:16:41.013Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  },
+  "limits": [
+    "No production stage timings, historical metadata count, concurrent writer, injected compensation or authenticated Render experiment.",
+    "First native group create returned WRITE_OUTCOME_UNKNOWN; absence was read back before same-name empty recovery, after the original operation was no longer active.",
+    "Readback confirms no visible original group/link/deploy; internal stage reached by the first attempt was not measured.",
+    "An invalid serviceEnvGroups query and a PatchServiceEnvironment watcher matching variables.id instead of variables.serviceId were harness errors; the corrected read and recovered native200 are included.",
+    "No claim that retained group deletion fences or unrelated hidden name reservations were removed."
+  ],
+  "independentChecks": {
+    "qa-a758-own-http.json": {
+      "at": "2026-10-16T18:06:44.821617+00:00",
+      "exitCode": 0,
+      "response": "HTTP/2 200 \ndate: Fri, 16 Oct 2026 18:06:44 GMT\ncontent-length: 58\n\n{\"marker\":\"QA_A758\",\"value\":\"OWN雪\",\"boot\":1792173994503}",
+      "stderr": ""
+    },
+    "qa-a758-two-groups-own-http.json": {
+      "at": "2026-10-16T18:13:07.790662+00:00",
+      "exitCode": 0,
+      "response": "HTTP/2 200 \ndate: Fri, 16 Oct 2026 18:13:07 GMT\ncontent-length: 58\n\n{\"marker\":\"QA_A758\",\"value\":\"OWN雪\",\"boot\":1792174369665}",
+      "stderr": ""
+    },
+    "qa-a758-group-b-http.json": {
+      "at": "2026-10-16T18:14:20.613920+00:00",
+      "exitCode": 0,
+      "response": "HTTP/2 200 \ndate: Fri, 16 Oct 2026 18:14:20 GMT\ncontent-length: 62\n\n{\"marker\":\"QA_A758\",\"value\":\"GROUP_B風\",\"boot\":1792174399320}",
+      "stderr": ""
+    },
+    "qa-a758-group-a-fallback-http.json": {
+      "at": "2026-10-16T18:15:07.318260+00:00",
+      "exitCode": 0,
+      "response": "HTTP/2 200 \ndate: Fri, 16 Oct 2026 18:15:07 GMT\ncontent-length: 62\n\n{\"marker\":\"QA_A758\",\"value\":\"GROUP_A雨\",\"boot\":1792174483464}",
+      "stderr": ""
+    },
+    "qa-a758-no-groups-http.json": {
+      "at": "2026-10-16T18:15:51.005735+00:00",
+      "exitCode": 0,
+      "response": "HTTP/2 200 \ndate: Fri, 16 Oct 2026 18:15:50 GMT\ncontent-length: 54\n\n{\"marker\":\"QA_A758\",\"value\":null,\"boot\":1792174526969}",
+      "stderr": ""
+    },
+    "qa-a758-runtime-cleanup.json": {
+      "at": "2026-10-16T18:16:36.495804+00:00",
+      "checks": {
+        "app": {
+          "exitCode": 0,
+          "output": "",
+          "error": ""
+        },
+        "pods": {
+          "exitCode": 0,
+          "output": "pod/tea-d98210cbbpdc73dcrkvg-qa-20261016-a758-precedence-665f8xmnlp",
+          "error": ""
+        },
+        "public": {
+          "exitCode": 0,
+          "status": "404"
+        }
+      }
+    },
+    "qa-a758-runtime-final.json": {
+      "at": "2026-10-16T18:17:04.155304+00:00",
+      "exitCode": 0,
+      "pods": ""
+    }
+  }
+}
