@@ -56,7 +56,7 @@ func (e *UnsupportedVersionError) Error() string { return e.msg }
 //
 //	python  PYTHON_VERSION → .python-version → default
 //	node    NODE_VERSION → .node-version → .nvmrc → package.json engines.node → default
-//	ruby    Gemfile `ruby` → .ruby-version → default
+//	ruby    Gemfile.lock / gems.locked RUBY VERSION → .ruby-version → .tool-versions → Gemfile `ruby` → default
 //	elixir  ELIXIR_VERSION (→ line), ERLANG_VERSION (must match that line's OTP major)
 //	go, rust  default (Render offers no Go selection; rustup applies Rust's)
 //
@@ -78,7 +78,7 @@ func ResolveNativeVersion(runtime string, env map[string]string, readFile func(s
 		return r.first(r.fromEnv("NODE_VERSION", r.nodeRequest), r.fromFile(".node-version", r.nodeRequest),
 			r.fromFile(".nvmrc", r.nodeRequest), r.fromPackageEngines)
 	case "ruby":
-		return r.first(r.fromGemfile, r.fromFile(".ruby-version", r.rubyFileLine))
+		return r.first(r.fromLockedRuby, r.fromFile(".ruby-version", r.rubyFileLine), r.fromToolVersions("ruby", r.rubyFileLine), r.fromGemfile)
 	case "elixir":
 		return r.elixir()
 	default:
@@ -366,6 +366,69 @@ func (r resolver) fromPackageEngines() (string, string, bool, error) {
 }
 
 var gemfileRuby = regexp.MustCompile(`(?m)^\s*ruby\s*\(?\s*(['"])([^'"]+)['"]((?:\s*,\s*['"][^'"]+['"])*)`)
+
+// lockedRuby is a Bundler lockfile's RUBY VERSION block: `ruby 3.4.7p58` (the
+// patchlevel written by Bundler before 4.0; another engine adds its own version
+// in parentheses after it).
+var lockedRuby = regexp.MustCompile(`(?m)^RUBY VERSION[ \t]*\r?\n[ \t]+ruby[ \t]+([^\s(]+)`)
+
+// rubyPatchlevel is the `p58` a Bundler lockfile appends to an MRI version.
+var rubyPatchlevel = regexp.MustCompile(`p\d+$`)
+
+// fromLockedRuby honors the Ruby a Bundler lockfile records, Render's first
+// Ruby signal (w8/m85): gems.locked, else Gemfile.lock (Bundler's own order),
+// whichever first has a RUBY VERSION block. The block records what Bundler
+// last ran, which it rewrites only once the Gemfile stops allowing it, so a
+// recorded version no reviewed line carries is a stale record rather than a
+// requirement: the next signal decides, as it did before lockfiles were read.
+func (r resolver) fromLockedRuby() (string, string, bool, error) {
+	for _, name := range []string{"gems.locked", "Gemfile.lock"} {
+		raw, ok := r.readFile(name)
+		if !ok {
+			continue
+		}
+		m := lockedRuby.FindStringSubmatch(string(raw))
+		if m == nil {
+			continue
+		}
+		version := rubyPatchlevel.ReplaceAllString(m[1], "")
+		if line, ok := r.minorLine(version); ok && plainVersion.MatchString(version) {
+			return line, name, true, nil
+		}
+		return "", "", false, nil
+	}
+	return "", "", false, nil
+}
+
+// fromToolVersions honors a tool's line in an asdf/mise .tool-versions file
+// (`ruby 3.3.6`, the first listed version preferred), Render's third Ruby
+// signal (w8/m85). A file without that tool says nothing.
+func (r resolver) fromToolVersions(tool string, match func(string) (string, bool)) signal {
+	return func() (string, string, bool, error) {
+		raw, ok := r.readFile(".tool-versions")
+		if !ok {
+			return "", "", false, nil
+		}
+		for line := range strings.SplitSeq(string(raw), "\n") {
+			if comment := strings.IndexByte(line, '#'); comment >= 0 {
+				line = line[:comment]
+			}
+			fields := strings.Fields(strings.TrimPrefix(line, "\ufeff"))
+			if len(fields) < 2 || fields[0] != tool {
+				continue
+			}
+			if fields[1] == "system" {
+				return "", "", false, nil // asdf manages no version here
+			}
+			version, ok := match(fields[1])
+			if !ok {
+				return "", "", false, r.unsupported(fmt.Sprintf(".tool-versions %s %q", tool, fields[1]))
+			}
+			return version, ".tool-versions", true, nil
+		}
+		return "", "", false, nil
+	}
+}
 
 // fromGemfile honors a Gemfile `ruby "3.3.0"` / `ruby "~> 3.3"` directive.
 // `ruby file: ".ruby-version"` has no literal and falls through to the file.

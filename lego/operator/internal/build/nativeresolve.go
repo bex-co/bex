@@ -38,7 +38,9 @@ const (
 	// NativeResolveBinary is the entrypoint in bex's image (lego/Dockerfile).
 	NativeResolveBinary = "/native-resolve"
 	// maxVersionFileBytes bounds what a version file may make the resolver
-	// read; real ones are a line, package.json/Gemfile a few KiB.
+	// read; real ones are a line, package.json/Gemfile a few KiB, and a
+	// Bundler lockfile (whose RUBY VERSION block sits near its end) well under
+	// it even for thousands of gems.
 	maxVersionFileBytes = 1 << 20
 )
 
