@@ -1,0 +1,18 @@
+{
+  "source_head": "916cef3397ec88f6bb9d98ad422b111553a3cade",
+  "source_fix": "0d841d5bec5aafd1d9e106459f3f57a2a351dc33",
+  "serving_revision": "unknown",
+  "primary_sources": [
+    {
+      "url": "https://render.com/docs/environment-variables",
+      "observed_contract": "Elixir MIX_ENV=prod at build and runtime"
+    },
+    {
+      "url": "https://render.com/docs/deploys",
+      "observed_contract": "example Elixir build uses mix deps.get --only prod && mix compile"
+    }
+  ],
+  "reviewed_at": "2026-10-17",
+  "scope": "same original published Phoenix source and exact dependency/compiler pipeline; actual build/runtime Mix snapshots through authored stdlib HTTP; full Phoenix endpoint/database/assets/release/browser not exercised",
+  "local_qualification": "fresh original source, current pinned Elixir1.18 base, explicit local production prerequisite; not native default-supply proof"
+}

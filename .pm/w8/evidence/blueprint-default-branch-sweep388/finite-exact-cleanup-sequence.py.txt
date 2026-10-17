@@ -1,0 +1,15 @@
+from pathlib import Path
+import subprocess,json,time
+P=Path(__file__).resolve().parent;CP=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json')
+for case in ('render-born','bex-born'):
+ c=json.loads(CP.read_text());b=next(v for v in c['resources'] if v.get('sweep')==388 and v.get('case')==case and v.get('type')=='blueprint' and v.get('id'))
+ if not b['state'].startswith('deleted:'):subprocess.run(['python3',str(P/'sweep388-omitted-branch.py'),'disconnect',case],check=True,timeout=120)
+ c=json.loads(CP.read_text());x=next(v for v in c['resources'] if v.get('sweep')==388 and v.get('case')==case and v.get('type')=='web_service' and v.get('id'))
+ if not x.get('delete_result'):subprocess.run(['python3',str(P/'sweep388-omitted-branch.py'),'delete',case],check=True,timeout=120)
+ for attempt in range(4):
+  r=subprocess.run(['python3',str(P/'sweep388-omitted-branch.py'),'reconcile',case],text=True,capture_output=True,check=True,timeout=120);print(r.stdout,flush=True)
+  if json.loads(r.stdout)['complete']:break
+  if attempt<3:time.sleep(12)
+ else:raise RuntimeError('own service convergence pending; preserve ledger')
+ r=subprocess.run(['python3',str(P/'sweep388-omitted-branch.py'),'children',case],text=True,capture_output=True,check=True,timeout=100);print(r.stdout,flush=True);assert json.loads(r.stdout)['children_absent']
+subprocess.run(['python3',str(P/'sweep388-final-inventory.py')],check=True,timeout=100)

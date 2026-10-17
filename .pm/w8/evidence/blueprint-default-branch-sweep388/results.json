@@ -1,0 +1,37 @@
+{
+  "sweep": 388,
+  "existing_finding": "w8/m80",
+  "source_head": "5e18f96cf7d8359b4d77c64893397cd879586f77",
+  "source_fix": "a3047cd759788dd308281a2f176741d2711f6458",
+  "serving_revision": "unknown",
+  "independent_repo": "https://github.com/expressjs/serve-static",
+  "independently_observed_default": "master",
+  "first_Git_commits": [
+    "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+    "109a299c26d2d532027bb6e66e50e365eeb8fcdd"
+  ],
+  "reference_commit": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+  "native_creates_captured_POST201": 2,
+  "native_validation_calls_exit0_valid": 14,
+  "API_only_Git_syncs_success": 2,
+  "first_omitted_branch_Git_deploys_Live_HTTP200": 2,
+  "branch_correction_or_install_workaround": false,
+  "delayed_same_source_commit_package_literal_boot": 2,
+  "identical_omitted_reapply_success_no_child_or_boot_change": 2,
+  "canonical_stored_YAML_service_branch_absent": 2,
+  "shared_REST_GraphQL_MCP_source_command_reads": 6,
+  "native_deletes_exit0": 2,
+  "owned_Blueprint_disconnect204": 2,
+  "owned_services_children_Blueprints_URLs_absent": [
+    2,
+    6,
+    2,
+    2
+  ],
+  "original_baselines_preserved": true,
+  "all_terminating_zero": true,
+  "setup_qualifications": "one local capture alias error sent no create; exact nonce absent reconciled; old disconnected Node/v22 context applied an image-only config but registered no metadata; two fresh unused public Node contexts chosen before any Git sync; two image-only configuration children retained",
+  "broader_matrix": "completed source tasks inherited; no fresh hosted new-service/nested/fetched/browser/other-type or full suite claim",
+  "new_issue": null,
+  "uncommitted": true
+}

@@ -1,0 +1,20 @@
+{
+  "contexts": {
+    "bex-born": "v26.x",
+    "render-born": "v23.x"
+  },
+  "public_refs": {
+    "main": "62ca1bae5a2ba9fd63041464e90a6073e7dd0392",
+    "v23.x": "9d113c35c22b76afd8929c4b53e8b23d67f14243",
+    "v24.x": "0d10bfe3cb961ef997490f5c060bd1466b5affea",
+    "v25.x": "ffa9b8f79329aba9d9e7b820d9865f3e1f4ceda6",
+    "v26.x": "8a9c54c5d2cc7be8ecb67a676c49098e54db4a5a"
+  },
+  "ledger_previously_used_branches": [
+    "main",
+    "v20.x",
+    "v22.x",
+    "v24.x"
+  ],
+  "qualification": "fresh unused source keys for fixture metadata; service repo/omitted branch, commands and literals remain unchanged"
+}

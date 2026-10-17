@@ -1,0 +1,5 @@
+{
+  "repo": "https://github.com/nodejs/node",
+  "refs": "d1ef63f84ccbcc8f2237e545ba6c91258c27bed0\trefs/heads/v20.x\n9b16463128ba6d281a5d456f0a9e132bc9bdbcbf\trefs/heads/v22.x\n",
+  "qualification": "containing Blueprint branch existence only; independent service deploy must use serve-static master and its own commit"
+}

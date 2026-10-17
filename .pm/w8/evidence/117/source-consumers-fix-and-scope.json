@@ -1,0 +1,33 @@
+{
+  "source_head": "009a9409a48bcc5d241d87b0460ba5b0390698a4",
+  "serving_revision": "unknown",
+  "primary_contracts": [
+    "https://render.com/docs/environment-variables",
+    "https://raw.githubusercontent.com/rubygems/rubygems/bundler-v2.6.9/bundler/lib/bundler/man/bundle-config.1.ronn"
+  ],
+  "trace": [
+    "pinned cmd/servicecreate.go:157-162 -> pkg/service/create.go:14/144-145 -> pkg/service/repo.go:87 -> native POST /v1/services",
+    "backend internal/apps/rest.go:1040/1061 decode -> 479-501 native build/start -> CreateRequest fields567-569",
+    "operator app_controller.go:1039-1043 supplies exact native command/effective env to build.Options",
+    "build/native.go:263/271 authored build RUN and primary defaults; nativeBuildDefaults301-309 lacks Ruby; NativeRuntimeDefaults317-322 only Node",
+    "native.go:368 exports generated recipe; nativeresolve.go:50-118 rewrites chosen primary image/companions without Bundler defaults",
+    "deployment_projection.go:260-261/app_controller.go:4832/4863 runtime env overrides image config; predeploy uses same artifact4677"
+  ],
+  "actual_Bundler_2_6_9_consumer": {
+    "bundler.rb:241-246": "explicit frozen setting wins; otherwise deployment supplies frozen mode",
+    "settings.rb:252-266": "explicit path/system settings preserved; deployment defaults install path to vendor/bundle",
+    "definition.rb:406-423": "frozen mode refuses missing lock and Gemfile/lock disagreement with ProductionError"
+  },
+  "proposed_fix": "primary Ruby image ENV BUNDLE_DEPLOYMENT=true before authored RUN, retained in running image; low precedence to transported and runtime literal/group/Secret inputs including false/empty. Preserve Bundler own config and explicit BUNDLE_FROZEN/BUNDLE_PATH semantics; no CLI rewrite, no higher-precedence container injection, no forced frozen flag or global path replacement. Real matched-lock install+bundle exec startup must pass under vendor/bundle fallback and explicit paths.",
+  "affected": "shared native primary Ruby web/private/worker/existing supported cron, pre-deploy and explicit native static build phase. Dockerfile/prebuilt images/other primary runtimes keep contracts. Only Free Ruby3.4 web hosted here; generated source observations include3.3/3.4/4.0/customfalse/empty/static. No paid cron.",
+  "separate_from": [
+    "w8/114 Rails RAILS_ENV loopback default",
+    "done/m85 RUBY VERSION and tool-version choice; its stale unsupported Ruby-version fallback is deliberate and unrelated to gem dependency lock consistency"
+  ],
+  "qualification": [
+    "First public-reference helper assumed absent README.md and stopped before any production API/CLI; corrected LICENSE/CHANGELOG source manifest from same owned anonymous checkout and removed it. Original helper retained.",
+    "First bounded initial waiter stopped while original child was update_in_progress; source-proof returned false solely while terminal readiness pending. Same two first children later accepted Live without create/update retry.",
+    "Actual generator/resolver exports are six source observations; base-image/prerequisite executions are real Bundler controls, not a complete generated-image build or hosted Ruby3.3/4.0 certification.",
+    "No installed product change or shared rollout."
+  ]
+}

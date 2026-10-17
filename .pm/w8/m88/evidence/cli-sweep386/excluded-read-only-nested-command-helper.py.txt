@@ -1,0 +1,38 @@
+from pathlib import Path
+import sys,json,signal
+f=Path(__file__).with_name('sweep386-common.py');exec(compile(f.read_text(),str(f),'exec'));assert mode=='exercise';x=next(v for v in c['resources'] if v.get('sweep')==386 and v.get('client')==client);own(x);sid=x['id'];phase='direct-control' if 'direct_control_intent' in x else 'original-npm';assert not any(e['phase']==phase for e in x.get('restart_exercises',[]));url=x['create_view']['serviceDetails']['url']
+def request():
+ r=subprocess.run(['curl','--disable','-sS','--max-time','5','-w','\n%{http_code}',url],capture_output=True,text=True,timeout=9);raw,_,status=r.stdout.rpartition('\n')
+ try:v=json.loads(raw)
+ except ValueError:v=None
+ return {'at':now(),'curl_exit':r.returncode,'HTTP':status,'raw':raw,'decoded':v,'stderr':r.stderr}
+h=history(x);initial=request();assert initial['HTTP']=='200' and isinstance(initial['decoded'],dict) and initial['decoded']['marker']==x['marker'] and h[0]['status']=='live';old=initial['decoded'];token=secrets.token_hex(8);headers=P/('sweep386-'+client+'-'+phase+'-'+token+'.headers');assert not headers.exists();args=['curl','--disable','-sS','--max-time','95','-X','POST','--data-binary','','-D',str(headers),'-w','\n%{http_code}',url+'/hold/'+token];e={'at':now(),'phase':phase,'token':token,'old_boot':old['boot'],'initial':initial,'before_history':h,'client_command':args,'samples':[],'restart_command':[client,'services','restart',sid,'--confirm','-o','json'],'state':'own in-flight POST then native restart intent persisted'};x.setdefault('restart_exercises',[]).append(e);c['phase']='sweep386 '+client+' '+phase+' restart/in-flight exercise';save();proc=None;started=time.monotonic()
+try:
+ proc=subprocess.Popen(args,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,start_new_session=True);e['client_process_id']=proc.pid;save();active=None
+ for attempt in range(12):
+  sample=request();e['samples'].append(sample);v=sample['decoded']
+  if isinstance(v,dict) and v.get('boot')==old['boot'] and token in v.get('active',[]):active=sample;break
+  time.sleep(.2)
+ assert active is not None;e['old_process_active_before_restart']=active;e['restart_submitted_at']=now();save();r=cli(['services','restart',sid,'--confirm','-o','json']);e['native_restart']=r;save();assert r['native_exit']==0,'reconcile native restart before any retry';last_history=time.monotonic();h=history(x);new_live_at=None;last_save=time.monotonic()
+ while time.monotonic()-started<110:
+  sample=request();e['samples'].append(sample);v=sample['decoded'];new=isinstance(v,dict) and v.get('marker')==x['marker'] and v.get('boot')!=old['boot']
+  if time.monotonic()-last_history>=10:h=history(x);last_history=time.monotonic()
+  latest_is_new=len(h)==len(e['before_history'])+1 and h[0]['id'] not in [v['id'] for v in e['before_history']]
+  if new and latest_is_new and h[0]['status']=='live':
+   if new_live_at is None:new_live_at=time.monotonic();e['new_live_first_observed_at']=now();e['new_live_snapshot']=sample;save()
+  if proc.poll() is not None and 'client_result' not in e:
+   out,err=proc.communicate();raw,_,status=out.rpartition('\n')
+   try:body=json.loads(raw)
+   except ValueError:body=None
+   e['client_result']={'at':now(),'curl_exit':proc.returncode,'HTTP':status,'raw':raw,'decoded':body,'headers':headers.read_text() if headers.exists() else None,'stderr':err,'elapsed':round(time.monotonic()-started,3)};e['client_failed_or_replayed']=not(proc.returncode==0 and status=='200' and isinstance(body,dict) and body.get('marker')==x['marker'] and body.get('boot')==old['boot'] and body.get('token')==token);save()
+  if new_live_at is not None and 'client_result' in e and time.monotonic()-new_live_at>=8:break
+  if time.monotonic()-last_save>=5:save();last_save=time.monotonic()
+  time.sleep(1)
+ assert 'client_result' in e and new_live_at is not None;e['after_history']=h;e['all_short_reads_own_HTTP200']=all(s['curl_exit']==0 and s['HTTP']=='200' and isinstance(s['decoded'],dict) and s['decoded'].get('marker')==x['marker'] for s in e['samples']);e['state']='one native restart completed; exact in-flight POST result and sampled old/new boots retained';save();print(json.dumps({'client':client,'phase':phase,'native_restart_exit':r['native_exit'],'new_first_restart_child_live':True,'old_inflight_POST_HTTP':e['client_result']['HTTP'],'old_inflight_failed_or_replayed':e['client_failed_or_replayed'],'short_HTTP_samples':len(e['samples']),'all_short_reads_200':e['all_short_reads_own_HTTP200'],'elapsed':round(time.monotonic()-started,2)}))
+finally:
+ if proc is not None and proc.poll() is None:
+  os.killpg(proc.pid,signal.SIGTERM)
+  try:out,err=proc.communicate(timeout=3)
+  except subprocess.TimeoutExpired:os.killpg(proc.pid,signal.SIGKILL);out,err=proc.communicate(timeout=3)
+  e['interrupted_owned_client']={'exit':proc.returncode,'stdout':out,'stderr':err};save()
+ headers.unlink(missing_ok=True)

@@ -1,0 +1,560 @@
+{
+  "qualification": "own local pinned Node24 /bin/bash -c start-command signal and real in-flight HTTP prerequisite, direct Node control and original npm start; isolated loopback-only ephemeral published ports removed with exact containers; local hold6s versus planned hosted40s, no native platform claim",
+  "base": "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+  "nonce": "de074cbbe8",
+  "steps": [
+    {
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "bex-qa386-de074cbbe8-direct"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: bex-qa386-de074cbbe8-direct\n"
+    },
+    {
+      "command": [
+        "docker",
+        "create",
+        "--name",
+        "bex-qa386-de074cbbe8-direct",
+        "--label",
+        "bex.qa.nonce=de074cbbe8",
+        "--network",
+        "bridge",
+        "--publish",
+        "127.0.0.1::3000",
+        "--volume",
+        "<owned-temp>/sweep386-local-de074cbbe8/direct:/opt/render/project/src",
+        "--workdir",
+        "/opt/render/project/src",
+        "--env",
+        "NODE_VERSION=24",
+        "--env",
+        "NODE_ENV=production",
+        "--env",
+        "QA_HOLD_MS=6000",
+        "--env",
+        "PORT=3000",
+        "--entrypoint",
+        "/bin/bash",
+        "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+        "-c",
+        "set -e\nmkdir qa386\ncat > qa386/server.js <<'QA386_SERVER'\n'use strict';\nconst http=require('node:http'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');\nconst root=path.resolve(__dirname,'..'),marker=JSON.parse(fs.readFileSync(path.join(__dirname,'marker.json'))),ref=JSON.parse(fs.readFileSync(path.join(__dirname,'reference.json')));\nconst sha=b=>crypto.createHash('sha256').update(b).digest('hex');\nfunction proof(){const out={};for(const [name,want] of Object.entries(ref.files)){const f=path.join(root,name);if(want.absent){if(fs.existsSync(f))throw Error('unexpected source '+name);out[name]={absent:true}}else{const b=fs.readFileSync(f);out[name]={bytes:b.length,sha256:sha(b)};if(JSON.stringify(out[name])!==JSON.stringify(want))throw Error('source mismatch '+name)}}return out}\nconst meta={marker,node:process.version,files:proof(),program_sha256:sha(fs.readFileSync(__filename))};\nif(process.argv.includes('--build')){fs.writeFileSync(path.join(__dirname,'built.json'),JSON.stringify(meta));console.log('QA386_BUILD '+JSON.stringify(meta));process.exit(0)}\nconst boot=crypto.randomUUID(),active=new Set(),holdMs=Math.min(40000,Number(process.env.QA_HOLD_MS||40000));let terminating=false;\nconst snap=()=>({...meta,boot,pid:process.pid,ppid:process.ppid,npm_lifecycle_event:process.env.npm_lifecycle_event??null,npm_command:process.env.npm_command??null,active:[...active],terminating,built:JSON.parse(fs.readFileSync(path.join(__dirname,'built.json')))});\nconst event=(kind,extra={})=>console.log('QA386_EVENT '+JSON.stringify({marker,boot,kind,at:new Date().toISOString(),pid:process.pid,...extra}));\nconst server=http.createServer((req,res)=>{const send=v=>{res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify(v))};if(req.url.startsWith('/hold/')){const token=req.url.slice(6);active.add(token);event('hold_begin',{token,holdMs});setTimeout(()=>{active.delete(token);event('hold_end',{token});send({...snap(),token,holdMs})},holdMs);return}send(snap())});\nprocess.on('SIGTERM',()=>{if(terminating)return;terminating=true;event('sigterm',{active:[...active]});server.close(()=>{event('closed');process.exit(0)});server.closeIdleConnections();setTimeout(()=>{event('forced_timeout',{active:[...active]});process.exit(1)},45000).unref()});\nserver.listen(Number(process.env.PORT||10000),'0.0.0.0',()=>event('ready'));\n\nQA386_SERVER\ncat > qa386/package.json <<'QA386_PACKAGE'\n{\"name\": \"qa386-fixture\", \"version\": \"1.0.0\", \"private\": true, \"scripts\": {\"start\": \"node server.js\"}}\nQA386_PACKAGE\ncat > qa386/reference.json <<'QA386_REFERENCE'\n{\"repo\": \"https://github.com/expressjs/express\", \"branch\": \"master\", \"commit\": \"a419aa7350389a275ab45fde2e849ed1f02449ef\", \"files\": {\"package.json\": {\"bytes\": 2731, \"sha256\": \"9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe\"}, \"package-lock.json\": {\"absent\": true}, \"lib/application.js\": {\"bytes\": 13953, \"sha256\": \"6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04\"}, \"index.js\": {\"bytes\": 224, \"sha256\": \"4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140\"}, \".nvmrc\": {\"absent\": true}, \".node-version\": {\"absent\": true}}, \"fresh_preparation_at\": \"2026-10-16T23:45:31.960304+00:00\"}\nQA386_REFERENCE\ncat > qa386/marker.json <<'QA386_MARKER'\n\"QA386_LOCAL_de074cbbe8_direct\"\nQA386_MARKER\nnode qa386/server.js --build\nexec /bin/bash -c 'node qa386/server.js'"
+      ],
+      "exit": 0,
+      "stdout": "215e93c68ce023c7e1b08d0a349b6c629072f69423f37bbaa989b062038d6c51\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "start",
+        "215e93c68ce023c7e1b08d0a349b6c629072f69423f37bbaa989b062038d6c51"
+      ],
+      "exit": 0,
+      "stdout": "215e93c68ce023c7e1b08d0a349b6c629072f69423f37bbaa989b062038d6c51\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "port",
+        "215e93c68ce023c7e1b08d0a349b6c629072f69423f37bbaa989b062038d6c51",
+        "3000/tcp"
+      ],
+      "exit": 0,
+      "stdout": "127.0.0.1:65115\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "curl",
+        "--disable",
+        "-sS",
+        "--max-time",
+        "3",
+        "-w",
+        "\n%{http_code}",
+        "http://127.0.0.1:65115"
+      ],
+      "exit": 52,
+      "stdout": "\n000",
+      "stderr": "curl: (52) Empty reply from server\n"
+    },
+    {
+      "command": [
+        "curl",
+        "--disable",
+        "-sS",
+        "--max-time",
+        "3",
+        "-w",
+        "\n%{http_code}",
+        "http://127.0.0.1:65115"
+      ],
+      "exit": 0,
+      "stdout": "{\"marker\":\"QA386_LOCAL_de074cbbe8_direct\",\"node\":\"v24.22.0\",\"files\":{\"package.json\":{\"bytes\":2731,\"sha256\":\"9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe\"},\"package-lock.json\":{\"absent\":true},\"lib/application.js\":{\"bytes\":13953,\"sha256\":\"6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04\"},\"index.js\":{\"bytes\":224,\"sha256\":\"4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140\"},\".nvmrc\":{\"absent\":true},\".node-version\":{\"absent\":true}},\"program_sha256\":\"ad36e3734b331d1e688fbe07c86b355be2740dbfda2f9e6fc7b494e5fed5f677\",\"boot\":\"89f69633-df73-4e53-93d2-5284d3df2702\",\"pid\":1,\"ppid\":0,\"npm_lifecycle_event\":null,\"npm_command\":null,\"active\":[],\"terminating\":false,\"built\":{\"marker\":\"QA386_LOCAL_de074cbbe8_direct\",\"node\":\"v24.22.0\",\"files\":{\"package.json\":{\"bytes\":2731,\"sha256\":\"9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe\"},\"package-lock.json\":{\"absent\":true},\"lib/application.js\":{\"bytes\":13953,\"sha256\":\"6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04\"},\"index.js\":{\"bytes\":224,\"sha256\":\"4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140\"},\".nvmrc\":{\"absent\":true},\".node-version\":{\"absent\":true}},\"program_sha256\":\"ad36e3734b331d1e688fbe07c86b355be2740dbfda2f9e6fc7b494e5fed5f677\"}}\n200",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "curl",
+        "--disable",
+        "-sS",
+        "--max-time",
+        "3",
+        "-w",
+        "\n%{http_code}",
+        "http://127.0.0.1:65115"
+      ],
+      "exit": 0,
+      "stdout": "{\"marker\":\"QA386_LOCAL_de074cbbe8_direct\",\"node\":\"v24.22.0\",\"files\":{\"package.json\":{\"bytes\":2731,\"sha256\":\"9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe\"},\"package-lock.json\":{\"absent\":true},\"lib/application.js\":{\"bytes\":13953,\"sha256\":\"6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04\"},\"index.js\":{\"bytes\":224,\"sha256\":\"4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140\"},\".nvmrc\":{\"absent\":true},\".node-version\":{\"absent\":true}},\"program_sha256\":\"ad36e3734b331d1e688fbe07c86b355be2740dbfda2f9e6fc7b494e5fed5f677\",\"boot\":\"89f69633-df73-4e53-93d2-5284d3df2702\",\"pid\":1,\"ppid\":0,\"npm_lifecycle_event\":null,\"npm_command\":null,\"active\":[\"737e16170af4\"],\"terminating\":false,\"built\":{\"marker\":\"QA386_LOCAL_de074cbbe8_direct\",\"node\":\"v24.22.0\",\"files\":{\"package.json\":{\"bytes\":2731,\"sha256\":\"9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe\"},\"package-lock.json\":{\"absent\":true},\"lib/application.js\":{\"bytes\":13953,\"sha256\":\"6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04\"},\"index.js\":{\"bytes\":224,\"sha256\":\"4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140\"},\".nvmrc\":{\"absent\":true},\".node-version\":{\"absent\":true}},\"program_sha256\":\"ad36e3734b331d1e688fbe07c86b355be2740dbfda2f9e6fc7b494e5fed5f677\"}}\n200",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "stop",
+        "--time",
+        "10",
+        "215e93c68ce023c7e1b08d0a349b6c629072f69423f37bbaa989b062038d6c51"
+      ],
+      "exit": 0,
+      "stdout": "Flag --time has been deprecated, use --timeout instead\n215e93c68ce023c7e1b08d0a349b6c629072f69423f37bbaa989b062038d6c51\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "logs",
+        "215e93c68ce023c7e1b08d0a349b6c629072f69423f37bbaa989b062038d6c51"
+      ],
+      "exit": 0,
+      "stdout": "QA386_BUILD {\"marker\":\"QA386_LOCAL_de074cbbe8_direct\",\"node\":\"v24.22.0\",\"files\":{\"package.json\":{\"bytes\":2731,\"sha256\":\"9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe\"},\"package-lock.json\":{\"absent\":true},\"lib/application.js\":{\"bytes\":13953,\"sha256\":\"6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04\"},\"index.js\":{\"bytes\":224,\"sha256\":\"4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140\"},\".nvmrc\":{\"absent\":true},\".node-version\":{\"absent\":true}},\"program_sha256\":\"ad36e3734b331d1e688fbe07c86b355be2740dbfda2f9e6fc7b494e5fed5f677\"}\nQA386_EVENT {\"marker\":\"QA386_LOCAL_de074cbbe8_direct\",\"boot\":\"89f69633-df73-4e53-93d2-5284d3df2702\",\"kind\":\"ready\",\"at\":\"2026-10-17T00:13:56.666Z\",\"pid\":1}\nQA386_EVENT {\"marker\":\"QA386_LOCAL_de074cbbe8_direct\",\"boot\":\"89f69633-df73-4e53-93d2-5284d3df2702\",\"kind\":\"hold_begin\",\"at\":\"2026-10-17T00:13:56.865Z\",\"pid\":1,\"token\":\"737e16170af4\",\"holdMs\":6000}\nQA386_EVENT {\"marker\":\"QA386_LOCAL_de074cbbe8_direct\",\"boot\":\"89f69633-df73-4e53-93d2-5284d3df2702\",\"kind\":\"sigterm\",\"at\":\"2026-10-17T00:13:56.889Z\",\"pid\":1,\"active\":[\"737e16170af4\"]}\nQA386_EVENT {\"marker\":\"QA386_LOCAL_de074cbbe8_direct\",\"boot\":\"89f69633-df73-4e53-93d2-5284d3df2702\",\"kind\":\"hold_end\",\"at\":\"2026-10-17T00:14:02.866Z\",\"pid\":1,\"token\":\"737e16170af4\"}\nQA386_EVENT {\"marker\":\"QA386_LOCAL_de074cbbe8_direct\",\"boot\":\"89f69633-df73-4e53-93d2-5284d3df2702\",\"kind\":\"closed\",\"at\":\"2026-10-17T00:14:02.868Z\",\"pid\":1}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "rm",
+        "215e93c68ce023c7e1b08d0a349b6c629072f69423f37bbaa989b062038d6c51"
+      ],
+      "exit": 0,
+      "stdout": "215e93c68ce023c7e1b08d0a349b6c629072f69423f37bbaa989b062038d6c51\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "bex-qa386-de074cbbe8-npm"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: bex-qa386-de074cbbe8-npm\n"
+    },
+    {
+      "command": [
+        "docker",
+        "create",
+        "--name",
+        "bex-qa386-de074cbbe8-npm",
+        "--label",
+        "bex.qa.nonce=de074cbbe8",
+        "--network",
+        "bridge",
+        "--publish",
+        "127.0.0.1::3000",
+        "--volume",
+        "<owned-temp>/sweep386-local-de074cbbe8/npm:/opt/render/project/src",
+        "--workdir",
+        "/opt/render/project/src",
+        "--env",
+        "NODE_VERSION=24",
+        "--env",
+        "NODE_ENV=production",
+        "--env",
+        "QA_HOLD_MS=6000",
+        "--env",
+        "PORT=3000",
+        "--entrypoint",
+        "/bin/bash",
+        "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+        "-c",
+        "set -e\nmkdir qa386\ncat > qa386/server.js <<'QA386_SERVER'\n'use strict';\nconst http=require('node:http'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');\nconst root=path.resolve(__dirname,'..'),marker=JSON.parse(fs.readFileSync(path.join(__dirname,'marker.json'))),ref=JSON.parse(fs.readFileSync(path.join(__dirname,'reference.json')));\nconst sha=b=>crypto.createHash('sha256').update(b).digest('hex');\nfunction proof(){const out={};for(const [name,want] of Object.entries(ref.files)){const f=path.join(root,name);if(want.absent){if(fs.existsSync(f))throw Error('unexpected source '+name);out[name]={absent:true}}else{const b=fs.readFileSync(f);out[name]={bytes:b.length,sha256:sha(b)};if(JSON.stringify(out[name])!==JSON.stringify(want))throw Error('source mismatch '+name)}}return out}\nconst meta={marker,node:process.version,files:proof(),program_sha256:sha(fs.readFileSync(__filename))};\nif(process.argv.includes('--build')){fs.writeFileSync(path.join(__dirname,'built.json'),JSON.stringify(meta));console.log('QA386_BUILD '+JSON.stringify(meta));process.exit(0)}\nconst boot=crypto.randomUUID(),active=new Set(),holdMs=Math.min(40000,Number(process.env.QA_HOLD_MS||40000));let terminating=false;\nconst snap=()=>({...meta,boot,pid:process.pid,ppid:process.ppid,npm_lifecycle_event:process.env.npm_lifecycle_event??null,npm_command:process.env.npm_command??null,active:[...active],terminating,built:JSON.parse(fs.readFileSync(path.join(__dirname,'built.json')))});\nconst event=(kind,extra={})=>console.log('QA386_EVENT '+JSON.stringify({marker,boot,kind,at:new Date().toISOString(),pid:process.pid,...extra}));\nconst server=http.createServer((req,res)=>{const send=v=>{res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify(v))};if(req.url.startsWith('/hold/')){const token=req.url.slice(6);active.add(token);event('hold_begin',{token,holdMs});setTimeout(()=>{active.delete(token);event('hold_end',{token});send({...snap(),token,holdMs})},holdMs);return}send(snap())});\nprocess.on('SIGTERM',()=>{if(terminating)return;terminating=true;event('sigterm',{active:[...active]});server.close(()=>{event('closed');process.exit(0)});server.closeIdleConnections();setTimeout(()=>{event('forced_timeout',{active:[...active]});process.exit(1)},45000).unref()});\nserver.listen(Number(process.env.PORT||10000),'0.0.0.0',()=>event('ready'));\n\nQA386_SERVER\ncat > qa386/package.json <<'QA386_PACKAGE'\n{\"name\": \"qa386-fixture\", \"version\": \"1.0.0\", \"private\": true, \"scripts\": {\"start\": \"node server.js\"}}\nQA386_PACKAGE\ncat > qa386/reference.json <<'QA386_REFERENCE'\n{\"repo\": \"https://github.com/expressjs/express\", \"branch\": \"master\", \"commit\": \"a419aa7350389a275ab45fde2e849ed1f02449ef\", \"files\": {\"package.json\": {\"bytes\": 2731, \"sha256\": \"9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe\"}, \"package-lock.json\": {\"absent\": true}, \"lib/application.js\": {\"bytes\": 13953, \"sha256\": \"6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04\"}, \"index.js\": {\"bytes\": 224, \"sha256\": \"4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140\"}, \".nvmrc\": {\"absent\": true}, \".node-version\": {\"absent\": true}}, \"fresh_preparation_at\": \"2026-10-16T23:45:31.960304+00:00\"}\nQA386_REFERENCE\ncat > qa386/marker.json <<'QA386_MARKER'\n\"QA386_LOCAL_de074cbbe8_npm\"\nQA386_MARKER\nnode qa386/server.js --build\nexec /bin/bash -c 'npm --prefix qa386 start'"
+      ],
+      "exit": 0,
+      "stdout": "2a824da9d1e62f24ec1d808c05ef2365534bfbcaaa9288d9336bccd3f35454fb\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "start",
+        "2a824da9d1e62f24ec1d808c05ef2365534bfbcaaa9288d9336bccd3f35454fb"
+      ],
+      "exit": 0,
+      "stdout": "2a824da9d1e62f24ec1d808c05ef2365534bfbcaaa9288d9336bccd3f35454fb\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "port",
+        "2a824da9d1e62f24ec1d808c05ef2365534bfbcaaa9288d9336bccd3f35454fb",
+        "3000/tcp"
+      ],
+      "exit": 0,
+      "stdout": "127.0.0.1:49523\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "curl",
+        "--disable",
+        "-sS",
+        "--max-time",
+        "3",
+        "-w",
+        "\n%{http_code}",
+        "http://127.0.0.1:49523"
+      ],
+      "exit": 52,
+      "stdout": "\n000",
+      "stderr": "curl: (52) Empty reply from server\n"
+    },
+    {
+      "command": [
+        "curl",
+        "--disable",
+        "-sS",
+        "--max-time",
+        "3",
+        "-w",
+        "\n%{http_code}",
+        "http://127.0.0.1:49523"
+      ],
+      "exit": 52,
+      "stdout": "\n000",
+      "stderr": "curl: (52) Empty reply from server\n"
+    },
+    {
+      "command": [
+        "curl",
+        "--disable",
+        "-sS",
+        "--max-time",
+        "3",
+        "-w",
+        "\n%{http_code}",
+        "http://127.0.0.1:49523"
+      ],
+      "exit": 0,
+      "stdout": "{\"marker\":\"QA386_LOCAL_de074cbbe8_npm\",\"node\":\"v24.22.0\",\"files\":{\"package.json\":{\"bytes\":2731,\"sha256\":\"9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe\"},\"package-lock.json\":{\"absent\":true},\"lib/application.js\":{\"bytes\":13953,\"sha256\":\"6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04\"},\"index.js\":{\"bytes\":224,\"sha256\":\"4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140\"},\".nvmrc\":{\"absent\":true},\".node-version\":{\"absent\":true}},\"program_sha256\":\"ad36e3734b331d1e688fbe07c86b355be2740dbfda2f9e6fc7b494e5fed5f677\",\"boot\":\"78854dfd-6a3c-4612-8b96-1040cf5d4d53\",\"pid\":31,\"ppid\":30,\"npm_lifecycle_event\":\"start\",\"npm_command\":\"start\",\"active\":[],\"terminating\":false,\"built\":{\"marker\":\"QA386_LOCAL_de074cbbe8_npm\",\"node\":\"v24.22.0\",\"files\":{\"package.json\":{\"bytes\":2731,\"sha256\":\"9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe\"},\"package-lock.json\":{\"absent\":true},\"lib/application.js\":{\"bytes\":13953,\"sha256\":\"6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04\"},\"index.js\":{\"bytes\":224,\"sha256\":\"4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140\"},\".nvmrc\":{\"absent\":true},\".node-version\":{\"absent\":true}},\"program_sha256\":\"ad36e3734b331d1e688fbe07c86b355be2740dbfda2f9e6fc7b494e5fed5f677\"}}\n200",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "curl",
+        "--disable",
+        "-sS",
+        "--max-time",
+        "3",
+        "-w",
+        "\n%{http_code}",
+        "http://127.0.0.1:49523"
+      ],
+      "exit": 0,
+      "stdout": "{\"marker\":\"QA386_LOCAL_de074cbbe8_npm\",\"node\":\"v24.22.0\",\"files\":{\"package.json\":{\"bytes\":2731,\"sha256\":\"9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe\"},\"package-lock.json\":{\"absent\":true},\"lib/application.js\":{\"bytes\":13953,\"sha256\":\"6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04\"},\"index.js\":{\"bytes\":224,\"sha256\":\"4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140\"},\".nvmrc\":{\"absent\":true},\".node-version\":{\"absent\":true}},\"program_sha256\":\"ad36e3734b331d1e688fbe07c86b355be2740dbfda2f9e6fc7b494e5fed5f677\",\"boot\":\"78854dfd-6a3c-4612-8b96-1040cf5d4d53\",\"pid\":31,\"ppid\":30,\"npm_lifecycle_event\":\"start\",\"npm_command\":\"start\",\"active\":[\"81e08a440c1a\"],\"terminating\":false,\"built\":{\"marker\":\"QA386_LOCAL_de074cbbe8_npm\",\"node\":\"v24.22.0\",\"files\":{\"package.json\":{\"bytes\":2731,\"sha256\":\"9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe\"},\"package-lock.json\":{\"absent\":true},\"lib/application.js\":{\"bytes\":13953,\"sha256\":\"6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04\"},\"index.js\":{\"bytes\":224,\"sha256\":\"4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140\"},\".nvmrc\":{\"absent\":true},\".node-version\":{\"absent\":true}},\"program_sha256\":\"ad36e3734b331d1e688fbe07c86b355be2740dbfda2f9e6fc7b494e5fed5f677\"}}\n200",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "stop",
+        "--time",
+        "10",
+        "2a824da9d1e62f24ec1d808c05ef2365534bfbcaaa9288d9336bccd3f35454fb"
+      ],
+      "exit": 0,
+      "stdout": "Flag --time has been deprecated, use --timeout instead\n2a824da9d1e62f24ec1d808c05ef2365534bfbcaaa9288d9336bccd3f35454fb\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "logs",
+        "2a824da9d1e62f24ec1d808c05ef2365534bfbcaaa9288d9336bccd3f35454fb"
+      ],
+      "exit": 0,
+      "stdout": "QA386_BUILD {\"marker\":\"QA386_LOCAL_de074cbbe8_npm\",\"node\":\"v24.22.0\",\"files\":{\"package.json\":{\"bytes\":2731,\"sha256\":\"9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe\"},\"package-lock.json\":{\"absent\":true},\"lib/application.js\":{\"bytes\":13953,\"sha256\":\"6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04\"},\"index.js\":{\"bytes\":224,\"sha256\":\"4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140\"},\".nvmrc\":{\"absent\":true},\".node-version\":{\"absent\":true}},\"program_sha256\":\"ad36e3734b331d1e688fbe07c86b355be2740dbfda2f9e6fc7b494e5fed5f677\"}\n\n> qa386-fixture@1.0.0 start\n> node server.js\n\nQA386_EVENT {\"marker\":\"QA386_LOCAL_de074cbbe8_npm\",\"boot\":\"78854dfd-6a3c-4612-8b96-1040cf5d4d53\",\"kind\":\"ready\",\"at\":\"2026-10-17T00:14:03.603Z\",\"pid\":31}\nQA386_EVENT {\"marker\":\"QA386_LOCAL_de074cbbe8_npm\",\"boot\":\"78854dfd-6a3c-4612-8b96-1040cf5d4d53\",\"kind\":\"hold_begin\",\"at\":\"2026-10-17T00:14:03.826Z\",\"pid\":31,\"token\":\"81e08a440c1a\",\"holdMs\":6000}\n",
+      "stderr": "npm error path /opt/render/project/src/qa386\nnpm error command failed\nnpm error signal SIGTERM\nnpm error command sh -c node server.js\nnpm notice\nnpm notice New major version of npm available! 11.19.1 -> 12.2.0\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0\nnpm notice To update run: npm install -g npm@12.2.0\nnpm notice\nnpm error A complete log of this run can be found in: /root/.npm/_logs/2026-10-17T00_14_03_424Z-debug-0.log\n"
+    },
+    {
+      "command": [
+        "docker",
+        "rm",
+        "2a824da9d1e62f24ec1d808c05ef2365534bfbcaaa9288d9336bccd3f35454fb"
+      ],
+      "exit": 0,
+      "stdout": "2a824da9d1e62f24ec1d808c05ef2365534bfbcaaa9288d9336bccd3f35454fb\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "bex-qa386-de074cbbe8-direct"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: bex-qa386-de074cbbe8-direct\n"
+    },
+    {
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "bex-qa386-de074cbbe8-npm"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: bex-qa386-de074cbbe8-npm\n"
+    }
+  ],
+  "cases": [
+    {
+      "case": "direct",
+      "actual_start": "node qa386/server.js",
+      "initial": {
+        "marker": "QA386_LOCAL_de074cbbe8_direct",
+        "node": "v24.22.0",
+        "files": {
+          "package.json": {
+            "bytes": 2731,
+            "sha256": "9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe"
+          },
+          "package-lock.json": {
+            "absent": true
+          },
+          "lib/application.js": {
+            "bytes": 13953,
+            "sha256": "6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04"
+          },
+          "index.js": {
+            "bytes": 224,
+            "sha256": "4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140"
+          },
+          ".nvmrc": {
+            "absent": true
+          },
+          ".node-version": {
+            "absent": true
+          }
+        },
+        "program_sha256": "ad36e3734b331d1e688fbe07c86b355be2740dbfda2f9e6fc7b494e5fed5f677",
+        "boot": "89f69633-df73-4e53-93d2-5284d3df2702",
+        "pid": 1,
+        "ppid": 0,
+        "npm_lifecycle_event": null,
+        "npm_command": null,
+        "active": [],
+        "terminating": false,
+        "built": {
+          "marker": "QA386_LOCAL_de074cbbe8_direct",
+          "node": "v24.22.0",
+          "files": {
+            "package.json": {
+              "bytes": 2731,
+              "sha256": "9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe"
+            },
+            "package-lock.json": {
+              "absent": true
+            },
+            "lib/application.js": {
+              "bytes": 13953,
+              "sha256": "6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04"
+            },
+            "index.js": {
+              "bytes": 224,
+              "sha256": "4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140"
+            },
+            ".nvmrc": {
+              "absent": true
+            },
+            ".node-version": {
+              "absent": true
+            }
+          },
+          "program_sha256": "ad36e3734b331d1e688fbe07c86b355be2740dbfda2f9e6fc7b494e5fed5f677"
+        }
+      },
+      "token": "737e16170af4",
+      "client": {
+        "exit": 0,
+        "HTTP": "200",
+        "stdout": "{\"marker\":\"QA386_LOCAL_de074cbbe8_direct\",\"node\":\"v24.22.0\",\"files\":{\"package.json\":{\"bytes\":2731,\"sha256\":\"9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe\"},\"package-lock.json\":{\"absent\":true},\"lib/application.js\":{\"bytes\":13953,\"sha256\":\"6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04\"},\"index.js\":{\"bytes\":224,\"sha256\":\"4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140\"},\".nvmrc\":{\"absent\":true},\".node-version\":{\"absent\":true}},\"program_sha256\":\"ad36e3734b331d1e688fbe07c86b355be2740dbfda2f9e6fc7b494e5fed5f677\",\"boot\":\"89f69633-df73-4e53-93d2-5284d3df2702\",\"pid\":1,\"ppid\":0,\"npm_lifecycle_event\":null,\"npm_command\":null,\"active\":[],\"terminating\":true,\"built\":{\"marker\":\"QA386_LOCAL_de074cbbe8_direct\",\"node\":\"v24.22.0\",\"files\":{\"package.json\":{\"bytes\":2731,\"sha256\":\"9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe\"},\"package-lock.json\":{\"absent\":true},\"lib/application.js\":{\"bytes\":13953,\"sha256\":\"6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04\"},\"index.js\":{\"bytes\":224,\"sha256\":\"4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140\"},\".nvmrc\":{\"absent\":true},\".node-version\":{\"absent\":true}},\"program_sha256\":\"ad36e3734b331d1e688fbe07c86b355be2740dbfda2f9e6fc7b494e5fed5f677\"},\"token\":\"737e16170af4\",\"holdMs\":6000}\n200",
+        "stderr": ""
+      },
+      "elapsed": 6.168,
+      "events": [
+        {
+          "marker": "QA386_LOCAL_de074cbbe8_direct",
+          "boot": "89f69633-df73-4e53-93d2-5284d3df2702",
+          "kind": "ready",
+          "at": "2026-10-17T00:13:56.666Z",
+          "pid": 1
+        },
+        {
+          "marker": "QA386_LOCAL_de074cbbe8_direct",
+          "boot": "89f69633-df73-4e53-93d2-5284d3df2702",
+          "kind": "hold_begin",
+          "at": "2026-10-17T00:13:56.865Z",
+          "pid": 1,
+          "token": "737e16170af4",
+          "holdMs": 6000
+        },
+        {
+          "marker": "QA386_LOCAL_de074cbbe8_direct",
+          "boot": "89f69633-df73-4e53-93d2-5284d3df2702",
+          "kind": "sigterm",
+          "at": "2026-10-17T00:13:56.889Z",
+          "pid": 1,
+          "active": [
+            "737e16170af4"
+          ]
+        },
+        {
+          "marker": "QA386_LOCAL_de074cbbe8_direct",
+          "boot": "89f69633-df73-4e53-93d2-5284d3df2702",
+          "kind": "hold_end",
+          "at": "2026-10-17T00:14:02.866Z",
+          "pid": 1,
+          "token": "737e16170af4"
+        },
+        {
+          "marker": "QA386_LOCAL_de074cbbe8_direct",
+          "boot": "89f69633-df73-4e53-93d2-5284d3df2702",
+          "kind": "closed",
+          "at": "2026-10-17T00:14:02.868Z",
+          "pid": 1
+        }
+      ],
+      "logs": "QA386_BUILD {\"marker\":\"QA386_LOCAL_de074cbbe8_direct\",\"node\":\"v24.22.0\",\"files\":{\"package.json\":{\"bytes\":2731,\"sha256\":\"9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe\"},\"package-lock.json\":{\"absent\":true},\"lib/application.js\":{\"bytes\":13953,\"sha256\":\"6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04\"},\"index.js\":{\"bytes\":224,\"sha256\":\"4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140\"},\".nvmrc\":{\"absent\":true},\".node-version\":{\"absent\":true}},\"program_sha256\":\"ad36e3734b331d1e688fbe07c86b355be2740dbfda2f9e6fc7b494e5fed5f677\"}\nQA386_EVENT {\"marker\":\"QA386_LOCAL_de074cbbe8_direct\",\"boot\":\"89f69633-df73-4e53-93d2-5284d3df2702\",\"kind\":\"ready\",\"at\":\"2026-10-17T00:13:56.666Z\",\"pid\":1}\nQA386_EVENT {\"marker\":\"QA386_LOCAL_de074cbbe8_direct\",\"boot\":\"89f69633-df73-4e53-93d2-5284d3df2702\",\"kind\":\"hold_begin\",\"at\":\"2026-10-17T00:13:56.865Z\",\"pid\":1,\"token\":\"737e16170af4\",\"holdMs\":6000}\nQA386_EVENT {\"marker\":\"QA386_LOCAL_de074cbbe8_direct\",\"boot\":\"89f69633-df73-4e53-93d2-5284d3df2702\",\"kind\":\"sigterm\",\"at\":\"2026-10-17T00:13:56.889Z\",\"pid\":1,\"active\":[\"737e16170af4\"]}\nQA386_EVENT {\"marker\":\"QA386_LOCAL_de074cbbe8_direct\",\"boot\":\"89f69633-df73-4e53-93d2-5284d3df2702\",\"kind\":\"hold_end\",\"at\":\"2026-10-17T00:14:02.866Z\",\"pid\":1,\"token\":\"737e16170af4\"}\nQA386_EVENT {\"marker\":\"QA386_LOCAL_de074cbbe8_direct\",\"boot\":\"89f69633-df73-4e53-93d2-5284d3df2702\",\"kind\":\"closed\",\"at\":\"2026-10-17T00:14:02.868Z\",\"pid\":1}\n",
+      "graceful_in_flight_pass": true
+    },
+    {
+      "case": "npm",
+      "actual_start": "npm --prefix qa386 start",
+      "initial": {
+        "marker": "QA386_LOCAL_de074cbbe8_npm",
+        "node": "v24.22.0",
+        "files": {
+          "package.json": {
+            "bytes": 2731,
+            "sha256": "9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe"
+          },
+          "package-lock.json": {
+            "absent": true
+          },
+          "lib/application.js": {
+            "bytes": 13953,
+            "sha256": "6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04"
+          },
+          "index.js": {
+            "bytes": 224,
+            "sha256": "4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140"
+          },
+          ".nvmrc": {
+            "absent": true
+          },
+          ".node-version": {
+            "absent": true
+          }
+        },
+        "program_sha256": "ad36e3734b331d1e688fbe07c86b355be2740dbfda2f9e6fc7b494e5fed5f677",
+        "boot": "78854dfd-6a3c-4612-8b96-1040cf5d4d53",
+        "pid": 31,
+        "ppid": 30,
+        "npm_lifecycle_event": "start",
+        "npm_command": "start",
+        "active": [],
+        "terminating": false,
+        "built": {
+          "marker": "QA386_LOCAL_de074cbbe8_npm",
+          "node": "v24.22.0",
+          "files": {
+            "package.json": {
+              "bytes": 2731,
+              "sha256": "9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe"
+            },
+            "package-lock.json": {
+              "absent": true
+            },
+            "lib/application.js": {
+              "bytes": 13953,
+              "sha256": "6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04"
+            },
+            "index.js": {
+              "bytes": 224,
+              "sha256": "4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140"
+            },
+            ".nvmrc": {
+              "absent": true
+            },
+            ".node-version": {
+              "absent": true
+            }
+          },
+          "program_sha256": "ad36e3734b331d1e688fbe07c86b355be2740dbfda2f9e6fc7b494e5fed5f677"
+        }
+      },
+      "token": "81e08a440c1a",
+      "client": {
+        "exit": 52,
+        "HTTP": "000",
+        "stdout": "\n000",
+        "stderr": "curl: (52) Empty reply from server\n"
+      },
+      "elapsed": 0.723,
+      "events": [
+        {
+          "marker": "QA386_LOCAL_de074cbbe8_npm",
+          "boot": "78854dfd-6a3c-4612-8b96-1040cf5d4d53",
+          "kind": "ready",
+          "at": "2026-10-17T00:14:03.603Z",
+          "pid": 31
+        },
+        {
+          "marker": "QA386_LOCAL_de074cbbe8_npm",
+          "boot": "78854dfd-6a3c-4612-8b96-1040cf5d4d53",
+          "kind": "hold_begin",
+          "at": "2026-10-17T00:14:03.826Z",
+          "pid": 31,
+          "token": "81e08a440c1a",
+          "holdMs": 6000
+        }
+      ],
+      "logs": "QA386_BUILD {\"marker\":\"QA386_LOCAL_de074cbbe8_npm\",\"node\":\"v24.22.0\",\"files\":{\"package.json\":{\"bytes\":2731,\"sha256\":\"9645053f08f43135ec21f46ae434e49e10528c9062fde7776b150f38a2335afe\"},\"package-lock.json\":{\"absent\":true},\"lib/application.js\":{\"bytes\":13953,\"sha256\":\"6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04\"},\"index.js\":{\"bytes\":224,\"sha256\":\"4d2f5afc192178c5b0dc418d2da5826d52a8b6998771b011aede7fdba9118140\"},\".nvmrc\":{\"absent\":true},\".node-version\":{\"absent\":true}},\"program_sha256\":\"ad36e3734b331d1e688fbe07c86b355be2740dbfda2f9e6fc7b494e5fed5f677\"}\n\n> qa386-fixture@1.0.0 start\n> node server.js\n\nQA386_EVENT {\"marker\":\"QA386_LOCAL_de074cbbe8_npm\",\"boot\":\"78854dfd-6a3c-4612-8b96-1040cf5d4d53\",\"kind\":\"ready\",\"at\":\"2026-10-17T00:14:03.603Z\",\"pid\":31}\nQA386_EVENT {\"marker\":\"QA386_LOCAL_de074cbbe8_npm\",\"boot\":\"78854dfd-6a3c-4612-8b96-1040cf5d4d53\",\"kind\":\"hold_begin\",\"at\":\"2026-10-17T00:14:03.826Z\",\"pid\":31,\"token\":\"81e08a440c1a\",\"holdMs\":6000}\n",
+      "graceful_in_flight_pass": false
+    }
+  ],
+  "container_intents": [
+    {
+      "name": "bex-qa386-de074cbbe8-direct",
+      "case": "direct"
+    },
+    {
+      "name": "bex-qa386-de074cbbe8-npm",
+      "case": "npm"
+    }
+  ],
+  "prerequisite_valid": true,
+  "own_containers_absent": true,
+  "own_scratch_removed": true
+}

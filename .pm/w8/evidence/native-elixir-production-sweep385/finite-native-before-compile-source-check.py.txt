@@ -1,0 +1,15 @@
+from pathlib import Path
+import sys,json
+f=Path(__file__).with_name('sweep385-common.py');sys.argv=[str(f),'build-progress','bex'];exec(compile(f.read_text(),str(f),'exec'))
+for x in [v for v in c['resources'] if v.get('sweep')==385]:
+ own(x);r=cli(['logs','--resources',x['id'],'--type','build','--text','QA385_BEFORE','--limit','20','--confirm','-o','json'],client=x['client']);e={'at':now(),'native':r};x.setdefault('progress_log_receipts',[]).append(e);save();assert r['native_exit']==0;rows=[];raw=r['stdout'];decoder=json.JSONDecoder()
+ while raw.strip():
+  raw=raw.lstrip();v,n=decoder.raw_decode(raw);rows.extend(v if isinstance(v,list) else [v]);raw=raw[n:]
+ proofs=[]
+ for row in rows:
+  marker='QA385_BEFORE ';message=row.get('message','');pos=message.find(marker)
+  if pos<0:continue
+  try:v=json.loads(message[pos+len(marker):])
+  except ValueError:continue
+  if v.get('marker')==x['marker']:proofs.append(v)
+ e['matching_before_snapshots']=proofs;e['production_build_observed']=any(v['mix_env_present'] and v['mix_env']==v['mix_environment']=='prod' and v['files']==x['primary_reference']['files'] for v in proofs);save();print(json.dumps({'client':x['client'],'native_progress_logs_exit0':True,'actual_original_source_before_compile_prod':e['production_build_observed']}),flush=True)

@@ -1,0 +1,5 @@
+from pathlib import Path
+import sys,json
+f=Path(__file__).with_name('sweep393-common.py');sys.argv=[str(f),'progress','bex'];exec(compile(f.read_text(),str(f),'exec'))
+for x in [x for x in c['resources'] if x.get('sweep')==393]:
+ h=history(x);r=cli(['logs','--resources',x['id'],'--type','build','--limit','20','--confirm','-o','json']);x.setdefault('queue_progress',[]).append({'at':now(),'history':h,'native_build_log':r});save();print(json.dumps({'client':x['client'],'deploy_status':h[0]['status'],'native_log_exit':r['native_exit'],'build_log_excerpt':r['stdout'][-2200:]}),flush=True)

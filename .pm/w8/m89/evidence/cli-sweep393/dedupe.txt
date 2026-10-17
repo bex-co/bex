@@ -1,0 +1,2 @@
+Search: all PM open/blocked/done and docs for Gitlink/submodule/recursive clone terms
+.pm/w5/done/m1/done/t001.md:16:- Source: `/Volumes/nvme4tbfish/projects/web-beancount/beancount-dashboard` (no `.git` of its own — plain copy, no submodule/subtree concerns).

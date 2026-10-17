@@ -1,0 +1,23 @@
+{
+  "repo": "https://github.com/render-examples/phoenix_hello",
+  "branch": "master",
+  "commit": "d95c60fd4aa2f0f468298b7aa3fcc384f6069b8f",
+  "files": {
+    "mix.exs": {
+      "bytes": 2320,
+      "sha256": "aeb9583f2860f6afd35a93b51225c5dc12143208432ac9c544c56cc7ca91b492"
+    },
+    "mix.lock": {
+      "bytes": 12646,
+      "sha256": "0da29cd83f64494827973b45cae940e0d34a3d4f882c5c8ae61a9bc3449874e8"
+    },
+    "build.sh": {
+      "bytes": 427,
+      "sha256": "d2edf660b7b6b9797c74f89877eddf13edefbf3ce0878ebe178fe02834ba174f"
+    },
+    "config/runtime.exs": {
+      "bytes": 4066,
+      "sha256": "2a87af11783b2cc9abfe91006e706489b03e8444d5259789912666b75feedae0"
+    }
+  }
+}

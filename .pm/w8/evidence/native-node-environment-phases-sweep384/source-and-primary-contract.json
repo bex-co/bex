@@ -1,0 +1,20 @@
+{
+  "source_head": "251f307e4b2cc65b0a155552245fe2358a9680e9",
+  "source_fix": "e9f283771",
+  "serving_revision": "unknown",
+  "contract_reviewed_at": "2026-10-16",
+  "primary_sources": [
+    {
+      "url": "https://render.com/docs/environment-variables",
+      "claim": "Node NODE_ENV production at runtime only; configured values override image defaults"
+    },
+    {
+      "url": "https://expressjs.com/en/5x/api/",
+      "claim": "actual pinned lib/application.js is the exact framework consumer and runtime oracle; the index directs to Application Object"
+    }
+  ],
+  "scope": "functional Free Node web default/phase/literal staging/empty; paid cron remains untested",
+  "local_qualification": "forced production after build in private pinned-base prerequisite is observer proof only, not platform default supply",
+  "native_override_qualification": "environment save is API-only; actual native deploys create --commit is used after save-only; no invented native env-update flag",
+  "predeploy_log_surface": "actual native logs --type build retains predeploy output, as established by sweep293; no invented native predeploy type"
+}

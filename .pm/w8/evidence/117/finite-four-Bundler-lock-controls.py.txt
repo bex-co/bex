@@ -1,0 +1,16 @@
+from pathlib import Path
+import datetime,hashlib,json,os,shutil,subprocess,time
+os.umask(0o077);P=Path(__file__).resolve().parent;root=P/'sweep394-local-context';assert not root.exists();root.mkdir();image='ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172';receipts=[];names=[]
+def run(label,script,env=None):
+ d=root/label;d.mkdir();name='qa394-ruby-'+label;names.append(name);args=['docker','run','--rm','--name',name,'-v',str(d)+':/work','-w','/work'];
+ for k,v in (env or {}).items():args+=['-e',k+'='+v]
+ start=time.monotonic();r=subprocess.run([*args,image,'bash','-c',script],text=True,capture_output=True,timeout=180);v={'label':label,'image':image,'env_overrides':env or {},'script':script,'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr,'elapsed':round(time.monotonic()-start,3)};receipts.append(v);(P/'sweep394-local-lock-results.json').write_text(json.dumps({'receipts':receipts,'cleanup_pending':True},indent=2));return r,d
+try:
+ r,d=run('generate',"ruby -rjson -rbundler -e 'puts JSON.generate({ruby:RUBY_VERSION,bundler:Bundler::VERSION,deployment:Bundler.settings[:deployment],frozen:Bundler.settings[:frozen]})'; printf 'source \"https://rubygems.org\"\ngem \"rake\", \"13.2.1\"\n' > Gemfile; bundle lock");assert r.returncode==0,r.stderr;lock=(d/'Gemfile.lock').read_text();(P/'sweep394-original-Gemfile.lock').write_text(lock)
+ for label,new,env,success in [('matched-deployment',False,{'BUNDLE_DEPLOYMENT':'true'},True),('stale-default',True,{},True),('stale-deployment',True,{'BUNDLE_DEPLOYMENT':'true'},False),('stale-false',True,{'BUNDLE_DEPLOYMENT':'false'},True)]:
+  version='13.3.1' if new else '13.2.1';script="cat > Gemfile <<'GEM'\nsource \"https://rubygems.org\"\ngem \"rake\", \""+version+"\"\nGEM\ncat > Gemfile.lock <<'LOCK'\n"+lock+"LOCK\nsha256sum Gemfile.lock; bundle install; result=$?; sha256sum Gemfile.lock; if [ \"$result\" -eq 0 ]; then bundle exec ruby -rjson -rrake -rbundler -e 'puts JSON.generate({ruby:RUBY_VERSION,bundler:Bundler::VERSION,rake:Rake::VERSION,deployment:Bundler.settings[:deployment],frozen:Bundler.settings[:frozen],bundle_path:Bundler.bundle_path.to_s})'; fi; exit \"$result\""
+  r,d=run(label,script,env);assert (r.returncode==0)==success,(label,r.stdout,r.stderr);changed=(d/'Gemfile.lock').read_text()!=lock;assert changed==(new and success),(label,changed);receipts[-1].update(lock_changed=changed,accepted=True);print(json.dumps({'case':label,'exit':r.returncode,'lock_changed':changed}),flush=True)
+finally:
+ for name in names:
+  r=subprocess.run(['docker','container','inspect',name],capture_output=True);assert r.returncode!=0, 'own container remains: '+name
+ shutil.rmtree(root);(P/'sweep394-local-lock-results.json').write_text(json.dumps({'at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'receipts':receipts,'contexts_removed':not root.exists(),'containers_removed':names,'shared_image_cache_retained':True},indent=2))

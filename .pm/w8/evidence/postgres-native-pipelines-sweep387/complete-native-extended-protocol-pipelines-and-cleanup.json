@@ -1,0 +1,1645 @@
+{
+  "sweep": 387,
+  "workspace": "tea-daif693dqjvc73e7as3g",
+  "type": "postgres",
+  "name": "qa-20261017-f11e7e-pg18",
+  "nonce": "f11e7e",
+  "time": "2026-10-17T00:39:02.504233+00:00",
+  "source_head": "5e18f96cf7d8359b4d77c64893397cd879586f77",
+  "capacity": {
+    "at": "2026-10-17T00:39:00.056368+00:00",
+    "API_only": true,
+    "request": {
+      "method": "GET",
+      "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+      "workspace": "tea-daif693dqjvc73e7as3g",
+      "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+      "authorization": "REDACTED"
+    },
+    "status": "200",
+    "curl_exit": 0,
+    "elapsed": 0.782,
+    "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+    "stderr": ""
+  },
+  "pre_inventory": {
+    "at": "2026-10-17T00:39:01.376387+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "postgres",
+      "list",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "client_setup": null,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 1.319,
+    "stdout": "{\"data\": []}",
+    "stderr": ""
+  },
+  "pre_service_inventory": {
+    "at": "2026-10-17T00:39:02.503963+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "services",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "client_setup": null,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 1.127,
+    "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}]",
+    "stderr": ""
+  },
+  "pre_ids": [],
+  "dependency_ids": [],
+  "recorded_child_ids": [],
+  "database_name": "qa387_db_f11e7e",
+  "database_user": "qa387_user_f11e7e",
+  "create_command": [
+    "bex",
+    "postgres",
+    "create",
+    "--name",
+    "qa-20261017-f11e7e-pg18",
+    "--plan",
+    "free",
+    "--version",
+    "18",
+    "--region",
+    "frankfurt",
+    "--connection-pool",
+    "none",
+    "--database-name",
+    "qa387_db_f11e7e",
+    "--database-user",
+    "qa387_user_f11e7e",
+    "--confirm",
+    "-o",
+    "json"
+  ],
+  "state": "deleted: native0/detail404/listempty/baseline6/PGquota0 terminating0",
+  "create_result": {
+    "at": "2026-10-17T00:39:03.310863+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "postgres",
+      "create",
+      "--name",
+      "qa-20261017-f11e7e-pg18",
+      "--plan",
+      "free",
+      "--version",
+      "18",
+      "--region",
+      "frankfurt",
+      "--connection-pool",
+      "none",
+      "--database-name",
+      "qa387_db_f11e7e",
+      "--database-user",
+      "qa387_user_f11e7e",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "client_setup": null,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 0.541,
+    "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db9c79s50quc73dl5le0\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261017-f11e7e-pg18\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-17T00:39:03.143077748Z\", \"version\": \"18\", \"projectId\": null}}",
+    "stderr": ""
+  },
+  "id": "dpg-db9c79s50quc73dl5le0",
+  "create_response": {
+    "connectionPool": "none",
+    "createdAt": "2026-10-17T00:39:03Z",
+    "dashboardUrl": "https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0",
+    "databaseName": "qa387_db_f11e7e",
+    "databaseUser": "qa387_user_f11e7e",
+    "diskAutoscalingEnabled": false,
+    "diskSizeGB": 1,
+    "highAvailabilityEnabled": false,
+    "id": "dpg-db9c79s50quc73dl5le0",
+    "ipAllowList": [
+      {
+        "cidrBlock": "0.0.0.0/0",
+        "description": ""
+      },
+      {
+        "cidrBlock": "::/0",
+        "description": ""
+      }
+    ],
+    "name": "qa-20261017-f11e7e-pg18",
+    "owner": {
+      "email": "QA_PRIVATE_REDACTED",
+      "id": "tea-daif693dqjvc73e7as3g",
+      "name": "bex-canary",
+      "type": "team"
+    },
+    "plan": "free",
+    "readReplicas": [],
+    "region": "fsn1",
+    "role": "",
+    "status": "creating",
+    "suspended": "not_suspended",
+    "suspenders": null,
+    "updatedAt": "2026-10-17T00:39:03.143077748Z",
+    "version": "18",
+    "projectId": null
+  },
+  "details": [
+    {
+      "at": "2026-10-17T00:39:27.580451+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9c79s50quc73dl5le0",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.304,
+      "response": "{\"id\": \"dpg-db9c79s50quc73dl5le0\", \"name\": \"qa-20261017-f11e7e-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"creating\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"updatedAt\": \"2026-10-17T00:39:03.143077748Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"externalHost\": \"dpg-db9c79s50quc73dl5le0.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T00:39:39.407064+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9c79s50quc73dl5le0",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.426,
+      "response": "{\"id\": \"dpg-db9c79s50quc73dl5le0\", \"name\": \"qa-20261017-f11e7e-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"creating\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"updatedAt\": \"2026-10-17T00:39:03.143077748Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"externalHost\": \"dpg-db9c79s50quc73dl5le0.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T00:39:50.818098+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9c79s50quc73dl5le0",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.309,
+      "response": "{\"id\": \"dpg-db9c79s50quc73dl5le0\", \"name\": \"qa-20261017-f11e7e-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"creating\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"updatedAt\": \"2026-10-17T00:39:03.143077748Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"externalHost\": \"dpg-db9c79s50quc73dl5le0.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T00:40:02.832478+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9c79s50quc73dl5le0",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.513,
+      "response": "{\"id\": \"dpg-db9c79s50quc73dl5le0\", \"name\": \"qa-20261017-f11e7e-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"updatedAt\": \"2026-10-17T00:40:01Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"externalHost\": \"dpg-db9c79s50quc73dl5le0.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T00:40:32.232059+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9c79s50quc73dl5le0",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.548,
+      "response": "{\"id\": \"dpg-db9c79s50quc73dl5le0\", \"name\": \"qa-20261017-f11e7e-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"updatedAt\": \"2026-10-17T00:40:23Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"externalHost\": \"dpg-db9c79s50quc73dl5le0.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T00:40:49.212593+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9c79s50quc73dl5le0",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.407,
+      "response": "{\"id\": \"dpg-db9c79s50quc73dl5le0\", \"name\": \"qa-20261017-f11e7e-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"updatedAt\": \"2026-10-17T00:40:23Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"externalHost\": \"dpg-db9c79s50quc73dl5le0.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T00:40:54.507913+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9c79s50quc73dl5le0",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.406,
+      "response": "{\"id\": \"dpg-db9c79s50quc73dl5le0\", \"name\": \"qa-20261017-f11e7e-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"updatedAt\": \"2026-10-17T00:40:23Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"externalHost\": \"dpg-db9c79s50quc73dl5le0.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T00:40:59.954986+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9c79s50quc73dl5le0",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.681,
+      "response": "{\"id\": \"dpg-db9c79s50quc73dl5le0\", \"name\": \"qa-20261017-f11e7e-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"updatedAt\": \"2026-10-17T00:40:23Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"externalHost\": \"dpg-db9c79s50quc73dl5le0.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T00:41:04.447001+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9c79s50quc73dl5le0",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.363,
+      "response": "{\"id\": \"dpg-db9c79s50quc73dl5le0\", \"name\": \"qa-20261017-f11e7e-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"updatedAt\": \"2026-10-17T00:40:23Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"externalHost\": \"dpg-db9c79s50quc73dl5le0.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T00:42:29.140694+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9c79s50quc73dl5le0",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.578,
+      "response": "{\"id\": \"dpg-db9c79s50quc73dl5le0\", \"name\": \"qa-20261017-f11e7e-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"updatedAt\": \"2026-10-17T00:40:23Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"externalHost\": \"dpg-db9c79s50quc73dl5le0.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T00:42:42.343947+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9c79s50quc73dl5le0",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.296,
+      "response": "{\"id\": \"dpg-db9c79s50quc73dl5le0\", \"name\": \"qa-20261017-f11e7e-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"updatedAt\": \"2026-10-17T00:40:23Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"externalHost\": \"dpg-db9c79s50quc73dl5le0.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    },
+    {
+      "at": "2026-10-17T00:43:18.186202+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9c79s50quc73dl5le0",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.391,
+      "response": "{\"id\": \"dpg-db9c79s50quc73dl5le0\", \"name\": \"qa-20261017-f11e7e-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"updatedAt\": \"2026-10-17T00:40:23Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"externalHost\": \"dpg-db9c79s50quc73dl5le0.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    }
+  ],
+  "native_readiness": [
+    {
+      "at": "2026-10-17T00:39:27.836033+00:00",
+      "native": {
+        "at": "2026-10-17T00:39:27.262883+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db9c79s50quc73dl5le0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 1.179,
+        "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db9c79s50quc73dl5le0\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261017-f11e7e-pg18\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-17T00:39:03.143077748Z\", \"version\": \"18\", \"projectId\": null}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-17T00:39:27.580451+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db9c79s50quc73dl5le0",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.304,
+        "response": "{\"id\": \"dpg-db9c79s50quc73dl5le0\", \"name\": \"qa-20261017-f11e7e-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"creating\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"updatedAt\": \"2026-10-17T00:39:03.143077748Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"externalHost\": \"dpg-db9c79s50quc73dl5le0.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-17T00:39:39.673184+00:00",
+      "native": {
+        "at": "2026-10-17T00:39:38.968390+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db9c79s50quc73dl5le0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.887,
+        "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db9c79s50quc73dl5le0\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261017-f11e7e-pg18\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-17T00:39:03.143077748Z\", \"version\": \"18\", \"projectId\": null}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-17T00:39:39.407064+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db9c79s50quc73dl5le0",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.426,
+        "response": "{\"id\": \"dpg-db9c79s50quc73dl5le0\", \"name\": \"qa-20261017-f11e7e-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"creating\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"updatedAt\": \"2026-10-17T00:39:03.143077748Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"externalHost\": \"dpg-db9c79s50quc73dl5le0.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-17T00:39:51.068985+00:00",
+      "native": {
+        "at": "2026-10-17T00:39:50.496594+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db9c79s50quc73dl5le0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.558,
+        "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db9c79s50quc73dl5le0\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261017-f11e7e-pg18\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"creating\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-17T00:39:03.143077748Z\", \"version\": \"18\", \"projectId\": null}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-17T00:39:50.818098+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db9c79s50quc73dl5le0",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.309,
+        "response": "{\"id\": \"dpg-db9c79s50quc73dl5le0\", \"name\": \"qa-20261017-f11e7e-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"creating\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"updatedAt\": \"2026-10-17T00:39:03.143077748Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"externalHost\": \"dpg-db9c79s50quc73dl5le0.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-17T00:40:03.093634+00:00",
+      "native": {
+        "at": "2026-10-17T00:40:02.306705+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db9c79s50quc73dl5le0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.993,
+        "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db9c79s50quc73dl5le0\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261017-f11e7e-pg18\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-17T00:40:01Z\", \"version\": \"18\", \"projectId\": null}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-17T00:40:02.832478+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db9c79s50quc73dl5le0",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.513,
+        "response": "{\"id\": \"dpg-db9c79s50quc73dl5le0\", \"name\": \"qa-20261017-f11e7e-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"updatedAt\": \"2026-10-17T00:40:01Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"externalHost\": \"dpg-db9c79s50quc73dl5le0.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      }
+    },
+    {
+      "at": "2026-10-17T00:40:32.495875+00:00",
+      "native": {
+        "at": "2026-10-17T00:40:31.672477+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "get",
+          "dpg-db9c79s50quc73dl5le0",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.825,
+        "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db9c79s50quc73dl5le0\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261017-f11e7e-pg18\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-17T00:40:23Z\", \"version\": \"18\", \"projectId\": null}}",
+        "stderr": ""
+      },
+      "detail": {
+        "at": "2026-10-17T00:40:32.232059+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db9c79s50quc73dl5le0",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.548,
+        "response": "{\"id\": \"dpg-db9c79s50quc73dl5le0\", \"name\": \"qa-20261017-f11e7e-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"updatedAt\": \"2026-10-17T00:40:23Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"externalHost\": \"dpg-db9c79s50quc73dl5le0.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      }
+    }
+  ],
+  "native_SQL_readiness": [
+    {
+      "at": "2026-10-17T00:40:49.485838+00:00",
+      "client": "bex",
+      "before": {
+        "at": "2026-10-17T00:40:49.212593+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db9c79s50quc73dl5le0",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.407,
+        "response": "{\"id\": \"dpg-db9c79s50quc73dl5le0\", \"name\": \"qa-20261017-f11e7e-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"updatedAt\": \"2026-10-17T00:40:23Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"externalHost\": \"dpg-db9c79s50quc73dl5le0.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      },
+      "intent": "read-only own SELECT1 readiness control",
+      "result": {
+        "at": "2026-10-17T00:40:53.147977+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db9c79s50quc73dl5le0",
+          "--command",
+          "SELECT jsonb_build_object('one',1,'database',current_database(),'user',current_user,'version',current_setting('server_version_num')::int/10000,'encoding',current_setting('server_encoding'))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 3.389,
+        "stdout": "{\"output\": \"{\\\"one\\\": 1, \\\"user\\\": \\\"qa387_user_f11e7e\\\", \\\"version\\\": 18, \\\"database\\\": \\\"qa387_db_f11e7e\\\", \\\"encoding\\\": \\\"UTF8\\\"}\"}",
+        "stderr": ""
+      },
+      "observed": {
+        "one": 1,
+        "user": "qa387_user_f11e7e",
+        "version": 18,
+        "database": "qa387_db_f11e7e",
+        "encoding": "UTF8"
+      },
+      "pass": true
+    },
+    {
+      "at": "2026-10-17T00:40:54.768317+00:00",
+      "client": "render",
+      "before": {
+        "at": "2026-10-17T00:40:54.507913+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db9c79s50quc73dl5le0",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.406,
+        "response": "{\"id\": \"dpg-db9c79s50quc73dl5le0\", \"name\": \"qa-20261017-f11e7e-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"updatedAt\": \"2026-10-17T00:40:23Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"externalHost\": \"dpg-db9c79s50quc73dl5le0.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+        "stderr": ""
+      },
+      "intent": "read-only own SELECT1 readiness control",
+      "result": {
+        "at": "2026-10-17T00:40:58.313336+00:00",
+        "binary": "unchanged Render2.27.0/a764810a7682",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db9c79s50quc73dl5le0",
+          "--command",
+          "SELECT jsonb_build_object('one',1,'database',current_database(),'user',current_user,'version',current_setting('server_version_num')::int/10000,'encoding',current_setting('server_encoding'))::text;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A",
+          "-v",
+          "ON_ERROR_STOP=1"
+        ],
+        "client_setup": {
+          "API_only_CA_preparation": true,
+          "path": "/v1/postgres/dpg-db9c79s50quc73dl5le0/connection-info",
+          "HTTP": "200",
+          "elapsed": 0.333,
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "certificate_sha256": "13afd0cea9387780c63ddc7134db6fb10b18456d90581d2d7f73644679f32baa",
+          "PGSSLROOTCERT": "<owned-temp>/sweep387-owned-pg-ca.pem",
+          "connection_info_payload_not_retained": true
+        },
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 2.95,
+        "stdout": "{\"output\": \"{\\\"one\\\": 1, \\\"user\\\": \\\"qa387_user_f11e7e\\\", \\\"version\\\": 18, \\\"database\\\": \\\"qa387_db_f11e7e\\\", \\\"encoding\\\": \\\"UTF8\\\"}\"}",
+        "stderr": ""
+      },
+      "observed": {
+        "one": 1,
+        "user": "qa387_user_f11e7e",
+        "version": 18,
+        "database": "qa387_db_f11e7e",
+        "encoding": "UTF8"
+      },
+      "pass": true
+    }
+  ],
+  "vector_connection_preparation": {
+    "at": "2026-10-17T00:41:01.171892+00:00",
+    "API_only": true,
+    "path": "/v1/postgres/dpg-db9c79s50quc73dl5le0/connection-info",
+    "HTTP": "200",
+    "certificate_sha256": "13afd0cea9387780c63ddc7134db6fb10b18456d90581d2d7f73644679f32baa",
+    "private_payload_retained_only_until_post_delete_check": true,
+    "Render_PGSSLROOTCERT": "<owned-temp>/sweep387-session-ca.pem"
+  },
+  "cached_connection_checks": [
+    {
+      "at": "2026-10-17T00:41:03.367918+00:00",
+      "phase": "before",
+      "API_only_external_psql": true,
+      "cached_route_and_credentials": true,
+      "credentials_supplied_only_in_child_environment": true,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 1.494,
+      "stdout": "1\n",
+      "stderr": "",
+      "pass": true
+    },
+    {
+      "at": "2026-10-17T00:43:24.739474+00:00",
+      "phase": "after",
+      "API_only_external_psql": true,
+      "cached_route_and_credentials": true,
+      "credentials_supplied_only_in_child_environment": true,
+      "native_exit": 2,
+      "harness_timeout": false,
+      "elapsed": 0.627,
+      "stdout": "",
+      "stderr": "psql: error: connection to server at \"dpg-db9c79s50quc73dl5le0.db.bex.co\" (49.12.20.236), port 5432 failed: SSL error: unexpected eof while reading\n",
+      "pass": true
+    }
+  ],
+  "pipeline_journeys": [
+    {
+      "at": "2026-10-17T00:41:04.712279+00:00",
+      "client": "bex",
+      "fixture": {
+        "schema": "qa387_f11e7e_bex",
+        "prepared": [
+          "qa387_f11e7e_bex_insert",
+          "qa387_f11e7e_bex_calc"
+        ],
+        "sql": "\\set ON_ERROR_STOP off\nSET statement_timeout='10s';SET lock_timeout='500ms';SET idle_in_transaction_session_timeout='30s';\nSELECT jsonb_build_object('frame','QA387_f11e7e_bex_initial','pid',pg_backend_pid(),'payload',jsonb_build_object('major',current_setting('server_version_num')::int/10000,'encoding',current_setting('server_encoding'),'schema_absent',to_regnamespace('qa387_f11e7e_bex') IS NULL))::text;\nCREATE SCHEMA qa387_f11e7e_bex;\nCREATE TABLE qa387_f11e7e_bex.items (id int PRIMARY KEY,label text NOT NULL,amount numeric,payload jsonb);\nSELECT jsonb_build_object('frame','QA387_f11e7e_bex_bound','pid',pg_backend_pid(),'payload',jsonb_build_object('n',$1::int,'label',$2::text,'amount',$3::numeric::text,'blob',encode($4::bytea,'hex'),'json',$5::jsonb))::text \\bind '42' 'café 日本 😀' '1.2300' '\\\\x00ff007f' '{\"hello\":\"世界\"}' \\g\nINSERT INTO qa387_f11e7e_bex.items VALUES($1::int,$2::text,$3::numeric,$4::jsonb) RETURNING jsonb_build_object('frame','QA387_f11e7e_bex_insert_'||id::text,'pid',pg_backend_pid(),'payload',jsonb_build_object('id',id,'label',label,'amount',amount::text,'json',payload))::text \\parse qa387_f11e7e_bex_insert\n\\bind_named qa387_f11e7e_bex_insert '1' 'one café' '1.2300' '{\"n\": 1}' \\g\n\\bind_named qa387_f11e7e_bex_insert '2' '' '0.000' '{\"n\": 2}' \\g\nSELECT jsonb_build_object('frame','QA387_f11e7e_bex_prepared','pid',pg_backend_pid(),'payload',(SELECT to_jsonb(parameter_types::text[]) FROM pg_prepared_statements WHERE name='qa387_f11e7e_bex_insert'))::text;\n\\startpipeline\n\\bind_named qa387_f11e7e_bex_insert '3' 'three 日本' '3.0' '{\"n\": 3}' \\sendpipeline\n\\bind_named qa387_f11e7e_bex_insert '4' 'four 😀' '4.00' '{\"n\": 4}' \\sendpipeline\n\\flush\n\\flushrequest\n\\getresults 1\n\\getresults\n\\syncpipeline\n\\getresults\n\\endpipeline\nSELECT jsonb_build_object('frame','QA387_f11e7e_bex_after_first_pipeline','pid',pg_backend_pid(),'payload',(SELECT jsonb_agg(id ORDER BY id) FROM qa387_f11e7e_bex.items))::text;\n\\close_prepared qa387_f11e7e_bex_insert\nSELECT jsonb_build_object('frame','QA387_f11e7e_bex_closed','pid',pg_backend_pid(),'payload',NOT EXISTS(SELECT 1 FROM pg_prepared_statements WHERE name='qa387_f11e7e_bex_insert'))::text;\n\\bind_named qa387_f11e7e_bex_insert '99' 'missing' '99' '{}' \\g\n\\echo QA387_f11e7e_bex_STATE_closed :SQLSTATE\nINSERT INTO qa387_f11e7e_bex.items VALUES($1::int,$2::text,$3::numeric,$4::jsonb) RETURNING jsonb_build_object('frame','QA387_f11e7e_bex_insert_'||id::text,'pid',pg_backend_pid(),'payload',jsonb_build_object('id',id,'label',label,'amount',amount::text,'json',payload))::text \\parse qa387_f11e7e_bex_insert\n\\startpipeline\n\\bind_named qa387_f11e7e_bex_insert '5' 'rolled back' '5' '{\"n\": 5}' \\sendpipeline\n\\bind_named qa387_f11e7e_bex_insert '5' 'rolled back' '5' '{\"n\": 5}' \\sendpipeline\nINSERT INTO qa387_f11e7e_bex.items VALUES(6,'skipped',6,'{}');\n\\flushrequest\n\\getresults 1\n\\getresults 1\n\\echo QA387_f11e7e_bex_STATE_duplicate :SQLSTATE\n\\getresults\n\\syncpipeline\n\\getresults\n\\endpipeline\nSELECT jsonb_build_object('frame','QA387_f11e7e_bex_after_failed_group','pid',pg_backend_pid(),'payload',(SELECT jsonb_agg(id ORDER BY id) FROM qa387_f11e7e_bex.items))::text;\n\\startpipeline\n\\bind_named qa387_f11e7e_bex_insert '7' 'seven' '7' '{\"n\": 7}' \\sendpipeline\n\\syncpipeline\n\\bind_named qa387_f11e7e_bex_insert '8' 'eight' '8' '{\"n\": 8}' \\sendpipeline\n\\syncpipeline\n\\getresults\n\\endpipeline\nSELECT jsonb_build_object('frame','QA387_f11e7e_bex_after_new_groups','pid',pg_backend_pid(),'payload',(SELECT jsonb_agg(id ORDER BY id) FROM qa387_f11e7e_bex.items))::text;\n\\startpipeline\nSELECT jsonb_build_object('frame','QA387_f11e7e_bex_parsed_in_pipeline','pid',pg_backend_pid(),'payload',$1::int)::text \\parse qa387_f11e7e_bex_calc\n\\bind_named qa387_f11e7e_bex_calc '99' \\sendpipeline\n\\close_prepared qa387_f11e7e_bex_calc\n\\syncpipeline\n\\getresults\n\\endpipeline\n\\close_prepared qa387_f11e7e_bex_insert\nSELECT jsonb_build_object('frame','QA387_f11e7e_bex_prepared_gone','pid',pg_backend_pid(),'payload',(SELECT count(*) FROM pg_prepared_statements WHERE name IN('qa387_f11e7e_bex_insert','qa387_f11e7e_bex_calc')))::text;\nDROP SCHEMA qa387_f11e7e_bex CASCADE;\nSELECT jsonb_build_object('frame','QA387_f11e7e_bex_final_absence','pid',pg_backend_pid(),'payload',to_regnamespace('qa387_f11e7e_bex') IS NULL)::text;\n",
+        "frames": {
+          "QA387_f11e7e_bex_initial": {
+            "major": 18,
+            "encoding": "UTF8",
+            "schema_absent": true
+          },
+          "QA387_f11e7e_bex_bound": {
+            "n": 42,
+            "label": "café 日本 😀",
+            "amount": "1.2300",
+            "blob": "00ff007f",
+            "json": {
+              "hello": "世界"
+            }
+          },
+          "QA387_f11e7e_bex_insert_1": {
+            "id": 1,
+            "label": "one café",
+            "amount": "1.2300",
+            "json": {
+              "n": 1
+            }
+          },
+          "QA387_f11e7e_bex_insert_2": {
+            "id": 2,
+            "label": "",
+            "amount": "0.000",
+            "json": {
+              "n": 2
+            }
+          },
+          "QA387_f11e7e_bex_insert_3": {
+            "id": 3,
+            "label": "three 日本",
+            "amount": "3.0",
+            "json": {
+              "n": 3
+            }
+          },
+          "QA387_f11e7e_bex_insert_4": {
+            "id": 4,
+            "label": "four 😀",
+            "amount": "4.00",
+            "json": {
+              "n": 4
+            }
+          },
+          "QA387_f11e7e_bex_insert_5": {
+            "id": 5,
+            "label": "rolled back",
+            "amount": "5",
+            "json": {
+              "n": 5
+            }
+          },
+          "QA387_f11e7e_bex_insert_7": {
+            "id": 7,
+            "label": "seven",
+            "amount": "7",
+            "json": {
+              "n": 7
+            }
+          },
+          "QA387_f11e7e_bex_insert_8": {
+            "id": 8,
+            "label": "eight",
+            "amount": "8",
+            "json": {
+              "n": 8
+            }
+          },
+          "QA387_f11e7e_bex_prepared": [
+            "integer",
+            "text",
+            "numeric",
+            "jsonb"
+          ],
+          "QA387_f11e7e_bex_after_first_pipeline": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "QA387_f11e7e_bex_closed": true,
+          "QA387_f11e7e_bex_after_failed_group": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "QA387_f11e7e_bex_after_new_groups": [
+            1,
+            2,
+            3,
+            4,
+            7,
+            8
+          ],
+          "QA387_f11e7e_bex_parsed_in_pipeline": 99,
+          "QA387_f11e7e_bex_prepared_gone": 0,
+          "QA387_f11e7e_bex_final_absence": true
+        },
+        "states": {
+          "QA387_f11e7e_bex_STATE_closed": "26000",
+          "QA387_f11e7e_bex_STATE_duplicate": "23505"
+        }
+      },
+      "intent": "own fresh schema and named extended-query statements on owned Free PG18, exact locally accepted pipeline",
+      "state": "excluded local command validation: mandatory --command absent; no SQL sent; own schema still absent",
+      "native": {
+        "at": "2026-10-17T00:41:05.483616+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db9c79s50quc73dl5le0",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-n",
+          "-q",
+          "-t",
+          "-A",
+          "-P",
+          "pager=off",
+          "-f",
+          "<owned-temp>/sweep387-pipeline-bex/journey.sql"
+        ],
+        "client_setup": null,
+        "native_exit": 1,
+        "harness_timeout": false,
+        "elapsed": 0.499,
+        "stdout": "",
+        "stderr": "Error: --command flag is required in non-interactive mode\nUsage: render psql <postgresID> --command \"SELECT ...\" -o json\n"
+      },
+      "own_script_directory_removed": true,
+      "before_retry_schema_reconciliation": {
+        "at": "2026-10-17T00:42:19.591044+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db9c79s50quc73dl5le0",
+          "--command",
+          "SELECT to_regnamespace('qa387_f11e7e_bex') IS NULL;",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-q",
+          "-t",
+          "-A"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 3.022,
+        "stdout": "{\"output\": \"t\\n\"}",
+        "stderr": ""
+      },
+      "excluded_setup": true,
+      "qualification": "pin cmd/psql.go:94-101 requires --command in non-interactive mode; corrected to supported single file-include meta-command, local equivalent revalidated; first Render attempt never ran"
+    },
+    {
+      "at": "2026-10-17T00:42:29.448189+00:00",
+      "client": "bex",
+      "fixture": {
+        "schema": "qa387_f11e7e_bex",
+        "prepared": [
+          "qa387_f11e7e_bex_insert",
+          "qa387_f11e7e_bex_calc"
+        ],
+        "sql": "\\set ON_ERROR_STOP off\nSET statement_timeout='10s';SET lock_timeout='500ms';SET idle_in_transaction_session_timeout='30s';\nSELECT jsonb_build_object('frame','QA387_f11e7e_bex_initial','pid',pg_backend_pid(),'payload',jsonb_build_object('major',current_setting('server_version_num')::int/10000,'encoding',current_setting('server_encoding'),'schema_absent',to_regnamespace('qa387_f11e7e_bex') IS NULL))::text;\nCREATE SCHEMA qa387_f11e7e_bex;\nCREATE TABLE qa387_f11e7e_bex.items (id int PRIMARY KEY,label text NOT NULL,amount numeric,payload jsonb);\nSELECT jsonb_build_object('frame','QA387_f11e7e_bex_bound','pid',pg_backend_pid(),'payload',jsonb_build_object('n',$1::int,'label',$2::text,'amount',$3::numeric::text,'blob',encode($4::bytea,'hex'),'json',$5::jsonb))::text \\bind '42' 'café 日本 😀' '1.2300' '\\\\x00ff007f' '{\"hello\":\"世界\"}' \\g\nINSERT INTO qa387_f11e7e_bex.items VALUES($1::int,$2::text,$3::numeric,$4::jsonb) RETURNING jsonb_build_object('frame','QA387_f11e7e_bex_insert_'||id::text,'pid',pg_backend_pid(),'payload',jsonb_build_object('id',id,'label',label,'amount',amount::text,'json',payload))::text \\parse qa387_f11e7e_bex_insert\n\\bind_named qa387_f11e7e_bex_insert '1' 'one café' '1.2300' '{\"n\": 1}' \\g\n\\bind_named qa387_f11e7e_bex_insert '2' '' '0.000' '{\"n\": 2}' \\g\nSELECT jsonb_build_object('frame','QA387_f11e7e_bex_prepared','pid',pg_backend_pid(),'payload',(SELECT to_jsonb(parameter_types::text[]) FROM pg_prepared_statements WHERE name='qa387_f11e7e_bex_insert'))::text;\n\\startpipeline\n\\bind_named qa387_f11e7e_bex_insert '3' 'three 日本' '3.0' '{\"n\": 3}' \\sendpipeline\n\\bind_named qa387_f11e7e_bex_insert '4' 'four 😀' '4.00' '{\"n\": 4}' \\sendpipeline\n\\flush\n\\flushrequest\n\\getresults 1\n\\getresults\n\\syncpipeline\n\\getresults\n\\endpipeline\nSELECT jsonb_build_object('frame','QA387_f11e7e_bex_after_first_pipeline','pid',pg_backend_pid(),'payload',(SELECT jsonb_agg(id ORDER BY id) FROM qa387_f11e7e_bex.items))::text;\n\\close_prepared qa387_f11e7e_bex_insert\nSELECT jsonb_build_object('frame','QA387_f11e7e_bex_closed','pid',pg_backend_pid(),'payload',NOT EXISTS(SELECT 1 FROM pg_prepared_statements WHERE name='qa387_f11e7e_bex_insert'))::text;\n\\bind_named qa387_f11e7e_bex_insert '99' 'missing' '99' '{}' \\g\n\\echo QA387_f11e7e_bex_STATE_closed :SQLSTATE\nINSERT INTO qa387_f11e7e_bex.items VALUES($1::int,$2::text,$3::numeric,$4::jsonb) RETURNING jsonb_build_object('frame','QA387_f11e7e_bex_insert_'||id::text,'pid',pg_backend_pid(),'payload',jsonb_build_object('id',id,'label',label,'amount',amount::text,'json',payload))::text \\parse qa387_f11e7e_bex_insert\n\\startpipeline\n\\bind_named qa387_f11e7e_bex_insert '5' 'rolled back' '5' '{\"n\": 5}' \\sendpipeline\n\\bind_named qa387_f11e7e_bex_insert '5' 'rolled back' '5' '{\"n\": 5}' \\sendpipeline\nINSERT INTO qa387_f11e7e_bex.items VALUES(6,'skipped',6,'{}');\n\\flushrequest\n\\getresults 1\n\\getresults 1\n\\echo QA387_f11e7e_bex_STATE_duplicate :SQLSTATE\n\\getresults\n\\syncpipeline\n\\getresults\n\\endpipeline\nSELECT jsonb_build_object('frame','QA387_f11e7e_bex_after_failed_group','pid',pg_backend_pid(),'payload',(SELECT jsonb_agg(id ORDER BY id) FROM qa387_f11e7e_bex.items))::text;\n\\startpipeline\n\\bind_named qa387_f11e7e_bex_insert '7' 'seven' '7' '{\"n\": 7}' \\sendpipeline\n\\syncpipeline\n\\bind_named qa387_f11e7e_bex_insert '8' 'eight' '8' '{\"n\": 8}' \\sendpipeline\n\\syncpipeline\n\\getresults\n\\endpipeline\nSELECT jsonb_build_object('frame','QA387_f11e7e_bex_after_new_groups','pid',pg_backend_pid(),'payload',(SELECT jsonb_agg(id ORDER BY id) FROM qa387_f11e7e_bex.items))::text;\n\\startpipeline\nSELECT jsonb_build_object('frame','QA387_f11e7e_bex_parsed_in_pipeline','pid',pg_backend_pid(),'payload',$1::int)::text \\parse qa387_f11e7e_bex_calc\n\\bind_named qa387_f11e7e_bex_calc '99' \\sendpipeline\n\\close_prepared qa387_f11e7e_bex_calc\n\\syncpipeline\n\\getresults\n\\endpipeline\n\\close_prepared qa387_f11e7e_bex_insert\nSELECT jsonb_build_object('frame','QA387_f11e7e_bex_prepared_gone','pid',pg_backend_pid(),'payload',(SELECT count(*) FROM pg_prepared_statements WHERE name IN('qa387_f11e7e_bex_insert','qa387_f11e7e_bex_calc')))::text;\nDROP SCHEMA qa387_f11e7e_bex CASCADE;\nSELECT jsonb_build_object('frame','QA387_f11e7e_bex_final_absence','pid',pg_backend_pid(),'payload',to_regnamespace('qa387_f11e7e_bex') IS NULL)::text;\n",
+        "frames": {
+          "QA387_f11e7e_bex_initial": {
+            "major": 18,
+            "encoding": "UTF8",
+            "schema_absent": true
+          },
+          "QA387_f11e7e_bex_bound": {
+            "n": 42,
+            "label": "café 日本 😀",
+            "amount": "1.2300",
+            "blob": "00ff007f",
+            "json": {
+              "hello": "世界"
+            }
+          },
+          "QA387_f11e7e_bex_insert_1": {
+            "id": 1,
+            "label": "one café",
+            "amount": "1.2300",
+            "json": {
+              "n": 1
+            }
+          },
+          "QA387_f11e7e_bex_insert_2": {
+            "id": 2,
+            "label": "",
+            "amount": "0.000",
+            "json": {
+              "n": 2
+            }
+          },
+          "QA387_f11e7e_bex_insert_3": {
+            "id": 3,
+            "label": "three 日本",
+            "amount": "3.0",
+            "json": {
+              "n": 3
+            }
+          },
+          "QA387_f11e7e_bex_insert_4": {
+            "id": 4,
+            "label": "four 😀",
+            "amount": "4.00",
+            "json": {
+              "n": 4
+            }
+          },
+          "QA387_f11e7e_bex_insert_5": {
+            "id": 5,
+            "label": "rolled back",
+            "amount": "5",
+            "json": {
+              "n": 5
+            }
+          },
+          "QA387_f11e7e_bex_insert_7": {
+            "id": 7,
+            "label": "seven",
+            "amount": "7",
+            "json": {
+              "n": 7
+            }
+          },
+          "QA387_f11e7e_bex_insert_8": {
+            "id": 8,
+            "label": "eight",
+            "amount": "8",
+            "json": {
+              "n": 8
+            }
+          },
+          "QA387_f11e7e_bex_prepared": [
+            "integer",
+            "text",
+            "numeric",
+            "jsonb"
+          ],
+          "QA387_f11e7e_bex_after_first_pipeline": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "QA387_f11e7e_bex_closed": true,
+          "QA387_f11e7e_bex_after_failed_group": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "QA387_f11e7e_bex_after_new_groups": [
+            1,
+            2,
+            3,
+            4,
+            7,
+            8
+          ],
+          "QA387_f11e7e_bex_parsed_in_pipeline": 99,
+          "QA387_f11e7e_bex_prepared_gone": 0,
+          "QA387_f11e7e_bex_final_absence": true
+        },
+        "states": {
+          "QA387_f11e7e_bex_STATE_closed": "26000",
+          "QA387_f11e7e_bex_STATE_duplicate": "23505"
+        }
+      },
+      "intent": "own fresh schema and named extended-query statements on owned Free PG18, exact locally accepted pipeline",
+      "state": "native pipeline complete; own schema/prepared absence verified",
+      "native": {
+        "at": "2026-10-17T00:42:40.793574+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "psql",
+          "dpg-db9c79s50quc73dl5le0",
+          "--command",
+          "\\i <owned-temp>/sweep387-pipeline-bex/journey.sql",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-n",
+          "-q",
+          "-t",
+          "-A",
+          "-P",
+          "pager=off"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 11.067,
+        "stdout": "{\"output\": \"{\\\"pid\\\": 250, \\\"frame\\\": \\\"QA387_f11e7e_bex_initial\\\", \\\"payload\\\": {\\\"major\\\": 18, \\\"encoding\\\": \\\"UTF8\\\", \\\"schema_absent\\\": true}}\\n{\\\"pid\\\": 250, \\\"frame\\\": \\\"QA387_f11e7e_bex_bound\\\", \\\"payload\\\": {\\\"n\\\": 42, \\\"blob\\\": \\\"00ff007f\\\", \\\"json\\\": {\\\"hello\\\": \\\"世界\\\"}, \\\"label\\\": \\\"café 日本 😀\\\", \\\"amount\\\": \\\"1.2300\\\"}}\\n{\\\"pid\\\": 250, \\\"frame\\\": \\\"QA387_f11e7e_bex_insert_1\\\", \\\"payload\\\": {\\\"id\\\": 1, \\\"json\\\": {\\\"n\\\": 1}, \\\"label\\\": \\\"one café\\\", \\\"amount\\\": \\\"1.2300\\\"}}\\n{\\\"pid\\\": 250, \\\"frame\\\": \\\"QA387_f11e7e_bex_insert_2\\\", \\\"payload\\\": {\\\"id\\\": 2, \\\"json\\\": {\\\"n\\\": 2}, \\\"label\\\": \\\"\\\", \\\"amount\\\": \\\"0.000\\\"}}\\n{\\\"pid\\\": 250, \\\"frame\\\": \\\"QA387_f11e7e_bex_prepared\\\", \\\"payload\\\": [\\\"integer\\\", \\\"text\\\", \\\"numeric\\\", \\\"jsonb\\\"]}\\n{\\\"pid\\\": 250, \\\"frame\\\": \\\"QA387_f11e7e_bex_insert_3\\\", \\\"payload\\\": {\\\"id\\\": 3, \\\"json\\\": {\\\"n\\\": 3}, \\\"label\\\": \\\"three 日本\\\", \\\"amount\\\": \\\"3.0\\\"}}\\n{\\\"pid\\\": 250, \\\"frame\\\": \\\"QA387_f11e7e_bex_insert_4\\\", \\\"payload\\\": {\\\"id\\\": 4, \\\"json\\\": {\\\"n\\\": 4}, \\\"label\\\": \\\"four 😀\\\", \\\"amount\\\": \\\"4.00\\\"}}\\n{\\\"pid\\\": 250, \\\"frame\\\": \\\"QA387_f11e7e_bex_after_first_pipeline\\\", \\\"payload\\\": [1, 2, 3, 4]}\\n{\\\"pid\\\": 250, \\\"frame\\\": \\\"QA387_f11e7e_bex_closed\\\", \\\"payload\\\": true}\\nQA387_f11e7e_bex_STATE_closed 26000\\n{\\\"pid\\\": 250, \\\"frame\\\": \\\"QA387_f11e7e_bex_insert_5\\\", \\\"payload\\\": {\\\"id\\\": 5, \\\"json\\\": {\\\"n\\\": 5}, \\\"label\\\": \\\"rolled back\\\", \\\"amount\\\": \\\"5\\\"}}\\nQA387_f11e7e_bex_STATE_duplicate 23505\\n{\\\"pid\\\": 250, \\\"frame\\\": \\\"QA387_f11e7e_bex_after_failed_group\\\", \\\"payload\\\": [1, 2, 3, 4]}\\n{\\\"pid\\\": 250, \\\"frame\\\": \\\"QA387_f11e7e_bex_insert_7\\\", \\\"payload\\\": {\\\"id\\\": 7, \\\"json\\\": {\\\"n\\\": 7}, \\\"label\\\": \\\"seven\\\", \\\"amount\\\": \\\"7\\\"}}\\n{\\\"pid\\\": 250, \\\"frame\\\": \\\"QA387_f11e7e_bex_insert_8\\\", \\\"payload\\\": {\\\"id\\\": 8, \\\"json\\\": {\\\"n\\\": 8}, \\\"label\\\": \\\"eight\\\", \\\"amount\\\": \\\"8\\\"}}\\n{\\\"pid\\\": 250, \\\"frame\\\": \\\"QA387_f11e7e_bex_after_new_groups\\\", \\\"payload\\\": [1, 2, 3, 4, 7, 8]}\\n{\\\"pid\\\": 250, \\\"frame\\\": \\\"QA387_f11e7e_bex_parsed_in_pipeline\\\", \\\"payload\\\": 99}\\n{\\\"pid\\\": 250, \\\"frame\\\": \\\"QA387_f11e7e_bex_prepared_gone\\\", \\\"payload\\\": 0}\\n{\\\"pid\\\": 250, \\\"frame\\\": \\\"QA387_f11e7e_bex_final_absence\\\", \\\"payload\\\": true}\\n\"}",
+        "stderr": ""
+      },
+      "decoded_native_output": {
+        "output": "{\"pid\": 250, \"frame\": \"QA387_f11e7e_bex_initial\", \"payload\": {\"major\": 18, \"encoding\": \"UTF8\", \"schema_absent\": true}}\n{\"pid\": 250, \"frame\": \"QA387_f11e7e_bex_bound\", \"payload\": {\"n\": 42, \"blob\": \"00ff007f\", \"json\": {\"hello\": \"世界\"}, \"label\": \"café 日本 😀\", \"amount\": \"1.2300\"}}\n{\"pid\": 250, \"frame\": \"QA387_f11e7e_bex_insert_1\", \"payload\": {\"id\": 1, \"json\": {\"n\": 1}, \"label\": \"one café\", \"amount\": \"1.2300\"}}\n{\"pid\": 250, \"frame\": \"QA387_f11e7e_bex_insert_2\", \"payload\": {\"id\": 2, \"json\": {\"n\": 2}, \"label\": \"\", \"amount\": \"0.000\"}}\n{\"pid\": 250, \"frame\": \"QA387_f11e7e_bex_prepared\", \"payload\": [\"integer\", \"text\", \"numeric\", \"jsonb\"]}\n{\"pid\": 250, \"frame\": \"QA387_f11e7e_bex_insert_3\", \"payload\": {\"id\": 3, \"json\": {\"n\": 3}, \"label\": \"three 日本\", \"amount\": \"3.0\"}}\n{\"pid\": 250, \"frame\": \"QA387_f11e7e_bex_insert_4\", \"payload\": {\"id\": 4, \"json\": {\"n\": 4}, \"label\": \"four 😀\", \"amount\": \"4.00\"}}\n{\"pid\": 250, \"frame\": \"QA387_f11e7e_bex_after_first_pipeline\", \"payload\": [1, 2, 3, 4]}\n{\"pid\": 250, \"frame\": \"QA387_f11e7e_bex_closed\", \"payload\": true}\nQA387_f11e7e_bex_STATE_closed 26000\n{\"pid\": 250, \"frame\": \"QA387_f11e7e_bex_insert_5\", \"payload\": {\"id\": 5, \"json\": {\"n\": 5}, \"label\": \"rolled back\", \"amount\": \"5\"}}\nQA387_f11e7e_bex_STATE_duplicate 23505\n{\"pid\": 250, \"frame\": \"QA387_f11e7e_bex_after_failed_group\", \"payload\": [1, 2, 3, 4]}\n{\"pid\": 250, \"frame\": \"QA387_f11e7e_bex_insert_7\", \"payload\": {\"id\": 7, \"json\": {\"n\": 7}, \"label\": \"seven\", \"amount\": \"7\"}}\n{\"pid\": 250, \"frame\": \"QA387_f11e7e_bex_insert_8\", \"payload\": {\"id\": 8, \"json\": {\"n\": 8}, \"label\": \"eight\", \"amount\": \"8\"}}\n{\"pid\": 250, \"frame\": \"QA387_f11e7e_bex_after_new_groups\", \"payload\": [1, 2, 3, 4, 7, 8]}\n{\"pid\": 250, \"frame\": \"QA387_f11e7e_bex_parsed_in_pipeline\", \"payload\": 99}\n{\"pid\": 250, \"frame\": \"QA387_f11e7e_bex_prepared_gone\", \"payload\": 0}\n{\"pid\": 250, \"frame\": \"QA387_f11e7e_bex_final_absence\", \"payload\": true}\n"
+      },
+      "verification": {
+        "frames": {
+          "QA387_f11e7e_bex_initial": [
+            {
+              "major": 18,
+              "encoding": "UTF8",
+              "schema_absent": true
+            }
+          ],
+          "QA387_f11e7e_bex_bound": [
+            {
+              "n": 42,
+              "blob": "00ff007f",
+              "json": {
+                "hello": "世界"
+              },
+              "label": "café 日本 😀",
+              "amount": "1.2300"
+            }
+          ],
+          "QA387_f11e7e_bex_insert_1": [
+            {
+              "id": 1,
+              "json": {
+                "n": 1
+              },
+              "label": "one café",
+              "amount": "1.2300"
+            }
+          ],
+          "QA387_f11e7e_bex_insert_2": [
+            {
+              "id": 2,
+              "json": {
+                "n": 2
+              },
+              "label": "",
+              "amount": "0.000"
+            }
+          ],
+          "QA387_f11e7e_bex_prepared": [
+            [
+              "integer",
+              "text",
+              "numeric",
+              "jsonb"
+            ]
+          ],
+          "QA387_f11e7e_bex_insert_3": [
+            {
+              "id": 3,
+              "json": {
+                "n": 3
+              },
+              "label": "three 日本",
+              "amount": "3.0"
+            }
+          ],
+          "QA387_f11e7e_bex_insert_4": [
+            {
+              "id": 4,
+              "json": {
+                "n": 4
+              },
+              "label": "four 😀",
+              "amount": "4.00"
+            }
+          ],
+          "QA387_f11e7e_bex_after_first_pipeline": [
+            [
+              1,
+              2,
+              3,
+              4
+            ]
+          ],
+          "QA387_f11e7e_bex_closed": [
+            true
+          ],
+          "QA387_f11e7e_bex_insert_5": [
+            {
+              "id": 5,
+              "json": {
+                "n": 5
+              },
+              "label": "rolled back",
+              "amount": "5"
+            }
+          ],
+          "QA387_f11e7e_bex_after_failed_group": [
+            [
+              1,
+              2,
+              3,
+              4
+            ]
+          ],
+          "QA387_f11e7e_bex_insert_7": [
+            {
+              "id": 7,
+              "json": {
+                "n": 7
+              },
+              "label": "seven",
+              "amount": "7"
+            }
+          ],
+          "QA387_f11e7e_bex_insert_8": [
+            {
+              "id": 8,
+              "json": {
+                "n": 8
+              },
+              "label": "eight",
+              "amount": "8"
+            }
+          ],
+          "QA387_f11e7e_bex_after_new_groups": [
+            [
+              1,
+              2,
+              3,
+              4,
+              7,
+              8
+            ]
+          ],
+          "QA387_f11e7e_bex_parsed_in_pipeline": [
+            99
+          ],
+          "QA387_f11e7e_bex_prepared_gone": [
+            0
+          ],
+          "QA387_f11e7e_bex_final_absence": [
+            true
+          ]
+        },
+        "states": {
+          "QA387_f11e7e_bex_STATE_closed": "26000",
+          "QA387_f11e7e_bex_STATE_duplicate": "23505"
+        },
+        "checks": {
+          "QA387_f11e7e_bex_initial": true,
+          "QA387_f11e7e_bex_bound": true,
+          "QA387_f11e7e_bex_insert_1": true,
+          "QA387_f11e7e_bex_insert_2": true,
+          "QA387_f11e7e_bex_insert_3": true,
+          "QA387_f11e7e_bex_insert_4": true,
+          "QA387_f11e7e_bex_insert_5": true,
+          "QA387_f11e7e_bex_insert_7": true,
+          "QA387_f11e7e_bex_insert_8": true,
+          "QA387_f11e7e_bex_prepared": true,
+          "QA387_f11e7e_bex_after_first_pipeline": true,
+          "QA387_f11e7e_bex_closed": true,
+          "QA387_f11e7e_bex_after_failed_group": true,
+          "QA387_f11e7e_bex_after_new_groups": true,
+          "QA387_f11e7e_bex_parsed_in_pipeline": true,
+          "QA387_f11e7e_bex_prepared_gone": true,
+          "QA387_f11e7e_bex_final_absence": true
+        },
+        "backend_pids": [
+          250
+        ],
+        "pass": true
+      },
+      "pass": true,
+      "own_script_directory_removed": true
+    },
+    {
+      "at": "2026-10-17T00:42:42.618613+00:00",
+      "client": "render",
+      "fixture": {
+        "schema": "qa387_f11e7e_render",
+        "prepared": [
+          "qa387_f11e7e_render_insert",
+          "qa387_f11e7e_render_calc"
+        ],
+        "sql": "\\set ON_ERROR_STOP off\nSET statement_timeout='10s';SET lock_timeout='500ms';SET idle_in_transaction_session_timeout='30s';\nSELECT jsonb_build_object('frame','QA387_f11e7e_render_initial','pid',pg_backend_pid(),'payload',jsonb_build_object('major',current_setting('server_version_num')::int/10000,'encoding',current_setting('server_encoding'),'schema_absent',to_regnamespace('qa387_f11e7e_render') IS NULL))::text;\nCREATE SCHEMA qa387_f11e7e_render;\nCREATE TABLE qa387_f11e7e_render.items (id int PRIMARY KEY,label text NOT NULL,amount numeric,payload jsonb);\nSELECT jsonb_build_object('frame','QA387_f11e7e_render_bound','pid',pg_backend_pid(),'payload',jsonb_build_object('n',$1::int,'label',$2::text,'amount',$3::numeric::text,'blob',encode($4::bytea,'hex'),'json',$5::jsonb))::text \\bind '42' 'café 日本 😀' '1.2300' '\\\\x00ff007f' '{\"hello\":\"世界\"}' \\g\nINSERT INTO qa387_f11e7e_render.items VALUES($1::int,$2::text,$3::numeric,$4::jsonb) RETURNING jsonb_build_object('frame','QA387_f11e7e_render_insert_'||id::text,'pid',pg_backend_pid(),'payload',jsonb_build_object('id',id,'label',label,'amount',amount::text,'json',payload))::text \\parse qa387_f11e7e_render_insert\n\\bind_named qa387_f11e7e_render_insert '1' 'one café' '1.2300' '{\"n\": 1}' \\g\n\\bind_named qa387_f11e7e_render_insert '2' '' '0.000' '{\"n\": 2}' \\g\nSELECT jsonb_build_object('frame','QA387_f11e7e_render_prepared','pid',pg_backend_pid(),'payload',(SELECT to_jsonb(parameter_types::text[]) FROM pg_prepared_statements WHERE name='qa387_f11e7e_render_insert'))::text;\n\\startpipeline\n\\bind_named qa387_f11e7e_render_insert '3' 'three 日本' '3.0' '{\"n\": 3}' \\sendpipeline\n\\bind_named qa387_f11e7e_render_insert '4' 'four 😀' '4.00' '{\"n\": 4}' \\sendpipeline\n\\flush\n\\flushrequest\n\\getresults 1\n\\getresults\n\\syncpipeline\n\\getresults\n\\endpipeline\nSELECT jsonb_build_object('frame','QA387_f11e7e_render_after_first_pipeline','pid',pg_backend_pid(),'payload',(SELECT jsonb_agg(id ORDER BY id) FROM qa387_f11e7e_render.items))::text;\n\\close_prepared qa387_f11e7e_render_insert\nSELECT jsonb_build_object('frame','QA387_f11e7e_render_closed','pid',pg_backend_pid(),'payload',NOT EXISTS(SELECT 1 FROM pg_prepared_statements WHERE name='qa387_f11e7e_render_insert'))::text;\n\\bind_named qa387_f11e7e_render_insert '99' 'missing' '99' '{}' \\g\n\\echo QA387_f11e7e_render_STATE_closed :SQLSTATE\nINSERT INTO qa387_f11e7e_render.items VALUES($1::int,$2::text,$3::numeric,$4::jsonb) RETURNING jsonb_build_object('frame','QA387_f11e7e_render_insert_'||id::text,'pid',pg_backend_pid(),'payload',jsonb_build_object('id',id,'label',label,'amount',amount::text,'json',payload))::text \\parse qa387_f11e7e_render_insert\n\\startpipeline\n\\bind_named qa387_f11e7e_render_insert '5' 'rolled back' '5' '{\"n\": 5}' \\sendpipeline\n\\bind_named qa387_f11e7e_render_insert '5' 'rolled back' '5' '{\"n\": 5}' \\sendpipeline\nINSERT INTO qa387_f11e7e_render.items VALUES(6,'skipped',6,'{}');\n\\flushrequest\n\\getresults 1\n\\getresults 1\n\\echo QA387_f11e7e_render_STATE_duplicate :SQLSTATE\n\\getresults\n\\syncpipeline\n\\getresults\n\\endpipeline\nSELECT jsonb_build_object('frame','QA387_f11e7e_render_after_failed_group','pid',pg_backend_pid(),'payload',(SELECT jsonb_agg(id ORDER BY id) FROM qa387_f11e7e_render.items))::text;\n\\startpipeline\n\\bind_named qa387_f11e7e_render_insert '7' 'seven' '7' '{\"n\": 7}' \\sendpipeline\n\\syncpipeline\n\\bind_named qa387_f11e7e_render_insert '8' 'eight' '8' '{\"n\": 8}' \\sendpipeline\n\\syncpipeline\n\\getresults\n\\endpipeline\nSELECT jsonb_build_object('frame','QA387_f11e7e_render_after_new_groups','pid',pg_backend_pid(),'payload',(SELECT jsonb_agg(id ORDER BY id) FROM qa387_f11e7e_render.items))::text;\n\\startpipeline\nSELECT jsonb_build_object('frame','QA387_f11e7e_render_parsed_in_pipeline','pid',pg_backend_pid(),'payload',$1::int)::text \\parse qa387_f11e7e_render_calc\n\\bind_named qa387_f11e7e_render_calc '99' \\sendpipeline\n\\close_prepared qa387_f11e7e_render_calc\n\\syncpipeline\n\\getresults\n\\endpipeline\n\\close_prepared qa387_f11e7e_render_insert\nSELECT jsonb_build_object('frame','QA387_f11e7e_render_prepared_gone','pid',pg_backend_pid(),'payload',(SELECT count(*) FROM pg_prepared_statements WHERE name IN('qa387_f11e7e_render_insert','qa387_f11e7e_render_calc')))::text;\nDROP SCHEMA qa387_f11e7e_render CASCADE;\nSELECT jsonb_build_object('frame','QA387_f11e7e_render_final_absence','pid',pg_backend_pid(),'payload',to_regnamespace('qa387_f11e7e_render') IS NULL)::text;\n",
+        "frames": {
+          "QA387_f11e7e_render_initial": {
+            "major": 18,
+            "encoding": "UTF8",
+            "schema_absent": true
+          },
+          "QA387_f11e7e_render_bound": {
+            "n": 42,
+            "label": "café 日本 😀",
+            "amount": "1.2300",
+            "blob": "00ff007f",
+            "json": {
+              "hello": "世界"
+            }
+          },
+          "QA387_f11e7e_render_insert_1": {
+            "id": 1,
+            "label": "one café",
+            "amount": "1.2300",
+            "json": {
+              "n": 1
+            }
+          },
+          "QA387_f11e7e_render_insert_2": {
+            "id": 2,
+            "label": "",
+            "amount": "0.000",
+            "json": {
+              "n": 2
+            }
+          },
+          "QA387_f11e7e_render_insert_3": {
+            "id": 3,
+            "label": "three 日本",
+            "amount": "3.0",
+            "json": {
+              "n": 3
+            }
+          },
+          "QA387_f11e7e_render_insert_4": {
+            "id": 4,
+            "label": "four 😀",
+            "amount": "4.00",
+            "json": {
+              "n": 4
+            }
+          },
+          "QA387_f11e7e_render_insert_5": {
+            "id": 5,
+            "label": "rolled back",
+            "amount": "5",
+            "json": {
+              "n": 5
+            }
+          },
+          "QA387_f11e7e_render_insert_7": {
+            "id": 7,
+            "label": "seven",
+            "amount": "7",
+            "json": {
+              "n": 7
+            }
+          },
+          "QA387_f11e7e_render_insert_8": {
+            "id": 8,
+            "label": "eight",
+            "amount": "8",
+            "json": {
+              "n": 8
+            }
+          },
+          "QA387_f11e7e_render_prepared": [
+            "integer",
+            "text",
+            "numeric",
+            "jsonb"
+          ],
+          "QA387_f11e7e_render_after_first_pipeline": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "QA387_f11e7e_render_closed": true,
+          "QA387_f11e7e_render_after_failed_group": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "QA387_f11e7e_render_after_new_groups": [
+            1,
+            2,
+            3,
+            4,
+            7,
+            8
+          ],
+          "QA387_f11e7e_render_parsed_in_pipeline": 99,
+          "QA387_f11e7e_render_prepared_gone": 0,
+          "QA387_f11e7e_render_final_absence": true
+        },
+        "states": {
+          "QA387_f11e7e_render_STATE_closed": "26000",
+          "QA387_f11e7e_render_STATE_duplicate": "23505"
+        }
+      },
+      "intent": "own fresh schema and named extended-query statements on owned Free PG18, exact locally accepted pipeline",
+      "state": "native pipeline complete; own schema/prepared absence verified",
+      "native": {
+        "at": "2026-10-17T00:42:51.759426+00:00",
+        "binary": "unchanged Render2.27.0/a764810a7682",
+        "command": [
+          "render",
+          "psql",
+          "dpg-db9c79s50quc73dl5le0",
+          "--command",
+          "\\i <owned-temp>/sweep387-pipeline-render/journey.sql",
+          "--confirm",
+          "-o",
+          "json",
+          "--",
+          "-X",
+          "-n",
+          "-q",
+          "-t",
+          "-A",
+          "-P",
+          "pager=off"
+        ],
+        "client_setup": {
+          "API_only_CA_preparation": true,
+          "path": "/v1/postgres/dpg-db9c79s50quc73dl5le0/connection-info",
+          "HTTP": "200",
+          "elapsed": 0.52,
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "certificate_sha256": "13afd0cea9387780c63ddc7134db6fb10b18456d90581d2d7f73644679f32baa",
+          "PGSSLROOTCERT": "<owned-temp>/sweep387-owned-pg-ca.pem",
+          "connection_info_payload_not_retained": true
+        },
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 8.349,
+        "stdout": "{\"output\": \"{\\\"pid\\\": 253, \\\"frame\\\": \\\"QA387_f11e7e_render_initial\\\", \\\"payload\\\": {\\\"major\\\": 18, \\\"encoding\\\": \\\"UTF8\\\", \\\"schema_absent\\\": true}}\\n{\\\"pid\\\": 253, \\\"frame\\\": \\\"QA387_f11e7e_render_bound\\\", \\\"payload\\\": {\\\"n\\\": 42, \\\"blob\\\": \\\"00ff007f\\\", \\\"json\\\": {\\\"hello\\\": \\\"世界\\\"}, \\\"label\\\": \\\"café 日本 😀\\\", \\\"amount\\\": \\\"1.2300\\\"}}\\n{\\\"pid\\\": 253, \\\"frame\\\": \\\"QA387_f11e7e_render_insert_1\\\", \\\"payload\\\": {\\\"id\\\": 1, \\\"json\\\": {\\\"n\\\": 1}, \\\"label\\\": \\\"one café\\\", \\\"amount\\\": \\\"1.2300\\\"}}\\n{\\\"pid\\\": 253, \\\"frame\\\": \\\"QA387_f11e7e_render_insert_2\\\", \\\"payload\\\": {\\\"id\\\": 2, \\\"json\\\": {\\\"n\\\": 2}, \\\"label\\\": \\\"\\\", \\\"amount\\\": \\\"0.000\\\"}}\\n{\\\"pid\\\": 253, \\\"frame\\\": \\\"QA387_f11e7e_render_prepared\\\", \\\"payload\\\": [\\\"integer\\\", \\\"text\\\", \\\"numeric\\\", \\\"jsonb\\\"]}\\n{\\\"pid\\\": 253, \\\"frame\\\": \\\"QA387_f11e7e_render_insert_3\\\", \\\"payload\\\": {\\\"id\\\": 3, \\\"json\\\": {\\\"n\\\": 3}, \\\"label\\\": \\\"three 日本\\\", \\\"amount\\\": \\\"3.0\\\"}}\\n{\\\"pid\\\": 253, \\\"frame\\\": \\\"QA387_f11e7e_render_insert_4\\\", \\\"payload\\\": {\\\"id\\\": 4, \\\"json\\\": {\\\"n\\\": 4}, \\\"label\\\": \\\"four 😀\\\", \\\"amount\\\": \\\"4.00\\\"}}\\n{\\\"pid\\\": 253, \\\"frame\\\": \\\"QA387_f11e7e_render_after_first_pipeline\\\", \\\"payload\\\": [1, 2, 3, 4]}\\n{\\\"pid\\\": 253, \\\"frame\\\": \\\"QA387_f11e7e_render_closed\\\", \\\"payload\\\": true}\\nQA387_f11e7e_render_STATE_closed 26000\\n{\\\"pid\\\": 253, \\\"frame\\\": \\\"QA387_f11e7e_render_insert_5\\\", \\\"payload\\\": {\\\"id\\\": 5, \\\"json\\\": {\\\"n\\\": 5}, \\\"label\\\": \\\"rolled back\\\", \\\"amount\\\": \\\"5\\\"}}\\nQA387_f11e7e_render_STATE_duplicate 23505\\n{\\\"pid\\\": 253, \\\"frame\\\": \\\"QA387_f11e7e_render_after_failed_group\\\", \\\"payload\\\": [1, 2, 3, 4]}\\n{\\\"pid\\\": 253, \\\"frame\\\": \\\"QA387_f11e7e_render_insert_7\\\", \\\"payload\\\": {\\\"id\\\": 7, \\\"json\\\": {\\\"n\\\": 7}, \\\"label\\\": \\\"seven\\\", \\\"amount\\\": \\\"7\\\"}}\\n{\\\"pid\\\": 253, \\\"frame\\\": \\\"QA387_f11e7e_render_insert_8\\\", \\\"payload\\\": {\\\"id\\\": 8, \\\"json\\\": {\\\"n\\\": 8}, \\\"label\\\": \\\"eight\\\", \\\"amount\\\": \\\"8\\\"}}\\n{\\\"pid\\\": 253, \\\"frame\\\": \\\"QA387_f11e7e_render_after_new_groups\\\", \\\"payload\\\": [1, 2, 3, 4, 7, 8]}\\n{\\\"pid\\\": 253, \\\"frame\\\": \\\"QA387_f11e7e_render_parsed_in_pipeline\\\", \\\"payload\\\": 99}\\n{\\\"pid\\\": 253, \\\"frame\\\": \\\"QA387_f11e7e_render_prepared_gone\\\", \\\"payload\\\": 0}\\n{\\\"pid\\\": 253, \\\"frame\\\": \\\"QA387_f11e7e_render_final_absence\\\", \\\"payload\\\": true}\\n\"}",
+        "stderr": ""
+      },
+      "decoded_native_output": {
+        "output": "{\"pid\": 253, \"frame\": \"QA387_f11e7e_render_initial\", \"payload\": {\"major\": 18, \"encoding\": \"UTF8\", \"schema_absent\": true}}\n{\"pid\": 253, \"frame\": \"QA387_f11e7e_render_bound\", \"payload\": {\"n\": 42, \"blob\": \"00ff007f\", \"json\": {\"hello\": \"世界\"}, \"label\": \"café 日本 😀\", \"amount\": \"1.2300\"}}\n{\"pid\": 253, \"frame\": \"QA387_f11e7e_render_insert_1\", \"payload\": {\"id\": 1, \"json\": {\"n\": 1}, \"label\": \"one café\", \"amount\": \"1.2300\"}}\n{\"pid\": 253, \"frame\": \"QA387_f11e7e_render_insert_2\", \"payload\": {\"id\": 2, \"json\": {\"n\": 2}, \"label\": \"\", \"amount\": \"0.000\"}}\n{\"pid\": 253, \"frame\": \"QA387_f11e7e_render_prepared\", \"payload\": [\"integer\", \"text\", \"numeric\", \"jsonb\"]}\n{\"pid\": 253, \"frame\": \"QA387_f11e7e_render_insert_3\", \"payload\": {\"id\": 3, \"json\": {\"n\": 3}, \"label\": \"three 日本\", \"amount\": \"3.0\"}}\n{\"pid\": 253, \"frame\": \"QA387_f11e7e_render_insert_4\", \"payload\": {\"id\": 4, \"json\": {\"n\": 4}, \"label\": \"four 😀\", \"amount\": \"4.00\"}}\n{\"pid\": 253, \"frame\": \"QA387_f11e7e_render_after_first_pipeline\", \"payload\": [1, 2, 3, 4]}\n{\"pid\": 253, \"frame\": \"QA387_f11e7e_render_closed\", \"payload\": true}\nQA387_f11e7e_render_STATE_closed 26000\n{\"pid\": 253, \"frame\": \"QA387_f11e7e_render_insert_5\", \"payload\": {\"id\": 5, \"json\": {\"n\": 5}, \"label\": \"rolled back\", \"amount\": \"5\"}}\nQA387_f11e7e_render_STATE_duplicate 23505\n{\"pid\": 253, \"frame\": \"QA387_f11e7e_render_after_failed_group\", \"payload\": [1, 2, 3, 4]}\n{\"pid\": 253, \"frame\": \"QA387_f11e7e_render_insert_7\", \"payload\": {\"id\": 7, \"json\": {\"n\": 7}, \"label\": \"seven\", \"amount\": \"7\"}}\n{\"pid\": 253, \"frame\": \"QA387_f11e7e_render_insert_8\", \"payload\": {\"id\": 8, \"json\": {\"n\": 8}, \"label\": \"eight\", \"amount\": \"8\"}}\n{\"pid\": 253, \"frame\": \"QA387_f11e7e_render_after_new_groups\", \"payload\": [1, 2, 3, 4, 7, 8]}\n{\"pid\": 253, \"frame\": \"QA387_f11e7e_render_parsed_in_pipeline\", \"payload\": 99}\n{\"pid\": 253, \"frame\": \"QA387_f11e7e_render_prepared_gone\", \"payload\": 0}\n{\"pid\": 253, \"frame\": \"QA387_f11e7e_render_final_absence\", \"payload\": true}\n"
+      },
+      "verification": {
+        "frames": {
+          "QA387_f11e7e_render_initial": [
+            {
+              "major": 18,
+              "encoding": "UTF8",
+              "schema_absent": true
+            }
+          ],
+          "QA387_f11e7e_render_bound": [
+            {
+              "n": 42,
+              "blob": "00ff007f",
+              "json": {
+                "hello": "世界"
+              },
+              "label": "café 日本 😀",
+              "amount": "1.2300"
+            }
+          ],
+          "QA387_f11e7e_render_insert_1": [
+            {
+              "id": 1,
+              "json": {
+                "n": 1
+              },
+              "label": "one café",
+              "amount": "1.2300"
+            }
+          ],
+          "QA387_f11e7e_render_insert_2": [
+            {
+              "id": 2,
+              "json": {
+                "n": 2
+              },
+              "label": "",
+              "amount": "0.000"
+            }
+          ],
+          "QA387_f11e7e_render_prepared": [
+            [
+              "integer",
+              "text",
+              "numeric",
+              "jsonb"
+            ]
+          ],
+          "QA387_f11e7e_render_insert_3": [
+            {
+              "id": 3,
+              "json": {
+                "n": 3
+              },
+              "label": "three 日本",
+              "amount": "3.0"
+            }
+          ],
+          "QA387_f11e7e_render_insert_4": [
+            {
+              "id": 4,
+              "json": {
+                "n": 4
+              },
+              "label": "four 😀",
+              "amount": "4.00"
+            }
+          ],
+          "QA387_f11e7e_render_after_first_pipeline": [
+            [
+              1,
+              2,
+              3,
+              4
+            ]
+          ],
+          "QA387_f11e7e_render_closed": [
+            true
+          ],
+          "QA387_f11e7e_render_insert_5": [
+            {
+              "id": 5,
+              "json": {
+                "n": 5
+              },
+              "label": "rolled back",
+              "amount": "5"
+            }
+          ],
+          "QA387_f11e7e_render_after_failed_group": [
+            [
+              1,
+              2,
+              3,
+              4
+            ]
+          ],
+          "QA387_f11e7e_render_insert_7": [
+            {
+              "id": 7,
+              "json": {
+                "n": 7
+              },
+              "label": "seven",
+              "amount": "7"
+            }
+          ],
+          "QA387_f11e7e_render_insert_8": [
+            {
+              "id": 8,
+              "json": {
+                "n": 8
+              },
+              "label": "eight",
+              "amount": "8"
+            }
+          ],
+          "QA387_f11e7e_render_after_new_groups": [
+            [
+              1,
+              2,
+              3,
+              4,
+              7,
+              8
+            ]
+          ],
+          "QA387_f11e7e_render_parsed_in_pipeline": [
+            99
+          ],
+          "QA387_f11e7e_render_prepared_gone": [
+            0
+          ],
+          "QA387_f11e7e_render_final_absence": [
+            true
+          ]
+        },
+        "states": {
+          "QA387_f11e7e_render_STATE_closed": "26000",
+          "QA387_f11e7e_render_STATE_duplicate": "23505"
+        },
+        "checks": {
+          "QA387_f11e7e_render_initial": true,
+          "QA387_f11e7e_render_bound": true,
+          "QA387_f11e7e_render_insert_1": true,
+          "QA387_f11e7e_render_insert_2": true,
+          "QA387_f11e7e_render_insert_3": true,
+          "QA387_f11e7e_render_insert_4": true,
+          "QA387_f11e7e_render_insert_5": true,
+          "QA387_f11e7e_render_insert_7": true,
+          "QA387_f11e7e_render_insert_8": true,
+          "QA387_f11e7e_render_prepared": true,
+          "QA387_f11e7e_render_after_first_pipeline": true,
+          "QA387_f11e7e_render_closed": true,
+          "QA387_f11e7e_render_after_failed_group": true,
+          "QA387_f11e7e_render_after_new_groups": true,
+          "QA387_f11e7e_render_parsed_in_pipeline": true,
+          "QA387_f11e7e_render_prepared_gone": true,
+          "QA387_f11e7e_render_final_absence": true
+        },
+        "backend_pids": [
+          253
+        ],
+        "pass": true
+      },
+      "pass": true,
+      "own_script_directory_removed": true
+    }
+  ],
+  "delete_intent": {
+    "at": "2026-10-17T00:43:18.468137+00:00",
+    "detail": {
+      "at": "2026-10-17T00:43:18.186202+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/postgres/dpg-db9c79s50quc73dl5le0",
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.391,
+      "response": "{\"id\": \"dpg-db9c79s50quc73dl5le0\", \"name\": \"qa-20261017-f11e7e-pg18\", \"plan\": \"free\", \"version\": \"18\", \"status\": \"available\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskSizeGB\": 1, \"diskAutoscalingEnabled\": false, \"highAvailabilityEnabled\": false, \"readReplicas\": [], \"suspended\": \"not_suspended\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"updatedAt\": \"2026-10-17T00:40:23Z\", \"region\": \"fsn1\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"externalHost\": \"dpg-db9c79s50quc73dl5le0.db.bex.co\", \"public\": true, \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"poolerEnabled\": false, \"connectionPool\": \"none\", \"backupsEnabled\": false, \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}}",
+      "stderr": ""
+    }
+  },
+  "delete_result": {
+    "at": "2026-10-17T00:43:19.880201+00:00",
+    "binary": "released Bex0.3.2",
+    "command": [
+      "bex",
+      "postgres",
+      "delete",
+      "dpg-db9c79s50quc73dl5le0",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "client_setup": null,
+    "native_exit": 0,
+    "harness_timeout": false,
+    "elapsed": 1.111,
+    "stdout": "{\"data\": {\"connectionPool\": \"none\", \"createdAt\": \"2026-10-17T00:39:03Z\", \"dashboardUrl\": \"https://dashboard.bex.co/d/dpg-db9c79s50quc73dl5le0\", \"databaseName\": \"qa387_db_f11e7e\", \"databaseUser\": \"qa387_user_f11e7e\", \"diskAutoscalingEnabled\": false, \"diskSizeGB\": 1, \"highAvailabilityEnabled\": false, \"id\": \"dpg-db9c79s50quc73dl5le0\", \"ipAllowList\": [{\"cidrBlock\": \"0.0.0.0/0\", \"description\": \"\"}, {\"cidrBlock\": \"::/0\", \"description\": \"\"}], \"name\": \"qa-20261017-f11e7e-pg18\", \"owner\": {\"email\": \"QA_PRIVATE_REDACTED\", \"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"type\": \"team\"}, \"plan\": \"free\", \"readReplicas\": [], \"region\": \"fsn1\", \"role\": \"\", \"status\": \"available\", \"suspended\": \"not_suspended\", \"suspenders\": null, \"updatedAt\": \"2026-10-17T00:40:23Z\", \"version\": \"18\", \"projectId\": null}, \"meta\": {\"deleted\": true}}",
+    "stderr": ""
+  },
+  "cleanup_receipts": [
+    {
+      "at": "2026-10-17T00:43:23.424545+00:00",
+      "detail": {
+        "at": "2026-10-17T00:43:21.038679+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/postgres/dpg-db9c79s50quc73dl5le0",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "404",
+        "curl_exit": 0,
+        "elapsed": 0.405,
+        "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+        "stderr": ""
+      },
+      "inventory": {
+        "at": "2026-10-17T00:43:21.661905+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "postgres",
+          "list",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.623,
+        "stdout": "{\"data\": []}",
+        "stderr": ""
+      },
+      "services": {
+        "at": "2026-10-17T00:43:22.599652+00:00",
+        "binary": "released Bex0.3.2",
+        "command": [
+          "bex",
+          "services",
+          "--confirm",
+          "-o",
+          "json"
+        ],
+        "client_setup": null,
+        "native_exit": 0,
+        "harness_timeout": false,
+        "elapsed": 0.937,
+        "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}]",
+        "stderr": ""
+      },
+      "quota": {
+        "at": "2026-10-17T00:43:23.424178+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.81,
+        "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+        "stderr": ""
+      },
+      "pass": true
+    }
+  ],
+  "cached_connection_private_files_removed": {
+    "at": "2026-10-17T00:43:25.405835+00:00",
+    "credential_file_removed": true,
+    "CA_file_removed": true
+  },
+  "endpoint_preparation_scope_note": "historical vector_connection_preparation helper key records only private connection-info/CA preparation; no vector test or m84 acceptance is run in this sweep"
+}

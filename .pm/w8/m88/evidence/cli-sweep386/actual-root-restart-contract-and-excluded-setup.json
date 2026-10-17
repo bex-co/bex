@@ -1,0 +1,39 @@
+{
+  "at": "2026-10-17T00:22:17.813117+00:00",
+  "actual_correct_root_helps": [
+    {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "restart",
+        "--help"
+      ],
+      "exit": 0,
+      "elapsed": 0.11,
+      "stdout": "bex CLI v0.3.2\n\nRestart a service by resource ID\n\nUSAGE\n  bex restart <resourceID> [flags]\n\nFLAGS\n  -h, --help              Show help for this command\n      --confirm           Skip all confirmation prompts\n  -o, --output <FORMAT>   Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n\nEXAMPLES\n  # Restart a service\n  bex restart srv-abc123\n\n  # Restart a service without confirmation prompts\n  bex restart srv-abc123 --confirm\n\n",
+      "stderr": "",
+      "native_exit": 0
+    },
+    {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "restart",
+        "--help"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 0.107,
+      "stdout": "Render CLI v2.27.0\n\nRestart a service by resource ID\n\nUSAGE\n  render restart <resourceID> [flags]\n\nFLAGS\n  -h, --help              Show help for this command\n      --confirm           Skip all confirmation prompts\n  -o, --output <FORMAT>   Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n\nEXAMPLES\n  # Restart a service\n  render restart srv-abc123\n\n  # Restart a service without confirmation prompts\n  render restart srv-abc123 --confirm\n\n",
+      "stderr": ""
+    }
+  ],
+  "excluded_native_form": [
+    "services",
+    "restart",
+    "OWN_ID"
+  ],
+  "reason": "unsupported nested form falls through to read-only services list; no restart; corrected fixture will use exact root command once",
+  "pinned_producer": "cmd/restart.go: restart <resourceID>, ExactArgs(1), views.RestartResource"
+}

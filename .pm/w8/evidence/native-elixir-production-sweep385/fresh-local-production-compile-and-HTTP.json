@@ -1,0 +1,329 @@
+{
+  "qualification": "own local pinned Elixir1.18 actual Phoenix dependency/compile and observer prerequisite only; MIX_ENV=prod explicitly supplied locally, not native default-supply proof",
+  "base": "elixir:1.18@sha256:a68defc35f664d1d02de0dc36b12e750bd558b594eed3d0909534317796df749",
+  "nonce": "be5a41f1d5",
+  "marker": "QA385_LOCAL_be5a41f1d5",
+  "steps": [
+    {
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "bex-qa385-be5a41f1d5-build"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: bex-qa385-be5a41f1d5-build\n"
+    },
+    {
+      "command": [
+        "docker",
+        "create",
+        "--name",
+        "bex-qa385-be5a41f1d5-build",
+        "--label",
+        "bex.qa.nonce=be5a41f1d5",
+        "--network",
+        "bridge",
+        "--volume",
+        "<owned-temp>/sweep385-local-be5a41f1d5/project:/opt/render/project/src",
+        "--workdir",
+        "/opt/render/project/src",
+        "--env",
+        "ELIXIR_VERSION=1.18",
+        "--env",
+        "ERL_FLAGS=+S 2:2",
+        "--env",
+        "MIX_ENV=prod",
+        "--env",
+        "PORT=3000",
+        "--entrypoint",
+        "/bin/bash",
+        "elixir:1.18@sha256:a68defc35f664d1d02de0dc36b12e750bd558b594eed3d0909534317796df749",
+        "-c",
+        "set -e\nmix local.hex --force\nmix local.rebar --force\nset -e\ncat > qa385-server.exs <<'QA385_OBSERVER'\ndefmodule QA385 do\n  @root System.get_env(\"QA385_ROOT\", \"/opt/render/project/src\")\n  def snapshot(phase) do\n    ref = :json.decode(File.read!(Path.join(@root, \"qa385-reference.json\")))\n    marker = :json.decode(File.read!(Path.join(@root, \"qa385-marker.json\")))\n    files = Map.new(ref[\"files\"], fn {name, expected} ->\n      bytes = File.read!(Path.join(@root, name))\n      proof = %{\"bytes\" => byte_size(bytes), \"sha256\" => Base.encode16(:crypto.hash(:sha256, bytes), case: :lower)}\n      if (phase == \"before\" or name != \"mix.lock\") and proof != expected, do: raise(\"source mismatch: \" <> name)\n      {name, proof}\n    end)\n    value = System.get_env(\"MIX_ENV\")\n    %{\"marker\" => marker, \"phase\" => phase, \"mix_env_present\" => value != nil,\n      \"mix_env\" => value || :null, \"mix_environment\" => Atom.to_string(Mix.env()),\n      \"elixir\" => System.version(), \"otp\" => List.to_string(:erlang.system_info(:otp_release)),\n      \"files\" => files,\n      \"compiled_app_prod\" => File.exists?(Path.join(@root, \"_build/prod/lib/phoenix_hello/ebin/Elixir.PhoenixHello.beam\")),\n      \"compiled_app_dev\" => File.exists?(Path.join(@root, \"_build/dev/lib/phoenix_hello/ebin/Elixir.PhoenixHello.beam\"))}\n  end\n  def encoded(phase), do: snapshot(phase) |> :json.encode() |> IO.iodata_to_binary()\n  def serve(listener, built) do\n    {:ok, socket} = :gen_tcp.accept(listener)\n    case :gen_tcp.recv(socket, 0, 5000) do\n      {:ok, _} ->\n        payload = \"{\\\"built\\\":\" <> built <> \",\\\"runtime\\\":\" <> encoded(\"runtime\") <> \"}\"\n        :gen_tcp.send(socket, \"HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\nContent-Length: #{byte_size(payload)}\\r\\nConnection: close\\r\\n\\r\\n\" <> payload)\n      _ -> :ok\n    end\n    :gen_tcp.close(socket)\n    serve(listener, built)\n  end\n  def main(args) do\n    case args do\n      [\"--before\"] ->\n        data = encoded(\"before\")\n        File.write!(Path.join(@root, \"qa385-before.json\"), data)\n        IO.puts(\"QA385_BEFORE \" <> data)\n      [\"--after\"] ->\n        data = encoded(\"after\")\n        File.write!(Path.join(@root, \"qa385-built.json\"), data)\n        IO.puts(\"QA385_AFTER \" <> data)\n      [] ->\n        built = File.read!(Path.join(@root, \"qa385-built.json\"))\n        port = System.get_env(\"PORT\", \"10000\") |> String.to_integer()\n        {:ok, listener} = :gen_tcp.listen(port, [:binary, active: false, reuseaddr: true, packet: :raw, ip: {0, 0, 0, 0}])\n        serve(listener, built)\n    end\n  end\nend\nQA385.main(System.argv())\n\nQA385_OBSERVER\ncat > qa385-reference.json <<'QA385_REFERENCE'\n{\"repo\": \"https://github.com/render-examples/phoenix_hello\", \"branch\": \"master\", \"commit\": \"d95c60fd4aa2f0f468298b7aa3fcc384f6069b8f\", \"files\": {\"mix.exs\": {\"bytes\": 2320, \"sha256\": \"aeb9583f2860f6afd35a93b51225c5dc12143208432ac9c544c56cc7ca91b492\"}, \"mix.lock\": {\"bytes\": 12646, \"sha256\": \"0da29cd83f64494827973b45cae940e0d34a3d4f882c5c8ae61a9bc3449874e8\"}, \"build.sh\": {\"bytes\": 427, \"sha256\": \"d2edf660b7b6b9797c74f89877eddf13edefbf3ce0878ebe178fe02834ba174f\"}, \"config/runtime.exs\": {\"bytes\": 4066, \"sha256\": \"2a87af11783b2cc9abfe91006e706489b03e8444d5259789912666b75feedae0\"}}}\nQA385_REFERENCE\ncat > qa385-marker.json <<'QA385_MARKER'\n\"QA385_LOCAL_be5a41f1d5\"\nQA385_MARKER\n(cd /tmp && mix run --no-mix-exs /opt/render/project/src/qa385-server.exs --before)\nmix deps.get --only prod\nprintf 'QA385_DEPS_COMPLETE\\n'\nmix compile\n(cd /tmp && mix run --no-mix-exs /opt/render/project/src/qa385-server.exs --after)"
+      ],
+      "exit": 0,
+      "stdout": "e60bf7f2a1b8f2be1b5e7d29828ce668618b6d195b1c47caaec1c5071cb47f64\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "start",
+        "--attach",
+        "e60bf7f2a1b8f2be1b5e7d29828ce668618b6d195b1c47caaec1c5071cb47f64"
+      ],
+      "exit": 0,
+      "stdout": "* creating /root/.mix/archives/hex-2.5.3\n* creating /root/.mix/elixir/1-18-otp-28/rebar3\nQA385_BEFORE {\"compiled_app_dev\":false,\"compiled_app_prod\":false,\"elixir\":\"1.18.4\",\"files\":{\"build.sh\":{\"bytes\":427,\"sha256\":\"d2edf660b7b6b9797c74f89877eddf13edefbf3ce0878ebe178fe02834ba174f\"},\"config/runtime.exs\":{\"bytes\":4066,\"sha256\":\"2a87af11783b2cc9abfe91006e706489b03e8444d5259789912666b75feedae0\"},\"mix.exs\":{\"bytes\":2320,\"sha256\":\"aeb9583f2860f6afd35a93b51225c5dc12143208432ac9c544c56cc7ca91b492\"},\"mix.lock\":{\"bytes\":12646,\"sha256\":\"0da29cd83f64494827973b45cae940e0d34a3d4f882c5c8ae61a9bc3449874e8\"}},\"marker\":\"QA385_LOCAL_be5a41f1d5\",\"mix_env\":\"prod\",\"mix_env_present\":true,\"mix_environment\":\"prod\",\"otp\":\"28\",\"phase\":\"before\"}\n* Getting heroicons (https://github.com/tailwindlabs/heroicons.git - v2.1.1)\nremote: Enumerating objects: 9314, done.        \nremote: Counting objects:   0% (1/9314)        \nremote: Counting objects:   1% (94/9314)        \nremote: Counting objects:   2% (187/9314)        \nremote: Counting objects:   3% (280/9314)        \nremote: Counting objects:   4% (373/9314)        \nremote: Counting objects:   5% (466/9314)        \nremote: Counting objects:   6% (559/9314)        \nremote: Counting objects:   7% (652/9314)        \nremote: Counting objects:   8% (746/9314)        \nremote: Counting objects:   9% (839/9314)        \nremote: Counting objects:  10% (932/9314)        \nremote: Counting objects:  11% (1025/9314)        \nremote: Counting objects:  12% (1118/9314)        \nremote: Counting objects:  13% (1211/9314)        \nremote: Counting objects:  14% (1304/9314)        \nremote: Counting objects:  15% (1398/9314)        \nremote: Counting objects:  16% (1491/9314)        \nremote: Counting objects:  17% (1584/9314)        \nremote: Counting objects:  18% (1677/9314)        \nremote: Counting objects:  19% (1770/9314)        \nremote: Counting objects:  20% (1863/9314)        \nremote: Counting objects:  21% (1956/9314)        \nremote: Counting objects:  22% (2050/9314)        \nremote: Counting objects:  23% (2143/9314)        \nremote: Counting objects:  24% (2236/9314)        \nremote: Counting objects:  25% (2329/9314)        \nremote: Counting objects:  26% (2422/9314)        \nremote: Counting objects:  27% (2515/9314)        \nremote: Counting objects:  28% (2608/9314)        \nremote: Counting objects:  29% (2702/9314)        \nremote: Counting objects:  30% (2795/9314)        \nremote: Counting objects:  31% (2888/9314)        \nremote: Counting objects:  32% (2981/9314)        \nremote: Counting objects:  33% (3074/9314)        \nremote: Counting objects:  34% (3167/9314)        \nremote: Counting objects:  35% (3260/9314)        \nremote: Counting objects:  36% (3354/9314)        \nremote: Counting objects:  37% (3447/9314)        \nremote: Counting objects:  38% (3540/9314)        \nremote: Counting objects:  39% (3633/9314)        \nremote: Counting objects:  40% (3726/9314)        \nremote: Counting objects:  41% (3819/9314)        \nremote: Counting objects:  42% (3912/9314)        \nremote: Counting objects:  43% (4006/9314)        \nremote: Counting objects:  44% (4099/9314)        \nremote: Counting objects:  45% (4192/9314)        \nremote: Counting objects:  46% (4285/9314)        \nremote: Counting objects:  47% (4378/9314)        \nremote: Counting objects:  48% (4471/9314)        \nremote: Counting objects:  49% (4564/9314)        \nremote: Counting objects:  50% (4657/9314)        \nremote: Counting objects:  51% (4751/9314)        \nremote: Counting objects:  52% (4844/9314)        \nremote: Counting objects:  53% (4937/9314)        \nremote: Counting objects:  54% (5030/9314)        \nremote: Counting objects:  55% (5123/9314)        \nremote: Counting objects:  56% (5216/9314)        \nremote: Counting objects:  57% (5309/9314)        \nremote: Counting objects:  58% (5403/9314)        \nremote: Counting objects:  59% (5496/9314)        \nremote: Counting objects:  60% (5589/9314)        \nremote: Counting objects:  61% (5682/9314)        \nremote: Counting objects:  62% (5775/9314)        \nremote: Counting objects:  63% (5868/9314)        \nremote: Counting objects:  64% (5961/9314)        \nremote: Counting objects:  65% (6055/9314)        \nremote: Counting objects:  66% (6148/9314)        \nremote: Counting objects:  67% (6241/9314)        \nremote: Counting objects:  68% (6334/9314)        \nremote: Counting objects:  69% (6427/9314)        \nremote: Counting objects:  70% (6520/9314)        \nremote: Counting objects:  71% (6613/9314)        \nremote: Counting objects:  72% (6707/9314)        \nremote: Counting objects:  73% (6800/9314)        \nremote: Counting objects:  74% (6893/9314)        \nremote: Counting objects:  75% (6986/9314)        \nremote: Counting objects:  76% (7079/9314)        \nremote: Counting objects:  77% (7172/9314)        \nremote: Counting objects:  78% (7265/9314)        \nremote: Counting objects:  79% (7359/9314)        \nremote: Counting objects:  80% (7452/9314)        \nremote: Counting objects:  81% (7545/9314)        \nremote: Counting objects:  82% (7638/9314)        \nremote: Counting objects:  83% (7731/9314)        \nremote: Counting objects:  84% (7824/9314)        \nremote: Counting objects:  85% (7917/9314)        \nremote: Counting objects:  86% (8011/9314)        \nremote: Counting objects:  87% (8104/9314)        \nremote: Counting objects:  88% (8197/9314)        \nremote: Counting objects:  89% (8290/9314)        \nremote: Counting objects:  90% (8383/9314)        \nremote: Counting objects:  91% (8476/9314)        \nremote: Counting objects:  92% (8569/9314)        \nremote: Counting objects:  93% (8663/9314)        \nremote: Counting objects:  94% (8756/9314)        \nremote: Counting objects:  95% (8849/9314)        \nremote: Counting objects:  96% (8942/9314)        \nremote: Counting objects:  97% (9035/9314)        \nremote: Counting objects:  98% (9128/9314)        \nremote: Counting objects:  99% (9221/9314)        \nremote: Counting objects: 100% (9314/9314)        \nremote: Counting objects: 100% (9314/9314), done.        \nremote: Compressing objects:   0% (1/5403)        \nremote: Compressing objects:   1% (55/5403)        \nremote: Compressing objects:   2% (109/5403)        \nremote: Compressing objects:   3% (163/5403)        \nremote: Compressing objects:   4% (217/5403)        \nremote: Compressing objects:   5% (271/5403)        \nremote: Compressing objects:   6% (325/5403)        \nremote: Compressing objects:   7% (379/5403)        \nremote: Compressing objects:   8% (433/5403)        \nremote: Compressing objects:   9% (487/5403)        \nremote: Compressing objects:  10% (541/5403)        \nremote: Compressing objects:  11% (595/5403)        \nremote: Compressing objects:  12% (649/5403)        \nremote: Compressing objects:  13% (703/5403)        \nremote: Compressing objects:  14% (757/5403)        \nremote: Compressing objects:  15% (811/5403)        \nremote: Compressing objects:  16% (865/5403)        \nremote: Compressing objects:  17% (919/5403)        \nremote: Compressing objects:  18% (973/5403)        \nremote: Compressing objects:  19% (1027/5403)        \nremote: Compressing objects:  20% (1081/5403)        \nremote: Compressing objects:  21% (1135/5403)        \nremote: Compressing objects:  22% (1189/5403)        \nremote: Compressing objects:  23% (1243/5403)        \nremote: Compressing objects:  24% (1297/5403)        \nremote: Compressing objects:  25% (1351/5403)        \nremote: Compressing objects:  26% (1405/5403)        \nremote: Compressing objects:  27% (1459/5403)        \nremote: Compressing objects:  28% (1513/5403)        \nremote: Compressing objects:  29% (1567/5403)        \nremote: Compressing objects:  30% (1621/5403)        \nremote: Compressing objects:  31% (1675/5403)        \nremote: Compressing objects:  32% (1729/5403)        \nremote: Compressing objects:  33% (1783/5403)        \nremote: Compressing objects:  34% (1838/5403)        \nremote: Compressing objects:  35% (1892/5403)        \nremote: Compressing objects:  36% (1946/5403)        \nremote: Compressing objects:  37% (2000/5403)        \nremote: Compressing objects:  38% (2054/5403)        \nremote: Compressing objects:  39% (2108/5403)        \nremote: Compressing objects:  40% (2162/5403)        \nremote: Compressing objects:  41% (2216/5403)        \nremote: Compressing objects:  42% (2270/5403)        \nremote: Compressing objects:  43% (2324/5403)        \nremote: Compressing objects:  44% (2378/5403)        \nremote: Compressing objects:  45% (2432/5403)        \nremote: Compressing objects:  46% (2486/5403)        \nremote: Compressing objects:  47% (2540/5403)        \nremote: Compressing objects:  48% (2594/5403)        \nremote: Compressing objects:  49% (2648/5403)        \nremote: Compressing objects:  50% (2702/5403)        \nremote: Compressing objects:  51% (2756/5403)        \nremote: Compressing objects:  52% (2810/5403)        \nremote: Compressing objects:  53% (2864/5403)        \nremote: Compressing objects:  54% (2918/5403)        \nremote: Compressing objects:  55% (2972/5403)        \nremote: Compressing objects:  56% (3026/5403)        \nremote: Compressing objects:  57% (3080/5403)        \nremote: Compressing objects:  58% (3134/5403)        \nremote: Compressing objects:  59% (3188/5403)        \nremote: Compressing objects:  60% (3242/5403)        \nremote: Compressing objects:  61% (3296/5403)        \nremote: Compressing objects:  62% (3350/5403)        \nremote: Compressing objects:  63% (3404/5403)        \nremote: Compressing objects:  64% (3458/5403)        \nremote: Compressing objects:  65% (3512/5403)        \nremote: Compressing objects:  66% (3566/5403)        \nremote: Compressing objects:  67% (3621/5403)        \nremote: Compressing objects:  68% (3675/5403)        \nremote: Compressing objects:  69% (3729/5403)        \nremote: Compressing objects:  70% (3783/5403)        \nremote: Compressing objects:  71% (3837/5403)        \nremote: Compressing objects:  72% (3891/5403)        \nremote: Compressing objects:  73% (3945/5403)        \nremote: Compressing objects:  74% (3999/5403)        \nremote: Compressing objects:  75% (4053/5403)        \nremote: Compressing objects:  76% (4107/5403)        \nremote: Compressing objects:  77% (4161/5403)        \nremote: Compressing objects:  78% (4215/5403)        \nremote: Compressing objects:  79% (4269/5403)        \nremote: Compressing objects:  80% (4323/5403)        \nremote: Compressing objects:  81% (4377/5403)        \nremote: Compressing objects:  82% (4431/5403)        \nremote: Compressing objects:  83% (4485/5403)        \nremote: Compressing objects:  84% (4539/5403)        \nremote: Compressing objects:  85% (4593/5403)        \nremote: Compressing objects:  86% (4647/5403)        \nremote: Compressing objects:  87% (4701/5403)        \nremote: Compressing objects:  88% (4755/5403)        \nremote: Compressing objects:  89% (4809/5403)        \nremote: Compressing objects:  90% (4863/5403)        \nremote: Compressing objects:  91% (4917/5403)        \nremote: Compressing objects:  92% (4971/5403)        \nremote: Compressing objects:  93% (5025/5403)        \nremote: Compressing objects:  94% (5079/5403)        \nremote: Compressing objects:  95% (5133/5403)        \nremote: Compressing objects:  96% (5187/5403)        \nremote: Compressing objects:  97% (5241/5403)        \nremote: Compressing objects:  98% (5295/5403)        \nremote: Compressing objects:  99% (5349/5403)        \nremote: Compressing objects: 100% (5403/5403)        \nremote: Compressing objects: 100% (5403/5403), done.        \nremote: Total 9314 (delta 4193), reused 8343 (delta 3849), pack-reused 0 (from 0)        \nResolving Hex dependencies...\nResolution completed in 0.08s\nUnchanged:\n  bandit 1.10.1 VULNERABLE!\n    EEF-CVE-2026-75484 (MEDIUM)\n    aka: CVE-2026-75484, GHSA-x3gh-xhj4-3vq8\n    HTTP/2 header field values containing CR, LF or NUL are passed to the application unvalidated in Bandit\n    https://osv.dev/vulnerability/EEF-CVE-2026-75484\n\n    EEF-CVE-2026-39805 (MEDIUM)\n    aka: CVE-2026-39805, GHSA-c67r-gc9j-2qf7\n    CL.CL HTTP request smuggling via duplicate Content-Length in bandit\n    https://osv.dev/vulnerability/EEF-CVE-2026-39805\n\n    EEF-CVE-2026-39807 (MEDIUM)\n    aka: CVE-2026-39807, GHSA-375f-4r2h-f99j\n    Client-supplied URI scheme trusted without transport verification in bandit\n    https://osv.dev/vulnerability/EEF-CVE-2026-39807\n\n    EEF-CVE-2026-39804 (HIGH)\n    aka: CVE-2026-39804, GHSA-frh3-6pv6-rc8j\n    WebSocket permessage-deflate inflate has no output-size cap in bandit\n    https://osv.dev/vulnerability/EEF-CVE-2026-39804\n\n    EEF-CVE-2026-39803 (HIGH)\n    aka: CVE-2026-39803, GHSA-9q9q-324x-93r2\n    HTTP/1 chunked body reader ignores length cap in bandit\n    https://osv.dev/vulnerability/EEF-CVE-2026-39803\n\n    EEF-CVE-2026-39806 (HIGH)\n    aka: CVE-2026-39806, GHSA-rf5q-vwxw-gmrf\n    HTTP/1 chunked decoder infinite loop on requests with trailer fields in bandit\n    https://osv.dev/vulnerability/EEF-CVE-2026-39806\n\n    EEF-CVE-2026-42786 (HIGH)\n    aka: CVE-2026-42786, GHSA-pf94-94m9-536p\n    WebSocket fragmented message reassembly unbounded in bandit\n    https://osv.dev/vulnerability/EEF-CVE-2026-42786\n\n    EEF-CVE-2026-42788 (MEDIUM)\n    aka: CVE-2026-42788, GHSA-q6v9-r226-v65f\n    HTTP/2 frame size limit checked after body is buffered in bandit\n    https://osv.dev/vulnerability/EEF-CVE-2026-42788\n\n    EEF-CVE-2026-74836 (HIGH)\n    aka: CVE-2026-74836, GHSA-xj8g-532w-jv94\n    HTTP/2 connection-window starvation pins Plug processes indefinitely in Bandit\n    https://osv.dev/vulnerability/EEF-CVE-2026-74836\n\n    EEF-CVE-2026-105659 (HIGH)\n    aka: CVE-2026-105659, GHSA-69m6-wcv4-rwcf\n    HTTP/2 blocked-send deadlines reset on every WINDOW_UPDATE, letting a trickle pin stream processes indefinitely in Bandit\n    https://osv.dev/vulnerability/EEF-CVE-2026-105659\n\n    EEF-CVE-2026-105660 (MEDIUM)\n    aka: CVE-2026-105660, GHSA-v53v-9hvg-37jf\n    Unvalidated HTTP/1 request-target authority lets a client choose conn.host and conn.port in Bandit\n    https://osv.dev/vulnerability/EEF-CVE-2026-105660\n  castore 1.0.17\n  dns_cluster 0.1.3\n  esbuild 0.10.0\n  expo 1.1.1\n  finch 0.20.0\n  gettext 0.26.2\n  hpax 1.0.3 VULNERABLE!\n    EEF-CVE-2026-58226 (HIGH)\n    aka: CVE-2026-58226, GHSA-jj2p-32j7-whj2\n    Unauthenticated denial-of-service via unbounded HPACK integer decoding in hpax\n    https://osv.dev/vulnerability/EEF-CVE-2026-58226\n  idna 6.1.1\n  jason 1.4.4\n  mime 2.0.7\n  mint 1.7.1 VULNERABLE!\n    EEF-CVE-2026-82672 (MEDIUM)\n    aka: CVE-2026-82672, GHSA-rj5m-69wp-cxq9\n    Unvalidated chunk-size line tail in Mint HTTP/1 client enables response smuggling against strict intermediaries on pooled connections\n    https://osv.dev/vulnerability/EEF-CVE-2026-82672\n\n    EEF-CVE-2026-49754 (HIGH)\n    aka: CVE-2026-49754, GHSA-2p26-p43x-fhp8\n    HTTP/2 CONTINUATION flood in Mint client via unbounded header-block accumulation\n    https://osv.dev/vulnerability/EEF-CVE-2026-49754\n\n    EEF-CVE-2026-48861 (LOW)\n    aka: CVE-2026-48861, GHSA-2pg6-44cx-c49v\n    CRLF injection in HTTP/1 request line via unvalidated method in Mint\n    https://osv.dev/vulnerability/EEF-CVE-2026-48861\n\n    EEF-CVE-2026-48862 (HIGH)\n    aka: CVE-2026-48862, GHSA-g586-ccqf-7x4r\n    Unbounded conn.streams growth in Mint HTTP/2 client via unenforced PUSH_PROMISE concurrency\n    https://osv.dev/vulnerability/EEF-CVE-2026-48862\n\n    EEF-CVE-2026-49753 (MEDIUM)\n    aka: CVE-2026-49753, GHSA-mjqx-c6f6-7rc2\n    HTTP response smuggling in Mint HTTP/1 client via lenient Content-Length parsing\n    https://osv.dev/vulnerability/EEF-CVE-2026-49753\n\n    EEF-CVE-2026-91043 (HIGH)\n    aka: CVE-2026-91043, GHSA-9x8p-qrf4-jq7g\n    HPACK-indexed cookie fields in Mint HTTP/2 responses bypass max_header_list_size and exhaust client memory\n    https://osv.dev/vulnerability/EEF-CVE-2026-91043\n\n    EEF-CVE-2026-58229 (HIGH)\n    aka: CVE-2026-58229, GHSA-qrfr-wh4c-3qhw\n    Unbounded HTTP/1 response-header and chunked-trailer accumulation in Mint causes memory-exhaustion DoS\n    https://osv.dev/vulnerability/EEF-CVE-2026-58229\n\n    EEF-CVE-2026-92103 (MEDIUM)\n    aka: CVE-2026-92103, GHSA-q95c-ccq6-j5j6\n    Mint HTTP/2 client buffers oversized frames up to 16 MiB before enforcing max_frame_size\n    https://osv.dev/vulnerability/EEF-CVE-2026-92103\n\n    EEF-CVE-2026-94194 (MEDIUM)\n    aka: CVE-2026-94194, GHSA-gvrc-75rc-7gj9\n    Mint HTTP/1 client applies chunked framing when chunked is not the final transfer coding, enabling response smuggling through intermediaries\n    https://osv.dev/vulnerability/EEF-CVE-2026-94194\n\n    EEF-CVE-2026-59246 (MEDIUM)\n    aka: CVE-2026-59246, GHSA-8pf6-g464-h6h9\n    Zero-length HTTP/2 CONTINUATION frames bypass Mint's header-block byte-size cap and exhaust client memory\n    https://osv.dev/vulnerability/EEF-CVE-2026-59246\n\n    EEF-CVE-2026-56810 (HIGH)\n    aka: CVE-2026-56810, GHSA-c59h-fq4p-r36r\n    mint buffers an entire chunked response chunk in memory in Mint.HTTP1.decode_body/5\n    https://osv.dev/vulnerability/EEF-CVE-2026-56810\n\n    EEF-CVE-2026-82728 (HIGH)\n    aka: CVE-2026-82728, GHSA-g83f-2j6r-q6m4\n    Unbounded HTTP/1 status-line and chunk-extension buffering in Mint causes memory-exhaustion DoS\n    https://osv.dev/vulnerability/EEF-CVE-2026-82728\n\n    EEF-CVE-2026-59249 (MEDIUM)\n    aka: CVE-2026-59249, GHSA-x3x7-96vm-6h2w\n    Sign-tolerant HTTP/1 chunk-size parser in Mint enables response smuggling against strict intermediaries on pooled connections\n    https://osv.dev/vulnerability/EEF-CVE-2026-59249\n  nimble_options 1.1.1\n  nimble_pool 1.1.0\n  phoenix 1.7.21 VULNERABLE!\n    EEF-CVE-2026-32689 (HIGH)\n    aka: CVE-2026-32689, GHSA-628h-q48j-jr6q\n    Long-poll NDJSON body splitting causes unbounded memory allocation in Phoenix\n    https://osv.dev/vulnerability/EEF-CVE-2026-32689\n\n    EEF-CVE-2026-56811 (HIGH)\n    aka: CVE-2026-56811, GHSA-6983-jfq8-485w\n    Phoenix transports do not limit channel joins per connection, enabling process-exhaustion denial of service\n    https://osv.dev/vulnerability/EEF-CVE-2026-56811\n\n    EEF-CVE-2026-56812 (MEDIUM)\n    aka: CVE-2026-56812, GHSA-63mc-hw7g-86rr\n    Phoenix JavaScript presence client crashes on presence keys colliding with Object.prototype members in Presence.syncState/syncDiff\n    https://osv.dev/vulnerability/EEF-CVE-2026-56812\n  phoenix_html 4.3.0\n  phoenix_live_dashboard 0.8.7\n  phoenix_live_view 1.0.18 VULNERABLE!\n    EEF-CVE-2026-64941 (LOW)\n    aka: CVE-2026-64941, GHSA-36m4-rm57-3prf\n    Open redirect in Phoenix.LiveView.validate_local_url!/2 via ASCII tab, LF and CR\n    https://osv.dev/vulnerability/EEF-CVE-2026-64941\n  phoenix_pubsub 2.2.0\n  phoenix_template 1.0.4\n  plug 1.19.1 VULNERABLE!\n    EEF-CVE-2026-54892 (HIGH)\n    aka: CVE-2026-54892, GHSA-j43x-5hjq-rgxf\n    Plug: quadratic-time decoding of nested query/body parameters enables denial of service\n    https://osv.dev/vulnerability/EEF-CVE-2026-54892\n\n    EEF-CVE-2026-8468 (HIGH)\n    aka: CVE-2026-8468, GHSA-468c-vq7p-gh64\n    Unbounded buffer accumulation in multipart header parsing causes denial of service in plug\n    https://osv.dev/vulnerability/EEF-CVE-2026-8468\n\n    EEF-CVE-2026-56813 (LOW)\n    aka: CVE-2026-56813, GHSA-wpmj-jh88-rpgm\n    Cookie attribute injection in Plug.Conn.Cookies.encode/2\n    https://osv.dev/vulnerability/EEF-CVE-2026-56813\n\n    EEF-CVE-2026-56814 (MEDIUM)\n    aka: CVE-2026-56814, GHSA-95qv-c9g9-rm63\n    Plug: multipart :length limit is not charged for part headers, enabling unbounded temp-file creation (denial of service)\n    https://osv.dev/vulnerability/EEF-CVE-2026-56814\n  plug_crypto 2.1.1\n  swoosh 1.20.0 VULNERABLE!\n    EEF-CVE-2026-54893 (LOW)\n    aka: CVE-2026-54893, GHSA-754j-98wh-57rf\n    Email-derived URL path injection in the Swoosh Microsoft Graph adapter\n    https://osv.dev/vulnerability/EEF-CVE-2026-54893\n  tailwind 0.4.1\n  telemetry 1.3.0\n  telemetry_metrics 1.1.0\n  telemetry_poller 1.3.0\n  thousand_island 1.4.3\n  unicode_util_compat 0.7.1\n  websock 0.5.3\n  websock_adapter 0.5.9\n* Getting phoenix (Hex package)\n* Getting phoenix_html (Hex package)\n* Getting phoenix_live_view (Hex package)\n* Getting phoenix_live_dashboard (Hex package)\n* Getting esbuild (Hex package)\n* Getting tailwind (Hex package)\n* Getting swoosh (Hex package)\n* Getting finch (Hex package)\n* Getting telemetry_metrics (Hex package)\n* Getting telemetry_poller (Hex package)\n* Getting gettext (Hex package)\n* Getting jason (Hex package)\n* Getting dns_cluster (Hex package)\n* Getting bandit (Hex package)\n* Getting hpax (Hex package)\n* Getting plug (Hex package)\n* Getting telemetry (Hex package)\n* Getting thousand_island (Hex package)\n* Getting websock (Hex package)\n* Getting mime (Hex package)\n* Getting plug_crypto (Hex package)\n* Getting expo (Hex package)\n* Getting mint (Hex package)\n* Getting nimble_options (Hex package)\n* Getting nimble_pool (Hex package)\n* Getting idna (Hex package)\n* Getting unicode_util_compat (Hex package)\n* Getting phoenix_template (Hex package)\n* Getting castore (Hex package)\n* Getting phoenix_pubsub (Hex package)\n* Getting websock_adapter (Hex package)\nQA385_DEPS_COMPLETE\n==> mime\nCompiling 1 file (.ex)\nGenerated mime app\n==> nimble_options\nCompiling 3 files (.ex)\nGenerated nimble_options app\n==> jason\nCompiling 10 files (.ex)\nGenerated jason app\n==> esbuild\nCompiling 4 files (.ex)\nGenerated esbuild app\n==> plug_crypto\nCompiling 5 files (.ex)\nGenerated plug_crypto app\n==> hpax\nCompiling 4 files (.ex)\nGenerated hpax app\n==> castore\nCompiling 1 file (.ex)\nGenerated castore app\n==> mint\nCompiling 1 file (.erl)\nCompiling 20 files (.ex)\nGenerated mint app\n==> phoenix_hello\n===> Analyzing applications...\n===> Compiling unicode_util_compat\n===> Analyzing applications...\n===> Compiling idna\n===> Analyzing applications...\n===> Compiling telemetry\n==> telemetry_metrics\nCompiling 7 files (.ex)\nGenerated telemetry_metrics app\n==> phoenix_hello\n===> Analyzing applications...\n===> Compiling telemetry_poller\n==> thousand_island\nCompiling 18 files (.ex)\nGenerated thousand_island app\n==> phoenix_html\nCompiling 6 files (.ex)\nGenerated phoenix_html app\n==> phoenix_template\nCompiling 4 files (.ex)\nGenerated phoenix_template app\n==> expo\nCompiling 2 files (.erl)\nCompiling 22 files (.ex)\nGenerated expo app\n==> gettext\nCompiling 18 files (.ex)\nGenerated gettext app\n==> phoenix_pubsub\nCompiling 12 files (.ex)\nGenerated phoenix_pubsub app\n==> dns_cluster\nCompiling 1 file (.ex)\nGenerated dns_cluster app\n==> plug\nCompiling 1 file (.erl)\nCompiling 42 files (.ex)\nGenerated plug app\n==> nimble_pool\nCompiling 2 files (.ex)\nGenerated nimble_pool app\n==> finch\nCompiling 14 files (.ex)\nGenerated finch app\n==> tailwind\nCompiling 3 files (.ex)\nGenerated tailwind app\n==> websock\nCompiling 1 file (.ex)\nGenerated websock app\n==> bandit\nCompiling 54 files (.ex)\nGenerated bandit app\n==> swoosh\nCompiling 55 files (.ex)\nGenerated swoosh app\n==> websock_adapter\nCompiling 4 files (.ex)\nGenerated websock_adapter app\n==> phoenix\nCompiling 71 files (.ex)\nGenerated phoenix app\n==> phoenix_live_view\nCompiling 39 files (.ex)\nGenerated phoenix_live_view app\n==> phoenix_live_dashboard\nCompiling 36 files (.ex)\nGenerated phoenix_live_dashboard app\n==> phoenix_hello\nCompiling 14 files (.ex)\nGenerated phoenix_hello app\nQA385_AFTER {\"compiled_app_dev\":false,\"compiled_app_prod\":true,\"elixir\":\"1.18.4\",\"files\":{\"build.sh\":{\"bytes\":427,\"sha256\":\"d2edf660b7b6b9797c74f89877eddf13edefbf3ce0878ebe178fe02834ba174f\"},\"config/runtime.exs\":{\"bytes\":4066,\"sha256\":\"2a87af11783b2cc9abfe91006e706489b03e8444d5259789912666b75feedae0\"},\"mix.exs\":{\"bytes\":2320,\"sha256\":\"aeb9583f2860f6afd35a93b51225c5dc12143208432ac9c544c56cc7ca91b492\"},\"mix.lock\":{\"bytes\":12646,\"sha256\":\"0da29cd83f64494827973b45cae940e0d34a3d4f882c5c8ae61a9bc3449874e8\"}},\"marker\":\"QA385_LOCAL_be5a41f1d5\",\"mix_env\":\"prod\",\"mix_env_present\":true,\"mix_environment\":\"prod\",\"otp\":\"28\",\"phase\":\"after\"}\n",
+      "stderr": "Found packages with security advisories, see above for details\nwarning: defining a Gettext backend by calling\n\n    use Gettext, otp_app: ...\n\nis deprecated. To define a backend, call:\n\n    use Gettext.Backend, otp_app: :my_app\n\nThen, instead of importing your backend, call this in your module:\n\n    use Gettext, backend: MyApp.Gettext\n\n  lib/phoenix_hello_web/gettext.ex:23: PhoenixHelloWeb.Gettext (module)\n\n"
+    },
+    {
+      "command": [
+        "docker",
+        "rm",
+        "e60bf7f2a1b8f2be1b5e7d29828ce668618b6d195b1c47caaec1c5071cb47f64"
+      ],
+      "exit": 0,
+      "stdout": "e60bf7f2a1b8f2be1b5e7d29828ce668618b6d195b1c47caaec1c5071cb47f64\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "bex-qa385-be5a41f1d5-runtime"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: bex-qa385-be5a41f1d5-runtime\n"
+    },
+    {
+      "command": [
+        "docker",
+        "create",
+        "--name",
+        "bex-qa385-be5a41f1d5-runtime",
+        "--label",
+        "bex.qa.nonce=be5a41f1d5",
+        "--network",
+        "none",
+        "--volume",
+        "<owned-temp>/sweep385-local-be5a41f1d5/project:/opt/render/project/src",
+        "--workdir",
+        "/opt/render/project/src",
+        "--env",
+        "ELIXIR_VERSION=1.18",
+        "--env",
+        "ERL_FLAGS=+S 2:2",
+        "--env",
+        "MIX_ENV=prod",
+        "--env",
+        "PORT=3000",
+        "--entrypoint",
+        "/bin/bash",
+        "elixir:1.18@sha256:a68defc35f664d1d02de0dc36b12e750bd558b594eed3d0909534317796df749",
+        "-c",
+        "exec /bin/bash -c 'cd /tmp && mix run --no-mix-exs --no-halt /opt/render/project/src/qa385-server.exs'"
+      ],
+      "exit": 0,
+      "stdout": "a9cc5ec7128a455f1d8e6373492a9ddcaa36020a946091baf008ae499db9f31e\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "start",
+        "a9cc5ec7128a455f1d8e6373492a9ddcaa36020a946091baf008ae499db9f31e"
+      ],
+      "exit": 0,
+      "stdout": "a9cc5ec7128a455f1d8e6373492a9ddcaa36020a946091baf008ae499db9f31e\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "a9cc5ec7128a455f1d8e6373492a9ddcaa36020a946091baf008ae499db9f31e",
+        "elixir",
+        "-e",
+        "Application.ensure_all_started(:inets); {:ok, {{_, 200, _}, _, body}} = :httpc.request(~c\"http://127.0.0.1:3000/\"); IO.puts(body)"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "** (MatchError) no match of right hand side value: {:error, {:failed_connect, [{:to_address, {~c\"127.0.0.1\", 3000}}, {:inet, [:inet], :econnrefused}]}}\n    (stdlib 7.3.0.3) erl_eval.erl:672: :erl_eval.expr/6\n    nofile:1: (file)\n    (elixir 1.18.4) lib/code.ex:572: Code.validated_eval_string/3\n"
+    },
+    {
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "a9cc5ec7128a455f1d8e6373492a9ddcaa36020a946091baf008ae499db9f31e"
+      ],
+      "exit": 0,
+      "stdout": "[\n    {\n        \"Id\": \"a9cc5ec7128a455f1d8e6373492a9ddcaa36020a946091baf008ae499db9f31e\",\n        \"Created\": \"2026-10-17T00:02:48.491777799Z\",\n        \"Path\": \"/bin/bash\",\n        \"Args\": [\n            \"-c\",\n            \"exec /bin/bash -c 'cd /tmp \\u0026\\u0026 mix run --no-mix-exs --no-halt /opt/render/project/src/qa385-server.exs'\"\n        ],\n        \"State\": {\n            \"Status\": \"running\",\n            \"Running\": true,\n            \"Paused\": false,\n            \"Restarting\": false,\n            \"OOMKilled\": false,\n            \"Dead\": false,\n            \"Pid\": 50177,\n            \"ExitCode\": 0,\n            \"Error\": \"\",\n            \"StartedAt\": \"2026-10-17T00:02:48.58618959Z\",\n            \"FinishedAt\": \"0001-01-01T00:00:00Z\"\n        },\n        \"Image\": \"sha256:a68defc35f664d1d02de0dc36b12e750bd558b594eed3d0909534317796df749\",\n        \"ResolvConfPath\": \"/var/lib/docker/containers/a9cc5ec7128a455f1d8e6373492a9ddcaa36020a946091baf008ae499db9f31e/resolv.conf\",\n        \"HostnamePath\": \"/var/lib/docker/containers/a9cc5ec7128a455f1d8e6373492a9ddcaa36020a946091baf008ae499db9f31e/hostname\",\n        \"HostsPath\": \"/var/lib/docker/containers/a9cc5ec7128a455f1d8e6373492a9ddcaa36020a946091baf008ae499db9f31e/hosts\",\n        \"LogPath\": \"/var/lib/docker/containers/a9cc5ec7128a455f1d8e6373492a9ddcaa36020a946091baf008ae499db9f31e/a9cc5ec7128a455f1d8e6373492a9ddcaa36020a946091baf008ae499db9f31e-json.log\",\n        \"Name\": \"/bex-qa385-be5a41f1d5-runtime\",\n        \"RestartCount\": 0,\n        \"Driver\": \"overlayfs\",\n        \"Platform\": \"linux\",\n        \"MountLabel\": \"\",\n        \"ProcessLabel\": \"\",\n        \"AppArmorProfile\": \"\",\n        \"ExecIDs\": null,\n        \"HostConfig\": {\n            \"Binds\": [\n                \"<owned-temp>/sweep385-local-be5a41f1d5/project:/opt/render/project/src\"\n            ],\n            \"ContainerIDFile\": \"\",\n            \"LogConfig\": {\n                \"Type\": \"json-file\",\n                \"Config\": {}\n            },\n            \"NetworkMode\": \"none\",\n            \"PortBindings\": {},\n            \"RestartPolicy\": {\n                \"Name\": \"no\",\n                \"MaximumRetryCount\": 0\n            },\n            \"AutoRemove\": false,\n            \"VolumeDriver\": \"\",\n            \"VolumesFrom\": null,\n            \"ConsoleSize\": [\n                0,\n                0\n            ],\n            \"CapAdd\": null,\n            \"CapDrop\": null,\n            \"CgroupnsMode\": \"private\",\n            \"Dns\": null,\n            \"DnsOptions\": [],\n            \"DnsSearch\": [],\n            \"ExtraHosts\": null,\n            \"GroupAdd\": null,\n            \"IpcMode\": \"private\",\n            \"Cgroup\": \"\",\n            \"Links\": null,\n            \"OomScoreAdj\": 0,\n            \"PidMode\": \"\",\n            \"Privileged\": false,\n            \"PublishAllPorts\": false,\n            \"ReadonlyRootfs\": false,\n            \"SecurityOpt\": null,\n            \"UTSMode\": \"\",\n            \"UsernsMode\": \"\",\n            \"ShmSize\": 67108864,\n            \"Runtime\": \"runc\",\n            \"Isolation\": \"\",\n            \"CpuShares\": 0,\n            \"Memory\": 0,\n            \"NanoCpus\": 0,\n            \"CgroupParent\": \"\",\n            \"BlkioWeight\": 0,\n            \"BlkioWeightDevice\": [],\n            \"BlkioDeviceReadBps\": [],\n            \"BlkioDeviceWriteBps\": [],\n            \"BlkioDeviceReadIOps\": [],\n            \"BlkioDeviceWriteIOps\": [],\n            \"CpuPeriod\": 0,\n            \"CpuQuota\": 0,\n            \"CpuRealtimePeriod\": 0,\n            \"CpuRealtimeRuntime\": 0,\n            \"CpusetCpus\": \"\",\n            \"CpusetMems\": \"\",\n            \"Devices\": [],\n            \"DeviceCgroupRules\": null,\n            \"DeviceRequests\": null,\n            \"MemoryReservation\": 0,\n            \"MemorySwap\": 0,\n            \"MemorySwappiness\": null,\n            \"OomKillDisable\": null,\n            \"PidsLimit\": null,\n            \"Ulimits\": [],\n            \"CpuCount\": 0,\n            \"CpuPercent\": 0,\n            \"IOMaximumIOps\": 0,\n            \"IOMaximumBandwidth\": 0,\n            \"MaskedPaths\": [\n                \"/proc/acpi\",\n                \"/proc/asound\",\n                \"/proc/interrupts\",\n                \"/proc/kcore\",\n                \"/proc/keys\",\n                \"/proc/latency_stats\",\n                \"/proc/sched_debug\",\n                \"/proc/scsi\",\n                \"/proc/timer_list\",\n                \"/proc/timer_stats\",\n                \"/sys/devices/virtual/powercap\",\n                \"/sys/firmware\"\n            ],\n            \"ReadonlyPaths\": [\n                \"/proc/bus\",\n                \"/proc/fs\",\n                \"/proc/irq\",\n                \"/proc/sys\",\n                \"/proc/sysrq-trigger\"\n            ]\n        },\n        \"Storage\": {\n            \"RootFS\": {\n                \"Snapshot\": {\n                    \"Name\": \"overlayfs\"\n                }\n            }\n        },\n        \"Mounts\": [\n            {\n                \"Type\": \"bind\",\n                \"Source\": \"<owned-temp>/sweep385-local-be5a41f1d5/project\",\n                \"Destination\": \"/opt/render/project/src\",\n                \"Mode\": \"\",\n                \"RW\": true,\n                \"Propagation\": \"rprivate\"\n            }\n        ],\n        \"Config\": {\n            \"Hostname\": \"a9cc5ec7128a\",\n            \"Domainname\": \"\",\n            \"User\": \"\",\n            \"AttachStdin\": false,\n            \"AttachStdout\": true,\n            \"AttachStderr\": true,\n            \"Tty\": false,\n            \"OpenStdin\": false,\n            \"StdinOnce\": false,\n            \"Env\": [\n                \"ERL_FLAGS=+S 2:2\",\n                \"MIX_ENV=prod\",\n                \"PORT=3000\",\n                \"ELIXIR_VERSION=1.18\",\n                \"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\n                \"OTP_VERSION=28.5.0.8\",\n                \"REBAR3_VERSION=3.27.0\",\n                \"REBAR_VERSION=2.6.4\",\n                \"LANG=C.UTF-8\"\n            ],\n            \"Cmd\": [\n                \"-c\",\n                \"exec /bin/bash -c 'cd /tmp \\u0026\\u0026 mix run --no-mix-exs --no-halt /opt/render/project/src/qa385-server.exs'\"\n            ],\n            \"Image\": \"elixir:1.18@sha256:a68defc35f664d1d02de0dc36b12e750bd558b594eed3d0909534317796df749\",\n            \"Volumes\": null,\n            \"WorkingDir\": \"/opt/render/project/src\",\n            \"Entrypoint\": [\n                \"/bin/bash\"\n            ],\n            \"Labels\": {\n                \"bex.qa.nonce\": \"be5a41f1d5\",\n                \"org.opencontainers.image.version\": \"28.5.0.8\"\n            }\n        },\n        \"NetworkSettings\": {\n            \"SandboxID\": \"cd5213cb0fca497891764a310506ec66bce913c6ab0d4c57ce2ef2e7c09f7e47\",\n            \"SandboxKey\": \"/var/run/docker/netns/cd5213cb0fca\",\n            \"Ports\": {},\n            \"Networks\": {\n                \"none\": {\n                    \"IPAMConfig\": null,\n                    \"Links\": null,\n                    \"Aliases\": null,\n                    \"DriverOpts\": null,\n                    \"GwPriority\": 0,\n                    \"NetworkID\": \"86090866ed42a3e7c8135660b1b59a5f3d6963cc6b757ab7c487348acd44f0bb\",\n                    \"EndpointID\": \"f1f7db104641015db812ad13bdef14f998edef49021bac47365cc4c9f81254ff\",\n                    \"Gateway\": \"\",\n                    \"IPAddress\": \"\",\n                    \"MacAddress\": \"\",\n                    \"IPPrefixLen\": 0,\n                    \"IPv6Gateway\": \"\",\n                    \"GlobalIPv6Address\": \"\",\n                    \"GlobalIPv6PrefixLen\": 0,\n                    \"DNSNames\": null\n                }\n            }\n        },\n        \"ImageManifestDescriptor\": {\n            \"mediaType\": \"application/vnd.oci.image.manifest.v1+json\",\n            \"digest\": \"sha256:4105aed0ab55d5ddf3f21986a61e12edd09ecb53a430bc1ab652edae53a6db69\",\n            \"size\": 2487,\n            \"annotations\": {\n                \"com.docker.official-images.bashbrew.arch\": \"arm64v8\",\n                \"org.opencontainers.image.base.digest\": \"sha256:123f555f5f66f13c29ebddef72e517dada4346dd75f654b97b7768ac29a15bfa\",\n                \"org.opencontainers.image.base.name\": \"erlang:28\",\n                \"org.opencontainers.image.created\": \"2026-10-14T21:12:49Z\",\n                \"org.opencontainers.image.revision\": \"1e80f1b239228598d4d086882e92a9cfe585c1b2\",\n                \"org.opencontainers.image.source\": \"https://github.com/erlef/docker-elixir.git#1e80f1b239228598d4d086882e92a9cfe585c1b2:1.18\",\n                \"org.opencontainers.image.url\": \"https://hub.docker.com/_/elixir\",\n                \"org.opencontainers.image.version\": \"1.18.4\"\n            },\n            \"platform\": {\n                \"architecture\": \"arm64\",\n                \"os\": \"linux\",\n                \"variant\": \"v8\"\n            }\n        }\n    }\n]\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "a9cc5ec7128a455f1d8e6373492a9ddcaa36020a946091baf008ae499db9f31e",
+        "elixir",
+        "-e",
+        "Application.ensure_all_started(:inets); {:ok, {{_, 200, _}, _, body}} = :httpc.request(~c\"http://127.0.0.1:3000/\"); IO.puts(body)"
+      ],
+      "exit": 0,
+      "stdout": "{\"built\":{\"compiled_app_dev\":false,\"compiled_app_prod\":true,\"elixir\":\"1.18.4\",\"files\":{\"build.sh\":{\"bytes\":427,\"sha256\":\"d2edf660b7b6b9797c74f89877eddf13edefbf3ce0878ebe178fe02834ba174f\"},\"config/runtime.exs\":{\"bytes\":4066,\"sha256\":\"2a87af11783b2cc9abfe91006e706489b03e8444d5259789912666b75feedae0\"},\"mix.exs\":{\"bytes\":2320,\"sha256\":\"aeb9583f2860f6afd35a93b51225c5dc12143208432ac9c544c56cc7ca91b492\"},\"mix.lock\":{\"bytes\":12646,\"sha256\":\"0da29cd83f64494827973b45cae940e0d34a3d4f882c5c8ae61a9bc3449874e8\"}},\"marker\":\"QA385_LOCAL_be5a41f1d5\",\"mix_env\":\"prod\",\"mix_env_present\":true,\"mix_environment\":\"prod\",\"otp\":\"28\",\"phase\":\"after\"},\"runtime\":{\"compiled_app_dev\":false,\"compiled_app_prod\":true,\"elixir\":\"1.18.4\",\"files\":{\"build.sh\":{\"bytes\":427,\"sha256\":\"d2edf660b7b6b9797c74f89877eddf13edefbf3ce0878ebe178fe02834ba174f\"},\"config/runtime.exs\":{\"bytes\":4066,\"sha256\":\"2a87af11783b2cc9abfe91006e706489b03e8444d5259789912666b75feedae0\"},\"mix.exs\":{\"bytes\":2320,\"sha256\":\"aeb9583f2860f6afd35a93b51225c5dc12143208432ac9c544c56cc7ca91b492\"},\"mix.lock\":{\"bytes\":12646,\"sha256\":\"0da29cd83f64494827973b45cae940e0d34a3d4f882c5c8ae61a9bc3449874e8\"}},\"marker\":\"QA385_LOCAL_be5a41f1d5\",\"mix_env\":\"prod\",\"mix_env_present\":true,\"mix_environment\":\"prod\",\"otp\":\"28\",\"phase\":\"runtime\"}}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "logs",
+        "a9cc5ec7128a455f1d8e6373492a9ddcaa36020a946091baf008ae499db9f31e"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "rm",
+        "--force",
+        "a9cc5ec7128a455f1d8e6373492a9ddcaa36020a946091baf008ae499db9f31e"
+      ],
+      "exit": 0,
+      "stdout": "a9cc5ec7128a455f1d8e6373492a9ddcaa36020a946091baf008ae499db9f31e\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "bex-qa385-be5a41f1d5-build"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: bex-qa385-be5a41f1d5-build\n"
+    },
+    {
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "bex-qa385-be5a41f1d5-runtime"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: bex-qa385-be5a41f1d5-runtime\n"
+    }
+  ],
+  "before": {
+    "compiled_app_dev": false,
+    "compiled_app_prod": false,
+    "elixir": "1.18.4",
+    "files": {
+      "build.sh": {
+        "bytes": 427,
+        "sha256": "d2edf660b7b6b9797c74f89877eddf13edefbf3ce0878ebe178fe02834ba174f"
+      },
+      "config/runtime.exs": {
+        "bytes": 4066,
+        "sha256": "2a87af11783b2cc9abfe91006e706489b03e8444d5259789912666b75feedae0"
+      },
+      "mix.exs": {
+        "bytes": 2320,
+        "sha256": "aeb9583f2860f6afd35a93b51225c5dc12143208432ac9c544c56cc7ca91b492"
+      },
+      "mix.lock": {
+        "bytes": 12646,
+        "sha256": "0da29cd83f64494827973b45cae940e0d34a3d4f882c5c8ae61a9bc3449874e8"
+      }
+    },
+    "marker": "QA385_LOCAL_be5a41f1d5",
+    "mix_env": "prod",
+    "mix_env_present": true,
+    "mix_environment": "prod",
+    "otp": "28",
+    "phase": "before"
+  },
+  "built": {
+    "compiled_app_dev": false,
+    "compiled_app_prod": true,
+    "elixir": "1.18.4",
+    "files": {
+      "build.sh": {
+        "bytes": 427,
+        "sha256": "d2edf660b7b6b9797c74f89877eddf13edefbf3ce0878ebe178fe02834ba174f"
+      },
+      "config/runtime.exs": {
+        "bytes": 4066,
+        "sha256": "2a87af11783b2cc9abfe91006e706489b03e8444d5259789912666b75feedae0"
+      },
+      "mix.exs": {
+        "bytes": 2320,
+        "sha256": "aeb9583f2860f6afd35a93b51225c5dc12143208432ac9c544c56cc7ca91b492"
+      },
+      "mix.lock": {
+        "bytes": 12646,
+        "sha256": "0da29cd83f64494827973b45cae940e0d34a3d4f882c5c8ae61a9bc3449874e8"
+      }
+    },
+    "marker": "QA385_LOCAL_be5a41f1d5",
+    "mix_env": "prod",
+    "mix_env_present": true,
+    "mix_environment": "prod",
+    "otp": "28",
+    "phase": "after"
+  },
+  "HTTP": {
+    "built": {
+      "compiled_app_dev": false,
+      "compiled_app_prod": true,
+      "elixir": "1.18.4",
+      "files": {
+        "build.sh": {
+          "bytes": 427,
+          "sha256": "d2edf660b7b6b9797c74f89877eddf13edefbf3ce0878ebe178fe02834ba174f"
+        },
+        "config/runtime.exs": {
+          "bytes": 4066,
+          "sha256": "2a87af11783b2cc9abfe91006e706489b03e8444d5259789912666b75feedae0"
+        },
+        "mix.exs": {
+          "bytes": 2320,
+          "sha256": "aeb9583f2860f6afd35a93b51225c5dc12143208432ac9c544c56cc7ca91b492"
+        },
+        "mix.lock": {
+          "bytes": 12646,
+          "sha256": "0da29cd83f64494827973b45cae940e0d34a3d4f882c5c8ae61a9bc3449874e8"
+        }
+      },
+      "marker": "QA385_LOCAL_be5a41f1d5",
+      "mix_env": "prod",
+      "mix_env_present": true,
+      "mix_environment": "prod",
+      "otp": "28",
+      "phase": "after"
+    },
+    "runtime": {
+      "compiled_app_dev": false,
+      "compiled_app_prod": true,
+      "elixir": "1.18.4",
+      "files": {
+        "build.sh": {
+          "bytes": 427,
+          "sha256": "d2edf660b7b6b9797c74f89877eddf13edefbf3ce0878ebe178fe02834ba174f"
+        },
+        "config/runtime.exs": {
+          "bytes": 4066,
+          "sha256": "2a87af11783b2cc9abfe91006e706489b03e8444d5259789912666b75feedae0"
+        },
+        "mix.exs": {
+          "bytes": 2320,
+          "sha256": "aeb9583f2860f6afd35a93b51225c5dc12143208432ac9c544c56cc7ca91b492"
+        },
+        "mix.lock": {
+          "bytes": 12646,
+          "sha256": "0da29cd83f64494827973b45cae940e0d34a3d4f882c5c8ae61a9bc3449874e8"
+        }
+      },
+      "marker": "QA385_LOCAL_be5a41f1d5",
+      "mix_env": "prod",
+      "mix_env_present": true,
+      "mix_environment": "prod",
+      "otp": "28",
+      "phase": "runtime"
+    }
+  },
+  "pass_": true,
+  "container_logs": [
+    ""
+  ],
+  "own_containers_absent": true,
+  "own_scratch_removed": true
+}

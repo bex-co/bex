@@ -1,0 +1,30 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+package main
+import("encoding/base64";"encoding/json";"os";"path/filepath";"strings";"github.com/bex-co/bex/lego/operator/internal/build")
+func main(){
+ rows:=[]map[string]any{}
+ for _,q:=range []struct{label,line,value string;override,static bool}{{"ruby33","3.3","",false,false},{"ruby34","3.4","",false,false},{"ruby40","4.0","",false,false},{"custom-false","3.4","false",true,false},{"explicit-empty","3.4","",true,false},{"static-ruby","3.4","",false,true}}{
+  o:=build.Options{Repo:"https://github.com/git-fixtures/basic",Ref:"6ecf0ef2c2dffb796033e5a02219af86ec6584e5",Name:"qa394-export",Revision:"qa394",AppUID:"qa394-local",Namespace:"qa394-local",Builder:build.BuilderNative,Runtime:"ruby",BuildCommand:"bundle install",StartCommand:"bundle exec ruby app.rb",StaticSite:q.static}
+  job:=build.BuildJob(o,"example.invalid/qa394:not-pushed");recipe:=""
+  for _,container:=range job.Spec.Template.Spec.InitContainers{if container.Name=="prepare-native-build"{for _,v:=range container.Env{if v.Name=="BEX_NATIVE_DOCKERFILE"{recipe=v.Value}}}}
+  if recipe==""{panic("recipe missing")};dir,err:=os.MkdirTemp("","qa394-resolve-");if err!=nil{panic(err)}
+  data:="RUBY_VERSION="+base64.StdEncoding.EncodeToString([]byte(q.line))+"\n";if q.override{data+="BUNDLE_DEPLOYMENT="+base64.StdEncoding.EncodeToString([]byte(q.value))+"\n"};bundle:=filepath.Join(dir,"env");dockerfile:=filepath.Join(dir,"Dockerfile");if err=os.WriteFile(bundle,[]byte(data),0600);err!=nil{panic(err)};if err=os.WriteFile(dockerfile,[]byte(recipe),0600);err!=nil{panic(err)}
+  choices,err:=build.ResolveNativeBuild("ruby",bundle,dockerfile,dir);if err!=nil{panic(err)};b,err:=os.ReadFile(dockerfile);if err!=nil{panic(err)};envs:=[]string{};for _,line:=range strings.Split(string(b),"\n"){if strings.HasPrefix(line,"ENV "){envs=append(envs,line)}}
+  rows=append(rows,map[string]any{"label":q.label,"ruby_line":q.line,"override_present":q.override,"override_value":q.value,"static":q.static,"choices":choices,"image_ENV_instructions":envs,"generated_recipe":string(b)})
+  if err=os.RemoveAll(dir);err!=nil{panic(err)}
+ };if err:=json.NewEncoder(os.Stdout).Encode(rows);err!=nil{panic(err)}
+}

@@ -1,0 +1,26 @@
+/* Owned QA mechanism control only, not a proposed production implementation. */
+#define _GNU_SOURCE
+#include <sys/prctl.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <signal.h>
+#include <unistd.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+static volatile sig_atomic_t stopping=0;
+static pid_t group=0;
+static void forward(int signo){stopping=1;if(group>0)kill(-group,signo);}
+static int status_code(int s){return WIFEXITED(s)?WEXITSTATUS(s):(WIFSIGNALED(s)?128+WTERMSIG(s):125);}
+int main(int argc,char **argv){
+ if(argc<2)return 125;
+ if(prctl(PR_SET_CHILD_SUBREAPER,1)<0){perror("subreaper");return 125;}
+ sigset_t blocked,previous;sigemptyset(&blocked);sigaddset(&blocked,SIGTERM);sigaddset(&blocked,SIGINT);sigprocmask(SIG_BLOCK,&blocked,&previous);
+ struct sigaction action={0};action.sa_handler=forward;sigemptyset(&action.sa_mask);sigaction(SIGTERM,&action,0);sigaction(SIGINT,&action,0);
+ pid_t child=fork();if(child<0){perror("fork");return 125;}
+ if(child==0){setpgid(0,0);signal(SIGTERM,SIG_DFL);signal(SIGINT,SIG_DFL);sigprocmask(SIG_SETMASK,&previous,0);execvp(argv[1],argv+1);perror("exec");_exit(errno==ENOENT?127:126);}
+ group=child;setpgid(child,child);sigprocmask(SIG_SETMASK,&previous,0);
+ int root_status=0,root_done=0;
+ for(;;){int s;pid_t done=waitpid(-1,&s,0);if(done<0){if(errno==EINTR)continue;if(errno==ECHILD)break;perror("waitpid");return 125;}if(done==child){root_status=s;root_done=1;}if(root_done&&!stopping)return status_code(root_status);}
+ return root_done?status_code(root_status):125;
+}

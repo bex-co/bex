@@ -1,0 +1,57 @@
+from pathlib import Path
+import json,os,subprocess,shutil,time,secrets,re,tarfile,io,signal
+P=Path(__file__).resolve().parent;R=Path('/Volumes/nvme4tbfish/projects/bex8');os.umask(0o077);ns={'__file__':str(P/'sweep386-command-factory.py')};exec(compile((P/'sweep386-command-factory.py').read_text(),str(P/'sweep386-command-factory.py'),'exec'),ns);ref=ns['reference'];base=re.search(r'line: "24", version: "[^"]+", image: "([^"]+)"',(R/'lego/operator/internal/build/native.go').read_text())[1];nonce=secrets.token_hex(5);D=P/('sweep386-local-'+nonce);D.mkdir(mode=0o700);containers=[];clients=[]
+result={'qualification':'own local pinned Node24 /bin/bash -c start-command signal and real in-flight HTTP prerequisite, direct Node control and original npm start; isolated loopback-only ephemeral published ports removed with exact containers; local hold6s versus planned hosted40s, no native platform claim','base':base,'nonce':nonce,'steps':[],'cases':[]};ledger=P/'sweep386-local-container-preflight.json'
+def save():ledger.write_text(json.dumps(result,indent=2))
+def run(args,bound=30,check=True):
+ proc=subprocess.Popen(args,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,start_new_session=True)
+ try:out,err=proc.communicate(timeout=bound)
+ except subprocess.TimeoutExpired:
+  os.killpg(proc.pid,15)
+  try:out,err=proc.communicate(timeout=3)
+  except subprocess.TimeoutExpired:os.killpg(proc.pid,9);out,err=proc.communicate(timeout=3)
+  result['steps'].append({'command':args,'timeout':True,'stdout':out,'stderr':err});save();raise
+ r=subprocess.CompletedProcess(args,proc.returncode,out,err);result['steps'].append({'command':args,'exit':r.returncode,'stdout':out,'stderr':err});save()
+ if check:assert r.returncode==0,'own local signal prerequisite failed; inspect ledger'
+ return r
+def request(url):
+ r=run(['curl','--disable','-sS','--max-time','3','-w','\n%{http_code}',url],bound=6,check=False);raw,_,status=r.stdout.rpartition('\n')
+ return r,json.loads(raw) if r.returncode==0 and status=='200' else None
+save()
+try:
+ archive=subprocess.check_output(['git','-C',str(P/'sweep357-express-source'),'archive',ref['commit']],timeout=30)
+ for case,start in [('direct','node qa386/server.js'),('npm','npm --prefix qa386 start')]:
+  project=D/case;project.mkdir()
+  with tarfile.open(fileobj=io.BytesIO(archive)) as t:t.extractall(project,filter='data')
+  marker='QA386_LOCAL_'+nonce+'_'+case;cmd=ns['commands'](marker);name='bex-qa386-'+nonce+'-'+case;result.setdefault('container_intents',[]).append({'name':name,'case':case});save();assert run(['docker','container','inspect',name],check=False).returncode!=0
+  script=cmd['build']+'\nexec /bin/bash -c '+__import__('shlex').quote(start);cid=run(['docker','create','--name',name,'--label','bex.qa.nonce='+nonce,'--network','bridge','--publish','127.0.0.1::3000','--volume',str(project)+':/opt/render/project/src','--workdir','/opt/render/project/src','--env','NODE_VERSION=24','--env','NODE_ENV=production','--env','QA_HOLD_MS=6000','--env','PORT=3000','--entrypoint','/bin/bash',base,'-c',script]).stdout.strip();assert re.fullmatch('[a-f0-9]{64}',cid);containers.append(cid);save();run(['docker','start',cid]);port=run(['docker','port',cid,'3000/tcp']).stdout.strip();assert re.fullmatch(r'127\.0\.0\.1:[0-9]+',port);url='http://'+port
+  initial=None
+  for attempt in range(30):
+   _,initial=request(url)
+   if initial is not None:break
+   time.sleep(.2)
+  assert initial is not None and initial['marker']==marker and initial['files']==ref['files'] and initial['node'].startswith('v24.') and initial['built']['program_sha256']==initial['program_sha256']
+  assert initial['npm_lifecycle_event']==('start' if case=='npm' else None)
+  token=secrets.token_hex(6);client=subprocess.Popen(['curl','--disable','-sS','--max-time','15','-w','\n%{http_code}',url+'/hold/'+token],text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,start_new_session=True);clients.append(client);began=time.monotonic();active=False
+  for attempt in range(15):
+   _,v=request(url)
+   if v is not None and token in v['active']:active=True;break
+   time.sleep(.1)
+  assert active;stopped=run(['docker','stop','--time','10',cid],bound=20);out,err=client.communicate(timeout=10);clients.remove(client);raw,_,status=out.rpartition('\n');v=json.loads(raw) if status=='200' else None;logs=run(['docker','logs',cid]).stdout;events=[]
+  for line in logs.splitlines():
+   if line.startswith('QA386_EVENT '):events.append(json.loads(line.split('QA386_EVENT ',1)[1]))
+  term=next((e for e in events if e['kind']=='sigterm'),None);closed=any(e['kind']=='closed' for e in events);passed=client.returncode==0 and status=='200' and v['marker']==marker and v['boot']==initial['boot'] and v['token']==token and term is not None and token in term['active'] and closed
+  result['cases'].append({'case':case,'actual_start':start,'initial':initial,'token':token,'client':{'exit':client.returncode,'HTTP':status,'stdout':out,'stderr':err},'elapsed':round(time.monotonic()-began,3),'events':events,'logs':logs,'graceful_in_flight_pass':passed});save();run(['docker','rm',cid]);containers.remove(cid);save()
+ result['prerequisite_valid']=len(result['cases'])==2 and result['cases'][0]['graceful_in_flight_pass'];save()
+finally:
+ for client in clients:
+  if client.poll() is None:os.killpg(client.pid,signal.SIGTERM);client.communicate(timeout=3)
+ for cid in list(containers):run(['docker','rm','--force',cid]);containers.remove(cid)
+ absent=[]
+ for intent in result.get('container_intents',[]):
+  r=run(['docker','container','inspect',intent['name']],check=False)
+  if r.returncode==0:
+   view=json.loads(r.stdout)[0];assert view['Config']['Labels'].get('bex.qa.nonce')==nonce;run(['docker','rm','--force',view['Id']]);r=run(['docker','container','inspect',intent['name']],check=False)
+  absent.append(r.returncode!=0)
+ result['own_containers_absent']=all(absent);shutil.rmtree(D);result['own_scratch_removed']=not D.exists();save()
+print(json.dumps({'prerequisite_valid':result.get('prerequisite_valid'),'cases':[{k:v[k] for k in ('case','graceful_in_flight_pass','elapsed')} for v in result['cases']],'own_containers_absent':result['own_containers_absent'],'scratch_removed':result['own_scratch_removed']}))

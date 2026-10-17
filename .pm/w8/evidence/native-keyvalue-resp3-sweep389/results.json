@@ -1,0 +1,50 @@
+{
+  "sweep": 389,
+  "source_head": "5448f8d9c3f30db207bc896b83985f4fdefbac42",
+  "serving_revision": "unknown",
+  "fixture": "red-db9cp4kfcf2c73c2mn3g",
+  "native_create_exit0_explicit_Free_off_noeviction": true,
+  "native_sessions": 2,
+  "selectors": {
+    "bex": "owned ID",
+    "render": "exact unique owned name"
+  },
+  "stages": 74,
+  "invalidation_assertions": 20,
+  "all_results_pass": true,
+  "client_ids": {
+    "bex": 27,
+    "render": 29
+  },
+  "server_versions": [
+    "8.1.9"
+  ],
+  "protocol": 3,
+  "map_null_set_nested_double_binary_UTF8_pass": true,
+  "invalidation_controls": [
+    "competing write",
+    "NOLOOP self write suppressed",
+    "retrack after self write",
+    "missing-key creation",
+    "OPTIN ordinary read silent and opted read invalidated",
+    "BCAST unread prefix key",
+    "other own prefix excluded",
+    "deletion",
+    "tracking off silent"
+  ],
+  "push_observation": "ordered PING/ECHO fence; no idle-delivery latency claim",
+  "own_final_DEL": 5,
+  "own_final_EXISTS": 0,
+  "native_natural_exits0": 2,
+  "process_config_history_cleanup": true,
+  "preexisting_history_unchanged": true,
+  "cached_route_PONG_before_after": [
+    true,
+    false
+  ],
+  "cached_credentials_removed": true,
+  "baseline_services_Blueprint_preserved": true,
+  "managed_data_and_terminating_zero": true,
+  "new_issue": null,
+  "uncommitted": true
+}

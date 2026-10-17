@@ -1,0 +1,50 @@
+set -e
+mkdir -p qa394
+cd qa394
+cat > app.rb <<'QA394_APP_RB'
+require 'json';require 'digest';require 'bundler';require 'socket';require 'securerandom'
+phase=ARGV.fetch(0);ref=JSON.parse(File.read('reference.json'));marker=File.read('marker').strip
+files=ref['files'].to_h{|k,v| b=File.binread('../'+k);[k,{'bytes'=>b.bytesize,'sha256'=>Digest::SHA256.hexdigest(b)}]};raise 'source mismatch' unless files==ref['files']
+v={'marker'=>marker,'phase'=>phase,'ruby'=>RUBY_VERSION,'bundler'=>Bundler::VERSION,'deployment'=>Bundler.settings[:deployment],'frozen'=>Bundler.frozen_bundle?,'deployment_env'=>ENV['BUNDLE_DEPLOYMENT'],'files'=>files,'lock_sha256'=>Digest::SHA256.file('Gemfile.lock').hexdigest,'gemfile_sha256'=>Digest::SHA256.file('Gemfile').hexdigest,'bundle_path'=>Bundler.bundle_path.to_s}
+if phase!='before';require 'rake';v['rake']=Rake::VERSION;end
+puts 'QA394_SOURCE '+JSON.generate(v);STDOUT.flush
+File.write('build.json',JSON.generate(v)) if phase=='after'
+if phase=='runtime'
+ boot=SecureRandom.hex(8);server=TCPServer.new('0.0.0.0',Integer(ENV.fetch('PORT','3000')))
+ loop do
+  s=server.accept;begin
+   while (line=s.gets);break if line=="\r\n";end
+   b=JSON.generate({'marker'=>marker,'boot'=>boot,'build'=>JSON.parse(File.read('build.json')),'runtime'=>v});s.write("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: #{b.bytesize}\r\nConnection: close\r\n\r\n#{b}")
+  ensure;s.close;end
+ end
+end
+QA394_APP_RB
+cat > reference.json <<'QA394_REFERENCE_JSON'
+{"repo": "https://github.com/git-fixtures/basic", "branch": "master", "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5", "files": {"LICENSE": {"bytes": 1072, "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"}, "CHANGELOG": {"bytes": 18, "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}}, "qualification": "public Git carrier only; qa394 Gemfile, stale lock, observer and TCP server are explicitly authored QA fixtures"}
+QA394_REFERENCE_JSON
+cat > marker <<'QA394_MARKER'
+QA394_42f1be_render
+QA394_MARKER
+cat > Gemfile <<'QA394_GEMFILE'
+source "https://rubygems.org"
+gem "rake", "13.3.1"
+QA394_GEMFILE
+cat > Gemfile.lock <<'QA394_GEMFILE_LOCK'
+GEM
+  remote: https://rubygems.org/
+  specs:
+    rake (13.2.1)
+
+PLATFORMS
+  aarch64-linux
+  ruby
+
+DEPENDENCIES
+  rake (= 13.2.1)
+
+BUNDLED WITH
+   2.6.9
+QA394_GEMFILE_LOCK
+ruby app.rb before
+bundle install
+bundle exec ruby app.rb after

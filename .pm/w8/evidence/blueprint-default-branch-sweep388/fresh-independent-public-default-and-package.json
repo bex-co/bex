@@ -1,0 +1,11 @@
+{
+  "repo": "https://github.com/expressjs/serve-static",
+  "default_branch": "master",
+  "commit": "109a299c26d2d532027bb6e66e50e365eeb8fcdd",
+  "package_sha256": "4f2884fa761dee155f31cb960d792c2900dbaa6aecbe6ebcc3bcfd7e754706b8",
+  "package_bytes": 1193,
+  "package_name": "serve-static",
+  "at": "2026-10-17T00:47:34.937421+00:00",
+  "anonymous_HEAD": "ref: refs/heads/master\tHEAD\n109a299c26d2d532027bb6e66e50e365eeb8fcdd\tHEAD\n",
+  "qualification": "fresh independent public default ref and exact Git package bytes; source HEAD is not assumed to be deployed"
+}

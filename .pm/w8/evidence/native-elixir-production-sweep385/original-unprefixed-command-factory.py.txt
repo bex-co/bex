@@ -1,0 +1,7 @@
+from pathlib import Path
+import json
+P=Path(__file__).resolve().parent;reference=json.loads((P/'sweep385-primary-reference.json').read_text())
+def commands(marker):
+ program=(P/'sweep385-server.exs').read_text()
+ build="set -e\ncat > qa385-server.exs <<'QA385_OBSERVER'\n"+program+"\nQA385_OBSERVER\ncat > qa385-reference.json <<'QA385_REFERENCE'\n"+json.dumps(reference)+"\nQA385_REFERENCE\ncat > qa385-marker.json <<'QA385_MARKER'\n"+json.dumps(marker)+"\nQA385_MARKER\n(cd /tmp && mix run --no-mix-exs /opt/render/project/src/qa385-server.exs --before)\nmix deps.get --only prod\nprintf 'QA385_DEPS_COMPLETE\\n'\nmix compile\n(cd /tmp && mix run --no-mix-exs /opt/render/project/src/qa385-server.exs --after)"
+ return {'build':build,'start':'cd /tmp && mix run --no-mix-exs --no-halt /opt/render/project/src/qa385-server.exs','program':program}

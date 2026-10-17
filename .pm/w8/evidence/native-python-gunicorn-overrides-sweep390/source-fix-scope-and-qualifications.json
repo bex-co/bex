@@ -1,0 +1,19 @@
+{
+  "source_head": "5448f8d9c3f30db207bc896b83985f4fdefbac42",
+  "source_fix": "bd59015fb4db68df1fda1ef1494fba6f664d63e3",
+  "serving_revision": "unknown",
+  "existing_finding": "w8/113",
+  "scope": "Free Python3.12 web custom and explicitly empty literal GUNICORN_CMD_ARGS at create, build/predeploy/runtime actual WSGI config, original public app HTTP/no-access lines, native start-only CLI-precedence update, same source/env and matching access lines; shared source/env readbacks and exact cleanup",
+  "source_defaults": "native.go:288-309 primary Python ENV default before authored RUN; native env loader yields to literal build values; native runtime image defaults yield to container own env. PORT is runtime-only; build normally has no PORT and Gunicorn127.0.0.1:8000, runtime/predeploy platform3000. No bind change supplied.",
+  "primary_contracts": [
+    "https://render.com/docs/deploy-flask",
+    "https://render.com/docs/environment-variables",
+    "https://github.com/benoitc/gunicorn/blob/26.2.0/gunicorn/app/base.py"
+  ],
+  "local_control": "same pinned Python3.12 base plus normal dependency bootstrap, manually supplied own custom/empty env; four actual server controls; no Bex generated image or image-default-injection assertion; local PORT3000 in all phases is an explicit local fixture choice",
+  "inherited_unrerun": "113 source fix/fail-before/source gates/ADR060 review and earlier380 default presence; not full hosted closure",
+  "remaining": "other Python lines, group/Secret sourced overrides, static artifacts, fetched/other types, browser/Blueprint, exact serving OCI, full suites and physical teardown remain unverified by this sweep",
+  "setup": "pinned base initially not indexed locally; prerequisite stopped before any container/production action and removed scratch, exact immutable source pin pulled; helper copying left two scalar bookkeeping values stale; exact create receipts/IDs persisted, two exact QA390 entries reclassified and sync390 asserted; no native mutation replay, prior380 evidence retained",
+  "local_control_results": "four successful cases, three observer phases each, three real HTTP200 requests each, all disabled/enabled access-line controls, native Python base3.12.15; five own containers and scratch removed",
+  "async_qualification": "Both accepted start-only updates made exactly one new child each. First finite readiness pass observed only building and stopped before any request round or mutation retry. Same children progressed to predeploy/update. These ordinary async states are not product failures."
+}

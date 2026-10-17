@@ -1,0 +1,20 @@
+from pathlib import Path
+import json,subprocess,tempfile,shutil,secrets,hashlib
+P=Path(__file__).resolve().parent;spec=json.loads((P/'sweep393-actual-clone-container.json').read_text());ref=json.loads((P/'sweep393-public-reference.json').read_text());D=Path(tempfile.mkdtemp(prefix='bex393-clone-',dir='/tmp'));D.chmod(0o700);names=[];out={'qualification':'actual BuildJob-exported clone command/default immutable git image and own mounted source; not Kubernetes execution; public basic top-level Gitlink only','image':spec['image'],'cases':[]}
+def save():(P/'sweep393-local-clone-results.json').write_text(json.dumps(out,indent=2))
+try:
+ original=spec['args'][0];needle='\ncommit="$(git rev-parse HEAD)"\n';assert original.count(needle)==1;fixed=original.replace(needle,needle+'git submodule update --init -- basic\n');nonce=secrets.token_hex(3)
+ for label,script in [('unchanged',original),('top-level-init-control',fixed)]:
+  S=D/label;S.mkdir(mode=0o700);name='qa393-clone-'+nonce+'-'+label;names.append(name);args=['docker','run','--name',name,'--mount','type=bind,source='+str(S)+',target=/source','--entrypoint',spec['command'][0]]
+  for env in spec['env']:assert 'valueFrom' not in env;args+=['-e',env['name']+'='+env['value']]
+  args += [spec['image'],*spec['command'][1:],script];e={'case':label,'intent':'only own named container and source directory; anonymous public Git','script':script};out['cases'].append(e);save();r=subprocess.run(args,capture_output=True,text=True,timeout=100);e.update(exit=r.returncode,stdout=r.stdout,stderr=r.stderr);save();r.check_returncode();meta={n:{'bytes':len((b:=(S/n).read_bytes())),'sha256':hashlib.sha256(b).hexdigest()} for n in ref['parent_files']};assert meta==ref['parent_files'];child=S/ref['child_file']['path'];exists=child.is_file();e.update(parent_files=meta,parent_git_removed=not (S/'.git').exists(),child_file_exists=exists)
+  if label=='unchanged':assert not exists
+  else:
+   assert exists;b=child.read_bytes();e['child_file']={'path':ref['child_file']['path'],'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()};assert e['child_file']==ref['child_file']
+  e['pass']=True;save();print(json.dumps({'case':label,'clone_exit':r.returncode,'exact_parent':True,'child_file_exists':exists}),flush=True)
+ out['pass']=True;save()
+finally:
+ for name in names:
+  r=subprocess.run(['docker','rm','-f',name],capture_output=True,text=True);assert r.returncode==0
+ shutil.rmtree(D);out.update(own_containers_removed=True,own_source_directories_removed=not D.exists());save()
+print(json.dumps({'actual_clone_comparison_pass':out.get('pass',False),'own_local_resources_removed':True}))

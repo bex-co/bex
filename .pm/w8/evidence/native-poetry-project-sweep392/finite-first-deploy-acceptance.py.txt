@@ -1,0 +1,7 @@
+from pathlib import Path
+import subprocess,json,time
+P=Path(__file__).resolve().parent
+for actor in ['bex','render']:
+ r=subprocess.run(['python3',str(P/'sweep392-wait.py'),actor],capture_output=True,text=True,timeout=180);f=P/('sweep392-first-'+actor+'-wait-'+str(time.time_ns())+'.json');f.write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True);r.check_returncode();v=json.loads(r.stdout.strip().splitlines()[-1]);assert v['status']=='live' and v['children']==1 and v['first'],'same first child still pending; retain and diagnose without a mutation retry'
+ for mode in ['request','logs']:
+  r=subprocess.run(['python3',str(P/'sweep392-native-python.py'),mode,actor],capture_output=True,text=True,timeout=110);(P/('sweep392-first-'+actor+'-'+mode+'-'+str(time.time_ns())+'.json')).write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True);r.check_returncode()

@@ -1,0 +1,56 @@
+{
+  "qualification": "actual BuildJob-exported clone command/default immutable git image and own mounted source; not Kubernetes execution; public basic top-level Gitlink only",
+  "image": "alpine/git:v2.43.0@sha256:76fdb7210689fc26c6ff101c4adacf9d12d3d25a919a7d8ff42ebaef5bedba65",
+  "cases": [
+    {
+      "case": "unchanged",
+      "intent": "only own named container and source directory; anonymous public Git",
+      "script": "bex_rc_file=/tmp/bex-rc; bex_log=/tmp/bex-phase.log\nbex_run() {\n  rm -f \"$bex_rc_file\" \"$bex_log\"\n  set +e\n  { \"$@\" 2>&1; echo $? > \"$bex_rc_file\"; } | tee /dev/stderr | tail -c 262144 > \"$bex_log\"\n  bex_rc=\"$(cat \"$bex_rc_file\" 2>/dev/null || echo missing)\"\n  set -e\n  [ \"$bex_rc\" = 0 ] && return 0\n  if [ \"$bex_rc\" = missing ]; then\n    echo \"bex: phase exit status unavailable; treating as retryable\" >&2\n    exit 91\n  fi\n  if grep -v '^#[0-9][0-9]* ' \"$bex_log\" 2>/dev/null | grep -qiE 'dial tcp|connection refused|connection reset|network is unreachable|no route to host|i/o timeout|TLS handshake timeout|context deadline exceeded|temporary failure in name resolution|could not resolve host|server misbehaving|unexpected status: 5[0-9][0-9]|response status code 5[0-9][0-9]|50[0234] (internal server error|bad gateway|service unavailable|gateway time-?out)|failed to do request|unexpected eof|early eof|rpc failed|the remote end hung up|failed to connect to|operation timed out|unable to access'; then\n    exit 91\n  fi\n  exit 90\n}\ncd /source\ngit init -q .\ngit remote add origin \"$REPO\"\nif [ -n \"${GIT_AUTH_TOKEN:-}\" ]; then\n  bex_run git -c credential.helper='!f() { [ \"$1\" = get ] || exit 0; h=; while IFS= read -r l; do [ -z \"$l\" ] && break; case \"$l\" in host=*) h=${l#host=};; esac; done; [ \"$h\" = github.com ] || exit 0; echo \"username=x-access-token\"; echo \"password=$GIT_AUTH_TOKEN\"; }; f' fetch --depth 1 origin -- \"$REF\"\nelse\n  bex_run git fetch --depth 1 origin -- \"$REF\"\nfi\ngit checkout -q FETCH_HEAD\nif [ -n \"${EXPECTED_COMMIT:-}\" ]; then\n  actual_commit=\"$(git rev-parse HEAD)\"\n  [ \"$actual_commit\" = \"$EXPECTED_COMMIT\" ] || { echo \"fetched commit does not match EXPECTED_COMMIT\" >&2; exit 1; }\nfi\ncommit=\"$(git rev-parse HEAD)\"\nbex_require() {\n  [ \"$1\" \"$2\" ] && return 0\n  echo \"the $3 \\\"$4\\\" does not exist in the repository at \\\"$commit\\\"\" >&2\n  exit 90\n}\nif [ -n \"${BEX_ROOT_DIR:-}\" ]; then bex_require -d \"$BEX_ROOT_DIR_PATH\" \"root directory\" \"$BEX_ROOT_DIR\"; fi\nif [ -n \"${BEX_DOCKER_CONTEXT:-}\" ]; then bex_require -d \"$BEX_DOCKER_CONTEXT_PATH\" \"Docker build context\" \"$BEX_DOCKER_CONTEXT\"; fi\nif [ -n \"${BEX_DOCKERFILE:-}\" ]; then bex_require -f \"$BEX_DOCKERFILE_PATH\" \"Dockerfile\" \"$BEX_DOCKERFILE\"; fi\nrm -rf .git",
+      "exit": 0,
+      "stdout": "",
+      "stderr": "Unable to find image 'alpine/git:v2.43.0@sha256:76fdb7210689fc26c6ff101c4adacf9d12d3d25a919a7d8ff42ebaef5bedba65' locally\ndocker.io/alpine/git@sha256:76fdb7210689fc26c6ff101c4adacf9d12d3d25a919a7d8ff42ebaef5bedba65: Pulling from alpine/git\n31dcdd652510: Pulling fs layer\nbca4290a9639: Pulling fs layer\n7a2614119917: Pulling fs layer\n31dcdd652510: Download complete\nbca4290a9639: Download complete\nbca4290a9639: Pull complete\n7a2614119917: Download complete\n7a2614119917: Pull complete\n31dcdd652510: Pull complete\nDigest: sha256:76fdb7210689fc26c6ff101c4adacf9d12d3d25a919a7d8ff42ebaef5bedba65\nStatus: Downloaded newer image for alpine/git@sha256:76fdb7210689fc26c6ff101c4adacf9d12d3d25a919a7d8ff42ebaef5bedba65\nFrom https://github.com/git-fixtures/submodule\n * branch            b685400c1f9316f350965a5993d350bc746b0bf4 -> FETCH_HEAD\n",
+      "parent_files": {
+        ".gitmodules": {
+          "bytes": 172,
+          "sha256": "7fc5618d3820ef4716f0e799b5d99b441db82e075b1cba24a308b15ff512e880"
+        },
+        "README.md": {
+          "bytes": 20,
+          "sha256": "4bd9db68c17eeda3df27bedde7457d38d80f6cd2924a345a19dd8179dc6c975c"
+        }
+      },
+      "parent_git_removed": true,
+      "child_file_exists": false,
+      "pass": true
+    },
+    {
+      "case": "top-level-init-control",
+      "intent": "only own named container and source directory; anonymous public Git",
+      "script": "bex_rc_file=/tmp/bex-rc; bex_log=/tmp/bex-phase.log\nbex_run() {\n  rm -f \"$bex_rc_file\" \"$bex_log\"\n  set +e\n  { \"$@\" 2>&1; echo $? > \"$bex_rc_file\"; } | tee /dev/stderr | tail -c 262144 > \"$bex_log\"\n  bex_rc=\"$(cat \"$bex_rc_file\" 2>/dev/null || echo missing)\"\n  set -e\n  [ \"$bex_rc\" = 0 ] && return 0\n  if [ \"$bex_rc\" = missing ]; then\n    echo \"bex: phase exit status unavailable; treating as retryable\" >&2\n    exit 91\n  fi\n  if grep -v '^#[0-9][0-9]* ' \"$bex_log\" 2>/dev/null | grep -qiE 'dial tcp|connection refused|connection reset|network is unreachable|no route to host|i/o timeout|TLS handshake timeout|context deadline exceeded|temporary failure in name resolution|could not resolve host|server misbehaving|unexpected status: 5[0-9][0-9]|response status code 5[0-9][0-9]|50[0234] (internal server error|bad gateway|service unavailable|gateway time-?out)|failed to do request|unexpected eof|early eof|rpc failed|the remote end hung up|failed to connect to|operation timed out|unable to access'; then\n    exit 91\n  fi\n  exit 90\n}\ncd /source\ngit init -q .\ngit remote add origin \"$REPO\"\nif [ -n \"${GIT_AUTH_TOKEN:-}\" ]; then\n  bex_run git -c credential.helper='!f() { [ \"$1\" = get ] || exit 0; h=; while IFS= read -r l; do [ -z \"$l\" ] && break; case \"$l\" in host=*) h=${l#host=};; esac; done; [ \"$h\" = github.com ] || exit 0; echo \"username=x-access-token\"; echo \"password=$GIT_AUTH_TOKEN\"; }; f' fetch --depth 1 origin -- \"$REF\"\nelse\n  bex_run git fetch --depth 1 origin -- \"$REF\"\nfi\ngit checkout -q FETCH_HEAD\nif [ -n \"${EXPECTED_COMMIT:-}\" ]; then\n  actual_commit=\"$(git rev-parse HEAD)\"\n  [ \"$actual_commit\" = \"$EXPECTED_COMMIT\" ] || { echo \"fetched commit does not match EXPECTED_COMMIT\" >&2; exit 1; }\nfi\ncommit=\"$(git rev-parse HEAD)\"\ngit submodule update --init -- basic\nbex_require() {\n  [ \"$1\" \"$2\" ] && return 0\n  echo \"the $3 \\\"$4\\\" does not exist in the repository at \\\"$commit\\\"\" >&2\n  exit 90\n}\nif [ -n \"${BEX_ROOT_DIR:-}\" ]; then bex_require -d \"$BEX_ROOT_DIR_PATH\" \"root directory\" \"$BEX_ROOT_DIR\"; fi\nif [ -n \"${BEX_DOCKER_CONTEXT:-}\" ]; then bex_require -d \"$BEX_DOCKER_CONTEXT_PATH\" \"Docker build context\" \"$BEX_DOCKER_CONTEXT\"; fi\nif [ -n \"${BEX_DOCKERFILE:-}\" ]; then bex_require -f \"$BEX_DOCKERFILE_PATH\" \"Dockerfile\" \"$BEX_DOCKERFILE\"; fi\nrm -rf .git",
+      "exit": 0,
+      "stdout": "Submodule path 'basic': checked out '6ecf0ef2c2dffb796033e5a02219af86ec6584e5'\n",
+      "stderr": "From https://github.com/git-fixtures/submodule\n * branch            b685400c1f9316f350965a5993d350bc746b0bf4 -> FETCH_HEAD\nSubmodule 'basic' (https://github.com/git-fixtures/basic.git) registered for path 'basic'\nCloning into '/source/basic'...\n",
+      "parent_files": {
+        ".gitmodules": {
+          "bytes": 172,
+          "sha256": "7fc5618d3820ef4716f0e799b5d99b441db82e075b1cba24a308b15ff512e880"
+        },
+        "README.md": {
+          "bytes": 20,
+          "sha256": "4bd9db68c17eeda3df27bedde7457d38d80f6cd2924a345a19dd8179dc6c975c"
+        }
+      },
+      "parent_git_removed": true,
+      "child_file_exists": true,
+      "child_file": {
+        "path": "basic/LICENSE",
+        "bytes": 1072,
+        "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+      },
+      "pass": true
+    }
+  ],
+  "pass": true,
+  "own_containers_removed": true,
+  "own_source_directories_removed": true
+}

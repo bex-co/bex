@@ -1,0 +1,15 @@
+{
+  "source_head": "5448f8d9c3f30db207bc896b83985f4fdefbac42",
+  "serving_revision": "unknown",
+  "contracts": [
+    "https://render.com/docs/troubleshooting-python-deploys",
+    "https://render.com/docs/poetry-version",
+    "https://python-poetry.org/docs/1.8/basic-usage/#using-poetry-run",
+    "https://python-poetry.org/docs/basic-usage/#using-poetry-run"
+  ],
+  "scope": "fresh native Python3.12 Freeweb, defaultPoetry2.1.3 and explicit1.8.5, real install of authored nonpackage-mode dependency metadata, original unchanged public Flask app and requirements files, generated lock/project venv, build/predeploy/runtime Poetry-run interpreter/isolation and exactHTTP; shared reads and exact cleanup",
+  "fixture_boundary": "public Flask source is unchanged, Poetry metadata/observers are authored QA additions. This is not a claim that the public repo originally used Poetry. No source edit is pushed externally, no implicit bare-global-gunicorn expectation is used.",
+  "source": "nativePythonToolInstall in nativeresolve.go:192-209 installs Poetry in an isolated /opt/bex/poetry venv and places its executable on PATH before the app build; no product implementation by QA. m72 completed tool/version/isolation source gates are inherited, not rerun here.",
+  "local_control": "source-equivalent manual Poetry installer on exact Python3.12 base; two real project installs, same app venv/lock and original HTTP; no complete generated image, serving OCI or architecture equivalence claim. Own two images/containers/context removed; shared cache retained.",
+  "unverified": "other Python or Poetry versions, package-mode/root editable install, committed-lock/update/cache-reset transitions, custom virtualenv configuration, static/other service types, browser and Render production. No new issue assumed."
+}

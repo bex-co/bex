@@ -1,0 +1,51 @@
+{
+  "sweep": 386,
+  "finding": "w8/m88",
+  "severity": "major",
+  "attribution": "operator native Node serving-image startup/signal lifecycle",
+  "source_head": "5e18f96cf7d8359b4d77c64893397cd879586f77",
+  "serving_revision": "unknown",
+  "public_commit": "a419aa7350389a275ab45fde2e849ed1f02449ef",
+  "actual_native_POST201_create0": 2,
+  "correct_native_root_restart_exit0": 3,
+  "original_npm_inflight_POST_HTTP": [
+    "502",
+    "502"
+  ],
+  "original_npm_failure_elapsed_seconds": [
+    26.186,
+    24.7
+  ],
+  "configured_shutdown_delay_seconds": 45,
+  "program_hold_milliseconds": 40000,
+  "original_npm_short_reads_all_HTTP200": [
+    19,
+    17
+  ],
+  "original_native_logs_hold_begin_without_sigterm_or_same_token_end": 2,
+  "direct_start_only_control": {
+    "HTTP": "200",
+    "elapsed": 41.532,
+    "old_boot_preserved": true,
+    "sigterm_with_active_token_then_hold_end_and_closed": true,
+    "short_reads_all_HTTP200": 20
+  },
+  "local_pinned_base_direct_npm_supervised_npm": [
+    true,
+    false,
+    true
+  ],
+  "source_configuration_shared_reads_pass": 6,
+  "owned_parents_children_URLs_absent": [
+    2,
+    6,
+    2
+  ],
+  "all_baselines_preserved": true,
+  "all_terminating_zero": true,
+  "excluded_setup": "one unsupported nested services restart invocation resolved to the pinned read-only services list; no restart or baseline mutation; complete receipt, initial helps and original helper retained; corrected root verb used for all accepted observations",
+  "native_restart_and_start_update_wire": "not captured; native argv/output/status and eventual own children/runtime retained",
+  "proposed_implementation": "forward termination to owned child process group and wait for terminating descendants in the primary Node serving launch; package static helper through existing Bex image, preserve exact commands/PATH/env/exit behavior and explicitly audit override consumers",
+  "unverified": "hosted fixed implementation, exact serving OCI/ancestor tree, other Node lines/package managers/resource kinds, full application/framework, browser, every uncooperative/race/exit-status prototype edge",
+  "uncommitted": true
+}

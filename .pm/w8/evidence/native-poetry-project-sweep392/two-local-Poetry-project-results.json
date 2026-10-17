@@ -1,0 +1,171 @@
+{
+  "qualification": "pinned Python base plus source-equivalent isolated Poetry installer and authored project metadata; real install/project interpreter/original app HTTP; no full Bex-generated-image or hosted claim",
+  "base": "python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b",
+  "cases": [
+    {
+      "Poetry_requested": "2.1.3",
+      "image": "bex-qa392-local:e9cc81-213",
+      "container": "qa392-e9cc81-213",
+      "build": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "#0 building with \"desktop-linux\" instance using docker driver\n\n#1 [internal] load build definition from Dockerfile\n#1 transferring dockerfile: 547B done\n#1 DONE 0.0s\n\n#2 [internal] load metadata for docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b\n#2 DONE 1.2s\n\n#3 [internal] load .dockerignore\n#3 transferring context: 2B done\n#3 DONE 0.0s\n\n#4 [1/5] FROM docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b\n#4 resolve docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b 0.0s done\n#4 DONE 0.0s\n\n#5 [internal] load build context\n#5 transferring context: 4.75kB done\n#5 DONE 0.0s\n\n#6 [2/5] RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry\n#6 CACHED\n\n#7 [3/5] WORKDIR /opt/render/project/src\n#7 CACHED\n\n#8 [4/5] COPY . .\n#8 DONE 0.0s\n\n#9 [5/5] RUN poetry install --no-interaction --no-ansi && poetry run python qa392-observer.py build\n#9 0.688 Creating virtualenv qa392-flask-bMBqP5dT-py3.12 in /root/.cache/pypoetry/virtualenvs\n#9 1.096 Updating dependencies\n#9 1.096 Resolving dependencies...\n#9 4.978 \n#9 4.978 Package operations: 8 installs, 0 updates, 0 removals\n#9 4.978 \n#9 4.979   - Installing markupsafe (3.0.4)\n#9 5.161   - Installing blinker (1.9.0)\n#9 5.162   - Installing click (8.5.0)\n#9 5.162   - Installing itsdangerous (2.2.0)\n#9 5.163   - Installing jinja2 (3.1.6)\n#9 5.164   - Installing werkzeug (3.1.9)\n#9 6.557   - Installing flask (3.1.3)\n#9 6.557   - Installing gunicorn (26.2.0)\n#9 7.500 \n#9 7.500 Writing lock file\n#9 8.346 QA392_OBSERVER {\"marker\":\"QA392_LOCAL\",\"phase\":\"build\",\"python\":\"3.12.15\",\"executable\":\"/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12/bin/python\",\"prefix\":\"/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12\",\"base_prefix\":\"/usr/local\",\"in_project_venv\":true,\"poetry_version\":\"Poetry (version 2.1.3)\",\"poetry_env_path\":\"/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12\",\"project_venv_matches\":true,\"flask\":\"3.1.3\",\"gunicorn\":\"26.2.0\",\"app_can_import_poetry\":false,\"files\":{\"app.py\":{\"bytes\":109,\"sha256\":\"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"},\"requirements.txt\":{\"bytes\":15,\"sha256\":\"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}},\"pyproject_sha256\":\"ac72ee683481a6f1eba70ce0ea8ee19781ae29778948402f95da8f5d62ae2f51\",\"lock_sha256\":\"47fa0239d5c006617f891e0adb20861ea909943adeeaacdaba959dcef9f4a5e7\",\"HOME\":\"/root\",\"port\":null}\n#9 DONE 8.5s\n\n#10 exporting to image\n#10 exporting layers\n#10 exporting layers 0.5s done\n#10 exporting manifest sha256:1099e86dd66eb2033159709ddf1eac635de924a6157f703f4b80fb6c9f0f35f5 done\n#10 exporting config sha256:d8dd3e91d1444ff3bdf313edbc2a76e7841492b95d02fffd6317934126f7a5f7 done\n#10 exporting attestation manifest sha256:eac85be76f56efa1c9cbaaf3ac600efd68fd8eb6adb3b6a3c3052973d49f511e done\n#10 exporting manifest list sha256:906249b2463bc8a4c52e9d09222bb91454cc7c69a7883b6daff9e53bd7dfaf07 done\n#10 naming to docker.io/library/bex-qa392-local:e9cc81-213 done\n#10 unpacking to docker.io/library/bex-qa392-local:e9cc81-213\n#10 unpacking to docker.io/library/bex-qa392-local:e9cc81-213 1.0s done\n#10 DONE 1.6s\n\nView build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/fj7raz5pify1rcee357f9gzjt\n"
+      },
+      "runtime": {
+        "exit": 0,
+        "stdout": "QA392_LOCAL_RESULT {\"build\": {\"marker\": \"QA392_LOCAL\", \"phase\": \"build\", \"python\": \"3.12.15\", \"executable\": \"/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12/bin/python\", \"prefix\": \"/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12\", \"base_prefix\": \"/usr/local\", \"in_project_venv\": true, \"poetry_version\": \"Poetry (version 2.1.3)\", \"poetry_env_path\": \"/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12\", \"project_venv_matches\": true, \"flask\": \"3.1.3\", \"gunicorn\": \"26.2.0\", \"app_can_import_poetry\": false, \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}, \"pyproject_sha256\": \"ac72ee683481a6f1eba70ce0ea8ee19781ae29778948402f95da8f5d62ae2f51\", \"lock_sha256\": \"47fa0239d5c006617f891e0adb20861ea909943adeeaacdaba959dcef9f4a5e7\", \"HOME\": \"/root\", \"port\": null}, \"runtime\": {\"marker\": \"QA392_LOCAL\", \"phase\": \"runtime\", \"python\": \"3.12.15\", \"executable\": \"/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12/bin/python\", \"prefix\": \"/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12\", \"base_prefix\": \"/usr/local\", \"in_project_venv\": true, \"poetry_version\": \"Poetry (version 2.1.3)\", \"poetry_env_path\": \"/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12\", \"project_venv_matches\": true, \"flask\": \"3.1.3\", \"gunicorn\": \"26.2.0\", \"app_can_import_poetry\": false, \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}, \"pyproject_sha256\": \"ac72ee683481a6f1eba70ce0ea8ee19781ae29778948402f95da8f5d62ae2f51\", \"lock_sha256\": \"47fa0239d5c006617f891e0adb20861ea909943adeeaacdaba959dcef9f4a5e7\", \"HOME\": \"/root\", \"port\": \"3000\"}, \"original_app_HTTP\": 200, \"original_body\": \"Hello, World!\", \"server_cleanup_exit\": 0, \"server_logs\": \"[2026-10-17 01:46:08 +0000] [18] [INFO] Starting gunicorn 26.2.0\\n[2026-10-17 01:46:08 +0000] [18] [INFO] Listening at: http://0.0.0.0:3000 (18)\\n[2026-10-17 01:46:08 +0000] [18] [INFO] Using worker: sync\\n[2026-10-17 01:46:08 +0000] [24] [INFO] Booting worker with pid: 24\\n127.0.0.1 - - [17/Oct/2026:01:46:08 +0000] \\\"GET /?qa392_local HTTP/1.1\\\" 200 13 \\\"-\\\" \\\"Python-urllib/3.12\\\"\\n[2026-10-17 01:46:08 +0000] [24] [INFO] Worker exiting (pid: 24)\\n[2026-10-17 01:46:08 +0000] [18] [INFO] Handling signal: term\\n[2026-10-17 01:46:08 +0000] [18] [INFO] Control socket listening at /root/.gunicorn/gunicorn.ctl\\n[2026-10-17 01:46:08 +0000] [18] [INFO] Worker (pid:24) was sent SIGTERM!\\n[2026-10-17 01:46:08 +0000] [18] [INFO] Shutting down: Master\\n\", \"pass\": true}\n",
+        "stderr": ""
+      },
+      "observed": {
+        "build": {
+          "marker": "QA392_LOCAL",
+          "phase": "build",
+          "python": "3.12.15",
+          "executable": "/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12/bin/python",
+          "prefix": "/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12",
+          "base_prefix": "/usr/local",
+          "in_project_venv": true,
+          "poetry_version": "Poetry (version 2.1.3)",
+          "poetry_env_path": "/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12",
+          "project_venv_matches": true,
+          "flask": "3.1.3",
+          "gunicorn": "26.2.0",
+          "app_can_import_poetry": false,
+          "files": {
+            "app.py": {
+              "bytes": 109,
+              "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+            },
+            "requirements.txt": {
+              "bytes": 15,
+              "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+            }
+          },
+          "pyproject_sha256": "ac72ee683481a6f1eba70ce0ea8ee19781ae29778948402f95da8f5d62ae2f51",
+          "lock_sha256": "47fa0239d5c006617f891e0adb20861ea909943adeeaacdaba959dcef9f4a5e7",
+          "HOME": "/root",
+          "port": null
+        },
+        "runtime": {
+          "marker": "QA392_LOCAL",
+          "phase": "runtime",
+          "python": "3.12.15",
+          "executable": "/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12/bin/python",
+          "prefix": "/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12",
+          "base_prefix": "/usr/local",
+          "in_project_venv": true,
+          "poetry_version": "Poetry (version 2.1.3)",
+          "poetry_env_path": "/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12",
+          "project_venv_matches": true,
+          "flask": "3.1.3",
+          "gunicorn": "26.2.0",
+          "app_can_import_poetry": false,
+          "files": {
+            "app.py": {
+              "bytes": 109,
+              "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+            },
+            "requirements.txt": {
+              "bytes": 15,
+              "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+            }
+          },
+          "pyproject_sha256": "ac72ee683481a6f1eba70ce0ea8ee19781ae29778948402f95da8f5d62ae2f51",
+          "lock_sha256": "47fa0239d5c006617f891e0adb20861ea909943adeeaacdaba959dcef9f4a5e7",
+          "HOME": "/root",
+          "port": "3000"
+        },
+        "original_app_HTTP": 200,
+        "original_body": "Hello, World!",
+        "server_cleanup_exit": 0,
+        "server_logs": "[2026-10-17 01:46:08 +0000] [18] [INFO] Starting gunicorn 26.2.0\n[2026-10-17 01:46:08 +0000] [18] [INFO] Listening at: http://0.0.0.0:3000 (18)\n[2026-10-17 01:46:08 +0000] [18] [INFO] Using worker: sync\n[2026-10-17 01:46:08 +0000] [24] [INFO] Booting worker with pid: 24\n127.0.0.1 - - [17/Oct/2026:01:46:08 +0000] \"GET /?qa392_local HTTP/1.1\" 200 13 \"-\" \"Python-urllib/3.12\"\n[2026-10-17 01:46:08 +0000] [24] [INFO] Worker exiting (pid: 24)\n[2026-10-17 01:46:08 +0000] [18] [INFO] Handling signal: term\n[2026-10-17 01:46:08 +0000] [18] [INFO] Control socket listening at /root/.gunicorn/gunicorn.ctl\n[2026-10-17 01:46:08 +0000] [18] [INFO] Worker (pid:24) was sent SIGTERM!\n[2026-10-17 01:46:08 +0000] [18] [INFO] Shutting down: Master\n",
+        "pass": true
+      },
+      "pass": true
+    },
+    {
+      "Poetry_requested": "1.8.5",
+      "image": "bex-qa392-local:e9cc81-185",
+      "container": "qa392-e9cc81-185",
+      "build": {
+        "exit": 0,
+        "stdout": "",
+        "stderr": "#0 building with \"desktop-linux\" instance using docker driver\n\n#1 [internal] load build definition from Dockerfile\n#1 transferring dockerfile: 547B done\n#1 DONE 0.0s\n\n#2 [internal] load metadata for docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b\n#2 DONE 0.0s\n\n#3 [internal] load .dockerignore\n#3 transferring context: 2B done\n#3 DONE 0.0s\n\n#4 [1/5] FROM docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b\n#4 resolve docker.io/library/python:3.12-bookworm@sha256:5560e9ab8709f459489e5b8aa696eda8a07ef821e14bb122be62d91234bfa98b done\n#4 CACHED\n\n#5 [internal] load build context\n#5 transferring context: 842B done\n#5 DONE 0.0s\n\n#6 [2/5] RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==1.8.5 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry\n#6 2.454 Collecting poetry==1.8.5\n#6 2.671   Downloading poetry-1.8.5-py3-none-any.whl.metadata (6.9 kB)\n#6 2.710 Collecting build<2.0.0,>=1.0.3 (from poetry==1.8.5)\n#6 2.743   Downloading build-1.6.1-py3-none-any.whl.metadata (5.6 kB)\n#6 2.873 Collecting cachecontrol<0.15.0,>=0.14.0 (from cachecontrol[filecache]<0.15.0,>=0.14.0->poetry==1.8.5)\n#6 3.104   Downloading cachecontrol-0.14.4-py3-none-any.whl.metadata (3.1 kB)\n#6 3.416 Collecting cleo<3.0.0,>=2.1.0 (from poetry==1.8.5)\n#6 3.442   Downloading cleo-2.1.0-py3-none-any.whl.metadata (12 kB)\n#6 3.472 Collecting crashtest<0.5.0,>=0.4.1 (from poetry==1.8.5)\n#6 3.484   Downloading crashtest-0.4.1-py3-none-any.whl.metadata (1.1 kB)\n#6 4.286 Collecting dulwich<0.22.0,>=0.21.2 (from poetry==1.8.5)\n#6 4.300   Downloading dulwich-0.21.7-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl.metadata (4.3 kB)\n#6 4.435 Collecting fastjsonschema<3.0.0,>=2.18.0 (from poetry==1.8.5)\n#6 4.448   Downloading fastjsonschema-2.22.2-py3-none-any.whl.metadata (2.1 kB)\n#6 4.479 Collecting installer<0.8.0,>=0.7.0 (from poetry==1.8.5)\n#6 4.487   Downloading installer-0.7.0-py3-none-any.whl.metadata (936 bytes)\n#6 4.519 Collecting keyring<25.0.0,>=24.0.0 (from poetry==1.8.5)\n#6 4.531   Downloading keyring-24.3.1-py3-none-any.whl.metadata (20 kB)\n#6 4.826 Collecting packaging>=23.1 (from poetry==1.8.5)\n#6 4.836   Downloading packaging-26.3-py3-none-any.whl.metadata (3.5 kB)\n#6 4.864 Collecting pexpect<5.0.0,>=4.7.0 (from poetry==1.8.5)\n#6 4.955   Downloading pexpect-4.9.0-py2.py3-none-any.whl.metadata (2.5 kB)\n#6 4.981 Collecting pkginfo<2.0,>=1.12 (from poetry==1.8.5)\n#6 4.990   Downloading pkginfo-1.13.3-py3-none-any.whl.metadata (14 kB)\n#6 5.193 Collecting platformdirs<5,>=3.0.0 (from poetry==1.8.5)\n#6 5.203   Downloading platformdirs-4.13.3-py3-none-any.whl.metadata (5.5 kB)\n#6 5.241 Collecting poetry-core==1.9.1 (from poetry==1.8.5)\n#6 5.252   Downloading poetry_core-1.9.1-py3-none-any.whl.metadata (3.5 kB)\n#6 5.288 Collecting poetry-plugin-export<2.0.0,>=1.6.0 (from poetry==1.8.5)\n#6 5.302   Downloading poetry_plugin_export-1.10.1-py3-none-any.whl.metadata (3.7 kB)\n#6 5.325 Collecting pyproject-hooks<2.0.0,>=1.0.0 (from poetry==1.8.5)\n#6 5.339   Downloading pyproject_hooks-1.3.3-py3-none-any.whl.metadata (1.3 kB)\n#6 5.370 Collecting requests<3.0,>=2.26 (from poetry==1.8.5)\n#6 5.386   Downloading requests-2.34.2-py3-none-any.whl.metadata (4.8 kB)\n#6 5.498 Collecting requests-toolbelt<2.0.0,>=1.0.0 (from poetry==1.8.5)\n#6 5.512   Downloading requests_toolbelt-1.0.0-py2.py3-none-any.whl.metadata (14 kB)\n#6 5.713 Collecting shellingham<2.0,>=1.5 (from poetry==1.8.5)\n#6 6.003   Downloading shellingham-1.5.4-py2.py3-none-any.whl.metadata (3.5 kB)\n#6 6.035 Collecting tomlkit<1.0.0,>=0.11.4 (from poetry==1.8.5)\n#6 6.046   Downloading tomlkit-0.15.2-py3-none-any.whl.metadata (3.4 kB)\n#6 6.088 Collecting trove-classifiers>=2022.5.19 (from poetry==1.8.5)\n#6 6.100   Downloading trove_classifiers-2026.9.21.13-py3-none-any.whl.metadata (2.4 kB)\n#6 6.273 Collecting virtualenv<21.0.0,>=20.26.6 (from poetry==1.8.5)\n#6 6.287   Downloading virtualenv-20.39.1-py3-none-any.whl.metadata (3.5 kB)\n#6 6.370 Collecting msgpack<2.0.0,>=0.5.2 (from cachecontrol<0.15.0,>=0.14.0->cachecontrol[filecache]<0.15.0,>=0.14.0->poetry==1.8.5)\n#6 6.383   Downloading msgpack-1.2.3-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (8.3 kB)\n#6 6.423 Collecting filelock>=3.8.0 (from cachecontrol[filecache]<0.15.0,>=0.14.0->poetry==1.8.5)\n#6 6.434   Downloading filelock-4.2.0-py3-none-any.whl.metadata (2.0 kB)\n#6 7.305 Collecting rapidfuzz<4.0.0,>=3.0.0 (from cleo<3.0.0,>=2.1.0->poetry==1.8.5)\n#6 7.322   Downloading rapidfuzz-3.14.6-cp312-cp312-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl.metadata (12 kB)\n#6 7.356 Collecting urllib3>=1.25 (from dulwich<0.22.0,>=0.21.2->poetry==1.8.5)\n#6 7.373   Downloading urllib3-2.8.0-py3-none-any.whl.metadata (7.4 kB)\n#6 7.407 Collecting jaraco.classes (from keyring<25.0.0,>=24.0.0->poetry==1.8.5)\n#6 7.417   Downloading jaraco.classes-3.4.0-py3-none-any.whl.metadata (2.6 kB)\n#6 7.441 Collecting SecretStorage>=3.2 (from keyring<25.0.0,>=24.0.0->poetry==1.8.5)\n#6 7.455   Downloading secretstorage-3.5.0-py3-none-any.whl.metadata (4.0 kB)\n#6 7.578 Collecting jeepney>=0.4.2 (from keyring<25.0.0,>=24.0.0->poetry==1.8.5)\n#6 7.590   Downloading jeepney-0.9.0-py3-none-any.whl.metadata (1.2 kB)\n#6 7.617 Collecting ptyprocess>=0.5 (from pexpect<5.0.0,>=4.7.0->poetry==1.8.5)\n#6 7.631   Downloading ptyprocess-0.7.0-py2.py3-none-any.whl.metadata (1.3 kB)\n#6 7.637 INFO: pip is looking at multiple versions of poetry-plugin-export to determine which version is compatible with other requirements. This could take a while.\n#6 7.638 Collecting poetry-plugin-export<2.0.0,>=1.6.0 (from poetry==1.8.5)\n#6 7.650   Downloading poetry_plugin_export-1.10.0-py3-none-any.whl.metadata (3.6 kB)\n#6 7.663   Downloading poetry_plugin_export-1.9.0-py3-none-any.whl.metadata (3.1 kB)\n#6 7.771   Downloading poetry_plugin_export-1.8.0-py3-none-any.whl.metadata (2.8 kB)\n#6 7.860 Collecting charset_normalizer<4,>=2 (from requests<3.0,>=2.26->poetry==1.8.5)\n#6 7.946   Downloading charset_normalizer-3.5.2-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl.metadata (46 kB)\n#6 8.145 Collecting idna<4,>=2.5 (from requests<3.0,>=2.26->poetry==1.8.5)\n#6 8.153   Downloading idna-3.20-py3-none-any.whl.metadata (7.2 kB)\n#6 8.204 Collecting certifi>=2023.5.7 (from requests<3.0,>=2.26->poetry==1.8.5)\n#6 8.456   Downloading certifi-2026.7.22-py3-none-any.whl.metadata (2.5 kB)\n#6 8.683 Collecting distlib<1,>=0.3.7 (from virtualenv<21.0.0,>=20.26.6->poetry==1.8.5)\n#6 8.706   Downloading distlib-0.4.4-py2.py3-none-any.whl.metadata (5.3 kB)\n#6 8.720 Collecting filelock>=3.8.0 (from cachecontrol[filecache]<0.15.0,>=0.14.0->poetry==1.8.5)\n#6 8.818   Downloading filelock-3.32.7-py3-none-any.whl.metadata (2.0 kB)\n#6 8.937 Collecting cryptography>=2.0 (from SecretStorage>=3.2->keyring<25.0.0,>=24.0.0->poetry==1.8.5)\n#6 8.945   Downloading cryptography-50.0.2-cp311-abi3-manylinux_2_34_aarch64.whl.metadata (4.4 kB)\n#6 8.979 Collecting more-itertools (from jaraco.classes->keyring<25.0.0,>=24.0.0->poetry==1.8.5)\n#6 8.993   Downloading more_itertools-11.2.1-py3-none-any.whl.metadata (42 kB)\n#6 9.403 Collecting cffi>=2.0.0 (from cryptography>=2.0->SecretStorage>=3.2->keyring<25.0.0,>=24.0.0->poetry==1.8.5)\n#6 9.416   Downloading cffi-2.1.1-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.whl.metadata (2.5 kB)\n#6 9.441 Collecting pycparser (from cffi>=2.0.0->cryptography>=2.0->SecretStorage>=3.2->keyring<25.0.0,>=24.0.0->poetry==1.8.5)\n#6 9.458   Downloading pycparser-3.11-py3-none-any.whl.metadata (8.2 kB)\n#6 9.475 Downloading poetry-1.8.5-py3-none-any.whl (249 kB)\n#6 9.901 Downloading poetry_core-1.9.1-py3-none-any.whl (309 kB)\n#6 10.08 Downloading build-1.6.1-py3-none-any.whl (31 kB)\n#6 10.45 Downloading cachecontrol-0.14.4-py3-none-any.whl (22 kB)\n#6 10.51 Downloading cleo-2.1.0-py3-none-any.whl (78 kB)\n#6 10.61 Downloading crashtest-0.4.1-py3-none-any.whl (7.6 kB)\n#6 10.62 Downloading dulwich-0.21.7-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl (521 kB)\n#6 11.98 Downloading fastjsonschema-2.22.2-py3-none-any.whl (27 kB)\n#6 12.01 Downloading installer-0.7.0-py3-none-any.whl (453 kB)\n#6 12.10 Downloading keyring-24.3.1-py3-none-any.whl (38 kB)\n#6 12.12 Downloading packaging-26.3-py3-none-any.whl (129 kB)\n#6 12.39 Downloading pexpect-4.9.0-py2.py3-none-any.whl (63 kB)\n#6 12.50 Downloading pkginfo-1.13.3-py3-none-any.whl (35 kB)\n#6 12.54 Downloading platformdirs-4.13.3-py3-none-any.whl (32 kB)\n#6 12.56 Downloading poetry_plugin_export-1.8.0-py3-none-any.whl (10 kB)\n#6 12.58 Downloading pyproject_hooks-1.3.3-py3-none-any.whl (10 kB)\n#6 12.59 Downloading requests-2.34.2-py3-none-any.whl (73 kB)\n#6 12.62 Downloading requests_toolbelt-1.0.0-py2.py3-none-any.whl (54 kB)\n#6 12.64 Downloading shellingham-1.5.4-py2.py3-none-any.whl (9.8 kB)\n#6 12.66 Downloading tomlkit-0.15.2-py3-none-any.whl (52 kB)\n#6 12.68 Downloading trove_classifiers-2026.9.21.13-py3-none-any.whl (14 kB)\n#6 12.69 Downloading virtualenv-20.39.1-py3-none-any.whl (5.8 MB)\n#6 14.29    \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501 5.8/5.8 MB 3.9 MB/s eta 0:00:00\n#6 14.31 Downloading certifi-2026.7.22-py3-none-any.whl (136 kB)\n#6 14.49 Downloading charset_normalizer-3.5.2-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (246 kB)\n#6 14.60 Downloading distlib-0.4.4-py2.py3-none-any.whl (472 kB)\n#6 14.71 Downloading filelock-3.32.7-py3-none-any.whl (100 kB)\n#6 14.72 Downloading idna-3.20-py3-none-any.whl (69 kB)\n#6 14.74 Downloading jeepney-0.9.0-py3-none-any.whl (49 kB)\n#6 14.75 Downloading msgpack-1.2.3-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl (460 kB)\n#6 14.79 Downloading ptyprocess-0.7.0-py2.py3-none-any.whl (13 kB)\n#6 14.80 Downloading rapidfuzz-3.14.6-cp312-cp312-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl (1.4 MB)\n#6 15.30    \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501 1.4/1.4 MB 2.3 MB/s eta 0:00:00\n#6 15.32 Downloading secretstorage-3.5.0-py3-none-any.whl (15 kB)\n#6 15.33 Downloading urllib3-2.8.0-py3-none-any.whl (135 kB)\n#6 15.54 Downloading jaraco.classes-3.4.0-py3-none-any.whl (6.8 kB)\n#6 15.69 Downloading cryptography-50.0.2-cp311-abi3-manylinux_2_34_aarch64.whl (4.7 MB)\n#6 17.32    \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501 4.7/4.7 MB 3.0 MB/s eta 0:00:00\n#6 17.35 Downloading more_itertools-11.2.1-py3-none-any.whl (74 kB)\n#6 17.37 Downloading cffi-2.1.1-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.whl (222 kB)\n#6 17.39 Downloading pycparser-3.11-py3-none-any.whl (51 kB)\n#6 17.44 Installing collected packages: trove-classifiers, ptyprocess, distlib, urllib3, tomlkit, shellingham, rapidfuzz, pyproject-hooks, pycparser, poetry-core, platformdirs, pkginfo, pexpect, packaging, msgpack, more-itertools, jeepney, installer, idna, filelock, fastjsonschema, crashtest, charset_normalizer, certifi, virtualenv, requests, jaraco.classes, dulwich, cleo, cffi, build, requests-toolbelt, cryptography, cachecontrol, SecretStorage, keyring, poetry-plugin-export, poetry\n#6 18.82 Successfully installed SecretStorage-3.5.0 build-1.6.1 cachecontrol-0.14.4 certifi-2026.7.22 cffi-2.1.1 charset_normalizer-3.5.2 cleo-2.1.0 crashtest-0.4.1 cryptography-50.0.2 distlib-0.4.4 dulwich-0.21.7 fastjsonschema-2.22.2 filelock-3.32.7 idna-3.20 installer-0.7.0 jaraco.classes-3.4.0 jeepney-0.9.0 keyring-24.3.1 more-itertools-11.2.1 msgpack-1.2.3 packaging-26.3 pexpect-4.9.0 pkginfo-1.13.3 platformdirs-4.13.3 poetry-1.8.5 poetry-core-1.9.1 poetry-plugin-export-1.8.0 ptyprocess-0.7.0 pycparser-3.11 pyproject-hooks-1.3.3 rapidfuzz-3.14.6 requests-2.34.2 requests-toolbelt-1.0.0 shellingham-1.5.4 tomlkit-0.15.2 trove-classifiers-2026.9.21.13 urllib3-2.8.0 virtualenv-20.39.1\n#6 DONE 19.1s\n\n#7 [3/5] WORKDIR /opt/render/project/src\n#7 DONE 0.1s\n\n#8 [4/5] COPY . .\n#8 DONE 0.0s\n\n#9 [5/5] RUN poetry install --no-interaction --no-ansi && poetry run python qa392-observer.py build\n#9 0.418 Creating virtualenv qa392-flask-bMBqP5dT-py3.12 in /root/.cache/pypoetry/virtualenvs\n#9 0.730 Updating dependencies\n#9 0.730 Resolving dependencies...\n#9 3.238 \n#9 3.238 Package operations: 8 installs, 0 updates, 0 removals\n#9 3.238 \n#9 3.239   - Installing markupsafe (3.0.4)\n#9 3.640   - Installing blinker (1.9.0)\n#9 3.641   - Installing click (8.5.0)\n#9 3.642   - Installing itsdangerous (2.2.0)\n#9 3.643   - Installing jinja2 (3.1.6)\n#9 3.644   - Installing werkzeug (3.1.9)\n#9 4.149   - Installing flask (3.1.3)\n#9 4.150   - Installing gunicorn (26.2.0)\n#9 4.328 \n#9 4.328 Writing lock file\n#9 5.076 QA392_OBSERVER {\"marker\":\"QA392_LOCAL\",\"phase\":\"build\",\"python\":\"3.12.15\",\"executable\":\"/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12/bin/python\",\"prefix\":\"/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12\",\"base_prefix\":\"/usr/local\",\"in_project_venv\":true,\"poetry_version\":\"Poetry (version 1.8.5)\",\"poetry_env_path\":\"/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12\",\"project_venv_matches\":true,\"flask\":\"3.1.3\",\"gunicorn\":\"26.2.0\",\"app_can_import_poetry\":false,\"files\":{\"app.py\":{\"bytes\":109,\"sha256\":\"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"},\"requirements.txt\":{\"bytes\":15,\"sha256\":\"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}},\"pyproject_sha256\":\"ac72ee683481a6f1eba70ce0ea8ee19781ae29778948402f95da8f5d62ae2f51\",\"lock_sha256\":\"5b7d681fcc541fc30378977451b856ea92ad0c8194c1b52b2d8a2c41d5d7e92e\",\"HOME\":\"/root\",\"port\":null}\n#9 DONE 5.2s\n\n#10 exporting to image\n#10 exporting layers\n#10 exporting layers 1.5s done\n#10 exporting manifest sha256:8ff03ea6f4d2abcacbdcd2095dfd71bb3340ed61ca9e939ca37ae228fcb3250f done\n#10 exporting config sha256:42226d205f6470095fd036f87099f4111d3ea39b63827b1740aececca2e80cf2 done\n#10 exporting attestation manifest sha256:750c913e63c8ef5b45a2c81ce1e8bd5cbde6147750f9145f90aa45d6dfb0c668 done\n#10 exporting manifest list sha256:f06eb26b9e2b02515b6e6bb04b175cfd04b7bb61169a3313b396b607f5f4129e done\n#10 naming to docker.io/library/bex-qa392-local:e9cc81-185 done\n#10 unpacking to docker.io/library/bex-qa392-local:e9cc81-185\n#10 unpacking to docker.io/library/bex-qa392-local:e9cc81-185 0.9s done\n#10 DONE 2.5s\n\nView build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/7zdzq2681btj5nbhf2la7ge23\n"
+      },
+      "runtime": {
+        "exit": 0,
+        "stdout": "QA392_LOCAL_RESULT {\"build\": {\"marker\": \"QA392_LOCAL\", \"phase\": \"build\", \"python\": \"3.12.15\", \"executable\": \"/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12/bin/python\", \"prefix\": \"/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12\", \"base_prefix\": \"/usr/local\", \"in_project_venv\": true, \"poetry_version\": \"Poetry (version 1.8.5)\", \"poetry_env_path\": \"/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12\", \"project_venv_matches\": true, \"flask\": \"3.1.3\", \"gunicorn\": \"26.2.0\", \"app_can_import_poetry\": false, \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}, \"pyproject_sha256\": \"ac72ee683481a6f1eba70ce0ea8ee19781ae29778948402f95da8f5d62ae2f51\", \"lock_sha256\": \"5b7d681fcc541fc30378977451b856ea92ad0c8194c1b52b2d8a2c41d5d7e92e\", \"HOME\": \"/root\", \"port\": null}, \"runtime\": {\"marker\": \"QA392_LOCAL\", \"phase\": \"runtime\", \"python\": \"3.12.15\", \"executable\": \"/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12/bin/python\", \"prefix\": \"/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12\", \"base_prefix\": \"/usr/local\", \"in_project_venv\": true, \"poetry_version\": \"Poetry (version 1.8.5)\", \"poetry_env_path\": \"/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12\", \"project_venv_matches\": true, \"flask\": \"3.1.3\", \"gunicorn\": \"26.2.0\", \"app_can_import_poetry\": false, \"files\": {\"app.py\": {\"bytes\": 109, \"sha256\": \"51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3\"}, \"requirements.txt\": {\"bytes\": 15, \"sha256\": \"16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560\"}}, \"pyproject_sha256\": \"ac72ee683481a6f1eba70ce0ea8ee19781ae29778948402f95da8f5d62ae2f51\", \"lock_sha256\": \"5b7d681fcc541fc30378977451b856ea92ad0c8194c1b52b2d8a2c41d5d7e92e\", \"HOME\": \"/root\", \"port\": \"3000\"}, \"original_app_HTTP\": 200, \"original_body\": \"Hello, World!\", \"server_cleanup_exit\": 0, \"server_logs\": \"[2026-10-17 01:46:37 +0000] [13] [INFO] Starting gunicorn 26.2.0\\n[2026-10-17 01:46:37 +0000] [13] [INFO] Listening at: http://0.0.0.0:3000 (13)\\n[2026-10-17 01:46:37 +0000] [13] [INFO] Using worker: sync\\n[2026-10-17 01:46:37 +0000] [16] [INFO] Booting worker with pid: 16\\n[2026-10-17 01:46:37 +0000] [13] [INFO] Control socket listening at /root/.gunicorn/gunicorn.ctl\\n127.0.0.1 - - [17/Oct/2026:01:46:37 +0000] \\\"GET /?qa392_local HTTP/1.1\\\" 200 13 \\\"-\\\" \\\"Python-urllib/3.12\\\"\\n[2026-10-17 01:46:37 +0000] [16] [INFO] Worker exiting (pid: 16)\\n[2026-10-17 01:46:37 +0000] [13] [INFO] Handling signal: term\\n[2026-10-17 01:46:38 +0000] [13] [INFO] Worker (pid:16) was sent SIGTERM!\\n[2026-10-17 01:46:38 +0000] [13] [INFO] Shutting down: Master\\n\", \"pass\": true}\n",
+        "stderr": ""
+      },
+      "observed": {
+        "build": {
+          "marker": "QA392_LOCAL",
+          "phase": "build",
+          "python": "3.12.15",
+          "executable": "/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12/bin/python",
+          "prefix": "/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12",
+          "base_prefix": "/usr/local",
+          "in_project_venv": true,
+          "poetry_version": "Poetry (version 1.8.5)",
+          "poetry_env_path": "/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12",
+          "project_venv_matches": true,
+          "flask": "3.1.3",
+          "gunicorn": "26.2.0",
+          "app_can_import_poetry": false,
+          "files": {
+            "app.py": {
+              "bytes": 109,
+              "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+            },
+            "requirements.txt": {
+              "bytes": 15,
+              "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+            }
+          },
+          "pyproject_sha256": "ac72ee683481a6f1eba70ce0ea8ee19781ae29778948402f95da8f5d62ae2f51",
+          "lock_sha256": "5b7d681fcc541fc30378977451b856ea92ad0c8194c1b52b2d8a2c41d5d7e92e",
+          "HOME": "/root",
+          "port": null
+        },
+        "runtime": {
+          "marker": "QA392_LOCAL",
+          "phase": "runtime",
+          "python": "3.12.15",
+          "executable": "/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12/bin/python",
+          "prefix": "/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12",
+          "base_prefix": "/usr/local",
+          "in_project_venv": true,
+          "poetry_version": "Poetry (version 1.8.5)",
+          "poetry_env_path": "/root/.cache/pypoetry/virtualenvs/qa392-flask-bMBqP5dT-py3.12",
+          "project_venv_matches": true,
+          "flask": "3.1.3",
+          "gunicorn": "26.2.0",
+          "app_can_import_poetry": false,
+          "files": {
+            "app.py": {
+              "bytes": 109,
+              "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+            },
+            "requirements.txt": {
+              "bytes": 15,
+              "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+            }
+          },
+          "pyproject_sha256": "ac72ee683481a6f1eba70ce0ea8ee19781ae29778948402f95da8f5d62ae2f51",
+          "lock_sha256": "5b7d681fcc541fc30378977451b856ea92ad0c8194c1b52b2d8a2c41d5d7e92e",
+          "HOME": "/root",
+          "port": "3000"
+        },
+        "original_app_HTTP": 200,
+        "original_body": "Hello, World!",
+        "server_cleanup_exit": 0,
+        "server_logs": "[2026-10-17 01:46:37 +0000] [13] [INFO] Starting gunicorn 26.2.0\n[2026-10-17 01:46:37 +0000] [13] [INFO] Listening at: http://0.0.0.0:3000 (13)\n[2026-10-17 01:46:37 +0000] [13] [INFO] Using worker: sync\n[2026-10-17 01:46:37 +0000] [16] [INFO] Booting worker with pid: 16\n[2026-10-17 01:46:37 +0000] [13] [INFO] Control socket listening at /root/.gunicorn/gunicorn.ctl\n127.0.0.1 - - [17/Oct/2026:01:46:37 +0000] \"GET /?qa392_local HTTP/1.1\" 200 13 \"-\" \"Python-urllib/3.12\"\n[2026-10-17 01:46:37 +0000] [16] [INFO] Worker exiting (pid: 16)\n[2026-10-17 01:46:37 +0000] [13] [INFO] Handling signal: term\n[2026-10-17 01:46:38 +0000] [13] [INFO] Worker (pid:16) was sent SIGTERM!\n[2026-10-17 01:46:38 +0000] [13] [INFO] Shutting down: Master\n",
+        "pass": true
+      },
+      "pass": true
+    }
+  ],
+  "pass": true,
+  "own_containers_images_removed": true,
+  "own_context_removed": true
+}

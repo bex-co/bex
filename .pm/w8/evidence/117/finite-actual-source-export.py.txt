@@ -1,0 +1,22 @@
+from pathlib import Path
+import json,os,shutil,subprocess,tempfile
+P=Path(__file__).resolve().parent;R=Path('/Volumes/nvme4tbfish/projects/bex8');D=Path(tempfile.mkdtemp(prefix='.qa394-export-',dir=R/'lego/operator'));D.chmod(0o700);header=(R/'lego/operator/hack/boilerplate.go.txt').read_text().replace('YEAR','2026');program=header+'''
+package main
+import("encoding/base64";"encoding/json";"os";"path/filepath";"strings";"github.com/bex-co/bex/lego/operator/internal/build")
+func main(){
+ rows:=[]map[string]any{}
+ for _,q:=range []struct{label,line,value string;override,static bool}{{"ruby33","3.3","",false,false},{"ruby34","3.4","",false,false},{"ruby40","4.0","",false,false},{"custom-false","3.4","false",true,false},{"explicit-empty","3.4","",true,false},{"static-ruby","3.4","",false,true}}{
+  o:=build.Options{Repo:"https://github.com/git-fixtures/basic",Ref:"6ecf0ef2c2dffb796033e5a02219af86ec6584e5",Name:"qa394-export",Revision:"qa394",AppUID:"qa394-local",Namespace:"qa394-local",Builder:build.BuilderNative,Runtime:"ruby",BuildCommand:"bundle install",StartCommand:"bundle exec ruby app.rb",StaticSite:q.static}
+  job:=build.BuildJob(o,"example.invalid/qa394:not-pushed");recipe:=""
+  for _,container:=range job.Spec.Template.Spec.InitContainers{if container.Name=="prepare-native-build"{for _,v:=range container.Env{if v.Name=="BEX_NATIVE_DOCKERFILE"{recipe=v.Value}}}}
+  if recipe==""{panic("recipe missing")};dir,err:=os.MkdirTemp("","qa394-resolve-");if err!=nil{panic(err)}
+  data:="RUBY_VERSION="+base64.StdEncoding.EncodeToString([]byte(q.line))+"\\n";if q.override{data+="BUNDLE_DEPLOYMENT="+base64.StdEncoding.EncodeToString([]byte(q.value))+"\\n"};bundle:=filepath.Join(dir,"env");dockerfile:=filepath.Join(dir,"Dockerfile");if err=os.WriteFile(bundle,[]byte(data),0600);err!=nil{panic(err)};if err=os.WriteFile(dockerfile,[]byte(recipe),0600);err!=nil{panic(err)}
+  choices,err:=build.ResolveNativeBuild("ruby",bundle,dockerfile,dir);if err!=nil{panic(err)};b,err:=os.ReadFile(dockerfile);if err!=nil{panic(err)};envs:=[]string{};for _,line:=range strings.Split(string(b),"\\n"){if strings.HasPrefix(line,"ENV "){envs=append(envs,line)}}
+  rows=append(rows,map[string]any{"label":q.label,"ruby_line":q.line,"override_present":q.override,"override_value":q.value,"static":q.static,"choices":choices,"image_ENV_instructions":envs,"generated_recipe":string(b)})
+  if err=os.RemoveAll(dir);err!=nil{panic(err)}
+ };if err:=json.NewEncoder(os.Stdout).Encode(rows);err!=nil{panic(err)}
+}
+''';(P/'sweep394-actual-export-program.go.txt').write_text(program);(D/'main.go').write_text(program)
+try:
+ r=subprocess.run(['go','run','./'+D.name],cwd=R/'lego/operator',env={**os.environ,'GOWORK':'off'},capture_output=True,text=True,timeout=150);out={'source_head':subprocess.check_output(['git','rev-parse','HEAD'],cwd=R,text=True).strip(),'command':'GOWORK=off go run owned temporary main package using exported BuildJob and ResolveNativeBuild','exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr,'qualification':'six actual generator/resolver observations, not executed generated Dockerfiles or product regression tests'};(P/'sweep394-source-export-receipt.json').write_text(json.dumps(out,indent=2));r.check_returncode();rows=json.loads(r.stdout);assert len(rows)==6 and all(not any('BUNDLE_DEPLOYMENT' in line for line in z['image_ENV_instructions']) for z in rows);(P/'sweep394-generated-native-recipes.json').write_text(json.dumps(rows,indent=2));print(json.dumps({'actual_generated_recipes':6,'primary_ruby_default_absent_all':True}))
+finally:shutil.rmtree(D);print('Owned Go export package removed',flush=True)

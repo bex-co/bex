@@ -1,6 +1,6 @@
 # Elixir production-mode defaults — sweep361
 
-[Finding and required acceptance](../../112.md) · [results](results.json) · [complete native create/build logs, commands, runtime JSON, API reads and cleanup](native-build-runtime-controls-cleanup.json) · [final inventory](final-inventory.json).
+[Finding and required acceptance](../../done/112.md) · [results](results.json) · [complete native create/build logs, commands, runtime JSON, API reads and cleanup](native-build-runtime-controls-cleanup.json) · [final inventory](final-inventory.json).
 
 Both native original first builds verify exact public Phoenix source, Mix dev/absent MIX_ENV, successful production dependency fetch, then fail at the missing dev-only phoenix_live_reload dependency. Actual native Bex POST201 is captured; Render direct create exits0 without HTTP capture. Both native build-prefix controls compile the real project and become Live/HTTP200 while the unchanged runtime still reports dev/unset. Both final start-prefix controls become Live/HTTP200 with prod in build and runtime. These are workarounds; no default is fixed by this filing.
 
