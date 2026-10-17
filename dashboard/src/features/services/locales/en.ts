@@ -1184,6 +1184,18 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Custom service name cleared.",
     description: "Toast after clearing displayName",
   },
+  "services.displayNameRefreshFailed": {
+    message:
+      'Renamed to "{name}", but this page couldn\'t refresh. Try again or reload to see the saved name.',
+    description:
+      "Warning after a service rename committed but the page could not re-read the saved name; offers Try again",
+  },
+  "services.displayNameUnpublished": {
+    message:
+      "The new name was saved, but this page couldn't show it yet. Use Try again on the notice or reload before editing it again.",
+    description:
+      "Why the service name row is locked after a rename saved but its re-read failed",
+  },
   "services.displayNameError": {
     message: "Couldn't rename the service. Please try again.",
     description: "Toast after setDisplayName fails",

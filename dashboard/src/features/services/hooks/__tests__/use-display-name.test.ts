@@ -2,8 +2,18 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUseMutation = vi.fn();
+// Publication re-reads through the client before the success toast (w4/m225);
+// its ordering is covered with a real client in use-display-name-publish.
+const client = {
+  refetchQueries: () => Object.assign(Promise.resolve([]), { results: [] }),
+  query: vi.fn(async () => ({})),
+};
 vi.mock("@apollo/client/react", () => ({
   useMutation: (...args: unknown[]) => mockUseMutation(...args),
+  useApolloClient: () => client,
+}));
+vi.mock("@tanstack/react-router", () => ({
+  useRouter: () => ({ invalidate: async () => undefined }),
 }));
 
 const toastSuccess = vi.fn();
