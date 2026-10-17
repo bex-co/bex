@@ -159,7 +159,9 @@ func appReleaseIdentityOf(spec appv1alpha1.AppSpec, version string) appReleaseId
 	// Native/buildpack builders bake the launch command into the image. Their
 	// selected literal build env must also participate in the artifact identity;
 	// buildEnv applies the same native-vs-BP_/BPE_ filter as the build plane.
-	// Dockerfile/prebuilt services apply these only to the release pod below.
+	// Dockerfile/prebuilt services apply these to the release pod below; a
+	// Dockerfile build also passes them as build args, refreshed on a rebuild
+	// request like the env Secrets (see the secret-files note below).
 	// A prebuilt image that kept native settings (w4/m202) still lands here; that
 	// only re-fingerprints it, since reusableArtifactImage runs spec.image unbuilt.
 	if builder == build.BuilderNative || builder == build.BuilderBuildpack {
@@ -172,8 +174,14 @@ func appReleaseIdentityOf(spec appv1alpha1.AppSpec, version string) appReleaseId
 		artifactInput.RuntimeEnvSecret = spec.EnvFromSecret
 		artifactInput.EnvFromSecrets = spec.EnvFromSecrets
 	}
-	// Only the native build mounts secret files into its RUN (w4/m163); kpack
-	// and Dockerfile builds never read them, so their artifacts stay put.
+	// Only the native build bakes secret files into its artifact identity
+	// (w4/m163). A Dockerfile build also reads the env Secrets and secret files
+	// (build args and build secrets, w1/m178), but a new value reaches it only
+	// on a rebuild request — spec.restartedAt, above — exactly as Render's
+	// "Save, rebuild, and deploy" versus "Save and deploy" choice
+	// (docs/render-artifacts/docker-build-env.md). Counting their Secret names
+	// here would also change every existing Dockerfile App's fingerprint and
+	// rebuild the whole fleet on the next operator upgrade.
 	if builder == build.BuilderNative {
 		artifactInput.FilesFromSecrets = spec.FilesFromSecrets
 	}

@@ -178,20 +178,56 @@ func validateNativeOptions(o Options) error {
 	if rev := strings.TrimSpace(o.NativeEnvRevision); rev != "" && !nativeEnvRevisionPattern.MatchString(rev) {
 		return fmt.Errorf("build: native env revision %q is not opaque cache metadata", rev)
 	}
+	return validateSecretFiles(o)
+}
+
+// validateSecretFiles checks the secret-file list a native or Dockerfile build
+// mounts: a Secret and a list together, names in the Secret-key charset, and
+// strictly ascending, which keeps the build deterministic for one file set and
+// rules out duplicates.
+func validateSecretFiles(o Options) error {
 	if (o.NativeFilesSecret == "") != (len(o.NativeFiles) == 0) {
-		return fmt.Errorf("build: native secret files need both a Secret and a file list")
+		return fmt.Errorf("build: secret files need both a Secret and a file list")
 	}
 	for i, name := range o.NativeFiles {
 		if !validNativeFileName(name) {
-			return fmt.Errorf("build: invalid native secret file name %q", name)
+			return fmt.Errorf("build: invalid secret file name %q", name)
 		}
-		// Strictly ascending keeps the generated Dockerfile deterministic for one
-		// file set, and rules out duplicates.
 		if i > 0 && o.NativeFiles[i-1] >= name {
-			return fmt.Errorf("build: native secret files must be sorted and unique")
+			return fmt.Errorf("build: secret files must be sorted and unique")
 		}
 	}
 	return nil
+}
+
+// BuildLiterals is the literal spec.env a native or Dockerfile build receives,
+// sorted by name with Kubernetes' last-duplicate-wins order kept. PORT is
+// operator-owned at runtime (appEnv drops a user PORT) and BEX_NATIVE_* names
+// are the native preparer's own, so neither is a build input.
+func BuildLiterals(env []corev1.EnvVar) []corev1.EnvVar {
+	out := make([]corev1.EnvVar, 0, len(env))
+	for _, item := range env {
+		if item.Name == "" || item.ValueFrom != nil || item.Name == "PORT" || strings.HasPrefix(item.Name, "BEX_NATIVE_") {
+			continue
+		}
+		out = append(out, item)
+	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
+}
+
+// indexedLiteralEnv carries literals under private indexed names, never their
+// own: a literal PATH (or any other name the shell reads) must reach the build,
+// not become the build container's own environment and break its sh (w8/m61).
+// It returns those carriers and the newline-joined key list a script walks.
+func indexedLiteralEnv(literals []corev1.EnvVar, prefix string) ([]corev1.EnvVar, string) {
+	keys := make([]string, 0, len(literals))
+	env := make([]corev1.EnvVar, 0, len(literals))
+	for i, item := range literals {
+		keys = append(keys, item.Name)
+		env = append(env, corev1.EnvVar{Name: prefix + strconv.Itoa(i), Value: item.Value})
+	}
+	return env, strings.Join(keys, "\n")
 }
 
 // nativeEnvRevision returns the opaque BuildKit cache key embedded in the
@@ -343,36 +379,19 @@ func shellJSON(command string) string {
 // reconcile rewrites the projection mid-build; a declared file that is absent
 // fails the preparer rather than the tenant's command.
 func nativeBuildPreparer(o Options) corev1.Container {
-	// Literals ride private indexed names, never their own: a literal PATH (or
-	// any other name the shell reads) must reach the build command, not become
-	// the preparer's own environment and break its sh and codec lookup
-	// (w8/m61). The stable sort keeps Kubernetes' last-duplicate-wins order.
-	literals := make([]corev1.EnvVar, 0, len(o.BuildEnv))
-	for _, item := range o.BuildEnv {
-		if item.Name == "" || item.ValueFrom != nil || item.Name == "PORT" || strings.HasPrefix(item.Name, "BEX_NATIVE_") {
-			continue
-		}
-		literals = append(literals, item)
-	}
-	sort.SliceStable(literals, func(i, j int) bool { return literals[i].Name < literals[j].Name })
-	keys := make([]string, 0, len(literals))
-	env := make([]corev1.EnvVar, 0, len(literals)+3)
-	for i, item := range literals {
-		keys = append(keys, item.Name)
-		env = append(env, corev1.EnvVar{Name: nativeLiteralEnvPrefix + strconv.Itoa(i), Value: item.Value})
-	}
+	env, keys := indexedLiteralEnv(BuildLiterals(o.BuildEnv), nativeLiteralEnvPrefix)
 	env = append(env,
 		corev1.EnvVar{Name: "BEX_NATIVE_DOCKERFILE", Value: nativeDockerfile(o)},
-		corev1.EnvVar{Name: "BEX_NATIVE_LITERAL_KEYS", Value: strings.Join(keys, "\n")},
+		corev1.EnvVar{Name: "BEX_NATIVE_LITERAL_KEYS", Value: keys},
 		corev1.EnvVar{Name: "BEX_NATIVE_FILES", Value: strings.Join(o.NativeFiles, "\n")},
 	)
 
 	mounts := []corev1.VolumeMount{{Name: "native-build", MountPath: "/native"}}
 	if o.RuntimeEnvSecret != "" {
-		mounts = append(mounts, corev1.VolumeMount{Name: "runtime-env", MountPath: "/runtime-env", ReadOnly: true})
+		mounts = append(mounts, corev1.VolumeMount{Name: runtimeEnvVolume, MountPath: "/runtime-env", ReadOnly: true})
 	}
 	if o.NativeFilesSecret != "" {
-		mounts = append(mounts, corev1.VolumeMount{Name: "native-files", MountPath: "/native-files", ReadOnly: true})
+		mounts = append(mounts, corev1.VolumeMount{Name: secretFilesVolume, MountPath: "/native-files", ReadOnly: true})
 	}
 	return corev1.Container{
 		Name:    "prepare-native-build",

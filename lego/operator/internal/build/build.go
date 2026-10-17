@@ -349,11 +349,13 @@ type Options struct {
 	DockerContext string
 	// BuildEnv carries selected literal build-time environment. Kpack receives
 	// BP_*/BPE_* entries in Image.spec.build.env; native builds encode all
-	// literals into a BuildKit secret alongside RuntimeEnvSecret.
+	// literals into a BuildKit secret alongside RuntimeEnvSecret; Dockerfile
+	// builds pass them as build args after RuntimeEnvSecret's (w1/m178).
 	BuildEnv []corev1.EnvVar
-	// RuntimeEnvSecret names the Secret whose keys enter a native build — the
-	// operator's App-owned merged projection of linked group Secrets plus the
-	// service's own Secret (w4/m93). Empty = no Secret-backed build env.
+	// RuntimeEnvSecret names the Secret whose keys enter a native or Dockerfile
+	// build — the operator's App-owned merged projection of linked group Secrets
+	// plus the service's own Secret (w4/m93). A Dockerfile build receives each
+	// key as a build arg (w1/m178). Empty = no Secret-backed build env.
 	RuntimeEnvSecret string
 	// NativeEnvRevision is an opaque, non-secret cache key for the effective
 	// native build environment (literals + projected Secret sources). It enters
@@ -365,7 +367,9 @@ type Options struct {
 	// NativeFilesSecret names the operator's App-owned merged projection of the
 	// service's secret files (linked groups, then its own), and NativeFiles its
 	// sorted keys. A native build command reads each at /etc/secrets/<name>
-	// through a transient BuildKit secret mount (w4/m163). Both empty = none.
+	// through a transient BuildKit secret mount (w4/m163); a Dockerfile build
+	// gets each as a build secret under Render's id (renderSecretFileID, w1/m178).
+	// Both empty = none.
 	NativeFilesSecret string
 	NativeFiles       []string
 	// NativeResolverImage is bex's own image, whose /native-resolve picks the
@@ -612,6 +616,8 @@ func EnsureBuild(ctx context.Context, o Options) (Observation, error) {
 		if err := validateNativeOptions(o); err != nil {
 			return Observation{}, err
 		}
+	} else if err := validateDockerfileInputs(o); err != nil {
+		return Observation{}, err
 	}
 
 	image := o.ImageRef()
@@ -964,6 +970,7 @@ func BuildJob(o Options, image string) *batchv1.Job {
 		if o.DockerfilePath != "" {
 			args = append(args, "--opt", "filename="+o.DockerfilePath)
 		}
+		args = append(args, dockerBuildSecretArgs(o)...)
 	}
 	// mode=max because bex builds are typically multi-stage (the native path
 	// always is: build stage + runtime copy) and the default min mode discards
@@ -995,6 +1002,14 @@ fi
 		}
 	}
 
+	// A Dockerfile build's env vars and secret files are assembled in the
+	// container itself so no Secret-backed value enters the Job spec (w1/m178).
+	var dockerLiterals []corev1.EnvVar
+	if o.Builder != BuilderNative {
+		dockerLiterals = BuildLiterals(o.BuildEnv)
+		buildkitScript = dockerBuildInputsScript(o, dockerLiterals) + buildkitScript
+	}
+
 	// Keep BuildKit's default OCI process sandbox enabled; the Pod user namespace
 	// (spec.hostUsers=false) scopes the capabilities it needs without exposing
 	// host-root capabilities outside the pod.
@@ -1005,6 +1020,9 @@ fi
 	var env []corev1.EnvVar
 	if buildkitdFlags != "" {
 		env = []corev1.EnvVar{{Name: "BUILDKITD_FLAGS", Value: buildkitdFlags}}
+	}
+	if o.Builder != BuilderNative {
+		env = append(env, dockerBuildInputsEnv(o, dockerLiterals)...)
 	}
 
 	deadline := int64(BuildTimeout / time.Second)
@@ -1029,11 +1047,14 @@ fi
 	}
 	if o.Builder == BuilderNative {
 		volumes = append(volumes, emptyDirVolume("native-build"))
-		if o.RuntimeEnvSecret != "" {
-			volumes = append(volumes, secretVolume("runtime-env", o.RuntimeEnvSecret))
-		}
-		if o.NativeFilesSecret != "" {
-			volumes = append(volumes, secretVolume("native-files", o.NativeFilesSecret))
+	}
+	if o.RuntimeEnvSecret != "" {
+		volumes = append(volumes, secretVolume(runtimeEnvVolume, o.RuntimeEnvSecret))
+	}
+	if o.NativeFilesSecret != "" {
+		volumes = append(volumes, secretVolume(secretFilesVolume, o.NativeFilesSecret))
+		if o.Builder != BuilderNative {
+			volumes = append(volumes, emptyDirVolume(buildInputsVolume))
 		}
 	}
 
@@ -1085,6 +1106,16 @@ fi
 	}
 	if o.Builder == BuilderNative {
 		buildkit.VolumeMounts = append(buildkit.VolumeMounts, corev1.VolumeMount{Name: "native-build", MountPath: "/native"})
+	} else {
+		if o.RuntimeEnvSecret != "" {
+			buildkit.VolumeMounts = append(buildkit.VolumeMounts, corev1.VolumeMount{Name: runtimeEnvVolume, MountPath: dockerBuildEnvMount, ReadOnly: true})
+		}
+		if o.NativeFilesSecret != "" {
+			buildkit.VolumeMounts = append(buildkit.VolumeMounts,
+				corev1.VolumeMount{Name: secretFilesVolume, MountPath: dockerBuildFilesMount, ReadOnly: true},
+				corev1.VolumeMount{Name: buildInputsVolume, MountPath: dockerBuildInputsMount},
+			)
+		}
 	}
 	if o.BuildCache {
 		if !o.SkipCacheImport {
