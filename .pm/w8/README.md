@@ -297,7 +297,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **118** — [Forward stdin to noninteractive psql imports](118.md) (55m, major) ← functional CLI sweep399; released Bex, Render pin and HEAD silently import0 rows from supplied CSV, filename/direct controls import3. Upstream stdin handoff researched; exact database/data/credentials cleaned.
 
-- [ ] **116** — [Native Python generates HTTP URLs for HTTPS requests](116.md) (55m, major) ← functional CLI sweep380; both defaults produce wrong absolute URLs/repeated HTTPS redirects, both one-setting controls pass; exact own fixtures cleaned.
+- [ ] **116** — [Native Python generates HTTP URLs for HTTPS requests](blocked/116.md) (55m, major) — **BLOCKED (2026-10-16: implemented — primary Python images default Render's FORWARDED_ALLOW_IPS="*" before the build RUN, the service's own value (incl. empty) and explicit Gunicorn --forwarded-allow-ips winning; real-Gunicorn gate from a non-loopback peer + fail-before verified, Traefik header-trust reviewed; needs the operator deployed plus the hosted both-client Flask replay, runnable with the QA CLI login)**
 
 - [ ] **115** — [Correct MCP idle field omission and WebSocket-direction instructions](blocked/115.md) (30m, minor) — **BLOCKED (2026-10-16: implemented — MCP update_service idleTTLSeconds says omission preserves, 0 selects the 15-minute default, positive overrides, and WebSocket frames received or sent count; CRD source comment + regenerated YAML and the dashboard comment say both directions; behavior unchanged; needs the API deployed plus the live tools/list read and owned-fixture omitted-60/explicit-0 check, runnable with the QA CLI login)**
 
