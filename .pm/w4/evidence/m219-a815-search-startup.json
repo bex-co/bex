@@ -1,0 +1,1946 @@
+{
+  "pass": "a815",
+  "recorded": "2026-10-17 UTC",
+  "researchHead": "5e18f96cf7d8359b4d77c64893397cd879586f77",
+  "scope": "Read-only ordinary functional startup input retention. No resources created or changed.",
+  "replay": {
+    "factory": "function(url,label,width,marker){return `async(page)=>{\nawait page.setViewportSize({width:${width},height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-D60ymwlM.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.getByLabel(${JSON.stringify(label)},{exact:true}),marker=${JSON.stringify(marker)};\ntry{\nawait page.goto(${JSON.stringify(url)},{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.disabled,readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const after=await n.count()?await n.inputValue():null;let readyControl=null;if(await n.count()&&await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(700);readyControl=await n.inputValue();}\nreturn {at:new Date().toISOString(),url:page.url(),width:${width},scripts,before,typed,events,samples,after,readyControl,noResponseRewriting:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}`}",
+    "screenshotProbe": "async(page)=>{\nawait page.setViewportSize({width:1440,height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-D60ymwlM.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.getByLabel(\"Search environment groups by name\",{exact:true}),marker=\"qa-a815-screenshot\";\ntry{\nawait page.goto(\"https://dashboard.bex.co/env-groups\",{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.disabled,readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();await n.screenshot({path:\"qa-a815-search-typed.png\"});}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const after=await n.count()?await n.inputValue():null;if(await n.count())await n.screenshot({path:\"qa-a815-search-cleared.png\"});let readyControl=null;if(await n.count()&&await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(700);readyControl=await n.inputValue();}\nreturn {at:new Date().toISOString(),url:page.url(),width:1440,scripts,before,typed,events,samples,after,readyControl,readyUI:await page.locator('main').ariaSnapshot(),noResponseRewriting:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}",
+    "calls": [
+      [
+        "https://dashboard.bex.co/env-groups",
+        "Search environment groups by name",
+        1440,
+        "qa-a815-filter"
+      ],
+      [
+        "https://dashboard.bex.co/env-groups",
+        "Search environment groups by name",
+        390,
+        "qa-a815-mobile"
+      ],
+      [
+        "https://dashboard.bex.co/project/prj-d9dgeo0bd9nc73a0vh1g?env=unassigned",
+        "Search resources in Unassigned",
+        1440,
+        "qa-a815-project"
+      ]
+    ]
+  },
+  "limitations": [
+    "Only exact fetched real startup entry was delayed, then released unchanged; no API response rewriting.",
+    "Project control had no field during the captured pre-handler window; empty samples are not retention evidence. A separate later ready control retained typing.",
+    "Census counts direct JSX sites, not runtime instances; wrapper callers need expansion.",
+    "Screenshots are ignored supplementary evidence; complete DOM receipts below are the durable handoff."
+  ],
+  "receipts": {
+    "EnvGroupSearchDesktop": {
+      "at": "2026-10-17T00:48:50.124Z",
+      "url": "https://dashboard.bex.co/env-groups",
+      "width": 1440,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-D60ymwlM.js",
+          "status": 200,
+          "bytes": 1952882,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 1,
+        "enabled": true,
+        "readOnly": false,
+        "reactProps": false,
+        "id": ""
+      },
+      "typed": "qa-a815-filter",
+      "events": [
+        {
+          "trusted": true,
+          "value": "qa-a815-filter",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 13820.600000023842,
+          "value": "qa-a815-filter",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 13979.600000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 14133.299999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 14288.600000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 14444.199999928474,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 14599,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 14754.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 14910.399999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 15066.399999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 15221.899999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 15377.600000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 15532.399999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 15685.299999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 15838.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 15991.100000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 16144.199999928474,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 16298.299999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 16452.600000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 16605.299999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 16758.799999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "after": "",
+      "readyControl": "qa-a815-filter-ready",
+      "noResponseRewriting": true
+    },
+    "EnvGroupSearchMobile": {
+      "at": "2026-10-17T00:50:22.891Z",
+      "url": "https://dashboard.bex.co/env-groups",
+      "width": 390,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-D60ymwlM.js",
+          "status": 200,
+          "bytes": 1952882,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 1,
+        "enabled": true,
+        "readOnly": false,
+        "reactProps": false,
+        "id": ""
+      },
+      "typed": "qa-a815-mobile",
+      "events": [
+        {
+          "trusted": true,
+          "value": "qa-a815-mobile",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 10822.299999952316,
+          "value": "qa-a815-mobile",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 10978.299999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 11135.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 11290.199999928474,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 11447.099999904633,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 11800.199999928474,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 12058.199999928474,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 12673,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 12828.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 12985.299999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 13139.299999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 13294.199999928474,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 13449.799999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 13602.199999928474,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 13757.099999904633,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 13911.099999904633,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 14065.599999904633,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 14221.799999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 14377.899999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 14532.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "after": "",
+      "readyControl": "qa-a815-mobile-ready",
+      "noResponseRewriting": true
+    },
+    "EnvGroupSearchScreenshots": {
+      "at": "2026-10-17T00:54:25.178Z",
+      "url": "https://dashboard.bex.co/env-groups",
+      "width": 1440,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-D60ymwlM.js",
+          "status": 200,
+          "bytes": 1952882,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 1,
+        "enabled": true,
+        "readOnly": false,
+        "reactProps": false,
+        "id": ""
+      },
+      "typed": "qa-a815-screenshot",
+      "events": [
+        {
+          "trusted": true,
+          "value": "qa-a815-screenshot",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 10815.899999976158,
+          "value": "qa-a815-screenshot",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 10972.899999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 11129.099999904633,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 11285.799999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 11440.799999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 11595.399999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 11751.099999904633,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 11905.099999904633,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 12058.799999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 12212.099999904633,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 12366.899999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 12520,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 12674.799999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 12828.299999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 12983.599999904633,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 13138.699999928474,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 13292.799999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 13446.199999928474,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 13601.299999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 13755.799999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "after": "",
+      "readyControl": "qa-a815-screenshot-ready",
+      "readyUI": "- main:\n  - navigation \"Breadcrumbs\": Environment Groups\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - heading \"Environment Groups\" [level=1]\n  - paragraph: Share environment variables and secret files across services.\n  - button \"New Environment Group\"\n  - textbox \"Search environment groups by name\":\n    - /placeholder: Search environment groups\n    - text: qa-a815-screenshot-ready\n  - button \"Reset search\"\n  - paragraph: No matching environment groups\n  - paragraph: Try another name or reset the search.\n  - button \"Reset search\"",
+      "noResponseRewriting": true
+    },
+    "ProjectSearchDiscovery": {
+      "at": "2026-10-17T00:52:17.892Z",
+      "url": "https://dashboard.bex.co/project/prj-d9dgeo0bd9nc73a0vh1g?env=unassigned",
+      "fields": [
+        {
+          "label": "Search resources in Unassigned",
+          "placeholder": "Search resources in Unassigned",
+          "id": "",
+          "value": ""
+        }
+      ],
+      "noResourceMutation": true
+    },
+    "ProjectSearchDesktop": {
+      "at": "2026-10-17T00:53:08.256Z",
+      "url": "https://dashboard.bex.co/project/prj-d9dgeo0bd9nc73a0vh1g?env=unassigned",
+      "width": 1440,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-D60ymwlM.js",
+          "status": 200,
+          "bytes": 1952882,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 0
+      },
+      "typed": null,
+      "events": [],
+      "samples": [],
+      "after": null,
+      "readyControl": null,
+      "noResponseRewriting": true
+    },
+    "ProjectSearchReadyControl": {
+      "at": "2026-10-17T00:53:33.501Z",
+      "before": {
+        "enabled": true,
+        "reactProps": true
+      },
+      "value": "qa-a815-project-ready",
+      "url": "https://dashboard.bex.co/project/prj-d9dgeo0bd9nc73a0vh1g?env=unassigned&q=qa-a815-project-ready",
+      "noResourceMutation": true
+    },
+    "InventoryCleanup": {
+      "at": "2026-10-17T00:54:33.927Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [],
+      "consoleErrors": [],
+      "httpFailures": []
+    },
+    "SessionCleared": {
+      "at": "2026-10-17T00:54:39.962Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  },
+  "nativeFieldCensus": {
+    "method": "TypeScript JSX AST; production TSX excluding test directories and test/spec files; resolves named imports, aliases and ts/tsx suffixes for canonical ui/input and ui/textarea; plus native JSX tags. Direct syntactic sites, not runtime instance counts. Wrapper callers need their own expansion.",
+    "sites": {
+      "Input": [
+        {
+          "path": "dashboard/src/common/components/confirm-dialog.tsx",
+          "line": 140,
+          "tag": "Input",
+          "props": [
+            "id",
+            "placeholder",
+            "value",
+            "onChange",
+            "autoComplete",
+            "spellCheck",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/common/components/datastore-overview-previews.tsx",
+          "line": 238,
+          "tag": "Input",
+          "props": ["disabled", "placeholder", "aria-label", "className"]
+        },
+        {
+          "path": "dashboard/src/common/components/datastore-overview-previews.tsx",
+          "line": 244,
+          "tag": "Input",
+          "props": ["disabled", "aria-label", "placeholder", "className"]
+        },
+        {
+          "path": "dashboard/src/common/components/ip-allow-list-editor.tsx",
+          "line": 134,
+          "tag": "Input",
+          "props": [
+            "value",
+            "onChange",
+            "aria-invalid",
+            "aria-label",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/common/components/ip-allow-list-editor.tsx",
+          "line": 143,
+          "tag": "Input",
+          "props": [
+            "value",
+            "onChange",
+            "aria-label",
+            "placeholder",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/common/components/ip-allow-list-editor.tsx",
+          "line": 190,
+          "tag": "Input",
+          "props": [
+            "value",
+            "onChange",
+            "onKeyDown",
+            "placeholder",
+            "aria-label",
+            "aria-invalid",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/common/components/ip-allow-list-editor.tsx",
+          "line": 204,
+          "tag": "Input",
+          "props": [
+            "value",
+            "onChange",
+            "onKeyDown",
+            "aria-label",
+            "placeholder",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/common/components/sudo-command-field.tsx",
+          "line": 52,
+          "tag": "Input",
+          "props": [
+            "id",
+            "value",
+            "onChange",
+            "autoComplete",
+            "placeholder",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/common/components/text-field.tsx",
+          "line": 36,
+          "tag": "Input",
+          "props": [
+            "id",
+            "value",
+            "onChange",
+            "placeholder",
+            "autoComplete",
+            "aria-invalid"
+          ]
+        },
+        {
+          "path": "dashboard/src/common/components/ui/combobox.tsx",
+          "line": 211,
+          "tag": "Input",
+          "props": [
+            "ref",
+            "value",
+            "onChange",
+            "onFocus",
+            "onBlur",
+            "onKeyDown",
+            "placeholder",
+            "disabled",
+            "className",
+            "autoComplete",
+            "role",
+            "aria-label",
+            "aria-expanded",
+            "aria-autocomplete"
+          ]
+        },
+        {
+          "path": "dashboard/src/common/components/ui/sidebar.tsx",
+          "line": 526,
+          "tag": "Input",
+          "props": ["data-slot", "data-sidebar", "className", "...spread"]
+        },
+        {
+          "path": "dashboard/src/features/agent-sessions/components/configuration-fields.tsx",
+          "line": 40,
+          "tag": "Input",
+          "props": ["...spread", "autoComplete", "placeholder"]
+        },
+        {
+          "path": "dashboard/src/features/agent-sessions/components/configuration-fields.tsx",
+          "line": 58,
+          "tag": "Input",
+          "props": ["...spread", "autoComplete", "placeholder"]
+        },
+        {
+          "path": "dashboard/src/features/api-keys/components/create-api-key-dialog.tsx",
+          "line": 110,
+          "tag": "Input",
+          "props": [
+            "id",
+            "value",
+            "onChange",
+            "placeholder",
+            "autoComplete",
+            "autoFocus",
+            "onKeyDown"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/databases/components/access-control-panel.tsx",
+          "line": 185,
+          "tag": "Input",
+          "props": [
+            "value",
+            "onChange",
+            "placeholder",
+            "aria-label",
+            "aria-invalid",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/databases/components/create-database-dialog.tsx",
+          "line": 207,
+          "tag": "Input",
+          "props": [
+            "id",
+            "value",
+            "onChange",
+            "placeholder",
+            "autoComplete",
+            "aria-invalid"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/databases/components/create-database-dialog.tsx",
+          "line": 236,
+          "tag": "Input",
+          "props": [
+            "id",
+            "value",
+            "onChange",
+            "placeholder",
+            "autoComplete",
+            "aria-invalid"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/databases/components/create-database-dialog.tsx",
+          "line": 258,
+          "tag": "Input",
+          "props": [
+            "id",
+            "value",
+            "onChange",
+            "placeholder",
+            "autoComplete",
+            "aria-invalid"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/databases/components/create-database-dialog.tsx",
+          "line": 328,
+          "tag": "Input",
+          "props": [
+            "id",
+            "type",
+            "min",
+            "max",
+            "disabled",
+            "value",
+            "onChange",
+            "placeholder",
+            "aria-invalid",
+            "aria-describedby"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/databases/components/parameter-overrides-editor.tsx",
+          "line": 212,
+          "tag": "Input",
+          "props": ["className", "value", "onChange", "aria-label"]
+        },
+        {
+          "path": "dashboard/src/features/databases/components/parameter-overrides-editor.tsx",
+          "line": 224,
+          "tag": "Input",
+          "props": ["className", "value", "onChange", "aria-label"]
+        },
+        {
+          "path": "dashboard/src/features/databases/components/recovery-panel.tsx",
+          "line": 187,
+          "tag": "Input",
+          "props": ["id", "value", "onChange", "placeholder", "autoComplete"]
+        },
+        {
+          "path": "dashboard/src/features/databases/components/recovery-panel.tsx",
+          "line": 199,
+          "tag": "Input",
+          "props": ["id", "type", "value", "onChange"]
+        },
+        {
+          "path": "dashboard/src/features/deploys/components/deploy-log-panel.tsx",
+          "line": 241,
+          "tag": "Input",
+          "props": ["value", "onChange", "placeholder", "className"]
+        },
+        {
+          "path": "dashboard/src/features/deploys/components/deploys-list-page.tsx",
+          "line": 368,
+          "tag": "Input",
+          "props": [
+            "value",
+            "onChange",
+            "placeholder",
+            "aria-label",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/env-groups/components/env-group-actions.tsx",
+          "line": 340,
+          "tag": "Input",
+          "props": ["id", "value", "onChange", "aria-invalid", "autoComplete"]
+        },
+        {
+          "path": "dashboard/src/features/env-groups/components/new-env-group-dialog.tsx",
+          "line": 336,
+          "tag": "Input",
+          "props": [
+            "id",
+            "value",
+            "onChange",
+            "placeholder",
+            "aria-invalid",
+            "aria-describedby",
+            "autoComplete"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/env-groups/components/new-env-group-dialog.tsx",
+          "line": 375,
+          "tag": "Input",
+          "props": ["id", "value", "onChange", "aria-invalid", "placeholder"]
+        },
+        {
+          "path": "dashboard/src/features/env-groups/components/new-env-group-dialog.tsx",
+          "line": 488,
+          "tag": "Input",
+          "props": ["id", "value", "onChange", "aria-invalid", "placeholder"]
+        },
+        {
+          "path": "dashboard/src/features/environments/components/environment-card.tsx",
+          "line": 417,
+          "tag": "Input",
+          "props": ["id", "value", "onChange", "autoComplete", "onKeyDown"]
+        },
+        {
+          "path": "dashboard/src/features/environments/components/environment-settings-dialog.tsx",
+          "line": 189,
+          "tag": "Input",
+          "props": [
+            "value",
+            "onChange",
+            "aria-label",
+            "placeholder",
+            "className",
+            "disabled"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/environments/components/environment-settings-dialog.tsx",
+          "line": 201,
+          "tag": "Input",
+          "props": [
+            "value",
+            "onChange",
+            "aria-label",
+            "placeholder",
+            "disabled"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/environments/components/environment-settings-dialog.tsx",
+          "line": 231,
+          "tag": "Input",
+          "props": [
+            "value",
+            "onChange",
+            "onKeyDown",
+            "aria-label",
+            "placeholder",
+            "className",
+            "disabled"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/environments/components/environment-settings-dialog.tsx",
+          "line": 245,
+          "tag": "Input",
+          "props": [
+            "value",
+            "onChange",
+            "onKeyDown",
+            "aria-label",
+            "placeholder",
+            "className",
+            "disabled"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/environments/components/new-environment-dialog.tsx",
+          "line": 87,
+          "tag": "Input",
+          "props": [
+            "id",
+            "value",
+            "onChange",
+            "placeholder",
+            "autoComplete",
+            "onKeyDown"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/events/components/service-event-filter.tsx",
+          "line": 116,
+          "tag": "Input",
+          "props": [
+            "value",
+            "onChange",
+            "placeholder",
+            "aria-label",
+            "autoComplete"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/logs/components/datastore-log-viewer.tsx",
+          "line": 300,
+          "tag": "Input",
+          "props": [
+            "value",
+            "onChange",
+            "placeholder",
+            "aria-label",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/logs/components/log-filter-bar.tsx",
+          "line": 186,
+          "tag": "Input",
+          "props": [
+            "value",
+            "onChange",
+            "placeholder",
+            "aria-label",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/logs/components/log-filter-bar.tsx",
+          "line": 246,
+          "tag": "Input",
+          "props": [
+            "value",
+            "onChange",
+            "placeholder",
+            "aria-label",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/metrics/components/network-metrics-card.tsx",
+          "line": 252,
+          "tag": "Input",
+          "props": [
+            "value",
+            "onChange",
+            "onKeyDown",
+            "onBlur",
+            "placeholder",
+            "aria-label",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/metrics/components/range-select.tsx",
+          "line": 218,
+          "tag": "Input",
+          "props": ["id", "type", "step", "value", "onChange"]
+        },
+        {
+          "path": "dashboard/src/features/metrics/components/range-select.tsx",
+          "line": 232,
+          "tag": "Input",
+          "props": ["id", "type", "step", "value", "onChange"]
+        },
+        {
+          "path": "dashboard/src/features/notifications/components/push-notification-settings-panel.tsx",
+          "line": 262,
+          "tag": "Input",
+          "props": ["id", "value", "disabled", "placeholder", "onChange"]
+        },
+        {
+          "path": "dashboard/src/features/notifications/components/push-notification-settings-panel.tsx",
+          "line": 276,
+          "tag": "Input",
+          "props": [
+            "id",
+            "type",
+            "min",
+            "max",
+            "step",
+            "value",
+            "disabled",
+            "onChange"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/notifications/components/push-notification-settings-panel.tsx",
+          "line": 416,
+          "tag": "Input",
+          "props": ["type", "aria-label", "value", "onChange"]
+        },
+        {
+          "path": "dashboard/src/features/notifications/components/push-notification-settings-panel.tsx",
+          "line": 425,
+          "tag": "Input",
+          "props": ["type", "aria-label", "value", "onChange"]
+        },
+        {
+          "path": "dashboard/src/features/projects/components/new-project-dialog.tsx",
+          "line": 91,
+          "tag": "Input",
+          "props": [
+            "id",
+            "value",
+            "onChange",
+            "placeholder",
+            "autoComplete",
+            "onKeyDown"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/projects/components/project-resource-filters.tsx",
+          "line": 58,
+          "tag": "Input",
+          "props": [
+            "type",
+            "value",
+            "onChange",
+            "aria-label",
+            "placeholder",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/registry-credentials/components/create-registry-credential-dialog.tsx",
+          "line": 92,
+          "tag": "Input",
+          "props": [
+            "id",
+            "value",
+            "onChange",
+            "placeholder",
+            "autoComplete",
+            "autoFocus",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/registry-credentials/components/create-registry-credential-dialog.tsx",
+          "line": 106,
+          "tag": "Input",
+          "props": ["id", "value", "onChange", "autoComplete", "className"]
+        },
+        {
+          "path": "dashboard/src/features/registry-credentials/components/create-registry-credential-dialog.tsx",
+          "line": 118,
+          "tag": "Input",
+          "props": [
+            "id",
+            "type",
+            "value",
+            "onChange",
+            "autoComplete",
+            "className",
+            "onKeyDown"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/registry-credentials/components/create-registry-credential-dialog.tsx",
+          "line": 137,
+          "tag": "Input",
+          "props": ["id", "value", "onChange", "placeholder"]
+        },
+        {
+          "path": "dashboard/src/features/registry-credentials/components/edit-registry-credential-dialog.tsx",
+          "line": 132,
+          "tag": "Input",
+          "props": ["id", "value", "disabled", "className"]
+        },
+        {
+          "path": "dashboard/src/features/registry-credentials/components/edit-registry-credential-dialog.tsx",
+          "line": 146,
+          "tag": "Input",
+          "props": ["id", "value", "onChange", "autoComplete", "className"]
+        },
+        {
+          "path": "dashboard/src/features/registry-credentials/components/edit-registry-credential-dialog.tsx",
+          "line": 158,
+          "tag": "Input",
+          "props": [
+            "id",
+            "type",
+            "value",
+            "onChange",
+            "autoComplete",
+            "placeholder",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/registry-credentials/components/edit-registry-credential-dialog.tsx",
+          "line": 175,
+          "tag": "Input",
+          "props": ["id", "value", "onChange"]
+        },
+        {
+          "path": "dashboard/src/features/router/page.tsx",
+          "line": 368,
+          "tag": "Input",
+          "props": [
+            "id",
+            "value",
+            "maxLength",
+            "required",
+            "disabled",
+            "onChange"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/router/page.tsx",
+          "line": 385,
+          "tag": "Input",
+          "props": ["id", "value", "disabled", "onChange"]
+        },
+        {
+          "path": "dashboard/src/features/services/components/autoscaling-section.tsx",
+          "line": 102,
+          "tag": "Input",
+          "props": [
+            "id",
+            "aria-label",
+            "type",
+            "min",
+            "max",
+            "value",
+            "disabled",
+            "onChange",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/services/components/autoscaling-section.tsx",
+          "line": 145,
+          "tag": "Input",
+          "props": [
+            "type",
+            "min",
+            "max",
+            "value",
+            "disabled",
+            "onChange",
+            "className",
+            "aria-label"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/services/components/autoscaling-section.tsx",
+          "line": 170,
+          "tag": "Input",
+          "props": [
+            "type",
+            "min",
+            "max",
+            "value",
+            "disabled",
+            "onChange",
+            "className",
+            "aria-label"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/services/components/build-deploy-section.tsx",
+          "line": 527,
+          "tag": "Input",
+          "props": ["value", "onChange", "placeholder", "className", "disabled"]
+        },
+        {
+          "path": "dashboard/src/features/services/components/create-env-var-editor.tsx",
+          "line": 71,
+          "tag": "Input",
+          "props": [
+            "value",
+            "onChange",
+            "placeholder",
+            "aria-label",
+            "aria-invalid",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/services/components/create-secret-file-editor.tsx",
+          "line": 49,
+          "tag": "Input",
+          "props": [
+            "value",
+            "onChange",
+            "placeholder",
+            "aria-label",
+            "aria-invalid",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/services/components/custom-domains-section.tsx",
+          "line": 750,
+          "tag": "Input",
+          "props": [
+            "id",
+            "value",
+            "onChange",
+            "placeholder",
+            "aria-invalid",
+            "aria-describedby",
+            "autoFocus",
+            "onKeyDown"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/services/components/deploy-hook-section.tsx",
+          "line": 68,
+          "tag": "Input",
+          "props": ["aria-label", "value", "readOnly", "className"]
+        },
+        {
+          "path": "dashboard/src/features/services/components/disk-section.tsx",
+          "line": 281,
+          "tag": "Input",
+          "props": [
+            "id",
+            "placeholder",
+            "value",
+            "onChange",
+            "onKeyDown",
+            "aria-invalid",
+            "aria-describedby"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/services/components/disk-section.tsx",
+          "line": 317,
+          "tag": "Input",
+          "props": [
+            "id",
+            "type",
+            "min",
+            "max",
+            "className",
+            "value",
+            "onChange"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/services/components/disk-section.tsx",
+          "line": 398,
+          "tag": "Input",
+          "props": ["id", "value", "readOnly", "className"]
+        },
+        {
+          "path": "dashboard/src/features/services/components/disk-section.tsx",
+          "line": 407,
+          "tag": "Input",
+          "props": ["id", "type", "min", "max", "disabled", "value", "onChange"]
+        },
+        {
+          "path": "dashboard/src/features/services/components/editable-field-row.tsx",
+          "line": 295,
+          "tag": "Input",
+          "props": [
+            "ref",
+            "type",
+            "min",
+            "max",
+            "step",
+            "value",
+            "disabled",
+            "aria-label",
+            "aria-invalid",
+            "aria-describedby",
+            "placeholder",
+            "autoComplete",
+            "className",
+            "onChange",
+            "onKeyDown"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/services/components/editable-field-row.tsx",
+          "line": 438,
+          "tag": "Input",
+          "props": ["disabled", "aria-label", "className"]
+        },
+        {
+          "path": "dashboard/src/features/services/components/service-environment-editor.tsx",
+          "line": 1301,
+          "tag": "Input",
+          "props": [
+            "value",
+            "disabled",
+            "aria-describedby",
+            "onChange",
+            "className",
+            "aria-label",
+            "aria-invalid",
+            "placeholder"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/services/components/service-environment-editor.tsx",
+          "line": 1406,
+          "tag": "Input",
+          "props": [
+            "value",
+            "disabled",
+            "aria-describedby",
+            "onChange",
+            "onBlur",
+            "className",
+            "aria-label",
+            "aria-invalid",
+            "placeholder"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/services/components/service-source-picker.tsx",
+          "line": 181,
+          "tag": "Input",
+          "props": [
+            "className",
+            "placeholder",
+            "value",
+            "onChange",
+            "aria-label"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/services/components/service-source-picker.tsx",
+          "line": 254,
+          "tag": "Input",
+          "props": ["id", "value", "onChange", "placeholder", "autoComplete"]
+        },
+        {
+          "path": "dashboard/src/features/services/components/service-source-picker.tsx",
+          "line": 276,
+          "tag": "Input",
+          "props": ["id", "value", "onChange", "placeholder", "autoComplete"]
+        },
+        {
+          "path": "dashboard/src/features/services/components/static-site-section.tsx",
+          "line": 426,
+          "tag": "Input",
+          "props": [
+            "value",
+            "onChange",
+            "aria-label",
+            "placeholder",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/services/components/static-site-section.tsx",
+          "line": 515,
+          "tag": "Input",
+          "props": [
+            "value",
+            "onChange",
+            "aria-label",
+            "aria-invalid",
+            "aria-describedby",
+            "placeholder",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/ssh-keys/components/ssh-keys-panel.tsx",
+          "line": 103,
+          "tag": "Input",
+          "props": ["id", "value", "onChange", "autoComplete", "maxLength"]
+        },
+        {
+          "path": "dashboard/src/features/team/components/invite-member-dialog.tsx",
+          "line": 106,
+          "tag": "Input",
+          "props": [
+            "id",
+            "type",
+            "value",
+            "onChange",
+            "placeholder",
+            "autoComplete",
+            "autoFocus",
+            "aria-invalid",
+            "aria-describedby",
+            "onKeyDown"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/team/components/team-panel.tsx",
+          "line": 134,
+          "tag": "Input",
+          "props": [
+            "type",
+            "value",
+            "onChange",
+            "aria-label",
+            "placeholder",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/webhooks/components/event-picker.tsx",
+          "line": 104,
+          "tag": "Input",
+          "props": [
+            "value",
+            "onChange",
+            "placeholder",
+            "aria-label",
+            "autoComplete"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/webhooks/components/webhook-deliveries-card.tsx",
+          "line": 174,
+          "tag": "Input",
+          "props": ["id", "type", "value", "onChange"]
+        },
+        {
+          "path": "dashboard/src/features/webhooks/components/webhook-deliveries-card.tsx",
+          "line": 185,
+          "tag": "Input",
+          "props": ["id", "type", "value", "onChange"]
+        },
+        {
+          "path": "dashboard/src/features/webhooks/components/webhook-settings-card.tsx",
+          "line": 163,
+          "tag": "Input",
+          "props": [
+            "id",
+            "ref",
+            "value",
+            "onChange",
+            "autoComplete",
+            "disabled",
+            "aria-invalid",
+            "aria-describedby"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/webhooks/components/webhook-settings-card.tsx",
+          "line": 194,
+          "tag": "Input",
+          "props": [
+            "id",
+            "ref",
+            "value",
+            "onChange",
+            "autoComplete",
+            "inputMode",
+            "disabled",
+            "aria-invalid",
+            "aria-describedby"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/webhooks/components/webhooks-panel.tsx",
+          "line": 123,
+          "tag": "Input",
+          "props": [
+            "id",
+            "type",
+            "value",
+            "onChange",
+            "placeholder",
+            "aria-describedby"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/workspaces/components/workspace-details-card.tsx",
+          "line": 95,
+          "tag": "Input",
+          "props": [
+            "id",
+            "value",
+            "onChange",
+            "autoComplete",
+            "aria-invalid",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/routes/blueprints.$blueprintId.tsx",
+          "line": 152,
+          "tag": "Input",
+          "props": ["value", "onChange", "className", "aria-label", "autoFocus"]
+        },
+        {
+          "path": "dashboard/src/routes/blueprints.new.tsx",
+          "line": 273,
+          "tag": "Input",
+          "props": ["id", "value", "onChange", "placeholder", "autoComplete"]
+        },
+        {
+          "path": "dashboard/src/routes/blueprints.new.tsx",
+          "line": 304,
+          "tag": "Input",
+          "props": [
+            "id",
+            "value",
+            "onChange",
+            "placeholder",
+            "autoComplete",
+            "aria-invalid",
+            "aria-describedby"
+          ]
+        },
+        {
+          "path": "dashboard/src/routes/blueprints.new.tsx",
+          "line": 413,
+          "tag": "Input",
+          "props": ["id", "type", "autoComplete", "value", "onChange"]
+        },
+        {
+          "path": "dashboard/src/routes/env-groups.tsx",
+          "line": 172,
+          "tag": "Input",
+          "props": [
+            "value",
+            "onChange",
+            "placeholder",
+            "aria-label",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/routes/keyvalue.new.tsx",
+          "line": 148,
+          "tag": "Input",
+          "props": [
+            "id",
+            "value",
+            "onChange",
+            "placeholder",
+            "autoComplete",
+            "aria-invalid"
+          ]
+        },
+        {
+          "path": "dashboard/src/routes/new.workspace.tsx",
+          "line": 129,
+          "tag": "Input",
+          "props": [
+            "id",
+            "value",
+            "onChange",
+            "placeholder",
+            "autoComplete",
+            "autoFocus",
+            "disabled",
+            "aria-invalid",
+            "aria-describedby"
+          ]
+        },
+        {
+          "path": "dashboard/src/routes/new.workspace.tsx",
+          "line": 157,
+          "tag": "Input",
+          "props": [
+            "id",
+            "type",
+            "required",
+            "value",
+            "onChange",
+            "readOnly",
+            "disabled",
+            "autoComplete",
+            "aria-invalid",
+            "aria-describedby"
+          ]
+        },
+        {
+          "path": "dashboard/src/routes/project.$projectId.index.tsx",
+          "line": 219,
+          "tag": "Input",
+          "props": ["id", "value", "onChange", "autoComplete", "onKeyDown"]
+        },
+        {
+          "path": "dashboard/src/routes/project.$projectId.settings.tsx",
+          "line": 125,
+          "tag": "Input",
+          "props": [
+            "aria-labelledby",
+            "value",
+            "onChange",
+            "autoFocus",
+            "autoComplete",
+            "onKeyDown"
+          ]
+        },
+        {
+          "path": "dashboard/src/routes/project.$projectId.settings.tsx",
+          "line": 161,
+          "tag": "Input",
+          "props": [
+            "aria-labelledby",
+            "value",
+            "disabled",
+            "readOnly",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/routes/services.new.tsx",
+          "line": 185,
+          "tag": "Input",
+          "props": [
+            "id",
+            "value",
+            "onChange",
+            "placeholder",
+            "autoComplete",
+            "aria-invalid"
+          ]
+        },
+        {
+          "path": "dashboard/src/routes/webhooks_.new.tsx",
+          "line": 154,
+          "tag": "Input",
+          "props": [
+            "id",
+            "ref",
+            "value",
+            "onChange",
+            "placeholder",
+            "autoComplete",
+            "autoFocus",
+            "aria-invalid",
+            "aria-describedby"
+          ]
+        },
+        {
+          "path": "dashboard/src/routes/webhooks_.new.tsx",
+          "line": 187,
+          "tag": "Input",
+          "props": [
+            "id",
+            "ref",
+            "value",
+            "onChange",
+            "placeholder",
+            "autoComplete",
+            "inputMode",
+            "aria-invalid",
+            "aria-describedby"
+          ]
+        }
+      ],
+      "Textarea": [
+        {
+          "path": "dashboard/src/features/agent-sessions/components/configuration-fields.tsx",
+          "line": 76,
+          "tag": "Textarea",
+          "props": ["...spread", "rows", "className", "placeholder"]
+        },
+        {
+          "path": "dashboard/src/features/agent-sessions/components/steering-composer.tsx",
+          "line": 166,
+          "tag": "Textarea",
+          "props": [
+            "value",
+            "onChange",
+            "onKeyDown",
+            "rows",
+            "disabled",
+            "placeholder",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/databases/components/sql-console.tsx",
+          "line": 120,
+          "tag": "Textarea",
+          "props": [
+            "aria-label",
+            "className",
+            "value",
+            "onChange",
+            "onKeyDown",
+            "spellCheck"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/env-groups/components/new-env-group-dialog.tsx",
+          "line": 508,
+          "tag": "Textarea",
+          "props": ["id", "value", "onChange", "placeholder"]
+        },
+        {
+          "path": "dashboard/src/features/services/components/create-secret-file-editor.tsx",
+          "line": 59,
+          "tag": "Textarea",
+          "props": [
+            "value",
+            "onChange",
+            "placeholder",
+            "aria-label",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/services/components/env-import-dialog.tsx",
+          "line": 94,
+          "tag": "Textarea",
+          "props": [
+            "value",
+            "onChange",
+            "onKeyDown",
+            "className",
+            "aria-label",
+            "aria-invalid",
+            "placeholder",
+            "autoFocus"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/services/components/secret-file-content-dialog.tsx",
+          "line": 80,
+          "tag": "Textarea",
+          "props": [
+            "value",
+            "disabled",
+            "onChange",
+            "className",
+            "aria-label",
+            "aria-invalid",
+            "autoFocus"
+          ]
+        },
+        {
+          "path": "dashboard/src/features/ssh-keys/components/ssh-keys-panel.tsx",
+          "line": 115,
+          "tag": "Textarea",
+          "props": [
+            "id",
+            "className",
+            "value",
+            "onChange",
+            "autoComplete",
+            "autoCapitalize",
+            "autoCorrect",
+            "maxLength",
+            "spellCheck",
+            "aria-invalid",
+            "aria-describedby"
+          ]
+        }
+      ],
+      "nativeInput": [
+        {
+          "path": "dashboard/src/common/components/ui/input.tsx",
+          "line": 7,
+          "tag": "input",
+          "props": ["type", "data-slot", "className", "...spread"]
+        },
+        {
+          "path": "dashboard/src/common/lib/ory/auth-form-overrides.tsx",
+          "line": 44,
+          "tag": "input",
+          "props": [
+            "...spread",
+            "id",
+            "required",
+            "type",
+            "data-testid",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/common/lib/ory/auth-form-overrides.tsx",
+          "line": 161,
+          "tag": "input",
+          "props": [
+            "data-testid",
+            "...spread",
+            "ref",
+            "type",
+            "inputMode",
+            "autoComplete",
+            "pattern",
+            "maxLength",
+            "autoFocus",
+            "className",
+            "onChange"
+          ]
+        },
+        {
+          "path": "dashboard/src/common/lib/ory/auth-form-overrides.tsx",
+          "line": 215,
+          "tag": "input",
+          "props": ["data-testid", "...spread"]
+        },
+        {
+          "path": "dashboard/src/common/lib/ory/auth-form-overrides.tsx",
+          "line": 224,
+          "tag": "input",
+          "props": ["data-testid", "...spread", "type", "required", "className"]
+        },
+        {
+          "path": "dashboard/src/features/auth/pages/consent-page/index.tsx",
+          "line": 220,
+          "tag": "input",
+          "props": ["type", "name", "value"]
+        },
+        {
+          "path": "dashboard/src/features/auth/pages/consent-page/index.tsx",
+          "line": 225,
+          "tag": "input",
+          "props": ["type", "name", "value"]
+        },
+        {
+          "path": "dashboard/src/features/auth/pages/device-confirm-page/index.tsx",
+          "line": 133,
+          "tag": "input",
+          "props": ["type", "name", "value"]
+        },
+        {
+          "path": "dashboard/src/features/auth/pages/device-confirm-page/index.tsx",
+          "line": 134,
+          "tag": "input",
+          "props": ["type", "name", "value"]
+        },
+        {
+          "path": "dashboard/src/features/router/page.tsx",
+          "line": 397,
+          "tag": "input",
+          "props": ["type", "checked", "disabled", "onChange"]
+        },
+        {
+          "path": "dashboard/src/features/services/components/env-import-dialog.tsx",
+          "line": 121,
+          "tag": "input",
+          "props": ["ref", "className", "type", "accept", "onChange"]
+        },
+        {
+          "path": "dashboard/src/features/services/components/service-environment-editor.tsx",
+          "line": 868,
+          "tag": "input",
+          "props": [
+            "ref",
+            "className",
+            "type",
+            "multiple",
+            "disabled",
+            "onChange"
+          ]
+        }
+      ],
+      "nativeTextarea": [
+        {
+          "path": "dashboard/src/common/components/ui/auto-textarea.tsx",
+          "line": 69,
+          "tag": "textarea",
+          "props": [
+            "...spread",
+            "ref",
+            "rows",
+            "value",
+            "onChange",
+            "data-slot",
+            "className"
+          ]
+        },
+        {
+          "path": "dashboard/src/common/components/ui/textarea.tsx",
+          "line": 7,
+          "tag": "textarea",
+          "props": ["data-slot", "className", "...spread"]
+        }
+      ],
+      "unmatchedNamed": []
+    }
+  }
+}
