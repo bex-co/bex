@@ -457,7 +457,7 @@ func (r *AppReconciler) reconcileDiskRestore(ctx context.Context, app *appv1alph
 		// same claim, and starting it while the service still holds the volume
 		// would either block on attach or, worse, rewrite files under a live
 		// process.
-		if err := r.scaleDownForRestore(ctx, app); err != nil {
+		if err := r.scaleDeploymentToZero(ctx, app); err != nil {
 			return true, err
 		}
 		if ready, err := r.diskDetachedFromService(ctx, app); err != nil || !ready {
@@ -497,9 +497,10 @@ func (r *AppReconciler) reconcileDiskRestore(ctx context.Context, app *appv1alph
 	}
 }
 
-// scaleDownForRestore takes the service to zero without touching spec.replicas,
-// so the owner's own instance count is what it comes back to.
-func (r *AppReconciler) scaleDownForRestore(ctx context.Context, app *appv1alpha1.App) error {
+// scaleDeploymentToZero takes the service to zero without touching
+// spec.replicas, so the owner's own instance count is what it comes back to —
+// for a disk restore, and for a canceled release nothing served (w1/132).
+func (r *AppReconciler) scaleDeploymentToZero(ctx context.Context, app *appv1alpha1.App) error {
 	dep := &appsv1.Deployment{}
 	key := client.ObjectKey{Namespace: app.Namespace, Name: app.Name}
 	if err := r.Get(ctx, key, dep); err != nil {

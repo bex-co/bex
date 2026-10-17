@@ -1024,16 +1024,18 @@ func TestFailedFirstReleaseIsNeverWoken(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
 		active    string
+		phase     appv1alpha1.AppPhase
 		wantWakes bool
 	}{
-		{name: "never served", active: "", wantWakes: false},
-		{name: "a release served", active: "rev-1", wantWakes: true},
+		{name: "never served, failed", phase: appv1alpha1.PhaseFailed, wantWakes: false},
+		{name: "never served, canceled (w1/132)", phase: appv1alpha1.PhaseCanceled, wantWakes: false},
+		{name: "a release served", active: "rev-1", phase: appv1alpha1.PhaseFailed, wantWakes: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			app := &appv1alpha1.App{
 				ObjectMeta: metav1.ObjectMeta{Name: "failed", Namespace: "bex-system"},
 				Status: appv1alpha1.AppStatus{
-					URL: "https://failed.onbex.co", Phase: appv1alpha1.PhaseFailed, ActiveRevision: tc.active,
+					URL: "https://failed.onbex.co", Phase: tc.phase, ActiveRevision: tc.active,
 				},
 			}
 			dep := &appsv1.Deployment{

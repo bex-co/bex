@@ -217,3 +217,35 @@ func TestEarlyPullFailureSettleDoesNotStopAFirstRelease(t *testing.T) {
 		t.Fatalf("the early pull settle stopped the release: %+v", meta.FindStatusCondition(stored.Status.Conditions, appv1alpha1.ConditionRollout))
 	}
 }
+
+// w1/132: a cancel over a rolling first release stops its pods too — nothing
+// served, so the canceled release is all that would run — and a newer deploy
+// rolls again.
+func TestCanceledFirstReleaseStopsItsRollout(t *testing.T) {
+	r, cl, nn := lifecycleFixture(t, firstReleaseApp(appv1alpha1.TypePrivateService, ""))
+	reconcileTwice(t, r, nn)
+	if got := deploymentReplicas(t, cl, nn); got != 1 {
+		t.Fatalf("setup: first rollout replicas = %d, want 1", got)
+	}
+	updateApp(t, cl, nn, func(a *appv1alpha1.App) {
+		a.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration] = "1"
+	})
+	reconcileOnce(t, r, nn)
+	if got := appPhase(t, cl, nn); got != appv1alpha1.PhaseCanceled {
+		t.Fatalf("phase = %q, want Canceled", got)
+	}
+	if got := deploymentReplicas(t, cl, nn); got != 0 {
+		t.Fatalf("replicas = %d after the cancel, want 0: the canceled first release must not keep running", got)
+	}
+
+	deployImageAt(t, cl, nn, "nginx:2", 2)
+	dep := liveDeployment(t, cl, nn)
+	dep.Generation = dep.Status.ObservedGeneration + 1
+	if err := cl.Update(context.Background(), &dep); err != nil {
+		t.Fatal(err)
+	}
+	reconcileOnce(t, r, nn)
+	if got := deploymentReplicas(t, cl, nn); got != 1 {
+		t.Fatalf("replicas = %d after a new deploy, want 1", got)
+	}
+}
