@@ -39,19 +39,26 @@ export function ProjectResourceFilters({
   return (
     <div className="space-y-3">
       <div
+        role="group"
         className="flex flex-wrap gap-1"
         aria-label={t("projects.filterTypeLabel")}
       >
-        {KIND_KEYS.map(({ kind, key }) => (
-          <Button
-            key={kind}
-            size="sm"
-            variant={filter.kind === kind ? "default" : "outline"}
-            onClick={() => onChange({ ...filter, kind })}
-          >
-            {t(key)} ({counts[kind]})
-          </Button>
-        ))}
+        {KIND_KEYS.map(({ kind, key }) => {
+          // The variant is the only visual cue; assistive technology needs
+          // the same state (w4/333).
+          const selected = filter.kind === kind;
+          return (
+            <Button
+              key={kind}
+              size="sm"
+              variant={selected ? "default" : "outline"}
+              aria-pressed={selected}
+              onClick={() => onChange({ ...filter, kind })}
+            >
+              {t(key)} ({counts[kind]})
+            </Button>
+          );
+        })}
       </div>
       <div className="relative">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
