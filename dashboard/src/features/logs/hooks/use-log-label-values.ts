@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLastAnswer } from "@/common/hooks/use-last-answer";
 import { useQuery } from "@apollo/client/react";
 import {
   RESOURCE_POLL_INTERVAL_MS,
@@ -59,22 +59,9 @@ export function useLogLabelDiscovery(
   // The last authoritative answer for THIS resource+label. A transient poll
   // failure keeps it (stale values beat flipping back to fallbacks or
   // emptying an open picker); only a key that has never answered reports
-  // `resolved: false`. Adjusted during render, React's pattern for state
-  // derived from props.
-  const key = `${resource}\u0000${label}`;
-  const [last, setLast] = useState<{ key: string; values: string[] } | null>(
-    null,
-  );
-  if (answered && (last?.key !== key || !sameValues(last.values, answered))) {
-    setLast({ key, values: answered });
-  }
-  if (answered) return { values: answered, resolved: true };
-  if (last?.key === key) return { values: last.values, resolved: true };
-  return { values: [], resolved: false };
-}
-
-function sameValues(a: string[], b: string[]): boolean {
-  return a.length === b.length && a.every((v, i) => v === b[i]);
+  // `resolved: false`.
+  const values = useLastAnswer(`${resource}\u0000${label}`, answered);
+  return values ? { values, resolved: true } : { values: [], resolved: false };
 }
 
 /**

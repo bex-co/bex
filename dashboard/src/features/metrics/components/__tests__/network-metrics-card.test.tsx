@@ -24,8 +24,19 @@ vi.mock("@/features/metrics/hooks/use-month-to-date-bandwidth", () => ({
 }));
 // Status-code discovery goes through Apollo; stub it at the hook boundary so
 // the render needs no ApolloProvider (the repo's panel-test pattern).
+const discovery = vi.hoisted(() => ({
+  codes: ["404"],
+  options: [] as unknown[],
+}));
 vi.mock("@/features/metrics/hooks/use-metrics-filter-values", () => ({
-  useMetricsFilterValues: () => ["404"],
+  useMetricsFilterValues: (
+    _resource: string,
+    _field: string,
+    options?: unknown,
+  ) => {
+    discovery.options.push(options);
+    return discovery.codes;
+  },
 }));
 // Host discovery reuses the logs label-values read (also Apollo) — stub it the
 // same way so the Host dropdown has options without an ApolloProvider (w5/m58).
@@ -71,6 +82,8 @@ function renderCard() {
 
 describe("NetworkMetricsCard", () => {
   beforeEach(() => {
+    discovery.codes = ["404"];
+    discovery.options = [];
     mockUseMetrics.mockReset();
     mockUseMonthToDateBandwidth.mockReset();
     mockUseMonthToDateBandwidth.mockReturnValue({
@@ -243,6 +256,28 @@ describe("NetworkMetricsCard", () => {
     for (const code of ["All", "2xx", "4xx", "5xx", "404"]) {
       expect(screen.getByRole("option", { name: code })).toBeInTheDocument();
     }
+  });
+
+  // w4/m224: this always-mounted card owns refreshing the shared discovery,
+  // and a refreshed answer that omits the chosen code must not drop it.
+  it("owns the discovery refresh and keeps a chosen code a later answer omits", async () => {
+    const user = userEvent.setup();
+    mockUseMetrics.mockReturnValue(emptyResult());
+    const view = renderCard();
+    expect(discovery.options).toContainEqual({ poll: true });
+
+    await user.click(screen.getByLabelText("Status Code"));
+    await user.click(screen.getByRole("option", { name: "404" }));
+    discovery.codes = [];
+    view.rerender(
+      <NetworkMetricsCard resource="beancount-cms" window={WINDOW} />,
+    );
+    const requestCalls = mockUseMetrics.mock.calls.filter(
+      ([, metric]) => metric === "http_requests",
+    );
+    expect(requestCalls.at(-1)?.[2]).toMatchObject({ statusCode: "404" });
+    await user.click(screen.getByLabelText("Status Code"));
+    expect(screen.getByRole("option", { name: "404" })).toBeInTheDocument();
   });
 
   it("populates the Host dropdown from the App's discovered request-log hosts (w5/m58)", async () => {
