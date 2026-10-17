@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   EnvGroupsContentSkeleton,
@@ -76,6 +77,7 @@ export const Route = createFileRoute("/env-groups")({
 });
 
 export function EnvGroupsPage() {
+  const hydrated = useIsHydrated();
   const { t } = useTranslations();
   const { currentWorkspaceId } = useWorkspace();
   const navigate = useNavigate();
@@ -171,6 +173,9 @@ export function EnvGroupsPage() {
                   <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={search}
+                    // Uneditable until handlers attach: a query typed into
+                    // the server HTML is wiped by hydration (w4/m219).
+                    disabled={!hydrated}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder={t("envGroups.searchPlaceholder")}
                     aria-label={t("envGroups.searchLabel")}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { HydrationFieldset } from "@/common/components/hydration-fieldset";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { BlueprintCreatePageSkeleton } from "@/common/components/route-skeletons";
 import { Loader2, RefreshCw } from "lucide-react";
@@ -241,116 +242,208 @@ export function NewBlueprintPage() {
                 {t("blueprints.createDescription")}
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <ServiceSourcePicker
-                titleKey="blueprints.createSourceTitle"
-                idPrefix="bp"
-                tab={tab}
-                onTabChange={(next) => {
-                  const draft =
-                    tab === "git" ? { gitUrl, branch } : gitBranchDraft;
-                  setGitBranchDraft(draft);
-                  setTab(next);
-                  setSelectedRepo(null);
-                  setBranch(
-                    next === "git" && draft?.gitUrl === gitUrl
-                      ? draft.branch
-                      : "",
-                  );
-                }}
-                selectedRepo={selectedRepo}
-                onSelectRepo={setSelectedRepo}
-                gitUrl={gitUrl}
-                onGitUrlChange={setGitUrl}
-              />
+            <HydrationFieldset>
+              <CardContent className="space-y-6">
+                <ServiceSourcePicker
+                  titleKey="blueprints.createSourceTitle"
+                  idPrefix="bp"
+                  tab={tab}
+                  onTabChange={(next) => {
+                    const draft =
+                      tab === "git" ? { gitUrl, branch } : gitBranchDraft;
+                    setGitBranchDraft(draft);
+                    setTab(next);
+                    setSelectedRepo(null);
+                    setBranch(
+                      next === "git" && draft?.gitUrl === gitUrl
+                        ? draft.branch
+                        : "",
+                    );
+                  }}
+                  selectedRepo={selectedRepo}
+                  onSelectRepo={setSelectedRepo}
+                  gitUrl={gitUrl}
+                  onGitUrlChange={setGitUrl}
+                />
 
-              {/* Settings */}
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="bp-name">
-                    {t("blueprints.createNameLabel")}
-                  </Label>
-                  <Input
-                    id="bp-name"
-                    value={name}
-                    onChange={(e) => {
-                      setName(e.target.value);
-                      setNameEdited(e.target.value !== "");
-                    }}
-                    placeholder={t("blueprints.createNamePlaceholder")}
-                    autoComplete="off"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bp-branch">
-                    {t("blueprints.createBranchLabel")}
-                  </Label>
-                  <Combobox
-                    options={branchOptions}
-                    value={branch}
-                    onValueChange={setBranch}
-                    placeholder={t("blueprints.createBranchPlaceholder")}
-                    ariaLabel={t("blueprints.createBranchLabel")}
-                    allowCustom
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    {t("blueprints.createBranchHint")}
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bp-path">
-                    {t("blueprints.createPathLabel")}
-                  </Label>
-                  <Input
-                    id="bp-path"
-                    value={path}
-                    onChange={(e) => setPath(e.target.value)}
-                    placeholder={t("blueprints.createPathPlaceholder")}
-                    autoComplete="off"
-                    aria-invalid={invalidPathMessage !== null}
-                    aria-describedby={
-                      invalidPathMessage !== null ? "bp-path-error" : undefined
-                    }
-                  />
-                  {invalidPathMessage !== null ? (
-                    // w2/m97 t002: an invalid path is this field's problem, not
-                    // a "Blueprint file not found" panel down the page.
-                    <p
-                      id="bp-path-error"
-                      className="text-destructive text-sm"
-                      role="alert"
-                    >
-                      {invalidPathMessage}
-                    </p>
-                  ) : null}
-                  <p className="text-sm text-muted-foreground">
-                    {t("blueprints.createPathHint")}
-                  </p>
-                </div>
-              </div>
-
-              {/* Pre-create review (Render's "Review Blueprint configurations") */}
-              <div className="space-y-3">
-                <p className="text-base font-semibold">
-                  {t("blueprints.previewTitle")}
-                </p>
-                {!sourceValid || !branch.trim() ? (
-                  <p className="text-sm text-muted-foreground">
-                    {t("blueprints.previewSelectSource")}
-                  </p>
-                ) : previewLoading ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="size-4 animate-spin" />
-                    {t("blueprints.previewLoading", {
-                      path: path || "render.yaml",
-                    })}
+                {/* Settings */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="bp-name">
+                      {t("blueprints.createNameLabel")}
+                    </Label>
+                    <Input
+                      id="bp-name"
+                      value={name}
+                      onChange={(e) => {
+                        setName(e.target.value);
+                        setNameEdited(e.target.value !== "");
+                      }}
+                      placeholder={t("blueprints.createNamePlaceholder")}
+                      autoComplete="off"
+                    />
                   </div>
-                ) : preview && !preview.found && invalidPathMessage === null ? (
-                  <Alert variant="destructive">
-                    <AlertTitle>{failureCopy.title}</AlertTitle>
-                    <AlertDescription className="flex flex-col gap-2">
-                      <span>{failureCopy.body}</span>
-                      {preview.retryable ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="bp-branch">
+                      {t("blueprints.createBranchLabel")}
+                    </Label>
+                    <Combobox
+                      options={branchOptions}
+                      value={branch}
+                      onValueChange={setBranch}
+                      placeholder={t("blueprints.createBranchPlaceholder")}
+                      ariaLabel={t("blueprints.createBranchLabel")}
+                      allowCustom
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      {t("blueprints.createBranchHint")}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bp-path">
+                      {t("blueprints.createPathLabel")}
+                    </Label>
+                    <Input
+                      id="bp-path"
+                      value={path}
+                      onChange={(e) => setPath(e.target.value)}
+                      placeholder={t("blueprints.createPathPlaceholder")}
+                      autoComplete="off"
+                      aria-invalid={invalidPathMessage !== null}
+                      aria-describedby={
+                        invalidPathMessage !== null
+                          ? "bp-path-error"
+                          : undefined
+                      }
+                    />
+                    {invalidPathMessage !== null ? (
+                      // w2/m97 t002: an invalid path is this field's problem, not
+                      // a "Blueprint file not found" panel down the page.
+                      <p
+                        id="bp-path-error"
+                        className="text-destructive text-sm"
+                        role="alert"
+                      >
+                        {invalidPathMessage}
+                      </p>
+                    ) : null}
+                    <p className="text-sm text-muted-foreground">
+                      {t("blueprints.createPathHint")}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Pre-create review (Render's "Review Blueprint configurations") */}
+                <div className="space-y-3">
+                  <p className="text-base font-semibold">
+                    {t("blueprints.previewTitle")}
+                  </p>
+                  {!sourceValid || !branch.trim() ? (
+                    <p className="text-sm text-muted-foreground">
+                      {t("blueprints.previewSelectSource")}
+                    </p>
+                  ) : previewLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="size-4 animate-spin" />
+                      {t("blueprints.previewLoading", {
+                        path: path || "render.yaml",
+                      })}
+                    </div>
+                  ) : preview &&
+                    !preview.found &&
+                    invalidPathMessage === null ? (
+                    <Alert variant="destructive">
+                      <AlertTitle>{failureCopy.title}</AlertTitle>
+                      <AlertDescription className="flex flex-col gap-2">
+                        <span>{failureCopy.body}</span>
+                        {preview.retryable ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="self-start"
+                            onClick={() => void refetchPreview()}
+                          >
+                            <RefreshCw className="size-3.5" />
+                            {t("blueprints.previewRetry")}
+                          </Button>
+                        ) : null}
+                      </AlertDescription>
+                    </Alert>
+                  ) : preview && !preview.found ? null : preview &&
+                    preview.validation?.valid !== true ? (
+                    <Alert variant="destructive">
+                      <AlertTitle>
+                        {t(
+                          previewConflictOnly
+                            ? "blueprints.previewConflict"
+                            : "blueprints.previewInvalid",
+                        )}
+                      </AlertTitle>
+                      <AlertDescription>
+                        {previewConflictOnly ? (
+                          // The raw refusal names API verbs (updateBlueprint,
+                          // confirm=…) no dashboard user can act on (w4/189).
+                          t("blueprints.previewConflictBody")
+                        ) : (
+                          <BlueprintErrorList
+                            errors={validationErrors}
+                            details={preview.validation?.errorDetails ?? []}
+                          />
+                        )}
+                      </AlertDescription>
+                    </Alert>
+                  ) : preview ? (
+                    <>
+                      <BlueprintPlanSummary
+                        plan={plan}
+                        pricing={preview.validation?.estimatedPricing}
+                        note={
+                          <p className="text-sm text-muted-foreground">
+                            {t("blueprints.previewAutoSyncNote")}
+                          </p>
+                        }
+                      />
+                      {promptKeys.length > 0 ? (
+                        <div className="space-y-3 rounded-md border p-4">
+                          <div>
+                            <p className="text-sm font-medium">
+                              {t("blueprints.promptTitle")}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {t("blueprints.promptHint")}
+                            </p>
+                          </div>
+                          {promptKeys.map((key) => (
+                            <div key={key} className="space-y-1">
+                              <Label htmlFor={`bp-secret-${key}`}>{key}</Label>
+                              <Input
+                                id={`bp-secret-${key}`}
+                                type="password"
+                                autoComplete="off"
+                                value={envVarValues[key] ?? ""}
+                                onChange={(e) =>
+                                  setEnvVarValues((values) => ({
+                                    ...values,
+                                    [key]: e.target.value,
+                                  }))
+                                }
+                              />
+                            </div>
+                          ))}
+                          {promptKeys.some(
+                            (key) => !(envVarValues[key] ?? "").trim(),
+                          ) ? (
+                            <p className="text-sm text-amber-600 dark:text-amber-500">
+                              {t("blueprints.promptEmptyWarning")}
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </>
+                  ) : previewError ? (
+                    <Alert variant="destructive">
+                      <AlertDescription className="flex flex-col gap-2">
+                        <span>{t("blueprints.previewError")}</span>
                         <Button
                           variant="outline"
                           size="sm"
@@ -360,115 +453,29 @@ export function NewBlueprintPage() {
                           <RefreshCw className="size-3.5" />
                           {t("blueprints.previewRetry")}
                         </Button>
-                      ) : null}
-                    </AlertDescription>
-                  </Alert>
-                ) : preview && !preview.found ? null : preview &&
-                  preview.validation?.valid !== true ? (
-                  <Alert variant="destructive">
-                    <AlertTitle>
-                      {t(
-                        previewConflictOnly
-                          ? "blueprints.previewConflict"
-                          : "blueprints.previewInvalid",
-                      )}
-                    </AlertTitle>
-                    <AlertDescription>
-                      {previewConflictOnly ? (
-                        // The raw refusal names API verbs (updateBlueprint,
-                        // confirm=…) no dashboard user can act on (w4/189).
-                        t("blueprints.previewConflictBody")
-                      ) : (
-                        <BlueprintErrorList
-                          errors={validationErrors}
-                          details={preview.validation?.errorDetails ?? []}
-                        />
-                      )}
-                    </AlertDescription>
-                  </Alert>
-                ) : preview ? (
-                  <>
-                    <BlueprintPlanSummary
-                      plan={plan}
-                      pricing={preview.validation?.estimatedPricing}
-                      note={
-                        <p className="text-sm text-muted-foreground">
-                          {t("blueprints.previewAutoSyncNote")}
-                        </p>
-                      }
-                    />
-                    {promptKeys.length > 0 ? (
-                      <div className="space-y-3 rounded-md border p-4">
-                        <div>
-                          <p className="text-sm font-medium">
-                            {t("blueprints.promptTitle")}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {t("blueprints.promptHint")}
-                          </p>
-                        </div>
-                        {promptKeys.map((key) => (
-                          <div key={key} className="space-y-1">
-                            <Label htmlFor={`bp-secret-${key}`}>{key}</Label>
-                            <Input
-                              id={`bp-secret-${key}`}
-                              type="password"
-                              autoComplete="off"
-                              value={envVarValues[key] ?? ""}
-                              onChange={(e) =>
-                                setEnvVarValues((values) => ({
-                                  ...values,
-                                  [key]: e.target.value,
-                                }))
-                              }
-                            />
-                          </div>
-                        ))}
-                        {promptKeys.some(
-                          (key) => !(envVarValues[key] ?? "").trim(),
-                        ) ? (
-                          <p className="text-sm text-amber-600 dark:text-amber-500">
-                            {t("blueprints.promptEmptyWarning")}
-                          </p>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </>
-                ) : previewError ? (
-                  <Alert variant="destructive">
-                    <AlertDescription className="flex flex-col gap-2">
-                      <span>{t("blueprints.previewError")}</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="self-start"
-                        onClick={() => void refetchPreview()}
-                      >
-                        <RefreshCw className="size-3.5" />
-                        {t("blueprints.previewRetry")}
-                      </Button>
-                    </AlertDescription>
-                  </Alert>
-                ) : null}
-              </div>
+                      </AlertDescription>
+                    </Alert>
+                  ) : null}
+                </div>
 
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => void navigate({ to: "/blueprints" })}
-                  disabled={busy}
-                >
-                  {t("blueprints.createCancel")}
-                </Button>
-                <Button
-                  onClick={() => void handleCreate()}
-                  disabled={!canSubmit}
-                >
-                  {busy ? <Loader2 className="animate-spin" /> : null}
-                  {t("blueprints.createAction")}
-                </Button>
-              </div>
-            </CardContent>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => void navigate({ to: "/blueprints" })}
+                    disabled={busy}
+                  >
+                    {t("blueprints.createCancel")}
+                  </Button>
+                  <Button
+                    onClick={() => void handleCreate()}
+                    disabled={!canSubmit}
+                  >
+                    {busy ? <Loader2 className="animate-spin" /> : null}
+                    {t("blueprints.createAction")}
+                  </Button>
+                </div>
+              </CardContent>
+            </HydrationFieldset>
           </Card>
         </div>
       </div>
