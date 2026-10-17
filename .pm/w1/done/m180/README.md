@@ -1,6 +1,6 @@
 # w1 · m180 — Serve datastore CPU and memory metrics on Render's paths
 
-**Worker:** worker1 **Goal:** Postgres and Key Value CPU, memory and their limits are served on Render's metric paths, bex GraphQL, MCP and the dashboard. **Status:** blocked (t001–t004, t006–t008 done 2026-10-17; t005's ADR018 half done, its live half waits for the release pipeline to deploy bex-api and the dashboard)
+**Worker:** worker1 **Goal:** Postgres and Key Value CPU, memory and their limits are served on Render's metric paths, bex GraphQL, MCP and the dashboard. **Status:** done
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | t002 | Serve datastore cpu, memory and their limits on REST — **DONE** | 1h  | t001       |
 | t003 | GraphQL and MCP serve the same datastore metrics — **DONE** | 40m | t002       |
 | t004 | Dashboard datastore Metrics panel shows CPU and Memory with limit lines — **DONE** | 1h  | t003       |
-| t005 | Update ADR018 and verify live                                                     | 40m | t004       |
+| t005 | Update ADR018 and verify live — **DONE**                                                    | 40m | t004       |
 | t006 | Render parity — **DONE** | 20m | t005       |
 | t007 | Simplify — **DONE** | 15m | t006       |
 | t008 | Test coverage — **DONE** | 40m | t006       |
-| t009 | Closeout                                                                          | 10m | t008       |
+| t009 | Closeout — **DONE**                                                                         | 10m | t008       |
 
 ## Definition of done
 
