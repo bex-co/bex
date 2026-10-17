@@ -1013,3 +1013,49 @@ func TestAwakeUnreadyServiceIsNotReportedAsHibernated(t *testing.T) {
 		t.Fatalf("awake replicas = %v, want 1", gotDep.Spec.Replicas)
 	}
 }
+
+// TestFailedFirstReleaseIsNeverWoken is the w1/m179 contract: a first release
+// that never served and settled Failed is stopped at zero, so a request answers
+// 503 without a Retry-After and issues no patch — waking it would only start
+// the failed pod for the operator to stop again. A release that served still
+// wakes, so the guard is the never-served Failed shape alone.
+func TestFailedFirstReleaseIsNeverWoken(t *testing.T) {
+	zero := int32(0)
+	for _, tc := range []struct {
+		name      string
+		active    string
+		wantWakes bool
+	}{
+		{name: "never served", active: "", wantWakes: false},
+		{name: "a release served", active: "rev-1", wantWakes: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{Name: "failed", Namespace: "bex-system"},
+				Status: appv1alpha1.AppStatus{
+					URL: "https://failed.onbex.co", Phase: appv1alpha1.PhaseFailed, ActiveRevision: tc.active,
+				},
+			}
+			dep := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{Name: "failed", Namespace: "bex-system"},
+				Spec:       appsv1.DeploymentSpec{Replicas: &zero},
+			}
+			cache, base := primedHostCache(t, app, dep)
+			cl := &countingClient{Client: base}
+
+			rr := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "https://failed.onbex.co/", nil)
+			newHandler(cl, cache, logr.Discard()).ServeHTTP(rr, req)
+
+			if rr.Code != http.StatusServiceUnavailable {
+				t.Fatalf("status = %d, want 503", rr.Code)
+			}
+			if woke := cl.patches.Load() > 0; woke != tc.wantWakes {
+				t.Fatalf("patches = %d, want wake=%v", cl.patches.Load(), tc.wantWakes)
+			}
+			if !tc.wantWakes && rr.Header().Get("Retry-After") != "" {
+				t.Errorf("a stopped release must not invite a retry: Retry-After %q", rr.Header().Get("Retry-After"))
+			}
+		})
+	}
+}

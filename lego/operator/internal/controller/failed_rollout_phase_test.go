@@ -234,6 +234,18 @@ func TestDeploymentProgressDeadlineExceededHelper(t *testing.T) {
 	if deploymentProgressDeadlineExceeded(dep) {
 		t.Fatal("Progressing=True must not settle")
 	}
+
+	// w1/m179: a new template the controller has not observed yet still carries
+	// the previous rollout's verdict, which says nothing about the new release.
+	stale := progressDeadlineDep("x")
+	stale.Generation, stale.Status.ObservedGeneration = 3, 2
+	if deploymentProgressDeadlineExceeded(stale) {
+		t.Fatal("a verdict observed for an older template must not settle the new one")
+	}
+	stale.Status.ObservedGeneration = 3
+	if !deploymentProgressDeadlineExceeded(stale) {
+		t.Fatal("the verdict counts once the controller observed the current template")
+	}
 }
 
 // w8/m44: over a release that had served, the failed rollout's diagnosis was

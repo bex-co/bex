@@ -2449,12 +2449,12 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// exit fails the deploy. While a prior release serves, holdNewerRelease keeps
 	// the template on it until the step passes and keeps its replicas and routing
 	// converging (w1/m156; a worker's replicas alone, w1/m158). For a first release
-	// the gate below halts the pass, and it is skipped while parked, where nothing
-	// rolls.
+	// the gate below halts the pass, and it is skipped while parked or stopped,
+	// where nothing rolls.
 	if held, res, err := r.holdNewerRelease(ctx, app, image, port, &plan); held {
 		return res, err
 	}
-	if !plan.parked {
+	if plan.deploying() {
 		if res, halt, err := r.reconcilePreDeploy(ctx, app, image, port); halt || err != nil {
 			return res, err
 		}
@@ -2512,6 +2512,9 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// A worker skips the Service, the Ingress, and the URL entirely; any left over
 	// from a type change are cleaned up so nothing dangles.
 	if worker {
+		if plan.stopped {
+			return r.holdFailedFirstRelease(ctx, app)
+		}
 		return r.reconcileWorkerStatus(ctx, app, image, dep, replicas)
 	}
 
@@ -2550,6 +2553,11 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 
 	if plan.parked {
 		return r.parkKubernetes(ctx, app, image, hosts, plan.autoHibernating, plan.hibernateHold)
+	}
+	// A stopped Deployment at zero reads as a complete rollout; reporting it
+	// would mark a release that never served Running.
+	if plan.stopped {
+		return r.holdFailedFirstRelease(ctx, app)
 	}
 
 	if res, halt, err := r.reportKubernetesRunning(ctx, app, dep, image, hosts, replicas, port); halt || err != nil {
@@ -2806,6 +2814,10 @@ func (r *AppReconciler) ingressRoutesToActivator(ctx context.Context, app *appv1
 func (r *AppReconciler) desiredReplicas(ctx context.Context, app *appv1alpha1.App, configured int32, obs releaseObservation) (int32, bool, releasePlan) {
 	now := time.Now()
 	f := obs.facts(app)
+	// A stopped release runs at zero whatever its traffic or load says.
+	if f.firstReleaseFailed && !f.suspended {
+		return 0, false, planRelease(f, now)
+	}
 	// The stamp is the cheap gate; traffic is read only once it says the window
 	// has elapsed (w1/m151), and not while a rollout awaits its verdict, which
 	// keeps the App up whatever the traffic.
@@ -3269,7 +3281,12 @@ const reasonProgressDeadlineExceeded = "ProgressDeadlineExceeded"
 // ProgressDeadlineExceeded verdict, or nil — the operator's own
 // rolloutBudgetSeconds projected onto Deployment.spec.progressDeadlineSeconds.
 func progressDeadlineExceeded(dep *appsv1.Deployment) *appsv1.DeploymentCondition {
-	if dep == nil {
+	// A status the deployment controller has not observed for the current
+	// template still carries the previous rollout's verdict: the pass that
+	// writes a new release reads it before the controller resets Progressing,
+	// and would settle the new release failed — and stop it, if nothing has
+	// served (w1/m179).
+	if dep == nil || dep.Status.ObservedGeneration < dep.Generation {
 		return nil
 	}
 	if c := deploymentCondition(dep, appsv1.DeploymentProgressing); c != nil &&
@@ -3295,6 +3312,21 @@ func deploymentProgressDeadlineExceeded(dep *appsv1.Deployment) bool {
 	return progressDeadlineExceeded(dep) != nil
 }
 
+// holdFailedFirstRelease keeps a stopped first release (releasePlan.stopped)
+// Failed, with its recorded diagnosis on Ready for the current metadata
+// generation, while its Deployment sits at zero. Nothing requeues it: a newer
+// release, a suspend or a resume each change the App and wake the pass.
+func (r *AppReconciler) holdFailedFirstRelease(ctx context.Context, app *appv1alpha1.App) (ctrl.Result, error) {
+	app.Status.Phase = appv1alpha1.PhaseFailed
+	if verdict := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout); verdict != nil {
+		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: verdict.Reason,
+			Message: verdict.Message, ObservedGeneration: app.Generation,
+		})
+	}
+	return ctrl.Result{}, updateStatusIfChanged(ctx, r.Client, app)
+}
+
 // settleFailedRollout is the ProgressDeadlineExceeded terminal for a rollout
 // that never became ready (w4/m103). ActiveRevision empty ⇒ first release never
 // served ⇒ PhaseFailed. ActiveRevision set ⇒ prior release still describes what
@@ -3311,7 +3343,27 @@ func (r *AppReconciler) settleFailedRollout(ctx context.Context, app *appv1alpha
 			msg = "rollout did not become healthy within the progress deadline"
 		}
 	}
-	return r.settleFailedRolloutMessage(ctx, app, dep, reason, terminalStallMessage(reason, msg))
+	msg = terminalStallMessage(reason, msg)
+	if stopsFirstRelease(app, dep) {
+		// The release-scoped verdict stops the release (failedFirstRelease); the
+		// settle below writes it with Ready in one status update.
+		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+			Type: appv1alpha1.ConditionRollout, Status: metav1.ConditionFalse, Reason: reason,
+			Message: msg, ObservedGeneration: releaseGeneration(app),
+		})
+	}
+	return r.settleFailedRolloutMessage(ctx, app, dep, reason, msg)
+}
+
+// stopsFirstRelease reports that a rollout past its progress deadline stops
+// its release (w1/m179): nothing has served, dep carries the current release
+// (a cached read can still hold the previous template and its verdict), and
+// no pod of it is ready, so stopping takes nothing away that serves. Only the
+// deadline stops — Render's 15-minute window — not the early pull-failure
+// settle, whose registry errors can still clear within it.
+func stopsFirstRelease(app *appv1alpha1.App, dep *appsv1.Deployment) bool {
+	return !releaseHasServed(app) && dep.Spec.Template.Labels[labelRevision] == releaseRevision(app) &&
+		dep.Status.ReadyReplicas == 0
 }
 
 // lastStallDiagnosis keeps the previous reconcile's stall diagnosis until the
