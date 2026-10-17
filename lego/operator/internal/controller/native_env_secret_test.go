@@ -296,7 +296,10 @@ func TestProjectNativeBuildEnvUnlinkDropsGroupKeys(t *testing.T) {
 
 // A direct App edit to the linked-group list must produce a fresh native
 // artifact — the build bakes those values in — while a Dockerfile service's
-// artifact (whose build never reads them) stays put.
+// artifact stays put. Its build reads the same env as build args (w1/m178), but
+// a new value reaches it only through a rebuild request (spec.restartedAt), as
+// with Render's "Save, rebuild, and deploy" versus "Save and deploy"; counting
+// the Secret names would also rebuild every Dockerfile service on upgrade.
 func TestNativeArtifactIdentityIncludesEnvFromSecrets(t *testing.T) {
 	spec := appv1alpha1.AppSpec{
 		Repo: "https://github.com/bex-co/bex.git", Branch: "main",
@@ -315,7 +318,7 @@ func TestNativeArtifactIdentityIncludesEnvFromSecrets(t *testing.T) {
 	dockerLinked := docker
 	dockerLinked.EnvFromSecrets = []string{"evg-a-env"}
 	if desiredAppReleaseIdentity(docker).artifact != desiredAppReleaseIdentity(dockerLinked).artifact {
-		t.Fatal("a Dockerfile build does not consume group env; its artifact must not change")
+		t.Fatal("a Dockerfile build takes new env only on a rebuild request; linking alone must not change its artifact")
 	}
 }
 

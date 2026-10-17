@@ -1,20 +1,20 @@
 # w1 · m178 — Dockerfile builds receive the service's env vars as build args and its secret files as build secrets
 
-**Worker:** worker1 **Goal:** a Dockerfile service's build sees its effective env vars as build args and its secret files as BuildKit secrets at Render's ids, so a Render Dockerfile builds the same on bex. **Status:** todo
+**Worker:** worker1 **Goal:** a Dockerfile service's build sees its effective env vars as build args and its secret files as BuildKit secrets at Render's ids, so a Render Dockerfile builds the same on bex. **Status:** blocked (t001–t005, t007–t009 done 2026-10-17; t006 production check waits for the release pipeline to deploy the operator)
 
 ## Tasks (in order)
 
 | id   | title                                                                                        | est | depends_on |
 | ---- | -------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Record Render's Docker build contract for env vars and secret files                           | 30m | —          |
-| t002 | Pass the effective env to Dockerfile builds as build args, with no value in the Job spec      | 1h  | t001       |
-| t003 | Expose secret files to Dockerfile builds as BuildKit secrets under Render's id rule           | 45m | t001       |
-| t004 | Count env and secret-file revisions in Dockerfile release identity; keep secrets out of the cache | 30m | t002, t003 |
-| t005 | Document the Dockerfile build contract in ADR004 and ADR018                                   | 20m | t004       |
-| t006 | Live check on dev-1                                                                           | 40m | t004       |
-| t007 | Render parity                                                                                 | 20m | t005, t006 |
-| t008 | Simplify                                                                                      | 15m | t007       |
-| t009 | Test coverage                                                                                 | 40m | t007       |
+| t001 | Record Render's Docker build contract for env vars and secret files — **DONE** | 30m | —          |
+| t002 | Pass the effective env to Dockerfile builds as build args, with no value in the Job spec — **DONE** | 1h  | t001       |
+| t003 | Expose secret files to Dockerfile builds as BuildKit secrets under Render's id rule — **DONE** | 45m | t001       |
+| t004 | Count env and secret-file revisions in Dockerfile release identity; keep secrets out of the cache — **DONE** | 30m | t002, t003 |
+| t005 | Document the Dockerfile build contract in ADR004 and ADR018 — **DONE** | 20m | t004       |
+| t006 | Live check on production after the operator deploys                                                                           | 40m | t004       |
+| t007 | Render parity — **DONE** | 20m | t005, t006 |
+| t008 | Simplify — **DONE** | 15m | t007       |
+| t009 | Test coverage — **DONE** | 40m | t007       |
 | t010 | Closeout                                                                                      | 10m | t009       |
 
 ## Definition of done
@@ -22,7 +22,7 @@
 - A Dockerfile service's build resolves `ARG <NAME>` to the value saved through the env-vars API (own and linked-group sources, precedence per t001) and reads each secret file at `/run/secrets/<render-id>` via `RUN --mount=type=secret,id=<render-id>`.
 - No env value or secret-file content appears in the build Job/Pod spec, the exported build cache, or the image's secret-mount layers.
 - Native and buildpack builds are unchanged (their Job specs byte-identical in tests).
-- The dev-1 live check (t006) passes and the fixture is deleted.
+- The live check (t006, amended 2026-10-17 from dev-1 to production after deploy: dev-1 shares the cluster's single operator) passes and the fixture is deleted. The generated BuildKit container already passed locally against `examples/docker-build-env`.
 
 ## Evidence (verified 2026-10-17 at `2c95fd35b`)
 
