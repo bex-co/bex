@@ -11,6 +11,11 @@ const refetch = vi.fn();
 let policyData: { keyValue: { maxmemoryPolicy: string } | null } | undefined;
 
 vi.mock("@apollo/client/react", () => ({
+  // Saves settle in-flight detail reads through the client (w4/m226).
+  useApolloClient: () => ({
+    refetchQueries: () => Object.assign(Promise.resolve([]), { results: [] }),
+    writeQuery: () => undefined,
+  }),
   useQuery: () => ({
     data: policyData,
     loading: false,

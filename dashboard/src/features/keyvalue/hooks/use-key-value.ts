@@ -14,11 +14,12 @@ export interface UseKeyValueResult {
 }
 
 /**
- * Reads bex-api's `keyValue(id)` query for the detail page. Polls only while the
+ * Reads bex-api's `keyValue(id)` query for the detail page. Polls fast while the
  * row is still provisioning (or not yet loaded) so the header converges to
- * Available on its own, then stops — mirrors the list page's gated poll and
- * databases' `useDatabase`. Connection info is NOT fetched here — it's revealed
- * on demand from the detail page (docs/ADR021-keyvalue-management.md).
+ * Available on its own, then at the baseline cadence — and that refresh also
+ * carries the persistence mode and eviction policy the configuration editors
+ * observe (w4/m226). Connection info is NOT fetched here — it's revealed on
+ * demand from the detail page (docs/ADR021-keyvalue-management.md).
  */
 export function useKeyValue(
   id: string,

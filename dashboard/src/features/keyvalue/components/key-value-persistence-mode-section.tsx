@@ -53,6 +53,9 @@ export function KeyValuePersistenceModeSection({
   const confirming = useRef(false);
   const modeKnown = PERSISTENCE_MODES.some((known) => known === mode);
   const confirmationCurrent = pending?.id === id && pending.from === mode;
+  // A confirmation opened against a mode that has since changed is void; drop
+  // it so a later return to that mode cannot reopen it by itself.
+  if (pending && !confirmationCurrent) setPending(null);
 
   async function requestSave(next: string) {
     if (!modeKnown) return false;

@@ -44,6 +44,11 @@ query KeyValue($id: String!) {
     externalHost
     public
     region
+    # The persistence and eviction editors observe these through the cache, so
+    # the polled detail read keeps them current: a store another client set to
+    # Off must ask for the data-loss confirmation here too (w4/m226).
+    maxmemoryPolicy
+    persistenceMode
   }
 }
 
@@ -90,10 +95,9 @@ query KeyValueIpAllowList($id: String!) {
   }
 }
 
-# The current eviction (maxmemory) policy, read on demand by the detail page's
-# Maxmemory Policy editor (w7/007). A focused read (like KeyValueIpAllowList)
-# rather than a field on the main detail query, so the editor owns its own
-# read/refetch cycle.
+# The current eviction (maxmemory) policy, read by the detail page's Maxmemory
+# Policy editor (w7/007), which owns its own read/refetch cycle. The polled
+# KeyValue detail read also selects it, keeping the editor current (w4/m226).
 query KeyValueMaxmemoryPolicy($id: String!) {
   keyValue(id: $id) {
     id
