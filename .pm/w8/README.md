@@ -299,7 +299,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **116** — [Native Python generates HTTP URLs for HTTPS requests](116.md) (55m, major) ← functional CLI sweep380; both defaults produce wrong absolute URLs/repeated HTTPS redirects, both one-setting controls pass; exact own fixtures cleaned.
 
-- [ ] **115** — [Correct MCP idle field omission and WebSocket-direction instructions](115.md) (30m, minor) ← functional CLI sweep372; live preview preserves60 and incoming-only activity stays awake, while the field description says unset selects default and names only sent frames; exact fixture cleanup verified.
+- [ ] **115** — [Correct MCP idle field omission and WebSocket-direction instructions](blocked/115.md) (30m, minor) — **BLOCKED (2026-10-16: implemented — MCP update_service idleTTLSeconds says omission preserves, 0 selects the 15-minute default, positive overrides, and WebSocket frames received or sent count; CRD source comment + regenerated YAML and the dashboard comment say both directions; behavior unchanged; needs the API deployed plus the live tools/list read and owned-fixture omitted-60/explicit-0 check, runnable with the QA CLI login)**
 
 - [ ] **114** — [Native Ruby starts Rails in development on loopback](blocked/114.md) (55m, major) — **BLOCKED (2026-10-16: implemented — primary Ruby images default RAILS_ENV=production before the build RUN for build and runtime, the service's own value (incl. empty) winning; real Rails 8 BuildKit gate on the container address + fail-before verified, every Ruby line placement-checked; needs the operator deployed plus the hosted both-client Rails replay, runnable with the QA CLI login)**
 
