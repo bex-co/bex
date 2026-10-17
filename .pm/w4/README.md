@@ -321,6 +321,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **334** — [Canceling a retry promises a live release when none has served](334.md) (30m) — minor; fresh 390/1440 retry dialogs promise a live fallback despite empty revision and complete canceled-only prior history. Native Cancel/zero-pod/public 503 behavior and a real prior-Live marker control pass. Follow-up to 103's explicitly deferred case; make the shared generic en/zh copy conditional. Owned fixtures, 32 physical scopes, 9 API paths and session cleaned. Filing only.
+
 - [x] **333** — [Expose the active project resource-type filter](done/333.md) — **DONE 2026-10-17, a889.** Native390px Space and fresh1440px URL-kind reads expose the Resource type group and exactly one pressed button; All, pointer/Enter, search/ID and other-kind controls pass. [Durable acceptance and additional m227 evidence](evidence/333-m227-a889.json); 66 native request bodies/112 operations are queries only, seven inventories unchanged and exact session revoked. The initial false-empty catalog remains open in m227.
 
 - [ ] **332** — [Require a Publish Directory before enabling Static Site deployment](blocked/332.md) — **BLOCKED (release pipeline deploys the dashboard; QA repeats the a802 journeys on `/services/new?type=static_site`: at 1440 with Publish Directory empty and at 390 with three spaces, Deploy Service stays disabled, the field shows the Required guidance and no CreateService is sent; `.` enables it; no create)**. Implementation done 2026-10-16: static-only nonblank publish-path predicate plus required hint; dashboard suite and lint pass.

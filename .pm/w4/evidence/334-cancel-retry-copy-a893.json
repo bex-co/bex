@@ -1,0 +1,3598 @@
+{
+  "pass": "a893",
+  "date": "2026-10-17 UTC",
+  "researchHead": "78f5d15a5c20924d98519e1495812a635fe124a8",
+  "finding": {
+    "severity": "minor",
+    "title": "Canceling a retry promises a live release when none has served",
+    "target": "Make the generic en/zh cancel body conditional: keep any previous successful deployment in place if one exists, otherwise explain that nothing serves. Preserve the explicit create warning and all existing mutation semantics. No new history query or backend field is required.",
+    "scope": "Follow up the retry case explicitly deferred by w4/done/103; not a recurrence of its fixed create branch."
+  },
+  "records": {
+    "a893Created": {
+      "at": "2026-10-17T15:53:31.724Z",
+      "request": {
+        "operationName": "CreateService",
+        "variables": {
+          "image": "docker.io/library/node:24-alpine",
+          "name": "qa-20261017-a893-first-release",
+          "type": "web_service",
+          "registryCredentialId": "",
+          "runtime": "image",
+          "startCommand": "node -e 'console.error(JSON.stringify({level:\"error\",message:\"QA_A893_EXPECTED_EXIT_42\",pass:\"a893\"}));process.exit(42)'",
+          "plan": "free",
+          "port": 8094,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db9pjukflioc739mco30",
+            "latestDeployId": "dep-db9pjukflioc739mco3g",
+            "name": "qa-20261017-a893-first-release",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": "",
+            "type": "web_service"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792252410580.2961,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.127,
+        "responseStart": 416.785,
+        "responseEnd": 417.66
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9pjukflioc739mco30/deploys/dep-db9pjukflioc739mco3g"
+    },
+    "a893FirstDeployInitial": {
+      "at": "2026-10-17T15:54:11.386Z",
+      "url": "https://dashboard.bex.co/services/srv-db9pjukflioc739mco30/deploys/dep-db9pjukflioc739mco3g",
+      "aria": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261017-a893-first-release\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261017-a893-first-release\" [level=1]\n  - text: Service Deploying\n  - 'link \"Latest deploy: In Progress\"':\n    - /url: /services/srv-db9pjukflioc739mco30/deploys/dep-db9pjukflioc739mco3g\n    - text: Latest deploy In Progress\n  - link \"Free\":\n    - /url: /services/srv-db9pjukflioc739mco30/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9pjukflioc739mco30\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261017-a893-first-release.onbex.co\":\n    - /url: https://qa-20261017-a893-first-release.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261017-a893-first-release\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: —\n  - term: Created\n  - definition:\n    - time: now\n  - text: Deploy status In Progress First Deploy dep-db9pjukflioc739mco3g\n  - button \"Cancel deploy dep-db9pjukflioc739mco3g\": Cancel\n  - paragraph: \"container exited shortly after start and is restarting repeatedly (last exit code 42) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (8094), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped).\"\n  - paragraph: docker.io/library/node:24-alpine\n  - term: \"Created:\"\n  - definition: October 17, 2026 at 8:53 AM\n  - term: \"Updated:\"\n  - definition: October 17, 2026 at 8:53 AM\n  - term: \"Started:\"\n  - definition: October 17, 2026 at 8:53 AM\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 17, 2026 at 8:53 AM\n    - listitem:\n      - paragraph: Deploy started\n      - time: October 17, 2026 at 8:53 AM\n    - listitem:\n      - paragraph: In Progress\n      - time: October 17, 2026 at 8:53 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\"\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: 08:53:30 AM\n  - button \"Filter logs by instance srv-db9pjukflioc739mco30-4454241b2198nmbrlk6f\": \"[44542]\"\n  - text: ==> Deploy queued 08:53:32 AM\n  - button \"Filter logs by instance srv-db9pjukflioc739mco30-4454241b2198nmbrlk6f\": \"[44542]\"\n  - text: ==> Deploying image docker.io/library/node:24-alpine 08:53:35 AM\n  - button \"Filter logs by instance srv-db9pjukflioc739mco30-d8tnbjilmtgblhp97f7f\": \"[d8tnb]\"\n  - text: \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA_A893_EXPECTED_EXIT_42\\\",\\\"pass\\\":\\\"a893\\\"} 08:53:57 AM\"\n  - button \"Filter logs by instance srv-db9pjukflioc739mco30-d8tnbjilmtgblhp97f7f\": \"[d8tnb]\"\n  - text: \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA_A893_EXPECTED_EXIT_42\\\",\\\"pass\\\":\\\"a893\\\"}\""
+    },
+    "a893CancelFixtureCreated": {
+      "at": "2026-10-17T15:55:21.775Z",
+      "request": {
+        "operationName": "CreateService",
+        "variables": {
+          "image": "docker.io/library/node:24-alpine",
+          "name": "qa-20261017-a893-cancel",
+          "type": "web_service",
+          "registryCredentialId": "",
+          "runtime": "image",
+          "startCommand": "node -e 'console.error(\"QA_A893_CANCEL_EXIT_42\");process.exit(42)'",
+          "plan": "free",
+          "port": 8095,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db9pkq4s300s73dskhag",
+            "latestDeployId": "dep-db9pkq4s300s73dskhb0",
+            "name": "qa-20261017-a893-cancel",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": "",
+            "type": "web_service"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792252520660.6272,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.128,
+        "responseStart": 396.418,
+        "responseEnd": 396.967
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9pkq4s300s73dskhag/deploys/dep-db9pkq4s300s73dskhb0"
+    },
+    "a893CancelFirstDialog": {
+      "at": "2026-10-17T15:55:34.468Z",
+      "aria": "- alertdialog \"Cancel this deploy?\":\n  - heading \"Cancel this deploy?\" [level=2]\n  - paragraph: The in-progress deploy will be stopped. This is the service's first deploy, so no version is live yet — canceling leaves the service with nothing serving.\n  - status\n  - button \"Go Back\"\n  - button \"Proceed\""
+    },
+    "a893CancelFirstGoBack": {
+      "at": "2026-10-17T15:56:09.900Z",
+      "dialogCount": 0,
+      "cancelMutations": [],
+      "url": "https://dashboard.bex.co/services/srv-db9pkq4s300s73dskhag/deploys/dep-db9pkq4s300s73dskhb0"
+    },
+    "a893CancelFirstCommitted": {
+      "at": "2026-10-17T15:56:13.279Z",
+      "request": {
+        "operationName": "CancelDeploy",
+        "variables": {
+          "serviceId": "srv-db9pkq4s300s73dskhag",
+          "deployId": "dep-db9pkq4s300s73dskhb0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CancelDeploy($serviceId: String!, $deployId: String!) {\n  cancelDeploy(serviceId: $serviceId, deployId: $deployId) {\n    id\n    status\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "cancelDeploy": {
+            "__typename": "Deploy",
+            "id": "dep-db9pkq4s300s73dskhb0",
+            "status": "canceled"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792252571912.46,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.09,
+        "responseStart": 640.79,
+        "responseEnd": 641.555
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9pkq4s300s73dskhag/deploys/dep-db9pkq4s300s73dskhb0"
+    },
+    "a893CancelFirstState": {
+      "at": "2026-10-17T15:56:40.794Z",
+      "request": {
+        "operationName": "QA893State",
+        "query": "query QA893State($id:String!,$deployId:String!){server(id:$id){id name phase revision suspended replicas url undeployedChanges undeployedChangesApplying} deploy(serviceId:$id,deployId:$deployId){id status failureReason cancelReason stallReason createdAt updatedAt startedAt finishedAt}}",
+        "variables": {
+          "id": "srv-db9pkq4s300s73dskhag",
+          "deployId": "dep-db9pkq4s300s73dskhb0"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploy": {
+            "cancelReason": "",
+            "createdAt": "2026-10-17T15:55:20.895367Z",
+            "failureReason": "",
+            "finishedAt": "2026-10-17T15:56:12.470974Z",
+            "id": "dep-db9pkq4s300s73dskhb0",
+            "stallReason": "",
+            "startedAt": "2026-10-17T15:55:32.522621Z",
+            "status": "canceled",
+            "updatedAt": "2026-10-17T15:56:12.470975Z"
+          },
+          "server": {
+            "id": "srv-db9pkq4s300s73dskhag",
+            "name": "qa-20261017-a893-cancel",
+            "phase": "Canceled",
+            "replicas": 1,
+            "revision": "",
+            "suspended": "not_suspended",
+            "undeployedChanges": false,
+            "undeployedChangesApplying": false,
+            "url": "https://qa-20261017-a893-cancel.onbex.co"
+          }
+        }
+      },
+      "instances": {
+        "path": "/v1/services/srv-db9pkq4s300s73dskhag/instances",
+        "status": 200,
+        "body": []
+      },
+      "public": {
+        "url": "https://qa-20261017-a893-cancel.onbex.co",
+        "status": 503,
+        "body": "service unavailable\n"
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9pkq4s300s73dskhag/deploys/dep-db9pkq4s300s73dskhb0"
+    },
+    "a893CancelFirstUi": {
+      "at": "2026-10-17T15:56:43.062Z",
+      "aria": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261017-a893-cancel\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261017-a893-cancel\" [level=1]\n  - text: Service Canceled\n  - 'link \"Latest deploy: Canceled\"':\n    - /url: /services/srv-db9pkq4s300s73dskhag/deploys/dep-db9pkq4s300s73dskhb0\n    - text: Latest deploy Canceled\n  - link \"Free\":\n    - /url: /services/srv-db9pkq4s300s73dskhag/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9pkq4s300s73dskhag\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261017-a893-cancel.onbex.co\":\n    - /url: https://qa-20261017-a893-cancel.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261017-a893-cancel\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: —\n  - term: Created\n  - definition:\n    - time: 1m\n  - text: Deploy status Canceled First Deploy dep-db9pkq4s300s73dskhb0\n  - paragraph: docker.io/library/node:24-alpine\n  - term: \"Created:\"\n  - definition: October 17, 2026 at 8:55 AM\n  - term: \"Updated:\"\n  - definition: October 17, 2026 at 8:56 AM\n  - term: \"Started:\"\n  - definition: October 17, 2026 at 8:55 AM\n  - term: \"Finished:\"\n  - definition: October 17, 2026 at 8:56 AM\n  - term: \"Duration:\"\n  - definition: 39s\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 17, 2026 at 8:55 AM\n    - listitem:\n      - paragraph: Deploy started\n      - time: October 17, 2026 at 8:55 AM\n    - listitem:\n      - paragraph: Canceled\n      - time: October 17, 2026 at 8:56 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\"\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: 08:55:20 AM\n  - button \"Filter logs by instance srv-db9pkq4s300s73dskhag-ffu7reil0ifeu0u581ui\": \"[ffu7r]\"\n  - text: ==> Deploy queued 08:55:25 AM\n  - button \"Filter logs by instance srv-db9pkq4s300s73dskhag-outnq8s0ca3air5ecdk8\": \"[outnq]\"\n  - text: QA_A893_CANCEL_EXIT_42 08:55:32 AM\n  - button \"Filter logs by instance srv-db9pkq4s300s73dskhag-ffu7reil0ifeu0u581ui\": \"[ffu7r]\"\n  - text: ==> Deploying image docker.io/library/node:24-alpine 08:55:45 AM\n  - button \"Filter logs by instance srv-db9pkq4s300s73dskhag-outnq8s0ca3air5ecdk8\": \"[outnq]\"\n  - text: QA_A893_CANCEL_EXIT_42 08:56:12 AM\n  - button \"Filter logs by instance srv-db9pkq4s300s73dskhag-ffu7reil0ifeu0u581ui\": \"[ffu7r]\"\n  - text: ==> Deploy canceled"
+    },
+    "a893CancelHistoryAfterAttempt": {
+      "at": "2026-10-17T15:59:15.647Z",
+      "request": {
+        "operationName": "QA893History",
+        "query": "query QA893History($serviceId:String!){deploys(serviceId:$serviceId,limit:10){id status failureReason cancelReason stallReason createdAt startedAt finishedAt trigger}}",
+        "variables": {
+          "serviceId": "srv-db9pkq4s300s73dskhag"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "cancelReason": "",
+              "createdAt": "2026-10-17T15:55:20.895367Z",
+              "failureReason": "",
+              "finishedAt": "2026-10-17T15:56:12.470974Z",
+              "id": "dep-db9pkq4s300s73dskhb0",
+              "stallReason": "",
+              "startedAt": "2026-10-17T15:55:32.522621Z",
+              "status": "canceled",
+              "trigger": "create"
+            }
+          ]
+        }
+      }
+    },
+    "a893CancelSecondDialog": {
+      "at": "2026-10-17T16:00:22.140Z",
+      "aria": "- alertdialog \"Cancel this deploy?\":\n  - heading \"Cancel this deploy?\" [level=2]\n  - paragraph: The in-progress deploy will be stopped. The last successful deploy remains live, and any changes you saved stay saved and ship with the next deploy.\n  - status\n  - button \"Go Back\"\n  - button \"Proceed\"",
+      "document": {
+        "width": 390,
+        "scroll": 390
+      }
+    },
+    "a893CancelSecondCommitted": {
+      "at": "2026-10-17T16:00:24.256Z",
+      "request": {
+        "operationName": "CancelDeploy",
+        "variables": {
+          "serviceId": "srv-db9pkq4s300s73dskhag",
+          "deployId": "dep-db9pmrsflioc739mco6g"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CancelDeploy($serviceId: String!, $deployId: String!) {\n  cancelDeploy(serviceId: $serviceId, deployId: $deployId) {\n    id\n    status\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "cancelDeploy": {
+            "__typename": "Deploy",
+            "id": "dep-db9pmrsflioc739mco6g",
+            "status": "canceled"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792252822987.9958,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.236,
+        "responseStart": 542.577,
+        "responseEnd": 543.507
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9pkq4s300s73dskhag/deploys/dep-db9pmrsflioc739mco6g"
+    },
+    "a893CancelSecondState": {
+      "at": "2026-10-17T16:00:26.636Z",
+      "request": {
+        "operationName": "QA893State",
+        "query": "query QA893State($id:String!,$deployId:String!){server(id:$id){id name phase revision suspended replicas url undeployedChanges undeployedChangesApplying} deploy(serviceId:$id,deployId:$deployId){id status failureReason cancelReason stallReason createdAt updatedAt startedAt finishedAt}}",
+        "variables": {
+          "id": "srv-db9pkq4s300s73dskhag",
+          "deployId": "dep-db9pmrsflioc739mco6g"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploy": {
+            "cancelReason": "",
+            "createdAt": "2026-10-17T15:59:43.101Z",
+            "failureReason": "",
+            "finishedAt": "2026-10-17T16:00:23.440948Z",
+            "id": "dep-db9pmrsflioc739mco6g",
+            "stallReason": "",
+            "startedAt": "2026-10-17T15:59:48.085729Z",
+            "status": "canceled",
+            "updatedAt": "2026-10-17T16:00:23.440949Z"
+          },
+          "server": {
+            "id": "srv-db9pkq4s300s73dskhag",
+            "name": "qa-20261017-a893-cancel",
+            "phase": "Canceled",
+            "replicas": 1,
+            "revision": "",
+            "suspended": "not_suspended",
+            "undeployedChanges": false,
+            "undeployedChangesApplying": false,
+            "url": "https://qa-20261017-a893-cancel.onbex.co"
+          }
+        }
+      },
+      "instances": {
+        "path": "/v1/services/srv-db9pkq4s300s73dskhag/instances",
+        "status": 200,
+        "body": []
+      },
+      "public": {
+        "url": "https://qa-20261017-a893-cancel.onbex.co",
+        "status": 503,
+        "body": "service unavailable\n"
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9pkq4s300s73dskhag/deploys/dep-db9pmrsflioc739mco6g"
+    },
+    "a893CancelThirdStarted": {
+      "at": "2026-10-17T16:01:26.136Z",
+      "request": {
+        "operationName": "TriggerDeploy",
+        "variables": {
+          "serviceId": "srv-db9pkq4s300s73dskhag"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation TriggerDeploy($serviceId: String!, $commitId: String, $deployMode: String, $clearCache: String, $confirm: String) {\n  triggerDeploy(\n    serviceId: $serviceId\n    commitId: $commitId\n    deployMode: $deployMode\n    clearCache: $clearCache\n    confirm: $confirm\n  ) {\n    id\n    status\n    createdAt\n    trigger\n    rollbackOf\n    image\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "triggerDeploy": {
+            "__typename": "Deploy",
+            "createdAt": "2026-10-17T16:01:25.321566Z",
+            "id": "dep-db9pnlcflioc739mco7g",
+            "image": "docker.io/library/node:24-alpine",
+            "rollbackOf": "",
+            "status": "created",
+            "trigger": "api"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792252885117.5918,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.119,
+        "responseStart": 310.727,
+        "responseEnd": 311.386
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9pkq4s300s73dskhag/deploys/dep-db9pnlcflioc739mco7g"
+    },
+    "a893CancelThirdDialog": {
+      "at": "2026-10-17T16:01:50.036Z",
+      "url": "https://dashboard.bex.co/services/srv-db9pkq4s300s73dskhag/deploys/dep-db9pnlcflioc739mco7g",
+      "dialog": "- alertdialog \"Cancel this deploy?\":\n  - heading \"Cancel this deploy?\" [level=2]\n  - paragraph: The in-progress deploy will be stopped. The last successful deploy remains live, and any changes you saved stay saved and ship with the next deploy.\n  - status\n  - button \"Go Back\"\n  - button \"Proceed\"",
+      "header": []
+    },
+    "a893CancelThirdNoServedProof": {
+      "at": "2026-10-17T16:01:50.938Z",
+      "request": {
+        "operationName": "QA893NoServedControl",
+        "query": "query QA893NoServedControl($serviceId:String!){server(id:$serviceId){id phase revision} deploys(serviceId:$serviceId,limit:10){id status trigger createdAt finishedAt}}",
+        "variables": {
+          "serviceId": "srv-db9pkq4s300s73dskhag"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "createdAt": "2026-10-17T16:01:25.321566Z",
+              "finishedAt": "",
+              "id": "dep-db9pnlcflioc739mco7g",
+              "status": "update_in_progress",
+              "trigger": "api"
+            },
+            {
+              "createdAt": "2026-10-17T15:59:43.101Z",
+              "finishedAt": "2026-10-17T16:00:23.440948Z",
+              "id": "dep-db9pmrsflioc739mco6g",
+              "status": "canceled",
+              "trigger": "api"
+            },
+            {
+              "createdAt": "2026-10-17T15:55:20.895367Z",
+              "finishedAt": "2026-10-17T15:56:12.470974Z",
+              "id": "dep-db9pkq4s300s73dskhb0",
+              "status": "canceled",
+              "trigger": "create"
+            }
+          ],
+          "server": {
+            "id": "srv-db9pkq4s300s73dskhag",
+            "phase": "Deploying",
+            "revision": ""
+          }
+        }
+      },
+      "dialog": "- alertdialog \"Cancel this deploy?\":\n  - heading \"Cancel this deploy?\" [level=2]\n  - paragraph: The in-progress deploy will be stopped. The last successful deploy remains live, and any changes you saved stay saved and ship with the next deploy.\n  - status\n  - button \"Go Back\"\n  - button \"Proceed\"",
+      "screenshot": "qa-a893-cancel-retry-desktop.png"
+    },
+    "a893CancelThirdCommitted": {
+      "at": "2026-10-17T16:03:17.985Z",
+      "request": {
+        "operationName": "CancelDeploy",
+        "variables": {
+          "serviceId": "srv-db9pkq4s300s73dskhag",
+          "deployId": "dep-db9pnlcflioc739mco7g"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CancelDeploy($serviceId: String!, $deployId: String!) {\n  cancelDeploy(serviceId: $serviceId, deployId: $deployId) {\n    id\n    status\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "cancelDeploy": {
+            "__typename": "Deploy",
+            "id": "dep-db9pnlcflioc739mco7g",
+            "status": "canceled"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792252996971.678,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.113,
+        "responseStart": 287.451,
+        "responseEnd": 288.237
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9pkq4s300s73dskhag/deploys/dep-db9pnlcflioc739mco7g"
+    },
+    "a893CancelThirdState": {
+      "at": "2026-10-17T16:03:20.026Z",
+      "request": {
+        "operationName": "QA893State",
+        "query": "query QA893State($id:String!,$deployId:String!){server(id:$id){id name phase revision suspended replicas url undeployedChanges undeployedChangesApplying} deploy(serviceId:$id,deployId:$deployId){id status failureReason cancelReason stallReason createdAt updatedAt startedAt finishedAt}}",
+        "variables": {
+          "id": "srv-db9pkq4s300s73dskhag",
+          "deployId": "dep-db9pnlcflioc739mco7g"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploy": {
+            "cancelReason": "",
+            "createdAt": "2026-10-17T16:01:25.321566Z",
+            "failureReason": "",
+            "finishedAt": "2026-10-17T16:03:17.168927Z",
+            "id": "dep-db9pnlcflioc739mco7g",
+            "stallReason": "",
+            "startedAt": "2026-10-17T16:01:48.098921Z",
+            "status": "canceled",
+            "updatedAt": "2026-10-17T16:03:17.168928Z"
+          },
+          "server": {
+            "id": "srv-db9pkq4s300s73dskhag",
+            "name": "qa-20261017-a893-cancel",
+            "phase": "Deploying",
+            "replicas": 1,
+            "revision": "",
+            "suspended": "not_suspended",
+            "undeployedChanges": false,
+            "undeployedChangesApplying": false,
+            "url": "https://qa-20261017-a893-cancel.onbex.co"
+          }
+        }
+      },
+      "instances": {
+        "path": "/v1/services/srv-db9pkq4s300s73dskhag/instances",
+        "status": 200,
+        "body": [
+          {
+            "id": "srv-db9pkq4s300s73dskhag-laims607si2rmn1fk2qn",
+            "createdAt": "2026-10-17T16:01:25Z"
+          }
+        ]
+      },
+      "public": {
+        "url": "https://qa-20261017-a893-cancel.onbex.co",
+        "status": 503,
+        "body": "service unavailable\n"
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9pkq4s300s73dskhag/deploys/dep-db9pnlcflioc739mco7g"
+    },
+    "a893CancelRecoverySaved": {
+      "at": "2026-10-17T16:04:32.203Z",
+      "request": {
+        "operationName": "SetStartCommand",
+        "variables": {
+          "id": "srv-db9pkq4s300s73dskhag",
+          "command": "node -e 'const http=require(\"http\");const startedAt=new Date().toISOString();console.log(JSON.stringify({level:\"info\",message:\"QA_A893_RECOVERED\",startedAt}));http.createServer((req,res)=>{res.setHeader(\"content-type\",\"application/json\");res.end(JSON.stringify({pass:\"a893\",release:\"cancel-recovered\",port:Number(process.env.PORT),startedAt,pid:process.pid}))}).listen(Number(process.env.PORT||8094),\"0.0.0.0\")'"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetStartCommand($id: String!, $command: String!, $confirm: String) {\n  setStartCommand(id: $id, command: $command, confirm: $confirm) {\n    id\n    startCommand\n    command\n    phase\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setStartCommand": {
+            "__typename": "Service",
+            "command": "",
+            "id": "srv-db9pkq4s300s73dskhag",
+            "phase": "Canceled",
+            "startCommand": "node -e 'const http=require(\"http\");const startedAt=new Date().toISOString();console.log(JSON.stringify({level:\"info\",message:\"QA_A893_RECOVERED\",startedAt}));http.createServer((req,res)=>{res.setHeader(\"content-type\",\"application/json\");res.end(JSON.stringify({pass:\"a893\",release:\"cancel-recovered\",port:Number(process.env.PORT),startedAt,pid:process.pid}))}).listen(Number(process.env.PORT||8094),\"0.0.0.0\")'"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792253071142.6987,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.139,
+        "responseStart": 339.214,
+        "responseEnd": 339.947
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9pkq4s300s73dskhag/settings#deploy"
+    },
+    "a893CancelRecoveryHistory": {
+      "at": "2026-10-17T16:04:33.633Z",
+      "request": {
+        "operationName": "QA893History",
+        "query": "query QA893History($serviceId:String!){deploys(serviceId:$serviceId,limit:10){id status failureReason cancelReason stallReason createdAt startedAt finishedAt trigger}}",
+        "variables": {
+          "serviceId": "srv-db9pkq4s300s73dskhag"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "cancelReason": "",
+              "createdAt": "2026-10-17T16:04:31.376129Z",
+              "failureReason": "",
+              "finishedAt": "",
+              "id": "dep-db9pp3sflioc739mco80",
+              "stallReason": "",
+              "startedAt": "2026-10-17T16:04:32.320435Z",
+              "status": "update_in_progress",
+              "trigger": "config_change"
+            },
+            {
+              "cancelReason": "",
+              "createdAt": "2026-10-17T16:01:25.321566Z",
+              "failureReason": "",
+              "finishedAt": "2026-10-17T16:03:17.168927Z",
+              "id": "dep-db9pnlcflioc739mco7g",
+              "stallReason": "",
+              "startedAt": "2026-10-17T16:01:48.098921Z",
+              "status": "canceled",
+              "trigger": "api"
+            },
+            {
+              "cancelReason": "",
+              "createdAt": "2026-10-17T15:59:43.101Z",
+              "failureReason": "",
+              "finishedAt": "2026-10-17T16:00:23.440948Z",
+              "id": "dep-db9pmrsflioc739mco6g",
+              "stallReason": "",
+              "startedAt": "2026-10-17T15:59:48.085729Z",
+              "status": "canceled",
+              "trigger": "api"
+            },
+            {
+              "cancelReason": "",
+              "createdAt": "2026-10-17T15:55:20.895367Z",
+              "failureReason": "",
+              "finishedAt": "2026-10-17T15:56:12.470974Z",
+              "id": "dep-db9pkq4s300s73dskhb0",
+              "stallReason": "",
+              "startedAt": "2026-10-17T15:55:32.522621Z",
+              "status": "canceled",
+              "trigger": "create"
+            }
+          ]
+        }
+      }
+    },
+    "a893CancelRecoveryLive": {
+      "at": "2026-10-17T16:05:45.543Z",
+      "url": "https://dashboard.bex.co/services/srv-db9pkq4s300s73dskhag/deploys/dep-db9pp3sflioc739mco80",
+      "public": {
+        "status": 200,
+        "body": {
+          "pass": "a893",
+          "release": "cancel-recovered",
+          "port": 8095,
+          "startedAt": "2026-10-17T16:04:35.969Z",
+          "pid": 1
+        }
+      },
+      "aria": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261017-a893-cancel\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261017-a893-cancel\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db9pkq4s300s73dskhag/deploys/dep-db9pp3sflioc739mco80\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db9pkq4s300s73dskhag/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9pkq4s300s73dskhag\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261017-a893-cancel.onbex.co\":\n    - /url: https://qa-20261017-a893-cancel.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261017-a893-cancel\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-4\n  - term: Created\n  - definition:\n    - time: 10m\n  - text: Deploy status Live Config Change dep-db9pp3sflioc739mco80\n  - paragraph: docker.io/library/node:24-alpine\n  - term: \"Created:\"\n  - definition: October 17, 2026 at 9:04 AM\n  - term: \"Updated:\"\n  - definition: October 17, 2026 at 9:04 AM\n  - term: \"Started:\"\n  - definition: October 17, 2026 at 9:04 AM\n  - term: \"Finished:\"\n  - definition: October 17, 2026 at 9:04 AM\n  - term: \"Duration:\"\n  - definition: 15s\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 17, 2026 at 9:04 AM\n    - listitem:\n      - paragraph: Deploy started\n      - time: October 17, 2026 at 9:04 AM\n    - listitem:\n      - paragraph: Live\n      - time: October 17, 2026 at 9:04 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\"\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: 09:04:31 AM\n  - button \"Filter logs by instance srv-db9pkq4s300s73dskhag-mqsddido6qm6suj7itho\": \"[mqsdd]\"\n  - text: ==> Deploy queued 09:04:32 AM\n  - button \"Filter logs by instance srv-db9pkq4s300s73dskhag-mqsddido6qm6suj7itho\": \"[mqsdd]\"\n  - text: ==> Deploying image docker.io/library/node:24-alpine 09:04:36 AM\n  - button \"Filter logs by instance srv-db9pkq4s300s73dskhag-3ttmra458bt0ustgt7at\": \"[3ttmr]\"\n  - text: \"{\\\"level\\\":\\\"info\\\",\\\"message\\\":\\\"QA_A893_RECOVERED\\\",\\\"startedAt\\\":\\\"2026-10-17T16:04:35.969Z\\\"} 09:04:48 AM\"\n  - button \"Filter logs by instance srv-db9pkq4s300s73dskhag-mqsddido6qm6suj7itho\": \"[mqsdd]\"\n  - text: ==> Your service is live 🎉"
+    },
+    "a893ServedControlStarted": {
+      "at": "2026-10-17T16:06:15.218Z",
+      "request": {
+        "operationName": "TriggerDeploy",
+        "variables": {
+          "serviceId": "srv-db9pkq4s300s73dskhag"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation TriggerDeploy($serviceId: String!, $commitId: String, $deployMode: String, $clearCache: String, $confirm: String) {\n  triggerDeploy(\n    serviceId: $serviceId\n    commitId: $commitId\n    deployMode: $deployMode\n    clearCache: $clearCache\n    confirm: $confirm\n  ) {\n    id\n    status\n    createdAt\n    trigger\n    rollbackOf\n    image\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "triggerDeploy": {
+            "__typename": "Deploy",
+            "createdAt": "2026-10-17T16:06:14.425568Z",
+            "id": "dep-db9pptks300s73dskhfg",
+            "image": "docker.io/library/node:24-alpine",
+            "rollbackOf": "",
+            "status": "created",
+            "trigger": "api"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792253174043.47,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.181,
+        "responseStart": 465.189,
+        "responseEnd": 465.893
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9pkq4s300s73dskhag/deploys/dep-db9pptks300s73dskhfg"
+    },
+    "a893ServedControlDialog": {
+      "at": "2026-10-17T16:06:16.912Z",
+      "dialog": "- alertdialog \"Cancel this deploy?\":\n  - heading \"Cancel this deploy?\" [level=2]\n  - paragraph: The in-progress deploy will be stopped. The last successful deploy remains live, and any changes you saved stay saved and ship with the next deploy.\n  - status\n  - button \"Go Back\"\n  - button \"Proceed\"",
+      "request": {
+        "operationName": "QA893ServedControl",
+        "query": "query QA893ServedControl($serviceId:String!){server(id:$serviceId){id phase revision} deploys(serviceId:$serviceId,limit:10){id status trigger createdAt finishedAt}}",
+        "variables": {
+          "serviceId": "srv-db9pkq4s300s73dskhag"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "createdAt": "2026-10-17T16:06:14.425568Z",
+              "finishedAt": "",
+              "id": "dep-db9pptks300s73dskhfg",
+              "status": "created",
+              "trigger": "api"
+            },
+            {
+              "createdAt": "2026-10-17T16:04:31.376129Z",
+              "finishedAt": "2026-10-17T16:04:48.067189Z",
+              "id": "dep-db9pp3sflioc739mco80",
+              "status": "live",
+              "trigger": "config_change"
+            },
+            {
+              "createdAt": "2026-10-17T16:01:25.321566Z",
+              "finishedAt": "2026-10-17T16:03:17.168927Z",
+              "id": "dep-db9pnlcflioc739mco7g",
+              "status": "canceled",
+              "trigger": "api"
+            },
+            {
+              "createdAt": "2026-10-17T15:59:43.101Z",
+              "finishedAt": "2026-10-17T16:00:23.440948Z",
+              "id": "dep-db9pmrsflioc739mco6g",
+              "status": "canceled",
+              "trigger": "api"
+            },
+            {
+              "createdAt": "2026-10-17T15:55:20.895367Z",
+              "finishedAt": "2026-10-17T15:56:12.470974Z",
+              "id": "dep-db9pkq4s300s73dskhb0",
+              "status": "canceled",
+              "trigger": "create"
+            }
+          ],
+          "server": {
+            "id": "srv-db9pkq4s300s73dskhag",
+            "phase": "Deploying",
+            "revision": "rev-4"
+          }
+        }
+      },
+      "public": {
+        "status": 200,
+        "body": {
+          "pass": "a893",
+          "release": "cancel-recovered",
+          "port": 8095,
+          "startedAt": "2026-10-17T16:04:35.969Z",
+          "pid": 1
+        }
+      }
+    },
+    "a893ServedControlCanceled": {
+      "at": "2026-10-17T16:06:19.046Z",
+      "request": {
+        "operationName": "CancelDeploy",
+        "variables": {
+          "serviceId": "srv-db9pkq4s300s73dskhag",
+          "deployId": "dep-db9pptks300s73dskhfg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CancelDeploy($serviceId: String!, $deployId: String!) {\n  cancelDeploy(serviceId: $serviceId, deployId: $deployId) {\n    id\n    status\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "cancelDeploy": {
+            "__typename": "Deploy",
+            "id": "dep-db9pptks300s73dskhfg",
+            "status": "canceled"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792253177742.409,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.224,
+        "responseStart": 594.895,
+        "responseEnd": 595.449
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9pkq4s300s73dskhag/deploys/dep-db9pptks300s73dskhfg"
+    },
+    "a893ServedControlState": {
+      "at": "2026-10-17T16:06:21.144Z",
+      "request": {
+        "operationName": "QA893State",
+        "query": "query QA893State($id:String!,$deployId:String!){server(id:$id){id name phase revision suspended replicas url undeployedChanges undeployedChangesApplying} deploy(serviceId:$id,deployId:$deployId){id status failureReason cancelReason stallReason createdAt updatedAt startedAt finishedAt}}",
+        "variables": {
+          "id": "srv-db9pkq4s300s73dskhag",
+          "deployId": "dep-db9pptks300s73dskhfg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploy": {
+            "cancelReason": "",
+            "createdAt": "2026-10-17T16:06:14.425568Z",
+            "failureReason": "",
+            "finishedAt": "2026-10-17T16:06:18.151563Z",
+            "id": "dep-db9pptks300s73dskhfg",
+            "stallReason": "",
+            "startedAt": "",
+            "status": "canceled",
+            "updatedAt": "2026-10-17T16:06:18.151564Z"
+          },
+          "server": {
+            "id": "srv-db9pkq4s300s73dskhag",
+            "name": "qa-20261017-a893-cancel",
+            "phase": "Deploying",
+            "replicas": 1,
+            "revision": "rev-4",
+            "suspended": "not_suspended",
+            "undeployedChanges": false,
+            "undeployedChangesApplying": false,
+            "url": "https://qa-20261017-a893-cancel.onbex.co"
+          }
+        }
+      },
+      "instances": {
+        "path": "/v1/services/srv-db9pkq4s300s73dskhag/instances",
+        "status": 200,
+        "body": [
+          {
+            "id": "srv-db9pkq4s300s73dskhag-080mie5ge3u1jk8rrlvt",
+            "createdAt": "2026-10-17T16:06:14Z"
+          },
+          {
+            "id": "srv-db9pkq4s300s73dskhag-3ttmra458bt0ustgt7at",
+            "createdAt": "2026-10-17T16:04:31Z"
+          }
+        ]
+      },
+      "public": {
+        "url": "https://qa-20261017-a893-cancel.onbex.co",
+        "status": 200,
+        "body": "{\"pass\":\"a893\",\"release\":\"cancel-recovered\",\"port\":8095,\"startedAt\":\"2026-10-17T16:04:35.969Z\",\"pid\":1}"
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9pkq4s300s73dskhag/deploys/dep-db9pptks300s73dskhfg"
+    },
+    "a893ServedControlSettled": {
+      "at": "2026-10-17T16:07:14.906Z",
+      "request": {
+        "operationName": "QA893State",
+        "query": "query QA893State($id:String!,$deployId:String!){server(id:$id){id name phase revision suspended replicas url undeployedChanges undeployedChangesApplying} deploy(serviceId:$id,deployId:$deployId){id status failureReason cancelReason stallReason createdAt updatedAt startedAt finishedAt}}",
+        "variables": {
+          "id": "srv-db9pkq4s300s73dskhag",
+          "deployId": "dep-db9pptks300s73dskhfg"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploy": {
+            "cancelReason": "",
+            "createdAt": "2026-10-17T16:06:14.425568Z",
+            "failureReason": "",
+            "finishedAt": "2026-10-17T16:06:18.151563Z",
+            "id": "dep-db9pptks300s73dskhfg",
+            "stallReason": "",
+            "startedAt": "",
+            "status": "canceled",
+            "updatedAt": "2026-10-17T16:06:18.151564Z"
+          },
+          "server": {
+            "id": "srv-db9pkq4s300s73dskhag",
+            "name": "qa-20261017-a893-cancel",
+            "phase": "Running",
+            "replicas": 1,
+            "revision": "rev-4",
+            "suspended": "not_suspended",
+            "undeployedChanges": false,
+            "undeployedChangesApplying": false,
+            "url": "https://qa-20261017-a893-cancel.onbex.co"
+          }
+        }
+      },
+      "instances": {
+        "path": "/v1/services/srv-db9pkq4s300s73dskhag/instances",
+        "status": 200,
+        "body": [
+          {
+            "id": "srv-db9pkq4s300s73dskhag-3ttmra458bt0ustgt7at",
+            "createdAt": "2026-10-17T16:04:31Z"
+          }
+        ]
+      },
+      "public": {
+        "url": "https://qa-20261017-a893-cancel.onbex.co",
+        "status": 200,
+        "body": "{\"pass\":\"a893\",\"release\":\"cancel-recovered\",\"port\":8095,\"startedAt\":\"2026-10-17T16:04:35.969Z\",\"pid\":1}"
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9pkq4s300s73dskhag/deploys/dep-db9pptks300s73dskhfg"
+    },
+    "a893FirstDeadlinePending": {
+      "at": "2026-10-17T15:57:02.971Z",
+      "request": {
+        "operationName": "QA893State",
+        "query": "query QA893State($id:String!,$deployId:String!){server(id:$id){id name phase revision suspended replicas url undeployedChanges undeployedChangesApplying} deploy(serviceId:$id,deployId:$deployId){id status failureReason cancelReason stallReason createdAt updatedAt startedAt finishedAt}}",
+        "variables": {
+          "id": "srv-db9pjukflioc739mco30",
+          "deployId": "dep-db9pjukflioc739mco3g"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploy": {
+            "cancelReason": "",
+            "createdAt": "2026-10-17T15:53:30.766009Z",
+            "failureReason": "",
+            "finishedAt": "",
+            "id": "dep-db9pjukflioc739mco3g",
+            "stallReason": "container exited shortly after start and is restarting repeatedly (last exit code 42) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (8094), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped).",
+            "startedAt": "2026-10-17T15:53:32.447286Z",
+            "status": "update_in_progress",
+            "updatedAt": "2026-10-17T15:53:32.447287Z"
+          },
+          "server": {
+            "id": "srv-db9pjukflioc739mco30",
+            "name": "qa-20261017-a893-first-release",
+            "phase": "Deploying",
+            "replicas": 1,
+            "revision": "",
+            "suspended": "not_suspended",
+            "undeployedChanges": false,
+            "undeployedChangesApplying": false,
+            "url": "https://qa-20261017-a893-first-release.onbex.co"
+          }
+        }
+      },
+      "instances": {
+        "path": "/v1/services/srv-db9pjukflioc739mco30/instances",
+        "status": 200,
+        "body": [
+          {
+            "id": "srv-db9pjukflioc739mco30-d8tnbjilmtgblhp97f7f",
+            "createdAt": "2026-10-17T15:53:30Z"
+          }
+        ]
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9pkq4s300s73dskhag/deploys/dep-db9pkq4s300s73dskhb0"
+    },
+    "a893DeadlineFailedState": {
+      "at": "2026-10-17T16:09:07.242Z",
+      "request": {
+        "operationName": "QA893State",
+        "query": "query QA893State($id:String!,$deployId:String!){server(id:$id){id name phase revision suspended replicas url undeployedChanges undeployedChangesApplying} deploy(serviceId:$id,deployId:$deployId){id status failureReason cancelReason stallReason createdAt updatedAt startedAt finishedAt}}",
+        "variables": {
+          "id": "srv-db9pjukflioc739mco30",
+          "deployId": "dep-db9pjukflioc739mco3g"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploy": {
+            "cancelReason": "",
+            "createdAt": "2026-10-17T15:53:30.766009Z",
+            "failureReason": "container exited shortly after start and is restarting repeatedly (last exit code 42) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (8094), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped).",
+            "finishedAt": "2026-10-17T16:08:32.23832Z",
+            "id": "dep-db9pjukflioc739mco3g",
+            "stallReason": "",
+            "startedAt": "2026-10-17T15:53:32.447286Z",
+            "status": "update_failed",
+            "updatedAt": "2026-10-17T16:08:32.238321Z"
+          },
+          "server": {
+            "id": "srv-db9pjukflioc739mco30",
+            "name": "qa-20261017-a893-first-release",
+            "phase": "Failed",
+            "replicas": 1,
+            "revision": "",
+            "suspended": "not_suspended",
+            "undeployedChanges": false,
+            "undeployedChangesApplying": false,
+            "url": "https://qa-20261017-a893-first-release.onbex.co"
+          }
+        }
+      },
+      "instances": {
+        "path": "/v1/services/srv-db9pjukflioc739mco30/instances",
+        "status": 200,
+        "body": [
+          {
+            "id": "srv-db9pjukflioc739mco30-d8tnbjilmtgblhp97f7f",
+            "createdAt": "2026-10-17T15:53:30Z"
+          }
+        ]
+      },
+      "public": {
+        "url": "https://qa-20261017-a893-first-release.onbex.co",
+        "status": 503,
+        "body": "service unavailable\n"
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9pjukflioc739mco30/deploys/dep-db9pjukflioc739mco3g"
+    },
+    "a893DeadlineFailedUi": {
+      "at": "2026-10-17T16:09:16.163Z",
+      "url": "https://dashboard.bex.co/services/srv-db9pjukflioc739mco30/deploys/dep-db9pjukflioc739mco3g",
+      "aria": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261017-a893-first-release\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261017-a893-first-release\" [level=1]\n  - text: Service Failed\n  - 'link \"Latest deploy: Failed\"':\n    - /url: /services/srv-db9pjukflioc739mco30/deploys/dep-db9pjukflioc739mco3g\n    - text: Latest deploy Failed\n  - link \"Free\":\n    - /url: /services/srv-db9pjukflioc739mco30/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9pjukflioc739mco30\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261017-a893-first-release.onbex.co\":\n    - /url: https://qa-20261017-a893-first-release.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261017-a893-first-release\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: —\n  - term: Created\n  - definition:\n    - time: 14m\n  - text: Deploy status Failed First Deploy dep-db9pjukflioc739mco3g\n  - paragraph: \"container exited shortly after start and is restarting repeatedly (last exit code 42) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (8094), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped).\"\n  - paragraph: docker.io/library/node:24-alpine\n  - term: \"Created:\"\n  - definition: October 17, 2026 at 8:53 AM\n  - term: \"Updated:\"\n  - definition: October 17, 2026 at 9:08 AM\n  - term: \"Started:\"\n  - definition: October 17, 2026 at 8:53 AM\n  - term: \"Finished:\"\n  - definition: October 17, 2026 at 9:08 AM\n  - term: \"Duration:\"\n  - definition: 14m 59s\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 17, 2026 at 8:53 AM\n    - listitem:\n      - paragraph: Deploy started\n      - time: October 17, 2026 at 8:53 AM\n    - listitem:\n      - paragraph: Failed\n      - time: October 17, 2026 at 9:08 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\"\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: 08:53:30 AM\n  - button \"Filter logs by instance srv-db9pjukflioc739mco30-4454241b2198nmbrlk6f\": \"[44542]\"\n  - text: ==> Deploy queued 08:53:32 AM\n  - button \"Filter logs by instance srv-db9pjukflioc739mco30-4454241b2198nmbrlk6f\": \"[44542]\"\n  - text: ==> Deploying image docker.io/library/node:24-alpine 08:53:35 AM\n  - button \"Filter logs by instance srv-db9pjukflioc739mco30-d8tnbjilmtgblhp97f7f\": \"[d8tnb]\"\n  - text: \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA_A893_EXPECTED_EXIT_42\\\",\\\"pass\\\":\\\"a893\\\"} 08:53:57 AM\"\n  - button \"Filter logs by instance srv-db9pjukflioc739mco30-d8tnbjilmtgblhp97f7f\": \"[d8tnb]\"\n  - text: \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA_A893_EXPECTED_EXIT_42\\\",\\\"pass\\\":\\\"a893\\\"} 08:54:27 AM\"\n  - button \"Filter logs by instance srv-db9pjukflioc739mco30-d8tnbjilmtgblhp97f7f\": \"[d8tnb]\"\n  - text: \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA_A893_EXPECTED_EXIT_42\\\",\\\"pass\\\":\\\"a893\\\"} 08:55:11 AM\"\n  - button \"Filter logs by instance srv-db9pjukflioc739mco30-d8tnbjilmtgblhp97f7f\": \"[d8tnb]\"\n  - text: \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA_A893_EXPECTED_EXIT_42\\\",\\\"pass\\\":\\\"a893\\\"} 08:59:31 AM\"\n  - button \"Filter logs by instance srv-db9pjukflioc739mco30-d8tnbjilmtgblhp97f7f\": \"[d8tnb]\"\n  - text: \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA_A893_EXPECTED_EXIT_42\\\",\\\"pass\\\":\\\"a893\\\"} 09:04:36 AM\"\n  - button \"Filter logs by instance srv-db9pjukflioc739mco30-d8tnbjilmtgblhp97f7f\": \"[d8tnb]\"\n  - text: \"{\\\"level\\\":\\\"error\\\",\\\"message\\\":\\\"QA_A893_EXPECTED_EXIT_42\\\",\\\"pass\\\":\\\"a893\\\"} 09:08:32 AM\"\n  - button \"Filter logs by instance srv-db9pjukflioc739mco30-4454241b2198nmbrlk6f\": \"[44542]\"\n  - text: \"==> Deploy failed: container exited shortly after start and is restarting repeatedly (last exit code 42) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (8094), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped).\""
+    },
+    "a893DeadlineStoppedReadback": {
+      "at": "2026-10-17T16:09:50.113Z",
+      "request": {
+        "operationName": "QA893State",
+        "query": "query QA893State($id:String!,$deployId:String!){server(id:$id){id name phase revision suspended replicas url undeployedChanges undeployedChangesApplying} deploy(serviceId:$id,deployId:$deployId){id status failureReason cancelReason stallReason createdAt updatedAt startedAt finishedAt}}",
+        "variables": {
+          "id": "srv-db9pjukflioc739mco30",
+          "deployId": "dep-db9pjukflioc739mco3g"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploy": {
+            "cancelReason": "",
+            "createdAt": "2026-10-17T15:53:30.766009Z",
+            "failureReason": "container exited shortly after start and is restarting repeatedly (last exit code 42) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (8094), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped).",
+            "finishedAt": "2026-10-17T16:08:32.23832Z",
+            "id": "dep-db9pjukflioc739mco3g",
+            "stallReason": "",
+            "startedAt": "2026-10-17T15:53:32.447286Z",
+            "status": "update_failed",
+            "updatedAt": "2026-10-17T16:08:32.238321Z"
+          },
+          "server": {
+            "id": "srv-db9pjukflioc739mco30",
+            "name": "qa-20261017-a893-first-release",
+            "phase": "Failed",
+            "replicas": 1,
+            "revision": "",
+            "suspended": "not_suspended",
+            "undeployedChanges": false,
+            "undeployedChangesApplying": false,
+            "url": "https://qa-20261017-a893-first-release.onbex.co"
+          }
+        }
+      },
+      "instances": {
+        "path": "/v1/services/srv-db9pjukflioc739mco30/instances",
+        "status": 200,
+        "body": []
+      },
+      "public": {
+        "url": "https://qa-20261017-a893-first-release.onbex.co",
+        "status": 503,
+        "body": "service unavailable\n"
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9pjukflioc739mco30/deploys/dep-db9pjukflioc739mco3g"
+    },
+    "a893DeadlineStoppedAgain": {
+      "at": "2026-10-17T16:10:30.369Z",
+      "request": {
+        "operationName": "QA893State",
+        "query": "query QA893State($id:String!,$deployId:String!){server(id:$id){id name phase revision suspended replicas url undeployedChanges undeployedChangesApplying} deploy(serviceId:$id,deployId:$deployId){id status failureReason cancelReason stallReason createdAt updatedAt startedAt finishedAt}}",
+        "variables": {
+          "id": "srv-db9pjukflioc739mco30",
+          "deployId": "dep-db9pjukflioc739mco3g"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploy": {
+            "cancelReason": "",
+            "createdAt": "2026-10-17T15:53:30.766009Z",
+            "failureReason": "container exited shortly after start and is restarting repeatedly (last exit code 42) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (8094), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped).",
+            "finishedAt": "2026-10-17T16:08:32.23832Z",
+            "id": "dep-db9pjukflioc739mco3g",
+            "stallReason": "",
+            "startedAt": "2026-10-17T15:53:32.447286Z",
+            "status": "update_failed",
+            "updatedAt": "2026-10-17T16:08:32.238321Z"
+          },
+          "server": {
+            "id": "srv-db9pjukflioc739mco30",
+            "name": "qa-20261017-a893-first-release",
+            "phase": "Failed",
+            "replicas": 1,
+            "revision": "",
+            "suspended": "not_suspended",
+            "undeployedChanges": false,
+            "undeployedChangesApplying": false,
+            "url": "https://qa-20261017-a893-first-release.onbex.co"
+          }
+        }
+      },
+      "instances": {
+        "path": "/v1/services/srv-db9pjukflioc739mco30/instances",
+        "status": 200,
+        "body": []
+      },
+      "public": {
+        "url": "https://qa-20261017-a893-first-release.onbex.co",
+        "status": 503,
+        "body": "service unavailable\n"
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9pjukflioc739mco30/deploys/dep-db9pjukflioc739mco3g"
+    },
+    "a893FirstRecoverySaved": {
+      "at": "2026-10-17T16:10:34.793Z",
+      "request": {
+        "operationName": "SetStartCommand",
+        "variables": {
+          "id": "srv-db9pjukflioc739mco30",
+          "command": "node -e 'const http=require(\"http\");const startedAt=new Date().toISOString();console.log(JSON.stringify({level:\"info\",message:\"QA_A893_RECOVERED\",startedAt}));http.createServer((req,res)=>{res.setHeader(\"content-type\",\"application/json\");res.end(JSON.stringify({pass:\"a893\",release:\"first-recovered\",port:Number(process.env.PORT),startedAt,pid:process.pid}))}).listen(Number(process.env.PORT||8094),\"0.0.0.0\")'"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetStartCommand($id: String!, $command: String!, $confirm: String) {\n  setStartCommand(id: $id, command: $command, confirm: $confirm) {\n    id\n    startCommand\n    command\n    phase\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setStartCommand": {
+            "__typename": "Service",
+            "command": "",
+            "id": "srv-db9pjukflioc739mco30",
+            "phase": "Failed",
+            "startCommand": "node -e 'const http=require(\"http\");const startedAt=new Date().toISOString();console.log(JSON.stringify({level:\"info\",message:\"QA_A893_RECOVERED\",startedAt}));http.createServer((req,res)=>{res.setHeader(\"content-type\",\"application/json\");res.end(JSON.stringify({pass:\"a893\",release:\"first-recovered\",port:Number(process.env.PORT),startedAt,pid:process.pid}))}).listen(Number(process.env.PORT||8094),\"0.0.0.0\")'"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792253433777.759,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.126,
+        "responseStart": 306.513,
+        "responseEnd": 306.926
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9pjukflioc739mco30/settings#deploy"
+    },
+    "a893FirstRecoveryHistory": {
+      "at": "2026-10-17T16:10:35.778Z",
+      "request": {
+        "operationName": "QA893FirstHistory",
+        "query": "query QA893FirstHistory($serviceId:String!){deploys(serviceId:$serviceId,limit:10){id status failureReason cancelReason stallReason createdAt startedAt finishedAt trigger}}",
+        "variables": {
+          "serviceId": "srv-db9pjukflioc739mco30"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploys": [
+            {
+              "cancelReason": "",
+              "createdAt": "2026-10-17T16:10:33.990184Z",
+              "failureReason": "",
+              "finishedAt": "",
+              "id": "dep-db9prucflioc739mcoag",
+              "stallReason": "",
+              "startedAt": "",
+              "status": "created",
+              "trigger": "config_change"
+            },
+            {
+              "cancelReason": "",
+              "createdAt": "2026-10-17T15:53:30.766009Z",
+              "failureReason": "container exited shortly after start and is restarting repeatedly (last exit code 42) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (8094), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped).",
+              "finishedAt": "2026-10-17T16:08:32.23832Z",
+              "id": "dep-db9pjukflioc739mco3g",
+              "stallReason": "",
+              "startedAt": "2026-10-17T15:53:32.447286Z",
+              "status": "update_failed",
+              "trigger": "create"
+            }
+          ]
+        }
+      }
+    },
+    "a893FirstRecoveryLive": {
+      "at": "2026-10-17T16:11:15.961Z",
+      "url": "https://dashboard.bex.co/services/srv-db9pjukflioc739mco30/deploys/dep-db9prucflioc739mcoag",
+      "public": {
+        "status": 200,
+        "body": {
+          "pass": "a893",
+          "release": "first-recovered",
+          "port": 8094,
+          "startedAt": "2026-10-17T16:10:36.072Z",
+          "pid": 1
+        }
+      },
+      "aria": "- main:\n  - navigation \"Breadcrumbs\":\n    - link \"Projects\":\n      - /url: /\n    - button \"qa-20261017-a893-first-release\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - text: Web Service\n  - heading \"qa-20261017-a893-first-release\" [level=1]\n  - text: Service Running\n  - 'link \"Latest deploy: Live\"':\n    - /url: /services/srv-db9pjukflioc739mco30/deploys/dep-db9prucflioc739mcoag\n    - text: Latest deploy Live\n  - link \"Free\":\n    - /url: /services/srv-db9pjukflioc739mco30/plan\n  - text: Runtime image\n  - button \"Connect\"\n  - button \"Manual Deploy\"\n  - text: \"Service ID: srv-db9pjukflioc739mco30\"\n  - button \"Copy service ID\"\n  - link \"https://qa-20261017-a893-first-release.onbex.co\":\n    - /url: https://qa-20261017-a893-first-release.onbex.co\n  - button \"Copy service URL\"\n  - term: Slug\n  - definition: qa-20261017-a893-first-release\n  - term: Instances\n  - definition: \"1\"\n  - term: Revision\n  - definition: rev-2\n  - term: Created\n  - definition:\n    - time: 17m\n  - text: Deploy status Live Config Change dep-db9prucflioc739mcoag\n  - paragraph: docker.io/library/node:24-alpine\n  - term: \"Created:\"\n  - definition: October 17, 2026 at 9:10 AM\n  - term: \"Updated:\"\n  - definition: October 17, 2026 at 9:10 AM\n  - term: \"Finished:\"\n  - definition: October 17, 2026 at 9:10 AM\n  - text: Status timeline\n  - list:\n    - listitem:\n      - paragraph: Deploy created\n      - time: October 17, 2026 at 9:10 AM\n    - listitem:\n      - paragraph: Live\n      - time: October 17, 2026 at 9:10 AM\n  - button \"Log type\": All logs\n  - textbox \"Search logs…\"\n  - button \"Log options\"\n  - button \"Maximize\"\n  - text: 09:10:33 AM\n  - button \"Filter logs by instance srv-db9pjukflioc739mco30-g90qsq3jc52j3ukrrga6\": \"[g90qs]\"\n  - text: ==> Deploy queued 09:10:36 AM\n  - button \"Filter logs by instance srv-db9pjukflioc739mco30-0kkbppadl87q0s00cl7r\": \"[0kkbp]\"\n  - text: \"{\\\"level\\\":\\\"info\\\",\\\"message\\\":\\\"QA_A893_RECOVERED\\\",\\\"startedAt\\\":\\\"2026-10-17T16:10:36.072Z\\\"} 09:10:48 AM\"\n  - button \"Filter logs by instance srv-db9pjukflioc739mco30-g90qsq3jc52j3ukrrga6\": \"[g90qs]\"\n  - text: ==> Your service is live 🎉"
+    },
+    "a893OldFailedHistoryAfterRecovery": {
+      "at": "2026-10-17T16:12:18.077Z",
+      "request": {
+        "operationName": "QA893State",
+        "query": "query QA893State($id:String!,$deployId:String!){server(id:$id){id name phase revision suspended replicas url undeployedChanges undeployedChangesApplying} deploy(serviceId:$id,deployId:$deployId){id status failureReason cancelReason stallReason createdAt updatedAt startedAt finishedAt}}",
+        "variables": {
+          "id": "srv-db9pjukflioc739mco30",
+          "deployId": "dep-db9pjukflioc739mco3g"
+        }
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deploy": {
+            "cancelReason": "",
+            "createdAt": "2026-10-17T15:53:30.766009Z",
+            "failureReason": "container exited shortly after start and is restarting repeatedly (last exit code 42) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (8094), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped).",
+            "finishedAt": "2026-10-17T16:08:32.23832Z",
+            "id": "dep-db9pjukflioc739mco3g",
+            "stallReason": "",
+            "startedAt": "2026-10-17T15:53:32.447286Z",
+            "status": "update_failed",
+            "updatedAt": "2026-10-17T16:08:32.238321Z"
+          },
+          "server": {
+            "id": "srv-db9pjukflioc739mco30",
+            "name": "qa-20261017-a893-first-release",
+            "phase": "Running",
+            "replicas": 1,
+            "revision": "rev-2",
+            "suspended": "not_suspended",
+            "undeployedChanges": false,
+            "undeployedChangesApplying": false,
+            "url": "https://qa-20261017-a893-first-release.onbex.co"
+          }
+        }
+      },
+      "instances": {
+        "path": "/v1/services/srv-db9pjukflioc739mco30/instances",
+        "status": 200,
+        "body": [
+          {
+            "id": "srv-db9pjukflioc739mco30-0kkbppadl87q0s00cl7r",
+            "createdAt": "2026-10-17T16:10:34Z"
+          }
+        ]
+      },
+      "public": {
+        "url": "https://qa-20261017-a893-first-release.onbex.co",
+        "status": 200,
+        "body": "{\"pass\":\"a893\",\"release\":\"first-recovered\",\"port\":8094,\"startedAt\":\"2026-10-17T16:10:36.072Z\",\"pid\":1}"
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9pjukflioc739mco30/deploys/dep-db9prucflioc739mcoag"
+    },
+    "a893FirstDeleted": {
+      "at": "2026-10-17T16:12:22.102Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db9pjukflioc739mco30"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "timing": {
+        "startTime": 1792253540940.4868,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.138,
+        "responseStart": 443.219,
+        "responseEnd": 443.576
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "a893CancelDeleted": {
+      "at": "2026-10-17T16:12:26.821Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db9pkq4s300s73dskhag"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "timing": {
+        "startTime": 1792253545373.655,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.139,
+        "responseStart": 416.234,
+        "responseEnd": 416.589
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "a893InventoryCleanup": {
+      "at": "2026-10-17T16:13:26.317Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": [
+          "blp-d9nqg95cavls73fp8m10"
+        ],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": [
+          "evg-db0s94c48ccs739jikr0"
+        ],
+        "keyValues": [
+          "red-d9p49kdrtmes73c34ovg",
+          "red-da4086iii7bs73drbqh0"
+        ],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [
+        {
+          "path": "/v1/services/srv-db9pjukflioc739mco30",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9pjukflioc739mco30/deploys/dep-db9pjukflioc739mco3g",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9pjukflioc739mco30/deploys/dep-db9prucflioc739mcoag",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9pkq4s300s73dskhag",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9pkq4s300s73dskhag/deploys/dep-db9pkq4s300s73dskhb0",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9pkq4s300s73dskhag/deploys/dep-db9pmrsflioc739mco6g",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9pkq4s300s73dskhag/deploys/dep-db9pnlcflioc739mco7g",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9pkq4s300s73dskhag/deploys/dep-db9pp3sflioc739mco80",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9pkq4s300s73dskhag/deploys/dep-db9pptks300s73dskhfg",
+          "status": 404
+        }
+      ]
+    },
+    "a893ConsoleFinal": {
+      "error": false,
+      "summary": "### Result\nTotal messages: 0 (Errors: 0, Warnings: 0)\n"
+    },
+    "a893FinishSummary": {
+      "logoutConfirmed": true,
+      "exitCode": 0,
+      "browser": {
+        "at": "2026-10-17T16:13:32.701Z",
+        "whoami": 401,
+        "cookies": 0,
+        "pages": 1,
+        "url": "about:blank"
+      },
+      "handlesRemoved": true
+    },
+    "a893SecondTriggerReceipt": {
+      "clickedAt": "2026-10-17T15:59:42.621Z",
+      "at": "2026-10-17T15:59:49.664Z",
+      "url": "https://dashboard.bex.co/services/srv-db9pkq4s300s73dskhag/deploys/dep-db9pmrsflioc739mco6g",
+      "receipt": {
+        "at": "2026-10-17T15:59:43.388Z",
+        "request": {
+          "operationName": "TriggerDeploy",
+          "variables": {
+            "serviceId": "srv-db9pkq4s300s73dskhag"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation TriggerDeploy($serviceId: String!, $commitId: String, $deployMode: String, $clearCache: String, $confirm: String) {\n  triggerDeploy(\n    serviceId: $serviceId\n    commitId: $commitId\n    deployMode: $deployMode\n    clearCache: $clearCache\n    confirm: $confirm\n  ) {\n    id\n    status\n    createdAt\n    trigger\n    rollbackOf\n    image\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "triggerDeploy": {
+              "__typename": "Deploy",
+              "createdAt": "2026-10-17T15:59:43.101Z",
+              "id": "dep-db9pmrsflioc739mco6g",
+              "image": "docker.io/library/node:24-alpine",
+              "rollbackOf": "",
+              "status": "created",
+              "trigger": "api"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792252782889.472,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.238,
+          "responseStart": 489.312,
+          "responseEnd": 490.133
+        }
+      },
+      "selection": "The complete TriggerDeploy request/response is retained; two unrelated action-refresh receipts from the same observation are omitted."
+    }
+  },
+  "runtimeProjections": {
+    "qa-a893-first-midway-runtime.json": {
+      "at": "2026-10-17T15:58:26.859541+00:00",
+      "fixture": "first",
+      "phase": "midway",
+      "serviceId": "srv-db9pjukflioc739mco30",
+      "name": "qa-20261017-a893-first-release",
+      "appName": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-first-release",
+      "resources": [
+        {
+          "kind": "app.app.bex.co",
+          "generation": 1,
+          "createdAt": "2026-10-17T15:53:30Z",
+          "phase": "Deploying",
+          "activeRevision": null,
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-17T15:53:30Z",
+              "message": "container exited shortly after start and is restarting repeatedly (last exit code 42) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (8094), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped).",
+              "observedGeneration": 1,
+              "reason": "CrashLoopBackOff",
+              "status": "False",
+              "type": "Ready"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T15:53:31Z",
+              "message": "serving at qa-20261017-a893-first-release.onbex.co",
+              "observedGeneration": 1,
+              "reason": "Routed",
+              "status": "True",
+              "type": "PublicRouting"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T15:53:31Z",
+              "message": "serving revision has not been observed",
+              "observedGeneration": 1,
+              "reason": "ServingUnobserved",
+              "status": "Unknown",
+              "type": "Serving"
+            }
+          ]
+        },
+        {
+          "kind": "deployment",
+          "generation": 1,
+          "createdAt": "2026-10-17T15:53:30Z",
+          "desiredReplicas": 1,
+          "progressDeadlineSeconds": 900,
+          "templateRevision": "rev-1",
+          "status": {
+            "observedGeneration": 1,
+            "replicas": 1,
+            "updatedReplicas": 1,
+            "readyReplicas": null,
+            "availableReplicas": null,
+            "unavailableReplicas": 1,
+            "conditions": [
+              {
+                "lastTransitionTime": "2026-10-17T15:53:30Z",
+                "lastUpdateTime": "2026-10-17T15:53:30Z",
+                "message": "Deployment does not have minimum availability.",
+                "reason": "MinimumReplicasUnavailable",
+                "status": "False",
+                "type": "Available"
+              },
+              {
+                "lastTransitionTime": "2026-10-17T15:53:30Z",
+                "lastUpdateTime": "2026-10-17T15:53:31Z",
+                "message": "ReplicaSet \"tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-first-release-fbfc46cc9\" is progressing.",
+                "reason": "ReplicaSetUpdated",
+                "status": "True",
+                "type": "Progressing"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "pods",
+          "items": [
+            {
+              "name": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-first-release-fbjs4nc",
+              "uid": "9dd4a22c-b06b-47f7-87b6-f3f9d14368c6",
+              "createdAt": "2026-10-17T15:53:30Z",
+              "phase": "Running",
+              "containers": [
+                {
+                  "name": "app",
+                  "ready": false,
+                  "restartCount": 5,
+                  "waitingReason": "CrashLoopBackOff",
+                  "terminatedExitCode": null,
+                  "lastExitCode": 42,
+                  "lastFinishedAt": "2026-10-17T15:56:41Z"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "replicasets",
+          "items": [
+            {
+              "name": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-first-release-fbfc46cc9",
+              "desiredReplicas": 1,
+              "readyReplicas": 0
+            }
+          ]
+        }
+      ]
+    },
+    "qa-a893-cancel-second-after-cancel-runtime.json": {
+      "at": "2026-10-17T16:00:28.548987+00:00",
+      "fixture": "cancel",
+      "phase": "second-after-cancel",
+      "serviceId": "srv-db9pkq4s300s73dskhag",
+      "name": "qa-20261017-a893-cancel",
+      "appName": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel",
+      "resources": [
+        {
+          "kind": "app.app.bex.co",
+          "generation": 2,
+          "createdAt": "2026-10-17T15:55:20Z",
+          "phase": "Canceled",
+          "activeRevision": null,
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-17T15:55:21Z",
+              "message": "build canceled before a release became available",
+              "observedGeneration": 2,
+              "reason": "BuildCanceled",
+              "status": "False",
+              "type": "Ready"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T15:55:21Z",
+              "message": "serving at qa-20261017-a893-cancel.onbex.co",
+              "observedGeneration": 2,
+              "reason": "Routed",
+              "status": "True",
+              "type": "PublicRouting"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T15:55:21Z",
+              "message": "serving revision has not been observed",
+              "observedGeneration": 2,
+              "reason": "ServingUnobserved",
+              "status": "Unknown",
+              "type": "Serving"
+            }
+          ]
+        },
+        {
+          "kind": "deployment",
+          "generation": 4,
+          "createdAt": "2026-10-17T15:55:21Z",
+          "desiredReplicas": 0,
+          "progressDeadlineSeconds": 900,
+          "templateRevision": "rev-2",
+          "status": {
+            "observedGeneration": 4,
+            "replicas": null,
+            "updatedReplicas": null,
+            "readyReplicas": null,
+            "availableReplicas": null,
+            "unavailableReplicas": null,
+            "conditions": [
+              {
+                "lastTransitionTime": "2026-10-17T16:00:23Z",
+                "lastUpdateTime": "2026-10-17T16:00:23Z",
+                "message": "Deployment has minimum availability.",
+                "reason": "MinimumReplicasAvailable",
+                "status": "True",
+                "type": "Available"
+              },
+              {
+                "lastTransitionTime": "2026-10-17T15:55:21Z",
+                "lastUpdateTime": "2026-10-17T16:00:23Z",
+                "message": "ReplicaSet \"tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel-698558dc97\" has successfully progressed.",
+                "reason": "NewReplicaSetAvailable",
+                "status": "True",
+                "type": "Progressing"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "pods",
+          "items": []
+        },
+        {
+          "kind": "replicasets",
+          "items": [
+            {
+              "name": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel-698558dc97",
+              "desiredReplicas": 0,
+              "readyReplicas": 0
+            },
+            {
+              "name": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel-8445b7c8cc",
+              "desiredReplicas": 0,
+              "readyReplicas": 0
+            }
+          ]
+        }
+      ]
+    },
+    "qa-a893-cancel-second-before-cancel-runtime.json": {
+      "at": "2026-10-17T16:00:22.055636+00:00",
+      "fixture": "cancel",
+      "phase": "second-before-cancel",
+      "serviceId": "srv-db9pkq4s300s73dskhag",
+      "name": "qa-20261017-a893-cancel",
+      "appName": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel",
+      "resources": [
+        {
+          "kind": "app.app.bex.co",
+          "generation": 2,
+          "createdAt": "2026-10-17T15:55:20Z",
+          "phase": "Deploying",
+          "activeRevision": null,
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-17T15:55:21Z",
+              "message": "container exited shortly after start and is restarting repeatedly (last exit code 42) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (8095), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped).",
+              "observedGeneration": 2,
+              "reason": "CrashLoopBackOff",
+              "status": "False",
+              "type": "Ready"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T15:55:21Z",
+              "message": "serving at qa-20261017-a893-cancel.onbex.co",
+              "observedGeneration": 2,
+              "reason": "Routed",
+              "status": "True",
+              "type": "PublicRouting"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T15:55:21Z",
+              "message": "serving revision has not been observed",
+              "observedGeneration": 2,
+              "reason": "ServingUnobserved",
+              "status": "Unknown",
+              "type": "Serving"
+            }
+          ]
+        },
+        {
+          "kind": "deployment",
+          "generation": 3,
+          "createdAt": "2026-10-17T15:55:21Z",
+          "desiredReplicas": 1,
+          "progressDeadlineSeconds": 900,
+          "templateRevision": "rev-2",
+          "status": {
+            "observedGeneration": 3,
+            "replicas": 1,
+            "updatedReplicas": 1,
+            "readyReplicas": null,
+            "availableReplicas": null,
+            "unavailableReplicas": 1,
+            "conditions": [
+              {
+                "lastTransitionTime": "2026-10-17T15:59:43Z",
+                "lastUpdateTime": "2026-10-17T15:59:43Z",
+                "message": "Deployment does not have minimum availability.",
+                "reason": "MinimumReplicasUnavailable",
+                "status": "False",
+                "type": "Available"
+              },
+              {
+                "lastTransitionTime": "2026-10-17T15:55:21Z",
+                "lastUpdateTime": "2026-10-17T15:59:43Z",
+                "message": "ReplicaSet \"tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel-698558dc97\" is progressing.",
+                "reason": "ReplicaSetUpdated",
+                "status": "True",
+                "type": "Progressing"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "pods",
+          "items": [
+            {
+              "name": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel-698558dc9znqkk",
+              "uid": "f236799e-44c9-42f7-9a82-46080c217fdf",
+              "createdAt": "2026-10-17T15:59:43Z",
+              "phase": "Running",
+              "containers": [
+                {
+                  "name": "app",
+                  "ready": false,
+                  "restartCount": 2,
+                  "waitingReason": "CrashLoopBackOff",
+                  "terminatedExitCode": null,
+                  "lastExitCode": 42,
+                  "lastFinishedAt": "2026-10-17T16:00:10Z"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "replicasets",
+          "items": [
+            {
+              "name": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel-698558dc97",
+              "desiredReplicas": 1,
+              "readyReplicas": 0
+            },
+            {
+              "name": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel-8445b7c8cc",
+              "desiredReplicas": 0,
+              "readyReplicas": 0
+            }
+          ]
+        }
+      ]
+    },
+    "qa-a893-cancel-after-cancel-runtime.json": {
+      "at": "2026-10-17T15:56:42.843425+00:00",
+      "fixture": "cancel",
+      "phase": "after-cancel",
+      "serviceId": "srv-db9pkq4s300s73dskhag",
+      "name": "qa-20261017-a893-cancel",
+      "appName": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel",
+      "resources": [
+        {
+          "kind": "app.app.bex.co",
+          "generation": 1,
+          "createdAt": "2026-10-17T15:55:20Z",
+          "phase": "Canceled",
+          "activeRevision": null,
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-17T15:55:21Z",
+              "message": "build canceled before a release became available",
+              "observedGeneration": 1,
+              "reason": "BuildCanceled",
+              "status": "False",
+              "type": "Ready"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T15:55:21Z",
+              "message": "serving at qa-20261017-a893-cancel.onbex.co",
+              "observedGeneration": 1,
+              "reason": "Routed",
+              "status": "True",
+              "type": "PublicRouting"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T15:55:21Z",
+              "message": "serving revision has not been observed",
+              "observedGeneration": 1,
+              "reason": "ServingUnobserved",
+              "status": "Unknown",
+              "type": "Serving"
+            }
+          ]
+        },
+        {
+          "kind": "deployment",
+          "generation": 2,
+          "createdAt": "2026-10-17T15:55:21Z",
+          "desiredReplicas": 0,
+          "progressDeadlineSeconds": 900,
+          "templateRevision": "rev-1",
+          "status": {
+            "observedGeneration": 2,
+            "replicas": null,
+            "updatedReplicas": null,
+            "readyReplicas": null,
+            "availableReplicas": null,
+            "unavailableReplicas": null,
+            "conditions": [
+              {
+                "lastTransitionTime": "2026-10-17T15:56:16Z",
+                "lastUpdateTime": "2026-10-17T15:56:16Z",
+                "message": "Deployment has minimum availability.",
+                "reason": "MinimumReplicasAvailable",
+                "status": "True",
+                "type": "Available"
+              },
+              {
+                "lastTransitionTime": "2026-10-17T15:55:21Z",
+                "lastUpdateTime": "2026-10-17T15:56:16Z",
+                "message": "ReplicaSet \"tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel-8445b7c8cc\" has successfully progressed.",
+                "reason": "NewReplicaSetAvailable",
+                "status": "True",
+                "type": "Progressing"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "pods",
+          "items": []
+        },
+        {
+          "kind": "replicasets",
+          "items": [
+            {
+              "name": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel-8445b7c8cc",
+              "desiredReplicas": 0,
+              "readyReplicas": 0
+            }
+          ]
+        }
+      ]
+    },
+    "qa-a893-first-confirmed-stopped-runtime.json": {
+      "at": "2026-10-17T16:10:29.410158+00:00",
+      "fixture": "first",
+      "phase": "confirmed-stopped",
+      "serviceId": "srv-db9pjukflioc739mco30",
+      "name": "qa-20261017-a893-first-release",
+      "appName": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-first-release",
+      "resources": [
+        {
+          "kind": "app.app.bex.co",
+          "generation": 1,
+          "createdAt": "2026-10-17T15:53:30Z",
+          "phase": "Failed",
+          "activeRevision": null,
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-17T15:53:30Z",
+              "message": "container exited shortly after start and is restarting repeatedly (last exit code 42) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (8094), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped).",
+              "observedGeneration": 1,
+              "reason": "CrashLoopBackOff",
+              "status": "False",
+              "type": "Ready"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T15:53:31Z",
+              "message": "serving at qa-20261017-a893-first-release.onbex.co",
+              "observedGeneration": 1,
+              "reason": "Routed",
+              "status": "True",
+              "type": "PublicRouting"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T15:53:31Z",
+              "message": "serving revision has not been observed",
+              "observedGeneration": 1,
+              "reason": "ServingUnobserved",
+              "status": "Unknown",
+              "type": "Serving"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T16:08:31Z",
+              "message": "container exited shortly after start and is restarting repeatedly (last exit code 42) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (8094), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped).",
+              "observedGeneration": 1,
+              "reason": "CrashLoopBackOff",
+              "status": "False",
+              "type": "Rollout"
+            }
+          ]
+        },
+        {
+          "kind": "deployment",
+          "generation": 2,
+          "createdAt": "2026-10-17T15:53:30Z",
+          "desiredReplicas": 0,
+          "progressDeadlineSeconds": 900,
+          "templateRevision": "rev-1",
+          "status": {
+            "observedGeneration": 2,
+            "replicas": null,
+            "updatedReplicas": null,
+            "readyReplicas": null,
+            "availableReplicas": null,
+            "unavailableReplicas": null,
+            "conditions": [
+              {
+                "lastTransitionTime": "2026-10-17T16:09:43Z",
+                "lastUpdateTime": "2026-10-17T16:09:43Z",
+                "message": "Deployment has minimum availability.",
+                "reason": "MinimumReplicasAvailable",
+                "status": "True",
+                "type": "Available"
+              },
+              {
+                "lastTransitionTime": "2026-10-17T16:09:43Z",
+                "lastUpdateTime": "2026-10-17T16:09:43Z",
+                "message": "ReplicaSet \"tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-first-release-fbfc46cc9\" has successfully progressed.",
+                "reason": "NewReplicaSetAvailable",
+                "status": "True",
+                "type": "Progressing"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "pods",
+          "items": []
+        },
+        {
+          "kind": "replicasets",
+          "items": [
+            {
+              "name": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-first-release-fbfc46cc9",
+              "desiredReplicas": 0,
+              "readyReplicas": 0
+            }
+          ]
+        }
+      ]
+    },
+    "qa-a893-first-stopped-check-runtime.json": {
+      "at": "2026-10-17T16:09:49.076553+00:00",
+      "fixture": "first",
+      "phase": "stopped-check",
+      "serviceId": "srv-db9pjukflioc739mco30",
+      "name": "qa-20261017-a893-first-release",
+      "appName": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-first-release",
+      "resources": [
+        {
+          "kind": "app.app.bex.co",
+          "generation": 1,
+          "createdAt": "2026-10-17T15:53:30Z",
+          "phase": "Failed",
+          "activeRevision": null,
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-17T15:53:30Z",
+              "message": "container exited shortly after start and is restarting repeatedly (last exit code 42) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (8094), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped).",
+              "observedGeneration": 1,
+              "reason": "CrashLoopBackOff",
+              "status": "False",
+              "type": "Ready"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T15:53:31Z",
+              "message": "serving at qa-20261017-a893-first-release.onbex.co",
+              "observedGeneration": 1,
+              "reason": "Routed",
+              "status": "True",
+              "type": "PublicRouting"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T15:53:31Z",
+              "message": "serving revision has not been observed",
+              "observedGeneration": 1,
+              "reason": "ServingUnobserved",
+              "status": "Unknown",
+              "type": "Serving"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T16:08:31Z",
+              "message": "container exited shortly after start and is restarting repeatedly (last exit code 42) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (8094), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped).",
+              "observedGeneration": 1,
+              "reason": "CrashLoopBackOff",
+              "status": "False",
+              "type": "Rollout"
+            }
+          ]
+        },
+        {
+          "kind": "deployment",
+          "generation": 2,
+          "createdAt": "2026-10-17T15:53:30Z",
+          "desiredReplicas": 0,
+          "progressDeadlineSeconds": 900,
+          "templateRevision": "rev-1",
+          "status": {
+            "observedGeneration": 2,
+            "replicas": null,
+            "updatedReplicas": null,
+            "readyReplicas": null,
+            "availableReplicas": null,
+            "unavailableReplicas": null,
+            "conditions": [
+              {
+                "lastTransitionTime": "2026-10-17T16:09:43Z",
+                "lastUpdateTime": "2026-10-17T16:09:43Z",
+                "message": "Deployment has minimum availability.",
+                "reason": "MinimumReplicasAvailable",
+                "status": "True",
+                "type": "Available"
+              },
+              {
+                "lastTransitionTime": "2026-10-17T16:09:43Z",
+                "lastUpdateTime": "2026-10-17T16:09:43Z",
+                "message": "ReplicaSet \"tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-first-release-fbfc46cc9\" has successfully progressed.",
+                "reason": "NewReplicaSetAvailable",
+                "status": "True",
+                "type": "Progressing"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "pods",
+          "items": []
+        },
+        {
+          "kind": "replicasets",
+          "items": [
+            {
+              "name": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-first-release-fbfc46cc9",
+              "desiredReplicas": 0,
+              "readyReplicas": 0
+            }
+          ]
+        }
+      ]
+    },
+    "qa-a893-cancel-before-cancel-runtime.json": {
+      "at": "2026-10-17T15:56:09.758505+00:00",
+      "fixture": "cancel",
+      "phase": "before-cancel",
+      "serviceId": "srv-db9pkq4s300s73dskhag",
+      "name": "qa-20261017-a893-cancel",
+      "appName": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel",
+      "resources": [
+        {
+          "kind": "app.app.bex.co",
+          "generation": 1,
+          "createdAt": "2026-10-17T15:55:20Z",
+          "phase": "Deploying",
+          "activeRevision": null,
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-17T15:55:21Z",
+              "message": "container exited shortly after start and is restarting repeatedly (last exit code 42) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (8095), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped).",
+              "observedGeneration": 1,
+              "reason": "CrashLoopBackOff",
+              "status": "False",
+              "type": "Ready"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T15:55:21Z",
+              "message": "serving at qa-20261017-a893-cancel.onbex.co",
+              "observedGeneration": 1,
+              "reason": "Routed",
+              "status": "True",
+              "type": "PublicRouting"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T15:55:21Z",
+              "message": "serving revision has not been observed",
+              "observedGeneration": 1,
+              "reason": "ServingUnobserved",
+              "status": "Unknown",
+              "type": "Serving"
+            }
+          ]
+        },
+        {
+          "kind": "deployment",
+          "generation": 1,
+          "createdAt": "2026-10-17T15:55:21Z",
+          "desiredReplicas": 1,
+          "progressDeadlineSeconds": 900,
+          "templateRevision": "rev-1",
+          "status": {
+            "observedGeneration": 1,
+            "replicas": 1,
+            "updatedReplicas": 1,
+            "readyReplicas": null,
+            "availableReplicas": null,
+            "unavailableReplicas": 1,
+            "conditions": [
+              {
+                "lastTransitionTime": "2026-10-17T15:55:21Z",
+                "lastUpdateTime": "2026-10-17T15:55:21Z",
+                "message": "Deployment does not have minimum availability.",
+                "reason": "MinimumReplicasUnavailable",
+                "status": "False",
+                "type": "Available"
+              },
+              {
+                "lastTransitionTime": "2026-10-17T15:55:21Z",
+                "lastUpdateTime": "2026-10-17T15:55:21Z",
+                "message": "ReplicaSet \"tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel-8445b7c8cc\" is progressing.",
+                "reason": "ReplicaSetUpdated",
+                "status": "True",
+                "type": "Progressing"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "pods",
+          "items": [
+            {
+              "name": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel-8445b7c8c7vtkj",
+              "uid": "e8ce3052-aac1-47fd-a457-e9dca831cea3",
+              "createdAt": "2026-10-17T15:55:21Z",
+              "phase": "Running",
+              "containers": [
+                {
+                  "name": "app",
+                  "ready": false,
+                  "restartCount": 2,
+                  "waitingReason": "CrashLoopBackOff",
+                  "terminatedExitCode": null,
+                  "lastExitCode": 42,
+                  "lastFinishedAt": "2026-10-17T15:55:45Z"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "replicasets",
+          "items": [
+            {
+              "name": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel-8445b7c8cc",
+              "desiredReplicas": 1,
+              "readyReplicas": 0
+            }
+          ]
+        }
+      ]
+    },
+    "qa-a893-first-after-deadline-runtime.json": {
+      "at": "2026-10-17T16:09:09.406550+00:00",
+      "fixture": "first",
+      "phase": "after-deadline",
+      "serviceId": "srv-db9pjukflioc739mco30",
+      "name": "qa-20261017-a893-first-release",
+      "appName": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-first-release",
+      "resources": [
+        {
+          "kind": "app.app.bex.co",
+          "generation": 1,
+          "createdAt": "2026-10-17T15:53:30Z",
+          "phase": "Failed",
+          "activeRevision": null,
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-17T15:53:30Z",
+              "message": "container exited shortly after start and is restarting repeatedly (last exit code 42) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (8094), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped).",
+              "observedGeneration": 1,
+              "reason": "CrashLoopBackOff",
+              "status": "False",
+              "type": "Ready"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T15:53:31Z",
+              "message": "serving at qa-20261017-a893-first-release.onbex.co",
+              "observedGeneration": 1,
+              "reason": "Routed",
+              "status": "True",
+              "type": "PublicRouting"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T15:53:31Z",
+              "message": "serving revision has not been observed",
+              "observedGeneration": 1,
+              "reason": "ServingUnobserved",
+              "status": "Unknown",
+              "type": "Serving"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T16:08:31Z",
+              "message": "container exited shortly after start and is restarting repeatedly (last exit code 42) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (8094), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped).",
+              "observedGeneration": 1,
+              "reason": "CrashLoopBackOff",
+              "status": "False",
+              "type": "Rollout"
+            }
+          ]
+        },
+        {
+          "kind": "deployment",
+          "generation": 1,
+          "createdAt": "2026-10-17T15:53:30Z",
+          "desiredReplicas": 1,
+          "progressDeadlineSeconds": 900,
+          "templateRevision": "rev-1",
+          "status": {
+            "observedGeneration": 1,
+            "replicas": 1,
+            "updatedReplicas": 1,
+            "readyReplicas": null,
+            "availableReplicas": null,
+            "unavailableReplicas": 1,
+            "conditions": [
+              {
+                "lastTransitionTime": "2026-10-17T15:53:30Z",
+                "lastUpdateTime": "2026-10-17T15:53:30Z",
+                "message": "Deployment does not have minimum availability.",
+                "reason": "MinimumReplicasUnavailable",
+                "status": "False",
+                "type": "Available"
+              },
+              {
+                "lastTransitionTime": "2026-10-17T16:08:31Z",
+                "lastUpdateTime": "2026-10-17T16:08:31Z",
+                "message": "ReplicaSet \"tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-first-release-fbfc46cc9\" has timed out progressing.",
+                "reason": "ProgressDeadlineExceeded",
+                "status": "False",
+                "type": "Progressing"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "pods",
+          "items": [
+            {
+              "name": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-first-release-fbjs4nc",
+              "uid": "9dd4a22c-b06b-47f7-87b6-f3f9d14368c6",
+              "createdAt": "2026-10-17T15:53:30Z",
+              "phase": "Running",
+              "containers": [
+                {
+                  "name": "app",
+                  "ready": false,
+                  "restartCount": 7,
+                  "waitingReason": "CrashLoopBackOff",
+                  "terminatedExitCode": null,
+                  "lastExitCode": 42,
+                  "lastFinishedAt": "2026-10-17T16:04:36Z"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "replicasets",
+          "items": [
+            {
+              "name": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-first-release-fbfc46cc9",
+              "desiredReplicas": 1,
+              "readyReplicas": 0
+            }
+          ]
+        }
+      ]
+    },
+    "qa-a893-cancel-served-control-after-runtime.json": {
+      "at": "2026-10-17T16:06:22.929848+00:00",
+      "fixture": "cancel",
+      "phase": "served-control-after",
+      "serviceId": "srv-db9pkq4s300s73dskhag",
+      "name": "qa-20261017-a893-cancel",
+      "appName": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel",
+      "resources": [
+        {
+          "kind": "app.app.bex.co",
+          "generation": 5,
+          "createdAt": "2026-10-17T15:55:20Z",
+          "phase": "Running",
+          "activeRevision": "rev-4",
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-17T16:06:22Z",
+              "message": "1/1 replicas ready",
+              "observedGeneration": 5,
+              "reason": "Deployed",
+              "status": "True",
+              "type": "Ready"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T15:55:21Z",
+              "message": "serving at qa-20261017-a893-cancel.onbex.co",
+              "observedGeneration": 5,
+              "reason": "Routed",
+              "status": "True",
+              "type": "PublicRouting"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T16:06:14Z",
+              "message": "the active revision's pods remain ready during the rollout",
+              "observedGeneration": 5,
+              "reason": "PriorReleaseServing",
+              "status": "True",
+              "type": "Serving"
+            }
+          ]
+        },
+        {
+          "kind": "deployment",
+          "generation": 9,
+          "createdAt": "2026-10-17T15:55:21Z",
+          "desiredReplicas": 1,
+          "progressDeadlineSeconds": 900,
+          "templateRevision": "rev-4",
+          "status": {
+            "observedGeneration": 9,
+            "replicas": 1,
+            "updatedReplicas": 1,
+            "readyReplicas": 1,
+            "availableReplicas": 1,
+            "unavailableReplicas": null,
+            "conditions": [
+              {
+                "lastTransitionTime": "2026-10-17T16:04:42Z",
+                "lastUpdateTime": "2026-10-17T16:04:42Z",
+                "message": "Deployment has minimum availability.",
+                "reason": "MinimumReplicasAvailable",
+                "status": "True",
+                "type": "Available"
+              },
+              {
+                "lastTransitionTime": "2026-10-17T15:55:21Z",
+                "lastUpdateTime": "2026-10-17T16:06:22Z",
+                "message": "ReplicaSet \"tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel-77d76445bc\" has successfully progressed.",
+                "reason": "NewReplicaSetAvailable",
+                "status": "True",
+                "type": "Progressing"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "pods",
+          "items": [
+            {
+              "name": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel-584b64f76tmhkj",
+              "uid": "95cdc09b-9110-4f3c-9b0b-59dee4049072",
+              "createdAt": "2026-10-17T16:06:14Z",
+              "phase": "Running",
+              "containers": [
+                {
+                  "name": "app",
+                  "ready": false,
+                  "restartCount": 0,
+                  "waitingReason": null,
+                  "terminatedExitCode": null,
+                  "lastExitCode": null,
+                  "lastFinishedAt": null
+                }
+              ]
+            },
+            {
+              "name": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel-77d76445bt8fh5",
+              "uid": "cb94c6af-b79e-4f84-a46f-2bf7c2329136",
+              "createdAt": "2026-10-17T16:04:31Z",
+              "phase": "Running",
+              "containers": [
+                {
+                  "name": "app",
+                  "ready": true,
+                  "restartCount": 0,
+                  "waitingReason": null,
+                  "terminatedExitCode": null,
+                  "lastExitCode": null,
+                  "lastFinishedAt": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "replicasets",
+          "items": [
+            {
+              "name": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel-584b64f767",
+              "desiredReplicas": 0,
+              "readyReplicas": 0
+            },
+            {
+              "name": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel-698558dc97",
+              "desiredReplicas": 0,
+              "readyReplicas": 0
+            },
+            {
+              "name": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel-765d776f65",
+              "desiredReplicas": 0,
+              "readyReplicas": 0
+            },
+            {
+              "name": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel-77d76445bc",
+              "desiredReplicas": 1,
+              "readyReplicas": 1
+            },
+            {
+              "name": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel-8445b7c8cc",
+              "desiredReplicas": 0,
+              "readyReplicas": 0
+            }
+          ]
+        }
+      ]
+    },
+    "qa-a893-first-before-deadline-runtime.json": {
+      "at": "2026-10-17T16:03:21.901053+00:00",
+      "fixture": "first",
+      "phase": "before-deadline",
+      "serviceId": "srv-db9pjukflioc739mco30",
+      "name": "qa-20261017-a893-first-release",
+      "appName": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-first-release",
+      "resources": [
+        {
+          "kind": "app.app.bex.co",
+          "generation": 1,
+          "createdAt": "2026-10-17T15:53:30Z",
+          "phase": "Deploying",
+          "activeRevision": null,
+          "conditions": [
+            {
+              "lastTransitionTime": "2026-10-17T15:53:30Z",
+              "message": "container exited shortly after start and is restarting repeatedly (last exit code 42) — check the service logs for the crash output. If the crash is a port bind: the process must listen on $PORT (8094), and tenant containers cannot bind ports below 1024 (all Linux capabilities are dropped).",
+              "observedGeneration": 1,
+              "reason": "CrashLoopBackOff",
+              "status": "False",
+              "type": "Ready"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T15:53:31Z",
+              "message": "serving at qa-20261017-a893-first-release.onbex.co",
+              "observedGeneration": 1,
+              "reason": "Routed",
+              "status": "True",
+              "type": "PublicRouting"
+            },
+            {
+              "lastTransitionTime": "2026-10-17T15:53:31Z",
+              "message": "serving revision has not been observed",
+              "observedGeneration": 1,
+              "reason": "ServingUnobserved",
+              "status": "Unknown",
+              "type": "Serving"
+            }
+          ]
+        },
+        {
+          "kind": "deployment",
+          "generation": 1,
+          "createdAt": "2026-10-17T15:53:30Z",
+          "desiredReplicas": 1,
+          "progressDeadlineSeconds": 900,
+          "templateRevision": "rev-1",
+          "status": {
+            "observedGeneration": 1,
+            "replicas": 1,
+            "updatedReplicas": 1,
+            "readyReplicas": null,
+            "availableReplicas": null,
+            "unavailableReplicas": 1,
+            "conditions": [
+              {
+                "lastTransitionTime": "2026-10-17T15:53:30Z",
+                "lastUpdateTime": "2026-10-17T15:53:30Z",
+                "message": "Deployment does not have minimum availability.",
+                "reason": "MinimumReplicasUnavailable",
+                "status": "False",
+                "type": "Available"
+              },
+              {
+                "lastTransitionTime": "2026-10-17T15:53:30Z",
+                "lastUpdateTime": "2026-10-17T15:53:31Z",
+                "message": "ReplicaSet \"tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-first-release-fbfc46cc9\" is progressing.",
+                "reason": "ReplicaSetUpdated",
+                "status": "True",
+                "type": "Progressing"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "pods",
+          "items": [
+            {
+              "name": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-first-release-fbjs4nc",
+              "uid": "9dd4a22c-b06b-47f7-87b6-f3f9d14368c6",
+              "createdAt": "2026-10-17T15:53:30Z",
+              "phase": "Running",
+              "containers": [
+                {
+                  "name": "app",
+                  "ready": false,
+                  "restartCount": 6,
+                  "waitingReason": "CrashLoopBackOff",
+                  "terminatedExitCode": null,
+                  "lastExitCode": 42,
+                  "lastFinishedAt": "2026-10-17T15:59:31Z"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "replicasets",
+          "items": [
+            {
+              "name": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-first-release-fbfc46cc9",
+              "desiredReplicas": 1,
+              "readyReplicas": 0
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "cleanup": {
+    "physical": {
+      "at": "2026-10-17T16:14:42.909472+00:00",
+      "scope": "Read-only exact own resource names and labels; shared namespace Secret/RBAC/network resources expose metadata names only and filter owned name prefixes.",
+      "checks": [
+        {
+          "serviceId": "srv-db9pjukflioc739mco30",
+          "check": "apps.app.bex.co",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pjukflioc739mco30",
+          "check": "deployments",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pjukflioc739mco30",
+          "check": "services",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pjukflioc739mco30",
+          "check": "ingresses",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pjukflioc739mco30",
+          "check": "certificates.cert-manager.io",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pjukflioc739mco30",
+          "check": "pods app.bex.co/app=tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-first-release",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pjukflioc739mco30",
+          "check": "replicasets app.bex.co/app=tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-first-release",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pjukflioc739mco30",
+          "check": "jobs app.bex.co/app=tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-first-release",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pjukflioc739mco30",
+          "check": "pods bex.co/app-id=srv-db9pjukflioc739mco30",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pjukflioc739mco30",
+          "check": "replicasets bex.co/app-id=srv-db9pjukflioc739mco30",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pjukflioc739mco30",
+          "check": "jobs bex.co/app-id=srv-db9pjukflioc739mco30",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pjukflioc739mco30",
+          "check": "secrets owned name prefixes",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pjukflioc739mco30",
+          "check": "networkpolicies owned name prefixes",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pjukflioc739mco30",
+          "check": "roles owned name prefixes",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pjukflioc739mco30",
+          "check": "rolebindings owned name prefixes",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pjukflioc739mco30",
+          "check": "serviceaccounts owned name prefixes",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pkq4s300s73dskhag",
+          "check": "apps.app.bex.co",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pkq4s300s73dskhag",
+          "check": "deployments",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pkq4s300s73dskhag",
+          "check": "services",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pkq4s300s73dskhag",
+          "check": "ingresses",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pkq4s300s73dskhag",
+          "check": "certificates.cert-manager.io",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pkq4s300s73dskhag",
+          "check": "pods app.bex.co/app=tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pkq4s300s73dskhag",
+          "check": "replicasets app.bex.co/app=tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pkq4s300s73dskhag",
+          "check": "jobs app.bex.co/app=tea-d98210cbbpdc73dcrkvg-qa-20261017-a893-cancel",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pkq4s300s73dskhag",
+          "check": "pods bex.co/app-id=srv-db9pkq4s300s73dskhag",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pkq4s300s73dskhag",
+          "check": "replicasets bex.co/app-id=srv-db9pkq4s300s73dskhag",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pkq4s300s73dskhag",
+          "check": "jobs bex.co/app-id=srv-db9pkq4s300s73dskhag",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pkq4s300s73dskhag",
+          "check": "secrets owned name prefixes",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pkq4s300s73dskhag",
+          "check": "networkpolicies owned name prefixes",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pkq4s300s73dskhag",
+          "check": "roles owned name prefixes",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pkq4s300s73dskhag",
+          "check": "rolebindings owned name prefixes",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        },
+        {
+          "serviceId": "srv-db9pkq4s300s73dskhag",
+          "check": "serviceaccounts owned name prefixes",
+          "exitCode": 0,
+          "count": 0,
+          "names": [],
+          "errorPresent": false
+        }
+      ],
+      "public": [
+        {
+          "serviceId": "srv-db9pjukflioc739mco30",
+          "url": "https://qa-20261017-a893-first-release.onbex.co",
+          "exitCode": 0,
+          "status": 404
+        },
+        {
+          "serviceId": "srv-db9pkq4s300s73dskhag",
+          "url": "https://qa-20261017-a893-cancel.onbex.co",
+          "exitCode": 0,
+          "status": 404
+        }
+      ],
+      "allAbsent": true
+    },
+    "loginWrapperExitCode": 0
+  },
+  "network": {
+    "summary": {
+      "baselineMax": 3906,
+      "total": 711,
+      "http200": 688,
+      "http204": 18,
+      "others": [
+        "3927. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_ABORTED",
+        "3998. [POST] https://api.bex.co/graphql",
+        "4035. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_ABORTED",
+        "4151. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_ABORTED",
+        "4282. [GET] https://dashboard.bex.co/assets/services._serviceId.scaling-BDQcaaYo.js"
+      ],
+      "scope": "Native page request status log only; independent APIRequestContext reads have separate exact receipts. HTTP200 does not establish GraphQL success for every mixed operation."
+    },
+    "requestBodiesForAbortedOrUncompletedGraphQL": {
+      "3927": {
+        "operationName": "DeployActions",
+        "variables": {
+          "serviceId": "srv-db9pjukflioc739mco30",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query DeployActions($serviceId: String!, $ownerId: String!) {\n  deployActions(serviceId: $serviceId, ownerId: $ownerId) {\n    action\n    outcome\n    reason\n    precondition\n    __typename\n  }\n}"
+      },
+      "3998": [
+        {
+          "operationName": "DeployTimelineEvents",
+          "variables": {
+            "serviceId": "srv-db9pjukflioc739mco30",
+            "startTime": "2026-10-17T15:53:30.766009Z",
+            "endTime": "",
+            "limit": 100
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query DeployTimelineEvents($serviceId: String!, $startTime: String, $endTime: String, $limit: Int) {\n  serviceEvents(\n    serviceId: $serviceId\n    startTime: $startTime\n    endTime: $endTime\n    limit: $limit\n  ) {\n    id\n    type\n    timestamp\n    details {\n      deployId\n      deployStatus\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        {
+          "operationName": "Server",
+          "variables": {
+            "id": "srv-db9pjukflioc739mco30"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query Server($id: String!) {\n  server(id: $id) {\n    id\n    name\n    immutableName\n    slug\n    displayName\n    type\n    suspended\n    dashboardUrl\n    region\n    url\n    publicRoutingNotice\n    undeployedChanges\n    undeployedChangesApplying\n    internalAddress\n    createdAt\n    sshAddress\n    phase\n    replicas\n    revision\n    plan\n    idleTTLSeconds\n    maintenanceMode {\n      enabled\n      uri\n      __typename\n    }\n    repo\n    branch\n    imagePath\n    rootDir\n    runtime\n    builder\n    buildCommand\n    startCommand\n    dockerfilePath\n    registryCredentialId\n    buildFilter {\n      paths\n      ignoredPaths\n      __typename\n    }\n    autoDeploy\n    autoDeployTrigger\n    environmentId\n    linkedEnvGroupIds\n    pushDeliveryMethod\n    notifyOnFail\n    notificationsToSend\n    renderSubdomainPolicy\n    port\n    healthCheckPath\n    maxShutdownDelaySeconds\n    preDeployCommand\n    schedule\n    command\n    lastSuccessfulRunAt\n    nextRunAt\n    runs {\n      id\n      name\n      startedAt\n      finishedAt\n      status\n      __typename\n    }\n    publishPath\n    routes {\n      type\n      source\n      destination\n      __typename\n    }\n    headers {\n      path\n      name\n      value\n      __typename\n    }\n    ipAllowList\n    ipAllowListEntries {\n      cidrBlock\n      description\n      __typename\n    }\n    ipAllowListProxiedDomains\n    outboundIps {\n      type\n      ips\n      __typename\n    }\n    maintenanceMode {\n      enabled\n      uri\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        {
+          "operationName": "Deploys",
+          "variables": {
+            "serviceId": "srv-db9pjukflioc739mco30",
+            "limit": 1
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query Deploys($serviceId: String!, $status: [String], $createdBefore: String, $createdAfter: String, $updatedBefore: String, $updatedAfter: String, $finishedBefore: String, $finishedAfter: String, $cursor: String, $limit: Int) {\n  deploys(\n    serviceId: $serviceId\n    status: $status\n    createdBefore: $createdBefore\n    createdAfter: $createdAfter\n    updatedBefore: $updatedBefore\n    updatedAfter: $updatedAfter\n    finishedBefore: $finishedBefore\n    finishedAfter: $finishedAfter\n    cursor: $cursor\n    limit: $limit\n  ) {\n    id\n    status\n    trigger\n    image\n    rollbackOf\n    commitId\n    commitMessage\n    commitCreatedAt\n    createdAt\n    updatedAt\n    startedAt\n    finishedAt\n    preDeployStatus\n    failureReason\n    cancelReason\n    stallReason\n    __typename\n  }\n}"
+        },
+        {
+          "operationName": "Deploy",
+          "variables": {
+            "serviceId": "srv-db9pjukflioc739mco30",
+            "deployId": "dep-db9pjukflioc739mco3g"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query Deploy($serviceId: String!, $deployId: String!) {\n  deploy(serviceId: $serviceId, deployId: $deployId) {\n    id\n    status\n    trigger\n    image\n    rollbackOf\n    commitId\n    commitMessage\n    commitCreatedAt\n    createdAt\n    updatedAt\n    startedAt\n    finishedAt\n    preDeployStatus\n    failureReason\n    cancelReason\n    stallReason\n    __typename\n  }\n}"
+        }
+      ],
+      "4035": {
+        "operationName": "DeployActions",
+        "variables": {
+          "serviceId": "srv-db9pkq4s300s73dskhag",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query DeployActions($serviceId: String!, $ownerId: String!) {\n  deployActions(serviceId: $serviceId, ownerId: $ownerId) {\n    action\n    outcome\n    reason\n    precondition\n    __typename\n  }\n}"
+      },
+      "4151": {
+        "operationName": "DeployActions",
+        "variables": {
+          "serviceId": "srv-db9pkq4s300s73dskhag",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "query DeployActions($serviceId: String!, $ownerId: String!) {\n  deployActions(serviceId: $serviceId, ownerId: $ownerId) {\n    action\n    outcome\n    reason\n    precondition\n    __typename\n  }\n}"
+      }
+    }
+  },
+  "sourceExcerpts": [
+    {
+      "path": "dashboard/src/features/deploys/components/deploy-actions.tsx",
+      "firstLine": 54,
+      "lastLine": 67,
+      "sha256": "552ead5d4bde63bbfb680b7dd522c7246790f32f3b5d2158e50d94854cb4c07b",
+      "excerpt": "  commitId?: string | null;\n  commitMessage?: string | null;\n  /**\n   * The selected deploy's trigger (`create`, `api`, `deploy_hook`, …). It is\n   * used for exactly one thing: a `create` deploy is the service's FIRST build,\n   * so canceling it leaves nothing serving — and the cancel confirm must say so\n   * instead of promising that \"the last successful deploy remains live\", which\n   * is false precisely when the user is deciding whether cancel strands them\n   * (w4/103). Absent => the generic body, which is the safe default.\n   */\n  trigger?: string | null;\n  onChanged?: () => void;\n  /** A list shares its service-wide projection across all deploy rows. */\n  projection?: ResourceActionsState;"
+    },
+    {
+      "path": "dashboard/src/features/deploys/components/deploy-actions.tsx",
+      "firstLine": 303,
+      "lastLine": 321,
+      "sha256": "552ead5d4bde63bbfb680b7dd522c7246790f32f3b5d2158e50d94854cb4c07b",
+      "excerpt": "      <ConfirmDialog\n        open={confirm !== null}\n        onOpenChange={(openState) => !openState && clearConfirm()}\n        title={\n          confirm === \"cancel\"\n            ? t(\"services.eventsCancelConfirmTitle\")\n            : t(\"services.eventsRollbackConfirmTitle\")\n        }\n        description={\n          confirm === \"cancel\"\n            ? t(\n                trigger === \"create\"\n                  ? \"services.eventsCancelConfirmBodyFirstDeploy\"\n                  : \"services.eventsCancelConfirmBody\",\n              )\n            : rollbackBody\n        }\n        cancelLabel={t(\"services.eventsConfirmCancel\")}\n        confirmLabel={t(\"services.eventsConfirmProceed\")}"
+    },
+    {
+      "path": "dashboard/src/features/services/locales/en.ts",
+      "firstLine": 4298,
+      "lastLine": 4312,
+      "sha256": "b4c67125195cd22a7517d1195564243e31bf243dcddc426b7dbeb19a9568aea8",
+      "excerpt": "    description: \"Cancel deploy confirm dialog title\",\n  },\n  \"services.eventsCancelConfirmBody\": {\n    message:\n      \"The in-progress deploy will be stopped. The last successful deploy remains live, and any changes you saved stay saved and ship with the next deploy.\",\n    description:\n      \"Cancel deploy confirm dialog body — a previous deploy is still serving\",\n  },\n  \"services.eventsCancelConfirmBodyFirstDeploy\": {\n    message:\n      \"The in-progress deploy will be stopped. This is the service's first deploy, so no version is live yet — canceling leaves the service with nothing serving.\",\n    description:\n      \"Cancel deploy confirm dialog body — the service's first deploy, nothing is serving yet (w4/103)\",\n  },\n  \"services.eventsRollback\": {"
+    },
+    {
+      "path": "dashboard/src/features/services/locales/zh.ts",
+      "firstLine": 4197,
+      "lastLine": 4211,
+      "sha256": "a072cc8ad0f1690e0081ad025a2a2be177bd11db782417d91d38e935f5808719",
+      "excerpt": "    description: \"Cancel deploy confirm dialog title\",\n  },\n  \"services.eventsCancelConfirmBody\": {\n    message:\n      \"正在进行的部署将被停止，最近成功的部署仍保持运行；已保存的更改会继续保留，并在下次部署时发布。\",\n    description:\n      \"Cancel deploy confirm dialog body — a previous deploy is still serving\",\n  },\n  \"services.eventsCancelConfirmBodyFirstDeploy\": {\n    message:\n      \"正在进行的部署将被停止。这是该服务的首次部署，尚无任何版本上线——取消后服务将没有任何内容在运行。\",\n    description:\n      \"Cancel deploy confirm dialog body — the service's first deploy, nothing is serving yet (w4/103)\",\n  },\n  \"services.eventsRollback\": {"
+    },
+    {
+      "path": "dashboard/src/features/deploys/components/deploy-detail-page.tsx",
+      "firstLine": 120,
+      "lastLine": 132,
+      "sha256": "72ac659623880dc0844b4606ec82cb90362360879874ff2459b09a8a374b88be",
+      "excerpt": "          deploy ? (\n            <DeployActions\n              serviceId={serviceId}\n              deployId={deploy.id}\n              status={deploy.status}\n              commitId={deploy.commitId}\n              commitMessage={deploy.commitMessage}\n              trigger={deploy.trigger}\n            />\n          ) : undefined\n        }\n      />\n      <DeployTimeline serviceId={serviceId} deploy={deploy} />"
+    },
+    {
+      "path": "dashboard/src/features/deploys/components/deploys-list-page.tsx",
+      "firstLine": 334,
+      "lastLine": 346,
+      "sha256": "06aaea9747348ae2659ce761884f15b011e4d2d4ede759935abb9cf05ab307ee",
+      "excerpt": "                      <DeployActions\n                        projection={projection}\n                        serviceId={serviceId}\n                        deployId={d.id}\n                        status={d.status}\n                        commitId={d.commitId}\n                        commitMessage={d.commitMessage}\n                        trigger={d.trigger}\n                      />\n                    </div>\n                  ) : null}\n                </TableCell>\n              </TableRow>"
+    },
+    {
+      "path": "dashboard/src/routes/services.$serviceId.events.tsx",
+      "firstLine": 305,
+      "lastLine": 322,
+      "sha256": "542daae684f6e16ad0bcd87e7d5ffaf532b3a1305926ce8ff9af550c1ebf4414",
+      "excerpt": "                        <DeployActions\n                          serviceId={serviceId}\n                          deployId={deployId}\n                          status={status}\n                          commitId={details?.commitId}\n                          commitMessage={details?.commitMessage}\n                          // The events feed carries the trigger as Render's\n                          // flag object rather than the deploys list's string;\n                          // firstBuild is the same cause as trigger \"create\"\n                          // (w4/103).\n                          trigger={\n                            details?.trigger?.firstBuild ? \"create\" : undefined\n                          }\n                          onChanged={() => void refetch()}\n                        />\n                      </div>\n                    ) : null}\n                  </div>"
+    },
+    {
+      "path": "dashboard/src/common/components/confirm-dialog.tsx",
+      "firstLine": 128,
+      "lastLine": 135,
+      "sha256": "4b78ceef99e695a4d41fdb6b055cc56b565467ac7958f9590320a460e5a6e9f5",
+      "excerpt": "  const body = (\n    <AlertDialogContent className={contentClassName}>\n      <AlertDialogHeader>\n        <AlertDialogTitle>{title}</AlertDialogTitle>\n        <AlertDialogDescription>{description}</AlertDialogDescription>\n      </AlertDialogHeader>\n      {children}\n      {phrase !== undefined ? ("
+    },
+    {
+      "path": "dashboard/src/common/components/ui/alert-dialog.tsx",
+      "firstLine": 99,
+      "lastLine": 110,
+      "sha256": "9e0115795adcb97a7d8e320677f878d1cb58217d71a045c7b5629a60a08cd315",
+      "excerpt": "function AlertDialogDescription({\n  className,\n  ...props\n}: React.ComponentProps<typeof AlertDialogPrimitive.Description>) {\n  return (\n    <AlertDialogPrimitive.Description\n      className={cn(\"text-muted-foreground text-sm\", className)}\n      {...props}\n    />\n  );\n}\n"
+    },
+    {
+      "path": "dashboard/src/features/deploys/components/__tests__/deploy-actions.test.tsx",
+      "firstLine": 442,
+      "lastLine": 490,
+      "sha256": "d210fe7de4d3affa72cd0b198e4904187ff4f42821c90d40ab88a9ff24602ebc",
+      "excerpt": "  it(\"warns that nothing is serving when canceling the first deploy\", async () => {\n    const user = userEvent.setup();\n    renderActions(\"update_in_progress\", { trigger: \"create\" });\n\n    await user.click(\n      await screen.findByRole(\"button\", { name: /^Cancel deploy / }),\n    );\n    const dialog = await screen.findByRole(\"alertdialog\");\n\n    expect(\n      within(dialog).getByText(/no version is live yet/i),\n    ).toBeInTheDocument();\n    expect(\n      within(dialog).queryByText(/last successful deploy remains live/i),\n    ).not.toBeInTheDocument();\n  });\n\n  for (const trigger of [\"api\", \"new_commit\", \"config_change\", \"deploy_hook\"]) {\n    it(`keeps the remains-live reassurance for a ${trigger} deploy`, async () => {\n      const user = userEvent.setup();\n      renderActions(\"update_in_progress\", { trigger });\n\n      await user.click(\n        await screen.findByRole(\"button\", { name: /^Cancel deploy / }),\n      );\n      const dialog = await screen.findByRole(\"alertdialog\");\n\n      expect(\n        within(dialog).getByText(/last successful deploy remains live/i),\n      ).toBeInTheDocument();\n    });\n  }\n\n  // A caller that does not know the trigger must get the pre-existing body,\n  // not the scarier one — the fallback has to be the safe direction.\n  it(\"falls back to the generic body when the trigger is unknown\", async () => {\n    const user = userEvent.setup();\n    renderActions(\"update_in_progress\");\n\n    await user.click(\n      await screen.findByRole(\"button\", { name: /^Cancel deploy / }),\n    );\n    const dialog = await screen.findByRole(\"alertdialog\");\n\n    expect(\n      within(dialog).getByText(/last successful deploy remains live/i),\n    ).toBeInTheDocument();\n  });\n});"
+    },
+    {
+      "path": "lego/backend/internal/apps/service.go",
+      "firstLine": 1117,
+      "lastLine": 1123,
+      "sha256": "1d30f863397c34433d17a81256e1a6c1a834842e46cff6613f3e700e7afdbcbf",
+      "excerpt": "\t\tRuns:                 cronRunViews(a.Status.Runs),\n\t\tLastSuccessfulRunAt:  lastSuccessfulCronRunAt(a.Status.Runs),\n\t\tPlan:                 plan,\n\t\tRevision:             a.Status.ActiveRevision,\n\t\tCreatedAt:            created,\n\t\tUpdatedAt:            resourcemeta.UpdatedAt(a),\n\t\tIdleTTLSeconds:       a.Spec.IdleTTLSeconds,"
+    },
+    {
+      "path": "dashboard/yarn.lock",
+      "firstLine": 2664,
+      "lastLine": 2673,
+      "sha256": "e3eb7681438c9cc6027a030f6c30cbdec02bd18319547ffac9cd662b5c02ca73",
+      "excerpt": "\"@radix-ui/react-alert-dialog@npm:^1.1.23\":\n  version: 1.2.1\n  resolution: \"@radix-ui/react-alert-dialog@npm:1.2.1\"\n  dependencies:\n    \"@radix-ui/primitive\": \"npm:1.2.0\"\n    \"@radix-ui/react-compose-refs\": \"npm:1.1.5\"\n    \"@radix-ui/react-context\": \"npm:1.3.0\"\n    \"@radix-ui/react-dialog\": \"npm:1.3.1\"\n    \"@radix-ui/react-primitive\": \"npm:2.2.0\"\n  peerDependencies:"
+    }
+  ],
+  "productionCensus": {
+    "componentMounts": [
+      {
+        "path": "dashboard/src/routes/services.$serviceId.events.tsx",
+        "line": 305
+      },
+      {
+        "path": "dashboard/src/features/deploys/components/deploys-list-page.tsx",
+        "line": 334
+      },
+      {
+        "path": "dashboard/src/features/deploys/components/deploy-detail-page.tsx",
+        "line": 121
+      }
+    ],
+    "genericCopyConsumers": [
+      {
+        "path": "dashboard/src/features/deploys/components/deploy-actions.tsx",
+        "line": 316
+      }
+    ]
+  },
+  "pinnedFramework": [
+    {
+      "archive": "/Users/tianpan/.yarn/berry/cache/@radix-ui-react-alert-dialog-npm-1.2.1-3f828eb3de-10c0.zip",
+      "entry": "node_modules/@radix-ui/react-alert-dialog/dist/index.js",
+      "sha256": "4f72c310572543933e00859524fb9f8899f97f27bbdc90a756ec5d2dc7d4f61f",
+      "firstLine": 128,
+      "lastLine": 139,
+      "excerpt": "var AlertDialogDescription = React.forwardRef(/* @__PURE__ */ __name(function AlertDialogDescription2(props, forwardedRef) {\n  const { __scopeAlertDialog, ...descriptionProps } = props;\n  const dialogScope = useDialogScope(__scopeAlertDialog);\n  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(DialogPrimitive.Description, { ...dialogScope, ...descriptionProps, ref: forwardedRef });\n}, \"AlertDialogDescription\"));\nvar AlertDialogAction = React.forwardRef(\n  /* @__PURE__ */ __name(function AlertDialogAction2(props, forwardedRef) {\n    const { __scopeAlertDialog, ...actionProps } = props;\n    const dialogScope = useDialogScope(__scopeAlertDialog);\n    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(DialogPrimitive.Close, { ...dialogScope, ...actionProps, ref: forwardedRef });\n  }, \"AlertDialogAction\")\n);"
+    },
+    {
+      "archive": "/Users/tianpan/.yarn/berry/cache/@radix-ui-react-dialog-npm-1.3.1-b15f8fb586-10c0.zip",
+      "entry": "node_modules/@radix-ui/react-dialog/dist/index.js",
+      "sha256": "a2da0bff212d8cf1fc4dba2bdc08549913adf18587f14cf67494cbebe8135ef4",
+      "firstLine": 334,
+      "lastLine": 345,
+      "excerpt": "var DialogDescription = /* @__PURE__ */ React.forwardRef(\n  // blank line to reduce diff noise\n  /* @__PURE__ */ __name(function DialogDescription2(props, forwardedRef) {\n    const { __scopeDialog, ...descriptionProps } = props;\n    const context = useDialogContext(\"DialogDescription\", __scopeDialog);\n    const { setDescriptionCount } = context;\n    (0, import_react_use_layout_effect.useLayoutEffect)(() => {\n      setDescriptionCount((count) => count + 1);\n      return () => setDescriptionCount((count) => count - 1);\n    }, [setDescriptionCount]);\n    return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_react_primitive.Primitive.p, { id: context.descriptionId, ...descriptionProps, ref: forwardedRef });\n  }, \"DialogDescription\")"
+    }
+  ],
+  "probeRecipes": {
+    "readFactory": "(function(serviceId,deployId,publicUrl){if(![\"srv-db9pjukflioc739mco30\",\"srv-db9pkq4s300s73dskhag\"].includes(serviceId))throw Error(\"foreign resource\");const request={operationName:\"QA893State\",query:\"query QA893State($id:String!,$deployId:String!){server(id:$id){id name phase revision suspended replicas url undeployedChanges undeployedChangesApplying} deploy(serviceId:$id,deployId:$deployId){id status failureReason cancelReason stallReason createdAt updatedAt startedAt finishedAt}}\",variables:{id:serviceId,deployId}};return 'async(page)=>{const request='+JSON.stringify(request)+';const r=await page.request.post(\"https://api.bex.co/graphql\",{data:request});const instances=await page.request.get(\"https://api.bex.co/v1/services/'+serviceId+'/instances\");'+(publicUrl?'const publicResponse=await page.request.get('+JSON.stringify(publicUrl)+',{timeout:15000});const publicText=await publicResponse.text();':'')+'return{at:new Date().toISOString(),request,status:r.status(),body:await r.json(),instances:{path:\"/v1/services/'+serviceId+'/instances\",status:instances.status(),body:await instances.json()},'+(publicUrl?'public:{url:'+JSON.stringify(publicUrl)+',status:publicResponse.status(),body:publicText.slice(0,1000)},':'')+'url:page.url()}}';})",
+    "nativeMutationFactory": "(function(operation,id,action){const base=((operation,id,action)=>`async(page)=>{const pending=page.waitForResponse(r=>{if(!r.url().endsWith(\"/graphql\")||r.request().method()!==\"POST\")return false;try{const q=r.request().postDataJSON();return(Array.isArray(q)?q:[q]).some(x=>x.operationName===${JSON.stringify(operation)}&&(!${JSON.stringify(id)}||x.variables.id===${JSON.stringify(id)}));}catch{return false;}},{timeout:45000}).then(response=>({response}),error=>({waitError:String(error)}));{${action}};const waited=await pending;if(waited.waitError)throw new Error(waited.waitError);const r=waited.response;const q=r.request().postDataJSON(),b=await r.json(),qs=Array.isArray(q)?q:[q],bs=Array.isArray(b)?b:[b];const i=qs.findIndex(x=>x.operationName===${JSON.stringify(operation)});await page.waitForTimeout(700);return{at:new Date().toISOString(),request:qs[i],status:r.status(),body:bs[i],timing:r.request().timing(),url:page.url()};}`);if(operation==='CreateDatabase'){action=\"const qaFreeType=page.getByRole('combobox',{name:'Instance type',exact:true});if(await qaFreeType.count()!==1||!/^Free\\\\b/.test(await qaFreeType.innerText()))throw new Error('Free Postgres type is not confirmed; create blocked');\\n\"+action;}else if(operation==='CreateService'){action=\"const qaStaticType=page.getByRole('radio',{name:'Static Site Build and serve a static site from object storage',exact:true});const qaStaticSelected=await qaStaticType.count()===1&&await qaStaticType.isChecked();if(qaStaticSelected){if(await page.getByRole('heading',{name:'New Static Site',exact:true}).count()!==1||await page.getByRole('radio',{name:/^Free/}).count()!==0)throw new Error('Static create shape is not confirmed; create blocked');}else{const qaFreePlan=page.getByRole('radio',{name:/^Free/});if(await qaFreePlan.count()!==1||!(await qaFreePlan.isChecked()))throw new Error('Free plan is not confirmed; create blocked');\\n}\\n\"+action;}else if(operation==='CreateKeyValue'){action=\"const qaFreePlan=page.getByRole('radio',{name:/^Free/});if(await qaFreePlan.count()!==1||!(await qaFreePlan.isChecked()))throw new Error('Free plan is not confirmed; create blocked');\\n\"+action;}return base(operation,id,action);})"
+  },
+  "dedupe": {
+    "openMilestoneTitleCount": 92,
+    "titles": [
+      {
+        "path": ".pm/w8/blocked/m62/README.md",
+        "title": "# w8 · m62 — Reject unlaunchable environment values"
+      },
+      {
+        "path": ".pm/w8/blocked/m65/README.md",
+        "title": "# w8 · m65 — Retain PostgreSQL process logs during bursts"
+      },
+      {
+        "path": ".pm/w8/blocked/m64/README.md",
+        "title": "# w8 · m64 — Keep Blueprint environment copies consistent across applies"
+      },
+      {
+        "path": ".pm/w8/blocked/m63/README.md",
+        "title": "# w8 · m63 — Keep completed initial hooks out of later deploys"
+      },
+      {
+        "path": ".pm/w8/blocked/m84/README.md",
+        "title": "# w8 · m84 — Make packaged pgvector usable in managed Postgres"
+      },
+      {
+        "path": ".pm/w8/blocked/m83/README.md",
+        "title": "# w8 · m83 — Supply automatic compression for web responses"
+      },
+      {
+        "path": ".pm/w8/blocked/m59/README.md",
+        "title": "# w8 · m59 — Return static sites to direct publication after clearing their build command"
+      },
+      {
+        "path": ".pm/w8/blocked/m68/README.md",
+        "title": "# w8 · m68 — Preserve executable command text"
+      },
+      {
+        "path": ".pm/w8/blocked/m57/README.md",
+        "title": "# w8 · m57 — Preserve literal string lists in interactive CLI forms"
+      },
+      {
+        "path": ".pm/w8/blocked/m69/README.md",
+        "title": "# w8 · m69 — Preserve native cron startup semantics"
+      },
+      {
+        "path": ".pm/w8/blocked/m60/README.md",
+        "title": "# w8 · m60 — Preserve accepted arguments when copying CLI commands"
+      },
+      {
+        "path": ".pm/w8/blocked/m67/README.md",
+        "title": "# w8 · m67 — Keep native live logs running after a transient disconnect"
+      },
+      {
+        "path": ".pm/w8/blocked/m89/README.md",
+        "title": "# w8 · m89 — Materialize pinned Git submodules before source builds"
+      },
+      {
+        "path": ".pm/w8/blocked/m87/README.md",
+        "title": "# w8 · m87 — Make psql Ctrl+C stop external PostgreSQL queries"
+      },
+      {
+        "path": ".pm/w8/blocked/m88/README.md",
+        "title": "# w8 · m88 — Preserve graceful shutdown through native npm startup"
+      },
+      {
+        "path": ".pm/w1/blocked/m171/README.md",
+        "title": "# w1 · m171 — Warn when an inbound IP allowlist sits behind a Cloudflare-proxied custom domain"
+      },
+      {
+        "path": ".pm/w1/blocked/m174/README.md",
+        "title": "# w1 · m174 — Get main's red checks passing again: x/net CVEs, lint OOM, flaky tests, Dependabot, schema re-pin"
+      },
+      {
+        "path": ".pm/w1/blocked/m181/README.md",
+        "title": "# w1 · m181 — Auto-deploy after CI checks pass (`autoDeployTrigger: checksPass`)"
+      },
+      {
+        "path": ".pm/w6/blocked/m146/README.md",
+        "title": "# w6 · m146 — Keep service action permissions current through confirmation"
+      },
+      {
+        "path": ".pm/w7/blocked/m156/README.md",
+        "title": "# w7 · m156 — Repair CNPG replica WAL metric collection"
+      },
+      {
+        "path": ".pm/w7/blocked/m158/README.md",
+        "title": "# w7 · m158 — Repair recurring registry garbage-collection failures"
+      },
+      {
+        "path": ".pm/w9/m166/README.md",
+        "title": "# w9 · m166 — Reject invalid service patches before applying any settings"
+      },
+      {
+        "path": ".pm/w9/blocked/m164/README.md",
+        "title": "# w9 · m164 — Dual-stack IP allow-list trap: a datastore denies the client's IPv6 with an opaque TLS EOF"
+      },
+      {
+        "path": ".pm/w5/blocked/m114/README.md",
+        "title": "# w5 · m114 — Suspend ends the release it interrupts, not just its deploy row"
+      },
+      {
+        "path": ".pm/w5/blocked/m105/README.md",
+        "title": "# w5 · m105 — Settings command edits take effect in the deployed artifact"
+      },
+      {
+        "path": ".pm/w5/blocked/m118/README.md",
+        "title": "# w5 · m118 — One source of truth for naming and config-key rules across Go, TypeScript, Kubernetes and CNPG"
+      },
+      {
+        "path": ".pm/w5/blocked/m111/README.md",
+        "title": "# w5 · m111 — `instance_seconds` stops metering terminated pods through Prometheus's 5-minute lookback"
+      },
+      {
+        "path": ".pm/w2/blocked/m162/README.md",
+        "title": "# w2 · m162 — One GitHub account, many workspaces: the N:N connection model"
+      },
+      {
+        "path": ".pm/w2/blocked/m96/README.md",
+        "title": "# w2 · m96 — Charges and webhook deliveries name their resource, even after deletion"
+      },
+      {
+        "path": ".pm/w3/blocked/m79/README.md",
+        "title": "# w3 · m79 — Run the full agent-session stack locally on `dev-N`"
+      },
+      {
+        "path": ".pm/w4/m223/README.md",
+        "title": "# w4 · m223 — Make first Postgres availability include vector"
+      },
+      {
+        "path": ".pm/w4/m224/README.md",
+        "title": "# w4 · m224 — Refresh Metrics status choices while the page stays open"
+      },
+      {
+        "path": ".pm/w4/m225/README.md",
+        "title": "# w4 · m225 — Publish a saved service name after older detail reads"
+      },
+      {
+        "path": ".pm/w4/m222/README.md",
+        "title": "# w4 · m222 — Ignore obsolete dotenv file reads"
+      },
+      {
+        "path": ".pm/w4/m227/README.md",
+        "title": "# w4 · m227 — Explain unavailable project resource lists"
+      },
+      {
+        "path": ".pm/w4/m217/README.md",
+        "title": "# w4 · m217 — Preserve distinct log records within one millisecond"
+      },
+      {
+        "path": ".pm/w4/m221/README.md",
+        "title": "# w4 · m221 — Preserve creation placement when lookup reads fail"
+      },
+      {
+        "path": ".pm/w4/m219/README.md",
+        "title": "# w4 · m219 — Gate forms and searches until handlers are ready"
+      },
+      {
+        "path": ".pm/w4/m226/README.md",
+        "title": "# w4 · m226 — Refresh Key Value configuration before classifying persistence changes"
+      },
+      {
+        "path": ".pm/w4/blocked/m212/README.md",
+        "title": "# w4 · m212 — Keep webhook disable intervals consistent"
+      },
+      {
+        "path": ".pm/w4/blocked/m215/README.md",
+        "title": "# w4 · m215 — Keep accepted Postgres upgrades non-Ready"
+      },
+      {
+        "path": ".pm/w4/blocked/m214/README.md",
+        "title": "# w4 · m214 — Recover datastore cleanup from transient lock conflicts"
+      },
+      {
+        "path": ".pm/w4/blocked/m213/README.md",
+        "title": "# w4 · m213 — Supply JavaScript companions in native Go, Rust and Elixir"
+      },
+      {
+        "path": ".pm/w4/blocked/m162/README.md",
+        "title": "# w4 · m162 — Keep platform health checks off tenant HTTP paths"
+      },
+      {
+        "path": ".pm/w4/blocked/m165/README.md",
+        "title": "# w4 · m165 — Loop1: workspace-switch navigation + identical-cancel undeployed flag"
+      },
+      {
+        "path": ".pm/w4/blocked/m164/README.md",
+        "title": "# w4 · m164 — Count initial and newly scraped traffic before free web auto-sleep"
+      },
+      {
+        "path": ".pm/w4/blocked/m163/README.md",
+        "title": "# w4 · m163 — Make saved secret files available to native builds"
+      },
+      {
+        "path": ".pm/w4/blocked/m130/README.md",
+        "title": "# w4 · m130 — `patchServiceEnvironment` applies the write and then reports a conflict"
+      },
+      {
+        "path": ".pm/w4/blocked/m139/README.md",
+        "title": "# w4 · m139 — Billing's Charges card: a subscription-period total labelled \"month to date\" over a calendar-month tree, and a coverage watermark that never leaves the 1st"
+      },
+      {
+        "path": ".pm/w4/blocked/m179/README.md",
+        "title": "# w4 · m179 — Revoke deleted Postgres logins even when objects reference the role"
+      },
+      {
+        "path": ".pm/w4/blocked/m184/README.md",
+        "title": "# w4 · m184 — Say \"applying\" while the carrying deploy runs, not \"deploy to apply\""
+      },
+      {
+        "path": ".pm/w4/blocked/m170/README.md",
+        "title": "# w4 · m170 — Refuse reserved Postgres identifiers so a database name or user can't break or wedge a database"
+      },
+      {
+        "path": ".pm/w4/blocked/m177/README.md",
+        "title": "# w4 · m177 — Report container startup failures as startup failures"
+      },
+      {
+        "path": ".pm/w4/blocked/m183/README.md",
+        "title": "# w4 · m183 — Make SSH remedies truthful and usable"
+      },
+      {
+        "path": ".pm/w4/blocked/m182/README.md",
+        "title": "# w4 · m182 — Keep configured port changes available"
+      },
+      {
+        "path": ".pm/w4/blocked/m176/README.md",
+        "title": "# w4 · m176 — Protected environments: a deploy with `imageUrl`/`commitId` or a rollback swaps the running code without the \"repoint\" confirmation"
+      },
+      {
+        "path": ".pm/w4/blocked/m171/README.md",
+        "title": "# w4 · m171 — A deploy cut off by a user suspend closes canceled, not as a false health-gate failure"
+      },
+      {
+        "path": ".pm/w4/blocked/m200/README.md",
+        "title": "# w4 · m200 — Preserve logical records in mixed stdout/stderr pod logs"
+      },
+      {
+        "path": ".pm/w4/blocked/m207/README.md",
+        "title": "# w4 · m207 — Make card-radio pickers work with the keyboard"
+      },
+      {
+        "path": ".pm/w4/blocked/m209/README.md",
+        "title": "# w4 · m209 — Keep metrics geometry stable and labels readable"
+      },
+      {
+        "path": ".pm/w4/blocked/m208/README.md",
+        "title": "# w4 · m208 — Datastore plan previews match their ready cards"
+      },
+      {
+        "path": ".pm/w4/blocked/m206/README.md",
+        "title": "# w4 · m206 — Make environment-group creation and moves recoverable"
+      },
+      {
+        "path": ".pm/w4/blocked/m218/README.md",
+        "title": "# w4 · m218 — Recover plan catalogs in creation and datastore details"
+      },
+      {
+        "path": ".pm/w4/blocked/m220/README.md",
+        "title": "# w4 · m220 — Keep list headers readable and loading previews stable"
+      },
+      {
+        "path": ".pm/w4/blocked/m216/README.md",
+        "title": "# w4 · m216 — Keep deploy log search on the established literal contract"
+      },
+      {
+        "path": ".pm/w4/blocked/m211/README.md",
+        "title": "# w4 · m211 — Keep batched hosting changes inside one response budget"
+      },
+      {
+        "path": ".pm/w4/blocked/m210/README.md",
+        "title": "# w4 · m210 — Keep capped cron history chronological"
+      },
+      {
+        "path": ".pm/w4/blocked/m166/README.md",
+        "title": "# w4 · m166 — Loop2: Docker Command for image-source services"
+      },
+      {
+        "path": ".pm/w4/blocked/m159/README.md",
+        "title": "# w4 · m159 — Keep confirmations open through permission refresh"
+      },
+      {
+        "path": ".pm/w4/blocked/m161/README.md",
+        "title": "# w4 · m161 — Bind environment-group revisions to editing drafts"
+      },
+      {
+        "path": ".pm/w4/blocked/m157/README.md",
+        "title": "# w4 · m157 — Preserve typed Postgres query values"
+      },
+      {
+        "path": ".pm/w4/blocked/m168/README.md",
+        "title": "# w4 · m168 — Loop6: bound env/secret-file key length so a long name can't wedge a service's environment"
+      },
+      {
+        "path": ".pm/w4/blocked/m156/README.md",
+        "title": "# w4 · m156 — Report honest start times for successful deploys"
+      },
+      {
+        "path": ".pm/w4/blocked/m169/README.md",
+        "title": "# w4 · m169 — Blueprint by-id verbs resolve the Blueprint's own workspace"
+      },
+      {
+        "path": ".pm/w4/blocked/m160/README.md",
+        "title": "# w4 · m160 — Revalidate static files across deployments"
+      },
+      {
+        "path": ".pm/w4/blocked/m167/README.md",
+        "title": "# w4 · m167 — Loop5: redact secrets from Postgres Insights query text"
+      },
+      {
+        "path": ".pm/w4/blocked/m158/README.md",
+        "title": "# w4 · m158 — Preserve exact SQL numbers in MCP responses"
+      },
+      {
+        "path": ".pm/w4/blocked/m174/README.md",
+        "title": "# w4 · m174 — Fast-exiting App containers intermittently lose stderr lines from their logs"
+      },
+      {
+        "path": ".pm/w4/blocked/m180/README.md",
+        "title": "# w4 · m180 — Save and deploy reuses the serving artifact"
+      },
+      {
+        "path": ".pm/w4/blocked/m173/README.md",
+        "title": "# w4 · m173 — `instance_seconds` meters how many container series appeared in an hour, not how long instances ran"
+      },
+      {
+        "path": ".pm/w4/blocked/m116/README.md",
+        "title": "# w4 · m116 — CLI hunt sweep 1: psql trust, KV publish, one-off jobs, resume path"
+      },
+      {
+        "path": ".pm/w4/blocked/m172/README.md",
+        "title": "# w4 · m172 — By-id REST verbs resolve the resource's own workspace, not the caller's default"
+      },
+      {
+        "path": ".pm/w4/blocked/m181/README.md",
+        "title": "# w4 · m181 — Keep pre-deploy jobs out of serving endpoints"
+      },
+      {
+        "path": ".pm/w4/blocked/m175/README.md",
+        "title": "# w4 · m175 — Include newest request buckets and clip them to the selected window"
+      },
+      {
+        "path": ".pm/w4/blocked/m204/README.md",
+        "title": "# w4 · m204 — Keep service Logs filters aligned with navigation"
+      },
+      {
+        "path": ".pm/w4/blocked/m203/README.md",
+        "title": "# w4 · m203 — Anchor a newly selected relative range at the current time"
+      },
+      {
+        "path": ".pm/w4/blocked/m202/README.md",
+        "title": "# w4 · m202 — Honor image commands after switching from native Git"
+      },
+      {
+        "path": ".pm/w4/blocked/m205/README.md",
+        "title": "# w4 · m205 — Keep overlapping file uploads unique"
+      },
+      {
+        "path": ".pm/w11/blocked/m8/README.md",
+        "title": "# w11 · m8 — Tier-2 mobile quick actions"
+      },
+      {
+        "path": ".pm/w11/blocked/m6/README.md",
+        "title": "# w11 · m6 — Phase-1 agent mission control"
+      },
+      {
+        "path": ".pm/w11/blocked/m7/README.md",
+        "title": "# w11 · m7 — Live agent attach and needs-decision steering"
+      },
+      {
+        "path": ".pm/w11/blocked/m5/README.md",
+        "title": "# w11 · m5 — Push channel + notification hygiene"
+      }
+    ],
+    "last40ProductCommits": [
+      "c685245f5 chore(deploy): pin platform images to 94e8cea37f41 [skip ci]",
+      "94e8cea37 fix(dashboard): the Postgres Disk metric header keeps its title whole and its height steady at phone width (w1/133)",
+      "e7422581e chore(deploy): pin platform images to 8f80d74efaff [skip ci]",
+      "8f80d74ef fix(operator): a canceled first release stops its rollout instead of restarting (w1/132)",
+      "ba000a2bb feat(deploys): auto-deploy after CI checks pass — autoDeployTrigger checksPass (w1/m181)",
+      "fa9d44b85 chore(deploy): pin platform images to b3dbca6013a3 [skip ci]",
+      "3d73a5515 feat(metrics): serve datastore CPU and memory on Render's metric paths (w1/m180)",
+      "b9e12f689 fix(operator): native Ruby builds refuse stale Gemfile.locks like Render (w8/117)",
+      "b3dbca601 fix(operator): a failed first release stops at zero instead of restarting until deleted (w1/m179)",
+      "4d0b19325 fix(operator): native Python trusts the ingress's forwarded scheme by default (w8/116)",
+      "2cd790a14 docs(api): idle-timeout field says omission preserves and both WebSocket directions count (w8/115)",
+      "f3859bc5e fix(operator): native Ruby builds and runs Rails in production by default (w8/114)",
+      "d01786592 fix(dashboard): keep the Workspace slug and datastore log search uneditable until hydrated (w4/m219)",
+      "9da0933ac fix(ci): extract buildctl recipe args so BuildJob passes gocyclo",
+      "24e10c7f8 fix(dashboard): keep log and deploy-history searches uneditable until hydrated (w4/m219)",
+      "5123a1dc6 fix(operator): clone pinned Git submodules before builds and direct publish (w8/m89)",
+      "8e37a79f3 feat(build): Dockerfile builds receive service env as build args and secret files as build secrets (w1/m178)",
+      "d8b897000 chore(deploy): pin platform images to af6a6310e1c8 [skip ci]",
+      "e6d5c09d5 test(operator): preallocate the native-init layer digests (w8/m88)",
+      "af4f7fefb fix(operator): native Node apps drain on SIGTERM under npm start (w8/m88)",
+      "85e1144a9 chore(deploy): pin platform images to 5f41ff9326ef [skip ci]",
+      "af6a6310e fix(dashboard): keep the webhook list search uneditable until hydrated (w4/m219)",
+      "2d0766a06 fix(dashboard): expose the active project resource-type filter to assistive technology (w4/333)",
+      "c1c40bebb fix(dashboard): require a Publish Directory before a Static Site can deploy (w4/332)",
+      "bbe46c69a fix(dashboard): keep list headers readable and loading previews in their ready shape (w4/m220)",
+      "66b041df3 fix(dashboard): keep create forms and group search uneditable until hydrated (w4/m219)",
+      "5f41ff932 fix(dashboard): explain and retry a failed plan catalog in place (w4/m218)",
+      "925cc2010 chore(deploy): pin platform images to f05787b14e3c [skip ci]",
+      "4052136f3 chore(deploy): pin platform images to 37944bca41e2 [skip ci]",
+      "f05787b14 fix(dashboard): keep a Blueprint's Public Git branch across source tabs (w4/331)",
+      "8769f199c fix(dashboard): preview Key Value plan cards while the catalog loads (w4/330)",
+      "e09c97706 fix(dashboard): preview the service plan grid while its catalog loads (w4/329)",
+      "37944bca4 fix(dashboard): keep distinct log records that share a millisecond (w4/m217)",
+      "8cda59c0d chore(deploy): pin platform images to d865dc8dde6c [skip ci]",
+      "5b1f18698 chore(deploy): pin platform images to cf91746da334 [skip ci]",
+      "d865dc8dd fix(dashboard): keep a precise custom time range exact when editing it (w4/328)",
+      "b5a47b661 fix(dashboard): render a log overwrite one cell per code point (w4/327)",
+      "be55a1609 fix(envgroups): keep the file-reveal projection out of the verb sweeps (w4/326)",
+      "a3a7f4745 fix(envgroups): a revealed empty group file reads content \"\" (w4/326)",
+      "2c77f38b3 fix(dashboard): publish a post-write list after moving a Postgres database (w4/325)"
+    ],
+    "precedent": ".pm/w4/done/103.md",
+    "precedentSha256": "901b5350000b71c1ec80c6a76cbc0b79384da84464591b0a7bf83339af5c2027"
+  },
+  "checks": {
+    "native_first_fixture_free": true,
+    "native_cancel_fixture_free": true,
+    "first_create_dialog_warns_nothing_live": true,
+    "go_back_zero_cancel_dispatches": true,
+    "fresh_mobile_retry_false_promise": true,
+    "fresh_desktop_retry_false_promise": true,
+    "complete_three_attempt_history": true,
+    "history_none_live": true,
+    "empty_serving_revision": true,
+    "two_prior_canceled_attempts": true,
+    "CancelFirstCommitted_native_cancel_succeeds": true,
+    "CancelSecondCommitted_native_cancel_succeeds": true,
+    "CancelThirdCommitted_native_cancel_succeeds": true,
+    "ServedControlCanceled_native_cancel_succeeds": true,
+    "CancelFirstState_canceled_empty_revision": true,
+    "CancelFirstState_instances_empty": true,
+    "CancelFirstState_public503": true,
+    "CancelSecondState_canceled_empty_revision": true,
+    "CancelSecondState_instances_empty": true,
+    "CancelSecondState_public503": true,
+    "desktop_third_cancel_public503": true,
+    "second_trigger_one_native_receipt": true,
+    "cancel_fixture_recovers_live_public": true,
+    "served_control_has_live_history": true,
+    "served_control_same_body_is_correct": true,
+    "served_control_retains_startup_marker": true,
+    "served_control_eventual_running": true,
+    "served_control_one_prior_instance": true,
+    "deadline_terminal_failed_retains_exit42": true,
+    "deadline_ui_failed": true,
+    "DeadlineStoppedReadback_failed_no_revision": true,
+    "DeadlineStoppedReadback_no_instances": true,
+    "DeadlineStoppedReadback_public503_no_wake": true,
+    "DeadlineStoppedAgain_failed_no_revision": true,
+    "DeadlineStoppedAgain_no_instances": true,
+    "DeadlineStoppedAgain_public503_no_wake": true,
+    "first_fixture_recovers_live_public": true,
+    "old_failure_survives_new_live": true,
+    "qa-a893-cancel-after-cancel-runtime.json_zero_desired": true,
+    "qa-a893-cancel-after-cancel-runtime.json_zero_pods": true,
+    "qa-a893-cancel-second-after-cancel-runtime.json_zero_desired": true,
+    "qa-a893-cancel-second-after-cancel-runtime.json_zero_pods": true,
+    "qa-a893-first-stopped-check-runtime.json_zero_desired": true,
+    "qa-a893-first-stopped-check-runtime.json_zero_pods": true,
+    "qa-a893-first-confirmed-stopped-runtime.json_zero_desired": true,
+    "qa-a893-first-confirmed-stopped-runtime.json_zero_pods": true,
+    "all32physical_checks_empty": true,
+    "two_public_urls404": true,
+    "nine_api_paths404": true,
+    "seven_baseline_sets_restored": true,
+    "own_session_revoked": true,
+    "browser401_zero_cookies_one_blank": true,
+    "login_wrapper_exit0": true,
+    "native_console_errors0": true,
+    "three_production_component_mounts": true,
+    "one_generic_copy_consumer": true,
+    "pinned_framework_hash_0": true,
+    "pinned_framework_excerpt_0": true,
+    "pinned_framework_hash_1": true,
+    "pinned_framework_excerpt_1": true,
+    "lock_alert_dialog_1_2_1": true,
+    "local_screenshot_exists": true,
+    "original103_evidence_unchanged": true,
+    "native_network711_accounted": true
+  },
+  "renderReference": {
+    "url": "https://render.com/docs/deploys#canceling-a-deploy",
+    "checkedDate": "2026-10-17",
+    "summary": "The official docs describe canceling an in-progress deploy. Successful-release preservation in its failure section is qualified by “if any”; no authenticated Render confirmation wording was observed."
+  },
+  "limits": [
+    "The live copy failures are the canonical web-service deploy-detail caller at fresh390px and fresh1440px. List/Events, other resource kinds, aliases, Chinese and other browsers were source-traced or untested, not additional live failures.",
+    "The current create-trigger body passes. A live prior-release control preserves its exact public startup marker. This is the old103 resolution's explicitly deferred retry/unknown-context remainder, not a claimed regression of its create branch.",
+    "The first release used the native900s deadline and settled update_failed at16:08:32.238320Z. An initial post-verdict capture at16:09:09 still has one desired pod; zero desired replicas/no pods is observed by16:09:49 and retained at16:10:29 after public503s. Do not claim immediate zero or a full30-minute stopped observation.",
+    "After canceling the third bad attempt, one immediate read still showed Deploying and a terminating instance before the normal operator settle. Its canceled row/public503 and later Canceled acknowledgement are preserved; no instantaneous convergence is claimed.",
+    "An earlier manual-deploy click dispatched no TriggerDeploy and did not reproduce after a fresh load. Its unchanged single-row history was checked before a new user action. No duplicate writer, browser restart or resource recreation was used; no separate permission or silent-click finding is filed.",
+    "Three native DeployActions requests were aborted; one four-read batch and one asset preload have no completion status in the network capture. Request bodies identify them; their causes are not asserted. Other HTTP200 operations were not all body-audited.",
+    "Local node_modules contains older Radix1.1.15 and was excluded from the pinned-version explanation. Actual lock-resolved alert-dialog1.2.1/dialog1.3.1 cached sources were inspected; the production serving SHA/package set is not inferred.",
+    "No product code or tests changed, and no historical implementation suite was rerun for the filing. The observed exit42 and startup wait were intentional QA inputs, not bugs."
+  ]
+}
