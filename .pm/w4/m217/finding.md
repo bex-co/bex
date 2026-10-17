@@ -44,18 +44,18 @@ Reader changes retain current loading/reset behavior. Genuine same-ID replay is 
 
 ## Dedupe and history
 
-Searched9465 board Markdown files across active/blocked/done paths for logLineKey, nanosecond, millisecond, sub-millisecond and repeated-record identity; reviewed the82 actual open/blocked milestone titles, anti-goals, recent40 dashboard/Go commits and targeted key history. No existing open item owns this client collision. Main still contains the millisecond key after sync. Its introduction is **6e35aa9a1**, from [w9/053](../../../w9/done/053.md).
+Searched9465 board Markdown files across active/blocked/done paths for logLineKey, nanosecond, millisecond, sub-millisecond and repeated-record identity; reviewed the82 actual open/blocked milestone titles, anti-goals, recent40 dashboard/Go commits and targeted key history. No existing open item owns this client collision. Main still contains the millisecond key after sync. Its introduction is **6e35aa9a1**, from [w9/053](../../w9/done/053.md).
 
 This is an uncovered data-loss consequence of that earlier approximation, rather than a claim that its observed duplicate replay returned:
 
 - w9/053's same-record/coarser-time replay guarantee remains required. The new evidence proves20 distinct records, not20 copies of one record: their raw stamps and existing IDs differ.
-- [w6/done/m93](../../../w6/done/m93/README.md) explicitly disproved a later phantom-duplicate diagnosis and added the SSE resume bound instead. That causal distinction remains valid. Preserve its history/live no-phantom-copy behavior and resume cursor, not a renewed duplicate-line premise.
-- [w4/done/m192](../../done/m192/README.md) fixes ordering and pause retention. Its scope deliberately left identity unchanged; its full ordering/pause/reader controls remain required. Its existing sub-millisecond sorter does not undo a prior dedupe collision.
+- [w6/done/m93](../../w6/done/m93/README.md) explicitly disproved a later phantom-duplicate diagnosis and added the SSE resume bound instead. That causal distinction remains valid. Preserve its history/live no-phantom-copy behavior and resume cursor, not a renewed duplicate-line premise.
+- [w4/done/m192](../done/m192/README.md) fixes ordering and pause retention. Its scope deliberately left identity unchanged; its full ordering/pause/reader controls remain required. Its existing sub-millisecond sorter does not undo a prior dedupe collision.
 - w4/blocked/180 concerns pre-deploy bucket provenance; w4/m200 concerns stdout/stderr record reconstruction; w4/m174 and w8/m65 concern server-side ingestion. The API already returns all20 a751 records, so none owns this cause.
-- [m216](../m216/README.md) is Unicode case conversion in deploy-local matching; [327](../../done/327.md) is CR overwrite parsing. These plain ASCII messages contain no ANSI/CR and the raw query results are complete.
+- [m216](../blocked/m216/README.md) is Unicode case conversion in deploy-local matching; [327](../done/327.md) is CR overwrite parsing. These plain ASCII messages contain no ANSI/CR and the raw query results are complete.
 - w8/082 concerns the CLI filter editor truncating fractional bounds, not dashboard record identity.
 
-[Render documents a chronological log explorer and individual deploy logs](https://render.com/docs/logging); no authenticated Render same-millisecond replay was performed. Bex's existing stable record IDs and [ADR010](../../../../docs/ADR010-observability.md)'s record/read consistency establish the target. [ECMAScript time values](https://tc39.es/ecma262/multipage/numbers-and-dates.html#sec-time-values-and-time-range) supply the millisecond Date representation; the observed Chromium conversion is recorded directly rather than assumed from display strings.
+[Render documents a chronological log explorer and individual deploy logs](https://render.com/docs/logging); no authenticated Render same-millisecond replay was performed. Bex's existing stable record IDs and [ADR010](../../../docs/ADR010-observability.md)'s record/read consistency establish the target. [ECMAScript time values](https://tc39.es/ecma262/multipage/numbers-and-dates.html#sec-time-values-and-time-range) supply the millisecond Date representation; the observed Chromium conversion is recorded directly rather than assumed from display strings.
 
 **Unverified:** live deploy/build/pre-deploy, request-log, private/worker/cron, Postgres/Key Value identity collisions, actual forced-disconnect replay, paged/saturated history, other browsers, native CLI/MCP, authenticated Render and exact deployed dashboard/backend images. Shared impact is source-traced, not claimed as additional live findings.
 
