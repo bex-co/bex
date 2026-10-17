@@ -1,8 +1,8 @@
 # w4 · m219 — Gate forms and searches until handlers are ready
 
-**Worker:** worker4 **Goal:** eight observed SSR roots accept edits only when handlers can retain them. **Status:** todo — t001–t004, t009 and t010 remain done, including the webhook fix in af6a6310e. New t011–t013 and standing t005–t007 cover only the added log-search and deployment-history scope; deployed-build replay t008 remains owed.
+**Worker:** worker4 **Goal:** nine observed SSR roots accept edits only when handlers can retain them. **Status:** todo — t001–t004, t009 and t010 remain done, including the webhook fix in af6a6310e. New t011–t014 and standing t005–t007 cover only the added log-search, deployment-history and Workspace slug scope; deployed-build replay t008 remains owed.
 
-**Estimate:** 4h50 (13 tasks). Filing only; no product fix shipped by the hunt.
+**Estimate:** 5h10 (14 tasks). Filing only; no product fix shipped by the hunt.
 
 ## Tasks (in order)
 
@@ -17,14 +17,15 @@
 | t011 | Gate service log search through startup | 20m | — |
 | t012 | Gate deploy log search through startup | 20m | — |
 | t013 | Gate deployment-history search through startup | 20m | — |
-| t005 | Render parity across forms and searches | 20m | t004, t010, t011, t012, t013 |
+| t014 | Gate workspace slug through startup | 20m | — |
+| t005 | Render parity across forms and searches | 20m | t004, t010, t011, t012, t013, t014 |
 | t006 | Simplify the changed code | 10m | t005 |
 | t007 | Test SSR edit readiness and retained drafts | 45m | t005 |
 | t008 | Replay live evidence and close out | 20m | t006, t007 |
 
 ## Definition of done
 
-- Preserve [a805's passing webhook control](control-a805.md): on `/webhooks/new` at1440/390px no Name/URL input is exposed before startup, ready native typing persists, and event-catalog Retry retains the draft. This create page stays outside the eight-root readiness fix.
+- Preserve [a805's passing webhook control](control-a805.md): on `/webhooks/new` at1440/390px no Name/URL input is exposed before startup, ready native typing persists, and event-catalog Retry retains the draft. This create page stays outside the nine-root readiness fix.
 
 - Fresh-load `/keyvalue/new` at 1440 and 390px while holding the real fetched startup script response as in [a797 evidence](../evidence/m219-a797-input-startup.json). Name is visibly unavailable for editing until its handlers are ready. Release the response unchanged, type a valid name, and observe the exact text retained through startup queries settling. Current behavior accepts trusted typing before handlers exist, then clears it.
 - Repeat at `/services/new?type=web_service`: Name follows the same readiness rule at both widths. In the desktop Port replay, the pre-ready field cannot accept a change; after readiness, enter valid `8197` and observe it remain `8197` through normal renders, rather than restoring `3000`.
@@ -34,6 +35,7 @@
 - Repeat [a837](finding-a837.md) with a populated /webhooks list at1440/390px: Search webhooks remains visible but natively uneditable before handlers. Release the fetched startup response unchanged; exact ready typing remains retained through normal updates, rather than clearing on the same node. Preserve a805’s separate webhook-create control.
 - Repeat [a838](finding-a838.md) at the owned web /services/{id}/logs and /services/{id}/deploys/{deployId} paths at1440/390px. Each respective search input stays visible but natively uneditable before handlers. After unchanged script release, exact native typing remains retained through normal updates. Shared aliases and non-web callers are audit work; only the web paths were live-driven.
 - Repeat [a841](finding-a841.md) at populated /services/{id}/deploys at1440/390px: Search loaded deploys and commits stays visible but uneditable before handlers; after release, exact ready text, q and honest loaded results agree. Preserve284’s Back-state fix; static/other types are source-audit work.
+- Repeat [a846](finding-a846.md) at `/new/workspace` with no attempt and Hobby selected at1440/390px: Workspace slug stays visible but natively uneditable before handlers. After unchanged script release, exact native typing persists, including the intended lowercase conversion. Submit no create, prepare, finalize, plan or payment action. Other plans/resume states remain audit work.
 - Ready forms retain their present labels, defaults, geometry, validation, source selection, plan/loading/error states and submission predicates. Entering text after handlers attach keeps that text, as the passing controls already demonstrate. Verify pending and ready geometry side by side at desktop and narrow mobile widths.
 - Startup probes submit no create/deploy action. Populated webhook and log controls may need separately created owned disabled endpoints and Free service fixtures; delete them afterward. Final fixture inventory matches baseline and this run's own session is revoked. Preserve the eight original a797 captures, four a800 sibling cases and three a815 search replays, and record fixed-build replays before moving this milestone to `done/`.
 
@@ -41,15 +43,16 @@
 
 - **Source:** ordinary functional `$qa-find-bugs w4`, pass a797, 2026-10-16 UTC; [researched finding](finding.md), [durable replay factories and complete DOM receipts](../evidence/m219-a797-input-startup.json). Source HEAD `00f2afcfb44a3626ef4c2117931d82affaf2f186`.
 - **Goal linkage:** ADR008's usable Render alternative; ADR004 service deployment, ADR021 managed Key Value, ADR049 Blueprint configuration and ADR018 dashboard parity. Customers must be able to enter configuration without silent loss.
-- **Expected outcome:** the three SSR creation forms, Environment Groups and populated Webhooks list searches, and service/deploy log searches plus deployment-history search expose editable native fields only after event handlers can retain input, then behave normally during client-side navigation and subsequent updates.
-- **Why now:** eight fresh-page replays reproduce startup draft loss, including a nonempty default being silently restored. A separate fast-entry disappearance led to this probe but had no recorded cause. This filing relies on the controlled startup replays, not that earlier untraced occurrence.
-- **Scope:** a local readiness gate at the eight observed roots (three creation forms, Environment Groups and populated Webhooks list searches, service log search, deploy log search and deployment-history search), reusing `useIsHydrated`; preserve the shared hook and global Input behavior. All five service types have observed Name failures at the a797/a800 widths; aliases, other source tabs/widths, additional fields and other dialog-based creates remain the explicit t004 audit. Preserve the passing Postgres dialog control.
+- **Expected outcome:** the four SSR creation forms (including Workspace slug), Environment Groups and populated Webhooks list searches, and service/deploy log searches plus deployment-history search expose editable native fields only after event handlers can retain input, then behave normally during client-side navigation and subsequent updates.
+- **Why now:** nine independently observed roots reproduce startup draft loss, including a nonempty default being silently restored. A separate fast-entry disappearance led to this probe but had no recorded cause. This filing relies on the controlled startup replays, not that earlier untraced occurrence.
+- **Scope:** a local readiness gate at the nine observed roots (four creation forms, Environment Groups and populated Webhooks list searches, service log search, deploy log search and deployment-history search), reusing `useIsHydrated`; preserve the shared hook and global Input behavior. All five service types have observed Name failures at the a797/a800 widths; aliases, other source tabs/widths, additional fields and other dialog-based creates remain the explicit t004 audit. Preserve the passing Postgres dialog control.
 - **Follow-up a800:** [four more service types and the Postgres dialog control](finding-a800.md), with [seven durable receipts](../evidence/m219-a800-siblings.json). All five service types now have observed Name failures at their listed widths. Aliases, other widths/source tabs, additional fields and other dialogs remain the bounded t004 audit. The Postgres dialog was observed to avoid pre-handler editing and should retain that behavior.
 - **Passing control a805:** the [webhook create page](control-a805.md) exposes Name/URL only after startup and preserves drafts through catalog retry at both widths. Preserve that existing behavior; this is not another affected form root. [Durable evidence](../evidence/m219-a805-webhook-controls.json).
 - **Follow-up a815:** [Environment Groups search startup loss](finding-a815.md), with [three failing replays, qualified Project comparison, complete native-field census and cleanup](../evidence/m219-a815-search-startup.json). Add this fourth local root; direct-field census is 103 Input + 8 Textarea + 12 native input + 2 native textarea sites (125 syntactic sites; wrappers need expansion). Nine tasks total3h30. This search loss is minor; the creation-draft loss remains major.
 - **Follow-up a837:** [populated Webhooks search](finding-a837.md), with [three native startup probes and full safe fixture/cleanup receipts](../evidence/m219-a837-webhook-search-startup.json). Add the fifth local root in t010; keep t001–t004/t009 done and reopen standing t005–t007 only for added scope. Ten tasks total3h50.
 - **Follow-up a838:** [two separately traced log searches](finding-a838.md), with [six full startup receipts and cleanup](../evidence/m219-a838-log-search-startup.json). Add t011/t012 before standing closing tasks; twelve tasks total4h30. Preserve m204 URL state, m216 matching and independent datastore viewer behavior.
 - **Follow-up a841:** [deployment-history search](finding-a841.md), with [three failures, ready filter result, qualified project/member controls and cleanup](../evidence/m219-a841-history-search-startup.json). Add t013 as the eighth root. Thirteen tasks total4h50; preserve284 and loaded-only matching.
+- **Follow-up a846:** [Workspace slug startup loss](finding-a846.md), with [three failures, ready lowercase control and exact-session cleanup](../evidence/m219-a846-workspace-startup.json). Add t014 as the ninth root; fourteen tasks total5h10. Preserve the prepared-attempt lock, Billing Email, PlanPicker and all existing creation/payment predicates. No workspace was created.
 - **Render parity:** included because the dashboard creation/search surface changes. Render's public creation documentation describes entering configuration; its authenticated pre-hydration behavior was not tested. Preserve REST/GraphQL/MCP input and validation contracts.
 - **Dedupe:** all 85 actual open/blocked milestone titles, open/done text searches and DO_NOT_DO reviewed; no matching item. m218 covers failed plan queries after startup, while this loss occurs before handlers with unchanged successful responses. Recent 40 product commits and targeted hydration/name history show no ready-to-deploy fix.
 
@@ -70,3 +73,7 @@ The first four-root implementation and its earlier checks remain complete on mai
 ## a838 scope extension after af6a6310e
 
 The fifth-root webhook implementation and its reopened checks are complete on main. This preserves their implementation record and done/t010. Only the two independently observed log inputs in t011/t012 require new code; standing t005–t007 are reopened for those additions. The milestone is active again for that work. Original deployed-build acceptance remains open.
+
+## a846 scope extension
+
+The separately reproduced Workspace slug adds one local input gate in t014. Preserve all six completed implementation/audit tasks and their historical checks. Standing t005–t007 cover only the remaining a838/a841/a846 additions; t008 still requires the original deployed-build matrix. This filing changes no product or billing contract.
