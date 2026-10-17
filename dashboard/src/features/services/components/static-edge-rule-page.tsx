@@ -8,6 +8,7 @@ import {
 } from "@/common/components/ui/card";
 import { StaticEdgeRulesEditorSkeleton } from "@/common/components/route-skeletons";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { HydrationFieldset } from "@/common/components/hydration-fieldset";
 import { useServer } from "@/features/services/hooks/use-server";
 import {
   useStaticSiteMutations,
@@ -63,7 +64,11 @@ export function StaticEdgeRulePage({
         {!service && loading ? (
           <StaticEdgeRulesEditorSkeleton />
         ) : service ? (
-          renderEditor(service, mutations)
+          // Uneditable until handlers attach: a rule typed into the server
+          // HTML is wiped by hydration (w4/m219).
+          <HydrationFieldset>
+            {renderEditor(service, mutations)}
+          </HydrationFieldset>
         ) : null}
       </CardContent>
     </Card>
