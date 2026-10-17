@@ -100,7 +100,8 @@ const nativeBuildRun = "\nRUN --mount=type=secret,id=render-env"
 
 // Elixir builds and runs with MIX_ENV=prod (w8/112), Python with Render's
 // Gunicorn flags (w8/113) and forwarding trust (w8/116), and Ruby with
-// RAILS_ENV=production (w8/114): each default precedes the build RUN once on
+// RAILS_ENV=production (w8/114) and Render's Bundler settings (w8/117): each
+// default precedes the build RUN once on
 // every reviewed line and for an explicit static build of that runtime, and
 // no other runtime gets it.
 func TestNativeBuildDefaultsPrecedeTheBuild(t *testing.T) {
@@ -109,6 +110,9 @@ func TestNativeBuildDefaultsPrecedeTheBuild(t *testing.T) {
 		{nativePythonRuntime, "PYTHON_VERSION", "", `ENV GUNICORN_CMD_ARGS="--preload --access-logfile -"` + "\n", "GUNICORN_CMD_ARGS"},
 		{nativePythonRuntime, "PYTHON_VERSION", "", `ENV FORWARDED_ALLOW_IPS="*"` + "\n", "FORWARDED_ALLOW_IPS"},
 		{nativeRubyRuntime, "", ".ruby-version", "ENV RAILS_ENV=production\n", "RAILS_ENV"},
+		{nativeRubyRuntime, "", ".ruby-version",
+			"ENV BUNDLE_DEPLOYMENT=true BUNDLE_PATH=/opt/render/project/.gems BUNDLE_BIN=/opt/render/project/.gems/bin\n", "BUNDLE_DEPLOYMENT"},
+		{nativeRubyRuntime, "", ".ruby-version", "ENV PATH=/opt/render/project/.gems/bin:$PATH\n", "/opt/render/project/.gems"},
 	} {
 		precedesBuild := func(df string) bool {
 			at := strings.Index(df, "\n"+tc.want)
@@ -321,7 +325,10 @@ end
 	}
 	o := nativeOptions()
 	o.Runtime, o.BuildEnv = nativeRubyRuntime, nil
-	o.BuildCommand = `bundle install --quiet && ruby -e 'print ENV.fetch("RAILS_ENV", "unset")' > build.txt`
+	// Locked at build time only because this fixture commits no
+	// Gemfile.lock; deployment mode (w8/117) installs from it.
+	o.BuildCommand = `BUNDLE_DEPLOYMENT=false bundle lock >/dev/null && bundle install --quiet && ` +
+		`ruby -e 'print ENV.fetch("RAILS_ENV", "unset")' > build.txt`
 	o.StartCommand = "bundle exec ruby bin/rails server"
 	tag := buildResolvedImage(t, o, nil, app, fmt.Sprintf("bex-native-rails-env-it:%d", os.Getpid()))
 	for i, tc := range []struct {
@@ -384,4 +391,70 @@ func containerIP(t *testing.T, name string) string {
 		t.Fatalf("container address: %v %q", err, out)
 	}
 	return ip
+}
+
+// TestNativeRubyImageBundlerDeployment is w8/117's execution gate on real
+// Bundler: by default a lock that matches its Gemfile installs outside the
+// source tree and serves the exact locked gem — through `bundle exec` and as
+// a bare executable — without being rewritten, while a stale lock, or none,
+// fails the build instead of being re-resolved. A service's own Bundler
+// settings still win: BUNDLE_DEPLOYMENT=false or BUNDLE_FROZEN=false accept
+// a stale lock, and a BUNDLE_PATH of its own is where gems go (binstubs
+// still reach them). Opt-in: needs Docker and network for RubyGems.
+func TestNativeRubyImageBundlerDeployment(t *testing.T) {
+	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
+		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the generated image")
+	}
+	lock := func(rake string) string {
+		return "GEM\n  remote: https://rubygems.org/\n  specs:\n    rake (" + rake + ")\n\nPLATFORMS\n  ruby\n\n" +
+			"DEPENDENCIES\n  rake (= " + rake + ")\n\nBUNDLED WITH\n   2.6.9\n"
+	}
+	// Ruby 3.4's own rake is 13.2.1: a bare `rake` reporting 13.3.1 is the
+	// bundle's binstub, not the image's gem.
+	report := `bundle exec ruby -e 'require "rake"; print Rake::VERSION'`
+	observe := report + `; printf ' bare %s' "$(rake --version | awk '{print $NF}')"` +
+		`; [ -d vendor ] && printf ' vendor'; [ -d ` + nativeRubyGems + `/ruby ] && printf ' gems'; true`
+	for i, tc := range []struct {
+		name, lock, fails, want string
+		buildEnv                map[string]string
+		runEnv                  []string // a service's value reaches both phases
+	}{
+		{name: "matched lock", lock: lock("13.3.1"), want: "13.3.1 bare 13.3.1 gems lock unchanged"},
+		{name: "stale lock", lock: lock("13.2.1"), fails: "frozen"},
+		{name: "no lock", fails: "requires a lockfile"},
+		{name: "stale lock with deployment off", lock: lock("13.2.1"), want: "13.3.1 bare 13.3.1 gems lock rewritten",
+			buildEnv: map[string]string{"BUNDLE_DEPLOYMENT": "false"}, runEnv: []string{"-e", "BUNDLE_DEPLOYMENT=false"}},
+		{name: "stale lock with frozen off", lock: lock("13.2.1"), want: "13.3.1 bare 13.3.1 gems lock rewritten",
+			buildEnv: map[string]string{"BUNDLE_FROZEN": "false"}, runEnv: []string{"-e", "BUNDLE_FROZEN=false"}},
+		{name: "own BUNDLE_PATH", lock: lock("13.3.1"), want: "13.3.1 bare 13.3.1 vendor lock unchanged",
+			buildEnv: map[string]string{"BUNDLE_PATH": "vendor/bundle"}, runEnv: []string{"-e", "BUNDLE_PATH=vendor/bundle"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			o := nativeOptions()
+			o.Runtime, o.BuildEnv = nativeRubyRuntime, nil
+			o.NativeEnvRevision = fmt.Sprintf("bundler-%d-%d", i, os.Getpid())
+			o.BuildCommand = `cp Gemfile.lock committed.lock 2>/dev/null || true; bundle install && ` + report + ` > build.txt`
+			o.StartCommand = `cmp -s Gemfile.lock committed.lock && same=unchanged || same=rewritten; ` +
+				`echo "build $(cat build.txt) runtime $(` + observe + `) lock $same"`
+			src := map[string]string{"Gemfile": "source \"https://rubygems.org\"\ngem \"rake\", \"13.3.1\"\n", ".ruby-version": "3.4\n"}
+			if tc.lock != "" {
+				src["Gemfile.lock"] = tc.lock
+			}
+			tag := fmt.Sprintf("bex-native-bundler-it-%d:%d", i, os.Getpid())
+			out, err := dockerBuildResolved(t, o, tc.buildEnv, src, tag)
+			if tc.fails != "" {
+				if err == nil || !strings.Contains(string(out), tc.fails) {
+					t.Fatalf("build = %v, want a failure mentioning %q:\n%s", err, tc.fails, out)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("build: %v\n%s", err, out)
+			}
+			run, err := exec.Command("docker", append(append([]string{"run", "--rm", "--network", "none"}, tc.runEnv...), tag)...).CombinedOutput()
+			if want := "build 13.3.1 runtime " + tc.want; err != nil || !strings.Contains(string(run), want) {
+				t.Fatalf("run = %v\n%s; want %q", err, run, want)
+			}
+		})
+	}
 }
