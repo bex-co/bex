@@ -180,6 +180,11 @@ const ConditionBuild = "Build"
 // A static site's rollout is its publication (w4/m155): a terminal publish
 // failure over a served revision is recorded here with Reason PublishFailed,
 // and a later successful publish of the same generation removes it.
+//
+// A first release that never served records its failed rollout here too
+// (w1/m179), with the same Reason and Message as its Ready condition. The
+// operator then stops that release at zero replicas instead of restarting it,
+// until a newer release moves the release generation past the record.
 const ConditionRollout = "Rollout"
 
 // Build-failure condition reasons. These are part of the CR contract, not an

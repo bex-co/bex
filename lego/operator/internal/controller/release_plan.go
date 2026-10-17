@@ -127,6 +127,9 @@ type releaseFacts struct {
 	// restorable is false once an executor found no served template to restore
 	// (restoreServedTemplate); the pass then rolls.
 	restorable bool
+	// firstReleaseFailed: nothing has served and the current release's rollout
+	// settled failed (failedFirstRelease).
+	firstReleaseFailed bool
 }
 
 // releasePlan is planRelease's decision for one pass.
@@ -136,6 +139,13 @@ type releasePlan struct {
 	// It is decided here once; every executor of the pass reads it.
 	parked          bool
 	autoHibernating bool
+	// stopped: the current release never served and its rollout settled failed,
+	// so the workload runs at zero, stays Failed and is never marked Running
+	// (w1/m179). Render cancels a deploy whose instances never pass their health
+	// check; with no earlier release there is nothing to keep serving. It ends
+	// when a newer release moves the release generation past the verdict, or
+	// under a suspend, which parks as usual.
+	stopped bool
 	// facts and now are the plan's inputs, kept for an executor that learns a
 	// fact mid-pass and plans the next act.
 	facts releaseFacts
@@ -144,10 +154,12 @@ type releasePlan struct {
 
 // planRelease decides a pass from its facts alone.
 func planRelease(f releaseFacts, now time.Time) releasePlan {
-	autoHibernating := f.idle && !f.suspended && !f.awaitingVerdict(now)
+	stopped := f.firstReleaseFailed && !f.suspended
+	autoHibernating := f.idle && !f.suspended && !stopped && !f.awaitingVerdict(now)
 	p := releasePlan{
 		parked:          f.suspended || autoHibernating,
 		autoHibernating: autoHibernating,
+		stopped:         stopped,
 		facts:           f,
 		now:             now,
 	}
@@ -157,9 +169,10 @@ func planRelease(f releaseFacts, now time.Time) releasePlan {
 
 // deploying reports whether the pass may stamp Deploying. Never while parked:
 // the service is going to sleep, and the write would flash Deploying before
-// Hibernated (w6/m147).
+// Hibernated (w6/m147). Never while stopped: nothing rolls, and the failure
+// stands (w1/m179).
 func (p releasePlan) deploying() bool {
-	return !p.parked
+	return !p.parked && !p.stopped
 }
 
 // nextAct is the act for the plan's facts, in rollout order: the wake, then the
@@ -308,6 +321,8 @@ func (obs releaseObservation) facts(app *appv1alpha1.App) releaseFacts {
 		preDeployPassed: preDeployPassed(app),
 		preDeployFailed: preDeployFailedFor(app, gen),
 		restorable:      true,
+
+		firstReleaseFailed: failedFirstRelease(app),
 	}
 	if dep := obs.dep; dep != nil {
 		switch dep.Spec.Template.Labels[labelRevision] {
@@ -356,6 +371,18 @@ func currentRolloutVerdict(app *appv1alpha1.App, gen int64) rolloutVerdict {
 		return verdictRecorded
 	}
 	return verdictNone
+}
+
+// failedFirstRelease reports a current release that nothing served before and
+// whose rollout passed its deadline: settleFailedRollout recorded
+// ConditionRollout for this release generation (stopsFirstRelease, w1/m179).
+// A newer release moves the generation past it.
+func failedFirstRelease(app *appv1alpha1.App) bool {
+	if releaseHasServed(app) {
+		return false
+	}
+	c := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout)
+	return c != nil && c.Status == metav1.ConditionFalse && c.ObservedGeneration == releaseGeneration(app)
 }
 
 // newerReleaseUnserved reports a current release newer than the one that served.
