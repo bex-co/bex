@@ -4209,9 +4209,9 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.eventsCancelConfirmBody": {
     message:
-      "正在进行的部署将被停止，最近成功的部署仍保持运行；已保存的更改会继续保留，并在下次部署时发布。",
+      "正在进行的部署将被停止。如果之前有部署成功，它将继续运行；否则将没有任何版本在提供服务。已保存的更改会继续保留，并在下次部署时发布。",
     description:
-      "Cancel deploy confirm dialog body — a previous deploy is still serving",
+      "Cancel deploy confirm dialog body when it is unknown whether an earlier deploy is live, so both outcomes are stated (w4/334)",
   },
   "services.eventsCancelConfirmBodyFirstDeploy": {
     message:

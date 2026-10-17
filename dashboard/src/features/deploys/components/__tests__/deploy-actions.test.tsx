@@ -410,10 +410,9 @@ describe("DeployActions", () => {
     expect(dialog.textContent ?? "").not.toContain("built from");
   });
 
-  // The cancel dialog is untouched by the commit threading. Its wording was
-  // amended deliberately by w1/m152 t003 — the promise that "the last successful
-  // deploy remains live" is now true, and it says what happens to saved changes —
-  // but it still names no commit.
+  // The cancel dialog is untouched by the commit threading: it says what
+  // happens to the live version and to saved changes (w1/m152 t003, w4/334)
+  // but names no commit.
   it("leaves the cancel confirm copy free of the commit threading", async () => {
     const user = userEvent.setup();
     renderActions("update_in_progress", {
@@ -426,7 +425,7 @@ describe("DeployActions", () => {
     );
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog).toHaveTextContent(
-      "The in-progress deploy will be stopped. The last successful deploy remains live, and any changes you saved stay saved and ship with the next deploy.",
+      "The in-progress deploy will be stopped. If an earlier deploy succeeded, it stays live; otherwise nothing will be serving. Any changes you saved stay saved and ship with the next deploy.",
     );
     expect(dialog.textContent ?? "").not.toContain("039c347");
   });
@@ -456,8 +455,19 @@ describe("DeployActions — the cancel dialog tells the truth about what stays l
     ).not.toBeInTheDocument();
   });
 
-  for (const trigger of ["api", "new_commit", "config_change", "deploy_hook"]) {
-    it(`keeps the remains-live reassurance for a ${trigger} deploy`, async () => {
+  // w4/334 (a893): a manual retry after canceled attempts is not a "create"
+  // deploy, yet nothing has ever served. Without the service's history the
+  // dialog cannot know, so every other trigger — and an unknown one — states
+  // both outcomes instead of promising a live fallback.
+  for (const trigger of [
+    "api",
+    "new_commit",
+    "config_change",
+    "deploy_hook",
+    null,
+    undefined,
+  ]) {
+    it(`states both outcomes for a ${String(trigger)} deploy`, async () => {
       const user = userEvent.setup();
       renderActions("update_in_progress", { trigger });
 
@@ -467,26 +477,12 @@ describe("DeployActions — the cancel dialog tells the truth about what stays l
       const dialog = await screen.findByRole("alertdialog");
 
       expect(
-        within(dialog).getByText(/last successful deploy remains live/i),
+        within(dialog).getByText(
+          /if an earlier deploy succeeded, it stays live; otherwise nothing will be serving/i,
+        ),
       ).toBeInTheDocument();
     });
   }
-
-  // A caller that does not know the trigger must get the pre-existing body,
-  // not the scarier one — the fallback has to be the safe direction.
-  it("falls back to the generic body when the trigger is unknown", async () => {
-    const user = userEvent.setup();
-    renderActions("update_in_progress");
-
-    await user.click(
-      await screen.findByRole("button", { name: /^Cancel deploy / }),
-    );
-    const dialog = await screen.findByRole("alertdialog");
-
-    expect(
-      within(dialog).getByText(/last successful deploy remains live/i),
-    ).toBeInTheDocument();
-  });
 });
 
 // w4/m141: the button enabled an older rollbackable row over the service-wide
