@@ -4311,9 +4311,9 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.eventsCancelConfirmBody": {
     message:
-      "The in-progress deploy will be stopped. The last successful deploy remains live, and any changes you saved stay saved and ship with the next deploy.",
+      "The in-progress deploy will be stopped. If an earlier deploy succeeded, it stays live; otherwise nothing will be serving. Any changes you saved stay saved and ship with the next deploy.",
     description:
-      "Cancel deploy confirm dialog body — a previous deploy is still serving",
+      "Cancel deploy confirm dialog body when it is unknown whether an earlier deploy is live, so both outcomes are stated (w4/334)",
   },
   "services.eventsCancelConfirmBodyFirstDeploy": {
     message:

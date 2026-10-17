@@ -56,10 +56,10 @@ export interface DeployActionsProps {
   /**
    * The selected deploy's trigger (`create`, `api`, `deploy_hook`, …). It is
    * used for exactly one thing: a `create` deploy is the service's FIRST build,
-   * so canceling it leaves nothing serving — and the cancel confirm must say so
-   * instead of promising that "the last successful deploy remains live", which
-   * is false precisely when the user is deciding whether cancel strands them
-   * (w4/103). Absent => the generic body, which is the safe default.
+   * so canceling it leaves nothing serving, and the cancel confirm says so
+   * (w4/103). Any other or absent trigger gets the generic body, which states
+   * both outcomes: a retry after canceled attempts has nothing live either,
+   * and this component cannot see the service's history (w4/334).
    */
   trigger?: string | null;
   onChanged?: () => void;
