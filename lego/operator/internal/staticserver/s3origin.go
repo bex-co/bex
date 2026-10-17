@@ -20,6 +20,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"mime"
+	"unicode/utf8"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -109,11 +111,34 @@ func (o *S3Origin) Get(ctx context.Context, key string) (Object, error) {
 	if err != nil {
 		return Object{}, fmt.Errorf("staticserver: read %q: %w", key, err)
 	}
-	ct := ""
-	if out.ContentType != nil {
-		ct = *out.ContentType
+	ct := aws.ToString(out.ContentType)
+	// An encoded body's bytes are not its text, so they say nothing of its
+	// charset.
+	if aws.ToString(out.ContentEncoding) == "" {
+		ct = utf8PlainText(ct, body)
 	}
 	return Object{Body: body, ContentType: ct}, nil
+}
+
+// utf8PlainText declares UTF-8 on a text/plain type that names no charset when
+// the bytes are valid UTF-8. The publisher's uploader guesses a bare
+// text/plain, which a browser decodes as windows-1252, so UTF-8 text showed as
+// mojibake (w4/335). Judged once per fetch, before the object is cached: an
+// explicit charset, invalid UTF-8, a malformed type and every other type stay
+// as the origin sent them.
+func utf8PlainText(contentType string, body []byte) string {
+	mediaType, params, err := mime.ParseMediaType(contentType)
+	if err != nil || mediaType != "text/plain" {
+		return contentType
+	}
+	if _, declared := params["charset"]; declared || !utf8.Valid(body) {
+		return contentType
+	}
+	params["charset"] = "utf-8"
+	if utf8Type := mime.FormatMediaType(mediaType, params); utf8Type != "" {
+		return utf8Type
+	}
+	return contentType
 }
 
 // isNotFound recognizes a missing-key error across the typed errors and the
