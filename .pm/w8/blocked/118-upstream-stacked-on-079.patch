@@ -1,0 +1,103 @@
+diff --git a/cmd/psql.go b/cmd/psql.go
+index 65b9a51..c3fc918 100644
+--- a/cmd/psql.go
++++ b/cmd/psql.go
+@@ -100,7 +100,7 @@ func init() {
+ 				return fmt.Errorf("postgres ID or name is required in non-interactive mode")
+ 			}
+ 
+-			result, err := views.ExecutePSQLNonInteractive(ctx, &input, cmd.ErrOrStderr())
++			result, err := views.ExecutePSQLNonInteractive(ctx, &input, cmd.InOrStdin(), cmd.ErrOrStderr())
+ 			if err != nil {
+ 				return err
+ 			}
+diff --git a/pkg/tui/views/psql.go b/pkg/tui/views/psql.go
+index 8f7bf54..ac9d333 100644
+--- a/pkg/tui/views/psql.go
++++ b/pkg/tui/views/psql.go
+@@ -43,10 +43,11 @@ type PSQLResult struct {
+ }
+ 
+ // ExecutePSQLNonInteractive runs input.Command and returns the tool's stdout.
+-// Diagnostics the tool writes to stderr on success (WARNING/NOTICE) are
+-// forwarded to diagnostics unchanged, so they are not lost while the
+-// structured result stays stdout only.
+-func ExecutePSQLNonInteractive(ctx context.Context, input *PSQLInput, diagnostics io.Writer) (*PSQLResult, error) {
++// The tool reads stdin, so data the caller pipes in reaches commands that
++// consume it, such as \copy ... FROM pstdin. Diagnostics the tool writes to
++// stderr on success (WARNING/NOTICE) are forwarded to diagnostics unchanged,
++// so they are not lost while the structured result stays stdout only.
++func ExecutePSQLNonInteractive(ctx context.Context, input *PSQLInput, stdin io.Reader, diagnostics io.Writer) (*PSQLResult, error) {
+ 	c, err := client.NewDefaultClient()
+ 	if err != nil {
+ 		return nil, err
+@@ -81,11 +82,12 @@ func ExecutePSQLNonInteractive(ctx context.Context, input *PSQLInput, diagnostic
+ 		args = append(args, arg)
+ 	}
+ 
+-	return runPSQLCommand(exec.CommandContext(ctx, string(input.Tool), args...), diagnostics)
++	return runPSQLCommand(exec.CommandContext(ctx, string(input.Tool), args...), stdin, diagnostics)
+ }
+ 
+-func runPSQLCommand(cmd *exec.Cmd, diagnostics io.Writer) (*PSQLResult, error) {
++func runPSQLCommand(cmd *exec.Cmd, stdin io.Reader, diagnostics io.Writer) (*PSQLResult, error) {
+ 	var stdout, stderr bytes.Buffer
++	cmd.Stdin = stdin
+ 	cmd.Stdout = &stdout
+ 	cmd.Stderr = &stderr
+ 
+diff --git a/pkg/tui/views/psql_test.go b/pkg/tui/views/psql_test.go
+index aa502c9..b23313c 100644
+--- a/pkg/tui/views/psql_test.go
++++ b/pkg/tui/views/psql_test.go
+@@ -4,6 +4,7 @@ import (
+ 	"bytes"
+ 	"encoding/json"
+ 	"os/exec"
++	"strings"
+ 	"testing"
+ 
+ 	"github.com/stretchr/testify/require"
+@@ -68,7 +69,7 @@ func TestRunPSQLCommandForwardsSuccessfulDiagnostics(t *testing.T) {
+ 	for _, tt := range tests {
+ 		t.Run(tt.name, func(t *testing.T) {
+ 			var diagnostics bytes.Buffer
+-			result, err := runPSQLCommand(exec.Command("sh", "-c", tt.script), &diagnostics)
++			result, err := runPSQLCommand(exec.Command("sh", "-c", tt.script), nil, &diagnostics)
+ 			if tt.err != "" {
+ 				require.EqualError(t, err, tt.err)
+ 				require.Nil(t, result)
+@@ -80,3 +81,33 @@ func TestRunPSQLCommandForwardsSuccessfulDiagnostics(t *testing.T) {
+ 		})
+ 	}
+ }
++
++func TestRunPSQLCommandForwardsStdin(t *testing.T) {
++	csv := "id,body\n1,\"a, \"\"quoted\"\"\nline\"\n2,\"\u00e9\u6f22\"\n3,\"\"\n"
++	tests := []struct {
++		name   string
++		script string
++		stdin  string
++		output string
++		err    string
++	}{
++		{"exact bytes reach the child", `cat`, csv, csv, ""},
++		{"empty stdin", `cat`, "", "", ""},
++		{"a command that reads nothing", `printf 'SELECT 1\n'`, csv, "SELECT 1\n", ""},
++		{"child error keeps stderr in the error", `cat >/dev/null; printf 'ERROR:  bad input\n' >&2; exit 1`, csv, "", "exit status 1: ERROR:  bad input"},
++	}
++	for _, tt := range tests {
++		t.Run(tt.name, func(t *testing.T) {
++			var diagnostics bytes.Buffer
++			result, err := runPSQLCommand(exec.Command("sh", "-c", tt.script), strings.NewReader(tt.stdin), &diagnostics)
++			if tt.err != "" {
++				require.EqualError(t, err, tt.err)
++				require.Nil(t, result)
++				return
++			}
++			require.NoError(t, err)
++			require.Equal(t, tt.output, result.Output)
++			require.Empty(t, diagnostics.String())
++		})
++	}
++}
