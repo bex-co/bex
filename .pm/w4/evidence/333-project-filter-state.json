@@ -1,0 +1,235 @@
+{
+  "pass": "a834",
+  "sourceHead": "b9acddc64073e9b3284766e412001869da90add7",
+  "scope": "Project resource-type controls lack group and pressed state; read-only Unassigned view.",
+  "scripts": {
+    "keyboard": "async(page)=>{const before={url:page.url(),aria:await page.locator(\"main\").ariaSnapshot()};await page.getByRole(\"button\",{name:\"Services (2)\",exact:true}).focus();await page.keyboard.press(\"Space\");await page.waitForTimeout(700);const buttons=await page.getByRole(\"button\",{name:/^(All|Services|Databases|Key Values|Env Groups) \\(/}).evaluateAll(xs=>xs.map(x=>({text:x.textContent,pressed:x.getAttribute(\"aria-pressed\"),selected:x.getAttribute(\"aria-selected\"),role:x.getAttribute(\"role\"),className:x.className})));const after={url:page.url(),aria:await page.locator(\"main\").ariaSnapshot(),buttons,docWidth:await page.evaluate(()=>document.documentElement.scrollWidth)};await page.getByRole(\"heading\",{name:\"Unassigned\",exact:true}).scrollIntoViewIfNeeded();await page.screenshot({path:\"qa-a834-project-filter-mobile.png\"});return{at:new Date().toISOString(),before,after};}",
+    "freshDesktop": "async(page)=>{await page.setViewportSize({width:1440,height:1000});await page.goto(\"https://dashboard.bex.co/project/prj-d9dgeo0bd9nc73a0vh1g?env=unassigned&kind=databases\");let found=false;try{await page.getByRole(\"button\",{name:\"Databases (0)\",exact:true}).waitFor({timeout:25000});found=true}catch{}return{at:new Date().toISOString(),found,url:page.url(),aria:await page.locator(\"main\").ariaSnapshot(),buttons:found?await page.getByRole(\"button\",{name:/^(All|Services|Databases|Key Values|Env Groups) \\(/}).evaluateAll(xs=>xs.map(x=>({text:x.textContent,pressed:x.getAttribute(\"aria-pressed\"),selected:x.getAttribute(\"aria-selected\"),className:x.className}))):[]};}",
+    "semanticDiagnostic": "async(page)=>{await page.getByRole(\"heading\",{name:\"Unassigned\",exact:true}).scrollIntoViewIfNeeded();await page.screenshot({path:\"qa-a834-project-filter-desktop.png\"});const before=await page.locator(\"main\").ariaSnapshot();const previous=await page.getByRole(\"button\",{name:/^(All|Services|Databases|Key Values|Env Groups) \\(/}).evaluateAll(xs=>{const parent=xs[0].parentElement,prior={parentRole:parent.getAttribute(\"role\"),buttons:xs.map(x=>x.getAttribute(\"aria-pressed\"))};parent.setAttribute(\"role\",\"group\");const kinds=[\"all\",\"services\",\"databases\",\"keyvalues\",\"envgroups\"],kind=new URL(location.href).searchParams.get(\"kind\")||\"all\";xs.forEach((x,i)=>x.setAttribute(\"aria-pressed\",String(kinds[i]===kind)));return prior;});try{return{at:new Date().toISOString(),before,diagnostic:await page.locator(\"main\").ariaSnapshot(),temporaryBrowserAttributes:true};}finally{await page.getByRole(\"button\",{name:/^(All|Services|Databases|Key Values|Env Groups) \\(/}).evaluateAll((xs,prior)=>{const p=xs[0].parentElement;if(prior.parentRole===null)p.removeAttribute(\"role\");else p.setAttribute(\"role\",prior.parentRole);xs.forEach((x,i)=>{if(prior.buttons[i]===null)x.removeAttribute(\"aria-pressed\");else x.setAttribute(\"aria-pressed\",prior.buttons[i]);});},previous);}}"
+  },
+  "receipts": {
+    "a834SearchFiltered": {
+      "at": "2026-10-17T03:02:48.073Z",
+      "url": "https://dashboard.bex.co/project/prj-d9dgeo0bd9nc73a0vh1g?env=unassigned&q=++EDEN-CMS++",
+      "query": "  EDEN-CMS  ",
+      "rows": [
+        "NameStatusRuntimeRegionUpdatedActions",
+        "eden-cms-v2Web ServiceRunningDockerfsn118h"
+      ],
+      "buttons": [
+        {
+          "text": "All (2)",
+          "role": null,
+          "pressed": null,
+          "selected": null,
+          "state": null
+        },
+        {
+          "text": "Services (2)",
+          "role": null,
+          "pressed": null,
+          "selected": null,
+          "state": null
+        },
+        {
+          "text": "Databases (0)",
+          "role": null,
+          "pressed": null,
+          "selected": null,
+          "state": null
+        },
+        {
+          "text": "Key Values (0)",
+          "role": null,
+          "pressed": null,
+          "selected": null,
+          "state": null
+        },
+        {
+          "text": "Env Groups (0)",
+          "role": null,
+          "pressed": null,
+          "selected": null,
+          "state": null
+        }
+      ]
+    },
+    "a834DatabaseFilter": {
+      "at": "2026-10-17T03:02:50.084Z",
+      "url": "https://dashboard.bex.co/project/prj-d9dgeo0bd9nc73a0vh1g?env=unassigned&q=++EDEN-CMS++&kind=databases",
+      "aria": "- main:\n  - navigation \"Breadcrumbs\":\n    - button \"bex.co\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - paragraph: Project\n  - heading \"bex.co\" [level=1]\n  - button \"Edit\"\n  - heading \"Environments\" [level=2]\n  - combobox \"Selected environment\": Unassigned\n  - link \"New Service\":\n    - /url: /services/new?projectId=prj-d9dgeo0bd9nc73a0vh1g\n  - button \"New Environment\"\n  - heading \"Unassigned\" [level=3]\n  - button \"All (2)\"\n  - button \"Services (2)\"\n  - button \"Databases (0)\"\n  - button \"Key Values (0)\"\n  - button \"Env Groups (0)\"\n  - searchbox \"Search resources in Unassigned\": EDEN-CMS\n  - paragraph: Try a different search or resource type."
+    },
+    "a834MobileKeyboardState": {
+      "at": "2026-10-17T03:05:28.176Z",
+      "before": {
+        "url": "https://dashboard.bex.co/project/prj-d9dgeo0bd9nc73a0vh1g?env=unassigned",
+        "aria": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"bex.co\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - paragraph: Project\n  - heading \"bex.co\" [level=1]\n  - button \"Edit\"\n  - heading \"Environments\" [level=2]\n  - combobox \"Selected environment\": Unassigned\n  - link \"New Service\":\n    - /url: /services/new?projectId=prj-d9dgeo0bd9nc73a0vh1g\n  - button \"New Environment\"\n  - heading \"Unassigned\" [level=3]\n  - button \"All (2)\"\n  - button \"Services (2)\"\n  - button \"Databases (0)\"\n  - button \"Key Values (0)\"\n  - button \"Env Groups (0)\"\n  - searchbox \"Search resources in Unassigned\"\n  - table:\n    - rowgroup:\n      - row \"Name Status Actions\":\n        - columnheader \"Name\"\n        - columnheader \"Status\"\n        - columnheader \"Actions\"\n    - rowgroup:\n      - row \"agentmarketcap-1 Web Service Running Open actions menu\":\n        - cell \"agentmarketcap-1 Web Service\":\n          - link \"agentmarketcap-1\":\n            - /url: /services/srv-d9bkcspg9s7c73d0n8ug\n          - text: Web Service\n        - cell \"Running\"\n        - cell \"Open actions menu\":\n          - button \"Open actions menu\"\n      - row \"eden-cms-v2 Web Service Running Open actions menu\":\n        - cell \"eden-cms-v2 Web Service\":\n          - link \"eden-cms-v2\":\n            - /url: /services/srv-d9e40ei9086p3l1jri30\n          - text: Web Service\n        - cell \"Running\"\n        - cell \"Open actions menu\":\n          - button \"Open actions menu\""
+      },
+      "after": {
+        "url": "https://dashboard.bex.co/project/prj-d9dgeo0bd9nc73a0vh1g?env=unassigned&kind=services",
+        "aria": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\":\n    - button \"bex.co\"\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - paragraph: Project\n  - heading \"bex.co\" [level=1]\n  - button \"Edit\"\n  - heading \"Environments\" [level=2]\n  - combobox \"Selected environment\": Unassigned\n  - link \"New Service\":\n    - /url: /services/new?projectId=prj-d9dgeo0bd9nc73a0vh1g\n  - button \"New Environment\"\n  - heading \"Unassigned\" [level=3]\n  - button \"All (2)\"\n  - button \"Services (2)\"\n  - button \"Databases (0)\"\n  - button \"Key Values (0)\"\n  - button \"Env Groups (0)\"\n  - searchbox \"Search resources in Unassigned\"\n  - table:\n    - rowgroup:\n      - row \"Name Status Actions\":\n        - columnheader \"Name\"\n        - columnheader \"Status\"\n        - columnheader \"Actions\"\n    - rowgroup:\n      - row \"agentmarketcap-1 Web Service Running Open actions menu\":\n        - cell \"agentmarketcap-1 Web Service\":\n          - link \"agentmarketcap-1\":\n            - /url: /services/srv-d9bkcspg9s7c73d0n8ug\n          - text: Web Service\n        - cell \"Running\"\n        - cell \"Open actions menu\":\n          - button \"Open actions menu\"\n      - row \"eden-cms-v2 Web Service Running Open actions menu\":\n        - cell \"eden-cms-v2 Web Service\":\n          - link \"eden-cms-v2\":\n            - /url: /services/srv-d9e40ei9086p3l1jri30\n          - text: Web Service\n        - cell \"Running\"\n        - cell \"Open actions menu\":\n          - button \"Open actions menu\"",
+        "buttons": [
+          {
+            "text": "All (2)",
+            "pressed": null,
+            "selected": null,
+            "role": null,
+            "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5"
+          },
+          {
+            "text": "Services (2)",
+            "pressed": null,
+            "selected": null,
+            "role": null,
+            "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5"
+          },
+          {
+            "text": "Databases (0)",
+            "pressed": null,
+            "selected": null,
+            "role": null,
+            "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5"
+          },
+          {
+            "text": "Key Values (0)",
+            "pressed": null,
+            "selected": null,
+            "role": null,
+            "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5"
+          },
+          {
+            "text": "Env Groups (0)",
+            "pressed": null,
+            "selected": null,
+            "role": null,
+            "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5"
+          }
+        ],
+        "docWidth": 390
+      }
+    },
+    "a834DesktopReloadState": {
+      "at": "2026-10-17T03:05:48.905Z",
+      "found": true,
+      "url": "https://dashboard.bex.co/project/prj-d9dgeo0bd9nc73a0vh1g?env=unassigned&kind=databases",
+      "aria": "- main:\n  - navigation \"Breadcrumbs\":\n    - button \"bex.co\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - paragraph: Project\n  - heading \"bex.co\" [level=1]\n  - button \"Edit\"\n  - heading \"Environments\" [level=2]\n  - combobox \"Selected environment\": Unassigned\n  - link \"New Service\":\n    - /url: /services/new?projectId=prj-d9dgeo0bd9nc73a0vh1g\n  - button \"New Environment\"\n  - heading \"Unassigned\" [level=3]\n  - button \"All (2)\"\n  - button \"Services (2)\"\n  - button \"Databases (0)\"\n  - button \"Key Values (0)\"\n  - button \"Env Groups (0)\"\n  - searchbox \"Search resources in Unassigned\"\n  - paragraph: Try a different search or resource type.",
+      "buttons": [
+        {
+          "text": "All (2)",
+          "pressed": null,
+          "selected": null,
+          "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5"
+        },
+        {
+          "text": "Services (2)",
+          "pressed": null,
+          "selected": null,
+          "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5"
+        },
+        {
+          "text": "Databases (0)",
+          "pressed": null,
+          "selected": null,
+          "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5"
+        },
+        {
+          "text": "Key Values (0)",
+          "pressed": null,
+          "selected": null,
+          "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5"
+        },
+        {
+          "text": "Env Groups (0)",
+          "pressed": null,
+          "selected": null,
+          "className": "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive cursor-pointer border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5"
+        }
+      ]
+    },
+    "a834SemanticControl": {
+      "at": "2026-10-17T03:06:11.822Z",
+      "before": "- main:\n  - navigation \"Breadcrumbs\":\n    - button \"bex.co\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - paragraph: Project\n  - heading \"bex.co\" [level=1]\n  - button \"Edit\"\n  - heading \"Environments\" [level=2]\n  - combobox \"Selected environment\": Unassigned\n  - link \"New Service\":\n    - /url: /services/new?projectId=prj-d9dgeo0bd9nc73a0vh1g\n  - button \"New Environment\"\n  - heading \"Unassigned\" [level=3]\n  - button \"All (2)\"\n  - button \"Services (2)\"\n  - button \"Databases (0)\"\n  - button \"Key Values (0)\"\n  - button \"Env Groups (0)\"\n  - searchbox \"Search resources in Unassigned\"\n  - paragraph: Try a different search or resource type.",
+      "diagnostic": "- main:\n  - navigation \"Breadcrumbs\":\n    - button \"bex.co\"\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - paragraph: Project\n  - heading \"bex.co\" [level=1]\n  - button \"Edit\"\n  - heading \"Environments\" [level=2]\n  - combobox \"Selected environment\": Unassigned\n  - link \"New Service\":\n    - /url: /services/new?projectId=prj-d9dgeo0bd9nc73a0vh1g\n  - button \"New Environment\"\n  - heading \"Unassigned\" [level=3]\n  - group \"Resource type\":\n    - button \"All (2)\"\n    - button \"Services (2)\"\n    - button \"Databases (0)\" [pressed]\n    - button \"Key Values (0)\"\n    - button \"Env Groups (0)\"\n  - searchbox \"Search resources in Unassigned\"\n  - paragraph: Try a different search or resource type.",
+      "temporaryBrowserAttributes": true
+    },
+    "a834NoWriteControl": {
+      "at": "2026-10-17T03:06:31.611Z",
+      "mutations": [],
+      "restoredPressedAttributes": 0
+    },
+    "a834InventoryCleanup": {
+      "at": "2026-10-17T03:06:44.800Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [],
+      "consoleErrors": [],
+      "httpFailures": []
+    },
+    "a834SessionCleared": {
+      "at": "2026-10-17T03:06:52.323Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  },
+  "exclusions": [
+    "First role wait used textbox instead of the actual searchbox. No product failure inferred.",
+    "An observer expected filter changes to push browser history; the route deliberately uses replace:true. Back returned to the previous page as designed.",
+    "One 15s ready wait expired; the later settled view and 25s fresh reload succeeded. No indefinite-loading claim.",
+    "Temporary role/aria-pressed control is removed in finally; it is not a deployed fix."
+  ],
+  "sourceCensus": {
+    "ProjectResourceFiltersDirectJsxMounts": [
+      {
+        "path": "dashboard/src/features/environments/components/environment-card.tsx",
+        "line": 333
+      },
+      {
+        "path": "dashboard/src/features/environments/components/environments-panel.tsx",
+        "line": 310
+      }
+    ],
+    "EnvironmentsPanelRouteMount": {
+      "path": "dashboard/src/routes/project.$projectId.index.tsx",
+      "line": 184
+    },
+    "buttonsPerInstance": 5
+  },
+  "screenshots": [
+    "qa-a834-project-filter-mobile.png",
+    "qa-a834-project-filter-desktop.png"
+  ]
+}
