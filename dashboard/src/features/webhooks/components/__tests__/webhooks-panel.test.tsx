@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen } from "@testing-library/react";
-import { renderToString } from "react-dom/server";
-import { hydrateRoot } from "react-dom/client";
+import { render, screen } from "@testing-library/react";
+import { serverRendered } from "@/test/hydration";
 import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
@@ -202,25 +201,16 @@ it("previews the ready card's copy, action, search help and columns (w4/m220)", 
 it("keeps the search uneditable until hydration, then filters (w4/m219)", async () => {
   const router = panelRouter();
   await router.load();
-  const app = <RouterProvider router={router} />;
-  const container = document.createElement("div");
-  container.innerHTML = renderToString(app);
-  document.body.appendChild(container);
+  const { container, hydrate, getByRole } = serverRendered(
+    <RouterProvider router={router} />,
+  );
   const search = () =>
-    container.querySelector<HTMLInputElement>("#webhook-search")!;
-  let root: ReturnType<typeof hydrateRoot> | undefined;
-  try {
-    expect(search().disabled).toBe(true);
-    await act(async () => {
-      root = hydrateRoot(container, app);
-    });
-    expect(search().disabled).toBe(false);
-    await userEvent.type(search(), "pager");
-    expect(search().value).toBe("pager");
-    expect(container).toHaveTextContent("pager");
-    expect(container).not.toHaveTextContent("payments");
-  } finally {
-    act(() => root?.unmount());
-    container.remove();
-  }
+    getByRole<HTMLInputElement>("searchbox", { name: "Search webhooks" });
+  expect(search().disabled).toBe(true);
+  await hydrate();
+  expect(search().disabled).toBe(false);
+  await userEvent.type(search(), "pager");
+  expect(search().value).toBe("pager");
+  expect(container).toHaveTextContent("pager");
+  expect(container).not.toHaveTextContent("payments");
 });

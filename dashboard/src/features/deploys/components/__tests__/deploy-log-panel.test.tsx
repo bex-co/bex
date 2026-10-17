@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DeployLogPanel } from "../deploy-log-panel";
+import { serverRendered } from "@/test/hydration";
 import type { UseDeployLogsResult } from "../../hooks/use-deploy-logs";
 import type { LogLine } from "@/features/logs/types";
 import { needsAnsiParse, parseAnsi } from "@/features/logs/lib/ansi";
@@ -436,4 +437,25 @@ describe("DeployLogPanel", () => {
       screen.getByText("Live tail disconnected — reconnecting…"),
     ).toBeInTheDocument();
   });
+});
+
+// w4/m219 (a838): text typed into the server-rendered deploy log search before
+// handlers attach is wiped by hydration.
+it("keeps the deploy log search uneditable until hydration (w4/m219)", async () => {
+  logState.lines = [line("==> step 1", "build")];
+  const { hydrate, getByPlaceholderText } = serverRendered(
+    <DeployLogPanel
+      resource="web"
+      startTime="2026-07-14T00:00:00Z"
+      endTime="2026-07-14T00:05:00Z"
+      hasPreDeploy={false}
+      followBuild={false}
+    />,
+  );
+  const search = () => getByPlaceholderText<HTMLInputElement>("Search logs…");
+  expect(search().disabled).toBe(true);
+  await hydrate();
+  expect(search().disabled).toBe(false);
+  await userEvent.type(search(), "step");
+  expect(search().value).toBe("step");
 });

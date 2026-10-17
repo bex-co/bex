@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { LogFilterBar } from "../log-filter-bar";
+import { serverRendered } from "@/test/hydration";
 import {
   EMPTY_LOG_FILTERS,
   LOG_TYPE_REQUEST,
@@ -237,4 +239,29 @@ describe("LogFilterBar active custom range (w4/245)", () => {
     expect(onChange).not.toHaveBeenCalled();
     expect(onLiveChange).not.toHaveBeenCalled();
   });
+});
+
+// w4/m219 (a838): text typed into the server-rendered log search before
+// handlers attach is wiped by hydration.
+it("keeps the log search uneditable until hydration (w4/m219)", async () => {
+  function Bar() {
+    const [filters, setFilters] = useState<LogFilters>(EMPTY_LOG_FILTERS);
+    return (
+      <LogFilterBar
+        resource="web"
+        filters={filters}
+        onChange={(patch) => setFilters((prev) => ({ ...prev, ...patch }))}
+        live={false}
+        onLiveChange={() => undefined}
+        liveSupported
+      />
+    );
+  }
+  const { hydrate, getByLabelText } = serverRendered(<Bar />);
+  const search = () => getByLabelText<HTMLInputElement>("Search logs");
+  expect(search().disabled).toBe(true);
+  await hydrate();
+  expect(search().disabled).toBe(false);
+  await userEvent.type(search(), "timeout");
+  expect(search().value).toBe("timeout");
 });

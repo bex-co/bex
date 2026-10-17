@@ -2,7 +2,8 @@ import type { ReactElement } from "react";
 import { act } from "react";
 import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
-import { vi } from "vitest";
+import { within } from "@testing-library/react";
+import { onTestFinished, vi } from "vitest";
 
 export interface HydrationProbe {
   /** The markup the SSR pass produced, at `serverNow`. */
@@ -54,4 +55,32 @@ export function hydrateAcrossBoundary(
   nowSpy.mockRestore();
 
   return { html, recovered };
+}
+
+/**
+ * Server-render `node` into a container in the document, so a test can assert
+ * what the server HTML offers before React attaches; `hydrate()` then attaches
+ * React to that exact markup. Returns the container's Testing Library queries
+ * like `render` does. Unmounted and removed when the test finishes,
+ * pass or fail, so a failed assertion cannot leak a second copy into the
+ * tests that follow.
+ */
+export function serverRendered(node: ReactElement) {
+  const container = document.createElement("div");
+  container.innerHTML = renderToString(node);
+  document.body.appendChild(container);
+  let root: ReturnType<typeof hydrateRoot> | undefined;
+  onTestFinished(() => {
+    act(() => root?.unmount());
+    container.remove();
+  });
+  return {
+    container,
+    ...within(container),
+    hydrate: async () => {
+      await act(async () => {
+        root = hydrateRoot(container, node);
+      });
+    },
+  };
 }
