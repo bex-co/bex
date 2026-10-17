@@ -1,0 +1,821 @@
+{
+  "pass": "a837",
+  "probeHead": "49011cc544cecdad26bac433accf989b115beced",
+  "researchHead": "bbe46c69a1042ac81d32734f668b3723719d881a",
+  "scope": "Populated webhook list search loses pre-handler trusted typing; fifth local m219 root.",
+  "scripts": {
+    "factory": "function(url,label,width,marker){return `async(page)=>{\nawait page.setViewportSize({width:${width},height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-D60ymwlM.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.getByLabel(${JSON.stringify(label)},{exact:true}),marker=${JSON.stringify(marker)};\ntry{\nawait page.goto(${JSON.stringify(url)},{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.disabled,readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const after=await n.count()?await n.inputValue():null;let readyControl=null;if(await n.count()&&await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(700);readyControl=await n.inputValue();}\nreturn {at:new Date().toISOString(),url:page.url(),width:${width},scripts,before,typed,events,samples,after,readyControl,noResponseRewriting:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}`}",
+    "desktop": "async(page)=>{\nawait page.setViewportSize({width:1440,height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-D60ymwlM.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.getByLabel(\"Search webhooks\",{exact:true}),marker=\"qa-a837-filter-1440\";\ntry{\nawait page.goto(\"https://dashboard.bex.co/webhooks\",{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.disabled,readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const after=await n.count()?await n.inputValue():null;let readyControl=null;if(await n.count()&&await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(700);readyControl=await n.inputValue();}\nreturn {at:new Date().toISOString(),url:page.url(),width:1440,scripts,before,typed,events,samples,after,readyControl,noResponseRewriting:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}",
+    "mobile": "async(page)=>{\nawait page.setViewportSize({width:390,height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-D60ymwlM.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.getByLabel(\"Search webhooks\",{exact:true}),marker=\"qa-a837-filter-390\";\ntry{\nawait page.goto(\"https://dashboard.bex.co/webhooks\",{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.disabled,readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const after=await n.count()?await n.inputValue():null;let readyControl=null;if(await n.count()&&await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(700);readyControl=await n.inputValue();}\nreturn {at:new Date().toISOString(),url:page.url(),width:390,scripts,before,typed,events,samples,after,readyControl,noResponseRewriting:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}",
+    "screenshotRepeat": "async(page)=>{\nawait page.setViewportSize({width:390,height:844});await page.goto(\"about:blank\",{waitUntil:\"commit\"});let release,released=false;const gate=new Promise(r=>release=r),scripts=[],tasks=[];const pattern=\"https://dashboard.bex.co/assets/index-D60ymwlM.js\";const handler=async route=>{const task=(async()=>{const r=await route.fetch();scripts.push({url:route.request().url(),status:r.status(),bytes:(await r.body()).length,delayApplied:!released});await gate;await route.fulfill({response:r});})();tasks.push(task);await task;};await page.route(pattern,handler);\nconst n=page.getByLabel(\"Search webhooks\",{exact:true}),marker=\"qa-a837-repeat\";\ntry{\nawait page.goto(\"https://dashboard.bex.co/webhooks\",{waitUntil:\"commit\"});for(let i=0;i<60&&!scripts.length;i++)await page.waitForTimeout(100);if(!scripts.length)throw Error(\"Startup not captured\");await page.waitForTimeout(700);\nconst count=await n.count();let before={count},typed=null;if(count){before={...before,...await n.evaluate(e=>{window.__qaA815Input=e;window.__qaA815Events=[];e.addEventListener(\"input\",v=>window.__qaA815Events.push({trusted:v.isTrusted,value:e.value,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))}));return {enabled:!e.disabled,readOnly:e.readOnly,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\")),id:e.id};})};if(before.enabled&&!before.readOnly){await n.selectText();await page.keyboard.insertText(marker);typed=await n.inputValue();await page.screenshot({path:'qa-a837-webhook-search-before.png'});}}\nreleased=true;release();await Promise.allSettled(tasks);const samples=[];for(let i=0;i<20;i++){if(await n.count())samples.push(await n.evaluate(e=>({at:performance.now(),value:e.value,sameNode:e===window.__qaA815Input,reactProps:Object.keys(e).some(k=>k.startsWith(\"__reactProps$\"))})));await page.waitForTimeout(150);}\nconst events=await page.evaluate(()=>window.__qaA815Events||[]);const after=await n.count()?await n.inputValue():null;await page.screenshot({path:'qa-a837-webhook-search-after.png'});let readyControl=null;if(await n.count()&&await n.isEnabled()){await n.selectText();await page.keyboard.insertText(marker+\"-ready\");await page.waitForTimeout(700);readyControl=await n.inputValue();}\nreturn {at:new Date().toISOString(),url:page.url(),width:390,scripts,before,typed,events,samples,after,readyControl,noResponseRewriting:true};\n}finally{released=true;release();await Promise.allSettled(tasks);await page.unroute(pattern,handler);await page.evaluate(()=>{delete window.__qaA815Input;delete window.__qaA815Events;});}\n}"
+  },
+  "receipts": {
+    "a837ServiceCreated": {
+      "at": "2026-10-17T03:19:17.535Z",
+      "request": {
+        "operationName": "CreateService",
+        "variables": {
+          "image": "node:24-alpine",
+          "name": "qa-20261016-a837-hook",
+          "type": "web_service",
+          "registryCredentialId": "",
+          "runtime": "image",
+          "startCommand": "node -e 'require(\"http\").createServer((q,s)=>s.end(\"qa-a837 receiver\\n\")).listen(process.env.PORT||8137,\"0.0.0.0\")'",
+          "plan": "free",
+          "port": 8137,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateService($name: String!, $ownerId: String, $environmentId: String, $type: String, $repo: String, $image: String, $registryCredentialId: String, $branch: String, $rootDir: String, $runtime: String, $buildCommand: String, $startCommand: String, $dockerfilePath: String, $buildFilter: BuildFilterInput, $plan: String, $autoDeploy: Boolean, $schedule: String, $command: String, $publishPath: String, $port: Int, $envVars: [EnvVarInput], $secretFiles: [SecretFileInput]) {\n  createService(\n    name: $name\n    ownerId: $ownerId\n    environmentId: $environmentId\n    type: $type\n    repo: $repo\n    image: $image\n    registryCredentialId: $registryCredentialId\n    branch: $branch\n    rootDir: $rootDir\n    runtime: $runtime\n    buildCommand: $buildCommand\n    startCommand: $startCommand\n    dockerfilePath: $dockerfilePath\n    buildFilter: $buildFilter\n    plan: $plan\n    autoDeploy: $autoDeploy\n    schedule: $schedule\n    command: $command\n    publishPath: $publishPath\n    port: $port\n    envVars: $envVars\n    secretFiles: $secretFiles\n  ) {\n    id\n    name\n    type\n    phase\n    projectId\n    environmentId\n    registryCredentialId\n    latestDeployId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createService": {
+            "__typename": "Service",
+            "environmentId": null,
+            "id": "srv-db9eid4fcf2c73c2mpkg",
+            "latestDeployId": "dep-db9eid4fcf2c73c2mpl0",
+            "name": "qa-20261016-a837-hook",
+            "phase": "",
+            "projectId": null,
+            "registryCredentialId": "",
+            "type": "web_service"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792207156381.418,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.141,
+        "responseStart": 443.613,
+        "responseEnd": 444.03
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9eid4fcf2c73c2mpkg/deploys/dep-db9eid4fcf2c73c2mpl0"
+    },
+    "a837WebhookCreatedSafe": {
+      "at": "2026-10-17T03:19:38.633Z",
+      "request": {
+        "operationName": "CreateWebhookEndpoint",
+        "variables": {
+          "name": "qa-20261016-a837-delivery",
+          "url": "https://qa-20261016-a837-hook.onbex.co/hook",
+          "eventTypes": ["deploy_ended"],
+          "enabled": false,
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateWebhookEndpoint($ownerId: String, $name: String, $url: String!, $eventTypes: [String]!, $enabled: Boolean) {\n  createWebhookEndpoint(\n    ownerId: $ownerId\n    name: $name\n    url: $url\n    eventTypes: $eventTypes\n    enabled: $enabled\n  ) {\n    id\n    name\n    url\n    eventTypes\n    enabled\n    secret\n    createdAt\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "result": {
+        "id": "whk-db9eiik50quc73dl5ou0",
+        "name": "qa-20261016-a837-delivery",
+        "url": "https://qa-20261016-a837-hook.onbex.co/hook",
+        "eventTypes": ["deploy_ended"],
+        "enabled": false,
+        "createdAt": "2026-10-17T03:19:38Z"
+      },
+      "errors": [],
+      "oneTimeSecretOmitted": true,
+      "timing": {
+        "startTime": 1792207178015.45,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 4.578,
+        "responseStart": 583.8,
+        "responseEnd": 631.612
+      }
+    },
+    "a837ListReady": {
+      "at": "2026-10-17T03:19:41.564Z",
+      "assets": ["https://dashboard.bex.co/assets/index-D60ymwlM.js"],
+      "searchValue": ""
+    },
+    "a837Startup1440": {
+      "at": "2026-10-17T03:19:56.900Z",
+      "url": "https://dashboard.bex.co/webhooks",
+      "width": 1440,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-D60ymwlM.js",
+          "status": 200,
+          "bytes": 1952882,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 1,
+        "enabled": true,
+        "readOnly": false,
+        "reactProps": false,
+        "id": "webhook-search"
+      },
+      "typed": "qa-a837-filter-1440",
+      "events": [
+        {
+          "trusted": true,
+          "value": "qa-a837-filter-1440",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 1857.2000000476837,
+          "value": "qa-a837-filter-1440",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 2050.7000000476837,
+          "value": "qa-a837-filter-1440",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2240.8000000715256,
+          "value": "qa-a837-filter-1440",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2484,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2661,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2888.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3053.7000000476837,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3214.3000000715256,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3385.3000000715256,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3549.899999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3765.600000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3929.100000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4088.100000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4247.100000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4412,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4572.600000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4732.899999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4891.300000071526,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5048.399999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5211.600000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "after": "",
+      "readyControl": "qa-a837-filter-1440-ready",
+      "noResponseRewriting": true
+    },
+    "a837Startup390": {
+      "at": "2026-10-17T03:20:03.796Z",
+      "url": "https://dashboard.bex.co/webhooks",
+      "width": 390,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-D60ymwlM.js",
+          "status": 200,
+          "bytes": 1952882,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 1,
+        "enabled": true,
+        "readOnly": false,
+        "reactProps": false,
+        "id": "webhook-search"
+      },
+      "typed": "qa-a837-filter-390",
+      "events": [
+        {
+          "trusted": true,
+          "value": "qa-a837-filter-390",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 1587.5,
+          "value": "qa-a837-filter-390",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 1761.5,
+          "value": "qa-a837-filter-390",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 1927.1999999284744,
+          "value": "qa-a837-filter-390",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2092.899999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2255.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2412.6999999284744,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2572.7999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2731.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2887.600000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3117.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3286.1999999284744,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3444.2999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3610.1999999284744,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3773.1999999284744,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3932.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4096.899999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4260.199999928474,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4420.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4596.199999928474,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4774.799999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "after": "",
+      "readyControl": "qa-a837-filter-390-ready",
+      "noResponseRewriting": true
+    },
+    "a837StartupScreenshotRepeat": {
+      "at": "2026-10-17T03:21:03.310Z",
+      "url": "https://dashboard.bex.co/webhooks",
+      "width": 390,
+      "scripts": [
+        {
+          "url": "https://dashboard.bex.co/assets/index-D60ymwlM.js",
+          "status": 200,
+          "bytes": 1952882,
+          "delayApplied": true
+        }
+      ],
+      "before": {
+        "count": 1,
+        "enabled": true,
+        "readOnly": false,
+        "reactProps": false,
+        "id": "webhook-search"
+      },
+      "typed": "qa-a837-repeat",
+      "events": [
+        {
+          "trusted": true,
+          "value": "qa-a837-repeat",
+          "reactProps": false
+        }
+      ],
+      "samples": [
+        {
+          "at": 2189.7999999523163,
+          "value": "qa-a837-repeat",
+          "sameNode": true,
+          "reactProps": false
+        },
+        {
+          "at": 2344.7999999523163,
+          "value": "qa-a837-repeat",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2500.100000023842,
+          "value": "qa-a837-repeat",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2655.399999976158,
+          "value": "qa-a837-repeat",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2810.7999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 2966.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3121.899999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3278.100000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3432.7999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3588.100000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3742.2999999523163,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 3896.5,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4052.899999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4207.799999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4363.200000047684,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4517.799999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4672.399999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4827.100000023842,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 4981.899999976158,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        },
+        {
+          "at": 5136.799999952316,
+          "value": "",
+          "sameNode": true,
+          "reactProps": true
+        }
+      ],
+      "after": "",
+      "readyControl": "qa-a837-repeat-ready",
+      "noResponseRewriting": true
+    },
+    "a837WebhookDeleted": {
+      "at": "2026-10-17T03:21:41.467Z",
+      "request": {
+        "operationName": "DeleteWebhookEndpoint",
+        "variables": {
+          "id": "whk-db9eiik50quc73dl5ou0",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteWebhookEndpoint($id: String!, $ownerId: String) {\n  deleteWebhookEndpoint(id: $id, ownerId: $ownerId)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteWebhookEndpoint": true
+        }
+      },
+      "timing": {
+        "startTime": 1792207300506.829,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.162,
+        "responseStart": 248.426,
+        "responseEnd": 248.862
+      },
+      "url": "https://dashboard.bex.co/webhooks"
+    },
+    "a837ServiceDeleted": {
+      "at": "2026-10-17T03:21:46.888Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db9eid4fcf2c73c2mpkg"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "timing": {
+        "startTime": 1792207305876.163,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.137,
+        "responseStart": 295.981,
+        "responseEnd": 296.378
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "a837InventoryCleanup": {
+      "at": "2026-10-17T03:22:18.018Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [
+        {
+          "path": "/v1/services/srv-db9eid4fcf2c73c2mpkg",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9eid4fcf2c73c2mpkg/deploys/dep-db9eid4fcf2c73c2mpl0",
+          "status": 404
+        },
+        {
+          "path": "/v1/webhooks/whk-db9eiik50quc73dl5ou0",
+          "status": 404
+        },
+        {
+          "path": "/v1/webhooks/whk-db9eiik50quc73dl5ou0/deliveries",
+          "status": 404
+        }
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 404 ()",
+        "Failed to load resource: the server responded with a status of 404 ()"
+      ],
+      "httpFailures": [
+        {
+          "method": "GET",
+          "url": "https://api.bex.co/v1/services/srv-db9eid4fcf2c73c2mpkg",
+          "status": 404
+        },
+        {
+          "method": "GET",
+          "url": "https://api.bex.co/v1/services/srv-db9eid4fcf2c73c2mpkg/deploys/dep-db9eid4fcf2c73c2mpl0",
+          "status": 404
+        },
+        {
+          "method": "GET",
+          "url": "https://api.bex.co/v1/webhooks/whk-db9eiik50quc73dl5ou0",
+          "status": 404
+        },
+        {
+          "method": "GET",
+          "url": "https://api.bex.co/v1/webhooks/whk-db9eiik50quc73dl5ou0/deliveries",
+          "status": 404
+        }
+      ]
+    },
+    "a837SessionCleared": {
+      "at": "2026-10-17T03:22:27.589Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  },
+  "library": {
+    "lockfile": "react-dom@npm:19.3.1",
+    "openedSource": ".playwright-mcp/qa-a797-react-dom/package/cjs/react-dom-client.production.js",
+    "officialArchive": "https://registry.npmjs.org/react-dom/-/react-dom-19.3.1.tgz",
+    "functions": {
+      "updateInput": 1269,
+      "initInput": 1315,
+      "hydrationBranch": 1343
+    },
+    "installedNodeModules": "19.2.3; not used as the pinned source",
+    "deployedVersion": "not independently extracted"
+  },
+  "sourceCensus": {
+    "root": "WebhooksPanel",
+    "inputSites": 1,
+    "productionMounts": [
+      {
+        "path": "dashboard/src/routes/webhooks.tsx",
+        "line": 45
+      }
+    ],
+    "existingNamedHydrationCalls": 9,
+    "existingCallFiles": 8
+  },
+  "screenshots": [
+    "qa-a837-webhook-search-before.png",
+    "qa-a837-webhook-search-after.png"
+  ],
+  "limits": [
+    "No claim pins the normal post-hydration update to one particular query.",
+    "Add webhook appears after permission loading in the screenshots; that layout change is separate and does not change the observed input node identity.",
+    "Ready control asserts exact retained input value; no separate ready filtered-result DOM snapshot was captured.",
+    "Startup probes create nothing; supporting Free receiver and disabled endpoint were created/deleted separately. Create receipt explicitly omits the one-time secret."
+  ],
+  "physicalCleanup": {
+    "at": "2026-10-17T03:24:43.408090+00:00",
+    "checks": [
+      {
+        "command": [
+          "kubectl",
+          "--context",
+          "hetzner-prod",
+          "get",
+          "apps.app.bex.co",
+          "-A",
+          "--field-selector",
+          "metadata.name=tea-d98210cbbpdc73dcrkvg-qa-20261016-a837-hook",
+          "-o",
+          "name"
+        ],
+        "kind": "App",
+        "exitCode": 0,
+        "remaining": []
+      },
+      {
+        "command": [
+          "kubectl",
+          "--context",
+          "hetzner-prod",
+          "get",
+          "pods",
+          "-A",
+          "-l",
+          "app.bex.co/app=tea-d98210cbbpdc73dcrkvg-qa-20261016-a837-hook",
+          "-o",
+          "name"
+        ],
+        "kind": "servingPods",
+        "exitCode": 0,
+        "remaining": []
+      },
+      {
+        "command": [
+          "kubectl",
+          "--context",
+          "hetzner-prod",
+          "get",
+          "jobs,pods",
+          "-A",
+          "-l",
+          "app.bex.co/build=tea-d98210cbbpdc73dcrkvg-qa-20261016-a837-hook",
+          "-o",
+          "name"
+        ],
+        "kind": "buildChildren",
+        "exitCode": 0,
+        "remaining": []
+      }
+    ]
+  }
+}

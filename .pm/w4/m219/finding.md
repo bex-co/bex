@@ -21,7 +21,7 @@ URLs are `/keyvalue/new`, `/services/new?type=web_service` and `/blueprints/new`
 
 Two ordinary-load Key Value controls at 23:10:08/23:10:19 UTC already had React handlers before input and retained the exact name on desktop/mobile. These controls support the readiness distinction; they do not prove every unthrottled cold load passes.
 
-[Durable JSON](../../evidence/m219-a797-input-startup.json) preserves the exact V2/V3 replay factories, modified executed snippets, ten complete DOM/control receipts, real script metadata and cleanup. The handler always releases and unroutes in `finally`. A new deployment may change the script hash; discover the corresponding current entry URL before replay. The broad-pattern exploratory run and a run with `delayApplied:false` are excluded from primary causal evidence.
+[Durable JSON](../evidence/m219-a797-input-startup.json) preserves the exact V2/V3 replay factories, modified executed snippets, ten complete DOM/control receipts, real script metadata and cleanup. The handler always releases and unroutes in `finally`. A new deployment may change the script hash; discover the corresponding current entry URL before replay. The broad-pattern exploratory run and a run with `delayApplied:false` are excluded from primary causal evidence.
 
 Local supporting screenshots, inspected before filing: `.playwright-mcp/qa-a797-blueprint-mobile-typed.png` and `.playwright-mcp/qa-a797-blueprint-mobile-cleared.png` show the entered Name and its subsequent placeholder. They are ignored and are not the durable evidence dependency.
 
