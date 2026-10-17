@@ -1,6 +1,6 @@
 # w8 · m108 — Preserve ordinary uploads beyond the ingress body-read deadline
 
-**Worker:** worker8 **Goal:** ordinary progress-making uploads finish within the supported web-service request budget. **Status:** todo
+**Worker:** worker8 **Goal:** ordinary progress-making uploads finish within the supported web-service request budget. **Status:** blocked — needs the user's choice of ingress body-read budget ([decision](design.md)); no task started
 
 ## Tasks (in order)
 
@@ -22,7 +22,7 @@ The pinned base/prod chart renders an explicit reviewed finite body-read budget 
 ## Source + Goal linkage
 
 - **Source:** Authorized functional CLI sweep441: both unchanged creates201/native0; both fast one-MiB uploads200; both paced uploads499 at60.6s with matching819,200-byte prefixes, app aborts and native edge logs. A direct77s control succeeds; changing only the local pinned proxy read timeout from default to100s also succeeds.
-- **Goal:** [ADR008 hosting reliability](../../../docs/ADR008-vision.md), [ADR018 Render parity](../../../docs/ADR018-render-parity.md), [ADR004 deployment/request path](../../../docs/ADR004-app-deployment.md): ordinary progress-making uploads complete within the supported request duration.
+- **Goal:** [ADR008 hosting reliability](../../../../docs/ADR008-vision.md), [ADR018 Render parity](../../../../docs/ADR018-render-parity.md), [ADR004 deployment/request path](../../../../docs/ADR004-app-deployment.md): ordinary progress-making uploads complete within the supported request duration.
 - **Expected outcome:** Users can upload a small file over a slower connection without the platform truncating its body at60s.
 - **Why now:** The prior396 concern was inconclusive. Controlled pacing, actual consumed-prefix hashes, repeated first-service results and a one-setting local correction now isolate the incoming-body deadline with concrete regression evidence.
 - **Render parity:** Included because shared ingress policy changes tenant-visible hosting behavior across API-authored and dashboard/Blueprint-authored services. Preserve existing surface fields/commands and explicit backend limits; no CLI fork or new selector.
