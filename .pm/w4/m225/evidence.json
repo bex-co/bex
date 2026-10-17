@@ -1,0 +1,1784 @@
+{
+  "pass": "a879",
+  "kind": "confirmed functional service-name stale-read race; filing only",
+  "observations": {
+    "a879InitialIdentitySearchAndSettings": {
+      "at": "2026-10-17T11:09:51.234Z",
+      "read": {
+        "at": "2026-10-17T11:09:46.570Z",
+        "request": {
+          "operationName": "QaA879Identity",
+          "variables": {
+            "id": "srv-db9le8ks300s73dskd3g"
+          },
+          "query": "query QaA879Identity($id:String!){service(id:$id){id name displayName immutableName slug url revision phase undeployedChanges undeployedChangesApplying}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "service": {
+              "displayName": "",
+              "id": "srv-db9le8ks300s73dskd3g",
+              "immutableName": "qa-20261017-a879-name",
+              "name": "qa-20261017-a879-name",
+              "phase": "Running",
+              "revision": "rev-1",
+              "slug": "qa-20261017-a879-name",
+              "undeployedChanges": false,
+              "undeployedChangesApplying": false,
+              "url": "https://qa-20261017-a879-name.onbex.co"
+            }
+          }
+        }
+      },
+      "runtime": {
+        "request": {
+          "method": "GET",
+          "url": "https://qa-20261017-a879-name.onbex.co/"
+        },
+        "status": 200,
+        "body": {
+          "marker": "qa-a879",
+          "pid": 1,
+          "startedAt": "2026-10-17T11:08:20.765Z"
+        }
+      },
+      "search": "- dialog \"Search\":\n  - text: Search\n  - heading \"Search\" [level=2]\n  - paragraph: Search dashboard pages and workspace resources.\n  - combobox \"Search\" [expanded]: qa-20261017-a879-name\n  - listbox \"Suggestions\":\n    - group \"Resources\":\n      - option \"qa-20261017-a879-name Web Service\" [selected]\n      - option \"Loading…\" [disabled]\n  - button \"Close\"",
+      "header": "qa-20261017-a879-name"
+    },
+    "a879CancelNoopAndPrimedSearch": {
+      "at": "2026-10-17T11:10:29.734Z",
+      "search": "- dialog \"Search\":\n  - text: Search\n  - heading \"Search\" [level=2]\n  - paragraph: Search dashboard pages and workspace resources.\n  - combobox \"Search\" [expanded]: qa-20261017-a879-name\n  - listbox \"Suggestions\":\n    - group \"Resources\":\n      - option \"qa-20261017-a879-name Web Service\" [selected]\n      - option \"Loading…\" [disabled]\n  - button \"Close\"",
+      "original": "qa-20261017-a879-name",
+      "afterCancel": "qa-20261017-a879-name",
+      "untouchedDisabled": true,
+      "restoredDisabled": true,
+      "writes": [],
+      "title": "qa-20261017-a879-name ・ Web Service ・ bex Dashboard"
+    },
+    "a879Renamed": {
+      "at": "2026-10-17T11:10:32.466Z",
+      "request": {
+        "operationName": "SetDisplayName",
+        "variables": {
+          "id": "srv-db9le8ks300s73dskd3g",
+          "displayName": "qa-a879 Café 雪"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetDisplayName($id: String!, $displayName: String!) {\n  setDisplayName(id: $id, displayName: $displayName) {\n    id\n    name\n    displayName\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setDisplayName": {
+            "__typename": "Service",
+            "displayName": "qa-a879 Café 雪",
+            "id": "srv-db9le8ks300s73dskd3g",
+            "name": "qa-a879 Café 雪"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792235431479.022,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.142,
+        "responseStart": 247.575,
+        "responseEnd": 248.391
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9le8ks300s73dskd3g/settings"
+    },
+    "a879PostRenameUiVerified": {
+      "at": "2026-10-17T11:12:08.308Z",
+      "title": "qa-a879 Café 雪 ・ Web Service ・ bex Dashboard",
+      "headings": ["qa-a879 Café 雪"],
+      "nameInput": "qa-a879 Café 雪",
+      "sidebarCount": 1,
+      "sidebar": "B\nbex\nToggle Sidebar\nDashboard\n\nqa-a879 Café 雪\n\nDeploys\nSettings\nMonitor\nEvents\nLogs\nMetrics\nManage\nEnvironment\nDisk\nShell\nScaling\nPlan",
+      "toasts": ""
+    },
+    "a879RenamedSearch": {
+      "at": "2026-10-17T11:12:08.971Z",
+      "byLabel": "- dialog \"Search\":\n  - text: Search\n  - heading \"Search\" [level=2]\n  - paragraph: Search dashboard pages and workspace resources.\n  - combobox \"Search\" [expanded]: qa-a879 café 雪\n  - listbox \"Suggestions\":\n    - group \"Resources\":\n      - option \"qa-a879 Café 雪qa-20261017-a879-name Web Service\" [selected]\n      - option \"Loading…\" [disabled]\n  - button \"Close\"",
+      "byOriginal": "- dialog \"Search\":\n  - text: Search\n  - heading \"Search\" [level=2]\n  - paragraph: Search dashboard pages and workspace resources.\n  - combobox \"Search\" [expanded]: qa-20261017-a879-name\n  - listbox \"Suggestions\":\n    - group \"Resources\":\n      - option \"qa-a879 Café 雪qa-20261017-a879-name Web Service\" [selected]\n      - option \"Loading…\" [disabled]\n  - button \"Close\"",
+      "byID": "- dialog \"Search\":\n  - text: Search\n  - heading \"Search\" [level=2]\n  - paragraph: Search dashboard pages and workspace resources.\n  - combobox \"Search\" [expanded]: srv-db9le8ks300s73dskd3g\n  - listbox \"Suggestions\":\n    - group \"Resources\":\n      - option \"qa-a879 Café 雪qa-20261017-a879-name Web Service\" [selected]\n      - option \"Loading…\" [disabled]\n  - button \"Close\""
+    },
+    "a879RenamedIdentityRuntime": {
+      "at": "2026-10-17T11:12:10.472Z",
+      "request": {
+        "operationName": "QaA879Identity",
+        "variables": {
+          "id": "srv-db9le8ks300s73dskd3g"
+        },
+        "query": "query QaA879Identity($id:String!){service(id:$id){id name displayName immutableName slug url revision phase undeployedChanges undeployedChangesApplying}}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "service": {
+            "displayName": "qa-a879 Café 雪",
+            "id": "srv-db9le8ks300s73dskd3g",
+            "immutableName": "qa-20261017-a879-name",
+            "name": "qa-a879 Café 雪",
+            "phase": "Running",
+            "revision": "rev-1",
+            "slug": "qa-20261017-a879-name",
+            "undeployedChanges": false,
+            "undeployedChangesApplying": false,
+            "url": "https://qa-20261017-a879-name.onbex.co"
+          }
+        }
+      },
+      "runtime": {
+        "request": {
+          "method": "GET",
+          "url": "https://qa-20261017-a879-name.onbex.co/"
+        },
+        "status": 200,
+        "body": {
+          "marker": "qa-a879",
+          "pid": 1,
+          "startedAt": "2026-10-17T11:08:20.765Z"
+        }
+      }
+    },
+    "a879MobileLongNameFilled": {
+      "at": "2026-10-17T11:12:46.748Z",
+      "before": {
+        "at": "2026-10-17T11:12:46.661Z",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "documentWidth": 390,
+        "name": "qa-a879 Café 雪",
+        "title": "qa-a879 Café 雪 ・ Web Service ・ bex Dashboard"
+      },
+      "inputValue": "qa-a879-🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟",
+      "codePoints": 100,
+      "codeUnits": 192,
+      "saveEnabled": true
+    },
+    "a879MobileLongNameSaved": {
+      "at": "2026-10-17T11:12:48.357Z",
+      "request": {
+        "operationName": "SetDisplayName",
+        "variables": {
+          "id": "srv-db9le8ks300s73dskd3g",
+          "displayName": "qa-a879-🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetDisplayName($id: String!, $displayName: String!) {\n  setDisplayName(id: $id, displayName: $displayName) {\n    id\n    name\n    displayName\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setDisplayName": {
+            "__typename": "Service",
+            "displayName": "qa-a879-🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟",
+            "id": "srv-db9le8ks300s73dskd3g",
+            "name": "qa-a879-🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792235567372.595,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.141,
+        "responseStart": 255.267,
+        "responseEnd": 255.969
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9le8ks300s73dskd3g/settings"
+    },
+    "a879MobileLongNameGeometry": {
+      "at": "2026-10-17T11:12:48.952Z",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "title": "qa-a879-🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟 ・ Web Service ・ bex Dashboard",
+      "heading": "qa-a879-🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟",
+      "headingBox": {
+        "x": 16,
+        "y": 84,
+        "width": 358,
+        "height": 28
+      },
+      "inputValue": "qa-a879-🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟",
+      "running": {
+        "x": 67.234375,
+        "y": 121.5,
+        "width": 65.296875,
+        "height": 22
+      }
+    },
+    "a879LongNameIdentityAndDeploys": {
+      "at": "2026-10-17T11:13:42.038Z",
+      "identity": {
+        "request": {
+          "operationName": "QaA879Identity",
+          "variables": {
+            "id": "srv-db9le8ks300s73dskd3g"
+          },
+          "query": "query QaA879Identity($id:String!){service(id:$id){id name displayName immutableName slug url revision phase undeployedChanges undeployedChangesApplying}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "service": {
+              "displayName": "qa-a879-🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟",
+              "id": "srv-db9le8ks300s73dskd3g",
+              "immutableName": "qa-20261017-a879-name",
+              "name": "qa-a879-🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟",
+              "phase": "Running",
+              "revision": "rev-1",
+              "slug": "qa-20261017-a879-name",
+              "undeployedChanges": false,
+              "undeployedChangesApplying": false,
+              "url": "https://qa-20261017-a879-name.onbex.co"
+            }
+          }
+        }
+      },
+      "runtime": {
+        "request": {
+          "method": "GET",
+          "url": "https://qa-20261017-a879-name.onbex.co/"
+        },
+        "status": 200,
+        "body": {
+          "marker": "qa-a879",
+          "pid": 1,
+          "startedAt": "2026-10-17T11:08:20.765Z"
+        }
+      },
+      "deploys": {
+        "request": {
+          "method": "GET",
+          "url": "https://api.bex.co/v1/services/srv-db9le8ks300s73dskd3g/deploys?limit=20"
+        },
+        "status": 200,
+        "body": [
+          {
+            "deploy": {
+              "id": "dep-db9le8ks300s73dskd40",
+              "serviceId": "srv-db9le8ks300s73dskd3g",
+              "status": "live",
+              "trigger": "other",
+              "bexTrigger": "create",
+              "image": {
+                "ref": "docker.io/library/node:24-alpine"
+              },
+              "createdAt": "2026-10-17T11:08:18.532084Z",
+              "updatedAt": "2026-10-17T11:08:32.288164Z",
+              "finishedAt": "2026-10-17T11:08:32.288162Z"
+            },
+            "cursor": "dep-db9le8ks300s73dskd40"
+          }
+        ]
+      }
+    },
+    "a879HomeNavigation": {
+      "at": "2026-10-17T11:17:16.160Z",
+      "selected": {
+        "at": "2026-10-17T11:17:13.285Z",
+        "url": "https://dashboard.bex.co/services/srv-db9le8ks300s73dskd3g/deploys",
+        "documentWidth": 390,
+        "heading": "qa-a879-🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟"
+      },
+      "restoredName": "qa-a879-🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟"
+    },
+    "a879MobileSlowReadRename": {
+      "at": "2026-10-17T11:17:48.175Z",
+      "before": {
+        "at": "2026-10-17T11:17:37.103Z",
+        "heading": "qa-a879-🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟",
+        "field": "qa-a879 after slow read",
+        "title": "qa-a879-🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟 ・ Web Service ・ bex Dashboard",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "documentWidth": 390
+      },
+      "held": true,
+      "captured": {
+        "heldAt": "2026-10-17T11:17:45.834Z",
+        "request": {
+          "operationName": "Server",
+          "variables": {
+            "id": "srv-db9le8ks300s73dskd3g"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query Server($id: String!) {\n  server(id: $id) {\n    id\n    name\n    immutableName\n    slug\n    displayName\n    type\n    suspended\n    dashboardUrl\n    region\n    url\n    publicRoutingNotice\n    undeployedChanges\n    undeployedChangesApplying\n    internalAddress\n    createdAt\n    sshAddress\n    phase\n    replicas\n    revision\n    plan\n    idleTTLSeconds\n    maintenanceMode {\n      enabled\n      uri\n      __typename\n    }\n    repo\n    branch\n    imagePath\n    rootDir\n    runtime\n    builder\n    buildCommand\n    startCommand\n    dockerfilePath\n    registryCredentialId\n    buildFilter {\n      paths\n      ignoredPaths\n      __typename\n    }\n    autoDeploy\n    autoDeployTrigger\n    environmentId\n    linkedEnvGroupIds\n    pushDeliveryMethod\n    notifyOnFail\n    notificationsToSend\n    renderSubdomainPolicy\n    port\n    healthCheckPath\n    maxShutdownDelaySeconds\n    preDeployCommand\n    schedule\n    command\n    lastSuccessfulRunAt\n    nextRunAt\n    runs {\n      id\n      name\n      startedAt\n      finishedAt\n      status\n      __typename\n    }\n    publishPath\n    routes {\n      type\n      source\n      destination\n      __typename\n    }\n    headers {\n      path\n      name\n      value\n      __typename\n    }\n    ipAllowList\n    ipAllowListEntries {\n      cidrBlock\n      description\n      __typename\n    }\n    ipAllowListProxiedDomains\n    outboundIps {\n      type\n      ips\n      __typename\n    }\n    maintenanceMode {\n      enabled\n      uri\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "serverProjection": {
+          "id": "srv-db9le8ks300s73dskd3g",
+          "name": "qa-a879-🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟",
+          "displayName": "qa-a879-🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟",
+          "immutableName": "qa-20261017-a879-name",
+          "slug": "qa-20261017-a879-name",
+          "url": "https://qa-20261017-a879-name.onbex.co",
+          "phase": "Running",
+          "revision": "rev-1",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false
+        },
+        "responseProjectionOnly": true,
+        "errors": null,
+        "fullBodyPassedThroughUnchanged": true,
+        "releasedAt": "2026-10-17T11:17:47.010Z",
+        "fulfilledAt": "2026-10-17T11:17:47.013Z"
+      },
+      "mutation": {
+        "at": "2026-10-17T11:17:46.251Z",
+        "request": {
+          "operationName": "SetDisplayName",
+          "variables": {
+            "id": "srv-db9le8ks300s73dskd3g",
+            "displayName": "qa-a879 after slow read"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation SetDisplayName($id: String!, $displayName: String!) {\n  setDisplayName(id: $id, displayName: $displayName) {\n    id\n    name\n    displayName\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "setDisplayName": {
+              "__typename": "Service",
+              "displayName": "qa-a879 after slow read",
+              "id": "srv-db9le8ks300s73dskd3g",
+              "name": "qa-a879 after slow read"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792235865892.019,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.129,
+          "responseStart": 337.655,
+          "responseEnd": 341.939
+        }
+      },
+      "afterMutation": {
+        "at": "2026-10-17T11:17:46.654Z",
+        "heading": "qa-a879-🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟",
+        "field": "qa-a879 after slow read",
+        "title": "qa-a879 after slow read ・ Web Service ・ bex Dashboard",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "documentWidth": 390
+      },
+      "authoritativeBeforeRelease": {
+        "at": "2026-10-17T11:17:47.009Z",
+        "request": {
+          "operationName": "QaA879Identity",
+          "variables": {
+            "id": "srv-db9le8ks300s73dskd3g"
+          },
+          "query": "query QaA879Identity($id:String!){service(id:$id){id name displayName immutableName slug url revision phase undeployedChanges undeployedChangesApplying}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "service": {
+              "displayName": "qa-a879 after slow read",
+              "id": "srv-db9le8ks300s73dskd3g",
+              "immutableName": "qa-20261017-a879-name",
+              "name": "qa-a879 after slow read",
+              "phase": "Running",
+              "revision": "rev-1",
+              "slug": "qa-20261017-a879-name",
+              "undeployedChanges": false,
+              "undeployedChangesApplying": false,
+              "url": "https://qa-20261017-a879-name.onbex.co"
+            }
+          }
+        }
+      },
+      "afterRelease": {
+        "at": "2026-10-17T11:17:47.916Z",
+        "heading": "qa-a879-🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟",
+        "field": "qa-a879-🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟🐟",
+        "title": "qa-a879 after slow read ・ Web Service ・ bex Dashboard",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "documentWidth": 390
+      },
+      "authoritativeAfterRelease": {
+        "at": "2026-10-17T11:17:48.174Z",
+        "request": {
+          "operationName": "QaA879Identity",
+          "variables": {
+            "id": "srv-db9le8ks300s73dskd3g"
+          },
+          "query": "query QaA879Identity($id:String!){service(id:$id){id name displayName immutableName slug url revision phase undeployedChanges undeployedChangesApplying}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "service": {
+              "displayName": "qa-a879 after slow read",
+              "id": "srv-db9le8ks300s73dskd3g",
+              "immutableName": "qa-20261017-a879-name",
+              "name": "qa-a879 after slow read",
+              "phase": "Running",
+              "revision": "rev-1",
+              "slug": "qa-20261017-a879-name",
+              "undeployedChanges": false,
+              "undeployedChangesApplying": false,
+              "url": "https://qa-20261017-a879-name.onbex.co"
+            }
+          }
+        }
+      },
+      "scope": "Browser-local delay of one actual successful pre-write Server response; no response fields changed; credential-bearing fields excluded from recorded projection."
+    },
+    "a879MobileAfterRaceSettledState": {
+      "at": "2026-10-17T11:18:38.028Z",
+      "heading": "qa-a879 after slow read",
+      "field": "qa-a879 after slow read",
+      "title": "qa-a879 after slow read ・ Web Service ・ bex Dashboard",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    "a879FreshDesktopRaceBaseline": {
+      "at": "2026-10-17T11:18:40.488Z",
+      "heading": "qa-a879 after slow read",
+      "field": "qa-a879 after slow read",
+      "title": "qa-a879 after slow read ・ Web Service ・ bex Dashboard",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    "a879DesktopSlowReadRename": {
+      "at": "2026-10-17T11:19:13.349Z",
+      "before": {
+        "at": "2026-10-17T11:18:41.135Z",
+        "heading": "qa-a879 after slow read",
+        "field": "qa-a879 desktop after read",
+        "title": "qa-a879 after slow read ・ Web Service ・ bex Dashboard",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "documentWidth": 1440
+      },
+      "held": true,
+      "captured": {
+        "heldAt": "2026-10-17T11:19:11.006Z",
+        "request": {
+          "operationName": "Server",
+          "variables": {
+            "id": "srv-db9le8ks300s73dskd3g"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query Server($id: String!) {\n  server(id: $id) {\n    id\n    name\n    immutableName\n    slug\n    displayName\n    type\n    suspended\n    dashboardUrl\n    region\n    url\n    publicRoutingNotice\n    undeployedChanges\n    undeployedChangesApplying\n    internalAddress\n    createdAt\n    sshAddress\n    phase\n    replicas\n    revision\n    plan\n    idleTTLSeconds\n    maintenanceMode {\n      enabled\n      uri\n      __typename\n    }\n    repo\n    branch\n    imagePath\n    rootDir\n    runtime\n    builder\n    buildCommand\n    startCommand\n    dockerfilePath\n    registryCredentialId\n    buildFilter {\n      paths\n      ignoredPaths\n      __typename\n    }\n    autoDeploy\n    autoDeployTrigger\n    environmentId\n    linkedEnvGroupIds\n    pushDeliveryMethod\n    notifyOnFail\n    notificationsToSend\n    renderSubdomainPolicy\n    port\n    healthCheckPath\n    maxShutdownDelaySeconds\n    preDeployCommand\n    schedule\n    command\n    lastSuccessfulRunAt\n    nextRunAt\n    runs {\n      id\n      name\n      startedAt\n      finishedAt\n      status\n      __typename\n    }\n    publishPath\n    routes {\n      type\n      source\n      destination\n      __typename\n    }\n    headers {\n      path\n      name\n      value\n      __typename\n    }\n    ipAllowList\n    ipAllowListEntries {\n      cidrBlock\n      description\n      __typename\n    }\n    ipAllowListProxiedDomains\n    outboundIps {\n      type\n      ips\n      __typename\n    }\n    maintenanceMode {\n      enabled\n      uri\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "serverProjection": {
+          "id": "srv-db9le8ks300s73dskd3g",
+          "name": "qa-a879 after slow read",
+          "displayName": "qa-a879 after slow read",
+          "immutableName": "qa-20261017-a879-name",
+          "slug": "qa-20261017-a879-name",
+          "url": "https://qa-20261017-a879-name.onbex.co",
+          "phase": "Running",
+          "revision": "rev-1",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false
+        },
+        "responseProjectionOnly": true,
+        "errors": null,
+        "fullBodyPassedThroughUnchanged": true,
+        "releasedAt": "2026-10-17T11:19:12.070Z",
+        "fulfilledAt": "2026-10-17T11:19:12.070Z"
+      },
+      "mutation": {
+        "at": "2026-10-17T11:19:11.448Z",
+        "request": {
+          "operationName": "SetDisplayName",
+          "variables": {
+            "id": "srv-db9le8ks300s73dskd3g",
+            "displayName": "qa-a879 desktop after read"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation SetDisplayName($id: String!, $displayName: String!) {\n  setDisplayName(id: $id, displayName: $displayName) {\n    id\n    name\n    displayName\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "setDisplayName": {
+              "__typename": "Service",
+              "displayName": "qa-a879 desktop after read",
+              "id": "srv-db9le8ks300s73dskd3g",
+              "name": "qa-a879 desktop after read"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792235951046.007,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.212,
+          "responseStart": 376.792,
+          "responseEnd": 378.757
+        }
+      },
+      "afterMutation": {
+        "at": "2026-10-17T11:19:11.850Z",
+        "heading": "qa-a879 after slow read",
+        "field": "qa-a879 desktop after read",
+        "title": "qa-a879 after slow read ・ Web Service ・ bex Dashboard",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "documentWidth": 1440
+      },
+      "authoritativeBeforeRelease": {
+        "at": "2026-10-17T11:19:12.069Z",
+        "request": {
+          "operationName": "QaA879Identity",
+          "variables": {
+            "id": "srv-db9le8ks300s73dskd3g"
+          },
+          "query": "query QaA879Identity($id:String!){service(id:$id){id name displayName immutableName slug url revision phase undeployedChanges undeployedChangesApplying}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "service": {
+              "displayName": "qa-a879 desktop after read",
+              "id": "srv-db9le8ks300s73dskd3g",
+              "immutableName": "qa-20261017-a879-name",
+              "name": "qa-a879 desktop after read",
+              "phase": "Running",
+              "revision": "rev-1",
+              "slug": "qa-20261017-a879-name",
+              "undeployedChanges": false,
+              "undeployedChangesApplying": false,
+              "url": "https://qa-20261017-a879-name.onbex.co"
+            }
+          }
+        }
+      },
+      "afterRelease": {
+        "at": "2026-10-17T11:19:12.972Z",
+        "heading": "qa-a879 after slow read",
+        "field": "qa-a879 after slow read",
+        "title": "qa-a879 desktop after read ・ Web Service ・ bex Dashboard",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "documentWidth": 1440
+      },
+      "authoritativeAfterRelease": {
+        "at": "2026-10-17T11:19:13.347Z",
+        "request": {
+          "operationName": "QaA879Identity",
+          "variables": {
+            "id": "srv-db9le8ks300s73dskd3g"
+          },
+          "query": "query QaA879Identity($id:String!){service(id:$id){id name displayName immutableName slug url revision phase undeployedChanges undeployedChangesApplying}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "service": {
+              "displayName": "qa-a879 desktop after read",
+              "id": "srv-db9le8ks300s73dskd3g",
+              "immutableName": "qa-20261017-a879-name",
+              "name": "qa-a879 desktop after read",
+              "phase": "Running",
+              "revision": "rev-1",
+              "slug": "qa-20261017-a879-name",
+              "undeployedChanges": false,
+              "undeployedChangesApplying": false,
+              "url": "https://qa-20261017-a879-name.onbex.co"
+            }
+          }
+        }
+      },
+      "scope": "Browser-local delay of one actual successful pre-write Server response; no response fields changed; credential-bearing fields excluded from recorded projection."
+    },
+    "a879DesktopSlowReadCaptured": {
+      "at": "2026-10-17T11:21:15.627Z",
+      "before": {
+        "at": "2026-10-17T11:21:04.331Z",
+        "heading": "qa-a879 desktop after read",
+        "field": "qa-a879 desktop captured",
+        "title": "qa-a879 desktop after read ・ Web Service ・ bex Dashboard",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "documentWidth": 1440
+      },
+      "held": true,
+      "captured": {
+        "heldAt": "2026-10-17T11:21:13.354Z",
+        "request": {
+          "operationName": "Server",
+          "variables": {
+            "id": "srv-db9le8ks300s73dskd3g"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query Server($id: String!) {\n  server(id: $id) {\n    id\n    name\n    immutableName\n    slug\n    displayName\n    type\n    suspended\n    dashboardUrl\n    region\n    url\n    publicRoutingNotice\n    undeployedChanges\n    undeployedChangesApplying\n    internalAddress\n    createdAt\n    sshAddress\n    phase\n    replicas\n    revision\n    plan\n    idleTTLSeconds\n    maintenanceMode {\n      enabled\n      uri\n      __typename\n    }\n    repo\n    branch\n    imagePath\n    rootDir\n    runtime\n    builder\n    buildCommand\n    startCommand\n    dockerfilePath\n    registryCredentialId\n    buildFilter {\n      paths\n      ignoredPaths\n      __typename\n    }\n    autoDeploy\n    autoDeployTrigger\n    environmentId\n    linkedEnvGroupIds\n    pushDeliveryMethod\n    notifyOnFail\n    notificationsToSend\n    renderSubdomainPolicy\n    port\n    healthCheckPath\n    maxShutdownDelaySeconds\n    preDeployCommand\n    schedule\n    command\n    lastSuccessfulRunAt\n    nextRunAt\n    runs {\n      id\n      name\n      startedAt\n      finishedAt\n      status\n      __typename\n    }\n    publishPath\n    routes {\n      type\n      source\n      destination\n      __typename\n    }\n    headers {\n      path\n      name\n      value\n      __typename\n    }\n    ipAllowList\n    ipAllowListEntries {\n      cidrBlock\n      description\n      __typename\n    }\n    ipAllowListProxiedDomains\n    outboundIps {\n      type\n      ips\n      __typename\n    }\n    maintenanceMode {\n      enabled\n      uri\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "serverProjection": {
+          "id": "srv-db9le8ks300s73dskd3g",
+          "name": "qa-a879 desktop after read",
+          "displayName": "qa-a879 desktop after read",
+          "immutableName": "qa-20261017-a879-name",
+          "slug": "qa-20261017-a879-name",
+          "url": "https://qa-20261017-a879-name.onbex.co",
+          "phase": "Running",
+          "revision": "rev-1",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false
+        },
+        "responseProjectionOnly": true,
+        "errors": null,
+        "fullBodyPassedThroughUnchanged": true,
+        "releasedAt": "2026-10-17T11:21:14.410Z",
+        "fulfilledAt": "2026-10-17T11:21:14.412Z"
+      },
+      "mutation": {
+        "at": "2026-10-17T11:21:13.756Z",
+        "request": {
+          "operationName": "SetDisplayName",
+          "variables": {
+            "id": "srv-db9le8ks300s73dskd3g",
+            "displayName": "qa-a879 desktop captured"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation SetDisplayName($id: String!, $displayName: String!) {\n  setDisplayName(id: $id, displayName: $displayName) {\n    id\n    name\n    displayName\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "setDisplayName": {
+              "__typename": "Service",
+              "displayName": "qa-a879 desktop captured",
+              "id": "srv-db9le8ks300s73dskd3g",
+              "name": "qa-a879 desktop captured"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792236073394.811,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.321,
+          "responseStart": 338.245,
+          "responseEnd": 341.722
+        }
+      },
+      "afterMutation": {
+        "at": "2026-10-17T11:21:14.159Z",
+        "heading": "qa-a879 desktop after read",
+        "field": "qa-a879 desktop captured",
+        "title": "qa-a879 desktop after read ・ Web Service ・ bex Dashboard",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "documentWidth": 1440
+      },
+      "authoritativeBeforeRelease": {
+        "at": "2026-10-17T11:21:14.410Z",
+        "request": {
+          "operationName": "QaA879Identity",
+          "variables": {
+            "id": "srv-db9le8ks300s73dskd3g"
+          },
+          "query": "query QaA879Identity($id:String!){service(id:$id){id name displayName immutableName slug url revision phase undeployedChanges undeployedChangesApplying}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "service": {
+              "displayName": "qa-a879 desktop captured",
+              "id": "srv-db9le8ks300s73dskd3g",
+              "immutableName": "qa-20261017-a879-name",
+              "name": "qa-a879 desktop captured",
+              "phase": "Running",
+              "revision": "rev-1",
+              "slug": "qa-20261017-a879-name",
+              "undeployedChanges": false,
+              "undeployedChangesApplying": false,
+              "url": "https://qa-20261017-a879-name.onbex.co"
+            }
+          }
+        }
+      },
+      "afterRelease": {
+        "at": "2026-10-17T11:21:15.314Z",
+        "heading": "qa-a879 desktop after read",
+        "field": "qa-a879 desktop after read",
+        "title": "qa-a879 desktop captured ・ Web Service ・ bex Dashboard",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "documentWidth": 1440
+      },
+      "authoritativeAfterRelease": {
+        "at": "2026-10-17T11:21:15.627Z",
+        "request": {
+          "operationName": "QaA879Identity",
+          "variables": {
+            "id": "srv-db9le8ks300s73dskd3g"
+          },
+          "query": "query QaA879Identity($id:String!){service(id:$id){id name displayName immutableName slug url revision phase undeployedChanges undeployedChangesApplying}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "service": {
+              "displayName": "qa-a879 desktop captured",
+              "id": "srv-db9le8ks300s73dskd3g",
+              "immutableName": "qa-20261017-a879-name",
+              "name": "qa-a879 desktop captured",
+              "phase": "Running",
+              "revision": "rev-1",
+              "slug": "qa-20261017-a879-name",
+              "undeployedChanges": false,
+              "undeployedChangesApplying": false,
+              "url": "https://qa-20261017-a879-name.onbex.co"
+            }
+          }
+        }
+      },
+      "scope": "Browser-local delay of one actual successful pre-write Server response; no response fields changed; credential-bearing fields excluded from recorded projection."
+    },
+    "a879MobileCaptureBaseline": {
+      "at": "2026-10-17T11:23:05.207Z",
+      "field": "qa-a879 desktop captured",
+      "runtime": {
+        "status": 200,
+        "body": {
+          "marker": "qa-a879",
+          "pid": 1,
+          "startedAt": "2026-10-17T11:08:20.765Z"
+        }
+      }
+    },
+    "a879MobileSlowReadCaptured": {
+      "at": "2026-10-17T11:23:37.025Z",
+      "before": {
+        "at": "2026-10-17T11:23:05.826Z",
+        "heading": "qa-a879 desktop captured",
+        "field": "qa-a879 mobile captured",
+        "title": "qa-a879 desktop captured ・ Web Service ・ bex Dashboard",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "documentWidth": 390
+      },
+      "held": true,
+      "captured": {
+        "heldAt": "2026-10-17T11:23:34.854Z",
+        "request": {
+          "operationName": "Server",
+          "variables": {
+            "id": "srv-db9le8ks300s73dskd3g"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query Server($id: String!) {\n  server(id: $id) {\n    id\n    name\n    immutableName\n    slug\n    displayName\n    type\n    suspended\n    dashboardUrl\n    region\n    url\n    publicRoutingNotice\n    undeployedChanges\n    undeployedChangesApplying\n    internalAddress\n    createdAt\n    sshAddress\n    phase\n    replicas\n    revision\n    plan\n    idleTTLSeconds\n    maintenanceMode {\n      enabled\n      uri\n      __typename\n    }\n    repo\n    branch\n    imagePath\n    rootDir\n    runtime\n    builder\n    buildCommand\n    startCommand\n    dockerfilePath\n    registryCredentialId\n    buildFilter {\n      paths\n      ignoredPaths\n      __typename\n    }\n    autoDeploy\n    autoDeployTrigger\n    environmentId\n    linkedEnvGroupIds\n    pushDeliveryMethod\n    notifyOnFail\n    notificationsToSend\n    renderSubdomainPolicy\n    port\n    healthCheckPath\n    maxShutdownDelaySeconds\n    preDeployCommand\n    schedule\n    command\n    lastSuccessfulRunAt\n    nextRunAt\n    runs {\n      id\n      name\n      startedAt\n      finishedAt\n      status\n      __typename\n    }\n    publishPath\n    routes {\n      type\n      source\n      destination\n      __typename\n    }\n    headers {\n      path\n      name\n      value\n      __typename\n    }\n    ipAllowList\n    ipAllowListEntries {\n      cidrBlock\n      description\n      __typename\n    }\n    ipAllowListProxiedDomains\n    outboundIps {\n      type\n      ips\n      __typename\n    }\n    maintenanceMode {\n      enabled\n      uri\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "serverProjection": {
+          "id": "srv-db9le8ks300s73dskd3g",
+          "name": "qa-a879 desktop captured",
+          "displayName": "qa-a879 desktop captured",
+          "immutableName": "qa-20261017-a879-name",
+          "slug": "qa-20261017-a879-name",
+          "url": "https://qa-20261017-a879-name.onbex.co",
+          "phase": "Running",
+          "revision": "rev-1",
+          "undeployedChanges": false,
+          "undeployedChangesApplying": false
+        },
+        "responseProjectionOnly": true,
+        "errors": null,
+        "fullBodyPassedThroughUnchanged": true,
+        "releasedAt": "2026-10-17T11:23:35.837Z",
+        "fulfilledAt": "2026-10-17T11:23:35.838Z"
+      },
+      "mutation": {
+        "at": "2026-10-17T11:23:35.210Z",
+        "request": {
+          "operationName": "SetDisplayName",
+          "variables": {
+            "id": "srv-db9le8ks300s73dskd3g",
+            "displayName": "qa-a879 mobile captured"
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation SetDisplayName($id: String!, $displayName: String!) {\n  setDisplayName(id: $id, displayName: $displayName) {\n    id\n    name\n    displayName\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "setDisplayName": {
+              "__typename": "Service",
+              "displayName": "qa-a879 mobile captured",
+              "id": "srv-db9le8ks300s73dskd3g",
+              "name": "qa-a879 mobile captured"
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792236214888.3547,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.244,
+          "responseStart": 300.978,
+          "responseEnd": 303.267
+        }
+      },
+      "afterMutation": {
+        "at": "2026-10-17T11:23:35.614Z",
+        "heading": "qa-a879 desktop captured",
+        "field": "qa-a879 mobile captured",
+        "title": "qa-a879 mobile captured ・ Web Service ・ bex Dashboard",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "documentWidth": 390
+      },
+      "authoritativeBeforeRelease": {
+        "at": "2026-10-17T11:23:35.837Z",
+        "request": {
+          "operationName": "QaA879Identity",
+          "variables": {
+            "id": "srv-db9le8ks300s73dskd3g"
+          },
+          "query": "query QaA879Identity($id:String!){service(id:$id){id name displayName immutableName slug url revision phase undeployedChanges undeployedChangesApplying}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "service": {
+              "displayName": "qa-a879 mobile captured",
+              "id": "srv-db9le8ks300s73dskd3g",
+              "immutableName": "qa-20261017-a879-name",
+              "name": "qa-a879 mobile captured",
+              "phase": "Running",
+              "revision": "rev-1",
+              "slug": "qa-20261017-a879-name",
+              "undeployedChanges": false,
+              "undeployedChangesApplying": false,
+              "url": "https://qa-20261017-a879-name.onbex.co"
+            }
+          }
+        }
+      },
+      "afterRelease": {
+        "at": "2026-10-17T11:23:36.740Z",
+        "heading": "qa-a879 desktop captured",
+        "field": "qa-a879 desktop captured",
+        "title": "qa-a879 mobile captured ・ Web Service ・ bex Dashboard",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "documentWidth": 390
+      },
+      "authoritativeAfterRelease": {
+        "at": "2026-10-17T11:23:37.024Z",
+        "request": {
+          "operationName": "QaA879Identity",
+          "variables": {
+            "id": "srv-db9le8ks300s73dskd3g"
+          },
+          "query": "query QaA879Identity($id:String!){service(id:$id){id name displayName immutableName slug url revision phase undeployedChanges undeployedChangesApplying}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "service": {
+              "displayName": "qa-a879 mobile captured",
+              "id": "srv-db9le8ks300s73dskd3g",
+              "immutableName": "qa-20261017-a879-name",
+              "name": "qa-a879 mobile captured",
+              "phase": "Running",
+              "revision": "rev-1",
+              "slug": "qa-20261017-a879-name",
+              "undeployedChanges": false,
+              "undeployedChangesApplying": false,
+              "url": "https://qa-20261017-a879-name.onbex.co"
+            }
+          }
+        }
+      },
+      "scope": "Browser-local delay of one actual successful pre-write Server response; no response fields changed; credential-bearing fields excluded from recorded projection."
+    },
+    "a879ClearLabelSaved": {
+      "at": "2026-10-17T11:26:55.177Z",
+      "request": {
+        "operationName": "SetDisplayName",
+        "variables": {
+          "id": "srv-db9le8ks300s73dskd3g",
+          "displayName": ""
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation SetDisplayName($id: String!, $displayName: String!) {\n  setDisplayName(id: $id, displayName: $displayName) {\n    id\n    name\n    displayName\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "setDisplayName": {
+            "__typename": "Service",
+            "displayName": "",
+            "id": "srv-db9le8ks300s73dskd3g",
+            "name": "qa-20261017-a879-name"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792236414030.159,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.168,
+        "responseStart": 428.903,
+        "responseEnd": 429.41
+      },
+      "url": "https://dashboard.bex.co/services/srv-db9le8ks300s73dskd3g/settings"
+    },
+    "a879ClearLabelVerified": {
+      "at": "2026-10-17T11:26:57.413Z",
+      "heading": "qa-20261017-a879-name",
+      "field": "qa-20261017-a879-name",
+      "identity": {
+        "request": {
+          "operationName": "QaA879Identity",
+          "variables": {
+            "id": "srv-db9le8ks300s73dskd3g"
+          },
+          "query": "query QaA879Identity($id:String!){service(id:$id){id name displayName immutableName slug url revision phase undeployedChanges undeployedChangesApplying}}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "service": {
+              "displayName": "",
+              "id": "srv-db9le8ks300s73dskd3g",
+              "immutableName": "qa-20261017-a879-name",
+              "name": "qa-20261017-a879-name",
+              "phase": "Running",
+              "revision": "rev-1",
+              "slug": "qa-20261017-a879-name",
+              "undeployedChanges": false,
+              "undeployedChangesApplying": false,
+              "url": "https://qa-20261017-a879-name.onbex.co"
+            }
+          }
+        }
+      },
+      "deploys": {
+        "status": 200,
+        "body": [
+          {
+            "deploy": {
+              "id": "dep-db9le8ks300s73dskd40",
+              "serviceId": "srv-db9le8ks300s73dskd3g",
+              "status": "live",
+              "trigger": "other",
+              "bexTrigger": "create",
+              "image": {
+                "ref": "docker.io/library/node:24-alpine"
+              },
+              "createdAt": "2026-10-17T11:08:18.532084Z",
+              "updatedAt": "2026-10-17T11:08:32.288164Z",
+              "finishedAt": "2026-10-17T11:08:32.288162Z"
+            },
+            "cursor": "dep-db9le8ks300s73dskd40"
+          }
+        ]
+      },
+      "runtime": {
+        "status": 200,
+        "body": {
+          "marker": "qa-a879",
+          "pid": 1,
+          "startedAt": "2026-10-17T11:08:20.765Z"
+        }
+      }
+    },
+    "a879DeleteService": {
+      "at": "2026-10-17T11:27:05.865Z",
+      "request": {
+        "operationName": "DeleteService",
+        "variables": {
+          "id": "srv-db9le8ks300s73dskd3g"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteService($id: String!, $confirm: String) {\n  deleteService(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteService": true
+        }
+      },
+      "timing": {
+        "startTime": 1792236424178.175,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.127,
+        "responseStart": 952.156,
+        "responseEnd": 952.872
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "a879InventoryCleanup": {
+      "at": "2026-10-17T11:27:26.173Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [
+        {
+          "path": "/v1/services/srv-db9le8ks300s73dskd3g",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9le8ks300s73dskd3g/deploys",
+          "status": 404
+        },
+        {
+          "path": "/v1/services/srv-db9le8ks300s73dskd3g/deploys/dep-db9le8ks300s73dskd40",
+          "status": 404
+        }
+      ]
+    },
+    "a879SessionCleared": {
+      "at": "2026-10-17T11:27:31.913Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    }
+  },
+  "probes": {
+    "original": "async(page)=>{const targetName='qa-a879 after slow read';await page.getByRole('button',{name:'Edit service name',exact:true}).click();await page.getByRole('textbox',{name:'Service Name',exact:true}).fill(targetName);const snapshot=async()=>({at:new Date().toISOString(),heading:await page.getByRole('heading',{level:1}).first().textContent(),field:await page.getByRole('textbox',{name:'Service Name',exact:true}).inputValue(),title:await page.title(),viewport:page.viewportSize(),documentWidth:await page.evaluate(()=>document.documentElement.scrollWidth)});let release,signalHeld,signalDone;const heldPromise=new Promise(r=>signalHeld=r),releasePromise=new Promise(r=>release=r),donePromise=new Promise(r=>signalDone=r);let captured=null,used=false;const handler=async route=>{const req=route.request();let entries;try{entries=[].concat(req.postDataJSON())}catch{await route.fallback();return}const i=entries.findIndex(e=>e.operationName==='Server'&&e.variables?.id==='srv-db9le8ks300s73dskd3g');if(i<0||used){await route.fallback();return}used=true;try{const response=await route.fetch({timeout:25000});const json=await response.json();const entry=Array.isArray(json)?json[i]:json;const server=entry?.data?.server;const fields=['id','name','displayName','immutableName','slug','url','phase','revision','undeployedChanges','undeployedChangesApplying'];captured={heldAt:new Date().toISOString(),request:entries[i],status:response.status(),serverProjection:server?Object.fromEntries(fields.filter(k=>k in server).map(k=>[k,server[k]])):null,responseProjectionOnly:true,errors:entry?.errors||null,fullBodyPassedThroughUnchanged:true};signalHeld();await Promise.race([releasePromise,page.waitForTimeout(45000)]);captured.releasedAt=new Date().toISOString();await route.fulfill({response});captured.fulfilledAt=new Date().toISOString()}catch(e){captured={...(captured||{}),error:String(e).split('\\n')[0]};signalHeld();try{await route.continue()}catch{}}finally{signalDone()}};await page.route('https://api.bex.co/graphql',handler);try{const before=await snapshot();const held=await Promise.race([heldPromise.then(()=>true),page.waitForTimeout(35000).then(()=>false)]);if(!held||captured?.error)return{before,held,captured,notRun:'No successful native Server read held; no rename submitted'};const waited=page.waitForResponse(r=>{if(r.request().method()!=='POST'||!r.url().endsWith('/graphql'))return false;try{return[].concat(r.request().postDataJSON()).some(x=>x.operationName==='SetDisplayName'&&x.variables.id==='srv-db9le8ks300s73dskd3g')}catch{return false}},{timeout:20000});await page.getByRole('button',{name:'Save changes',exact:true}).click();const mr=await waited;const qs=[].concat(mr.request().postDataJSON()),bs=[].concat(await mr.json()),mi=qs.findIndex(x=>x.operationName==='SetDisplayName');const mutation={at:new Date().toISOString(),request:qs[mi],status:mr.status(),body:bs[mi],timing:mr.request().timing()};await page.waitForTimeout(400);const afterMutation=await snapshot();const identityRequest={\"operationName\":\"QaA879Identity\",\"variables\":{\"id\":\"srv-db9le8ks300s73dskd3g\"},\"query\":\"query QaA879Identity($id:String!){service(id:$id){id name displayName immutableName slug url revision phase undeployedChanges undeployedChangesApplying}}\"};const ar=await page.request.post('https://api.bex.co/graphql',{data:identityRequest,timeout:20000});const authoritativeBeforeRelease={at:new Date().toISOString(),request:identityRequest,status:ar.status(),body:await ar.json()};release();await Promise.race([donePromise,page.waitForTimeout(10000)]);await page.waitForTimeout(900);const afterRelease=await snapshot();const br=await page.request.post('https://api.bex.co/graphql',{data:identityRequest,timeout:20000});const authoritativeAfterRelease={at:new Date().toISOString(),request:identityRequest,status:br.status(),body:await br.json()};return{at:new Date().toISOString(),before,held,captured,mutation,afterMutation,authoritativeBeforeRelease,afterRelease,authoritativeAfterRelease,scope:'Browser-local delay of one actual successful pre-write Server response; no response fields changed; credential-bearing fields excluded from recorded projection.'}}finally{release();await page.unroute('https://api.bex.co/graphql',handler);if(used)await Promise.race([donePromise,page.waitForTimeout(10000)])}}",
+    "desktopCapture": "async(page)=>{const targetName='qa-a879 desktop captured';await page.getByRole('button',{name:'Edit service name',exact:true}).click();await page.getByRole('textbox',{name:'Service Name',exact:true}).fill(targetName);const snapshot=async()=>({at:new Date().toISOString(),heading:await page.getByRole('heading',{level:1}).first().textContent(),field:await page.getByRole('textbox',{name:'Service Name',exact:true}).inputValue(),title:await page.title(),viewport:page.viewportSize(),documentWidth:await page.evaluate(()=>document.documentElement.scrollWidth)});let release,signalHeld,signalDone;const heldPromise=new Promise(r=>signalHeld=r),releasePromise=new Promise(r=>release=r),donePromise=new Promise(r=>signalDone=r);let captured=null,used=false;const handler=async route=>{const req=route.request();let entries;try{entries=[].concat(req.postDataJSON())}catch{await route.fallback();return}const i=entries.findIndex(e=>e.operationName==='Server'&&e.variables?.id==='srv-db9le8ks300s73dskd3g');if(i<0||used){await route.fallback();return}used=true;try{const response=await route.fetch({timeout:25000});const json=await response.json();const entry=Array.isArray(json)?json[i]:json;const server=entry?.data?.server;const fields=['id','name','displayName','immutableName','slug','url','phase','revision','undeployedChanges','undeployedChangesApplying'];captured={heldAt:new Date().toISOString(),request:entries[i],status:response.status(),serverProjection:server?Object.fromEntries(fields.filter(k=>k in server).map(k=>[k,server[k]])):null,responseProjectionOnly:true,errors:entry?.errors||null,fullBodyPassedThroughUnchanged:true};signalHeld();await Promise.race([releasePromise,page.waitForTimeout(45000)]);captured.releasedAt=new Date().toISOString();await route.fulfill({response});captured.fulfilledAt=new Date().toISOString()}catch(e){captured={...(captured||{}),error:String(e).split('\\n')[0]};signalHeld();try{await route.continue()}catch{}}finally{signalDone()}};await page.route('https://api.bex.co/graphql',handler);try{const before=await snapshot();const held=await Promise.race([heldPromise.then(()=>true),page.waitForTimeout(35000).then(()=>false)]);if(!held||captured?.error)return{before,held,captured,notRun:'No successful native Server read held; no rename submitted'};const waited=page.waitForResponse(r=>{if(r.request().method()!=='POST'||!r.url().endsWith('/graphql'))return false;try{return[].concat(r.request().postDataJSON()).some(x=>x.operationName==='SetDisplayName'&&x.variables.id==='srv-db9le8ks300s73dskd3g')}catch{return false}},{timeout:20000});await page.getByRole('button',{name:'Save changes',exact:true}).click();const mr=await waited;const qs=[].concat(mr.request().postDataJSON()),bs=[].concat(await mr.json()),mi=qs.findIndex(x=>x.operationName==='SetDisplayName');const mutation={at:new Date().toISOString(),request:qs[mi],status:mr.status(),body:bs[mi],timing:mr.request().timing()};await page.waitForTimeout(400);const afterMutation=await snapshot();const identityRequest={\"operationName\":\"QaA879Identity\",\"variables\":{\"id\":\"srv-db9le8ks300s73dskd3g\"},\"query\":\"query QaA879Identity($id:String!){service(id:$id){id name displayName immutableName slug url revision phase undeployedChanges undeployedChangesApplying}}\"};const ar=await page.request.post('https://api.bex.co/graphql',{data:identityRequest,timeout:20000});const authoritativeBeforeRelease={at:new Date().toISOString(),request:identityRequest,status:ar.status(),body:await ar.json()};release();await Promise.race([donePromise,page.waitForTimeout(10000)]);await page.waitForTimeout(900);const afterRelease=await snapshot();await page.screenshot({path:'qa-a879-stale-desktop.png',fullPage:false});const br=await page.request.post('https://api.bex.co/graphql',{data:identityRequest,timeout:20000});const authoritativeAfterRelease={at:new Date().toISOString(),request:identityRequest,status:br.status(),body:await br.json()};return{at:new Date().toISOString(),before,held,captured,mutation,afterMutation,authoritativeBeforeRelease,afterRelease,authoritativeAfterRelease,scope:'Browser-local delay of one actual successful pre-write Server response; no response fields changed; credential-bearing fields excluded from recorded projection.'}}finally{release();await page.unroute('https://api.bex.co/graphql',handler);if(used)await Promise.race([donePromise,page.waitForTimeout(10000)])}}",
+    "mobileCapture": "async(page)=>{const targetName='qa-a879 mobile captured';await page.getByRole('button',{name:'Edit service name',exact:true}).click();await page.getByRole('textbox',{name:'Service Name',exact:true}).fill(targetName);const snapshot=async()=>({at:new Date().toISOString(),heading:await page.getByRole('heading',{level:1}).first().textContent(),field:await page.getByRole('textbox',{name:'Service Name',exact:true}).inputValue(),title:await page.title(),viewport:page.viewportSize(),documentWidth:await page.evaluate(()=>document.documentElement.scrollWidth)});let release,signalHeld,signalDone;const heldPromise=new Promise(r=>signalHeld=r),releasePromise=new Promise(r=>release=r),donePromise=new Promise(r=>signalDone=r);let captured=null,used=false;const handler=async route=>{const req=route.request();let entries;try{entries=[].concat(req.postDataJSON())}catch{await route.fallback();return}const i=entries.findIndex(e=>e.operationName==='Server'&&e.variables?.id==='srv-db9le8ks300s73dskd3g');if(i<0||used){await route.fallback();return}used=true;try{const response=await route.fetch({timeout:25000});const json=await response.json();const entry=Array.isArray(json)?json[i]:json;const server=entry?.data?.server;const fields=['id','name','displayName','immutableName','slug','url','phase','revision','undeployedChanges','undeployedChangesApplying'];captured={heldAt:new Date().toISOString(),request:entries[i],status:response.status(),serverProjection:server?Object.fromEntries(fields.filter(k=>k in server).map(k=>[k,server[k]])):null,responseProjectionOnly:true,errors:entry?.errors||null,fullBodyPassedThroughUnchanged:true};signalHeld();await Promise.race([releasePromise,page.waitForTimeout(45000)]);captured.releasedAt=new Date().toISOString();await route.fulfill({response});captured.fulfilledAt=new Date().toISOString()}catch(e){captured={...(captured||{}),error:String(e).split('\\n')[0]};signalHeld();try{await route.continue()}catch{}}finally{signalDone()}};await page.route('https://api.bex.co/graphql',handler);try{const before=await snapshot();const held=await Promise.race([heldPromise.then(()=>true),page.waitForTimeout(35000).then(()=>false)]);if(!held||captured?.error)return{before,held,captured,notRun:'No successful native Server read held; no rename submitted'};const waited=page.waitForResponse(r=>{if(r.request().method()!=='POST'||!r.url().endsWith('/graphql'))return false;try{return[].concat(r.request().postDataJSON()).some(x=>x.operationName==='SetDisplayName'&&x.variables.id==='srv-db9le8ks300s73dskd3g')}catch{return false}},{timeout:20000});await page.getByRole('button',{name:'Save changes',exact:true}).click();const mr=await waited;const qs=[].concat(mr.request().postDataJSON()),bs=[].concat(await mr.json()),mi=qs.findIndex(x=>x.operationName==='SetDisplayName');const mutation={at:new Date().toISOString(),request:qs[mi],status:mr.status(),body:bs[mi],timing:mr.request().timing()};await page.waitForTimeout(400);const afterMutation=await snapshot();const identityRequest={\"operationName\":\"QaA879Identity\",\"variables\":{\"id\":\"srv-db9le8ks300s73dskd3g\"},\"query\":\"query QaA879Identity($id:String!){service(id:$id){id name displayName immutableName slug url revision phase undeployedChanges undeployedChangesApplying}}\"};const ar=await page.request.post('https://api.bex.co/graphql',{data:identityRequest,timeout:20000});const authoritativeBeforeRelease={at:new Date().toISOString(),request:identityRequest,status:ar.status(),body:await ar.json()};release();await Promise.race([donePromise,page.waitForTimeout(10000)]);await page.waitForTimeout(900);const afterRelease=await snapshot();await page.screenshot({path:'qa-a879-stale-mobile.png',fullPage:false});const br=await page.request.post('https://api.bex.co/graphql',{data:identityRequest,timeout:20000});const authoritativeAfterRelease={at:new Date().toISOString(),request:identityRequest,status:br.status(),body:await br.json()};return{at:new Date().toISOString(),before,held,captured,mutation,afterMutation,authoritativeBeforeRelease,afterRelease,authoritativeAfterRelease,scope:'Browser-local delay of one actual successful pre-write Server response; no response fields changed; credential-bearing fields excluded from recorded projection.'}}finally{release();await page.unroute('https://api.bex.co/graphql',handler);if(used)await Promise.race([donePromise,page.waitForTimeout(10000)])}}",
+    "identityRequest": {
+      "operationName": "QaA879Identity",
+      "variables": {
+        "id": "srv-db9le8ks300s73dskd3g"
+      },
+      "query": "query QaA879Identity($id:String!){service(id:$id){id name displayName immutableName slug url revision phase undeployedChanges undeployedChangesApplying}}"
+    },
+    "runtimeCommand": "node -e 'const http=require(\"http\");const startedAt=new Date().toISOString();http.createServer((req,res)=>{res.setHeader(\"content-type\",\"application/json\");res.setHeader(\"x-qa-a879\",\"owned\");res.end(JSON.stringify({marker:\"qa-a879\",pid:process.pid,startedAt}))}).listen(Number(process.env.PORT||8080),\"0.0.0.0\")'"
+  },
+  "finish": {
+    "logoutConfirmed": true,
+    "exitCode": 0,
+    "browser": {
+      "at": "2026-10-17T11:27:31.913Z",
+      "whoami": 401,
+      "cookies": 0,
+      "pages": 1,
+      "url": "about:blank"
+    },
+    "handlesRemoved": true
+  },
+  "physicalCleanup": {
+    "at": "2026-10-17T11:27:49.290815+00:00",
+    "app": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a879-name",
+    "scope": "exact owned names and labels; pods/jobs all namespaces",
+    "checks": [
+      {
+        "check": "app",
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "deployment",
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "service",
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "ingress",
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "certificate",
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "pods-app",
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "pods-build",
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "pods-publish",
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "pods-purge",
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "pods-predeploy",
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "jobs-app",
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "jobs-build",
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "jobs-publish",
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "jobs-purge",
+        "count": 0,
+        "resources": []
+      },
+      {
+        "check": "jobs-predeploy",
+        "count": 0,
+        "resources": []
+      }
+    ],
+    "allAbsent": true
+  },
+  "publicCleanup": {
+    "at": "2026-10-17T11:29:08.092503+00:00",
+    "url": "https://qa-20261017-a879-name.onbex.co/",
+    "exitCode": 0,
+    "status": "404"
+  },
+  "networkSummary": {
+    "at": "2026-10-17T11:28:34.151141+00:00",
+    "baselineExclusive": 9000,
+    "count": 336,
+    "statuses": {
+      "200": 311,
+      "204": 12,
+      "FAILED": 12,
+      "unrecorded": 1
+    },
+    "nonSuccess": [
+      "9014. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_ABORTED",
+      "9068. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_ABORTED",
+      "9103. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_ABORTED",
+      "9133. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_CONNECTION_CLOSED",
+      "9134. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_CONNECTION_CLOSED",
+      "9135. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_CONNECTION_CLOSED",
+      "9136. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_CONNECTION_CLOSED",
+      "9146. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_ABORTED",
+      "9170. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_ABORTED",
+      "9295. [POST] https://api.bex.co/graphql",
+      "9369. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_CONNECTION_CLOSED",
+      "9370. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_CONNECTION_CLOSED",
+      "9380. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_CONNECTION_CLOSED"
+    ],
+    "interpretation": "Connection-closed and aborted records during browser-local request interception and navigation are unclassified transport observations, not separately reproduced product findings; four successful mutation/detail-read races have explicit HTTP200 receipts. One status unrecorded."
+  },
+  "callerCensus": {
+    "useServer": {
+      "count": 15,
+      "callers": [
+        {
+          "path": "dashboard/src/routes/services.$serviceId.env.tsx",
+          "line": 30,
+          "text": "const { service } = useServer(serviceId, { poll: false });"
+        },
+        {
+          "path": "dashboard/src/routes/services.$serviceId.settings.tsx",
+          "line": 84,
+          "text": "const { service, loading, refetch } = useServer(serviceId, { poll: false });"
+        },
+        {
+          "path": "dashboard/src/routes/services.$serviceId.scaling.tsx",
+          "line": 48,
+          "text": "const { service } = useServer(serviceId, { poll: false });"
+        },
+        {
+          "path": "dashboard/src/routes/services.$serviceId.disk.tsx",
+          "line": 24,
+          "text": "const { service } = useServer(serviceId);"
+        },
+        {
+          "path": "dashboard/src/routes/services.$serviceId.events.tsx",
+          "line": 91,
+          "text": "const { service } = useServer(serviceId, { poll: false });"
+        },
+        {
+          "path": "dashboard/src/routes/services.$serviceId.metrics.tsx",
+          "line": 105,
+          "text": "const { service } = useServer(serviceId, { poll: false });"
+        },
+        {
+          "path": "dashboard/src/routes/services.$serviceId.plan.tsx",
+          "line": 39,
+          "text": "const { service, loading } = useServer(serviceId, { poll: false });"
+        },
+        {
+          "path": "dashboard/src/common/components/dashboard-layout/dashboard-breadcrumbs.tsx",
+          "line": 80,
+          "text": "const { service } = useServer(serviceId, { poll: false });"
+        },
+        {
+          "path": "dashboard/src/common/components/dashboard-layout/service-sidebar.tsx",
+          "line": 39,
+          "text": "const { service, loading } = useServer(serviceId, { poll: false });"
+        },
+        {
+          "path": "dashboard/src/features/services/components/static-edge-rule-page.tsx",
+          "line": 44,
+          "text": "const { service, loading, refetch } = useServer(serviceId, { poll: false });"
+        },
+        {
+          "path": "dashboard/src/features/services/components/non-static-route.tsx",
+          "line": 33,
+          "text": "const { service, loading } = useServer(serviceId, { poll: false });"
+        },
+        {
+          "path": "dashboard/src/features/services/components/env-groups-panel.tsx",
+          "line": 60,
+          "text": "} = useServer(serviceId, { poll: false });"
+        },
+        {
+          "path": "dashboard/src/features/services/components/service-detail-layout.tsx",
+          "line": 44,
+          "text": "const { service, loading, error, refetch } = useServer(serviceId);"
+        },
+        {
+          "path": "dashboard/src/features/services/components/service-shell-page.tsx",
+          "line": 30,
+          "text": "const { service, loading } = useServer(serviceId, { poll: false });"
+        },
+        {
+          "path": "dashboard/src/features/deploys/components/deploys-list-page.tsx",
+          "line": 119,
+          "text": "const { service } = useServer(serviceId, { poll: false });"
+        }
+      ]
+    },
+    "useServices": {
+      "count": 9,
+      "callers": [
+        {
+          "path": "dashboard/src/routes/index.tsx",
+          "line": 129,
+          "text": "} = useServices();"
+        },
+        {
+          "path": "dashboard/src/routes/env-groups.tsx",
+          "line": 89,
+          "text": "} = useServices();"
+        },
+        {
+          "path": "dashboard/src/routes/env-groups_.$groupId.tsx",
+          "line": 93,
+          "text": "} = useServices();"
+        },
+        {
+          "path": "dashboard/src/routes/project.$projectId.index.tsx",
+          "line": 98,
+          "text": "} = useServices();"
+        },
+        {
+          "path": "dashboard/src/common/components/dashboard-layout/dashboard-breadcrumbs.tsx",
+          "line": 81,
+          "text": "const { services } = useServices({ poll: false });"
+        },
+        {
+          "path": "dashboard/src/common/components/dashboard-layout/global-search-dialog.tsx",
+          "line": 130,
+          "text": "const { services, loading: servicesLoading } = useServices();"
+        },
+        {
+          "path": "dashboard/src/features/notifications/components/push-notification-settings-panel.tsx",
+          "line": 158,
+          "text": "const { services } = useServices();"
+        },
+        {
+          "path": "dashboard/src/features/webhooks/components/webhook-deliveries-card.tsx",
+          "line": 116,
+          "text": "} = useServices({ poll: false });"
+        },
+        {
+          "path": "dashboard/src/features/blueprints/components/generate-blueprint-dialog.tsx",
+          "line": 81,
+          "text": "const { services } = useServices();"
+        }
+      ]
+    },
+    "useDisplayName": {
+      "count": 1,
+      "callers": [
+        {
+          "path": "dashboard/src/features/services/components/display-name-row.tsx",
+          "line": 29,
+          "text": "const { setDisplayName, busy } = useDisplayName();"
+        }
+      ]
+    }
+  },
+  "dedupeIndex": {
+    "markdownCount": 9685,
+    "nonDoneReadmeCount": 277,
+    "nextW4Milestone": 225,
+    "targetedOpenMatches": [
+      ".pm/w6/README.md",
+      ".pm/w4/blocked/281.md",
+      ".pm/w4/blocked/319.md",
+      ".pm/w4/blocked/m203/finding.md"
+    ]
+  },
+  "recordedAt": "2026-10-17T11:34:26.167890+00:00",
+  "sourceHead": "46084c87396de84b1c0ee1b94ce8abbb2691bb41",
+  "fixture": {
+    "id": "srv-db9le8ks300s73dskd3g",
+    "name": "qa-20261017-a879-name",
+    "workspaceId": "tea-d98210cbbpdc73dcrkvg",
+    "plan": "free",
+    "image": "docker.io/library/node:24-alpine",
+    "port": 8080,
+    "deploymentId": "dep-db9le8ks300s73dskd40",
+    "physicalName": "tea-d98210cbbpdc73dcrkvg-qa-20261017-a879-name",
+    "publicUrl": "https://qa-20261017-a879-name.onbex.co"
+  },
+  "scope": "Four browser-local delays of successful real pre-write Server responses; no response fields changed. Complete old responses were passed through, but only explicit safe projections recorded. Full safe native mutations and narrow independent identity reads are included. No naturally slow production occurrence, saved-label loss or authenticated Render timing claimed.",
+  "sdkPrimary": {
+    "package": "@apollo/client",
+    "version": "4.3.3",
+    "primaryTarball": "https://registry.npmjs.org/@apollo/client/-/client-4.3.3.tgz",
+    "localExtract": ".playwright-mcp/qa-a720-apollo-source/package",
+    "selection": "Matches dashboard lockfile and extensions of observed native operations; locally installed4.1.3 not used as deployed-code proof."
+  },
+  "links": [
+    {
+      "url": "https://api-docs.render.com/reference/update-service",
+      "claim": "Render documents PATCH /v1/services/{serviceId} with name; no dashboard arrival-order guarantee established."
+    },
+    {
+      "url": "https://www.apollographql.com/docs/react/data/refetching",
+      "claim": "Selective refetch and individually settled results; version-specific implementation inspected in primary package."
+    }
+  ],
+  "screenshots": [
+    {
+      "path": ".playwright-mcp/qa-a879-stale-desktop.png",
+      "sha256": "2e7d56855f3e612ac57f93e9b1090c78eeebb96d2958a0deb1904568c9febdd7",
+      "bytes": 179156,
+      "viewed": true,
+      "interpretation": "failure: old heading/field, success toast naming new label",
+      "durability": "Supplementary local gitignored PNG; durable timed DOM/API observations are in observations."
+    },
+    {
+      "path": ".playwright-mcp/qa-a879-stale-mobile.png",
+      "sha256": "47a0e0a7c6915d24769bebff3440158592ae49040b251af00da7bb61dd5b3d7b",
+      "bytes": 82503,
+      "viewed": true,
+      "interpretation": "failure: old heading/field, success toast naming new label",
+      "durability": "Supplementary local gitignored PNG; durable timed DOM/API observations are in observations."
+    },
+    {
+      "path": ".playwright-mcp/qa-a879-desktop-after-read.png",
+      "sha256": "9cdf0e88434982115e0e70a60d33eb5c4711c86179f41e0b8a5e24d93e1cbb9a",
+      "bytes": 171846,
+      "viewed": true,
+      "interpretation": "later recovered control, not a failure",
+      "durability": "Supplementary local gitignored PNG; durable timed DOM/API observations are in observations."
+    },
+    {
+      "path": ".playwright-mcp/qa-a879-mobile-after-read.png",
+      "sha256": "f3484e641bc577efe2c0f5abdb0c9d96235bb8ebeb487c7c8e87d0fcd24853df",
+      "bytes": 77626,
+      "viewed": true,
+      "interpretation": "later recovered control, not a failure",
+      "durability": "Supplementary local gitignored PNG; durable timed DOM/API observations are in observations."
+    }
+  ],
+  "sourceExcerpts": [
+    {
+      "path": "dashboard/src/features/services/hooks/use-display-name.ts",
+      "sha256": "4c25aedf0dac48df0a66c64be39ca9487a1f7a5f5f46d1f8b8231481e046d352",
+      "fromLine": 1,
+      "throughLine": 42,
+      "text": "import { useCallback, useState } from \"react\";\nimport { useMutation } from \"@apollo/client/react\";\nimport { toast } from \"sonner\";\nimport { SetDisplayNameDocument } from \"@/graphql/definitions\";\nimport { useTranslations } from \"@/common/hooks/use-translations\";\nimport { mutationErrorMessage } from \"@/common/lib/graphql-error\";\n\nexport interface UseDisplayNameResult {\n  setDisplayName: (id: string, displayName: string) => Promise<boolean>;\n  busy: boolean;\n}\n\n/** Wires the Settings name control to the App's mutable spec.displayName. */\nexport function useDisplayName(): UseDisplayNameResult {\n  const { t } = useTranslations();\n  const [mutate] = useMutation(SetDisplayNameDocument);\n  const [busy, setBusy] = useState(false);\n\n  const setDisplayName = useCallback(\n    async (id: string, displayName: string) => {\n      setBusy(true);\n      try {\n        await mutate({ variables: { id, displayName } });\n        toast.success(\n          displayName\n            ? t(\"services.displayNameSuccess\", { name: displayName })\n            : t(\"services.displayNameCleared\"),\n        );\n        return true;\n      } catch (err) {\n        toast.error(mutationErrorMessage(err, t(\"services.displayNameError\")));\n        return false;\n      } finally {\n        setBusy(false);\n      }\n    },\n    [mutate, t],\n  );\n\n  return { setDisplayName, busy };\n}"
+    },
+    {
+      "path": "dashboard/src/features/services/components/display-name-row.tsx",
+      "sha256": "56bc05d8f61fb0fac11c9eb2feaf35e71a4e06e432c03230e9558888e95dcae9",
+      "fromLine": 25,
+      "throughLine": 52,
+      "text": "  name,\n  onChanged,\n}: DisplayNameRowProps) {\n  const { t } = useTranslations();\n  const { setDisplayName, busy } = useDisplayName();\n  const current = displayName?.trim() ?? \"\";\n  const visible = current || name?.trim() || serviceId;\n\n  return (\n    <EditableFieldRow\n      label={t(\"services.displayNameLabel\")}\n      hint={t(\"services.displayNameHint\", { id: serviceId })}\n      value={visible}\n      editLabel={t(\"services.displayNameEdit\")}\n      busy={busy}\n      // Clearing an already-empty label back to the immutable-id fallback is\n      // not a change; anything else that differs from the visible value is.\n      dirty={(value) => value !== visible && !(value === \"\" && current === \"\")}\n      onSave={async (value) => {\n        const ok = await setDisplayName(serviceId, value);\n        if (ok) onChanged?.();\n        return ok;\n      }}\n    />\n  );\n}"
+    },
+    {
+      "path": "dashboard/src/routes/services.$serviceId.settings.tsx",
+      "sha256": "e7924190a9a88dd89c4117430ccfc82eb173f42cebb9ee1b6dd63fa6bdca3159",
+      "fromLine": 80,
+      "throughLine": 115,
+      "text": " * service has, and their order, is serviceSettingsSections: the navigation and\n * the pending skeleton draw the same list (w5/m124).\n */\nexport function ServiceSettingsPage({ serviceId }: { serviceId: string }) {\n  const { service, loading, refetch } = useServer(serviceId, { poll: false });\n  const router = useRouter();\n  const { pending, run } = useServiceLifecycle({ refetch });\n  const { t } = useTranslations();\n  const sections = serviceSettingsSections(service ?? undefined);\n  const cron = service ? isCron(service) : false;\n  const staticSite = service ? isStaticSite(service) : false;\n\n  // A section's content. The list holds the sections that read the loaded\n  // service only once it has loaded; the guards narrow its type.\n  function renderSection(id: ServiceSettingsSectionId): ReactNode {\n    switch (id) {\n      case \"general\":\n        return (\n          <Card>\n            <CardHeader>\n              <CardTitle>{t(\"services.generalTitle\")}</CardTitle>\n              <CardDescription>\n                {t(\"services.settingsDescription\")}\n              </CardDescription>\n            </CardHeader>\n            <CardContent>\n              {!service && loading ? (\n                <FieldRowsSkeleton rows={4} />\n              ) : (\n                <div className=\"space-y-6\">\n                  <DisplayNameRow\n                    serviceId={serviceId}\n                    displayName={service?.displayName}\n                    name={service?.name}\n                    onChanged={() => void router.invalidate()}\n                  />"
+    },
+    {
+      "path": "dashboard/src/features/services/hooks/use-server.ts",
+      "sha256": "41cc3c2513a6aebf4d406cd5b6618bb2e4996fd000406f2a1ccd4c4ba66b1931",
+      "fromLine": 45,
+      "throughLine": 89,
+      "text": "export function useServer(\n  id: string,\n  { poll = true }: UseServerOptions = {},\n): UseServerResult {\n  const { data, loading, error, refetch, startPolling, stopPolling } = useQuery(\n    ServerDocument,\n    {\n      variables: { id },\n      fetchPolicy: \"cache-first\",\n      errorPolicy: \"all\",\n      skipPollAttempt: skipPollWhenHidden,\n    },\n  );\n\n  const service = useMemo(\n    () => (data?.server ? toServiceView(data.server) : null),\n    [data],\n  );\n\n  // Not yet loaded counts as converging, matching useDatabase: an App whose\n  // first read is still in flight is exactly the one whose phase is about to\n  // move.\n  useConvergingPoll(\n    startPolling,\n    stopPolling,\n    service ? isConvergingPhase(service) : true,\n    poll,\n  );\n\n  const refetchViews = useCallback(async () => {\n    const res = await refetch();\n    return res.data?.server ? [toServiceView(res.data.server)] : [];\n  }, [refetch]);\n\n  return { service, loading, error, refetch: refetchViews };\n}"
+    },
+    {
+      "path": "dashboard/src/features/services/hooks/use-services.ts",
+      "sha256": "1cdd15b45dde37392b685b7983954b5049215c1a293f2d99aa7e5b907afe8a49",
+      "fromLine": 40,
+      "throughLine": 68,
+      "text": "export function useServices({\n  poll = true,\n}: UseServicesOptions = {}): UseServicesResult {\n  const { currentWorkspaceId } = useWorkspace();\n  const resolved = currentWorkspaceId != null;\n  const { data, loading, error, refetch } = useQuery(ServicesDocument, {\n    variables: { ownerId: currentWorkspaceId },\n    skip: !resolved,\n    fetchPolicy: PRIMED_FETCH_POLICY,\n    errorPolicy: \"all\",\n    pollInterval: poll ? RESOURCE_POLL_INTERVAL_MS : 0,\n    skipPollAttempt: skipPollWhenHidden,\n  });\n\n  // Memoized on Apollo's `data` identity (stable between poll ticks / unrelated\n  // re-renders), so the mapped list keeps a stable identity and downstream\n  // `computeStats` doesn't recompute on every lifecycle-`pending` flip.\n  const services = useMemo(() => toServiceViews(data?.services), [data]);\n\n  const refetchViews = useCallback(async () => {\n    const res = await refetch();\n    return toServiceViews(res.data?.services);\n  }, [refetch]);\n\n  return {\n    services,\n    loading: !resolved || loading,\n    error,\n    refetch: refetchViews,"
+    },
+    {
+      "path": "dashboard/src/features/services/lib/service-detail-loader.ts",
+      "sha256": "825ad95a002349b2ecee1f78f071e2c759e2dec0f86a271283d49b895ad9bf51",
+      "fromLine": 25,
+      "throughLine": 65,
+      "text": " */\nexport async function warmServiceBreadcrumbs(\n  client: RouterContext[\"client\"],\n  serviceId: string,\n  ownerId: string | null | undefined,\n  cause: \"preload\" | \"enter\" | \"stay\",\n): Promise<void> {\n  if (ownerId == null) return;\n  const fetchPolicy = titleLoaderFetchPolicy(cause);\n  const [projectsResult] = await Promise.all([\n    client\n      .query({\n        query: ProjectsDocument,\n        variables: { ownerId },\n        fetchPolicy,\n        errorPolicy: \"all\",\n      })\n      .catch(() => undefined),\n    client\n      .query({\n        query: ServicesDocument,\n        variables: { ownerId },\n        fetchPolicy,\n        errorPolicy: \"all\",\n      })\n      .catch(() => undefined),\n  ]);\n  const projectId = projectsResult?.data?.projects?.find((project) =>\n    (project?.serviceIds ?? []).includes(serviceId),\n  )?.id;\n  if (!projectId) return;\n  await client\n    .query({\n      query: EnvironmentsDocument,\n      variables: { projectId },\n      fetchPolicy,\n      errorPolicy: \"all\",\n    })\n    .catch(() => undefined);\n}\n"
+    },
+    {
+      "path": "dashboard/src/features/services/lib/service-detail-loader.ts",
+      "sha256": "825ad95a002349b2ecee1f78f071e2c759e2dec0f86a271283d49b895ad9bf51",
+      "fromLine": 86,
+      "throughLine": 105,
+      "text": "  // without awaiting so a cold enter/preload still gates only on ServerDocument\n  // (one RTT). Hover-intent and stay already hide most of this path.\n  void warmServiceBreadcrumbs(client, serviceId, ownerId, cause);\n  const result = await client.query({\n    query: ServerDocument,\n    variables: { id: serviceId },\n    fetchPolicy: titleLoaderFetchPolicy(cause),\n    errorPolicy: \"all\",\n  });\n  const server = result.data?.server ?? undefined;\n  // Only redirect once the type is known — a null server (not-found/error)\n  // keeps the shell's own not-found/error handling.\n  if (server?.type) {\n    const canonical = serviceBaseForType(server.type);\n    if (canonical !== base) redirectToBase(canonical, base, location);\n  }\n  const resource =\n    server && (server.displayName?.trim() || server.name?.trim())\n      ? server\n      : null;"
+    },
+    {
+      "path": "dashboard/src/features/services/lib/status.ts",
+      "sha256": "ba5e9d7bc4649c56b11503aae6afd25fc366e83dd9c58e79ade607013a547e19",
+      "fromLine": 29,
+      "throughLine": 44,
+      "text": "/**\n * Map a wire `Service` onto the normalized ServiceView the UI renders. Accepts\n * either the list node or the detail (`server`) node — only the latter selects\n * `schedule`/`runs`, so those are read defensively (list rows leave them empty).\n */\nexport function toServiceView(s: ServiceNode | ServerNode): ServiceView {\n  const name = s.name ?? s.id ?? \"\";\n  const displayName = s.displayName?.trim() || null;\n  return {\n    id: s.id ?? \"\",\n    name: displayName ?? name,\n    slug: \"slug\" in s ? (s.slug ?? null) : null,\n    immutableName: \"immutableName\" in s ? (s.immutableName ?? null) : null,\n    displayName,\n    type: s.type ?? \"web_service\",\n    suspended: isSuspended(s.suspended),"
+    },
+    {
+      "path": "dashboard/src/features/services/components/service-detail-header.tsx",
+      "sha256": "09320597e94c3867f3ff609884615d822eab85df0fd386da8b890d93575d1591",
+      "fromLine": 116,
+      "throughLine": 124,
+      "text": "        {t(SERVICE_TYPE_LABEL[typeKey])}\n      </div>\n\n      <div className=\"flex flex-wrap items-center justify-between gap-3\">\n        <div className=\"flex min-w-0 flex-wrap items-center gap-2\">\n          <h1 className=\"truncate text-xl font-semibold\">{service.name}</h1>\n          <span className=\"text-xs font-medium text-muted-foreground\">\n            {t(\"services.headerServicePhase\")}\n          </span>"
+    },
+    {
+      "path": "dashboard/src/features/services/components/editable-field-row.tsx",
+      "sha256": "56d5adbe2eabc6621f282e2a59d54aecb9ef2666a8b646406d90d3e081eee99e",
+      "fromLine": 138,
+      "throughLine": 151,
+      "text": "  const inputRef = useRef<HTMLInputElement>(null);\n  const triggerRef = useRef<HTMLButtonElement>(null);\n  const editButtonRef = useRef<HTMLButtonElement>(null);\n  // Set only by an explicit Cancel/Escape so the post-render effect returns\n  // focus to the restored pencil — never on mount, a server refresh, or a\n  // save (w4/293).\n  const restoreFocusRef = useRef(false);\n  const editable = !disabled;\n  // The disabled control always shows the persisted value; the draft only\n  // exists while editing (seeded on Edit), so an external value update never\n  // clobbers an in-progress edit.\n  const shown = editing ? draft : value;\n\n  // Focus (and select, for inputs) the control once editing enables it."
+    },
+    {
+      "path": "dashboard/src/features/services/components/editable-field-row.tsx",
+      "sha256": "56d5adbe2eabc6621f282e2a59d54aecb9ef2666a8b646406d90d3e081eee99e",
+      "fromLine": 177,
+      "throughLine": 195,
+      "text": "  function startEdit() {\n    setDraft(value);\n    setEditing(true);\n  }\n\n  function cancel() {\n    restoreFocusRef.current = true;\n    setDraft(value);\n    setEditing(false);\n  }\n\n  async function persist() {\n    setConfirming(false);\n    const ok = await onSave(normalized);\n    if (ok) setEditing(false);\n  }\n\n  function requestSave() {\n    if (!canSave) return;"
+    },
+    {
+      "path": "dashboard/src/common/apollo/cache.ts",
+      "sha256": "95aa21d01fb0d6c22e280373d911bcb6d5ab761a5f31251b3fe110a161a949c7",
+      "fromLine": 1,
+      "throughLine": 24,
+      "text": "import type { InMemoryCacheConfig } from \"@apollo/client\";\n\n// Shared InMemoryCache configuration for both CSR and SSR Apollo clients.\n// Types without a standard `id` field use keyFields: false so Apollo stores\n// them inline under their parent field rather than attempting normalization.\nexport const apolloCacheConfig: InMemoryCacheConfig = {\n  typePolicies: {\n    UsageSummary: { keyFields: false },\n    ServiceUsage: { keyFields: false },\n    UsageRow: { keyFields: false },\n    // A log entry's id is a record identity for the reader's dedupe (w4/m217),\n    // not a cache identity: entries stay embedded in their query's result, as\n    // they were before the id was selected.\n    LogEntry: { keyFields: false },\n  },\n};"
+    },
+    {
+      "path": "dashboard/src/common/apollo/default-options.ts",
+      "sha256": "a7dc85582fb996ec7dc35948d9aba2d3b6173c8d0ef39011a2e4dfdedebfc8c3",
+      "fromLine": 1,
+      "throughLine": 24,
+      "text": "import type { ApolloClient } from \"@apollo/client\";\n\n/**\n * Query defaults every Apollo client in the dashboard shares (w1/m153).\n *\n * Apollo 4 changed `notifyOnNetworkStatusChange` to default to `true`, so a\n * poll or refetch over cached data re-emits `loading: true`. Every consumer\n * that gates a skeleton on `loading` then unmounted the page it already\n * rendered on each 30 s tick, closing open dialogs and dropping typed drafts\n * and focus. `false` stops a background poll, `refetch()` or `fetchMore` from\n * re-announcing `loading` over data already on screen.\n *\n * `loading` can still be true while data is present — mounting a\n * `cache-and-network` query over a warm cache, or switching to variables that\n * are already cached — so a skeleton gate stays `loading && no data yet`.\n *\n * Opt back in with `notifyOnNetworkStatusChange: true` on a query that needs a\n * visible in-flight state, and always on `useLazyQuery`: a lazy query learns\n * of its own request only through that emission, so without it `loading`\n * never turns true when it runs.\n */\nexport const apolloDefaultOptions = {\n  watchQuery: { notifyOnNetworkStatusChange: false },\n} satisfies ApolloClient.DefaultOptions;"
+    },
+    {
+      "path": "dashboard/src/features/projects/hooks/use-rename-project.ts",
+      "sha256": "f53acaf04ee2448425ccaa8adc2b09304035926dba03cd803244780a28c05529",
+      "fromLine": 25,
+      "throughLine": 48,
+      "text": "/**\n * Re-read a renamed project so the page publishes the saved name (w4/m186).\n *\n * The project page's heading and title come from its route loader, which\n * router.invalidate() re-runs cache-first for a retained match. A Projects\n * list read that started before the mutation can finish after it and write\n * the old name back over the mutation's normalized Project. So: settle every\n * active Projects read first — refetchQueries dedupes onto an in-flight read,\n * and each result is settled on its own because the aggregate promise rejects\n * on the first failure while others may still be writing — and only then\n * re-read the project by id. queryDeduplication:false keeps that last read\n * from joining an older in-flight one. Whatever it returns is authoritative,\n * including a newer name another actor saved in the meantime.\n */\nasync function refreshRenamedProject(client: ApolloClient, id: string) {\n  const lists = client.refetchQueries({ include: [ProjectsDocument] });\n  lists.catch(() => undefined); // each result is settled below\n  await Promise.allSettled(lists.results);\n  await client.query({\n    query: ProjectDocument,\n    variables: { id },\n    fetchPolicy: \"network-only\",\n    context: { queryDeduplication: false },\n  });"
+    },
+    {
+      "path": "dashboard/src/features/services/hooks/use-cron-job.ts",
+      "sha256": "1043a6b7309518e7fe7cca88efbc4bf2768b1bc1a20688374d5cddb3d43e9d3e",
+      "fromLine": 49,
+      "throughLine": 75,
+      "text": "\n/**\n * Publish a committed cron save (w4/276), following the rename ordering in\n * use-rename-project: settle this service's in-flight Server reads first —\n * refetchQueries dedupes onto a read already in flight, and each result is\n * settled on its own because the aggregate rejects on the first failure\n * while others may still be writing the pre-save snapshot — and only then\n * re-read by id. queryDeduplication:false keeps that last read from joining\n * an older in-flight one. Whatever it returns is authoritative, including a\n * newer configuration another actor saved in the meantime.\n */\nasync function refreshCronServer(client: ApolloClient, id: string) {\n  const reads = client.refetchQueries({\n    include: [ServerDocument],\n    onQueryUpdated: (query) =>\n      query.variables.id === id && query.getCurrentResult().loading,\n  });\n  reads.catch(() => undefined); // each result is settled below\n  await Promise.allSettled(reads.results);\n  await client.query({\n    query: ServerDocument,\n    variables: { id },\n    fetchPolicy: \"network-only\",\n    context: { queryDeduplication: false },\n  });\n}\n"
+    },
+    {
+      "path": "dashboard/src/features/services/components/__tests__/cron-late-read-rollback.test.tsx",
+      "sha256": "30e668f9d8a993b07991739e84a17c9b5829a92a6253ab998bbc7ab2ba7a6094",
+      "fromLine": 242,
+      "throughLine": 252,
+      "text": "\nfunction renderPage(watchers = 0) {\n  const client = new ApolloClient({\n    link,\n    cache: new InMemoryCache(apolloCacheConfig),\n  });\n  const utils = render(\n    <ApolloProvider client={client}>\n      <Page watchers={watchers} />\n    </ApolloProvider>,\n  );"
+    },
+    {
+      "path": "lego/backend/internal/apps/service.go",
+      "sha256": "1d30f863397c34433d17a81256e1a6c1a834842e46cff6613f3e700e7afdbcbf",
+      "fromLine": 4805,
+      "throughLine": 4864,
+      "text": "// SetDisplayName changes the human-facing label for an App without changing\n// its immutable Kubernetes object name or any identity derived from that name\n// (including platform hostnames and TLS secret names). Ordinary edge whitespace\n// is trimmed; an empty value clears the label so clients fall back to the\n// immutable Name. Labels must stay single-line and distinct from resource IDs.\n//\n// The CR remains the writer of truth — displayName is not projector-owned, so\n// unlike suspend/scale/plan a resync will never revert the patch. The row write\n// alongside it is a read projection (w6/m101): the workspace-wide event feed\n// joins apps at dispatch time and has no CR to read, so without the mirror\n// every webhook and push notification for a renamed service reports the\n// immutable creation-time name.\nfunc (s *Service) SetDisplayName(ctx context.Context, name, displayName string) (AppView, error) {\n\ta, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)\n\tif err != nil {\n\t\treturn AppView{}, err\n\t}\n\ttrimmed, err := checkDisplayName(a, displayName)\n\tif err != nil {\n\t\treturn AppView{}, err\n\t}\n\tprevious := a.Spec.DisplayName\n\tview, err := s.writeThroughStoreFetched(ctx, a,\n\t\tfunc(ctx context.Context, id string) error {\n\t\t\t// The store refuses a name another service in the workspace was\n\t\t\t// created as or is displayed as (w8/m47) — create's rule and answer.\n\t\t\tif err := s.Store.SetAppDisplayName(ctx, id, trimmed); errors.Is(err, store.ErrConflict) {\n\t\t\t\treturn errServiceNameInUse(trimmed)\n\t\t\t} else if err != nil {\n\t\t\t\treturn err\n\t\t\t}\n\t\t\treturn nil\n\t\t},\n\t\tfunc(a *appv1alpha1.App) { a.Spec.DisplayName = trimmed })\n\tif err != nil {\n\t\treturn AppView{}, err\n\t}\n\tif previous != trimmed {\n\t\ts.RecordAppConfigChanged(ctx, a, core.AuditVerbSetDisplayName)\n\t}\n\treturn view, nil\n}\n\nfunc checkDisplayName(a *appv1alpha1.App, value string) (string, error) {\n\tif err := core.NotFoundIfDeleting(a); err != nil {\n\t\treturn \"\", err\n\t}\n\t// Check before trimming: an edge newline or tab is still an invalid label.\n\tfor _, c := range value {\n\t\tif unicode.IsControl(c) || c == '\\u2028' || c == '\\u2029' {\n\t\t\treturn \"\", core.NewBadRequestError(\"DISPLAY_NAME_CONTROL_CHARACTER\", \"display name must not contain control characters or line separators\", nil)\n\t\t}\n\t}\n\tvalue = strings.TrimSpace(value)\n\tconst maxLength = 100\n\tif utf8.RuneCountInString(value) > maxLength {\n\t\treturn \"\", core.NewBadRequestError(\"DISPLAY_NAME_TOO_LONG\", fmt.Sprintf(\"display name must be at most %d Unicode code points\", maxLength), map[string]any{\"maxLength\": maxLength})\n\t}\n\tif ids.LooksLikeResourceID(value) {\n\t\treturn \"\", core.NameResourceIDReservedError(\"displayName\", value)"
+    },
+    {
+      "path": "lego/backend/internal/apps/graphql.go",
+      "sha256": "c33f3eb83ac20640546bd7f87ab18c71185c5bf6429193f7a437b60b10bf4f6c",
+      "fromLine": 295,
+      "throughLine": 312,
+      "text": "\t\t// Routing accepts BOTH shapes: every verb funnels through\n\t\t// core.Base.AuthorizeApp/GetApp, which resolve LabelAppID first and fall\n\t\t// back to LabelServiceName, so pre-flip name URLs keep working.\n\t\t\"id\": gqlutil.StrField(func(a AppView) any { return a.ID }),\n\t\t// name is Render's MUTABLE service.name — the human-facing label\n\t\t// (displayName when set, else the immutable name), through the ONE shared\n\t\t// helper REST/MCP/webhooks already use (renderServiceName). Before w6/m115\n\t\t// this read the raw immutable name, so GraphQL disagreed with the other\n\t\t// three read surfaces for any renamed service. The immutable, addressable\n\t\t// name now lives in `immutableName` (below); `id` addresses too.\n\t\t\"name\":          gqlutil.StrField(func(a AppView) any { return renderServiceName(a) }),\n\t\t\"immutableName\": gqlutil.StrField(func(a AppView) any { return a.Name }),\n\t\t// slug is the globally-unique platform-host segment (w4/m19/w4/m20/t002) —\n\t\t// distinct from name, which is only workspace-unique.\n\t\t\"slug\":        gqlutil.StrField(func(a AppView) any { return a.Slug }),\n\t\t\"displayName\": gqlutil.StrField(func(a AppView) any { return a.DisplayName }),\n\t\t\"type\":        gqlutil.StrField(func(a AppView) any { return a.Type }),\n\t\t\"suspended\":   gqlutil.StrField(func(a AppView) any { return core.SuspendedEnum(a.Suspended) }),"
+    },
+    {
+      "path": "dashboard/src/common/lib/render-alias.ts",
+      "sha256": "8cf8f9b928995addb5587b5a6844d28214304efe41cd1f7e6636cf43a926dd5d",
+      "fromLine": 1,
+      "throughLine": 23,
+      "text": "import { redirect, type ParsedLocation } from \"@tanstack/react-router\";\n\n/**\n * Render dashboard URL scheme → bex canonical routes\n * (docs/render-artifacts/dashboard-routes.md). Render's API and its official\n * CLI mint `<dashboard>/{segment}/{id}` deep links (`/web/srv-…`, `/d/dpg-…`,\n * `/r/red-…`); bex serves them as thin redirect aliases onto the canonical\n * `/services` / `/databases` / `/keyvalue` routes. Every service segment\n * accepts any service id — the CLI falls back to `web` for unknown service\n * types, so segment↔type validation would break its links.\n */\nconst RENDER_ALIAS_TARGETS = {\n  web: \"/services\",\n  worker: \"/services\",\n  pserv: \"/services\",\n  static: \"/services\",\n  cron: \"/services\",\n  d: \"/databases\",\n  r: \"/keyvalue\",\n} as const;\n\nexport type RenderAliasSegment = keyof typeof RENDER_ALIAS_TARGETS;\n"
+    },
+    {
+      "path": "dashboard/src/routes/static.$serviceId.settings.tsx",
+      "sha256": "e1cfd5fea8ccfda93ca2c490c7f68d7c5d6d9cd0df7ca4fa97f8a980d488356d",
+      "fromLine": 1,
+      "throughLine": 30,
+      "text": "import { createFileRoute, getRouteApi } from \"@tanstack/react-router\";\nimport { ServiceSettingsPage } from \"./services.$serviceId.settings\";\nimport { ServiceSettingsSkeleton } from \"@/common/components/route-skeletons\";\nimport { toServiceView } from \"@/features/services/lib/status\";\n\n/** Static-site Settings tab — the shared page under the /static base (w5/m57). */\nexport const Route = createFileRoute(\"/static/$serviceId/settings\")({\n  component: RouteComponent,\n  pendingComponent: StaticSettingsPending,\n});\n\nfunction StaticSettingsPending() {\n  const parent = getRouteApi(\"/static/$serviceId\").useLoaderData();\n  return (\n    <ServiceSettingsSkeleton\n      service={\n        parent?.state === \"ready\" ? toServiceView(parent.resource) : undefined\n      }\n      staticSite\n    />\n  );\n}\n\nfunction RouteComponent() {\n  const { serviceId } = Route.useParams();\n  return <ServiceSettingsPage serviceId={serviceId} />;\n}"
+    },
+    {
+      "path": ".playwright-mcp/qa-a720-apollo-source/package/cache/inmemory/helpers.js",
+      "sha256": "b021d53919b7f248d7b6e0fe3ea37462027bc7398c898ec079048ba2fa19c6e9",
+      "fromLine": 1,
+      "throughLine": 26,
+      "text": "import { Kind } from \"graphql\";\nimport { isReference } from \"@apollo/client/utilities\";\nimport { compact, createFragmentMap, DeepMerger, getFragmentDefinitions, isArray, isField, isNonNullObject, resultKeyNameFromField, shouldInclude, } from \"@apollo/client/utilities/internal\";\nexport const { hasOwnProperty: hasOwn } = Object.prototype;\nexport function defaultDataIdFromObject({ __typename, id, _id }, context) {\n    if (typeof __typename === \"string\") {\n        if (context) {\n            context.keyObject =\n                id != null ? { id }\n                    : _id != null ? { _id }\n                        : void 0;\n        }\n        // If there is no object.id, fall back to object._id.\n        if (id == null && _id != null) {\n            id = _id;\n        }\n        if (id != null) {\n            return `${__typename}:${typeof id === \"number\" || typeof id === \"string\" ?\n                id\n                : JSON.stringify(id)}`;\n        }\n    }\n}\nconst defaultConfig = {\n    dataIdFromObject: defaultDataIdFromObject,\n    resultCaching: true,"
+    },
+    {
+      "path": ".playwright-mcp/qa-a720-apollo-source/package/core/QueryInfo.js",
+      "sha256": "f3363a788fa8b55c478bde5fb0c7229919e3b7fa672def2a599d7812a716c87f",
+      "fromLine": 92,
+      "throughLine": 132,
+      "text": "        if (skipCache || !shouldWriteResult(result, errorPolicy)) {\n            return result;\n        }\n        // Using a transaction here so we have a chance to read the result\n        // back from the cache before the watch callback fires as a result\n        // of writeQuery, so we can store the new diff quietly and ignore\n        // it when we receive it redundantly from the watch callback.\n        this.cache.batch({\n            onWatchUpdated: (\n            // all additional options on ObservableQuery.CacheWatchOptions are\n            // optional so we can use the type here\n            watch, diff) => {\n                if (watch.watcher === this.observableQuery) {\n                    // see comment on `lastOwnDiff` for explanation\n                    watch.lastOwnDiff = diff;\n                }\n            },\n            update: (cache) => {\n                cache.writeQuery({\n                    query,\n                    data: result.data,\n                    variables,\n                    overwrite: cacheWriteBehavior === 1 /* CacheWriteBehavior.OVERWRITE */,\n                    extensions: result.extensions,\n                });\n                const { dataState, result: diffResult } = this.getDiff({\n                    ...diffOptions,\n                    returnPartialData: returnPartialData &&\n                        // Never deliver partial data for network-only requests\n                        (fetchPolicy !== \"network-only\" ||\n                            networkStatus === NetworkStatus.refetch),\n                }, this.getIncrementalInfo({ prune }));\n                if (dataState === \"complete\" ||\n                    dataState === \"streaming\" ||\n                    (returnPartialData && dataState === \"partial\")) {\n                    result = { ...result, data: diffResult, dataState };\n                }\n                else if (__DEV__ &&\n                    // A result that is still streaming is expected to read back\n                    // incomplete until the remaining chunks arrive.\n                    !this.hasNext) {"
+    },
+    {
+      "path": ".playwright-mcp/qa-a720-apollo-source/package/core/ObservableQuery.js",
+      "sha256": "965e1e8164e75a972b59e8953e332ddd3f9071e34f54572efcc9392b86ba7b24",
+      "fromLine": 357,
+      "throughLine": 431,
+      "text": "    getCurrentResult() {\n        const { result: current } = this.subject.getValue();\n        let value = (\n        // if the `current` result is in an error state, we will always return that\n        // error state, even if we have no observers\n        (current.networkStatus === NetworkStatus.error ||\n            // if we have observers, we are watching the cache and\n            // this.subject.getValue() will always be up to date\n            this.hasObservers() || // if we are using a `no-cache` fetch policy in which case this\n        // `ObservableQuery` cannot have been updated from the outside - in\n        // that case, we prefer to keep the current value\n        this.options.fetchPolicy === \"no-cache\")) ?\n            current\n            // otherwise, the `current` value might be outdated due to missed\n            // external updates - calculate it again\n            : this.getInitialResult();\n        if (value === uninitialized) {\n            value = this.getInitialResult();\n        }\n        if (!equal(this.stableLastResult, value)) {\n            this.stableLastResult = value;\n        }\n        return this.stableLastResult;\n    }\n    /**\n     * Update the variables of this observable query, and fetch the new results.\n     * This method should be preferred over `setVariables` in most use cases.\n     *\n     * Returns a `ResultPromise` with an additional `.retain()` method. Calling\n     * `.retain()` keeps the network operation running even if the `ObservableQuery`\n     * no longer requires the result.\n     *\n     * Note: `refetch()` guarantees that a value will be emitted from the\n     * observable, even if the result is deep equal to the previous value.\n     *\n     * @param variables - The new set of variables. If there are missing variables,\n     * the previous values of those variables will be used.\n     */\n    refetch(variables) {\n        const { fetchPolicy } = this.options;\n        const reobserveOptions = {\n            // Always disable polling for refetches.\n            pollInterval: 0,\n        };\n        // Unless the provided fetchPolicy always consults the network\n        // (no-cache, network-only, or cache-and-network), override it with\n        // network-only to force the refetch for this fetchQuery call.\n        if (fetchPolicy === \"no-cache\") {\n            reobserveOptions.fetchPolicy = \"no-cache\";\n        }\n        else {\n            reobserveOptions.fetchPolicy = \"network-only\";\n        }\n        if (__DEV__ && variables && hasOwnProperty.call(variables, \"variables\")) {\n            const queryDef = getQueryDefinition(this.query);\n            const vars = queryDef.variableDefinitions;\n            if (!vars || !vars.some((v) => v.variable.name.value === \"variables\")) {\n                __DEV__ && invariant.warn(85, variables, queryDef.name?.value || queryDef);\n            }\n        }\n        if (variables && !equal(this.variables, variables)) {\n            // Update the existing options with new variables\n            reobserveOptions.variables = this.options.variables =\n                this.getVariablesWithDefaults({ ...this.variables, ...variables });\n        }\n        return this._reobserve(reobserveOptions, {\n            newNetworkStatus: NetworkStatus.refetch,\n        });\n    }\n    fetchMore({ query, variables, context, errorPolicy, updateQuery, }) {\n        invariant(\n            this.options.fetchPolicy !== \"cache-only\",\n            86,\n            getOperationName(this.query, \"(anonymous)\")\n        );"
+    },
+    {
+      "path": ".playwright-mcp/qa-a720-apollo-source/package/core/ObservableQuery.js",
+      "sha256": "965e1e8164e75a972b59e8953e332ddd3f9071e34f54572efcc9392b86ba7b24",
+      "fromLine": 290,
+      "throughLine": 313,
+      "text": "        const { variables, fetchPolicy } = this.options;\n        const query = this.query;\n        const shouldUnsubscribe = fetchPolicy === \"standby\" ||\n            fetchPolicy === \"no-cache\" ||\n            this.waitForNetworkResult;\n        const shouldResubscribe = !isEqualQuery({ query, variables }, this.unsubscribeFromCache) &&\n            !this.waitForNetworkResult;\n        if (shouldUnsubscribe || shouldResubscribe) {\n            this.unsubscribeFromCache?.();\n        }\n        if (shouldUnsubscribe || !shouldResubscribe) {\n            return;\n        }\n        const watch = {\n            query,\n            variables,\n            optimistic: true,\n            watcher: this,\n            callback: (diff) => {\n                const info = this.queryManager.getDocumentInfo(query);\n                if (info.hasClientExports || info.hasForcedResolvers) {\n                    // If this is not set to something different than `diff`, we will\n                    // not be notified about future cache changes with an equal `diff`.\n                    // That would be the case if we are working with client-only fields"
+    },
+    {
+      "path": ".playwright-mcp/qa-a720-apollo-source/package/core/ObservableQuery.js",
+      "sha256": "965e1e8164e75a972b59e8953e332ddd3f9071e34f54572efcc9392b86ba7b24",
+      "fromLine": 900,
+      "throughLine": 934,
+      "text": "        const maybeFetch = () => {\n            // defense against options changing after the setTimeout changes in case\n            // the call site forgets to call cancelPolling\n            if (shouldCancelPolling()) {\n                return this.cancelPolling();\n            }\n            if (this.pollingInfo) {\n                if (!isNetworkRequestInFlight(this.networkStatus) &&\n                    !this.options.skipPollAttempt?.()) {\n                    this._reobserve({\n                        // Most fetchPolicy options don't make sense to use in a polling context, as\n                        // users wouldn't want to be polling the cache directly. However, network-only and\n                        // no-cache are both useful for when the user wants to control whether or not the\n                        // polled results are written to the cache.\n                        fetchPolicy: this.options.initialFetchPolicy === \"no-cache\" ?\n                            \"no-cache\"\n                            : \"network-only\",\n                    }, {\n                        newNetworkStatus: NetworkStatus.poll,\n                    }).then(poll, poll);\n                }\n                else {\n                    poll();\n                }\n            }\n        };\n        const poll = () => {\n            const info = this.pollingInfo;\n            if (info) {\n                clearTimeout(info.timeout);\n                info.timeout = setTimeout(maybeFetch, info.interval);\n            }\n        };\n        poll();\n    }"
+    },
+    {
+      "path": ".playwright-mcp/qa-a720-apollo-source/package/core/QueryManager.js",
+      "sha256": "7a9bee7aacb71e3c6a64bfa100af89751670e7515fb09638293267e86543484b",
+      "fromLine": 515,
+      "throughLine": 588,
+      "text": "    getObservableFromLink(query, context, variables, fetchPolicy, extensions, \n    // Prefer context.queryDeduplication if specified.\n    deduplication = context?.queryDeduplication ??\n        this.queryDeduplication) {\n        let entry = {};\n        const { serverQuery, clientQuery, operationType, hasIncrementalDirective } = this.getDocumentInfo(query);\n        const operationName = getOperationName(query);\n        const executeContext = {\n            client: this.client,\n        };\n        variables = this.cache.serializeVariables(query, variables);\n        if (serverQuery) {\n            const { inFlightLinkObservables, link } = this;\n            try {\n                const operation = this.incrementalHandler.prepareRequest({\n                    query: serverQuery,\n                    variables,\n                    context: {\n                        ...this.defaultContext,\n                        ...context,\n                        queryDeduplication: deduplication,\n                    },\n                    extensions,\n                });\n                context = operation.context;\n                function withRestart(source) {\n                    return new Observable((observer) => {\n                        function subscribe() {\n                            return source.subscribe({\n                                next: observer.next.bind(observer),\n                                complete: observer.complete.bind(observer),\n                                error: observer.error.bind(observer),\n                            });\n                        }\n                        let subscription = subscribe();\n                        entry.restart ||= () => {\n                            subscription.unsubscribe();\n                            subscription = subscribe();\n                        };\n                        return () => {\n                            subscription.unsubscribe();\n                            entry.restart = undefined;\n                        };\n                    });\n                }\n                if (deduplication) {\n                    const printedServerQuery = print(serverQuery);\n                    const varJson = canonicalStringify(variables);\n                    entry = inFlightLinkObservables.lookup(printedServerQuery, varJson);\n                    if (!entry.observable) {\n                        entry.observable = execute(link, operation, executeContext).pipe(withRestart, finalize(() => {\n                            if (inFlightLinkObservables.peek(printedServerQuery, varJson) ===\n                                entry) {\n                                inFlightLinkObservables.remove(printedServerQuery, varJson);\n                            }\n                        }), \n                        // We don't want to replay the last emitted value for\n                        // subscriptions and instead opt to wait to receive updates until\n                        // the subscription emits new values.\n                        operationType === OperationTypeNode.SUBSCRIPTION ?\n                            share()\n                            : shareReplay({ refCount: true }));\n                    }\n                }\n                else {\n                    entry.observable = execute(link, operation, executeContext).pipe(withRestart);\n                }\n            }\n            catch (error) {\n                entry.observable = throwError(() => error);\n            }\n        }\n        else {\n            entry.observable = of({ data: {} });"
+    },
+    {
+      "path": ".playwright-mcp/qa-a720-apollo-source/package/core/QueryManager.js",
+      "sha256": "7a9bee7aacb71e3c6a64bfa100af89751670e7515fb09638293267e86543484b",
+      "fromLine": 360,
+      "throughLine": 412,
+      "text": "    getObservableQueries(include = \"active\") {\n        const queries = new Set();\n        const queryNames = new Map();\n        const queryNamesAndQueryStrings = new Map();\n        const legacyQueryOptions = new Set();\n        if (Array.isArray(include)) {\n            include.forEach((desc) => {\n                if (typeof desc === \"string\") {\n                    queryNames.set(desc, desc);\n                    queryNamesAndQueryStrings.set(desc, false);\n                }\n                else if (isDocumentNode(desc)) {\n                    const queryString = print(this.transform(desc));\n                    queryNames.set(queryString, getOperationName(desc));\n                    queryNamesAndQueryStrings.set(queryString, false);\n                }\n                else if (isNonNullObject(desc) && desc.query) {\n                    legacyQueryOptions.add(desc);\n                }\n            });\n        }\n        this.obsQueries.forEach((oq) => {\n            const document = print(this.transform(oq.options.query));\n            if (include === \"all\") {\n                queries.add(oq);\n                return;\n            }\n            const { queryName, options: { fetchPolicy }, } = oq;\n            if (include === \"active\" && fetchPolicy === \"standby\") {\n                return;\n            }\n            if (include === \"active\" ||\n                (queryName && queryNamesAndQueryStrings.has(queryName)) ||\n                (document && queryNamesAndQueryStrings.has(document))) {\n                queries.add(oq);\n                if (queryName)\n                    queryNamesAndQueryStrings.set(queryName, true);\n                if (document)\n                    queryNamesAndQueryStrings.set(document, true);\n            }\n        });\n        if (legacyQueryOptions.size) {\n            legacyQueryOptions.forEach((options) => {\n                const oq = new ObservableQuery({\n                    queryManager: this,\n                    options: {\n                        ...mergeOptions(this.defaultOptions.watchQuery, options),\n                        fetchPolicy: \"network-only\",\n                    },\n                });\n                queries.add(oq);\n            });\n        }"
+    },
+    {
+      "path": ".playwright-mcp/qa-a720-apollo-source/package/core/QueryManager.js",
+      "sha256": "7a9bee7aacb71e3c6a64bfa100af89751670e7515fb09638293267e86543484b",
+      "fromLine": 801,
+      "throughLine": 820,
+      "text": "    refetchQueries({ updateCache, include, optimistic = false, removeOptimistic = optimistic ? makeUniqueId(\"refetchQueries\") : void 0, onQueryUpdated, }) {\n        const includedQueriesByOq = new Map();\n        if (include) {\n            this.getObservableQueries(include).forEach((oq) => {\n                if (oq.options.fetchPolicy === \"cache-only\" || oq[\"variablesUnknown\"]) {\n                    return;\n                }\n                const current = oq.getCurrentResult();\n                includedQueriesByOq.set(oq, {\n                    oq,\n                    lastDiff: {\n                        result: current?.data,\n                        complete: !current?.partial,\n                    },\n                });\n            });\n        }\n        const results = new Map();\n        if (updateCache) {\n            const handled = new Set();"
+    },
+    {
+      "path": ".playwright-mcp/qa-a720-apollo-source/package/core/QueryManager.js",
+      "sha256": "7a9bee7aacb71e3c6a64bfa100af89751670e7515fb09638293267e86543484b",
+      "fromLine": 897,
+      "throughLine": 920,
+      "text": "        }\n        if (includedQueriesByOq.size) {\n            includedQueriesByOq.forEach(({ oq, lastDiff, diff }) => {\n                let result;\n                // If onQueryUpdated is provided, we want to use it for all included\n                // queries, even the QueryOptions ones.\n                if (onQueryUpdated) {\n                    if (!diff) {\n                        diff = oq.getCacheDiff();\n                    }\n                    result = onQueryUpdated(oq, diff, lastDiff);\n                }\n                // Otherwise, we fall back to refetching.\n                if (!onQueryUpdated || result === true) {\n                    result = oq\n                        .refetch()\n                        .retain( /* create a persistent subscription on the query */);\n                }\n                if (result !== false) {\n                    results.set(oq, result);\n                }\n            });\n        }\n        if (removeOptimistic) {"
+    }
+  ],
+  "sourceHashes": [
+    {
+      "path": "dashboard/src/features/services/api/display-name.graphql",
+      "sha256": "97bf69e1a9e15bdee8acf82779d11af8af1e823be6583430eb8e966028b07ee6"
+    },
+    {
+      "path": "dashboard/src/features/services/api/server.graphql",
+      "sha256": "42a424d99df0b3f7ce22676bebf53852758d8ab60d3187586b201201d87954b1"
+    },
+    {
+      "path": "dashboard/src/features/services/api/services.graphql",
+      "sha256": "7e7fc962915b3879a3c94179c4691e10f256bf41251af4f2ab7443adbb2b95cf"
+    },
+    {
+      "path": "dashboard/yarn.lock",
+      "sha256": "e3eb7681438c9cc6027a030f6c30cbdec02bd18319547ffac9cd662b5c02ca73"
+    },
+    {
+      "path": ".playwright-mcp/qa-a720-apollo-source/package/package.json",
+      "sha256": "a86882f4bfaa893e4869f1ef0faa7a0da35dc95389a0245b1c96c6be393661db"
+    }
+  ],
+  "generatedContract": {
+    "ServerQuery": "{ server: { __typename: 'Service', id: string | null, name: string | null, immutableName: string | null, slug: string | null, displayName: string | null, type: string | null, suspended: string | null, dashboardUrl: string | null, region: string | null, url: string | null, publicRoutingNotice: string | null, undeployedChanges: boolean | null, undeployedChangesApplying: boolean | null, internalAddress: string | null, createdAt: string | null, sshAddress: string | null, phase: string | null, replicas: number | null, revision: string | null, plan: string | null, idleTTLSeconds: number | null, repo: string | null, branch: string | null, imagePath: string | null, rootDir: string | null, runtime: string | null, builder: string | null, buildCommand: string | null, startCommand: string | null, dockerfilePath: string | null, registryCredentialId: string | null, autoDeploy: boolean | null, autoDeployTrigger: string | null, environmentId: string | null, linkedEnvGroupIds: Array<string | null> | null, pushDeliveryMethod: string | null, notifyOnFail: string | null, notificationsToSend: string | null, renderSubdomainPolicy: string | null, port: number | null, healthCheckPath: string | null, maxShutdownDelaySeconds: number | null, preDeployCommand: string | null, schedule: string | null, command: string | null, lastSuccessfulRunAt: string | null, nextRunAt: string | null, publishPath: string | null, ipAllowList: Array<string | null> | null, ipAllowListProxiedDomains: Array<string> | null, maintenanceMode: { __typename: 'MaintenanceMode', enabled: boolean, uri: string } | null, buildFilter: { __typename: 'BuildFilter', paths: Array<string | null> | null, ignoredPaths: Array<string | null> | null } | null, runs: Array<{ __typename: 'CronRun', id: string | null, name: string | null, startedAt: string | null, finishedAt: string | null, status: string | null } | null> | null, routes: Array<{ __typename: 'StaticRoute', type: string | null, source: string | null, destination: string | null } | null> | null, headers: Array<{ __typename: 'StaticHeader', path: string | null, name: string | null, value: string | null } | null> | null, ipAllowListEntries: Array<{ __typename: 'IPAllowListEntry', cidrBlock: string, description: string | null } | null> | null, outboundIps: { __typename: 'OutboundIPs', type: string | null, ips: Array<string | null> | null } | null } | null }",
+    "SetDisplayNameMutation": "{ setDisplayName: { __typename: 'Service', id: string | null, name: string | null, displayName: string | null } | null }"
+  }
+}
