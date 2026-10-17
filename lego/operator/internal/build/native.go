@@ -71,6 +71,8 @@ const (
 	nativeNodeRuntime   = "node"
 	nativePythonRuntime = "python"
 	nativeRubyRuntime   = "ruby"
+	// nativeRubyGems is Render's BUNDLE_PATH, beside the source tree.
+	nativeRubyGems = "/opt/render/project/.gems"
 )
 
 // nativeToolchains is the reviewed set of toolchain lines a native build may
@@ -330,7 +332,13 @@ COPY <<'%s' %s
 // production dependencies and config are the ones compiled and started.
 // Ruby does the same with RAILS_ENV=production (w8/114): in development
 // `rails server` binds localhost only, which no readiness probe or request
-// reaches; in production it binds every interface on PORT.
+// reaches; in production it binds every interface on PORT. It also gets
+// Render's Bundler settings (w8/117): deployment mode, so a missing lock or
+// one that no longer matches its Gemfile fails the build instead of being
+// re-resolved, and Render's gem directory outside the source tree with
+// binstubs first on PATH — deployment mode alone would install into the
+// app's vendor/bundle, where a static site publishing its root or a Jekyll
+// build would pick the gems up, and a bare `puma` would no longer resolve.
 // Python gets Render's Gunicorn flags, preloading the app and writing access
 // lines to stdout (w8/113). Render's --bind is left out: Gunicorn binds the
 // platform's PORT by default, which a bind in gunicorn.conf.py or on the
@@ -349,7 +357,9 @@ func nativeBuildDefaults(o Options) string {
 		return `ENV GUNICORN_CMD_ARGS="--preload --access-logfile -"` + "\n" +
 			`ENV FORWARDED_ALLOW_IPS="*"` + "\n"
 	case nativeRubyRuntime:
-		return "ENV RAILS_ENV=production\n"
+		return "ENV RAILS_ENV=production\n" +
+			"ENV BUNDLE_DEPLOYMENT=true BUNDLE_PATH=" + nativeRubyGems + " BUNDLE_BIN=" + nativeRubyGems + "/bin\n" +
+			"ENV PATH=" + nativeRubyGems + "/bin:$PATH\n"
 	}
 	return ""
 }
