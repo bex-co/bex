@@ -1,0 +1,68 @@
+{
+  "at": "2026-10-17T17:02:53.517331+00:00",
+  "source_head": "2a409e808edb19cf05756d2f071f80f061e80336",
+  "source": {
+    "lego/operator/internal/build/native.go": {
+      "sha256": "ca615bdf967b8f81125d0da66b7ec8ca6da1eb9a188f0f7e7f3557fb7d2d1ccd",
+      "excerpts": [
+        {
+          "first": 345,
+          "last": 364,
+          "text": "345: // command line still replaces, as it would without these flags. It also gets\n346: // Render's FORWARDED_ALLOW_IPS=* (w8/116): requests arrive from the ingress,\n347: // never loopback, so without it Gunicorn (and Uvicorn, which reads the same\n348: // variable) ignores X-Forwarded-Proto and an HTTPS request reaches the app\n349: // as http. The ingress replaces the client's forwarding headers with its own,\n350: // and only it and the platform's namespaces reach a pod from outside its\n351: // workspace.\n352: func nativeBuildDefaults(o Options) string {\n353: \tswitch nativeRuntime(o) {\n354: \tcase \"elixir\":\n355: \t\treturn \"ENV MIX_ENV=prod\\n\"\n356: \tcase nativePythonRuntime:\n357: \t\treturn `ENV GUNICORN_CMD_ARGS=\"--preload --access-logfile -\"` + \"\\n\" +\n358: \t\t\t`ENV FORWARDED_ALLOW_IPS=\"*\"` + \"\\n\"\n359: \tcase nativeRubyRuntime:\n360: \t\treturn \"ENV RAILS_ENV=production\\n\" +\n361: \t\t\t\"ENV BUNDLE_DEPLOYMENT=true BUNDLE_PATH=\" + nativeRubyGems + \" BUNDLE_BIN=\" + nativeRubyGems + \"/bin\\n\" +\n362: \t\t\t\"ENV PATH=\" + nativeRubyGems + \"/bin:$PATH\\n\"\n363: \t}\n364: \treturn \"\""
+        }
+      ]
+    },
+    "lego/operator/internal/controller/app_controller.go": {
+      "sha256": "144964b31382605696f56d790cd62b7d01f5066b591aa93b399f0def1fb77b24",
+      "excerpts": [
+        {
+          "first": 1587,
+          "last": 1611,
+          "text": "1587: // just the same, and one counter keeps a single durable home for the native\n1588: // cache key (w4/m163).\n1589: //\n1590: // No Secret sources, no build-relevant literals and no files => (\"\", \"none\")\n1591: // with no Secret written. Literals or files alone still mint the App-owned\n1592: // Secret so the revision survives operator restarts. A missing group Secret\n1593: // contributes nothing, but any other read failure \u2014 including the own Secret\n1594: // missing \u2014 fails the build rather than silently building with a partial\n1595: // environment.\n1596: func (r *AppReconciler) projectNativeBuildEnv(ctx context.Context, app *appv1alpha1.App, buildNs string, literals []corev1.EnvVar, files map[string][]byte) (string, string, error) {\n1597: \t// envFromSources owns the source list, order, and optionality \u2014 iterating\n1598: \t// its output keeps build-time and runtime environments single-sourced.\n1599: \tsources := envFromSources(inFlightRelease(app))\n1600: \t// The preparer's own literal set, so the revision covers exactly what the\n1601: \t// native RUN exports.\n1602: \tliterals = build.BuildLiterals(literals)\n1603: \tif len(sources) == 0 && len(literals) == 0 && len(files) == 0 {\n1604: \t\treturn \"\", build.NativeEnvNoneRevision, nil\n1605: \t}\n1606: \tdata, err := r.readBuildEnvSources(ctx, app, sources)\n1607: \tif err != nil {\n1608: \t\treturn \"\", \"\", err\n1609: \t}\n1610: \tinput := nativeEnvInputToken(string(app.UID), data, literals, files)\n1611: \tvar revision string"
+        },
+        {
+          "first": 1646,
+          "last": 1668,
+          "text": "1646: // readBuildEnvSources reads a build's ordered env Secret sources (envFromSources\n1647: // of the in-flight release) into one map, later sources winning \u2014 the runtime\n1648: // envFrom precedence. A missing optional group Secret contributes nothing; any\n1649: // other read failure, including the service's own Secret missing, fails the\n1650: // build rather than building with a partial environment.\n1651: func (r *AppReconciler) readBuildEnvSources(ctx context.Context, app *appv1alpha1.App, sources []corev1.EnvFromSource) (map[string][]byte, error) {\n1652: \trefs := make([]buildSecretSource, 0, len(sources))\n1653: \tfor _, source := range sources {\n1654: \t\tref := source.SecretRef\n1655: \t\trefs = append(refs, buildSecretSource{name: ref.Name, optional: ref.Optional != nil && *ref.Optional})\n1656: \t}\n1657: \treturn r.readBuildSecretSources(ctx, app, \"env\", refs)\n1658: }\n1659: \n1660: // buildSecretSource is one App-namespace Secret a build reads, in precedence\n1661: // order, and whether its absence is tolerated.\n1662: type buildSecretSource struct {\n1663: \tname     string\n1664: \toptional bool\n1665: }\n1666: \n1667: // readBuildSecretSources merges ordered Secret sources into one map, later\n1668: // sources winning. Only NotFound on an optional source is skipped; every other"
+        },
+        {
+          "first": 4881,
+          "last": 4942,
+          "text": "4881: // appEnv builds the container's environment: the user's spec.env (literal\n4882: // config) first, then the operator-owned PORT last. PORT is appended last and a\n4883: // user entry named PORT is dropped, so a user variable can never shadow the\n4884: // injected port \u2014 the one invariant the CRD contract promises. Secret-backed\n4885: // variables arrive separately through envFrom (envFromSources); a container-level\n4886: // Env entry overrides an envFrom key of the same name, so PORT wins over both.\n4887: // A ValueFrom.SecretKeyRef entry (a bex.yml fromDatabase reference, w1/m24)\n4888: // becomes a corev1 EnvVar.ValueFrom.SecretKeyRef \u2014 non-optional, so a service\n4889: // waiting on its Database stays Pending until the CNPG connection Secret exists.\n4890: func appEnv(app *appv1alpha1.App, port int) []corev1.EnvVar {\n4891: \tenv := make([]corev1.EnvVar, 0, len(app.Spec.Env)+1)\n4892: \tfor _, e := range app.Spec.Env {\n4893: \t\tif e.Name == portEnvName {\n4894: \t\t\tcontinue // operator-owned; never let a user shadow it\n4895: \t\t}\n4896: \t\tev := corev1.EnvVar{Name: e.Name, Value: e.Value}\n4897: \t\tif e.ValueFrom != nil && e.ValueFrom.SecretKeyRef != nil {\n4898: \t\t\tev.Value = \"\"\n4899: \t\t\tev.ValueFrom = &corev1.EnvVarSource{\n4900: \t\t\t\tSecretKeyRef: &corev1.SecretKeySelector{\n4901: \t\t\t\t\tLocalObjectReference: corev1.LocalObjectReference{Name: e.ValueFrom.SecretKeyRef.Name},\n4902: \t\t\t\t\tKey:                  e.ValueFrom.SecretKeyRef.Key,\n4903: \t\t\t\t},\n4904: \t\t\t}\n4905: \t\t}\n4906: \t\tenv = append(env, ev)\n4907: \t}\n4908: \tenv = append(env, corev1.EnvVar{Name: portEnvName, Value: strconv.Itoa(port)})\n4909: \treturn env\n4910: }\n4911: \n4912: // envFromSources wires the App's secret-backed env into the container: each linked\n4913: // environment group's \"<evg-id>-env\" Secret (spec.envFromSecrets) FIRST, then the\n4914: // service's own \"<name>-env\" Secret (active spec reference or save-only pending\n4915: // annotation) LAST. Kubernetes applies\n4916: // envFrom sources in order and the last wins on a key collision, so a service's own\n4917: // variable overrides a linked group's \u2014 matching Render (docs/ADR013-secrets.md). The\n4918: // group sources are marked optional so a briefly-absent group Secret can't wedge\n4919: // the pod; the service's own set keeps its original (non-optional) shape. No\n4920: // active or pending service reference => no service envFrom.\n4921: func envFromSources(app *appv1alpha1.App) []corev1.EnvFromSource {\n4922: \tvar out []corev1.EnvFromSource\n4923: \toptional := true\n4924: \t// snapshotOrSource substitutes this release's immutable copy when one is active\n4925: \t// (w1/m152). The ORDER is untouched: groups first, the service's own last, so\n4926: \t// the documented precedence stays a property of list position and the existing\n4927: \t// precedence tests keep covering it.\n4928: \tfor _, name := range app.Spec.EnvFromSecrets {\n4929: \t\tif name == \"\" {\n4930: \t\t\tcontinue\n4931: \t\t}\n4932: \t\tout = append(out, corev1.EnvFromSource{\n4933: \t\t\tSecretRef: &corev1.SecretEnvSource{\n4934: \t\t\t\tLocalObjectReference: corev1.LocalObjectReference{Name: snapshotOrSource(app, name)},\n4935: \t\t\t\tOptional:             &optional,\n4936: \t\t\t},\n4937: \t\t})\n4938: \t}\n4939: \tif name := runtimeEnvSecret(app); name != \"\" {\n4940: \t\tout = append(out, corev1.EnvFromSource{\n4941: \t\t\tSecretRef: &corev1.SecretEnvSource{\n4942: \t\t\t\tLocalObjectReference: corev1.LocalObjectReference{Name: snapshotOrSource(app, name)},"
+        }
+      ]
+    },
+    "lego/operator/internal/controller/deployment_projection.go": {
+      "sha256": "7d0bb5fcd1bcddc5e084a8bec467392142337418197563a882081eff15f5788c",
+      "excerpts": [
+        {
+          "first": 250,
+          "last": 269,
+          "text": "250: \t\t\tports = make([]corev1.ContainerPort, 0, len(app.Status.ImageNetwork.Ports))\n251: \t\t\tfor _, port := range app.Status.ImageNetwork.Ports {\n252: \t\t\t\tports = append(ports, corev1.ContainerPort{ContainerPort: port, Protocol: corev1.ProtocolTCP})\n253: \t\t\t}\n254: \t\t}\n255: \t}\n256: \tcontainer := corev1.Container{\n257: \t\tName:            appContainerName,\n258: \t\tImage:           p.image,\n259: \t\tImagePullPolicy: pullPolicyFor(p.image),\n260: \t\tEnv:             appEnv(app, p.port),\n261: \t\tEnvFrom:         envFromSources(app),\n262: \t\tPorts:           ports,\n263: \t\tResources:       resourcesForTier(app.Spec.Tier),\n264: \t\tSecurityContext: appSecCtx(app.Spec),\n265: \t}\n266: \tif app.Spec.StartCommand != \"\" && shellRunsStartCommand(app, p.image, p.launch) {\n267: \t\tcontainer.Command = shellCommand(app.Spec.StartCommand)\n268: \t}\n269: \t// Health-gating: a non-worker service speaks HTTP, so gate pod readiness on"
+        }
+      ]
+    },
+    "lego/backend/internal/envgroups/service.go": {
+      "sha256": "3ba7abc93388759a1a55fc3e7d417a8d54880de7006574ab4e82d37c5b783d1c",
+      "excerpts": [
+        {
+          "first": 18,
+          "last": 28,
+          "text": "18: // a named, reusable set of env vars + secret files that can be linked to many\n19: // services at once. It reuses the same OpenBao-backed core.SecretKV store as the\n20: // per-service secrets feature (no new store) \u2014 a group's contents live at\n21: // \"env-groups/<id>/{meta,env,files}\" \u2014 and materializes each group into two\n22: // Kubernetes Secrets (\"<id>-env\", \"<id>-files\"). Linking a group to a service\n23: // appends those Secret names to the service's App spec (spec.envFromSecrets /\n24: // spec.filesFromSecrets); the operator wires them into the container's envFrom and\n25: // the shared /etc/secrets volume. One implementation, three surfaces + dashboard.\n26: package envgroups\n27: \n28: import ("
+        },
+        {
+          "first": 188,
+          "last": 196,
+          "text": "188: type CreateEnvGroupRequest struct {\n189: \tName          string              `json:\"name\"`\n190: \tOwnerID       string              `json:\"ownerId,omitempty\"`\n191: \tEnvironmentID string              `json:\"environmentId,omitempty\"`\n192: \tEnvVars       []CreateEnvVarInput `json:\"envVars,omitempty\"`\n193: \tSecretFiles   []SecretFileView    `json:\"secretFiles,omitempty\"`\n194: \tServiceIDs    []string            `json:\"serviceIds,omitempty\"`\n195: }\n196: "
+        },
+        {
+          "first": 738,
+          "last": 760,
+          "text": "738: \t\t}\n739: \t}\n740: \tif err := s.upsertSecret(ctx, m.workspace, envSecretName(gid), env); err != nil {\n741: \t\treturn nil, rollback(err)\n742: \t}\n743: \tif err := s.upsertSecret(ctx, m.workspace, filesSecretName(gid), files); err != nil {\n744: \t\treturn nil, rollback(err)\n745: \t}\n746: \tfor _, a := range services {\n747: \t\tbefore := a.DeepCopy()\n748: \t\tskipped, err := s.rollLinked(ctx, a, m.updatedAt, func(a *appv1alpha1.App) {\n749: \t\t\ta.Spec.EnvFromSecrets = addString(a.Spec.EnvFromSecrets, envSecretName(gid))\n750: \t\t\ta.Spec.FilesFromSecrets = addString(a.Spec.FilesFromSecrets, filesSecretName(gid))\n751: \t\t})\n752: \t\tif err != nil {\n753: \t\t\treturn nil, rollback(err)\n754: \t\t}\n755: \t\tif skipped {\n756: \t\t\tpending = append(pending, core.AppPublicID(a))\n757: \t\t}\n758: \t\tpatched = append(patched, before)\n759: \t}\n760: \tif err := s.writeMeta(ctx, gid, m); err != nil {"
+        }
+      ]
+    }
+  },
+  "scope": "normal environment-group override propagation; no direct Kubernetes Secret/admin/role inspection",
+  "inherited_local_custom_empty_reference": ".pm/w8/evidence/native-python-gunicorn-overrides-sweep390/four-local-container-results.json"
+}

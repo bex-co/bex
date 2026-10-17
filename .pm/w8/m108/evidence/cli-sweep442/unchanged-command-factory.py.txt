@@ -1,0 +1,5 @@
+from pathlib import Path
+import json,gzip,base64,shlex
+
+def commands(P,reference,marker):
+ files={'qa441-app.cjs':(P/'sweep441-app.cjs').read_text(),'qa441-reference.json':json.dumps(reference),'qa441-marker.json':json.dumps(marker)};packed=base64.b64encode(gzip.compress(json.dumps(files,separators=(',',':'),ensure_ascii=False).encode(),mtime=0)).decode();js="const fs=require('node:fs'),z=require('node:zlib');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('"+packed+"','base64')))))fs.writeFileSync(n,s)";build='set -e\nnode -e '+shlex.quote(js)+'\nnode qa441-app.cjs build';assert len(build.encode())<4096;return {'build':build,'start':'node qa441-app.cjs serve'}

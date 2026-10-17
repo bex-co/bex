@@ -1,0 +1,25 @@
+from pathlib import Path
+import json,os,subprocess,tempfile,time,shutil,hashlib,fcntl,sys
+P=Path(__file__).resolve().parent;sys.path.insert(0,str(P));ns={};exec((P/'sweep404-data.py').read_text(),ns)
+CP=P.parent/'cli-qa-w8-checkpoint.json';lock=(P/'checkpoint-writer.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB);c=json.loads(CP.read_text());assert c['sync404_result']==0 and not c.get('active_sync_stash');D=Path(tempfile.mkdtemp(prefix='qa404-',dir='/tmp'));D.chmod(0o700);socket=D/'redis.sock';log=(D/'server.log').open('wb');server=None;keys=ns['keys']('local404');out={'nonce':'local404','keys':keys,'cases':[],'own_context':str(D),'qualification':'owned local Unix-only Redis, exact stable keys; real external --scan semantics prerequisite, not production evidence'};env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_','REDIS'))};env['REDISCLI_HISTFILE']=str(D/'history')
+def save():
+ (P/'sweep404-local-controls.json').write_text(json.dumps(out,indent=2,ensure_ascii=False));c['sweep404_local']={'context':str(D),'server_pid':server.pid if server else None,'removed':out.get('own_context_server_removed',False)};t=CP.with_name('.'+CP.name+'.qa404local.tmp');t.write_text(json.dumps(c,indent=2));t.chmod(0o600);t.replace(CP)
+save()
+try:
+ server=subprocess.Popen(['redis-server','--port','0','--unixsocket',str(socket),'--unixsocketperm','700','--save','','--appendonly','no','--dir',str(D),'--pidfile',str(D/'pid')],env=env,stdout=log,stderr=log);save()
+ for _ in range(100):
+  if socket.exists():break
+  assert server.poll() is None;time.sleep(.03)
+ assert socket.exists();seed="for i,k in ipairs(KEYS) do redis.call('SET',k,'QA404_'..i) end;return #KEYS";r=subprocess.run(['redis-cli','-s',str(socket),'--raw','EVAL',seed,str(len(keys)),*keys],env=env,capture_output=True,text=True,timeout=10);assert r.returncode==0 and r.stdout.strip()==str(len(keys));out['seed_exit']=r.returncode;out['Redis_version']=subprocess.check_output(['redis-cli','--version'],text=True).strip();save()
+ for label,pattern,expected in ns['cases']('local404'):
+  command=['redis-cli','-s',str(socket),'--raw','--scan','--pattern',pattern,'--count','37'];r=subprocess.run(command,env=env,capture_output=True,text=True,timeout=20);observed=r.stdout.splitlines();e={'case':label,'command':command,'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr,'expected_unique_keys':len(expected),'observed_unique_keys':len(set(observed)),'duplicates':len(observed)-len(set(observed)),'pass':r.returncode==0 and set(observed)==set(expected)};out['cases'].append(e);save();assert e['pass'];from importlib.machinery import SourceFileLoader;mod=SourceFileLoader('qa404_local_pty',str(P/'sweep404-session.py')).load_module();session=mod.Session(command,env)
+  try:
+   assert session.wait(lambda:session.proc.poll() is not None,20);session.proc.wait(timeout=1)
+  finally:session.close()
+  record=session.record(command);got=record['output'].splitlines();e['PTY']=record;e['PTY_pass']=record['native_exit']==0 and set(got)==set(expected);save();assert e['PTY_pass'];print(json.dumps({'local_case':label,'exact_unique_keys':e['observed_unique_keys'],'pass':True}),flush=True)
+ out['pass']=True;save()
+finally:
+ if server:
+  server.terminate();server.wait(timeout=5)
+ log.close();shutil.rmtree(D);out['own_context_server_removed']=not D.exists() and server is not None and server.poll() is not None;save()
+print(json.dumps({'local_controls_pass':out.get('pass'),'own_context_server_removed':out['own_context_server_removed']}))

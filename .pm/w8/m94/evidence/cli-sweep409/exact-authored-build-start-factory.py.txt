@@ -1,0 +1,9 @@
+import json,hashlib
+def commands(P,reference,marker,control=False):
+ build='set -e\n';program=(P/'sweep409-probe.py').read_text()
+ for name,value in [('qa409-probe.py',program),('qa409-reference.json',json.dumps(reference,separators=(',',':'),ensure_ascii=False)),('qa409-marker.json',json.dumps(marker))]:
+  tag='QA409_'+name.replace('.','_').replace('-','_').upper();build+="cat > "+name+" <<'"+tag+"'\n"+value+('' if value.endswith('\n') else '\n')+tag+'\n'
+ build+='python3 qa409-probe.py before\n'
+ if control:build+='apt-get update -qq && apt-get install -y --no-install-recommends sqlite3\n'
+ build+='sqlite3 -bail qa409.db < qa409.sql\npython3 qa409-probe.py build';assert len(build.encode())<=4096,len(build.encode())
+ return {'build':build,'start':'python3 -u qa409-probe.py serve','program_sha256':hashlib.sha256(program.encode()).hexdigest()}

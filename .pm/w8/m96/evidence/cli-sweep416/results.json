@@ -1,0 +1,60 @@
+{
+  "sweep": 416,
+  "source_head": "8f80d74efaffc23342cccad2f275051a1501396f",
+  "severity": "major",
+  "attribution": "operator shared native-image utility assembly",
+  "native_clients": [
+    "published Bex0.3.2/a6350da0",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "valid_original_native_creates_POST201_exit0": 2,
+  "original_first_builds_failed_Django_missing_msgfmt": 2,
+  "Django": "5.2.18",
+  "source_PO_bytes": 508,
+  "source_PO_SHA256": "cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a",
+  "only_control_change": "one apt-get update/install gettext line",
+  "control_native_updates0_and_replacement_Live": 2,
+  "actual_runtime_compilation_translation_HTTP200": 6,
+  "JSON_Django_and_independent_stdlib_responses": 4,
+  "downloaded_GNU_MO_files_independently_translated": 2,
+  "expected_translation_cases_per_response": 6,
+  "compiled_catalog_bytes": 461,
+  "local_catalog_SHA256": "641f0dd75324b4a70b206ea3fdb2b0820bf4ea15f70b758ccedb88aa1f2ce9ce",
+  "local_gettext": "GNU0.21, Debian gettext0.21-12 arm64",
+  "native_log_events_correlated": 6,
+  "shared_REST_GraphQL_MCP_reads": 12,
+  "API_only_explicit_env_reads": 4,
+  "local_selected_base_original1_control0": true,
+  "full_generated_image_executed_locally": false,
+  "actual_source_generated_recipes": 2,
+  "excluded_overlong_command_setup": "POST400, no ID, twice absent/current quota accounted; fresh bounded source transport preserves exact app/settings/PO/reference bytes",
+  "exact_owned_two_parents_four_children_URLs_absent": true,
+  "baseline_current_inventory_quota_accounted_termination0": true,
+  "unrelated_service_IDs_preserved": [],
+  "unrelated_datastore_IDs_preserved": {
+    "postgres": [
+      "dpg-db9ipkm22tos73dl1sug"
+    ],
+    "keyValues": [
+      "red-db9ipku22tos73dl1svg"
+    ]
+  },
+  "own_local_containers_contexts_relays_configs_removed": true,
+  "serving_SHA_OCI": "unknown",
+  "product_implementation": false,
+  "uncommitted": true,
+  "actual_hosted_versions": {
+    "bex": {
+      "python": "3.13.16",
+      "django": "5.2.18",
+      "msgfmt_version": "msgfmt (GNU gettext-tools) 0.21"
+    },
+    "render": {
+      "python": "3.13.16",
+      "django": "5.2.18",
+      "msgfmt_version": "msgfmt (GNU gettext-tools) 0.21"
+    }
+  },
+  "milestone": "w8/m96",
+  "evidence": ".pm/w8/m96/evidence/cli-sweep416"
+}

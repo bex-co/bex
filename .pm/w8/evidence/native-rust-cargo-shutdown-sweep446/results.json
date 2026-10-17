@@ -1,0 +1,33 @@
+{
+  "sweep": 446,
+  "kind": "Rust Cargo native restart with in-flight40s UTF8 POST",
+  "new_findings": 0,
+  "source_head": "99461a1fc6d5ae3d72fc1969d0045464c9c7f7c2",
+  "native_creates_POST201_exit0": 2,
+  "first_children_Live": 2,
+  "native_restarts_exit0": 2,
+  "replacement_children_Live": 2,
+  "actual_Rust_versions": [
+    "rustc 1.99.1 (58cf8f9c3 2026-10-13)"
+  ],
+  "same_source_commit_and_program_all_boots": true,
+  "old_boot_full40s_POST_HTTP200_exact_bytes": 2,
+  "actual_SIGTERM_with_active_request_then_complete_closed": 2,
+  "short_HTTP200_samples": 34,
+  "inflight_round_elapsed": [
+    42.125,
+    41.972
+  ],
+  "pre_post_REST_GraphQL_MCP_source_command_reads": 12,
+  "REST_MCP_delay45_readbacks": 8,
+  "explicit_empty_env_reads_API_only": 4,
+  "local_same_program_Cargo_direct_under_checkout_helper40s_full200_exit0": true,
+  "local_reference_not_full_generated_image_or_deployed_helper_identity": true,
+  "two_parents_four_children_former_URLs_absent": true,
+  "baseline_current_inventory_quota_termination0": true,
+  "own_local_containers_context_payloads_helper_headers_configs_removed": true,
+  "m88_status_remains_done": true,
+  "actual_serving_SHA_OCI_helper": "unknown",
+  "product_implementation": false,
+  "uncommitted": true
+}

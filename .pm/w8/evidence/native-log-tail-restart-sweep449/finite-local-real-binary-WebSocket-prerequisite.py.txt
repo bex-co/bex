@@ -1,0 +1,25 @@
+from pathlib import Path
+import http.server,threading,hashlib,base64,struct,json,time,subprocess,os,shutil,yaml
+P=Path(__file__).resolve().parent;ctx=P/'sweep449-local-tail-context';assert not ctx.exists();ctx.mkdir();out={'scope':'loopback fake-key protocol/capture prerequisite using both real binaries; not production behavior','cases':[],'requests':[]};receipt=P/'sweep449-local-tail-prerequisite.json';sid='srv-db9pgqks300s73dskh40';ws='tea-daif693dqjvc73e7as3g';message='QA449_EVENT '+json.dumps({'marker':'QA449_LOCAL','boot':'local','nonce':'local','sequence':0,'text':'Render CLI preserves café:李\nsecond line'},ensure_ascii=False)
+def save():receipt.write_text(json.dumps(out,indent=2,ensure_ascii=False))
+def frame(data,opcode=1):
+ size=len(data);return bytes([0x80|opcode,size]) + data if size<126 else bytes([0x80|opcode,126])+struct.pack('!H',size)+data
+class Handler(http.server.BaseHTTPRequestHandler):
+ protocol_version='HTTP/1.1'
+ def log_message(self,*args):pass
+ def do_GET(self):
+  assert self.headers.get('Authorization')=='Bearer qa449-local-fake-only';out['requests'].append({'path':self.path,'fake_authorization_matches':True,'authorization':'local fake value omitted'});save()
+  if not self.path.startswith('/v1/logs/subscribe?'):self.send_error(400);return
+  key=self.headers['Sec-WebSocket-Key'];accept=base64.b64encode(hashlib.sha1((key+'258EAFA5-E914-47DA-95CA-C5AB0DC85B11').encode()).digest()).decode();self.send_response(101);self.send_header('Upgrade','websocket');self.send_header('Connection','Upgrade');self.send_header('Sec-WebSocket-Accept',accept);self.end_headers();self.wfile.flush()
+  for i in range(3):
+   value={'id':'qa449-local-log-'+str(i),'timestamp':'2026-10-17T16:25:00.123456789Z','message':message.replace('"sequence": 0','"sequence": '+str(i)),'labels':[{'name':'resource','value':sid}]};self.connection.sendall(frame(json.dumps(value,ensure_ascii=False).encode()));time.sleep(.1)
+  self.connection.sendall(frame(struct.pack('!H',1000),8));self.close_connection=True
+server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler);server.daemon_threads=True;thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start();origin='http://127.0.0.1:'+str(server.server_port)+'/v1/';save()
+try:
+ for actor,binary,prefix in [('bex',P/'release/bex','BEX'),('render',P/'render-pin','RENDER')]:
+  directory=ctx/actor;directory.mkdir();cfg=directory/'cli.yaml';cfg.write_text(yaml.safe_dump({'api':{'host':origin},'workspace':ws}));cfg.chmod(0o600);env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_'))};env[prefix+'_ACCESS_TOKEN' if actor=='bex' else 'RENDER_API_KEY']='qa449-local-fake-only';env.update({prefix+'_HOST':origin,prefix+'_CLI_CONFIG_PATH':str(cfg),prefix+'_CLI_CONFIG_DIR':str(directory),prefix+'_WORKSPACE':ws,'BEX_NO_UPDATE_NOTIFIER':'1','DO_NOT_TRACK':'1'});args=[str(binary),'logs','--resources',sid,'--tail','--type','app','--confirm','-o','json'];r=subprocess.run(args,env=env,capture_output=True,text=True,timeout=20);raw=r.stdout;values=[];decoder=json.JSONDecoder()
+  while raw.strip():raw=raw.lstrip();v,n=decoder.raw_decode(raw);values.append(v);raw=raw[n:]
+  good=r.returncode==0 and len(values)==3 and [v['id'] for v in values]==['qa449-local-log-'+str(i) for i in range(3)] and all(v['message']==message.replace('"sequence": 0','"sequence": '+str(i)) for i,v in enumerate(values));out['cases'].append({'actor':actor,'command':args,'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr,'parsed':values,'pass':good});save();assert good;print(json.dumps({'local_actor':actor,'logs':3,'exact_Unicode_Render_text':True,'pass':True}),flush=True)
+ out['pass']=True
+finally:
+ server.shutdown();server.server_close();thread.join(timeout=2);shutil.rmtree(ctx);out['own_server_stopped']=not thread.is_alive();out['own_context_removed']=not ctx.exists();save()

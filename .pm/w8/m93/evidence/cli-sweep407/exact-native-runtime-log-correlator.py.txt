@@ -1,0 +1,15 @@
+from pathlib import Path
+import sys,json,re,runpy
+P=Path(__file__).resolve().parent;f=P/'sweep407-common.py';sys.argv=[str(f),'app-logs','bex'];exec(compile(f.read_text(),str(f),'exec'));xs=[v for v in c['resources'] if v.get('sweep')==407];assert len(xs)==2;check=runpy.run_path(str(P/'sweep407-html.py'))['inspect_html']
+for x in xs:
+ own(x);accepted=[v for v in x.get('runtime_receipts',[]) if v['phase']=='control' and v['pass']];assert len(accepted)==1;paths={v['path'] for v in accepted[0]['requests']};r=cli(['logs','--resources',x['id'],'--type','app','--text','QA407_REQUEST','--limit','100','--confirm','-o','json'],client=x['client']);e={'at':now(),'native':r,'expected_paths':sorted(paths),'matched':[]};x.setdefault('application_log_correlations',[]).append(e);save();assert r['native_exit']==0;raw=r['stdout'];decoder=json.JSONDecoder()
+ while raw.strip():
+  raw=raw.lstrip();v,n=decoder.raw_decode(raw);raw=raw[n:]
+  for z in v if isinstance(v,list) else [v]:
+   for m in re.finditer(r'QA407_REQUEST (\{[^\n]+\})',z.get('message','')):
+    try:p=json.loads(m.group(1))
+    except ValueError:continue
+    a=p.get('runtime',{});b=p.get('build',{})
+    if a.get('marker')==x['marker'] and a.get('request_url') in paths and a.get('html')==b.get('html') and a.get('files')==b.get('files')==x['primary_reference']['files'] and a.get('document')==b.get('document')=={k:x['primary_reference']['document'][k] for k in ['bytes','sha256']} and a.get('program_sha256')==b.get('program_sha256')==x['commands']['initial']['program_sha256']:
+     p['independent_HTML_parse']=check(a['html']['text'].encode());e['matched'].append(p)
+ e['pass']={v['runtime']['request_url'] for v in e['matched']}==paths;save();print(json.dumps({'client':x['client'],'native_logs_exit':0,'exact_runtime_document_events':len(e['matched']),'pass':e['pass']}),flush=True);assert e['pass']

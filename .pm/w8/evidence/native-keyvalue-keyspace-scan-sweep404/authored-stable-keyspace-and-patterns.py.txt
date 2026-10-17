@@ -1,0 +1,5 @@
+def keys(nonce):
+ base='qa404:'+nonce+':';return [base+'other:'+str(i).zfill(4) for i in range(1094)]+[base+'match:'+str(i) for i in range(7)]+[base+'edge:[literal]?*',base+'edge:café:雪']
+def cases(nonce):
+ ks=keys(nonce);base='qa404:'+nonce+':'
+ return [('all',base+'*',ks),('sparse',base+'match:*',[k for k in ks if k.startswith(base+'match:')]),('literal',base+r'edge:\[literal\]\?\*',[base+'edge:[literal]?*']),('unicode',base+'edge:café:*',[base+'edge:café:雪']),('absent',base+'missing:*',[])]

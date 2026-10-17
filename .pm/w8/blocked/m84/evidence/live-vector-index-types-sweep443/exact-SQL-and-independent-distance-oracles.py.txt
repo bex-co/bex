@@ -1,0 +1,23 @@
+import json,re,math
+
+def queries(schema):
+ assert re.fullmatch('[a-z][a-z0-9_]+',schema)
+ out={'catalog':"SELECT jsonb_build_object('version',current_setting('server_version_num'),'encoding',current_setting('server_encoding'),'extensions',(SELECT jsonb_agg(jsonb_build_object('name',extname,'version',extversion) ORDER BY extname) FROM pg_extension),'own_schema_exists',EXISTS(SELECT FROM pg_namespace WHERE nspname='"+schema+"'))::text;"}
+ for case,typ,ops,operator,q,rows in [('half','halfvec(3)','halfvec_l2_ops','<->','[1,2,3]',['[1,2,3]','[2,2,3]','[1,4,3]','[1,2,7]','[9,2,3]']),('sparse','sparsevec(5)','sparsevec_l2_ops','<->','{1:1,3:2,5:3}/5',['{1:1,3:2,5:3}/5','{1:2,3:2,5:3}/5','{1:1,3:4,5:3}/5','{1:1,3:2,5:7}/5','{1:9,3:2,5:3}/5']),('binary','bit(8)','bit_hamming_ops','<~>','10100101',[format(165^((1<<i)-1),'08b') for i in range(5)])]:
+  table='items_'+case;index=table+'_hnsw';select="SELECT id,embedding "+operator+" '"+q+"'::"+typ+" AS distance FROM "+table+" ORDER BY embedding "+operator+" '"+q+"'::"+typ+" LIMIT 3";values=','.join("("+str(i)+",'"+v+"')" for i,v in enumerate(rows,1))
+  out[case]="BEGIN; SET LOCAL statement_timeout='20s'; CREATE SCHEMA "+schema+"; SET LOCAL search_path="+schema+",public; CREATE TABLE "+table+"(id integer PRIMARY KEY,embedding "+typ+" NOT NULL); INSERT INTO "+table+" VALUES "+values+"; CREATE INDEX "+index+" ON "+table+" USING hnsw(embedding "+ops+"); SET LOCAL enable_seqscan=off; SELECT jsonb_build_object('rows',jsonb_agg(jsonb_build_array(id,distance) ORDER BY distance))::text FROM ("+select+") q; EXPLAIN(ANALYZE TRUE,FORMAT JSON,COSTS OFF,TIMING OFF,SUMMARY OFF) "+select+"; ROLLBACK;"
+ return out
+
+def decode(stdout,case):
+ decoder=json.JSONDecoder();values=[];raw=stdout.strip()
+ while raw:v,n=decoder.raw_decode(raw);values.append(v);raw=raw[n:].strip()
+ if case=='catalog':return {'catalog':values[0]},len(values)==1
+ points=[[1,2,3],[2,2,3],[1,4,3],[1,2,7],[9,2,3]];expected=sorted([[i,math.dist(v,[1,2,3])] for i,v in enumerate(points,1)],key=lambda v:v[1])[:3] if case!='binary' else sorted([[i,((165^((1<<k)-1))^165).bit_count()] for i,k in enumerate(range(5),1)],key=lambda v:v[1])[:3]
+ def nodes(v):
+  if isinstance(v,dict):
+   yield v
+   for x in v.values():yield from nodes(x)
+  elif isinstance(v,list):
+   for x in v:yield from nodes(x)
+ assert len(values)==2;matches=[v for v in nodes(values[1]) if v.get('Index Name')=='items_'+case+'_hnsw'];passed=values[0]=={'rows':expected} and len(matches)==1 and matches[0].get('Actual Rows')==3 and matches[0].get('Actual Loops')==1
+ return {'value':values[0],'independent_expected':expected,'actual_index_plan':values[1],'qualification':'five-row controlled HNSW fixture; not a general approximate-recall guarantee'},passed

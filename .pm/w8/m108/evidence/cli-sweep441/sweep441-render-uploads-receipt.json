@@ -1,0 +1,1 @@
+{"exit": 0, "stdout": "{\"client\": \"render\", \"case\": \"fast\", \"HTTP\": 200, \"submitted\": 1048576, \"elapsed\": 2.279088417, \"outcome\": \"success\"}\n{\"client\": \"render\", \"case\": \"paced\", \"HTTP\": 499, \"submitted\": 819200, \"elapsed\": 60.573717, \"outcome\": \"early_HTTP_failure\"}\n", "stderr": ""}

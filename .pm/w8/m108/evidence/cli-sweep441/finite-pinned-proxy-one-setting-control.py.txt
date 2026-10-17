@@ -1,0 +1,28 @@
+from pathlib import Path
+import subprocess,json,secrets,time,urllib.request,hashlib,shutil
+P=Path(__file__).resolve().parent;ctx=P/'sweep441-local-proxy-context';assert not ctx.exists();ctx.mkdir();ref=json.loads((P/'sweep441-primary-reference.json').read_text());node='<local-user>/.nvm/versions/node/v22.17.1/bin/node';image=json.loads((P/'sweep441-Traefik-image-pull.json').read_text())['immutable_resolved_digests'][0];suffix=secrets.token_hex(4);network='qa441-proxy-'+suffix;app='qa441-app-'+suffix;out={'proxy_image':image,'network':network,'app':app,'kind':'owned local pinned Traefik version: default versus100s body read, identical app/body/pacing; not full production topology','intents':[],'steps':[],'cases':[]};file=P/'sweep441-local-proxy-control.json';containers=[];network_created=False
+
+def save():file.write_text(json.dumps(out,indent=2,ensure_ascii=False))
+def run(label,args,bound=40,check=True):
+ r=subprocess.run(args,capture_output=True,text=True,timeout=bound);out['steps'].append({'label':label,'command':args,'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr});save()
+ if check:r.check_returncode()
+ return r
+save()
+try:
+ for name,expected in ref['files'].items():
+  b=urllib.request.urlopen('https://raw.githubusercontent.com/git-fixtures/basic/'+ref['commit']+'/'+name,timeout=25).read();assert {'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}==expected;(ctx/name).write_bytes(b)
+ payload=ctx/'payload.bin';data=bytes((i*17+31)&255 for i in range(1024*1024));payload.write_bytes(data);expected={'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()};out['payload']=expected;out['intents'].append({'kind':'own isolated network','name':network});save();run('create-own-network',['docker','network','create',network]);network_created=True;ns={};f=P/'sweep441-command-factory.py';exec(compile(f.read_text(),str(f),'exec'),ns);cmd=ns['commands'](P,ref,'QA441_PROXY');out['intents'].append({'kind':'own app container','name':app,'network':network});containers.append(app);save();run('start-own-app',['docker','run','--pull','never','-d','--network',network,'--name',app,'--mount','type=bind,src='+str(ctx)+',dst=/app','--workdir','/app','--entrypoint','/bin/bash','node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0','-c',cmd['build']+'\nexec '+cmd['start']]);config=ctx/'proxy.yaml';config.write_text('http:\n  routers:\n    app:\n      rule: PathPrefix(`/`)\n      entryPoints: [fixture]\n      service: app\n  services:\n    app:\n      loadBalancer:\n        servers:\n          - url: http://'+app+':3000\n')
+ for label,extra in [('default',[]),('extended',['--entryPoints.fixture.transport.respondingTimeouts.readTimeout=100s'])]:
+  name='qa441-'+label+'-'+suffix;containers.append(name);e={'label':label,'container':name,'changed_settings':extra};out['cases'].append(e);out['intents'].append({'kind':'own proxy container','name':name,'network':network,'changed_settings':extra});save();run('start-own-proxy-'+label,['docker','run','--pull','never','-d','--network',network,'-p','127.0.0.1::8000','--name',name,'--mount','type=bind,src='+str(config)+',dst=/etc/fixture.yaml,readonly',image,'--entryPoints.fixture.address=:8000','--providers.file.filename=/etc/fixture.yaml','--log.level=INFO','--accesslog=true','--accesslog.format=json',*extra]);port=run('own-proxy-port-'+label,['docker','port',name,'8000/tcp']).stdout.strip();assert port.startswith('127.0.0.1:');url='http://'+port
+  for i in range(50):
+   try:
+    with urllib.request.urlopen(url,timeout=2) as r:health=json.loads(r.read());assert health['marker']=='QA441_PROXY';break
+   except Exception:time.sleep(.2)
+  else:raise RuntimeError('Own local proxy not ready')
+  capture=P/('sweep441-local-proxy-'+label+'-client.json');assert not capture.exists();run('same-paced-upload-'+label,[node,str(P/'sweep441-paced-client.cjs'),url+'/upload/local-'+label,str(payload),'300',str(capture)],bound=130);v=json.loads(capture.read_text());body=v.get('response',{}).get('decoded');e['client']=v;e['pass']=not v.get('client_deadline_reached') and (v.get('response',{}).get('status',0)>=400 and 55<=v['finished_at']<=70 if label=='default' else v.get('response',{}).get('status')==200 and isinstance(body,dict) and {k:body[k] for k in ['bytes','sha256']}==expected and body['boot']==health['boot'] and 70<=v['finished_at']<=110);save();run('actual-proxy-log-'+label,['docker','logs',name]);assert e['pass'];run('remove-exact-own-proxy-'+label,['docker','rm','-f','-v',name]);containers.remove(name);print(json.dumps({'label':label,'HTTP':v.get('response',{}).get('status'),'elapsed':v['finished_at'],'bytes_submitted':v['bytes_submitted'],'pass':True}),flush=True)
+ out['pass']=True;run('actual-own-app-log',['docker','logs',app])
+finally:
+ for name in reversed(containers):run('cleanup-exact-own-container',['docker','rm','-f','-v',name],check=False)
+ if network_created:run('remove-exact-own-network',['docker','network','rm',network],check=False)
+ out['own_containers_absent']=all(run('own-container-absence',['docker','container','inspect',n],check=False).returncode!=0 for n in [app,*[e['container'] for e in out['cases']]]);out['own_network_absent']=run('own-network-absence',['docker','network','inspect',network],check=False).returncode!=0;shutil.rmtree(ctx);out['own_context_payload_removed']=not ctx.exists();save()
+print(json.dumps({'pass':out.get('pass',False),'own_containers_absent':out['own_containers_absent'],'own_network_absent':out['own_network_absent'],'own_context_payload_removed':out['own_context_payload_removed']}))

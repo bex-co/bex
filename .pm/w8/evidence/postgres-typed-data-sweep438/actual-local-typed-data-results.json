@@ -1,0 +1,386 @@
+{
+  "image": "postgres@sha256:67f41722b7a8cbdb868a44a4995c846eddfdc2973bccb291ce937dce88ad5675",
+  "container": "qa438-search-937d5078",
+  "kind": "isolated cached PG17 ordinary search fixture; not Bex/CNPG/PG18 acceptance",
+  "steps": [
+    {
+      "label": "start-own-isolated-server",
+      "command": [
+        "docker",
+        "run",
+        "--pull",
+        "never",
+        "-d",
+        "--network",
+        "none",
+        "--name",
+        "qa438-search-937d5078",
+        "-e",
+        "POSTGRES_HOST_AUTH_METHOD=trust",
+        "postgres@sha256:67f41722b7a8cbdb868a44a4995c846eddfdc2973bccb291ce937dce88ad5675"
+      ],
+      "exit": 0,
+      "stdout": "c4621dcf3900de3a327d17729dc943ee79771d49e819bd107c9b7bc6d232a0a7\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-0",
+      "command": [
+        "docker",
+        "exec",
+        "qa438-search-937d5078",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 2,
+      "stdout": "/var/run/postgresql:5432 - no response\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-1",
+      "command": [
+        "docker",
+        "exec",
+        "qa438-search-937d5078",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 0,
+      "stdout": "/var/run/postgresql:5432 - accepting connections\n",
+      "stderr": ""
+    },
+    {
+      "label": "local-only-normal-owner",
+      "command": [
+        "docker",
+        "exec",
+        "qa438-search-937d5078",
+        "psql",
+        "-X",
+        "-q",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "postgres",
+        "-c",
+        "CREATE ROLE qa438_owner LOGIN;",
+        "-c",
+        "CREATE DATABASE qa438_owner OWNER qa438_owner;"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "catalog",
+      "command": [
+        "docker",
+        "exec",
+        "qa438-search-937d5078",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa438_owner",
+        "-d",
+        "qa438_owner",
+        "-c",
+        "SELECT jsonb_build_object('version',current_setting('server_version_num'),'encoding',current_setting('server_encoding'),'extensions',COALESCE((SELECT jsonb_agg(jsonb_build_object('name',name,'default_version',default_version,'installed_version',installed_version) ORDER BY name) FROM pg_available_extensions WHERE name IN ('citext','ltree','tablefunc','unaccent','vector','pg_stat_statements','plpgsql')),'[]'::jsonb),'own_schema_exists',EXISTS(SELECT FROM pg_namespace WHERE nspname='qa438_local'))::text;"
+      ],
+      "exit": 0,
+      "stdout": "{\"version\": \"170011\", \"encoding\": \"UTF8\", \"extensions\": [{\"name\": \"citext\", \"default_version\": \"1.6\", \"installed_version\": null}, {\"name\": \"ltree\", \"default_version\": \"1.3\", \"installed_version\": null}, {\"name\": \"pg_stat_statements\", \"default_version\": \"1.11\", \"installed_version\": null}, {\"name\": \"plpgsql\", \"default_version\": \"1.0\", \"installed_version\": \"1.0\"}, {\"name\": \"tablefunc\", \"default_version\": \"1.0\", \"installed_version\": null}, {\"name\": \"unaccent\", \"default_version\": \"1.1\", \"installed_version\": null}], \"own_schema_exists\": false}\n",
+      "stderr": ""
+    },
+    {
+      "label": "unaccent",
+      "command": [
+        "docker",
+        "exec",
+        "qa438-search-937d5078",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa438_owner",
+        "-d",
+        "qa438_owner",
+        "-c",
+        "BEGIN; SET LOCAL statement_timeout='20s'; CREATE SCHEMA qa438_local; SET LOCAL search_path=qa438_local,public; CREATE EXTENSION IF NOT EXISTS unaccent SCHEMA qa438_local; SELECT jsonb_build_object('dessert',unaccent('Crème brûlée'),'place',unaccent('Hôtel, déjà vu!'),'ligatures',unaccent('Æsir, Œuvre'),'unicode',unaccent('李'))::text; ROLLBACK;"
+      ],
+      "exit": 0,
+      "stdout": "{\"place\": \"Hotel, deja vu!\", \"dessert\": \"Creme brulee\", \"unicode\": \"李\", \"ligatures\": \"AEsir, OEuvre\"}\n",
+      "stderr": ""
+    },
+    {
+      "label": "citext",
+      "command": [
+        "docker",
+        "exec",
+        "qa438-search-937d5078",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa438_owner",
+        "-d",
+        "qa438_owner",
+        "-c",
+        "BEGIN; SET LOCAL statement_timeout='20s'; CREATE SCHEMA qa438_local; SET LOCAL search_path=qa438_local,public; CREATE EXTENSION IF NOT EXISTS citext SCHEMA qa438_local; CREATE TABLE stock(sku citext PRIMARY KEY,quantity integer NOT NULL); INSERT INTO stock VALUES('Widget-ALPHA',1); INSERT INTO stock VALUES('widget-alpha',2) ON CONFLICT(sku) DO UPDATE SET quantity=stock.quantity+EXCLUDED.quantity; CREATE TABLE plain(sku text PRIMARY KEY); INSERT INTO plain VALUES('Widget-ALPHA'),('widget-alpha'); SELECT jsonb_build_object('rows',(SELECT jsonb_agg(jsonb_build_array(sku::text,quantity) ORDER BY sku) FROM stock),'case_insensitive',('Widget-ALPHA'::citext='widget-alpha'::citext),'text_case_sensitive',('Widget-ALPHA'::text='widget-alpha'::text),'plain_count',(SELECT count(*) FROM plain))::text; ROLLBACK;"
+      ],
+      "exit": 0,
+      "stdout": "{\"rows\": [[\"Widget-ALPHA\", 3]], \"plain_count\": 2, \"case_insensitive\": true, \"text_case_sensitive\": false}\n",
+      "stderr": ""
+    },
+    {
+      "label": "ltree",
+      "command": [
+        "docker",
+        "exec",
+        "qa438-search-937d5078",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa438_owner",
+        "-d",
+        "qa438_owner",
+        "-c",
+        "BEGIN; SET LOCAL statement_timeout='20s'; CREATE SCHEMA qa438_local; SET LOCAL search_path=qa438_local,public; CREATE EXTENSION IF NOT EXISTS ltree SCHEMA qa438_local; CREATE TABLE paths(id integer PRIMARY KEY,path ltree NOT NULL); INSERT INTO paths VALUES(1,'Top.Science.Astronomy'),(2,'Top.Science.Astronomy.Astrophysics'),(3,'Top.Hobbies.Amateurs_Astronomy'),(4,'Top.Collections.Pictures.Astronomy'),(5,'Top.Science.Chemistry'); CREATE INDEX paths_gist ON paths USING GIST(path); SET LOCAL enable_seqscan=off; SELECT jsonb_build_object('descendants',(SELECT jsonb_agg(id ORDER BY id) FROM paths WHERE path <@ 'Top.Science'::ltree),'matches',(SELECT jsonb_agg(id ORDER BY id) FROM paths WHERE path ~ '*.Astronomy.*'::lquery),'lca',lca('Top.Science.Astronomy'::ltree,'Top.Science.Astronomy.Astrophysics'::ltree)::text,'levels',nlevel('Top.Science.Astronomy.Astrophysics'::ltree),'prefix',subpath('Top.Science.Astronomy'::ltree,0,2)::text,'negative',(SELECT count(*) FROM paths WHERE path <@ 'Top.Unknown'::ltree))::text; EXPLAIN(ANALYZE TRUE,FORMAT JSON,COSTS OFF,TIMING OFF,SUMMARY OFF) SELECT id FROM paths WHERE path <@ 'Top.Science'::ltree; ROLLBACK;"
+      ],
+      "exit": 0,
+      "stdout": "{\"lca\": \"Top.Science\", \"levels\": 4, \"prefix\": \"Top.Science\", \"matches\": [1, 2, 4], \"negative\": 0, \"descendants\": [1, 2, 5]}\n[\n  {\n    \"Plan\": {\n      \"Node Type\": \"Index Scan\",\n      \"Parallel Aware\": false,\n      \"Async Capable\": false,\n      \"Scan Direction\": \"Forward\",\n      \"Index Name\": \"paths_gist\",\n      \"Relation Name\": \"paths\",\n      \"Alias\": \"paths\",\n      \"Actual Rows\": 3,\n      \"Actual Loops\": 1,\n      \"Index Cond\": \"(path <@ 'Top.Science'::ltree)\",\n      \"Rows Removed by Index Recheck\": 0\n    },\n    \"Triggers\": [\n    ]\n  }\n]\n",
+      "stderr": ""
+    },
+    {
+      "label": "pivot",
+      "command": [
+        "docker",
+        "exec",
+        "qa438-search-937d5078",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa438_owner",
+        "-d",
+        "qa438_owner",
+        "-c",
+        "BEGIN; SET LOCAL statement_timeout='20s'; CREATE SCHEMA qa438_local; SET LOCAL search_path=qa438_local,public; CREATE EXTENSION IF NOT EXISTS tablefunc SCHEMA qa438_local; CREATE TABLE sales(department text,quarter integer,amount numeric); INSERT INTO sales VALUES('books',1,12.50),('books',3,7.25),('games',2,19.99),('games',3,5.00); SELECT jsonb_build_object('rows',jsonb_agg(jsonb_build_array(department,q1::text,q2::text,q3::text,(coalesce(q1,0)+coalesce(q2,0)+coalesce(q3,0))::text) ORDER BY department))::text FROM crosstab('SELECT department,quarter,amount FROM qa438_local.sales ORDER BY 1,2','SELECT q FROM generate_series(1,3) q') AS ct(department text,q1 numeric,q2 numeric,q3 numeric); ROLLBACK;"
+      ],
+      "exit": 0,
+      "stdout": "{\"rows\": [[\"books\", \"12.50\", null, \"7.25\", \"19.75\"], [\"games\", null, \"19.99\", \"5.00\", \"24.99\"]]}\n",
+      "stderr": ""
+    },
+    {
+      "label": "rollback-proof",
+      "command": [
+        "docker",
+        "exec",
+        "qa438-search-937d5078",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa438_owner",
+        "-d",
+        "qa438_owner",
+        "-c",
+        "SELECT count(*) FROM pg_namespace WHERE nspname='qa438_local'; SELECT count(*) FROM pg_extension WHERE extname IN ('citext','ltree','tablefunc','unaccent');"
+      ],
+      "exit": 0,
+      "stdout": "0\n0\n",
+      "stderr": ""
+    },
+    {
+      "label": "remove-exact-own-server",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa438-search-937d5078"
+      ],
+      "exit": 0,
+      "stdout": "qa438-search-937d5078\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa438-search-937d5078"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa438-search-937d5078\n"
+    }
+  ],
+  "cases": [
+    {
+      "case": "catalog",
+      "decoded": {
+        "catalog": {
+          "version": "170011",
+          "encoding": "UTF8",
+          "extensions": [
+            {
+              "name": "citext",
+              "default_version": "1.6",
+              "installed_version": null
+            },
+            {
+              "name": "ltree",
+              "default_version": "1.3",
+              "installed_version": null
+            },
+            {
+              "name": "pg_stat_statements",
+              "default_version": "1.11",
+              "installed_version": null
+            },
+            {
+              "name": "plpgsql",
+              "default_version": "1.0",
+              "installed_version": "1.0"
+            },
+            {
+              "name": "tablefunc",
+              "default_version": "1.0",
+              "installed_version": null
+            },
+            {
+              "name": "unaccent",
+              "default_version": "1.1",
+              "installed_version": null
+            }
+          ],
+          "own_schema_exists": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "case": "unaccent",
+      "decoded": {
+        "value": {
+          "place": "Hotel, deja vu!",
+          "dessert": "Creme brulee",
+          "unicode": "李",
+          "ligatures": "AEsir, OEuvre"
+        }
+      },
+      "pass": true
+    },
+    {
+      "case": "citext",
+      "decoded": {
+        "value": {
+          "rows": [
+            [
+              "Widget-ALPHA",
+              3
+            ]
+          ],
+          "plain_count": 2,
+          "case_insensitive": true,
+          "text_case_sensitive": false
+        }
+      },
+      "pass": true
+    },
+    {
+      "case": "ltree",
+      "decoded": {
+        "value": {
+          "lca": "Top.Science",
+          "levels": 4,
+          "prefix": "Top.Science",
+          "matches": [
+            1,
+            2,
+            4
+          ],
+          "negative": 0,
+          "descendants": [
+            1,
+            2,
+            5
+          ]
+        },
+        "actual_index_plan": [
+          {
+            "Plan": {
+              "Node Type": "Index Scan",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Scan Direction": "Forward",
+              "Index Name": "paths_gist",
+              "Relation Name": "paths",
+              "Alias": "paths",
+              "Actual Rows": 3,
+              "Actual Loops": 1,
+              "Index Cond": "(path <@ 'Top.Science'::ltree)",
+              "Rows Removed by Index Recheck": 0
+            },
+            "Triggers": []
+          }
+        ]
+      },
+      "pass": true
+    },
+    {
+      "case": "pivot",
+      "decoded": {
+        "value": {
+          "rows": [
+            [
+              "books",
+              "12.50",
+              null,
+              "7.25",
+              "19.75"
+            ],
+            [
+              "games",
+              null,
+              "19.99",
+              "5.00",
+              "24.99"
+            ]
+          ]
+        }
+      },
+      "pass": true
+    }
+  ],
+  "pass": true,
+  "own_container_absent": true
+}

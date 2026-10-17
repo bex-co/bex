@@ -1,0 +1,5 @@
+{
+  "original_reader": "Bex original first child pending after initial eight reads, resumed same child to actual frozen rejection; Render original first rejected",
+  "matched_reader": "Bex same matched control child pending after eight reads; Render matched control accepted first, then resumed Bex without update/deploy/request replay",
+  "mutation_replay": false
+}

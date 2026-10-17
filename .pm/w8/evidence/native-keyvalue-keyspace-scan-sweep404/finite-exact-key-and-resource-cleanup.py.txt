@@ -1,0 +1,18 @@
+from pathlib import Path
+import json,subprocess,time
+P=Path(__file__).resolve().parent;CP=P.parent/'cli-qa-w8-checkpoint.json';c=json.loads(CP.read_text());x=next(v for v in c['resources'] if v.get('sweep')==404);complete=len(x.get('native_scans',[]))==10 and all(v.get('pass_') for v in x['native_scans'])
+def run(name,*args,bound=150):
+ r=subprocess.run(['bash',str(P/'sweep404-run.sh'),'sweep404-'+name+'.py',*args],capture_output=True,text=True,timeout=bound);(P/('sweep404-cleanup-'+name+'-'+('-'.join(args)or'final')+'.json')).write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True);r.check_returncode();return r
+if complete:run('kv','erase','bex')
+run('kv','delete','bex')
+for attempt in range(5):
+ r=run('kv','reconcile','bex')
+ if json.loads(r.stdout)['cleanup_pass']:break
+ if attempt<4:time.sleep(12)
+else:raise RuntimeError('Own KeyValue API deletion convergence pending')
+for attempt in range(4):
+ r=run('cached-tls','probe')
+ if not json.loads(r.stdout)['PONG']:break
+ if attempt<3:time.sleep(12)
+else:raise RuntimeError('Own cached route remains active; preserve private credential recovery ledger')
+run('cached-tls','remove');run('final-inventory')

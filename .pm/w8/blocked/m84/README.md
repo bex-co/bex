@@ -57,3 +57,7 @@ Six tasks,220m total.
 ## Fresh PostgreSQL17 native acceptance — sweep378
 
 [PG17 cursors and vector acceptance](../../evidence/postgres-native-cursors-sweep378/README.md) adds15 passing fresh vector controls after32 native cursor/prepared-statement stages. Both original migrations, real HNSW/distance/data, dimension-error rollback, hstore/catalog neighbors and exact fixture/credential cleanup pass. Fresh majors13–18 are now live exercised; hosted pre-fix existing-parent backfill remains open. t006 stays todo and the milestone stays blocked.
+
+## Half-precision, sparse and binary index execution — sweep443
+
+[Fresh PG17 typed-vector acceptance](evidence/live-vector-index-types-sweep443/README.md) passes six real native query transactions through Bex/Render ID/name selectors. Independent Python distances/order and actual three-row HNSW scans agree for halfvec, sparsevec and bit. Four identical catalogs prove schema/index rollback and unchanged preenabled vector0.8.6. Exact database/cached route/credential cleanup passes. Tiny-fixture index execution does not establish general approximate recall or hosted existing-parent backfill; t006 stays todo and m84 stays blocked.

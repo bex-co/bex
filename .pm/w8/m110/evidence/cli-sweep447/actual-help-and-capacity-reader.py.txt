@@ -1,0 +1,8 @@
+from pathlib import Path
+import sys,json,subprocess
+f=Path(__file__).with_name('sweep447-common.py');sys.argv=[str(f),'preflight','bex'];exec(compile(f.read_text(),str(f),'exec'))
+helps=[]
+for args in [['postgres','create','--help'],['postgres','get','--help'],['postgres','delete','--help'],['psql','--help']]:
+ r=cli(args);assert r['native_exit']==0;helps.append(r)
+r=api('GET','/v1/owners/'+WS+'/limits');assert r['status']=='200';v=json.loads(r['response']);assert v['postgres']['used']==v['postgres']['terminating']==0 and v['postgres']['limit']>=1
+out={'at':now(),'helps':helps,'source_head':c['head'],'runtime_contract':{'Render_extensions':'https://render.com/docs/postgresql-extensions','journey':'ordinary pg_ivm extension enablement and own-table incremental view and immediate insert/update/delete controls'},'preflight_limits':r,'native_create_and_SQL_wire':'not intercepted; native stdout/stderr/exit and API-only identities retained'};(P/'sweep447-native-help-contract.json').write_text(json.dumps(out,indent=2));print(json.dumps({'native_help_checks':4,'PG_free_capacity':True,'source_head':c['head']}))

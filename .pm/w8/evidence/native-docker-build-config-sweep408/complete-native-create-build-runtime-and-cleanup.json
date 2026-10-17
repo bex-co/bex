@@ -1,0 +1,2034 @@
+[
+  {
+    "sweep": 408,
+    "client": "bex",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "name": "qa-20261017-eb3aa5-docenv",
+    "nonce": "eb3aa5",
+    "marker": "QA408_eb3aa5_bex_café_雪",
+    "type": "web_service",
+    "time": "2026-10-17T07:06:31.849288+00:00",
+    "source_head": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+    "primary_reference": {
+      "repo": "https://github.com/bex-co/bex",
+      "branch": "main",
+      "commit": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+      "root_directory": "examples/docker-build-env",
+      "files": {
+        "examples/docker-build-env/Dockerfile": {
+          "bytes": 743,
+          "sha256": "406b2887d5cccd05e553d744be1546961903e6ad5a1e3ba36744c095e4a130c5"
+        },
+        "examples/docker-build-env/README.md": {
+          "bytes": 770,
+          "sha256": "d47a671dbc6d75b9c1e76c6efed81b08dfe33206d1d9e3d4a04ca4ab54d18153"
+        }
+      },
+      "qualification": "actual deployed child commit is recorded and its Dockerfile is checked against this fresh reference; unrelated concurrent main commits need not match"
+    },
+    "qa_file": {
+      "path": "<owned-temp>/qa408-eb3aa5.fixture",
+      "bytes": 35,
+      "sha256": "4e499becff92a0e8ee2320f4c1961590a654276f37551cb0aa4acbe2641dd6da",
+      "classification": "generated disposable QA text, no account credentials; entire content omitted from captures",
+      "removed": true
+    },
+    "pre_ids": [
+      "srv-dap3v694dm7c7390q930",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-db09vbgehcmc739j12i0",
+      "srv-db09u90ehcmc739j12cg"
+    ],
+    "pre_inventory": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.466,
+      "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}]",
+      "stderr": "",
+      "native_exit": 0
+    },
+    "capacity": {
+      "at": "2026-10-17T07:06:30.310957+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.936,
+      "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+      "stderr": ""
+    },
+    "dependency_ids": [],
+    "recorded_child_ids": [
+      "dep-db9hsu5496fs739dn28g"
+    ],
+    "create_command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261017-eb3aa5-docenv",
+      "--type",
+      "web_service",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--runtime",
+      "docker",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/docker-build-env",
+      "--env-var",
+      "GREETING=QA408_eb3aa5_bex_café_雪",
+      "--secret-file",
+      ".env:<owned-temp>/qa408-eb3aa5.fixture",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "state": "deleted: native0/detail404/listabsent/runtime404/children404/baseline6/termination0",
+    "durable_create_capture": "<owned-temp>/sweep408-create-qa-20261017-eb3aa5-docenv.json",
+    "create_result": {
+      "binary": "published Bex 0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--name",
+        "qa-20261017-eb3aa5-docenv",
+        "--type",
+        "web_service",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--runtime",
+        "docker",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--branch",
+        "main",
+        "--root-directory",
+        "examples/docker-build-env",
+        "--env-var",
+        "GREETING=QA408_eb3aa5_bex_café_雪",
+        "--secret-file",
+        ".env:<owned-temp>/qa408-eb3aa5.fixture",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.3,
+      "stdout": "{\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"main\", \"createdAt\": \"2026-10-17T07:06:33Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9hsu5496fs739dn280\", \"id\": \"srv-db9hsu5496fs739dn280\", \"name\": \"qa-20261017-eb3aa5-docenv\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/bex-co/bex\", \"rootDir\": \"examples/docker-build-env\", \"serviceDetails\": {\"env\": \"docker\", \"envSpecificDetails\": {\"dockerCommand\": \"\", \"dockerContext\": \"examples/docker-build-env\", \"dockerfilePath\": \"\"}, \"internalAddress\": \"qa-20261017-eb3aa5-docenv:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"docker\", \"url\": \"https://qa-20261017-eb3aa5-docenv.onbex.co\"}, \"slug\": \"qa-20261017-eb3aa5-docenv\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"web_service\", \"updatedAt\": \"2026-10-17T07:06:33Z\"}",
+      "stderr": "",
+      "captures": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/v1/services",
+            "body": {
+              "autoDeploy": "no",
+              "branch": "main",
+              "envVars": [
+                {
+                  "key": "GREETING",
+                  "value": "QA408_eb3aa5_bex_café_雪"
+                }
+              ],
+              "name": "qa-20261017-eb3aa5-docenv",
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "repo": "https://github.com/bex-co/bex",
+              "rootDir": "examples/docker-build-env",
+              "secretFiles": [
+                {
+                  "content": "[QA_FIXTURE_FILE_CONTENT_REDACTED]",
+                  "name": ".env"
+                }
+              ],
+              "serviceDetails": {
+                "plan": "free",
+                "region": "frankfurt",
+                "runtime": "docker"
+              },
+              "type": "web_service"
+            },
+            "raw_body_with_documented_redaction": "{\"autoDeploy\": \"no\", \"branch\": \"main\", \"envVars\": [{\"key\": \"GREETING\", \"value\": \"QA408_eb3aa5_bex_café_雪\"}], \"name\": \"qa-20261017-eb3aa5-docenv\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/bex-co/bex\", \"rootDir\": \"examples/docker-build-env\", \"secretFiles\": [{\"content\": \"[QA_FIXTURE_FILE_CONTENT_REDACTED]\", \"name\": \".env\"}], \"serviceDetails\": {\"plan\": \"free\", \"region\": \"frankfurt\", \"runtime\": \"docker\"}, \"type\": \"web_service\"}",
+            "redactions": [
+              {
+                "filename": ".env",
+                "UTF8_bytes": 35,
+                "sha256": "4e499becff92a0e8ee2320f4c1961590a654276f37551cb0aa4acbe2641dd6da",
+                "redaction": "entire own QA file content omitted"
+              }
+            ],
+            "raw_body_sha256": "ea0e87753455bd946146ae498549bae8c70bf421becc48331beb9f422d0edec2",
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "Content-Type": "application/json",
+              "X-Bex-Cli-Version": "0.3.2"
+            },
+            "authorization": "[REDACTED]"
+          },
+          "status": 201,
+          "response": "{\"service\": {\"id\": \"srv-db9hsu5496fs739dn280\", \"name\": \"qa-20261017-eb3aa5-docenv\", \"immutableName\": \"qa-20261017-eb3aa5-docenv\", \"slug\": \"qa-20261017-eb3aa5-docenv\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9hsu5496fs739dn280\", \"createdAt\": \"2026-10-17T07:06:33Z\", \"updatedAt\": \"2026-10-17T07:06:33Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"docker\", \"envSpecificDetails\": {\"dockerCommand\": \"\", \"dockerContext\": \"examples/docker-build-env\", \"dockerfilePath\": \"\"}, \"internalAddress\": \"qa-20261017-eb3aa5-docenv:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"docker\", \"url\": \"https://qa-20261017-eb3aa5-docenv.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"examples/docker-build-env\", \"repo\": \"https://github.com/bex-co/bex\", \"branch\": \"main\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}, \"deployId\": \"dep-db9hsu5496fs739dn28g\"}",
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a4bd76100b66152b-SJC"
+          }
+        }
+      ],
+      "qualification": "actual native POST forwarded unchanged to production; owned local relay and copied config cleaned",
+      "native_exit": 0
+    },
+    "id": "srv-db9hsu5496fs739dn280",
+    "create_view": {
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "branch": "main",
+      "createdAt": "2026-10-17T07:06:33Z",
+      "dashboardUrl": "https://dashboard.bex.co/web/srv-db9hsu5496fs739dn280",
+      "id": "srv-db9hsu5496fs739dn280",
+      "name": "qa-20261017-eb3aa5-docenv",
+      "notifyOnFail": "default",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/bex-co/bex",
+      "rootDir": "examples/docker-build-env",
+      "serviceDetails": {
+        "env": "docker",
+        "envSpecificDetails": {
+          "dockerCommand": "",
+          "dockerContext": "examples/docker-build-env",
+          "dockerfilePath": ""
+        },
+        "internalAddress": "qa-20261017-eb3aa5-docenv:3000",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "free",
+        "port": 3000,
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "docker",
+        "url": "https://qa-20261017-eb3aa5-docenv.onbex.co"
+      },
+      "slug": "qa-20261017-eb3aa5-docenv",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "web_service",
+      "updatedAt": "2026-10-17T07:06:33Z"
+    },
+    "history_receipts": [
+      {
+        "at": "2026-10-17T07:06:34.712873+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db9hsu5496fs739dn280",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.376,
+          "stdout": "[{\"commit\": {\"id\": \"b8aa43fc3c01f82703110950cea767c1f778a9e6\", \"message\": \"docs(pm): file stale dotenv read ordering and cancellation\"}, \"createdAt\": \"2026-10-17T07:06:32.967671Z\", \"id\": \"dep-db9hsu5496fs739dn28g\", \"status\": \"created\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T07:06:32.967671Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-17T07:07:42.159145+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db9hsu5496fs739dn280",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.536,
+          "stdout": "[{\"commit\": {\"id\": \"b8aa43fc3c01f82703110950cea767c1f778a9e6\", \"message\": \"docs(pm): file stale dotenv read ordering and cancellation\"}, \"createdAt\": \"2026-10-17T07:06:32.967671Z\", \"id\": \"dep-db9hsu5496fs739dn28g\", \"status\": \"queued\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T07:06:35.176104Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-17T07:07:57.245638+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db9hsu5496fs739dn280",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 1.292,
+          "stdout": "[{\"commit\": {\"id\": \"b8aa43fc3c01f82703110950cea767c1f778a9e6\", \"message\": \"docs(pm): file stale dotenv read ordering and cancellation\"}, \"createdAt\": \"2026-10-17T07:06:32.967671Z\", \"id\": \"dep-db9hsu5496fs739dn28g\", \"startedAt\": \"2026-10-17T07:07:50.877507Z\", \"status\": \"build_in_progress\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T07:07:50.877508Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-17T07:08:16.672370+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db9hsu5496fs739dn280",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 5.2,
+          "stdout": "[{\"commit\": {\"id\": \"b8aa43fc3c01f82703110950cea767c1f778a9e6\", \"message\": \"docs(pm): file stale dotenv read ordering and cancellation\"}, \"createdAt\": \"2026-10-17T07:06:32.967671Z\", \"finishedAt\": \"2026-10-17T07:08:04.731087Z\", \"id\": \"dep-db9hsu5496fs739dn28g\", \"startedAt\": \"2026-10-17T07:07:50.877507Z\", \"status\": \"build_failed\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T07:08:04.731089Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-17T07:08:19.354323+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db9hsu5496fs739dn280",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.708,
+          "stdout": "[{\"commit\": {\"id\": \"b8aa43fc3c01f82703110950cea767c1f778a9e6\", \"message\": \"docs(pm): file stale dotenv read ordering and cancellation\"}, \"createdAt\": \"2026-10-17T07:06:32.967671Z\", \"finishedAt\": \"2026-10-17T07:08:04.731087Z\", \"id\": \"dep-db9hsu5496fs739dn28g\", \"startedAt\": \"2026-10-17T07:07:50.877507Z\", \"status\": \"build_failed\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T07:08:04.731089Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-17T07:08:32.982185+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db9hsu5496fs739dn280",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 3.989,
+          "stdout": "[{\"commit\": {\"id\": \"b8aa43fc3c01f82703110950cea767c1f778a9e6\", \"message\": \"docs(pm): file stale dotenv read ordering and cancellation\"}, \"createdAt\": \"2026-10-17T07:06:32.967671Z\", \"finishedAt\": \"2026-10-17T07:08:04.731087Z\", \"id\": \"dep-db9hsu5496fs739dn28g\", \"startedAt\": \"2026-10-17T07:07:50.877507Z\", \"status\": \"build_failed\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T07:08:04.731089Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      },
+      {
+        "at": "2026-10-17T07:12:26.007448+00:00",
+        "result": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "deploys",
+            "list",
+            "srv-db9hsu5496fs739dn280",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.436,
+          "stdout": "[{\"commit\": {\"id\": \"b8aa43fc3c01f82703110950cea767c1f778a9e6\", \"message\": \"docs(pm): file stale dotenv read ordering and cancellation\"}, \"createdAt\": \"2026-10-17T07:06:32.967671Z\", \"finishedAt\": \"2026-10-17T07:08:04.731087Z\", \"id\": \"dep-db9hsu5496fs739dn28g\", \"startedAt\": \"2026-10-17T07:07:50.877507Z\", \"status\": \"build_failed\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T07:08:04.731089Z\"}]",
+          "stderr": "",
+          "native_exit": 0
+        }
+      }
+    ],
+    "deploy_children": [
+      {
+        "commit": {
+          "id": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+          "message": "docs(pm): file stale dotenv read ordering and cancellation"
+        },
+        "createdAt": "2026-10-17T07:06:32.967671Z",
+        "finishedAt": "2026-10-17T07:08:04.731087Z",
+        "id": "dep-db9hsu5496fs739dn28g",
+        "startedAt": "2026-10-17T07:07:50.877507Z",
+        "status": "build_failed",
+        "trigger": "other",
+        "updatedAt": "2026-10-17T07:08:04.731089Z"
+      }
+    ],
+    "first_deploy_id": "dep-db9hsu5496fs739dn28g",
+    "observations": [
+      {
+        "at": "2026-10-17T07:07:43.321788+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+              "message": "docs(pm): file stale dotenv read ordering and cancellation"
+            },
+            "createdAt": "2026-10-17T07:06:32.967671Z",
+            "id": "dep-db9hsu5496fs739dn28g",
+            "status": "queued",
+            "trigger": "other",
+            "updatedAt": "2026-10-17T07:06:35.176104Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-17T07:07:43.321498+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9hsu5496fs739dn280",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.796,
+          "response": "{\"id\": \"srv-db9hsu5496fs739dn280\", \"name\": \"qa-20261017-eb3aa5-docenv\", \"immutableName\": \"qa-20261017-eb3aa5-docenv\", \"slug\": \"qa-20261017-eb3aa5-docenv\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9hsu5496fs739dn280\", \"createdAt\": \"2026-10-17T07:06:33Z\", \"updatedAt\": \"2026-10-17T07:07:34Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"docker\", \"envSpecificDetails\": {\"dockerCommand\": \"\", \"dockerContext\": \"examples/docker-build-env\", \"dockerfilePath\": \"\"}, \"internalAddress\": \"qa-20261017-eb3aa5-docenv:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"docker\", \"url\": \"https://qa-20261017-eb3aa5-docenv.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Building\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"examples/docker-build-env\", \"repo\": \"https://github.com/bex-co/bex\", \"branch\": \"main\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T07:07:58.840128+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+              "message": "docs(pm): file stale dotenv read ordering and cancellation"
+            },
+            "createdAt": "2026-10-17T07:06:32.967671Z",
+            "id": "dep-db9hsu5496fs739dn28g",
+            "startedAt": "2026-10-17T07:07:50.877507Z",
+            "status": "build_in_progress",
+            "trigger": "other",
+            "updatedAt": "2026-10-17T07:07:50.877508Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-17T07:07:58.839937+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9hsu5496fs739dn280",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 1.203,
+          "response": "{\"id\": \"srv-db9hsu5496fs739dn280\", \"name\": \"qa-20261017-eb3aa5-docenv\", \"immutableName\": \"qa-20261017-eb3aa5-docenv\", \"slug\": \"qa-20261017-eb3aa5-docenv\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9hsu5496fs739dn280\", \"createdAt\": \"2026-10-17T07:06:33Z\", \"updatedAt\": \"2026-10-17T07:07:34Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"docker\", \"envSpecificDetails\": {\"dockerCommand\": \"\", \"dockerContext\": \"examples/docker-build-env\", \"dockerfilePath\": \"\"}, \"internalAddress\": \"qa-20261017-eb3aa5-docenv:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"docker\", \"url\": \"https://qa-20261017-eb3aa5-docenv.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Building\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"examples/docker-build-env\", \"repo\": \"https://github.com/bex-co/bex\", \"branch\": \"main\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T07:08:18.051123+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+              "message": "docs(pm): file stale dotenv read ordering and cancellation"
+            },
+            "createdAt": "2026-10-17T07:06:32.967671Z",
+            "finishedAt": "2026-10-17T07:08:04.731087Z",
+            "id": "dep-db9hsu5496fs739dn28g",
+            "startedAt": "2026-10-17T07:07:50.877507Z",
+            "status": "build_failed",
+            "trigger": "other",
+            "updatedAt": "2026-10-17T07:08:04.731089Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-17T07:08:18.050940+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9hsu5496fs739dn280",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 1.001,
+          "response": "{\"id\": \"srv-db9hsu5496fs739dn280\", \"name\": \"qa-20261017-eb3aa5-docenv\", \"immutableName\": \"qa-20261017-eb3aa5-docenv\", \"slug\": \"qa-20261017-eb3aa5-docenv\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9hsu5496fs739dn280\", \"createdAt\": \"2026-10-17T07:06:33Z\", \"updatedAt\": \"2026-10-17T07:08:00Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"docker\", \"envSpecificDetails\": {\"dockerCommand\": \"\", \"dockerContext\": \"examples/docker-build-env\", \"dockerfilePath\": \"\"}, \"internalAddress\": \"qa-20261017-eb3aa5-docenv:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"docker\", \"url\": \"https://qa-20261017-eb3aa5-docenv.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Failed\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"examples/docker-build-env\", \"repo\": \"https://github.com/bex-co/bex\", \"branch\": \"main\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+          "stderr": ""
+        }
+      }
+    ],
+    "build_log_receipts": [
+      {
+        "at": "2026-10-17T07:08:28.250345+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+              "message": "docs(pm): file stale dotenv read ordering and cancellation"
+            },
+            "createdAt": "2026-10-17T07:06:32.967671Z",
+            "finishedAt": "2026-10-17T07:08:04.731087Z",
+            "id": "dep-db9hsu5496fs739dn28g",
+            "startedAt": "2026-10-17T07:07:50.877507Z",
+            "status": "build_failed",
+            "trigger": "other",
+            "updatedAt": "2026-10-17T07:08:04.731089Z"
+          }
+        ],
+        "actual_child_Dockerfile_proof": {
+          "commit": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+          "path": "examples/docker-build-env/Dockerfile",
+          "bytes": 743,
+          "sha256": "406b2887d5cccd05e553d744be1546961903e6ad5a1e3ba36744c095e4a130c5",
+          "HTTP_source_read0": true
+        },
+        "native": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "logs",
+            "--resources",
+            "srv-db9hsu5496fs739dn280",
+            "--type",
+            "build",
+            "--limit",
+            "100",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 8.166,
+          "stdout": "{\n  \"id\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur-2026-10-17T07:06:32.967671Z-5cd164f4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Build queued\",\n  \"timestamp\": \"2026-10-17T07:06:32.967671Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:43.782300855Z-62cc47e5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"clone\"\n    }\n  ],\n  \"message\": \"From https://github.com/bex-co/bex\",\n  \"timestamp\": \"2026-10-17T07:07:43.782300855Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:43.78233538Z-b9ef67d6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"clone\"\n    }\n  ],\n  \"message\": \" * branch              b8aa43fc3c01f82703110950cea767c1f778a9e6 -\\u003e FETCH_HEAD\",\n  \"timestamp\": \"2026-10-17T07:07:43.78233538Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur-2026-10-17T07:07:50.877507Z-69befaca\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Building from https://github.com/bex-co/bex@b8aa43f\",\n  \"timestamp\": \"2026-10-17T07:07:50.877507Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:52.292342942Z-c17bd283\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#1 [internal] load build definition from Dockerfile\",\n  \"timestamp\": \"2026-10-17T07:07:52.292342942Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:52.292423604Z-24371bdf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#1 transferring dockerfile: 782B done\",\n  \"timestamp\": \"2026-10-17T07:07:52.292423604Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:52.292427721Z-7322ea9e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#1 DONE 0.0s\",\n  \"timestamp\": \"2026-10-17T07:07:52.292427721Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:52.292430296Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-17T07:07:52.292430296Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:52.29243779Z-353693e2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#2 [internal] load metadata for docker.io/library/busybox:1.37.0@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e\",\n  \"timestamp\": \"2026-10-17T07:07:52.29243779Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.401871415Z-35fbaffd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#2 DONE 1.3s\",\n  \"timestamp\": \"2026-10-17T07:07:53.401871415Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.632814605Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-17T07:07:53.632814605Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.632873164Z-f7cb0622\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#3 [internal] load .dockerignore\",\n  \"timestamp\": \"2026-10-17T07:07:53.632873164Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.632876871Z-e6d89eff\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#3 transferring context: 2B done\",\n  \"timestamp\": \"2026-10-17T07:07:53.632876871Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.632879917Z-5ec1ec28\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#3 DONE 0.0s\",\n  \"timestamp\": \"2026-10-17T07:07:53.632879917Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.632882762Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-17T07:07:53.632882762Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.632886329Z-59c3079a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#4 [stage-0 1/2] FROM docker.io/library/busybox:1.37.0@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e\",\n  \"timestamp\": \"2026-10-17T07:07:53.632886329Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.632889395Z-c19981d6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#4 resolve docker.io/library/busybox:1.37.0@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e 0.0s done\",\n  \"timestamp\": \"2026-10-17T07:07:53.632889395Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.640389395Z-370730aa\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#4 sha256:68fe9bff2ad4ad46da3e58db03faa64eb73c0ff16d546b0c42539eaa9854cb7f 1.05MB / 2.21MB 0.2s\",\n  \"timestamp\": \"2026-10-17T07:07:53.640389395Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.792131819Z-a776640d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#4 sha256:68fe9bff2ad4ad46da3e58db03faa64eb73c0ff16d546b0c42539eaa9854cb7f 2.21MB / 2.21MB 0.2s done\",\n  \"timestamp\": \"2026-10-17T07:07:53.792131819Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.792168167Z-8cc4ff78\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#4 extracting sha256:68fe9bff2ad4ad46da3e58db03faa64eb73c0ff16d546b0c42539eaa9854cb7f 0.1s done\",\n  \"timestamp\": \"2026-10-17T07:07:53.792168167Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.792169891Z-ebdc07de\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#4 DONE 0.3s\",\n  \"timestamp\": \"2026-10-17T07:07:53.792169891Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.860896135Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-17T07:07:53.860896135Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.860942312Z-a489a3d5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#5 [stage-0 2/2] RUN --mount=type=secret,id=_env,required=true     mkdir -p /www \\u0026\\u0026     test -n \\\"$GREETING\\\" \\u0026\\u0026     printf '%s\\\\n' \\\"$GREETING\\\" \\u003e /www/greeting \\u0026\\u0026     wc -c \\u003c /run/secrets/_env | tr -d ' ' \\u003e /www/env-bytes\",\n  \"timestamp\": \"2026-10-17T07:07:53.860942312Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.86095244Z-66912856\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#5 ERROR: secret _env: not found\",\n  \"timestamp\": \"2026-10-17T07:07:53.86095244Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.860954464Z-67c666bb\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"------\",\n  \"timestamp\": \"2026-10-17T07:07:53.860954464Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.860956488Z-12168fc3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \" \\u003e [stage-0 2/2] RUN --mount=type=secret,id=_env,required=true     mkdir -p /www \\u0026\\u0026     test -n \\\"$GREETING\\\" \\u0026\\u0026     printf '%s\\\\n' \\\"$GREETING\\\" \\u003e /www/greeting \\u0026\\u0026     wc -c \\u003c /run/secrets/_env | tr -d ' ' \\u003e /www/env-bytes:\",\n  \"timestamp\": \"2026-10-17T07:07:53.860956488Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.860958462Z-67c666bb\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"------\",\n  \"timestamp\": \"2026-10-17T07:07:53.860958462Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.863852021Z-a3328e41\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"Dockerfile:8\",\n  \"timestamp\": \"2026-10-17T07:07:53.863852021Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.863869775Z-26f65801\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"--------------------\",\n  \"timestamp\": \"2026-10-17T07:07:53.863869775Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.863873682Z-c0bb6355\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"   7 |     # is written into the image, never its content.\",\n  \"timestamp\": \"2026-10-17T07:07:53.863873682Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.863876788Z-b695892b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"   8 | \\u003e\\u003e\\u003e RUN --mount=type=secret,id=_env,required=true \\\\\",\n  \"timestamp\": \"2026-10-17T07:07:53.863876788Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.863880675Z-af84cf80\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"   9 | \\u003e\\u003e\\u003e     mkdir -p /www \\u0026\\u0026 \\\\\",\n  \"timestamp\": \"2026-10-17T07:07:53.863880675Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.863883681Z-4d710280\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"  10 | \\u003e\\u003e\\u003e     test -n \\\"$GREETING\\\" \\u0026\\u0026 \\\\\",\n  \"timestamp\": \"2026-10-17T07:07:53.863883681Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.863886436Z-ca007347\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"  11 | \\u003e\\u003e\\u003e     printf '%s\\\\n' \\\"$GREETING\\\" \\u003e /www/greeting \\u0026\\u0026 \\\\\",\n  \"timestamp\": \"2026-10-17T07:07:53.863886436Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.863890183Z-bdf46600\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"  12 | \\u003e\\u003e\\u003e     wc -c \\u003c /run/secrets/_env | tr -d ' ' \\u003e /www/env-bytes\",\n  \"timestamp\": \"2026-10-17T07:07:53.863890183Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.863893188Z-64d602e2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"  13 |     EXPOSE 3000\",\n  \"timestamp\": \"2026-10-17T07:07:53.863893188Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.863896224Z-26f65801\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"--------------------\",\n  \"timestamp\": \"2026-10-17T07:07:53.863896224Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg-2026-10-17T07:07:53.86389909Z-4f464121\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-4rvdde9238u1v784e9lg\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"error: failed to solve: secret _env: not found\",\n  \"timestamp\": \"2026-10-17T07:07:53.86389909Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur-2026-10-17T07:08:04.731087Z-9141219b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Build failed: build failed in the docker build step:\",\n  \"timestamp\": \"2026-10-17T07:08:04.731087Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur-2026-10-17T07:08:04.731087Z-cc27053a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e #5 ERROR: secret _env: not found\",\n  \"timestamp\": \"2026-10-17T07:08:04.731087Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur-2026-10-17T07:08:04.731087Z-dde7ffcf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e ------\",\n  \"timestamp\": \"2026-10-17T07:08:04.731087Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur-2026-10-17T07:08:04.731087Z-c8e8b61d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e \\u003e [stage-0 2/2] RUN --mount=type=secret,id=_env,required=true     mkdir -p /www \\u0026\\u0026     test -n \\\"$GREETING\\\" \\u0026\\u0026     printf '%s\\\\n' \\\"$GREETING\\\" \\u003e /www/greeting \\u0026\\u0026     wc -c \\u003c /run/secrets/_env | tr -d ' ' \\u003e /www/env-bytes:\",\n  \"timestamp\": \"2026-10-17T07:08:04.731087Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur-2026-10-17T07:08:04.731087Z-dde7ffcf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e ------\",\n  \"timestamp\": \"2026-10-17T07:08:04.731087Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur-2026-10-17T07:08:04.731087Z-560e2915\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Dockerfile:8\",\n  \"timestamp\": \"2026-10-17T07:08:04.731087Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur-2026-10-17T07:08:04.731087Z-fd310515\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e --------------------\",\n  \"timestamp\": \"2026-10-17T07:08:04.731087Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur-2026-10-17T07:08:04.731087Z-820a72d3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e 7 |     # is written into the image, never its content.\",\n  \"timestamp\": \"2026-10-17T07:08:04.731087Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur-2026-10-17T07:08:04.731087Z-f6560c29\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e 8 | \\u003e\\u003e\\u003e RUN --mount=type=secret,id=_env,required=true \\\\\",\n  \"timestamp\": \"2026-10-17T07:08:04.731087Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur-2026-10-17T07:08:04.731087Z-6f6a90f6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e 9 | \\u003e\\u003e\\u003e     mkdir -p /www \\u0026\\u0026 \\\\\",\n  \"timestamp\": \"2026-10-17T07:08:04.731087Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur-2026-10-17T07:08:04.731087Z-4c41364c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e 10 | \\u003e\\u003e\\u003e     test -n \\\"$GREETING\\\" \\u0026\\u0026 \\\\\",\n  \"timestamp\": \"2026-10-17T07:08:04.731087Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur-2026-10-17T07:08:04.731087Z-45b822fb\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e 11 | \\u003e\\u003e\\u003e     printf '%s\\\\n' \\\"$GREETING\\\" \\u003e /www/greeting \\u0026\\u0026 \\\\\",\n  \"timestamp\": \"2026-10-17T07:08:04.731087Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur-2026-10-17T07:08:04.731087Z-6e2990bc\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e 12 | \\u003e\\u003e\\u003e     wc -c \\u003c /run/secrets/_env | tr -d ' ' \\u003e /www/env-bytes\",\n  \"timestamp\": \"2026-10-17T07:08:04.731087Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur-2026-10-17T07:08:04.731087Z-2512a9fe\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e 13 |     EXPOSE 3000\",\n  \"timestamp\": \"2026-10-17T07:08:04.731087Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur-2026-10-17T07:08:04.731087Z-fd310515\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e --------------------\",\n  \"timestamp\": \"2026-10-17T07:08:04.731087Z\"\n}{\n  \"id\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur-2026-10-17T07:08:04.731087Z-bd6c6bfd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9hsu5496fs739dn280\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9hsu5496fs739dn280-v6lnt12seufml5vmf1ur\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e error: failed to solve: secret _env: not found\",\n  \"timestamp\": \"2026-10-17T07:08:04.731087Z\"\n}",
+          "stderr": "",
+          "native_exit": 0
+        },
+        "missing_required_file_mount": true,
+        "classification": "known m178 deployment-lag candidate"
+      }
+    ],
+    "runtime_exercise": {
+      "at": "2026-10-17T07:08:36.506057+00:00",
+      "history": [
+        {
+          "commit": {
+            "id": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+            "message": "docs(pm): file stale dotenv read ordering and cancellation"
+          },
+          "createdAt": "2026-10-17T07:06:32.967671Z",
+          "finishedAt": "2026-10-17T07:08:04.731087Z",
+          "id": "dep-db9hsu5496fs739dn28g",
+          "startedAt": "2026-10-17T07:07:50.877507Z",
+          "status": "build_failed",
+          "trigger": "other",
+          "updatedAt": "2026-10-17T07:08:04.731089Z"
+        }
+      ],
+      "requests": [
+        {
+          "path": "/greeting",
+          "HTTP": "404",
+          "curl_exit": 0,
+          "body": "404 page not found\n",
+          "bytes": 19,
+          "sha256": "b16e15764b8bc06c5c3f9f19bc8b99fa48e7894aa5a6ccdad65da49bbf564793",
+          "expected_nonsecret_output": "QA408_eb3aa5_bex_café_雪\n",
+          "matches": false
+        },
+        {
+          "path": "/env-bytes",
+          "HTTP": "404",
+          "curl_exit": 0,
+          "body": "404 page not found\n",
+          "bytes": 19,
+          "sha256": "b16e15764b8bc06c5c3f9f19bc8b99fa48e7894aa5a6ccdad65da49bbf564793",
+          "expected_nonsecret_output": "35\n",
+          "matches": false
+        }
+      ],
+      "pass": false,
+      "classification": "known missing Docker build input candidate"
+    },
+    "shared_state": [
+      {
+        "at": "2026-10-17T07:12:03.385500+00:00",
+        "surface": "REST",
+        "receipt": {
+          "at": "2026-10-17T07:12:04.215727+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9hsu5496fs739dn280",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.649,
+          "response": "{\"id\": \"srv-db9hsu5496fs739dn280\", \"name\": \"qa-20261017-eb3aa5-docenv\", \"immutableName\": \"qa-20261017-eb3aa5-docenv\", \"slug\": \"qa-20261017-eb3aa5-docenv\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9hsu5496fs739dn280\", \"createdAt\": \"2026-10-17T07:06:33Z\", \"updatedAt\": \"2026-10-17T07:08:00Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"docker\", \"envSpecificDetails\": {\"dockerCommand\": \"\", \"dockerContext\": \"examples/docker-build-env\", \"dockerfilePath\": \"\"}, \"internalAddress\": \"qa-20261017-eb3aa5-docenv:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"docker\", \"url\": \"https://qa-20261017-eb3aa5-docenv.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Failed\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"examples/docker-build-env\", \"repo\": \"https://github.com/bex-co/bex\", \"branch\": \"main\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+          "stderr": ""
+        },
+        "pass": true
+      },
+      {
+        "at": "2026-10-17T07:12:04.586924+00:00",
+        "surface": "GraphQL",
+        "receipt": {
+          "at": "2026-10-17T07:12:05.158893+00:00",
+          "API_only": true,
+          "request": {
+            "method": "POST",
+            "path": "/graphql",
+            "body": {
+              "query": "query QA408 {service(id:\"srv-db9hsu5496fs739dn280\"){id name repo branch rootDir runtime plan autoDeploy}}"
+            },
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.389,
+          "response": "{\"data\": {\"service\": {\"autoDeploy\": false, \"branch\": \"main\", \"id\": \"srv-db9hsu5496fs739dn280\", \"name\": \"qa-20261017-eb3aa5-docenv\", \"plan\": \"free\", \"repo\": \"https://github.com/bex-co/bex\", \"rootDir\": \"examples/docker-build-env\", \"runtime\": \"docker\"}}}",
+          "stderr": ""
+        },
+        "pass": true
+      },
+      {
+        "at": "2026-10-17T07:12:05.524620+00:00",
+        "surface": "MCP",
+        "receipt": {
+          "at": "2026-10-17T07:12:07.416369+00:00",
+          "API_only": true,
+          "request": {
+            "method": "POST",
+            "path": "/mcp",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 408,
+              "method": "tools/call",
+              "params": {
+                "name": "get_service",
+                "arguments": {
+                  "serviceId": "srv-db9hsu5496fs739dn280",
+                  "workspaceId": "tea-daif693dqjvc73e7as3g"
+                }
+              }
+            },
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 1.704,
+          "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":408,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"autoDeploy\\\":\\\"no\\\",\\\"autoDeployTrigger\\\":\\\"off\\\",\\\"branch\\\":\\\"main\\\",\\\"createdAt\\\":\\\"2026-10-17T07:06:33Z\\\",\\\"dashboardUrl\\\":\\\"https://dashboard.bex.co/web/srv-db9hsu5496fs739dn280\\\",\\\"displayName\\\":\\\"\\\",\\\"id\\\":\\\"srv-db9hsu5496fs739dn280\\\",\\\"idleTTLSeconds\\\":0,\\\"immutableName\\\":\\\"qa-20261017-eb3aa5-docenv\\\",\\\"name\\\":\\\"qa-20261017-eb3aa5-docenv\\\",\\\"notificationsToSend\\\":\\\"default\\\",\\\"notifyOnFail\\\":\\\"default\\\",\\\"ownerId\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"phase\\\":\\\"Failed\\\",\\\"pushDeliveryMethod\\\":\\\"manual_webhook\\\",\\\"replicas\\\":1,\\\"repo\\\":\\\"https://github.com/bex-co/bex\\\",\\\"rootDir\\\":\\\"examples/docker-build-env\\\",\\\"serviceDetails\\\":{\\\"env\\\":\\\"docker\\\",\\\"envSpecificDetails\\\":{\\\"dockerCommand\\\":\\\"\\\",\\\"dockerContext\\\":\\\"examples/docker-build-env\\\",\\\"dockerfilePath\\\":\\\"\\\"},\\\"internalAddress\\\":\\\"qa-20261017-eb3aa5-docenv:3000\\\",\\\"maintenanceMode\\\":{\\\"enabled\\\":false,\\\"uri\\\":\\\"\\\"},\\\"maxShutdownDelaySeconds\\\":30,\\\"numInstances\\\":1,\\\"plan\\\":\\\"free\\\",\\\"port\\\":3000,\\\"region\\\":\\\"fsn1\\\",\\\"renderSubdomainPolicy\\\":\\\"enabled\\\",\\\"runtime\\\":\\\"docker\\\",\\\"url\\\":\\\"https://qa-20261017-eb3aa5-docenv.onbex.co\\\"},\\\"slug\\\":\\\"qa-20261017-eb3aa5-docenv\\\",\\\"suspended\\\":\\\"not_suspended\\\",\\\"suspenders\\\":[],\\\"type\\\":\\\"web_service\\\",\\\"updatedAt\\\":\\\"2026-10-17T07:08:00Z\\\"}\"}],\"structuredContent\":{\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"branch\":\"main\",\"createdAt\":\"2026-10-17T07:06:33Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db9hsu5496fs739dn280\",\"displayName\":\"\",\"id\":\"srv-db9hsu5496fs739dn280\",\"idleTTLSeconds\":0,\"immutableName\":\"qa-20261017-eb3aa5-docenv\",\"name\":\"qa-20261017-eb3aa5-docenv\",\"notificationsToSend\":\"default\",\"notifyOnFail\":\"default\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Failed\",\"pushDeliveryMethod\":\"manual_webhook\",\"replicas\":1,\"repo\":\"https://github.com/bex-co/bex\",\"rootDir\":\"examples/docker-build-env\",\"serviceDetails\":{\"env\":\"docker\",\"envSpecificDetails\":{\"dockerCommand\":\"\",\"dockerContext\":\"examples/docker-build-env\",\"dockerfilePath\":\"\"},\"internalAddress\":\"qa-20261017-eb3aa5-docenv:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"docker\",\"url\":\"https://qa-20261017-eb3aa5-docenv.onbex.co\"},\"slug\":\"qa-20261017-eb3aa5-docenv\",\"suspended\":\"not_suspended\",\"suspenders\":[],\"type\":\"web_service\",\"updatedAt\":\"2026-10-17T07:08:00Z\"}}}\n\n",
+          "stderr": ""
+        },
+        "pass": true
+      }
+    ],
+    "explicit_env_readback": {
+      "at": "2026-10-17T07:12:08.433098+00:00",
+      "receipt": {
+        "at": "2026-10-17T07:12:08.432952+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db9hsu5496fs739dn280/env-vars",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 0.643,
+        "response": "[{\"envVar\": {\"key\": \"GREETING\", \"value\": \"QA408_eb3aa5_bex_café_雪\", \"revision\": \"evr1_AAAAAAAAAAE\"}, \"cursor\": \"GREETING\"}]",
+        "stderr": ""
+      },
+      "pass": true
+    },
+    "delete_intent": {
+      "at": "2026-10-17T07:12:26.385217+00:00",
+      "children": [
+        {
+          "commit": {
+            "id": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+            "message": "docs(pm): file stale dotenv read ordering and cancellation"
+          },
+          "createdAt": "2026-10-17T07:06:32.967671Z",
+          "finishedAt": "2026-10-17T07:08:04.731087Z",
+          "id": "dep-db9hsu5496fs739dn28g",
+          "startedAt": "2026-10-17T07:07:50.877507Z",
+          "status": "build_failed",
+          "trigger": "other",
+          "updatedAt": "2026-10-17T07:08:04.731089Z"
+        }
+      ]
+    },
+    "delete_result": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "delete",
+        "srv-db9hsu5496fs739dn280",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.653,
+      "stdout": "{\"data\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"main\", \"createdAt\": \"2026-10-17T07:06:33Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9hsu5496fs739dn280\", \"id\": \"srv-db9hsu5496fs739dn280\", \"name\": \"qa-20261017-eb3aa5-docenv\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/bex-co/bex\", \"rootDir\": \"examples/docker-build-env\", \"serviceDetails\": {\"env\": \"docker\", \"envSpecificDetails\": {\"dockerCommand\": \"\", \"dockerContext\": \"examples/docker-build-env\", \"dockerfilePath\": \"\"}, \"internalAddress\": \"qa-20261017-eb3aa5-docenv:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"docker\", \"url\": \"https://qa-20261017-eb3aa5-docenv.onbex.co\"}, \"slug\": \"qa-20261017-eb3aa5-docenv\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"web_service\", \"updatedAt\": \"2026-10-17T07:08:00Z\", \"environmentId\": null, \"projectId\": null}, \"meta\": {\"deleted\": true}}",
+      "stderr": "",
+      "native_exit": 0
+    },
+    "cleanup_receipts": [
+      {
+        "at": "2026-10-17T07:12:33.419674+00:00",
+        "detail": {
+          "at": "2026-10-17T07:12:29.695133+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9hsu5496fs739dn280",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "404",
+          "curl_exit": 0,
+          "elapsed": 0.727,
+          "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+          "stderr": ""
+        },
+        "inventory": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "services",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.681,
+          "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}]",
+          "stderr": "",
+          "native_exit": 0
+        },
+        "runtime_HTTP": "404",
+        "runtime_exit": 0,
+        "quota": {
+          "at": "2026-10-17T07:12:32.533002+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.879,
+          "response": "{\"services\": {\"used\": 7, \"terminating\": 1, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+          "stderr": ""
+        },
+        "children": [
+          {
+            "at": "2026-10-17T07:12:33.419319+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/services/srv-db9hsu5496fs739dn280/deploys/dep-db9hsu5496fs739dn28g",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "404",
+            "curl_exit": 0,
+            "elapsed": 0.86,
+            "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+            "stderr": ""
+          }
+        ],
+        "pass": false
+      },
+      {
+        "at": "2026-10-17T07:12:49.362669+00:00",
+        "detail": {
+          "at": "2026-10-17T07:12:46.831015+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9hsu5496fs739dn280",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "404",
+          "curl_exit": 0,
+          "elapsed": 0.806,
+          "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+          "stderr": ""
+        },
+        "inventory": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "services",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.979,
+          "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}]",
+          "stderr": "",
+          "native_exit": 0
+        },
+        "runtime_HTTP": "404",
+        "runtime_exit": 0,
+        "quota": {
+          "at": "2026-10-17T07:12:49.030617+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.517,
+          "response": "{\"services\": {\"used\": 6, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+          "stderr": ""
+        },
+        "children": [
+          {
+            "at": "2026-10-17T07:12:49.362460+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/services/srv-db9hsu5496fs739dn280/deploys/dep-db9hsu5496fs739dn28g",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "404",
+            "curl_exit": 0,
+            "elapsed": 0.307,
+            "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+            "stderr": ""
+          }
+        ],
+        "pass": true
+      }
+    ]
+  },
+  {
+    "sweep": 408,
+    "client": "render",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "name": "qa-20261017-6e9d3d-docenv",
+    "nonce": "6e9d3d",
+    "marker": "QA408_6e9d3d_render_café_雪",
+    "type": "web_service",
+    "time": "2026-10-17T07:07:14.434117+00:00",
+    "source_head": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+    "primary_reference": {
+      "repo": "https://github.com/bex-co/bex",
+      "branch": "main",
+      "commit": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+      "root_directory": "examples/docker-build-env",
+      "files": {
+        "examples/docker-build-env/Dockerfile": {
+          "bytes": 743,
+          "sha256": "406b2887d5cccd05e553d744be1546961903e6ad5a1e3ba36744c095e4a130c5"
+        },
+        "examples/docker-build-env/README.md": {
+          "bytes": 770,
+          "sha256": "d47a671dbc6d75b9c1e76c6efed81b08dfe33206d1d9e3d4a04ca4ab54d18153"
+        }
+      },
+      "qualification": "actual deployed child commit is recorded and its Dockerfile is checked against this fresh reference; unrelated concurrent main commits need not match"
+    },
+    "qa_file": {
+      "path": "<owned-temp>/qa408-6e9d3d.fixture",
+      "bytes": 35,
+      "sha256": "0acf0b14cbe4052eaf2ddffb9fed4799d04a482fba45a95d01901a53aebe876c",
+      "classification": "generated disposable QA text, no account credentials; entire content omitted from captures",
+      "removed": true
+    },
+    "pre_ids": [
+      "srv-dap3v694dm7c7390q930",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3r714dm7c7390q91g",
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-db09vbgehcmc739j12i0",
+      "srv-db09u90ehcmc739j12cg",
+      "srv-db9hsu5496fs739dn280"
+    ],
+    "pre_inventory": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 1.552,
+      "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"main\", \"createdAt\": \"2026-10-17T07:06:33Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9hsu5496fs739dn280\", \"id\": \"srv-db9hsu5496fs739dn280\", \"name\": \"qa-20261017-eb3aa5-docenv\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/bex-co/bex\", \"rootDir\": \"examples/docker-build-env\", \"serviceDetails\": {\"env\": \"docker\", \"envSpecificDetails\": {\"dockerCommand\": \"\", \"dockerContext\": \"examples/docker-build-env\", \"dockerfilePath\": \"\"}, \"internalAddress\": \"qa-20261017-eb3aa5-docenv:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"docker\", \"url\": \"https://qa-20261017-eb3aa5-docenv.onbex.co\"}, \"slug\": \"qa-20261017-eb3aa5-docenv\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"web_service\", \"updatedAt\": \"2026-10-17T07:06:35Z\"}}]",
+      "stderr": ""
+    },
+    "capacity": {
+      "at": "2026-10-17T07:07:12.833545+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.848,
+      "response": "{\"services\": {\"used\": 7, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+      "stderr": ""
+    },
+    "dependency_ids": [],
+    "recorded_child_ids": [
+      "dep-db9ht8t496fs739dn2ag"
+    ],
+    "create_command": [
+      "render",
+      "services",
+      "create",
+      "--name",
+      "qa-20261017-6e9d3d-docenv",
+      "--type",
+      "web_service",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--runtime",
+      "docker",
+      "--repo",
+      "https://github.com/bex-co/bex",
+      "--branch",
+      "main",
+      "--root-directory",
+      "examples/docker-build-env",
+      "--env-var",
+      "GREETING=QA408_6e9d3d_render_café_雪",
+      "--secret-file",
+      ".env:<owned-temp>/qa408-6e9d3d.fixture",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "state": "deleted: native0/detail404/listabsent/runtime404/children404/baseline6/termination0",
+    "durable_create_capture": "<owned-temp>/sweep408-create-qa-20261017-6e9d3d-docenv.json",
+    "create_result": {
+      "binary": "unmodified Render 2.27.0/a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "create",
+        "--name",
+        "qa-20261017-6e9d3d-docenv",
+        "--type",
+        "web_service",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--runtime",
+        "docker",
+        "--repo",
+        "https://github.com/bex-co/bex",
+        "--branch",
+        "main",
+        "--root-directory",
+        "examples/docker-build-env",
+        "--env-var",
+        "GREETING=QA408_6e9d3d_render_café_雪",
+        "--secret-file",
+        ".env:<owned-temp>/qa408-6e9d3d.fixture",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 1.223,
+      "stdout": "{\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"main\", \"createdAt\": \"2026-10-17T07:07:15Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9ht8t496fs739dn2a0\", \"id\": \"srv-db9ht8t496fs739dn2a0\", \"name\": \"qa-20261017-6e9d3d-docenv\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/bex-co/bex\", \"rootDir\": \"examples/docker-build-env\", \"serviceDetails\": {\"env\": \"docker\", \"envSpecificDetails\": {\"dockerCommand\": \"\", \"dockerContext\": \"examples/docker-build-env\", \"dockerfilePath\": \"\"}, \"internalAddress\": \"qa-20261017-6e9d3d-docenv:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"docker\", \"url\": \"https://qa-20261017-6e9d3d-docenv.onbex.co\"}, \"slug\": \"qa-20261017-6e9d3d-docenv\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"web_service\", \"updatedAt\": \"2026-10-17T07:07:15.679105252Z\"}",
+      "stderr": "",
+      "captures": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/v1/services",
+            "body": {
+              "autoDeploy": "no",
+              "branch": "main",
+              "envVars": [
+                {
+                  "key": "GREETING",
+                  "value": "QA408_6e9d3d_render_café_雪"
+                }
+              ],
+              "name": "qa-20261017-6e9d3d-docenv",
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "repo": "https://github.com/bex-co/bex",
+              "rootDir": "examples/docker-build-env",
+              "secretFiles": [
+                {
+                  "content": "[QA_FIXTURE_FILE_CONTENT_REDACTED]",
+                  "name": ".env"
+                }
+              ],
+              "serviceDetails": {
+                "plan": "free",
+                "region": "frankfurt",
+                "runtime": "docker"
+              },
+              "type": "web_service"
+            },
+            "raw_body_with_documented_redaction": "{\"autoDeploy\": \"no\", \"branch\": \"main\", \"envVars\": [{\"key\": \"GREETING\", \"value\": \"QA408_6e9d3d_render_café_雪\"}], \"name\": \"qa-20261017-6e9d3d-docenv\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/bex-co/bex\", \"rootDir\": \"examples/docker-build-env\", \"secretFiles\": [{\"content\": \"[QA_FIXTURE_FILE_CONTENT_REDACTED]\", \"name\": \".env\"}], \"serviceDetails\": {\"plan\": \"free\", \"region\": \"frankfurt\", \"runtime\": \"docker\"}, \"type\": \"web_service\"}",
+            "redactions": [
+              {
+                "filename": ".env",
+                "UTF8_bytes": 35,
+                "sha256": "0acf0b14cbe4052eaf2ddffb9fed4799d04a482fba45a95d01901a53aebe876c",
+                "redaction": "entire own QA file content omitted"
+              }
+            ],
+            "raw_body_sha256": "082b3f7dc230fbc4c1d7c57134a1a4d8af0fa103ba53f4225e785f40aca33d41",
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "Content-Type": "application/json"
+            },
+            "authorization": "[REDACTED]"
+          },
+          "status": 201,
+          "response": "{\"service\": {\"id\": \"srv-db9ht8t496fs739dn2a0\", \"name\": \"qa-20261017-6e9d3d-docenv\", \"immutableName\": \"qa-20261017-6e9d3d-docenv\", \"slug\": \"qa-20261017-6e9d3d-docenv\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9ht8t496fs739dn2a0\", \"createdAt\": \"2026-10-17T07:07:15Z\", \"updatedAt\": \"2026-10-17T07:07:15.679105252Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"docker\", \"envSpecificDetails\": {\"dockerCommand\": \"\", \"dockerContext\": \"examples/docker-build-env\", \"dockerfilePath\": \"\"}, \"internalAddress\": \"qa-20261017-6e9d3d-docenv:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"docker\", \"url\": \"https://qa-20261017-6e9d3d-docenv.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"examples/docker-build-env\", \"repo\": \"https://github.com/bex-co/bex\", \"branch\": \"main\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}, \"deployId\": \"dep-db9ht8t496fs739dn2ag\"}",
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a4bd771acbae6cd4-SJC"
+          }
+        }
+      ],
+      "qualification": "actual native POST forwarded unchanged to production; owned local relay and copied config cleaned",
+      "native_exit": 0
+    },
+    "id": "srv-db9ht8t496fs739dn2a0",
+    "create_view": {
+      "autoDeploy": "no",
+      "autoDeployTrigger": "off",
+      "branch": "main",
+      "createdAt": "2026-10-17T07:07:15Z",
+      "dashboardUrl": "https://dashboard.bex.co/web/srv-db9ht8t496fs739dn2a0",
+      "id": "srv-db9ht8t496fs739dn2a0",
+      "name": "qa-20261017-6e9d3d-docenv",
+      "notifyOnFail": "default",
+      "ownerId": "tea-daif693dqjvc73e7as3g",
+      "repo": "https://github.com/bex-co/bex",
+      "rootDir": "examples/docker-build-env",
+      "serviceDetails": {
+        "env": "docker",
+        "envSpecificDetails": {
+          "dockerCommand": "",
+          "dockerContext": "examples/docker-build-env",
+          "dockerfilePath": ""
+        },
+        "internalAddress": "qa-20261017-6e9d3d-docenv:3000",
+        "maintenanceMode": {
+          "enabled": false,
+          "uri": ""
+        },
+        "maxShutdownDelaySeconds": 30,
+        "numInstances": 1,
+        "plan": "free",
+        "port": 3000,
+        "region": "fsn1",
+        "renderSubdomainPolicy": "enabled",
+        "runtime": "docker",
+        "url": "https://qa-20261017-6e9d3d-docenv.onbex.co"
+      },
+      "slug": "qa-20261017-6e9d3d-docenv",
+      "suspended": "not_suspended",
+      "suspenders": [],
+      "type": "web_service",
+      "updatedAt": "2026-10-17T07:07:15.679105252Z"
+    },
+    "history_receipts": [
+      {
+        "at": "2026-10-17T07:07:17.264760+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db9ht8t496fs739dn2a0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.338,
+          "stdout": "[{\"commit\": {\"id\": \"b8aa43fc3c01f82703110950cea767c1f778a9e6\", \"message\": \"docs(pm): file stale dotenv read ordering and cancellation\"}, \"createdAt\": \"2026-10-17T07:07:15.659994Z\", \"id\": \"dep-db9ht8t496fs739dn2ag\", \"status\": \"created\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T07:07:15.659994Z\"}]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T07:08:37.775909+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db9ht8t496fs739dn2a0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.632,
+          "stdout": "[{\"commit\": {\"id\": \"b8aa43fc3c01f82703110950cea767c1f778a9e6\", \"message\": \"docs(pm): file stale dotenv read ordering and cancellation\"}, \"createdAt\": \"2026-10-17T07:07:15.659994Z\", \"id\": \"dep-db9ht8t496fs739dn2ag\", \"status\": \"queued\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T07:07:34.594268Z\"}]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T07:08:52.428541+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db9ht8t496fs739dn2a0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.86,
+          "stdout": "[{\"commit\": {\"id\": \"b8aa43fc3c01f82703110950cea767c1f778a9e6\", \"message\": \"docs(pm): file stale dotenv read ordering and cancellation\"}, \"createdAt\": \"2026-10-17T07:07:15.659994Z\", \"id\": \"dep-db9ht8t496fs739dn2ag\", \"status\": \"queued\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T07:07:34.594268Z\"}]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T07:09:06.716371+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db9ht8t496fs739dn2a0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.377,
+          "stdout": "[{\"commit\": {\"id\": \"b8aa43fc3c01f82703110950cea767c1f778a9e6\", \"message\": \"docs(pm): file stale dotenv read ordering and cancellation\"}, \"createdAt\": \"2026-10-17T07:07:15.659994Z\", \"id\": \"dep-db9ht8t496fs739dn2ag\", \"status\": \"queued\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T07:07:34.594268Z\"}]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T07:09:22.724340+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db9ht8t496fs739dn2a0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 2.618,
+          "stdout": "[{\"commit\": {\"id\": \"b8aa43fc3c01f82703110950cea767c1f778a9e6\", \"message\": \"docs(pm): file stale dotenv read ordering and cancellation\"}, \"createdAt\": \"2026-10-17T07:07:15.659994Z\", \"id\": \"dep-db9ht8t496fs739dn2ag\", \"status\": \"queued\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T07:07:34.594268Z\"}]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T07:09:36.836273+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db9ht8t496fs739dn2a0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.498,
+          "stdout": "[{\"commit\": {\"id\": \"b8aa43fc3c01f82703110950cea767c1f778a9e6\", \"message\": \"docs(pm): file stale dotenv read ordering and cancellation\"}, \"createdAt\": \"2026-10-17T07:07:15.659994Z\", \"id\": \"dep-db9ht8t496fs739dn2ag\", \"status\": \"queued\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T07:07:34.594268Z\"}]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T07:09:50.766883+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db9ht8t496fs739dn2a0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.413,
+          "stdout": "[{\"commit\": {\"id\": \"b8aa43fc3c01f82703110950cea767c1f778a9e6\", \"message\": \"docs(pm): file stale dotenv read ordering and cancellation\"}, \"createdAt\": \"2026-10-17T07:07:15.659994Z\", \"id\": \"dep-db9ht8t496fs739dn2ag\", \"status\": \"queued\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T07:07:34.594268Z\"}]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T07:10:04.962659+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db9ht8t496fs739dn2a0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.811,
+          "stdout": "[{\"commit\": {\"id\": \"b8aa43fc3c01f82703110950cea767c1f778a9e6\", \"message\": \"docs(pm): file stale dotenv read ordering and cancellation\"}, \"createdAt\": \"2026-10-17T07:07:15.659994Z\", \"id\": \"dep-db9ht8t496fs739dn2ag\", \"startedAt\": \"2026-10-17T07:09:51.016365Z\", \"status\": \"build_in_progress\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T07:09:51.016367Z\"}]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T07:10:19.105324+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db9ht8t496fs739dn2a0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.442,
+          "stdout": "[{\"commit\": {\"id\": \"b8aa43fc3c01f82703110950cea767c1f778a9e6\", \"message\": \"docs(pm): file stale dotenv read ordering and cancellation\"}, \"createdAt\": \"2026-10-17T07:07:15.659994Z\", \"id\": \"dep-db9ht8t496fs739dn2ag\", \"startedAt\": \"2026-10-17T07:09:51.016365Z\", \"status\": \"build_in_progress\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T07:09:51.016367Z\"}]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T07:11:28.645370+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db9ht8t496fs739dn2a0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 1.295,
+          "stdout": "[{\"commit\": {\"id\": \"b8aa43fc3c01f82703110950cea767c1f778a9e6\", \"message\": \"docs(pm): file stale dotenv read ordering and cancellation\"}, \"createdAt\": \"2026-10-17T07:07:15.659994Z\", \"finishedAt\": \"2026-10-17T07:10:21.065589Z\", \"id\": \"dep-db9ht8t496fs739dn2ag\", \"startedAt\": \"2026-10-17T07:09:51.016365Z\", \"status\": \"build_failed\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T07:10:21.06559Z\"}]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T07:11:34.070800+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db9ht8t496fs739dn2a0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 1.47,
+          "stdout": "[{\"commit\": {\"id\": \"b8aa43fc3c01f82703110950cea767c1f778a9e6\", \"message\": \"docs(pm): file stale dotenv read ordering and cancellation\"}, \"createdAt\": \"2026-10-17T07:07:15.659994Z\", \"finishedAt\": \"2026-10-17T07:10:21.065589Z\", \"id\": \"dep-db9ht8t496fs739dn2ag\", \"startedAt\": \"2026-10-17T07:09:51.016365Z\", \"status\": \"build_failed\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T07:10:21.06559Z\"}]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T07:11:42.721314+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db9ht8t496fs739dn2a0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.374,
+          "stdout": "[{\"commit\": {\"id\": \"b8aa43fc3c01f82703110950cea767c1f778a9e6\", \"message\": \"docs(pm): file stale dotenv read ordering and cancellation\"}, \"createdAt\": \"2026-10-17T07:07:15.659994Z\", \"finishedAt\": \"2026-10-17T07:10:21.065589Z\", \"id\": \"dep-db9ht8t496fs739dn2ag\", \"startedAt\": \"2026-10-17T07:09:51.016365Z\", \"status\": \"build_failed\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T07:10:21.06559Z\"}]",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T07:12:17.692388+00:00",
+        "result": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "deploys",
+            "list",
+            "srv-db9ht8t496fs739dn2a0",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 0.39,
+          "stdout": "[{\"commit\": {\"id\": \"b8aa43fc3c01f82703110950cea767c1f778a9e6\", \"message\": \"docs(pm): file stale dotenv read ordering and cancellation\"}, \"createdAt\": \"2026-10-17T07:07:15.659994Z\", \"finishedAt\": \"2026-10-17T07:10:21.065589Z\", \"id\": \"dep-db9ht8t496fs739dn2ag\", \"startedAt\": \"2026-10-17T07:09:51.016365Z\", \"status\": \"build_failed\", \"trigger\": \"other\", \"updatedAt\": \"2026-10-17T07:10:21.06559Z\"}]",
+          "stderr": ""
+        }
+      }
+    ],
+    "deploy_children": [
+      {
+        "commit": {
+          "id": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+          "message": "docs(pm): file stale dotenv read ordering and cancellation"
+        },
+        "createdAt": "2026-10-17T07:07:15.659994Z",
+        "finishedAt": "2026-10-17T07:10:21.065589Z",
+        "id": "dep-db9ht8t496fs739dn2ag",
+        "startedAt": "2026-10-17T07:09:51.016365Z",
+        "status": "build_failed",
+        "trigger": "other",
+        "updatedAt": "2026-10-17T07:10:21.06559Z"
+      }
+    ],
+    "first_deploy_id": "dep-db9ht8t496fs739dn2ag",
+    "observations": [
+      {
+        "at": "2026-10-17T07:08:38.929428+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+              "message": "docs(pm): file stale dotenv read ordering and cancellation"
+            },
+            "createdAt": "2026-10-17T07:07:15.659994Z",
+            "id": "dep-db9ht8t496fs739dn2ag",
+            "status": "queued",
+            "trigger": "other",
+            "updatedAt": "2026-10-17T07:07:34.594268Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-17T07:08:38.929135+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9ht8t496fs739dn2a0",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.781,
+          "response": "{\"id\": \"srv-db9ht8t496fs739dn2a0\", \"name\": \"qa-20261017-6e9d3d-docenv\", \"immutableName\": \"qa-20261017-6e9d3d-docenv\", \"slug\": \"qa-20261017-6e9d3d-docenv\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9ht8t496fs739dn2a0\", \"createdAt\": \"2026-10-17T07:07:15Z\", \"updatedAt\": \"2026-10-17T07:07:31Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"docker\", \"envSpecificDetails\": {\"dockerCommand\": \"\", \"dockerContext\": \"examples/docker-build-env\", \"dockerfilePath\": \"\"}, \"internalAddress\": \"qa-20261017-6e9d3d-docenv:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"docker\", \"url\": \"https://qa-20261017-6e9d3d-docenv.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Building\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"examples/docker-build-env\", \"repo\": \"https://github.com/bex-co/bex\", \"branch\": \"main\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T07:08:53.703354+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+              "message": "docs(pm): file stale dotenv read ordering and cancellation"
+            },
+            "createdAt": "2026-10-17T07:07:15.659994Z",
+            "id": "dep-db9ht8t496fs739dn2ag",
+            "status": "queued",
+            "trigger": "other",
+            "updatedAt": "2026-10-17T07:07:34.594268Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-17T07:08:53.703184+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9ht8t496fs739dn2a0",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.891,
+          "response": "{\"id\": \"srv-db9ht8t496fs739dn2a0\", \"name\": \"qa-20261017-6e9d3d-docenv\", \"immutableName\": \"qa-20261017-6e9d3d-docenv\", \"slug\": \"qa-20261017-6e9d3d-docenv\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9ht8t496fs739dn2a0\", \"createdAt\": \"2026-10-17T07:07:15Z\", \"updatedAt\": \"2026-10-17T07:07:31Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"docker\", \"envSpecificDetails\": {\"dockerCommand\": \"\", \"dockerContext\": \"examples/docker-build-env\", \"dockerfilePath\": \"\"}, \"internalAddress\": \"qa-20261017-6e9d3d-docenv:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"docker\", \"url\": \"https://qa-20261017-6e9d3d-docenv.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Building\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"examples/docker-build-env\", \"repo\": \"https://github.com/bex-co/bex\", \"branch\": \"main\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T07:09:07.478475+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+              "message": "docs(pm): file stale dotenv read ordering and cancellation"
+            },
+            "createdAt": "2026-10-17T07:07:15.659994Z",
+            "id": "dep-db9ht8t496fs739dn2ag",
+            "status": "queued",
+            "trigger": "other",
+            "updatedAt": "2026-10-17T07:07:34.594268Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-17T07:09:07.478316+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9ht8t496fs739dn2a0",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.364,
+          "response": "{\"id\": \"srv-db9ht8t496fs739dn2a0\", \"name\": \"qa-20261017-6e9d3d-docenv\", \"immutableName\": \"qa-20261017-6e9d3d-docenv\", \"slug\": \"qa-20261017-6e9d3d-docenv\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9ht8t496fs739dn2a0\", \"createdAt\": \"2026-10-17T07:07:15Z\", \"updatedAt\": \"2026-10-17T07:07:31Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"docker\", \"envSpecificDetails\": {\"dockerCommand\": \"\", \"dockerContext\": \"examples/docker-build-env\", \"dockerfilePath\": \"\"}, \"internalAddress\": \"qa-20261017-6e9d3d-docenv:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"docker\", \"url\": \"https://qa-20261017-6e9d3d-docenv.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Building\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"examples/docker-build-env\", \"repo\": \"https://github.com/bex-co/bex\", \"branch\": \"main\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T07:09:23.704556+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+              "message": "docs(pm): file stale dotenv read ordering and cancellation"
+            },
+            "createdAt": "2026-10-17T07:07:15.659994Z",
+            "id": "dep-db9ht8t496fs739dn2ag",
+            "status": "queued",
+            "trigger": "other",
+            "updatedAt": "2026-10-17T07:07:34.594268Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-17T07:09:23.704312+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9ht8t496fs739dn2a0",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.598,
+          "response": "{\"id\": \"srv-db9ht8t496fs739dn2a0\", \"name\": \"qa-20261017-6e9d3d-docenv\", \"immutableName\": \"qa-20261017-6e9d3d-docenv\", \"slug\": \"qa-20261017-6e9d3d-docenv\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9ht8t496fs739dn2a0\", \"createdAt\": \"2026-10-17T07:07:15Z\", \"updatedAt\": \"2026-10-17T07:07:31Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"docker\", \"envSpecificDetails\": {\"dockerCommand\": \"\", \"dockerContext\": \"examples/docker-build-env\", \"dockerfilePath\": \"\"}, \"internalAddress\": \"qa-20261017-6e9d3d-docenv:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"docker\", \"url\": \"https://qa-20261017-6e9d3d-docenv.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Building\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"examples/docker-build-env\", \"repo\": \"https://github.com/bex-co/bex\", \"branch\": \"main\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T07:09:37.721100+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+              "message": "docs(pm): file stale dotenv read ordering and cancellation"
+            },
+            "createdAt": "2026-10-17T07:07:15.659994Z",
+            "id": "dep-db9ht8t496fs739dn2ag",
+            "status": "queued",
+            "trigger": "other",
+            "updatedAt": "2026-10-17T07:07:34.594268Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-17T07:09:37.720916+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9ht8t496fs739dn2a0",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.404,
+          "response": "{\"id\": \"srv-db9ht8t496fs739dn2a0\", \"name\": \"qa-20261017-6e9d3d-docenv\", \"immutableName\": \"qa-20261017-6e9d3d-docenv\", \"slug\": \"qa-20261017-6e9d3d-docenv\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9ht8t496fs739dn2a0\", \"createdAt\": \"2026-10-17T07:07:15Z\", \"updatedAt\": \"2026-10-17T07:09:37Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"docker\", \"envSpecificDetails\": {\"dockerCommand\": \"\", \"dockerContext\": \"examples/docker-build-env\", \"dockerfilePath\": \"\"}, \"internalAddress\": \"qa-20261017-6e9d3d-docenv:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"docker\", \"url\": \"https://qa-20261017-6e9d3d-docenv.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Building\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"examples/docker-build-env\", \"repo\": \"https://github.com/bex-co/bex\", \"branch\": \"main\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T07:09:51.497185+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+              "message": "docs(pm): file stale dotenv read ordering and cancellation"
+            },
+            "createdAt": "2026-10-17T07:07:15.659994Z",
+            "id": "dep-db9ht8t496fs739dn2ag",
+            "status": "queued",
+            "trigger": "other",
+            "updatedAt": "2026-10-17T07:07:34.594268Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-17T07:09:51.496877+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9ht8t496fs739dn2a0",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.358,
+          "response": "{\"id\": \"srv-db9ht8t496fs739dn2a0\", \"name\": \"qa-20261017-6e9d3d-docenv\", \"immutableName\": \"qa-20261017-6e9d3d-docenv\", \"slug\": \"qa-20261017-6e9d3d-docenv\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9ht8t496fs739dn2a0\", \"createdAt\": \"2026-10-17T07:07:15Z\", \"updatedAt\": \"2026-10-17T07:09:42Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"docker\", \"envSpecificDetails\": {\"dockerCommand\": \"\", \"dockerContext\": \"examples/docker-build-env\", \"dockerfilePath\": \"\"}, \"internalAddress\": \"qa-20261017-6e9d3d-docenv:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"docker\", \"url\": \"https://qa-20261017-6e9d3d-docenv.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Building\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"examples/docker-build-env\", \"repo\": \"https://github.com/bex-co/bex\", \"branch\": \"main\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T07:10:06.059798+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+              "message": "docs(pm): file stale dotenv read ordering and cancellation"
+            },
+            "createdAt": "2026-10-17T07:07:15.659994Z",
+            "id": "dep-db9ht8t496fs739dn2ag",
+            "startedAt": "2026-10-17T07:09:51.016365Z",
+            "status": "build_in_progress",
+            "trigger": "other",
+            "updatedAt": "2026-10-17T07:09:51.016367Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-17T07:10:06.059561+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9ht8t496fs739dn2a0",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.723,
+          "response": "{\"id\": \"srv-db9ht8t496fs739dn2a0\", \"name\": \"qa-20261017-6e9d3d-docenv\", \"immutableName\": \"qa-20261017-6e9d3d-docenv\", \"slug\": \"qa-20261017-6e9d3d-docenv\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9ht8t496fs739dn2a0\", \"createdAt\": \"2026-10-17T07:07:15Z\", \"updatedAt\": \"2026-10-17T07:09:42Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"docker\", \"envSpecificDetails\": {\"dockerCommand\": \"\", \"dockerContext\": \"examples/docker-build-env\", \"dockerfilePath\": \"\"}, \"internalAddress\": \"qa-20261017-6e9d3d-docenv:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"docker\", \"url\": \"https://qa-20261017-6e9d3d-docenv.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Building\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"examples/docker-build-env\", \"repo\": \"https://github.com/bex-co/bex\", \"branch\": \"main\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T07:10:20.006429+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+              "message": "docs(pm): file stale dotenv read ordering and cancellation"
+            },
+            "createdAt": "2026-10-17T07:07:15.659994Z",
+            "id": "dep-db9ht8t496fs739dn2ag",
+            "startedAt": "2026-10-17T07:09:51.016365Z",
+            "status": "build_in_progress",
+            "trigger": "other",
+            "updatedAt": "2026-10-17T07:09:51.016367Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-17T07:10:20.006248+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9ht8t496fs739dn2a0",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.517,
+          "response": "{\"id\": \"srv-db9ht8t496fs739dn2a0\", \"name\": \"qa-20261017-6e9d3d-docenv\", \"immutableName\": \"qa-20261017-6e9d3d-docenv\", \"slug\": \"qa-20261017-6e9d3d-docenv\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9ht8t496fs739dn2a0\", \"createdAt\": \"2026-10-17T07:07:15Z\", \"updatedAt\": \"2026-10-17T07:10:08Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"docker\", \"envSpecificDetails\": {\"dockerCommand\": \"\", \"dockerContext\": \"examples/docker-build-env\", \"dockerfilePath\": \"\"}, \"internalAddress\": \"qa-20261017-6e9d3d-docenv:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"docker\", \"url\": \"https://qa-20261017-6e9d3d-docenv.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Failed\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"examples/docker-build-env\", \"repo\": \"https://github.com/bex-co/bex\", \"branch\": \"main\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+          "stderr": ""
+        }
+      },
+      {
+        "at": "2026-10-17T07:11:32.054434+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+              "message": "docs(pm): file stale dotenv read ordering and cancellation"
+            },
+            "createdAt": "2026-10-17T07:07:15.659994Z",
+            "finishedAt": "2026-10-17T07:10:21.065589Z",
+            "id": "dep-db9ht8t496fs739dn2ag",
+            "startedAt": "2026-10-17T07:09:51.016365Z",
+            "status": "build_failed",
+            "trigger": "other",
+            "updatedAt": "2026-10-17T07:10:21.06559Z"
+          }
+        ],
+        "detail": {
+          "at": "2026-10-17T07:11:32.054253+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9ht8t496fs739dn2a0",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 3.022,
+          "response": "{\"id\": \"srv-db9ht8t496fs739dn2a0\", \"name\": \"qa-20261017-6e9d3d-docenv\", \"immutableName\": \"qa-20261017-6e9d3d-docenv\", \"slug\": \"qa-20261017-6e9d3d-docenv\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9ht8t496fs739dn2a0\", \"createdAt\": \"2026-10-17T07:07:15Z\", \"updatedAt\": \"2026-10-17T07:10:08Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"docker\", \"envSpecificDetails\": {\"dockerCommand\": \"\", \"dockerContext\": \"examples/docker-build-env\", \"dockerfilePath\": \"\"}, \"internalAddress\": \"qa-20261017-6e9d3d-docenv:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"docker\", \"url\": \"https://qa-20261017-6e9d3d-docenv.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Failed\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"examples/docker-build-env\", \"repo\": \"https://github.com/bex-co/bex\", \"branch\": \"main\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+          "stderr": ""
+        }
+      }
+    ],
+    "build_log_receipts": [
+      {
+        "at": "2026-10-17T07:11:41.257767+00:00",
+        "history": [
+          {
+            "commit": {
+              "id": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+              "message": "docs(pm): file stale dotenv read ordering and cancellation"
+            },
+            "createdAt": "2026-10-17T07:07:15.659994Z",
+            "finishedAt": "2026-10-17T07:10:21.065589Z",
+            "id": "dep-db9ht8t496fs739dn2ag",
+            "startedAt": "2026-10-17T07:09:51.016365Z",
+            "status": "build_failed",
+            "trigger": "other",
+            "updatedAt": "2026-10-17T07:10:21.06559Z"
+          }
+        ],
+        "actual_child_Dockerfile_proof": {
+          "commit": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+          "path": "examples/docker-build-env/Dockerfile",
+          "bytes": 743,
+          "sha256": "406b2887d5cccd05e553d744be1546961903e6ad5a1e3ba36744c095e4a130c5",
+          "HTTP_source_read0": true
+        },
+        "native": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "logs",
+            "--resources",
+            "srv-db9ht8t496fs739dn2a0",
+            "--type",
+            "build",
+            "--limit",
+            "100",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 6.61,
+          "stdout": "{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1-2026-10-17T07:07:15.659994Z-5cd164f4\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Build queued\",\n  \"timestamp\": \"2026-10-17T07:07:15.659994Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1-2026-10-17T07:09:51.016365Z-69befaca\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Building from https://github.com/bex-co/bex@b8aa43f\",\n  \"timestamp\": \"2026-10-17T07:09:51.016365Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:09:52.234223993Z-62cc47e5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"clone\"\n    }\n  ],\n  \"message\": \"From https://github.com/bex-co/bex\",\n  \"timestamp\": \"2026-10-17T07:09:52.234223993Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:09:52.234289465Z-b9ef67d6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"clone\"\n    }\n  ],\n  \"message\": \" * branch              b8aa43fc3c01f82703110950cea767c1f778a9e6 -\\u003e FETCH_HEAD\",\n  \"timestamp\": \"2026-10-17T07:09:52.234289465Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:00.670334403Z-c17bd283\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#1 [internal] load build definition from Dockerfile\",\n  \"timestamp\": \"2026-10-17T07:10:00.670334403Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:00.862335034Z-24371bdf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#1 transferring dockerfile: 782B done\",\n  \"timestamp\": \"2026-10-17T07:10:00.862335034Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:00.862396529Z-7322ea9e\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#1 DONE 0.0s\",\n  \"timestamp\": \"2026-10-17T07:10:00.862396529Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:00.862399986Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-17T07:10:00.862399986Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:00.862404334Z-353693e2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#2 [internal] load metadata for docker.io/library/busybox:1.37.0@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e\",\n  \"timestamp\": \"2026-10-17T07:10:00.862404334Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:01.971845664Z-35fbaffd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#2 DONE 1.3s\",\n  \"timestamp\": \"2026-10-17T07:10:01.971845664Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.202620708Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-17T07:10:02.202620708Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.202748688Z-f7cb0622\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#3 [internal] load .dockerignore\",\n  \"timestamp\": \"2026-10-17T07:10:02.202748688Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.202756182Z-e6d89eff\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#3 transferring context: 2B done\",\n  \"timestamp\": \"2026-10-17T07:10:02.202756182Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.202759358Z-5ec1ec28\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#3 DONE 0.0s\",\n  \"timestamp\": \"2026-10-17T07:10:02.202759358Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.202761893Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-17T07:10:02.202761893Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.202766401Z-59c3079a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#4 [stage-0 1/2] FROM docker.io/library/busybox:1.37.0@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e\",\n  \"timestamp\": \"2026-10-17T07:10:02.202766401Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.202769597Z-c19981d6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#4 resolve docker.io/library/busybox:1.37.0@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e 0.0s done\",\n  \"timestamp\": \"2026-10-17T07:10:02.202769597Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.213155744Z-370730aa\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#4 sha256:68fe9bff2ad4ad46da3e58db03faa64eb73c0ff16d546b0c42539eaa9854cb7f 1.05MB / 2.21MB 0.2s\",\n  \"timestamp\": \"2026-10-17T07:10:02.213155744Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.333016055Z-a776640d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#4 sha256:68fe9bff2ad4ad46da3e58db03faa64eb73c0ff16d546b0c42539eaa9854cb7f 2.21MB / 2.21MB 0.2s done\",\n  \"timestamp\": \"2026-10-17T07:10:02.333016055Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.333068724Z-8cc4ff78\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#4 extracting sha256:68fe9bff2ad4ad46da3e58db03faa64eb73c0ff16d546b0c42539eaa9854cb7f 0.1s done\",\n  \"timestamp\": \"2026-10-17T07:10:02.333068724Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.333071279Z-ebdc07de\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#4 DONE 0.3s\",\n  \"timestamp\": \"2026-10-17T07:10:02.333071279Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.400505511Z-811c9dc5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"\",\n  \"timestamp\": \"2026-10-17T07:10:02.400505511Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.40058494Z-a489a3d5\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#5 [stage-0 2/2] RUN --mount=type=secret,id=_env,required=true     mkdir -p /www \\u0026\\u0026     test -n \\\"$GREETING\\\" \\u0026\\u0026     printf '%s\\\\n' \\\"$GREETING\\\" \\u003e /www/greeting \\u0026\\u0026     wc -c \\u003c /run/secrets/_env | tr -d ' ' \\u003e /www/env-bytes\",\n  \"timestamp\": \"2026-10-17T07:10:02.40058494Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.400599598Z-66912856\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"#5 ERROR: secret _env: not found\",\n  \"timestamp\": \"2026-10-17T07:10:02.400599598Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.400602944Z-67c666bb\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"------\",\n  \"timestamp\": \"2026-10-17T07:10:02.400602944Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.40060632Z-12168fc3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \" \\u003e [stage-0 2/2] RUN --mount=type=secret,id=_env,required=true     mkdir -p /www \\u0026\\u0026     test -n \\\"$GREETING\\\" \\u0026\\u0026     printf '%s\\\\n' \\\"$GREETING\\\" \\u003e /www/greeting \\u0026\\u0026     wc -c \\u003c /run/secrets/_env | tr -d ' ' \\u003e /www/env-bytes:\",\n  \"timestamp\": \"2026-10-17T07:10:02.40060632Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.400609777Z-67c666bb\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"------\",\n  \"timestamp\": \"2026-10-17T07:10:02.400609777Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.403444988Z-a3328e41\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"Dockerfile:8\",\n  \"timestamp\": \"2026-10-17T07:10:02.403444988Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.403487337Z-26f65801\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"--------------------\",\n  \"timestamp\": \"2026-10-17T07:10:02.403487337Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.403490153Z-c0bb6355\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"   7 |     # is written into the image, never its content.\",\n  \"timestamp\": \"2026-10-17T07:10:02.403490153Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.403492287Z-b695892b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"   8 | \\u003e\\u003e\\u003e RUN --mount=type=secret,id=_env,required=true \\\\\",\n  \"timestamp\": \"2026-10-17T07:10:02.403492287Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.403498308Z-af84cf80\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"   9 | \\u003e\\u003e\\u003e     mkdir -p /www \\u0026\\u0026 \\\\\",\n  \"timestamp\": \"2026-10-17T07:10:02.403498308Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.403499871Z-4d710280\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"  10 | \\u003e\\u003e\\u003e     test -n \\\"$GREETING\\\" \\u0026\\u0026 \\\\\",\n  \"timestamp\": \"2026-10-17T07:10:02.403499871Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.403501494Z-ca007347\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"  11 | \\u003e\\u003e\\u003e     printf '%s\\\\n' \\\"$GREETING\\\" \\u003e /www/greeting \\u0026\\u0026 \\\\\",\n  \"timestamp\": \"2026-10-17T07:10:02.403501494Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.403504119Z-bdf46600\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"  12 | \\u003e\\u003e\\u003e     wc -c \\u003c /run/secrets/_env | tr -d ' ' \\u003e /www/env-bytes\",\n  \"timestamp\": \"2026-10-17T07:10:02.403504119Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.403505531Z-64d602e2\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"  13 |     EXPOSE 3000\",\n  \"timestamp\": \"2026-10-17T07:10:02.403505531Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.403506974Z-26f65801\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"--------------------\",\n  \"timestamp\": \"2026-10-17T07:10:02.403506974Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh-2026-10-17T07:10:02.403508417Z-4f464121\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-9jmsd4b79vd4rsec98fh\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"buildkit\"\n    }\n  ],\n  \"message\": \"error: failed to solve: secret _env: not found\",\n  \"timestamp\": \"2026-10-17T07:10:02.403508417Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1-2026-10-17T07:10:21.065589Z-9141219b\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Build failed: build failed in the docker build step:\",\n  \"timestamp\": \"2026-10-17T07:10:21.065589Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1-2026-10-17T07:10:21.065589Z-cc27053a\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e #5 ERROR: secret _env: not found\",\n  \"timestamp\": \"2026-10-17T07:10:21.065589Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1-2026-10-17T07:10:21.065589Z-dde7ffcf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e ------\",\n  \"timestamp\": \"2026-10-17T07:10:21.065589Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1-2026-10-17T07:10:21.065589Z-c8e8b61d\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e \\u003e [stage-0 2/2] RUN --mount=type=secret,id=_env,required=true     mkdir -p /www \\u0026\\u0026     test -n \\\"$GREETING\\\" \\u0026\\u0026     printf '%s\\\\n' \\\"$GREETING\\\" \\u003e /www/greeting \\u0026\\u0026     wc -c \\u003c /run/secrets/_env | tr -d ' ' \\u003e /www/env-bytes:\",\n  \"timestamp\": \"2026-10-17T07:10:21.065589Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1-2026-10-17T07:10:21.065589Z-dde7ffcf\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e ------\",\n  \"timestamp\": \"2026-10-17T07:10:21.065589Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1-2026-10-17T07:10:21.065589Z-560e2915\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e Dockerfile:8\",\n  \"timestamp\": \"2026-10-17T07:10:21.065589Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1-2026-10-17T07:10:21.065589Z-fd310515\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e --------------------\",\n  \"timestamp\": \"2026-10-17T07:10:21.065589Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1-2026-10-17T07:10:21.065589Z-820a72d3\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e 7 |     # is written into the image, never its content.\",\n  \"timestamp\": \"2026-10-17T07:10:21.065589Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1-2026-10-17T07:10:21.065589Z-f6560c29\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e 8 | \\u003e\\u003e\\u003e RUN --mount=type=secret,id=_env,required=true \\\\\",\n  \"timestamp\": \"2026-10-17T07:10:21.065589Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1-2026-10-17T07:10:21.065589Z-6f6a90f6\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e 9 | \\u003e\\u003e\\u003e     mkdir -p /www \\u0026\\u0026 \\\\\",\n  \"timestamp\": \"2026-10-17T07:10:21.065589Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1-2026-10-17T07:10:21.065589Z-4c41364c\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e 10 | \\u003e\\u003e\\u003e     test -n \\\"$GREETING\\\" \\u0026\\u0026 \\\\\",\n  \"timestamp\": \"2026-10-17T07:10:21.065589Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1-2026-10-17T07:10:21.065589Z-45b822fb\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e 11 | \\u003e\\u003e\\u003e     printf '%s\\\\n' \\\"$GREETING\\\" \\u003e /www/greeting \\u0026\\u0026 \\\\\",\n  \"timestamp\": \"2026-10-17T07:10:21.065589Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1-2026-10-17T07:10:21.065589Z-6e2990bc\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e 12 | \\u003e\\u003e\\u003e     wc -c \\u003c /run/secrets/_env | tr -d ' ' \\u003e /www/env-bytes\",\n  \"timestamp\": \"2026-10-17T07:10:21.065589Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1-2026-10-17T07:10:21.065589Z-2512a9fe\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e 13 |     EXPOSE 3000\",\n  \"timestamp\": \"2026-10-17T07:10:21.065589Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1-2026-10-17T07:10:21.065589Z-fd310515\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e --------------------\",\n  \"timestamp\": \"2026-10-17T07:10:21.065589Z\"\n}{\n  \"id\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1-2026-10-17T07:10:21.065589Z-bd6c6bfd\",\n  \"labels\": [\n    {\n      \"name\": \"type\",\n      \"value\": \"build\"\n    },\n    {\n      \"name\": \"resource\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0\"\n    },\n    {\n      \"name\": \"instance\",\n      \"value\": \"srv-db9ht8t496fs739dn2a0-inosu5monnkuskbjg6u1\"\n    },\n    {\n      \"name\": \"container\",\n      \"value\": \"platform\"\n    }\n  ],\n  \"message\": \"==\\u003e error: failed to solve: secret _env: not found\",\n  \"timestamp\": \"2026-10-17T07:10:21.065589Z\"\n}",
+          "stderr": ""
+        },
+        "missing_required_file_mount": true,
+        "classification": "known m178 deployment-lag candidate"
+      }
+    ],
+    "runtime_exercise": {
+      "at": "2026-10-17T07:11:44.427295+00:00",
+      "history": [
+        {
+          "commit": {
+            "id": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+            "message": "docs(pm): file stale dotenv read ordering and cancellation"
+          },
+          "createdAt": "2026-10-17T07:07:15.659994Z",
+          "finishedAt": "2026-10-17T07:10:21.065589Z",
+          "id": "dep-db9ht8t496fs739dn2ag",
+          "startedAt": "2026-10-17T07:09:51.016365Z",
+          "status": "build_failed",
+          "trigger": "other",
+          "updatedAt": "2026-10-17T07:10:21.06559Z"
+        }
+      ],
+      "requests": [
+        {
+          "path": "/greeting",
+          "HTTP": "404",
+          "curl_exit": 0,
+          "body": "404 page not found\n",
+          "bytes": 19,
+          "sha256": "b16e15764b8bc06c5c3f9f19bc8b99fa48e7894aa5a6ccdad65da49bbf564793",
+          "expected_nonsecret_output": "QA408_6e9d3d_render_café_雪\n",
+          "matches": false
+        },
+        {
+          "path": "/env-bytes",
+          "HTTP": "404",
+          "curl_exit": 0,
+          "body": "404 page not found\n",
+          "bytes": 19,
+          "sha256": "b16e15764b8bc06c5c3f9f19bc8b99fa48e7894aa5a6ccdad65da49bbf564793",
+          "expected_nonsecret_output": "35\n",
+          "matches": false
+        }
+      ],
+      "pass": false,
+      "classification": "known missing Docker build input candidate"
+    },
+    "shared_state": [
+      {
+        "at": "2026-10-17T07:12:08.808387+00:00",
+        "surface": "REST",
+        "receipt": {
+          "at": "2026-10-17T07:12:10.614135+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9ht8t496fs739dn2a0",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 1.613,
+          "response": "{\"id\": \"srv-db9ht8t496fs739dn2a0\", \"name\": \"qa-20261017-6e9d3d-docenv\", \"immutableName\": \"qa-20261017-6e9d3d-docenv\", \"slug\": \"qa-20261017-6e9d3d-docenv\", \"displayName\": \"\", \"type\": \"web_service\", \"suspended\": \"not_suspended\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9ht8t496fs739dn2a0\", \"createdAt\": \"2026-10-17T07:07:15Z\", \"updatedAt\": \"2026-10-17T07:10:08Z\", \"owner\": {\"id\": \"tea-daif693dqjvc73e7as3g\", \"name\": \"bex-canary\", \"email\": \"QA_PRIVATE_VALUE_REDACTED\", \"type\": \"team\"}, \"serviceDetails\": {\"env\": \"docker\", \"envSpecificDetails\": {\"dockerCommand\": \"\", \"dockerContext\": \"examples/docker-build-env\", \"dockerfilePath\": \"\"}, \"internalAddress\": \"qa-20261017-6e9d3d-docenv:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"docker\", \"url\": \"https://qa-20261017-6e9d3d-docenv.onbex.co\"}, \"suspenders\": [], \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"phase\": \"Failed\", \"replicas\": 1, \"idleTTLSeconds\": 0, \"rootDir\": \"examples/docker-build-env\", \"repo\": \"https://github.com/bex-co/bex\", \"branch\": \"main\", \"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"pushDeliveryMethod\": \"manual_webhook\", \"notifyOnFail\": \"default\", \"notificationsToSend\": \"default\"}",
+          "stderr": ""
+        },
+        "pass": true
+      },
+      {
+        "at": "2026-10-17T07:12:10.990092+00:00",
+        "surface": "GraphQL",
+        "receipt": {
+          "at": "2026-10-17T07:12:11.970865+00:00",
+          "API_only": true,
+          "request": {
+            "method": "POST",
+            "path": "/graphql",
+            "body": {
+              "query": "query QA408 {service(id:\"srv-db9ht8t496fs739dn2a0\"){id name repo branch rootDir runtime plan autoDeploy}}"
+            },
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.8,
+          "response": "{\"data\": {\"service\": {\"autoDeploy\": false, \"branch\": \"main\", \"id\": \"srv-db9ht8t496fs739dn2a0\", \"name\": \"qa-20261017-6e9d3d-docenv\", \"plan\": \"free\", \"repo\": \"https://github.com/bex-co/bex\", \"rootDir\": \"examples/docker-build-env\", \"runtime\": \"docker\"}}}",
+          "stderr": ""
+        },
+        "pass": true
+      },
+      {
+        "at": "2026-10-17T07:12:12.335053+00:00",
+        "surface": "MCP",
+        "receipt": {
+          "at": "2026-10-17T07:12:14.547369+00:00",
+          "API_only": true,
+          "request": {
+            "method": "POST",
+            "path": "/mcp",
+            "body": {
+              "jsonrpc": "2.0",
+              "id": 408,
+              "method": "tools/call",
+              "params": {
+                "name": "get_service",
+                "arguments": {
+                  "serviceId": "srv-db9ht8t496fs739dn2a0",
+                  "workspaceId": "tea-daif693dqjvc73e7as3g"
+                }
+              }
+            },
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 2.036,
+          "response": "event: message\ndata: {\"jsonrpc\":\"2.0\",\"id\":408,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"autoDeploy\\\":\\\"no\\\",\\\"autoDeployTrigger\\\":\\\"off\\\",\\\"branch\\\":\\\"main\\\",\\\"createdAt\\\":\\\"2026-10-17T07:07:15Z\\\",\\\"dashboardUrl\\\":\\\"https://dashboard.bex.co/web/srv-db9ht8t496fs739dn2a0\\\",\\\"displayName\\\":\\\"\\\",\\\"id\\\":\\\"srv-db9ht8t496fs739dn2a0\\\",\\\"idleTTLSeconds\\\":0,\\\"immutableName\\\":\\\"qa-20261017-6e9d3d-docenv\\\",\\\"name\\\":\\\"qa-20261017-6e9d3d-docenv\\\",\\\"notificationsToSend\\\":\\\"default\\\",\\\"notifyOnFail\\\":\\\"default\\\",\\\"ownerId\\\":\\\"tea-daif693dqjvc73e7as3g\\\",\\\"phase\\\":\\\"Failed\\\",\\\"pushDeliveryMethod\\\":\\\"manual_webhook\\\",\\\"replicas\\\":1,\\\"repo\\\":\\\"https://github.com/bex-co/bex\\\",\\\"rootDir\\\":\\\"examples/docker-build-env\\\",\\\"serviceDetails\\\":{\\\"env\\\":\\\"docker\\\",\\\"envSpecificDetails\\\":{\\\"dockerCommand\\\":\\\"\\\",\\\"dockerContext\\\":\\\"examples/docker-build-env\\\",\\\"dockerfilePath\\\":\\\"\\\"},\\\"internalAddress\\\":\\\"qa-20261017-6e9d3d-docenv:3000\\\",\\\"maintenanceMode\\\":{\\\"enabled\\\":false,\\\"uri\\\":\\\"\\\"},\\\"maxShutdownDelaySeconds\\\":30,\\\"numInstances\\\":1,\\\"plan\\\":\\\"free\\\",\\\"port\\\":3000,\\\"region\\\":\\\"fsn1\\\",\\\"renderSubdomainPolicy\\\":\\\"enabled\\\",\\\"runtime\\\":\\\"docker\\\",\\\"url\\\":\\\"https://qa-20261017-6e9d3d-docenv.onbex.co\\\"},\\\"slug\\\":\\\"qa-20261017-6e9d3d-docenv\\\",\\\"suspended\\\":\\\"not_suspended\\\",\\\"suspenders\\\":[],\\\"type\\\":\\\"web_service\\\",\\\"updatedAt\\\":\\\"2026-10-17T07:10:08Z\\\"}\"}],\"structuredContent\":{\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"branch\":\"main\",\"createdAt\":\"2026-10-17T07:07:15Z\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db9ht8t496fs739dn2a0\",\"displayName\":\"\",\"id\":\"srv-db9ht8t496fs739dn2a0\",\"idleTTLSeconds\":0,\"immutableName\":\"qa-20261017-6e9d3d-docenv\",\"name\":\"qa-20261017-6e9d3d-docenv\",\"notificationsToSend\":\"default\",\"notifyOnFail\":\"default\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"phase\":\"Failed\",\"pushDeliveryMethod\":\"manual_webhook\",\"replicas\":1,\"repo\":\"https://github.com/bex-co/bex\",\"rootDir\":\"examples/docker-build-env\",\"serviceDetails\":{\"env\":\"docker\",\"envSpecificDetails\":{\"dockerCommand\":\"\",\"dockerContext\":\"examples/docker-build-env\",\"dockerfilePath\":\"\"},\"internalAddress\":\"qa-20261017-6e9d3d-docenv:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"docker\",\"url\":\"https://qa-20261017-6e9d3d-docenv.onbex.co\"},\"slug\":\"qa-20261017-6e9d3d-docenv\",\"suspended\":\"not_suspended\",\"suspenders\":[],\"type\":\"web_service\",\"updatedAt\":\"2026-10-17T07:10:08Z\"}}}\n\n",
+          "stderr": ""
+        },
+        "pass": true
+      }
+    ],
+    "explicit_env_readback": {
+      "at": "2026-10-17T07:12:16.002106+00:00",
+      "receipt": {
+        "at": "2026-10-17T07:12:16.001916+00:00",
+        "API_only": true,
+        "request": {
+          "method": "GET",
+          "path": "/v1/services/srv-db9ht8t496fs739dn2a0/env-vars",
+          "body": null,
+          "workspace": "tea-daif693dqjvc73e7as3g",
+          "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "authorization": "REDACTED"
+        },
+        "status": "200",
+        "curl_exit": 0,
+        "elapsed": 1.067,
+        "response": "[{\"envVar\": {\"key\": \"GREETING\", \"value\": \"QA408_6e9d3d_render_café_雪\", \"revision\": \"evr1_AAAAAAAAAAE\"}, \"cursor\": \"GREETING\"}]",
+        "stderr": ""
+      },
+      "pass": true
+    },
+    "delete_intent": {
+      "at": "2026-10-17T07:12:18.047450+00:00",
+      "children": [
+        {
+          "commit": {
+            "id": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+            "message": "docs(pm): file stale dotenv read ordering and cancellation"
+          },
+          "createdAt": "2026-10-17T07:07:15.659994Z",
+          "finishedAt": "2026-10-17T07:10:21.065589Z",
+          "id": "dep-db9ht8t496fs739dn2ag",
+          "startedAt": "2026-10-17T07:09:51.016365Z",
+          "status": "build_failed",
+          "trigger": "other",
+          "updatedAt": "2026-10-17T07:10:21.06559Z"
+        }
+      ]
+    },
+    "delete_result": {
+      "binary": "unmodified Render pin a764810a7682",
+      "command": [
+        "render",
+        "services",
+        "delete",
+        "srv-db9ht8t496fs739dn2a0",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "native_exit": 0,
+      "harness_timeout": false,
+      "elapsed": 2.877,
+      "stdout": "{\"data\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"main\", \"createdAt\": \"2026-10-17T07:07:15Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9ht8t496fs739dn2a0\", \"id\": \"srv-db9ht8t496fs739dn2a0\", \"name\": \"qa-20261017-6e9d3d-docenv\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/bex-co/bex\", \"rootDir\": \"examples/docker-build-env\", \"serviceDetails\": {\"env\": \"docker\", \"envSpecificDetails\": {\"dockerCommand\": \"\", \"dockerContext\": \"examples/docker-build-env\", \"dockerfilePath\": \"\"}, \"internalAddress\": \"qa-20261017-6e9d3d-docenv:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"docker\", \"url\": \"https://qa-20261017-6e9d3d-docenv.onbex.co\"}, \"slug\": \"qa-20261017-6e9d3d-docenv\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"web_service\", \"updatedAt\": \"2026-10-17T07:10:08Z\", \"environmentId\": null, \"projectId\": null}, \"meta\": {\"deleted\": true}}",
+      "stderr": ""
+    },
+    "cleanup_receipts": [
+      {
+        "at": "2026-10-17T07:12:24.902732+00:00",
+        "detail": {
+          "at": "2026-10-17T07:12:22.312018+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/services/srv-db9ht8t496fs739dn2a0",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "404",
+          "curl_exit": 0,
+          "elapsed": 0.525,
+          "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+          "stderr": ""
+        },
+        "inventory": {
+          "binary": "unmodified Render pin a764810a7682",
+          "command": [
+            "render",
+            "services",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "native_exit": 0,
+          "harness_timeout": false,
+          "elapsed": 1.127,
+          "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"autoDeploy\": \"no\", \"autoDeployTrigger\": \"off\", \"branch\": \"main\", \"createdAt\": \"2026-10-17T07:06:33Z\", \"dashboardUrl\": \"https://dashboard.bex.co/web/srv-db9hsu5496fs739dn280\", \"id\": \"srv-db9hsu5496fs739dn280\", \"name\": \"qa-20261017-eb3aa5-docenv\", \"notifyOnFail\": \"default\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/bex-co/bex\", \"rootDir\": \"examples/docker-build-env\", \"serviceDetails\": {\"env\": \"docker\", \"envSpecificDetails\": {\"dockerCommand\": \"\", \"dockerContext\": \"examples/docker-build-env\", \"dockerfilePath\": \"\"}, \"internalAddress\": \"qa-20261017-eb3aa5-docenv:3000\", \"maintenanceMode\": {\"enabled\": false, \"uri\": \"\"}, \"maxShutdownDelaySeconds\": 30, \"numInstances\": 1, \"plan\": \"free\", \"port\": 3000, \"region\": \"fsn1\", \"renderSubdomainPolicy\": \"enabled\", \"runtime\": \"docker\", \"url\": \"https://qa-20261017-eb3aa5-docenv.onbex.co\"}, \"slug\": \"qa-20261017-eb3aa5-docenv\", \"suspended\": \"not_suspended\", \"suspenders\": [], \"type\": \"web_service\", \"updatedAt\": \"2026-10-17T07:08:00Z\"}}]",
+          "stderr": ""
+        },
+        "runtime_HTTP": "404",
+        "runtime_exit": 0,
+        "quota": {
+          "at": "2026-10-17T07:12:24.427876+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.34,
+          "response": "{\"services\": {\"used\": 7, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 0, \"terminating\": 0, \"limit\": 1}}",
+          "stderr": ""
+        },
+        "children": [
+          {
+            "at": "2026-10-17T07:12:24.902558+00:00",
+            "API_only": true,
+            "request": {
+              "method": "GET",
+              "path": "/v1/services/srv-db9ht8t496fs739dn2a0/deploys/dep-db9ht8t496fs739dn2ag",
+              "body": null,
+              "workspace": "tea-daif693dqjvc73e7as3g",
+              "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "authorization": "REDACTED"
+            },
+            "status": "404",
+            "curl_exit": 0,
+            "elapsed": 0.458,
+            "response": "{\"code\": \"NOT_FOUND\", \"error\": \"not found\", \"id\": \"not_found\", \"message\": \"not found\", \"params\": null}",
+            "stderr": ""
+          }
+        ],
+        "pass": true
+      }
+    ]
+  }
+]

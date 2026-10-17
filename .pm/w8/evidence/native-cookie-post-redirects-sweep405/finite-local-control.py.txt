@@ -1,0 +1,23 @@
+from pathlib import Path
+import json,subprocess,os,tempfile,shutil,time,re,fcntl
+P=Path(__file__).resolve().parent;CP=P.parent/'cli-qa-w8-checkpoint.json';lock=(P/'checkpoint-writer.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB);c=json.loads(CP.read_text());assert c['sync405_result']==0 and not c.get('active_sync_stash');D=Path(tempfile.mkdtemp(prefix='sweep405-local-',dir=P));ref=json.loads((P/'sweep405-primary-reference.json').read_text());ns={};exec((P/'sweep405-command-factory.py').read_text(),ns);hs={};exec((P/'sweep405-http.py').read_text(),hs);cmd=ns['commands'](P,ref,'QA405_LOCAL');out={'context':str(D),'source':ref,'qualification':'actual authored program and curl automatic redirects in a private loopback HTTP1 server on host Node22; not generated-image or HTTP2/TLS acceptance','cases':[]};server=None;log=None
+def save():
+ (P/'sweep405-local-controls.json').write_text(json.dumps(out,indent=2,ensure_ascii=False));c['sweep405_local']={'context':str(D),'server_pid':server.pid if server else None,'removed':out.get('own_context_server_removed',False)};t=CP.with_name('.'+CP.name+'.qa405local.tmp');t.write_text(json.dumps(c,indent=2));t.chmod(0o600);t.replace(CP)
+env={k:v for k,v in os.environ.items() if k in ['HOME','PATH','USER','LOGNAME','SHELL','TMPDIR','LANG','LC_ALL','LC_CTYPE','TZ']};env.update(PORT='0',QA405_LOCAL='1');save()
+try:
+ for name in ref['files']:shutil.copyfile(P/('sweep405-source-'+name),D/name)
+ r=subprocess.run(['bash','-c',cmd['build']],cwd=D,env=env,capture_output=True,text=True,timeout=15);out['build']={'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr};save();r.check_returncode();log=(D/'server.log').open('wb');server=subprocess.Popen(['node','qa405/server.cjs'],cwd=D,env=env,stdout=log,stderr=log);save();ready=None
+ for attempt in range(80):
+  text=(D/'server.log').read_text();m=re.search(r'QA405_READY (\{[^\n]+\})',text)
+  if m:ready=json.loads(m.group(1));break
+  assert server.poll() is None;time.sleep(.1)
+ assert ready is not None;out['ready']=ready;save()
+ for label in ['307','308']:
+  e=hs['exercise'](P,'http://127.0.0.1:'+str(ready['port']),'QA405_LOCAL',label,'h1');out['cases'].append(e);save();assert e['pass_'] and e['response']['files']==ref['files'] and e['response']['program_sha256']==cmd['program_sha256'];print(json.dumps({'local_redirect':label,'POST_body_and_three_cookies':True,'http_version':e['http_version']}),flush=True)
+ out['server_logs']=(D/'server.log').read_text();out['pass']=True;save()
+finally:
+ if server:
+  server.terminate();server.wait(timeout=5)
+ if log:log.close()
+ shutil.rmtree(D);out['own_context_server_removed']=not D.exists() and server is not None and server.poll() is not None;save()
+print(json.dumps({'local_controls_pass':out.get('pass'),'own_context_server_removed':out['own_context_server_removed']}))

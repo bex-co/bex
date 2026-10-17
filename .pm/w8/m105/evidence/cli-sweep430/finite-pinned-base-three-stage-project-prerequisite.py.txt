@@ -1,0 +1,20 @@
+from pathlib import Path
+import subprocess,json,shutil,secrets,time
+P=Path(__file__).resolve().parent;pristine=P/'sweep430-local-jekyll-context';assert pristine.exists();ref=json.loads((P/'sweep430-primary-reference.json').read_text());ns={};f=P/'sweep430-command-factory.py';exec(compile(f.read_text(),str(f),'exec'),ns);image='node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0';out={'image':image,'kind':'real public Jekyll project on pinned Node base; not full generated Bex image','cases':[]};receipt=P/'sweep430-local-prerequisite.json'
+def save():receipt.write_text(json.dumps(out,indent=2,ensure_ascii=False))
+for phase in ['initial','ruby','complete']:
+ case=P/('sweep430-local-case-'+phase);assert not case.exists();shutil.copytree(pristine,case);name='qa430-jekyll-'+phase+'-'+secrets.token_hex(3);cmd=ns['commands'](P,ref,'QA430_LOCAL',phase)['build'];(case/'qa430-local-build.sh').write_text(cmd);e={'phase':phase,'container_name':name,'bound_seconds':900,'build':cmd,'intent_at':time.time()};out['cases'].append(e);save();args=['docker','run','--pull','never','--name',name,'--network','bridge','--mount','type=bind,src='+str(case)+',dst=/app','--workdir','/app','--entrypoint','/bin/bash',image,'qa430-local-build.sh'];e['command']=args;save();start=time.monotonic()
+ try:
+  try:r=subprocess.run(args,capture_output=True,text=True,timeout=900);e.update(exit=r.returncode,stdout=r.stdout,stderr=r.stderr,harness_timeout=False)
+  except subprocess.TimeoutExpired as err:e.update(exit=None,stdout=(err.stdout or b'').decode(errors='replace') if isinstance(err.stdout,bytes) else err.stdout or '',stderr=(err.stderr or b'').decode(errors='replace') if isinstance(err.stderr,bytes) else err.stderr or '',harness_timeout=True)
+  e['elapsed']=round(time.monotonic()-start,3)
+  if phase=='initial':e['pass']=e['exit']==127 and 'bundle: command not found' in e['stderr']
+  elif phase=='ruby':e['pass']=e['exit'] not in (0,None) and not e['harness_timeout'] and any(s in e['stderr']+e['stdout'] for s in ['Could not find jekyll','Bundler::GemNotFound','bundler: command not found: jekyll'])
+  else:
+   v=json.loads((case/'_site/qa430-evidence.json').read_text()) if e['exit']==0 else None;e['actual_site_proof']=v;e['pass']=e['exit']==0 and v['files']==ref['files'] and v['marker']=='QA430_LOCAL' and v['jekyll']=='jekyll 4.3.3' and v['index']['bytes']>1000
+  save()
+ finally:
+  r=subprocess.run(['docker','rm','-f','-v',name],capture_output=True,text=True,timeout=30);e['container_removal_exit']=r.returncode;r=subprocess.run(['docker','container','inspect',name],capture_output=True,text=True,timeout=15);e['own_container_removed']=r.returncode!=0;shutil.rmtree(case);e['own_case_context_removed']=not case.exists();save()
+ print(json.dumps({'phase':phase,'exit':e.get('exit'),'pass':e.get('pass'),'elapsed':e.get('elapsed'),'container_removed':e['own_container_removed']}),flush=True)
+ assert e['pass'] and e['own_container_removed']
+out['pass']=all(v['pass'] for v in out['cases']);shutil.rmtree(pristine);out['own_containers_and_contexts_removed']=not pristine.exists() and all(v['own_container_removed'] and v['own_case_context_removed'] for v in out['cases']);save();print(json.dumps({'all_three_stages_pass':out['pass'],'own_containers_contexts_removed':out['own_containers_and_contexts_removed']}))

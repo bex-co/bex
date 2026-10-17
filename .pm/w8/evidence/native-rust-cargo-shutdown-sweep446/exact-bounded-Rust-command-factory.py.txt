@@ -1,0 +1,11 @@
+from pathlib import Path
+import io,tarfile,gzip,base64,shlex
+
+def commands(marker):
+ P=Path(__file__).resolve().parent
+ files={'Cargo.toml':'[package]\nname="qa446_fixture"\nversion="0.1.0"\nedition="2021"\n','src/main.rs':(P/'candidate446-server.rs').read_text(),'marker.txt':marker+'\n'};buf=io.BytesIO()
+ with tarfile.open(fileobj=buf,mode='w') as archive:
+  for name,value in files.items():
+   data=value.encode();info=tarfile.TarInfo(name);info.size=len(data);info.mode=0o644;info.mtime=0;archive.addfile(info,io.BytesIO(data))
+ packed=base64.b64encode(gzip.compress(buf.getvalue(),mtime=0)).decode();build="set -e\nmkdir qa446\nprintf '%s' "+shlex.quote(packed)+" | base64 -d | tar -xz -C qa446\ncargo build --offline --release --manifest-path qa446/Cargo.toml\nqa446/target/release/qa446_fixture --build-proof";assert len(build.encode())<=4096
+ return {'build':build,'start':'cargo run --offline --release --manifest-path qa446/Cargo.toml','program':(P/'candidate446-server.rs').read_text()}

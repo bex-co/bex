@@ -1,0 +1,5 @@
+from pathlib import Path
+import subprocess,json,time
+P=Path(__file__).resolve().parent
+for script,args in [('sweep402-shared-state.py',[]),('sweep402-native-pgtools.py',['control','bex']),('sweep402-native-pgtools.py',['control','render'])]:
+ r=subprocess.run(['python3',str(P/script),*args],capture_output=True,text=True,timeout=110);(P/('sweep402-control-start-'+script+'-'+('-'.join(args)or'shared')+'-'+str(time.time_ns())+'.json')).write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True);r.check_returncode()

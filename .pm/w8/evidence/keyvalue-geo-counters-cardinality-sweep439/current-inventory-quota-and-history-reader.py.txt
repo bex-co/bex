@@ -1,0 +1,12 @@
+from pathlib import Path
+import sys,json
+P=Path(__file__).resolve().parent;f=P/'sweep439-common.py';sys.argv=[str(f),'final-inventory','bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==439);assert x['state'].startswith('deleted:') and not x['cached_endpoint_probes'][-1]['PONG'] and x['cached_endpoint_probes'][-1]['after_delete'] and x['cached_endpoint_credentials_removed']['removed'];out={}
+sr,services=rows(['services']);kr,kvs=rows(['keyvalues','list']);pr,pgs=rows(['postgres','list']);assert BASE<={v['id'] for v in services} and x['id'] not in {v['id'] for v in kvs};out['current_inventory']={'pass':True,'baseline_present':True,'services':[v['id'] for v in services if v['id'].startswith('srv-')],'keyValues':[v['id'] for v in kvs],'postgres':[v['id'] for v in pgs]}
+for label,path in [('env-groups','/v1/env-groups?ownerId='+WS),('projects','/v1/projects?ownerId='+WS),('blueprints','/v1/blueprints?ownerId='+WS),('quota','/v1/owners/'+WS+'/limits')]:
+ r=api('GET',path);assert r['status']=='200';v=json.loads(r['response'])
+ if label=='blueprints':
+  views=[z.get('blueprint',z) for z in v];passed={z['id'] for z in views}=={'blp-db136288mmqc73d4hpug'};r['response']=json.dumps([{'id':z['id'],'projection':'immutable baseline identity only; configuration omitted'} for z in views])
+ elif label=='quota':passed=v['services']['used']==len([z for z in services if z['id'].startswith('srv-')]) and v['keyValues']['used']==len(kvs) and v['postgres']['used']==len(pgs) and v['services']['terminating']==v['postgres']['terminating']==v['keyValues']['terminating']==0
+ else:passed=v==[]
+ out[label]={'at':now(),'receipt':r,'pass':bool(passed)};c['sweep439_cleanup_inventory']=out;save();print(json.dumps({'kind':label,'pass':bool(passed)}),flush=True);assert passed
+hist=Path.home()/'.rediscli_history';s=hist.stat() if hist.exists() else None;after=None if s is None else {'size':s.st_size,'mtime_ns':s.st_mtime_ns,'ctime_ns':s.st_ctime_ns,'inode':s.st_ino,'mode':s.st_mode};x['preexisting_history_metadata_after']=after;x['preexisting_history_metadata_unchanged']=after==x['preexisting_history_metadata_before'];x['own_terminal_directories_absent']=not any(f.is_dir() for f in P.glob('sweep439-ping-*'));save();assert x['preexisting_history_metadata_unchanged'] and x['own_terminal_directories_absent'];print('Own terminal directories removed; pre-existing history metadata unchanged')

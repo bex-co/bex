@@ -1,0 +1,21 @@
+from pathlib import Path
+import json,secrets,subprocess,tempfile,shutil,runpy,hashlib
+P=Path(__file__).resolve().parent;nonce=secrets.token_hex(3);root=Path(tempfile.mkdtemp(prefix='candidate-gs-',dir=P));out={'nonce':nonce,'context':str(root),'image':'python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4','scope':'local selected-base real own-PDF render, not full generated image or hosted finding','input':json.loads((P/'candidate-ghostscript-PDF-reference.json').read_text()),'cases':[]}
+def save():(P/'candidate-ghostscript-local-control.json').write_text(json.dumps(out,indent=2))
+save()
+try:
+ for label,manual in [('original',False),('tool-control',True)]:
+  D=root/label;D.mkdir();shutil.copyfile(P/'candidate-ghostscript-own.pdf',D/'qa-gs.pdf');name='qa-gs-'+nonce+'-'+label;assert subprocess.run(['docker','inspect',name],capture_output=True).returncode!=0;command='set -e\n'+('apt-get update -qq && apt-get install -y --no-install-recommends ghostscript\n' if manual else '')+'gs -q -dBATCH -dNOPAUSE -sDEVICE=png16m -r72 -dFirstPage=1 -dLastPage=1 -sOutputFile=qa-gs.png qa-gs.pdf\ngs --version';e={'label':label,'container':name,'absent_before':True,'command':command};out['cases'].append(e);save()
+  try:r=subprocess.run(['docker','run','--pull=never','--rm','--name',name,'--label','bex.qa.run='+nonce,'-v',str(D)+':/work','-w','/work',out['image'],'bash','-c',command],capture_output=True,text=True,timeout=210);e.update(exit=r.returncode,stdout=r.stdout,stderr=r.stderr);save()
+  finally:
+   z=subprocess.run(['docker','inspect',name],capture_output=True,text=True)
+   if z.returncode==0:
+    v=json.loads(z.stdout)[0];assert v['Config']['Labels']['bex.qa.run']==nonce and any(m['Source']==str(D) for m in v['Mounts']);subprocess.run(['docker','rm','-f',name],capture_output=True,check=True)
+  if manual:
+   b=(D/'qa-gs.png').read_bytes();e['independent_PNG_decode']=runpy.run_path(str(P/'sweep406-png.py'))['decode_png'](b);e['PNG_bytes']=len(b);e['PNG_sha256']=hashlib.sha256(b).hexdigest();e['pass']=r.returncode==0 and e['independent_PNG_decode']['pixels_hex']==out['input']['expected_RGB_hex']
+  else:e['pass']=r.returncode==127 and 'gs: command not found' in r.stderr and not (D/'qa-gs.png').exists()
+  save();print(json.dumps({'case':label,'exit':r.returncode,'expected_result':e['pass']}),flush=True);assert e['pass']
+ out['pass']=True;save()
+finally:
+ assert root.parent==P and root.name.startswith('candidate-gs-');shutil.rmtree(root);out['own_containers_context_removed']=not root.exists() and all(subprocess.run(['docker','inspect',v['container']],capture_output=True).returncode!=0 for v in out['cases']);save()
+print(json.dumps({'pass':out.get('pass'),'cleanup':out['own_containers_context_removed']}))

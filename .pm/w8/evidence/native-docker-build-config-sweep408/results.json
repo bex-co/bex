@@ -1,0 +1,26 @@
+{
+  "sweep": 408,
+  "source_head": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+  "native_clients": [
+    "published Bex0.3.2",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "classification": "both original builds retain known m178 missing file-mount behavior",
+  "native_creates201_exit0": 2,
+  "original_first_builds_and_two_baked_outputs_pass": 0,
+  "known_missing_mount_first_builds": 2,
+  "native_build_log_reads0": 2,
+  "actual_child_Dockerfile_hash_proofs": 2,
+  "shared_REST_GraphQL_MCP_reads": 6,
+  "API_only_nonsecret_env_reads": 2,
+  "complete_own_file_content_redacted_before_capture": true,
+  "new_findings": 0,
+  "existing_issue": ".pm/w1/blocked/m178",
+  "complete_m178_DoD_or_closeout": false,
+  "own_services_children_URLs_absent": true,
+  "baseline6_Blueprint1_other_data0_and_quota_termination0": true,
+  "own_input_files_relays_copied_configs_removed": true,
+  "product_implementation": false,
+  "serving_revision": "unknown",
+  "uncommitted": true
+}

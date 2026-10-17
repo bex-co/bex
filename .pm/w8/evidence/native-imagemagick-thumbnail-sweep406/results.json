@@ -1,0 +1,27 @@
+{
+  "sweep": 406,
+  "source_head": "d2a7545819b5b7a64d24079cd7c7b15d03d9ead4",
+  "native_clients": [
+    "published Bex0.3.2",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "new_confirmed_findings": 0,
+  "fresh_native_creates201_exit0": 2,
+  "original_first_deployments_live": 2,
+  "hosted_runtime_fresh_image_requests_pass": 6,
+  "returned_PNGs_independently_decoded": 2,
+  "exact_native_app_log_events": 6,
+  "shared_REST_GraphQL_MCP_readbacks": 6,
+  "explicit_env_API_only_readbacks": 2,
+  "local_selected_base_default_build0": true,
+  "local_default_ImageMagick_present": true,
+  "manual_install_control_executed": false,
+  "actual_source_recipes_exported": 2,
+  "full_generated_image_locally_executed": false,
+  "serving_revision": "unknown",
+  "exact_owned_parents_children_URLs_absent": true,
+  "baseline6_Blueprint1_other_managed_data0_quota_and_termination_restored": true,
+  "own_local_contexts_containers_and_configs_removed": true,
+  "product_implementation": false,
+  "uncommitted": true
+}

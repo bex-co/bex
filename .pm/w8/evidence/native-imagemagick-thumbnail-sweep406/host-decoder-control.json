@@ -1,0 +1,1 @@
+{"exit": 0, "decoder": {"width": 2, "height": 1, "filter": 0, "pixels_hex": "ff00000000ff", "pixels_sha256": "ca5cc6d6fb20a0af14a7964e9ca8656880d62f7d55df12171ac14d3a858590aa", "PNG_sha256": "00b1038ca37dcc47d85bbefb5e7396617af18476cea682e650772c51fa66c417"}, "qualification": "own input through host ImageMagick; decoder control only, not hosted or generated-image acceptance"}

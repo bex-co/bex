@@ -1,0 +1,50 @@
+from pathlib import Path
+import subprocess,json,time,os,secrets,shutil,re,signal,hashlib
+P=Path(__file__).resolve().parent;C=P/'sweep452-generated-context';A=P/'sweep452-generated-exports';assert C.exists() and not A.exists();A.mkdir();cases=json.loads((C/'cases.json').read_text());ref=json.loads((P/'sweep451-primary-reference.json').read_text());out={'source_export':json.loads((P/'sweep452-generator-result.json').read_text()),'scope':'actual unchanged generated Dockerfile execution; manually supplied harmless encoded build bundle and runtime overrides; actual preparation Pod not executed','cases':[],'steps':[],'pass':False};receipt=P/'sweep452-generated-image-results.json';nonce=secrets.token_hex(4);owned_containers=[];owned_images=[]
+def save():
+ f=receipt.with_suffix('.tmp');f.write_text(json.dumps(out,indent=2,ensure_ascii=False));f.chmod(0o600);f.replace(receipt)
+def run(label,args,bound=45,check=True):
+ start=time.monotonic();r=subprocess.run(args,text=True,capture_output=True,timeout=bound);out['steps'].append({'label':label,'command':args,'exit':r.returncode,'elapsed':round(time.monotonic()-start,3),'stdout':r.stdout,'stderr':r.stderr});save()
+ if check:r.check_returncode()
+ return r
+def inspect_image(image):
+ r=subprocess.run(['docker','image','inspect',image],capture_output=True,text=True,timeout=15);r.check_returncode();v=json.loads(r.stdout)[0];cfg=v['Config'];env=dict(z.split('=',1) for z in cfg.get('Env',[]));return {'id':v['Id'],'architecture':v['Architecture'],'os':v['Os'],'cmd':cfg.get('Cmd'),'entrypoint':cfg.get('Entrypoint'),'workdir':cfg.get('WorkingDir'),'GUNICORN_CMD_ARGS_image_default':env.get('GUNICORN_CMD_ARGS'),'PORT_image_default':env.get('PORT')}
+def correct(v,case,phase):
+ expected=case['Override'] if case['Override'] is not None else '--preload --access-logfile -';access='-' if case['Override'] is None else '/dev/null' if case['Override'] else None;preload=case['Override'] is None or bool(case['Override'])
+ return v.get('marker')==case['Marker'] and v.get('phase')==phase and v.get('files')==ref['files'] and v.get('python','').startswith('3.12.') and v.get('gunicorn_cmd_args_present') is True and v.get('gunicorn_cmd_args')==expected and v.get('accesslog')==access and v.get('preload_app') is preload and (phase=='build' or v.get('bind')==['0.0.0.0:3000'])
+def local_ledger():
+ f=P/'sweep452-local-ownership.json';v=json.loads(f.read_text());v.update(containers=owned_containers,images=owned_images,state='finite actual generated-image checks in progress');f.write_text(json.dumps(v,indent=2))
+signal.signal(signal.SIGTERM,lambda *unused:(_ for _ in ()).throw(KeyboardInterrupt()))
+save()
+try:
+ for case in cases:
+  name=case['Name'];d=C/name;dest=A/name;dest.mkdir();recipe=(d/'Dockerfile').read_bytes();assert hashlib.sha256(recipe).hexdigest()==json.loads((d/'source-export.json').read_text())['Dockerfile_sha256']
+  for filename in ['Dockerfile','source-export.json','render-env']:shutil.copyfile(d/filename,dest/filename)
+  image='qa452-python:'+name+'-'+nonce;container='qa452-'+name+'-'+nonce
+  assert subprocess.run(['docker','image','inspect',image],capture_output=True,timeout=15).returncode!=0
+  assert subprocess.run(['docker','container','inspect',container],capture_output=True,timeout=15).returncode!=0
+  e={'case':case,'image':image,'container':container,'build_intent_recorded':True,'pass':False};out['cases'].append(e);owned_images.append(image);local_ledger();save();print(json.dumps({'case':name,'phase':'actual generated build starting'}),flush=True)
+  run(name+'-build',['docker','build','--progress=plain','--tag',image,'--secret','id=render-env,src='+str(d/'render-env'),'-f',str(d/'Dockerfile'),str(d/'source')],bound=600)
+  e['image_config']=inspect_image(image);assert e['image_config']['GUNICORN_CMD_ARGS_image_default']=='--preload --access-logfile -';owned_containers.append(container);local_ledger();save()
+  if case['Static']:run(name+'-create-for-artifact-extraction',['docker','create','--network','none','--name',container,image,'/bin/true'])
+  else:
+   args=['docker','run','-d','--network','none','--name',container,'-e','PORT=3000']
+   if case['Override'] is not None:args+=['-e','GUNICORN_CMD_ARGS='+case['Override']]
+   run(name+'-start-exact-generated-CMD',args+[image])
+  build_file=d/'actual-build.json';run(name+'-extract-build-proof',['docker','cp',container+':/opt/render/project/src/qa362-build.json',str(build_file)]);v=json.loads(build_file.read_text());e['build']=v;e['build_pass']=correct(v,case,'build');save();assert e['build_pass']
+
+  if case['Static']:
+   public=d/'public-result';run(name+'-extract-static-artifact',['docker','cp',container+':/opt/render/project/src/public',str(public)]);proof=json.loads((public/'proof.json').read_text());body=(public/'index.html').read_bytes();e['static_artifact']={'build_proof_matches':proof==v,'index_bytes':len(body),'index_sha256':hashlib.sha256(body).hexdigest(),'no_runtime_server_launched':True,'inherited_base_CMD':e['image_config']['cmd']};assert proof==v and body==b'qa452-static\n';e['pass']=True
+  else:
+   code="import urllib.request,time,json\nfrom pathlib import Path\nfor attempt in range(40):\n try:\n  with urllib.request.urlopen('http://127.0.0.1:3000/?qa452warm=1',timeout=2) as r:assert r.status==200 and r.read()==b'Hello, World!'\n  break\n except OSError:\n  if attempt==39:raise\n  time.sleep(.25)\nrows=[]\nfor i in range(3):\n path='/?qa452='+CASE_NAME+'-'+str(i+1)\n with urllib.request.urlopen('http://127.0.0.1:3000'+path,timeout=3) as r:rows.append({'path':path,'status':r.status,'body':r.read().decode()})\nprint(json.dumps({'runtime':json.loads(Path('qa362-runtime.json').read_text()),'requests':rows}))\n".replace('CASE_NAME',repr(name));r=run(name+'-real-loopback-HTTP-and-runtime-proof',['docker','exec',container,'python','-c',code],bound=100);data=json.loads(r.stdout);e.update(data);e['runtime_pass']=correct(data['runtime'],case,'runtime');assert e['runtime_pass'] and len(e['requests'])==3 and all(z['status']==200 and z['body']=='Hello, World!' for z in e['requests']);logs=run(name+'-actual-Gunicorn-output',['docker','logs',container]);raw=logs.stdout+'\n'+logs.stderr;paths={z['path'] for z in e['requests']};found=[path for path in paths if re.search(re.escape('GET '+path)+r' HTTP/[^\s"]+"\s+200\b',raw)];e['access_paths']=sorted(found);e['expected_access_paths']=sorted(paths) if case['Override'] is None else [];assert e['access_paths']==e['expected_access_paths'];run(name+'-stop-own-Gunicorn',['docker','stop','--time','8',container],bound=20);r=run(name+'-exact-own-exit',['docker','inspect',container,'--format','{{.State.ExitCode}}']);e['actual_server_exit']=int(r.stdout);assert e['actual_server_exit']==0;e['pass']=True
+  save();print(json.dumps({'case':name,'actual_generated_image_pass':True,'build_pass':e['build_pass'],'runtime_pass':e.get('runtime_pass'),'static_artifact_pass':bool(e.get('static_artifact'))}),flush=True)
+ out['pass']=len(out['cases'])==6 and all(v['pass'] for v in out['cases']);save()
+finally:
+ out['container_cleanup']=[]
+ for name in reversed(owned_containers):
+  r=run('remove-own-container',['docker','rm','-f','-v',name],check=False);absent=run('verify-own-container-absence',['docker','container','inspect',name],check=False).returncode!=0;out['container_cleanup'].append({'name':name,'absent':absent});save()
+ out['image_cleanup']=[]
+ for name in reversed(owned_images):
+  r=run('remove-own-tagged-image',['docker','image','rm',name],check=False);absent=run('verify-own-tag-absence',['docker','image','inspect',name],check=False).returncode!=0;out['image_cleanup'].append({'tag':name,'absent':absent});save()
+ shutil.rmtree(C);out['own_context_removed']=not C.exists();out['all_own_containers_and_image_tags_absent']=all(z['absent'] for z in out['container_cleanup']+out['image_cleanup']);out['base_and_shared_build_cache_preserved']=True;save();local_ledger();ledger=P/'sweep452-local-ownership.json';v=json.loads(ledger.read_text());v.update(state='finished: own containers/image tags/context removed; shared base/build cache retained' if out['all_own_containers_and_image_tags_absent'] and out['own_context_removed'] else 'cleanup pending; preserve exact ownership',results=str(receipt));ledger.write_text(json.dumps(v,indent=2))
+print(json.dumps({'pass':out['pass'],'cases':len(out['cases']),'all_own_containers_and_image_tags_absent':out['all_own_containers_and_image_tags_absent'],'own_context_removed':out['own_context_removed']}))

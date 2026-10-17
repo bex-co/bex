@@ -1,0 +1,56 @@
+{
+  "sweep": 429,
+  "source_head": "b9d3cdf6c3c8bc58b7ea5d6868243744db79b11c",
+  "existing_note": "w8/blocked/113",
+  "kind": "Python3.14 default variant partial acceptance; no new issue",
+  "original_native_creates_POST201_exit0": 2,
+  "original_first_children_Live": 2,
+  "original_build_only_external_marker_changed": true,
+  "original_start_byte_identical": true,
+  "no_authored_GUNICORN_override_or_start_prefix": true,
+  "original_public_commit": "facfc73c44b35d00bb1f72e8986f0ea47cab0755",
+  "original_public_file_hashes": {
+    "app.py": {
+      "bytes": 109,
+      "sha256": "51102f66cefb99c52afdbf9b49b239f6a119e6fb9bfe7a6eba78f6e069934db3"
+    },
+    "requirements.txt": {
+      "bytes": 15,
+      "sha256": "16ae3400d1e55added27ddc3382c7397563e15e6bbdb9783bd439c3859c23560"
+    }
+  },
+  "actual_versions": {
+    "python": [
+      "3.14.8"
+    ],
+    "gunicorn": [
+      "26.2.0"
+    ],
+    "flask": [
+      "3.1.3"
+    ]
+  },
+  "successful_original_Hello_World_HTTP200": 6,
+  "actual_Gunicorn_GET200_app_lines": 6,
+  "actual_build_and_runtime_default_presence_preload_true_accesslog_dash": true,
+  "shared_REST_GraphQL_MCP_reads": 6,
+  "explicit_env_API_only_reads": 2,
+  "only_explicit_env": "PYTHON_VERSION=3.14",
+  "exact_owned_two_parents_two_children_URLs_absent": true,
+  "baseline_current_inventory_quota_accounted_termination0": true,
+  "unrelated_service_IDs_preserved": [],
+  "unrelated_datastore_IDs_preserved": {
+    "postgres": [],
+    "keyValues": []
+  },
+  "relays_copied_configs_removed": true,
+  "actual_serving_SHA_OCI": "unknown",
+  "remaining_gates": [
+    "remaining Python-line and complete generated-artifact gates",
+    "group/Secret-sourced override behavior",
+    "static/broader artifact and phase gates"
+  ],
+  "status": "blocked",
+  "product_implementation": false,
+  "uncommitted": true
+}

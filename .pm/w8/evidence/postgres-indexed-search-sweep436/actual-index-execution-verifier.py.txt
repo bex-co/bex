@@ -1,0 +1,15 @@
+from pathlib import Path
+import sys,json
+f=Path(__file__).with_name('sweep436-common.py');exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==436 and v.get('id'));assert x['create_result']['native_exit']==0 and x['workspace']==WS and not x['state'].startswith('deleted:');ns={};f=P/'sweep436-query-factory.py';exec(compile(f.read_text(),str(f),'exec'),ns);queries=ns['queries']('qa436_'+x['nonce']+'_'+client);query=' '.join(queries[k].replace('EXPLAIN(FORMAT JSON,COSTS OFF)','EXPLAIN(ANALYZE TRUE,FORMAT JSON,COSTS OFF,TIMING OFF,SUMMARY OFF)') for k in ['core','trigram']);event=sql(client+'-index-execution',query,selector=x['name'] if client=='render' else x['id']);r=event['result'];assert r['native_exit']==0;raw=json.loads(r['stdout'])['output'].strip();decoder=json.JSONDecoder();values=[]
+while raw:v,n=decoder.raw_decode(raw);values.append(v);raw=raw[n:].strip()
+assert len(values)==4;proofs=[]
+for i,(case,expected_index,expected_rows) in enumerate([('core','docs_search',1),('trigram','words_trigram',2)]):
+ value,plan=values[i*2:i*2+2];_,passed=ns['decode'](json.dumps(value)+'\n'+json.dumps(plan),case);assert passed
+ def nodes(v):
+  if isinstance(v,dict):
+   yield v
+   for z in v.values():yield from nodes(z)
+  elif isinstance(v,list):
+   for z in v:yield from nodes(z)
+ matches=[z for z in nodes(plan) if z.get('Node Type')=='Bitmap Index Scan' and z.get('Index Name')==expected_index];assert len(matches)==1 and matches[0]['Actual Loops']==1 and matches[0]['Actual Rows']==expected_rows;proofs.append({'case':case,'value':value,'executed_index':matches[0],'full_actual_plan':plan})
+event.update(decoded=proofs,pass_=True);event['pass']=True;save();print(json.dumps({'client':client,'actual_EXPLAIN_ANALYZE_indices':[z['executed_index']['Index Name'] for z in proofs],'actual_rows':[z['executed_index']['Actual Rows'] for z in proofs],'pass':True}))

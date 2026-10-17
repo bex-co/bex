@@ -1,0 +1,37 @@
+{
+  "url": "https://raw.githubusercontent.com/traefik/traefik/v3.7.5/pkg/config/static/static_config.go",
+  "at": "2026-10-17",
+  "qualification": "primary pinned-version source, not proof of deployed revision",
+  "bytes": 34157,
+  "sha256": "ce60b5d741759cf202fc26fed8df3b7a47f4512d5d03dd31a8791fbd0aebc18c",
+  "matching_lines": [
+    {
+      "line": 50,
+      "text": "\t// DefaultReadTimeout defines the default maximum duration for reading the entire request, including the body."
+    },
+    {
+      "line": 51,
+      "text": "\tDefaultReadTimeout = 60 * time.Second"
+    },
+    {
+      "line": 199,
+      "text": "// RespondingTimeouts contains timeout configurations for incoming requests to the Traefik instance."
+    },
+    {
+      "line": 200,
+      "text": "type RespondingTimeouts struct {"
+    },
+    {
+      "line": 201,
+      "text": "\tReadTimeout  ptypes.Duration `description:\"ReadTimeout is the maximum duration for reading the entire request, including the body. If zero, no timeout is set.\" json:\"readTimeout,omitempty\" toml:\"readTimeout,omitempty\" yaml:\"readTimeout,omitempty\" export:\"true\"`"
+    },
+    {
+      "line": 207,
+      "text": "func (a *RespondingTimeouts) SetDefaults() {"
+    },
+    {
+      "line": 208,
+      "text": "\ta.ReadTimeout = ptypes.Duration(DefaultReadTimeout)"
+    }
+  ]
+}

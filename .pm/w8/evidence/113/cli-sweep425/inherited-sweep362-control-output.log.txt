@@ -1,0 +1,13 @@
+[2026-10-16 02:24:22 -0700] [28479] [INFO] Starting gunicorn 26.2.0
+[2026-10-16 02:24:22 -0700] [28479] [INFO] Listening at: http://127.0.0.1:63774 (28479)
+[2026-10-16 02:24:22 -0700] [28479] [INFO] Using worker: sync
+[2026-10-16 02:24:22 -0700] [28481] [INFO] Booting worker with pid: 28481
+[2026-10-16 02:24:22 -0700] [28479] [INFO] Control socket listening at <local-user>/.gunicorn/gunicorn.ctl
+127.0.0.1 - - [16/Oct/2026:02:24:22 -0700] "GET / HTTP/1.1" 200 13 "-" "Python-urllib/3.14"
+127.0.0.1 - - [16/Oct/2026:02:24:22 -0700] "GET /?qa362_local_control_0 HTTP/1.1" 200 13 "-" "Python-urllib/3.14"
+127.0.0.1 - - [16/Oct/2026:02:24:22 -0700] "GET /?qa362_local_control_1 HTTP/1.1" 200 13 "-" "Python-urllib/3.14"
+[2026-10-16 02:24:22 -0700] [28479] [INFO] Handling signal: term
+127.0.0.1 - - [16/Oct/2026:02:24:22 -0700] "GET /?qa362_local_control_2 HTTP/1.1" 200 13 "-" "Python-urllib/3.14"
+[2026-10-16 02:24:22 -0700] [28481] [INFO] Worker exiting (pid: 28481)
+[2026-10-16 02:24:22 -0700] [28479] [INFO] Worker (pid:28481) was sent SIGTERM!
+[2026-10-16 02:24:22 -0700] [28479] [INFO] Shutting down: Master

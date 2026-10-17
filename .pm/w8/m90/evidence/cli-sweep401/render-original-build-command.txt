@@ -1,0 +1,16 @@
+set -e
+cat > qa401-probe.cjs <<'QA401_QA401_PROBE_CJS'
+const fs=require('node:fs'),c=require('node:crypto'),cp=require('node:child_process'),ref=JSON.parse(fs.readFileSync('qa401-reference.json')),marker=JSON.parse(fs.readFileSync('qa401-marker.json')),phase=process.argv[2],sha=b=>c.createHash('sha256').update(b).digest('hex');
+const files=Object.fromEntries(Object.keys(ref.files).map(p=>{const b=fs.readFileSync(p);return[p,{bytes:b.length,sha256:sha(b)}]}));if(JSON.stringify(files)!==JSON.stringify(ref.files))throw Error('source differs');
+const installed=()=>{try{return require('express/package.json').version}catch(e){if(e.code==='MODULE_NOT_FOUND')return null;throw e}},snapshot={marker,node:process.version,yarn:cp.execFileSync('yarn',['--version'],{encoding:'utf8'}).trim(),files,node_modules_present:fs.existsSync('node_modules'),express_version:installed(),skip_present:Object.hasOwn(process.env,'SKIP_INSTALL_DEPS'),skip:process.env.SKIP_INSTALL_DEPS??null};
+if(phase==='before'){fs.writeFileSync('qa401-before.json',JSON.stringify(snapshot));console.log('QA401_BEFORE '+JSON.stringify(snapshot));process.exit(0)}
+const express=require('express'),app=express();if(typeof app!=='function'||snapshot.express_version!=='4.18.2')throw Error('locked dependency differs');const index=Buffer.from('<!doctype html><title>qa401</title><p>'+marker+' Express '+snapshot.express_version+'</p>\n'),result={...snapshot,before:JSON.parse(fs.readFileSync('qa401-before.json')),index:{bytes:index.length,sha256:sha(index)},instantiated_express:true};fs.mkdirSync('_site',{recursive:true});fs.writeFileSync('_site/index.html',index);fs.writeFileSync('_site/qa401-evidence.json',JSON.stringify(result));console.log('QA401_AFTER '+JSON.stringify(result));
+QA401_QA401_PROBE_CJS
+cat > qa401-reference.json <<'QA401_QA401_REFERENCE_JSON'
+{"repo": "https://github.com/render-examples/express-hello-world", "branch": "master", "commit": "e7a5c56626fab0673f244d169389bf34070e754c", "files": {"package.json": {"bytes": 411, "sha256": "b51b5018960cfe4362b9b800a6d653290af9a708668b128699a896635d7da818"}, "yarn.lock": {"bytes": 17064, "sha256": "800187ff849756317b17f44148253dae80021e70a82f9931c6b40a396c1dc83b"}}, "qualification": "actual public Render example dependency manifest/lock; explicitly authored static dependency observer instead of its web app"}
+QA401_QA401_REFERENCE_JSON
+cat > qa401-marker.json <<'QA401_QA401_MARKER_JSON'
+"QA401_234f64_render"
+QA401_QA401_MARKER_JSON
+node qa401-probe.cjs before
+node qa401-probe.cjs build

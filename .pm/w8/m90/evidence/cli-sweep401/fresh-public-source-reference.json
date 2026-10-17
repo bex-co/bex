@@ -1,0 +1,16 @@
+{
+  "repo": "https://github.com/render-examples/express-hello-world",
+  "branch": "master",
+  "commit": "e7a5c56626fab0673f244d169389bf34070e754c",
+  "files": {
+    "package.json": {
+      "bytes": 411,
+      "sha256": "b51b5018960cfe4362b9b800a6d653290af9a708668b128699a896635d7da818"
+    },
+    "yarn.lock": {
+      "bytes": 17064,
+      "sha256": "800187ff849756317b17f44148253dae80021e70a82f9931c6b40a396c1dc83b"
+    }
+  },
+  "qualification": "actual public Render example dependency manifest/lock; explicitly authored static dependency observer instead of its web app"
+}

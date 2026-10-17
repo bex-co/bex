@@ -1,0 +1,128 @@
+{
+  "image": "postgres@sha256:67f41722b7a8cbdb868a44a4995c846eddfdc2973bccb291ce937dce88ad5675",
+  "container": "qa438-search-371f8e41",
+  "kind": "isolated cached PG17 ordinary search fixture; not Bex/CNPG/PG18 acceptance",
+  "steps": [
+    {
+      "label": "start-own-isolated-server",
+      "command": [
+        "docker",
+        "run",
+        "--pull",
+        "never",
+        "-d",
+        "--network",
+        "none",
+        "--name",
+        "qa438-search-371f8e41",
+        "-e",
+        "POSTGRES_HOST_AUTH_METHOD=trust",
+        "postgres@sha256:67f41722b7a8cbdb868a44a4995c846eddfdc2973bccb291ce937dce88ad5675"
+      ],
+      "exit": 0,
+      "stdout": "db12e3c2f8daf17c95b7fa06ef863e14d6cbd432edb5b9c7036ef5a9d7e09327\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-0",
+      "command": [
+        "docker",
+        "exec",
+        "qa438-search-371f8e41",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 2,
+      "stdout": "/var/run/postgresql:5432 - no response\n",
+      "stderr": ""
+    },
+    {
+      "label": "ready-1",
+      "command": [
+        "docker",
+        "exec",
+        "qa438-search-371f8e41",
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "exit": 0,
+      "stdout": "/var/run/postgresql:5432 - accepting connections\n",
+      "stderr": ""
+    },
+    {
+      "label": "local-only-normal-owner",
+      "command": [
+        "docker",
+        "exec",
+        "qa438-search-371f8e41",
+        "psql",
+        "-X",
+        "-q",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "postgres",
+        "-c",
+        "CREATE ROLE qa438_owner LOGIN;",
+        "-c",
+        "CREATE DATABASE qa438_owner OWNER qa438_owner;"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "label": "catalog",
+      "command": [
+        "docker",
+        "exec",
+        "qa438-search-371f8e41",
+        "psql",
+        "-X",
+        "-q",
+        "-t",
+        "-A",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-U",
+        "qa438_owner",
+        "-d",
+        "qa438_owner",
+        "-c",
+        "SELECT jsonb_build_object('version',current_setting('server_version_num'),'encoding',current_setting('server_encoding'),'lc_ctype',current_setting('lc_ctype'),'extensions',COALESCE((SELECT jsonb_agg(jsonb_build_object('name',name,'default_version',default_version,'installed_version',installed_version) ORDER BY name) FROM pg_available_extensions WHERE name IN ('citext','ltree','tablefunc','unaccent','vector','pg_stat_statements','plpgsql')),'[]'::jsonb),'own_schema_exists',EXISTS(SELECT FROM pg_namespace WHERE nspname='qa438_local'))::text;"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "ERROR:  unrecognized configuration parameter \"lc_ctype\"\n"
+    },
+    {
+      "label": "remove-exact-own-server",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa438-search-371f8e41"
+      ],
+      "exit": 0,
+      "stdout": "qa438-search-371f8e41\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa438-search-371f8e41"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa438-search-371f8e41\n"
+    }
+  ],
+  "cases": [],
+  "own_container_absent": true
+}

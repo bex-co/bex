@@ -1,0 +1,73 @@
+{
+  "nonce": "089512",
+  "image": "python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4",
+  "context": "<owned-temp>/candidate-swig-app-4odhl5m4",
+  "cases": [
+    {
+      "case": "original",
+      "container": "qa-swig-app-089512-original",
+      "command": "set -e\npython qa-swig-app.py before\nswig -python qa_swig.i\ngcc -shared -fPIC $(python3-config --includes) qa_swig_wrap.c -o _qa_swig$(python3-config --extension-suffix)\npython qa-swig-app.py build",
+      "absent_before": true,
+      "exit": 127,
+      "stdout": "QA_SWIG_BEFORE {\"marker\": \"QA_SWIG_LOCAL\", \"python\": \"3.13.16\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"e2de4d6a7fa00588a5446116788d21256ff17be580b5082be66c3dd1259a2097\", \"interface_sha256\": \"1384c8b26f56ff58a352327279efe41af9928292f3752716ccd8bfe6fc7c4f2a\", \"swig_path\": null, \"swig_version\": null}\n",
+      "stderr": "bash: line 3: swig: command not found\n",
+      "pass": true
+    },
+    {
+      "case": "control",
+      "container": "qa-swig-app-089512-control",
+      "command": "set -e\npython qa-swig-app.py before\napt-get update -qq && apt-get install -y --no-install-recommends swig\nswig -python qa_swig.i\ngcc -shared -fPIC $(python3-config --includes) qa_swig_wrap.c -o _qa_swig$(python3-config --extension-suffix)\npython qa-swig-app.py build\npython qa-swig-app.py serve > own-server.log 2>&1 &\nqa_swig_pid=$!\ntrap 'kill \"$qa_swig_pid\" 2>/dev/null || true' EXIT\npython check.py\ncat own-server.log",
+      "absent_before": true,
+      "exit": 0,
+      "stdout": "QA_SWIG_BEFORE {\"marker\": \"QA_SWIG_LOCAL\", \"python\": \"3.13.16\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"e2de4d6a7fa00588a5446116788d21256ff17be580b5082be66c3dd1259a2097\", \"interface_sha256\": \"1384c8b26f56ff58a352327279efe41af9928292f3752716ccd8bfe6fc7c4f2a\", \"swig_path\": null, \"swig_version\": null}\nReading package lists...\nBuilding dependency tree...\nReading state information...\nThe following additional packages will be installed:\n  swig4.0\nSuggested packages:\n  swig-doc swig-examples swig4.0-examples swig4.0-doc\nThe following NEW packages will be installed:\n  swig swig4.0\n0 upgraded, 2 newly installed, 0 to remove and 8 not upgraded.\nNeed to get 1620 kB of archives.\nAfter this operation, 6010 kB of additional disk space will be used.\nGet:1 http://deb.debian.org/debian bookworm/main arm64 swig4.0 arm64 4.1.0-0.2 [1299 kB]\nGet:2 http://deb.debian.org/debian bookworm/main arm64 swig all 4.1.0-0.2 [321 kB]\nFetched 1620 kB in 0s (9461 kB/s)\nSelecting previously unselected package swig4.0.\n(Reading database ... \n(Reading database ... 5%\n(Reading database ... 10%\n(Reading database ... 15%\n(Reading database ... 20%\n(Reading database ... 25%\n(Reading database ... 30%\n(Reading database ... 35%\n(Reading database ... 40%\n(Reading database ... 45%\n(Reading database ... 50%\n(Reading database ... 55%\n(Reading database ... 60%\n(Reading database ... 65%\n(Reading database ... 70%\n(Reading database ... 75%\n(Reading database ... 80%\n(Reading database ... 85%\n(Reading database ... 90%\n(Reading database ... 95%\n(Reading database ... 100%\n(Reading database ... 24001 files and directories currently installed.)\nPreparing to unpack .../swig4.0_4.1.0-0.2_arm64.deb ...\nUnpacking swig4.0 (4.1.0-0.2) ...\nSelecting previously unselected package swig.\nPreparing to unpack .../swig_4.1.0-0.2_all.deb ...\nUnpacking swig (4.1.0-0.2) ...\nSetting up swig4.0 (4.1.0-0.2) ...\nSetting up swig (4.1.0-0.2) ...\nQA_SWIG_AFTER {\"marker\": \"QA_SWIG_LOCAL\", \"python\": \"3.13.16\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"e2de4d6a7fa00588a5446116788d21256ff17be580b5082be66c3dd1259a2097\", \"interface_sha256\": \"1384c8b26f56ff58a352327279efe41af9928292f3752716ccd8bfe6fc7c4f2a\", \"swig_path\": \"/usr/bin/swig\", \"swig_version\": \"SWIG Version 4.1.0\\n\\nCompiled with g++ [aarch64-unknown-linux-gnu]\\n\\nConfigured options: +pcre\\n\\nPlease see https://www.swig.org for reporting bugs and further information\", \"result\": [{\"a\": 2, \"b\": 3, \"value\": 13}, {\"a\": -4, \"b\": 7, \"value\": 13}, {\"a\": 0, \"b\": 0, \"value\": 0}], \"unicode\": \"Crème brûlée & 李\", \"extension\": {\"file\": \"_qa_swig.cpython-313-aarch64-linux-gnu.so\", \"bytes\": 81872, \"sha256\": \"5c2a2d8ca7a3b8ddabcf74bbc123364a074455b06088ce9a15374702f46eb2a5\"}, \"generated_wrapper_sha256\": \"a5594a40f2a89b3ae243a88d48bbe67605dffc1662ef84770cafe7cad0a15ce1\", \"generated_python_sha256\": \"25875c839be1bab0b992b2be6ae69cd96df39791bdcfee0a868021ccb6f306b9\"}\nQA_SWIG_LOCAL_HTTP [{\"path\": \"/native?qa=1\", \"status\": 200, \"result\": [{\"a\": 2, \"b\": 3, \"value\": 13}, {\"a\": -4, \"b\": 7, \"value\": 13}, {\"a\": 0, \"b\": 0, \"value\": 0}], \"unicode\": \"Crème brûlée & 李\", \"extension_sha256\": \"5c2a2d8ca7a3b8ddabcf74bbc123364a074455b06088ce9a15374702f46eb2a5\"}, {\"path\": \"/?qa=2\", \"status\": 200, \"result\": [{\"a\": 2, \"b\": 3, \"value\": 13}, {\"a\": -4, \"b\": 7, \"value\": 13}, {\"a\": 0, \"b\": 0, \"value\": 0}], \"unicode\": \"Crème brûlée & 李\", \"extension_sha256\": \"5c2a2d8ca7a3b8ddabcf74bbc123364a074455b06088ce9a15374702f46eb2a5\"}, {\"path\": \"/native?qa=3\", \"status\": 200, \"result\": [{\"a\": 2, \"b\": 3, \"value\": 13}, {\"a\": -4, \"b\": 7, \"value\": 13}, {\"a\": 0, \"b\": 0, \"value\": 0}], \"unicode\": \"Crème brûlée & 李\", \"extension_sha256\": \"5c2a2d8ca7a3b8ddabcf74bbc123364a074455b06088ce9a15374702f46eb2a5\"}]\nQA_SWIG_HTTP {\"marker\": \"QA_SWIG_LOCAL\", \"path\": \"/\", \"result\": [{\"a\": 2, \"b\": 3, \"value\": 13}, {\"a\": -4, \"b\": 7, \"value\": 13}, {\"a\": 0, \"b\": 0, \"value\": 0}], \"unicode\": \"Crème brûlée & 李\", \"extension_sha256\": \"5c2a2d8ca7a3b8ddabcf74bbc123364a074455b06088ce9a15374702f46eb2a5\"}\nQA_SWIG_HTTP {\"marker\": \"QA_SWIG_LOCAL\", \"path\": \"/native?qa=1\", \"result\": [{\"a\": 2, \"b\": 3, \"value\": 13}, {\"a\": -4, \"b\": 7, \"value\": 13}, {\"a\": 0, \"b\": 0, \"value\": 0}], \"unicode\": \"Crème brûlée & 李\", \"extension_sha256\": \"5c2a2d8ca7a3b8ddabcf74bbc123364a074455b06088ce9a15374702f46eb2a5\"}\nQA_SWIG_HTTP {\"marker\": \"QA_SWIG_LOCAL\", \"path\": \"/?qa=2\", \"result\": [{\"a\": 2, \"b\": 3, \"value\": 13}, {\"a\": -4, \"b\": 7, \"value\": 13}, {\"a\": 0, \"b\": 0, \"value\": 0}], \"unicode\": \"Crème brûlée & 李\", \"extension_sha256\": \"5c2a2d8ca7a3b8ddabcf74bbc123364a074455b06088ce9a15374702f46eb2a5\"}\nQA_SWIG_HTTP {\"marker\": \"QA_SWIG_LOCAL\", \"path\": \"/native?qa=3\", \"result\": [{\"a\": 2, \"b\": 3, \"value\": 13}, {\"a\": -4, \"b\": 7, \"value\": 13}, {\"a\": 0, \"b\": 0, \"value\": 0}], \"unicode\": \"Crème brûlée & 李\", \"extension_sha256\": \"5c2a2d8ca7a3b8ddabcf74bbc123364a074455b06088ce9a15374702f46eb2a5\"}\n",
+      "stderr": "debconf: delaying package configuration, since apt-utils is not installed\n",
+      "pass": true,
+      "build": {
+        "marker": "QA_SWIG_LOCAL",
+        "python": "3.13.16",
+        "files": {
+          "LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        },
+        "program_sha256": "e2de4d6a7fa00588a5446116788d21256ff17be580b5082be66c3dd1259a2097",
+        "interface_sha256": "1384c8b26f56ff58a352327279efe41af9928292f3752716ccd8bfe6fc7c4f2a",
+        "swig_path": "/usr/bin/swig",
+        "swig_version": "SWIG Version 4.1.0\n\nCompiled with g++ [aarch64-unknown-linux-gnu]\n\nConfigured options: +pcre\n\nPlease see https://www.swig.org for reporting bugs and further information",
+        "result": [
+          {
+            "a": 2,
+            "b": 3,
+            "value": 13
+          },
+          {
+            "a": -4,
+            "b": 7,
+            "value": 13
+          },
+          {
+            "a": 0,
+            "b": 0,
+            "value": 0
+          }
+        ],
+        "unicode": "Crème brûlée & 李",
+        "extension": {
+          "file": "_qa_swig.cpython-313-aarch64-linux-gnu.so",
+          "bytes": 81872,
+          "sha256": "5c2a2d8ca7a3b8ddabcf74bbc123364a074455b06088ce9a15374702f46eb2a5"
+        },
+        "generated_wrapper_sha256": "a5594a40f2a89b3ae243a88d48bbe67605dffc1662ef84770cafe7cad0a15ce1",
+        "generated_python_sha256": "25875c839be1bab0b992b2be6ae69cd96df39791bdcfee0a868021ccb6f306b9"
+      }
+    }
+  ],
+  "qualification": "selected cached Python3.13 base plus own real SWIG extension and own-container-loopback HTTP; not full generated native image or hosted finding",
+  "pass": true,
+  "own_containers_context_removed": true
+}

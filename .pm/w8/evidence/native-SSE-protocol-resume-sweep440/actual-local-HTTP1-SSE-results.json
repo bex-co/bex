@@ -1,0 +1,746 @@
+{
+  "container": "qa440-sse-35e137b7",
+  "kind": "pinned Node24 HTTP1 local SSE prerequisite; no local HTTP2 or full generated image claim",
+  "steps": [
+    {
+      "label": "fresh-public-branch",
+      "command": [
+        "git",
+        "ls-remote",
+        "https://github.com/git-fixtures/basic",
+        "refs/heads/master"
+      ],
+      "exit": 0,
+      "stdout": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5\trefs/heads/master\n",
+      "stderr": ""
+    },
+    {
+      "label": "start-own-SSE",
+      "command": [
+        "docker",
+        "run",
+        "--pull",
+        "never",
+        "-d",
+        "--network",
+        "bridge",
+        "-p",
+        "127.0.0.1::3000",
+        "--name",
+        "qa440-sse-35e137b7",
+        "--mount",
+        "type=bind,src=<owned-temp>/sweep440-local-context,dst=/app",
+        "--workdir",
+        "/app",
+        "--entrypoint",
+        "/bin/bash",
+        "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+        "-c",
+        "set -e\nnode -e 'const fs=require('\"'\"'node:fs'\"'\"'),z=require('\"'\"'node:zlib'\"'\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\"'\"'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'\"'\"','\"'\"'base64'\"'\"')))))fs.writeFileSync(n,s)'\nnode qa440-app.cjs build\nexec node qa440-app.cjs serve"
+      ],
+      "exit": 0,
+      "stdout": "866f326da6767395959220ddbf6849cc92a58d774a5d64016d1dacb5d18686ac\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-loopback-port",
+      "command": [
+        "docker",
+        "port",
+        "qa440-sse-35e137b7",
+        "3000/tcp"
+      ],
+      "exit": 0,
+      "stdout": "127.0.0.1:57331\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-SSE-log",
+      "command": [
+        "docker",
+        "logs",
+        "qa440-sse-35e137b7"
+      ],
+      "exit": 0,
+      "stdout": "QA440_BUILD {\"marker\":\"QA440_LOCAL\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"node\":\"v24.22.0\",\"program_sha256\":\"e2827e8b94c98eb94cf7f54b6d72a0104a1d4acb8083c92953836852dd01abc8\"}\nQA440_READY {\"marker\":\"QA440_LOCAL\",\"boot\":\"fb055502-f8cb-46ad-b761-3112e4ce59fa\",\"node\":\"v24.22.0\"}\nQA440_STREAM {\"marker\":\"QA440_LOCAL\",\"boot\":\"fb055502-f8cb-46ad-b761-3112e4ce59fa\",\"nonce\":\"local440\",\"last\":0,\"phase\":\"begin\"}\nQA440_EVENT {\"marker\":\"QA440_LOCAL\",\"boot\":\"fb055502-f8cb-46ad-b761-3112e4ce59fa\",\"nonce\":\"local440\",\"seq\":1}\nQA440_EVENT {\"marker\":\"QA440_LOCAL\",\"boot\":\"fb055502-f8cb-46ad-b761-3112e4ce59fa\",\"nonce\":\"local440\",\"seq\":2}\nQA440_EVENT {\"marker\":\"QA440_LOCAL\",\"boot\":\"fb055502-f8cb-46ad-b761-3112e4ce59fa\",\"nonce\":\"local440\",\"seq\":3}\nQA440_STREAM {\"marker\":\"QA440_LOCAL\",\"boot\":\"fb055502-f8cb-46ad-b761-3112e4ce59fa\",\"nonce\":\"local440\",\"last\":0,\"phase\":\"end\",\"sent\":3}\nQA440_STREAM {\"marker\":\"QA440_LOCAL\",\"boot\":\"fb055502-f8cb-46ad-b761-3112e4ce59fa\",\"nonce\":\"local440\",\"last\":3,\"phase\":\"begin\"}\nQA440_EVENT {\"marker\":\"QA440_LOCAL\",\"boot\":\"fb055502-f8cb-46ad-b761-3112e4ce59fa\",\"nonce\":\"local440\",\"seq\":4}\nQA440_EVENT {\"marker\":\"QA440_LOCAL\",\"boot\":\"fb055502-f8cb-46ad-b761-3112e4ce59fa\",\"nonce\":\"local440\",\"seq\":5}\nQA440_EVENT {\"marker\":\"QA440_LOCAL\",\"boot\":\"fb055502-f8cb-46ad-b761-3112e4ce59fa\",\"nonce\":\"local440\",\"seq\":6}\nQA440_STREAM {\"marker\":\"QA440_LOCAL\",\"boot\":\"fb055502-f8cb-46ad-b761-3112e4ce59fa\",\"nonce\":\"local440\",\"last\":3,\"phase\":\"end\",\"sent\":3}\n",
+      "stderr": ""
+    },
+    {
+      "label": "remove-exact-own-server",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa440-sse-35e137b7"
+      ],
+      "exit": 0,
+      "stdout": "qa440-sse-35e137b7\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa440-sse-35e137b7"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa440-sse-35e137b7\n"
+    }
+  ],
+  "streams": [
+    {
+      "last": 0,
+      "capture": {
+        "client_process_id": 46415,
+        "command": [
+          "curl",
+          "--disable",
+          "-sS",
+          "-N",
+          "--http1.1",
+          "--max-time",
+          "12",
+          "-H",
+          "Accept: text/event-stream",
+          "-H",
+          "Accept-Encoding: identity",
+          "-D",
+          "<owned-temp>/sweep440-local-headers-0",
+          "http://127.0.0.1:57331/events?run=local440&count=3"
+        ],
+        "protocol_requested": "http1.1",
+        "last_event_id": 0,
+        "nonce": "local440",
+        "progress": {
+          "raw_base64": "OiBoZWFydGJlYXQNCnJldHJ5OiA1MDANCmlkOiAxDQpldmVudDogdGljaw0KZGF0YTogeyJtYXJrZXIiOiJRQTQ0MF9MT0NBTCIsImJvb3QiOiJmYjA1NTUwMi1mOGNiLTQ2YWQtYjc2MS0zMTEyZTRjZTU5ZmEiLCJub25jZSI6ImxvY2FsNDQwIiwic2VxIjoxLA0KZGF0YTogInRleHQiOiJDcsOobWUgYnLDu2zDqWUgJiDmnY4iLCJmaWxlcyI6eyJMSUNFTlNFIjp7ImJ5dGVzIjoxMDcyLCJzaGEyNTYiOiIyMGIwNjQ5MTBiMzJiY2UxYmMwNDU5NWE1YjIwNDc3YTI4YzUwMzk5NWVmODUyODkyOWEzMTFkNmNiN2EzYjA5In0sIkNIQU5HRUxPRyI6eyJieXRlcyI6MTgsInNoYTI1NiI6IjljNjVlMzY2MDU1ZWRkOWEwZjZhYjljN2I4YTM3ZmM5MjgwM2NmZTFkMzBmZmE3MjdjZWVkMGM2MzkzOWMyZTUifX19DQoNCjogaGVhcnRiZWF0DQppZDogMg0KZXZlbnQ6IHRpY2sNCmRhdGE6IHsibWFya2VyIjoiUUE0NDBfTE9DQUwiLCJib290IjoiZmIwNTU1MDItZjhjYi00NmFkLWI3NjEtMzExMmU0Y2U1OWZhIiwibm9uY2UiOiJsb2NhbDQ0MCIsInNlcSI6MiwNCmRhdGE6ICJ0ZXh0IjoiQ3LDqG1lIGJyw7tsw6llICYg5p2OIiwiZmlsZXMiOnsiTElDRU5TRSI6eyJieXRlcyI6MTA3Miwic2hhMjU2IjoiMjBiMDY0OTEwYjMyYmNlMWJjMDQ1OTVhNWIyMDQ3N2EyOGM1MDM5OTVlZjg1Mjg5MjlhMzExZDZjYjdhM2IwOSJ9LCJDSEFOR0VMT0ciOnsiYnl0ZXMiOjE4LCJzaGEyNTYiOiI5YzY1ZTM2NjA1NWVkZDlhMGY2YWI5YzdiOGEzN2ZjOTI4MDNjZmUxZDMwZmZhNzI3Y2VlZDBjNjM5MzljMmU1In19fQ0KDQo6IGhlYXJ0YmVhdA0KaWQ6IDMNCmV2ZW50OiB0aWNrDQpkYXRhOiB7Im1hcmtlciI6IlFBNDQwX0xPQ0FMIiwiYm9vdCI6ImZiMDU1NTAyLWY4Y2ItNDZhZC1iNzYxLTMxMTJlNGNlNTlmYSIsIm5vbmNlIjoibG9jYWw0NDAiLCJzZXEiOjMsDQpkYXRhOiAidGV4dCI6IkNyw6htZSBicsO7bMOpZSAmIOadjiIsImZpbGVzIjp7IkxJQ0VOU0UiOnsiYnl0ZXMiOjEwNzIsInNoYTI1NiI6IjIwYjA2NDkxMGIzMmJjZTFiYzA0NTk1YTViMjA0NzdhMjhjNTAzOTk1ZWY4NTI4OTI5YTMxMWQ2Y2I3YTNiMDkifSwiQ0hBTkdFTE9HIjp7ImJ5dGVzIjoxOCwic2hhMjU2IjoiOWM2NWUzNjYwNTVlZGQ5YTBmNmFiOWM3YjhhMzdmYzkyODAzY2ZlMWQzMGZmYTcyN2NlZWQwYzYzOTM5YzJlNSJ9fX0NCg0K",
+          "bytes": 1185,
+          "chunks": [
+            {
+              "at": 0.2187,
+              "bytes": 183
+            },
+            {
+              "at": 0.234,
+              "bytes": 220
+            },
+            {
+              "at": 0.9887,
+              "bytes": 171
+            },
+            {
+              "at": 1.0042,
+              "bytes": 220
+            },
+            {
+              "at": 1.758,
+              "bytes": 171
+            },
+            {
+              "at": 1.7734,
+              "bytes": 220
+            }
+          ]
+        },
+        "native_curl_exit": 0,
+        "stderr": "",
+        "HTTP": "200",
+        "http_version": "1.1",
+        "headers": "HTTP/1.1 200 OK\nContent-Type: text/event-stream; charset=utf-8\nCache-Control: no-cache\nX-Accel-Buffering: no\nDate: Sat, 17 Oct 2026 14:24:48 GMT\nConnection: keep-alive\nKeep-Alive: timeout=5\nTransfer-Encoding: chunked\n\n",
+        "raw_base64": "OiBoZWFydGJlYXQNCnJldHJ5OiA1MDANCmlkOiAxDQpldmVudDogdGljaw0KZGF0YTogeyJtYXJrZXIiOiJRQTQ0MF9MT0NBTCIsImJvb3QiOiJmYjA1NTUwMi1mOGNiLTQ2YWQtYjc2MS0zMTEyZTRjZTU5ZmEiLCJub25jZSI6ImxvY2FsNDQwIiwic2VxIjoxLA0KZGF0YTogInRleHQiOiJDcsOobWUgYnLDu2zDqWUgJiDmnY4iLCJmaWxlcyI6eyJMSUNFTlNFIjp7ImJ5dGVzIjoxMDcyLCJzaGEyNTYiOiIyMGIwNjQ5MTBiMzJiY2UxYmMwNDU5NWE1YjIwNDc3YTI4YzUwMzk5NWVmODUyODkyOWEzMTFkNmNiN2EzYjA5In0sIkNIQU5HRUxPRyI6eyJieXRlcyI6MTgsInNoYTI1NiI6IjljNjVlMzY2MDU1ZWRkOWEwZjZhYjljN2I4YTM3ZmM5MjgwM2NmZTFkMzBmZmE3MjdjZWVkMGM2MzkzOWMyZTUifX19DQoNCjogaGVhcnRiZWF0DQppZDogMg0KZXZlbnQ6IHRpY2sNCmRhdGE6IHsibWFya2VyIjoiUUE0NDBfTE9DQUwiLCJib290IjoiZmIwNTU1MDItZjhjYi00NmFkLWI3NjEtMzExMmU0Y2U1OWZhIiwibm9uY2UiOiJsb2NhbDQ0MCIsInNlcSI6MiwNCmRhdGE6ICJ0ZXh0IjoiQ3LDqG1lIGJyw7tsw6llICYg5p2OIiwiZmlsZXMiOnsiTElDRU5TRSI6eyJieXRlcyI6MTA3Miwic2hhMjU2IjoiMjBiMDY0OTEwYjMyYmNlMWJjMDQ1OTVhNWIyMDQ3N2EyOGM1MDM5OTVlZjg1Mjg5MjlhMzExZDZjYjdhM2IwOSJ9LCJDSEFOR0VMT0ciOnsiYnl0ZXMiOjE4LCJzaGEyNTYiOiI5YzY1ZTM2NjA1NWVkZDlhMGY2YWI5YzdiOGEzN2ZjOTI4MDNjZmUxZDMwZmZhNzI3Y2VlZDBjNjM5MzljMmU1In19fQ0KDQo6IGhlYXJ0YmVhdA0KaWQ6IDMNCmV2ZW50OiB0aWNrDQpkYXRhOiB7Im1hcmtlciI6IlFBNDQwX0xPQ0FMIiwiYm9vdCI6ImZiMDU1NTAyLWY4Y2ItNDZhZC1iNzYxLTMxMTJlNGNlNTlmYSIsIm5vbmNlIjoibG9jYWw0NDAiLCJzZXEiOjMsDQpkYXRhOiAidGV4dCI6IkNyw6htZSBicsO7bMOpZSAmIOadjiIsImZpbGVzIjp7IkxJQ0VOU0UiOnsiYnl0ZXMiOjEwNzIsInNoYTI1NiI6IjIwYjA2NDkxMGIzMmJjZTFiYzA0NTk1YTViMjA0NzdhMjhjNTAzOTk1ZWY4NTI4OTI5YTMxMWQ2Y2I3YTNiMDkifSwiQ0hBTkdFTE9HIjp7ImJ5dGVzIjoxOCwic2hhMjU2IjoiOWM2NWUzNjYwNTVlZGQ5YTBmNmFiOWM3YjhhMzdmYzkyODAzY2ZlMWQzMGZmYTcyN2NlZWQwYzYzOTM5YzJlNSJ9fX0NCg0K",
+        "raw_bytes": 1185,
+        "raw_sha256": "30ae26892dfe5b36955b14939aef326e137dce6df52f4e35114c55e20a84e630",
+        "chunks": [
+          {
+            "at": 0.2187,
+            "bytes": 183
+          },
+          {
+            "at": 0.234,
+            "bytes": 220
+          },
+          {
+            "at": 0.9887,
+            "bytes": 171
+          },
+          {
+            "at": 1.0042,
+            "bytes": 220
+          },
+          {
+            "at": 1.758,
+            "bytes": 171
+          },
+          {
+            "at": 1.7734,
+            "bytes": 220
+          }
+        ],
+        "events": [
+          {
+            "retry": "500",
+            "id": "1",
+            "event": "tick",
+            "data": {
+              "marker": "QA440_LOCAL",
+              "boot": "fb055502-f8cb-46ad-b761-3112e4ce59fa",
+              "nonce": "local440",
+              "seq": 1,
+              "text": "Crème brûlée & 李",
+              "files": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              }
+            },
+            "arrived_at": 0.234
+          },
+          {
+            "id": "2",
+            "event": "tick",
+            "data": {
+              "marker": "QA440_LOCAL",
+              "boot": "fb055502-f8cb-46ad-b761-3112e4ce59fa",
+              "nonce": "local440",
+              "seq": 2,
+              "text": "Crème brûlée & 李",
+              "files": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              }
+            },
+            "arrived_at": 1.0042
+          },
+          {
+            "id": "3",
+            "event": "tick",
+            "data": {
+              "marker": "QA440_LOCAL",
+              "boot": "fb055502-f8cb-46ad-b761-3112e4ce59fa",
+              "nonce": "local440",
+              "seq": 3,
+              "text": "Crème brûlée & 李",
+              "files": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              }
+            },
+            "arrived_at": 1.7734
+          }
+        ],
+        "event_arrival_span": 1.5394,
+        "elapsed": 1.7765,
+        "pass_": true,
+        "pass": true
+      },
+      "result": {
+        "client_process_id": 46415,
+        "command": [
+          "curl",
+          "--disable",
+          "-sS",
+          "-N",
+          "--http1.1",
+          "--max-time",
+          "12",
+          "-H",
+          "Accept: text/event-stream",
+          "-H",
+          "Accept-Encoding: identity",
+          "-D",
+          "<owned-temp>/sweep440-local-headers-0",
+          "http://127.0.0.1:57331/events?run=local440&count=3"
+        ],
+        "protocol_requested": "http1.1",
+        "last_event_id": 0,
+        "nonce": "local440",
+        "progress": {
+          "raw_base64": "OiBoZWFydGJlYXQNCnJldHJ5OiA1MDANCmlkOiAxDQpldmVudDogdGljaw0KZGF0YTogeyJtYXJrZXIiOiJRQTQ0MF9MT0NBTCIsImJvb3QiOiJmYjA1NTUwMi1mOGNiLTQ2YWQtYjc2MS0zMTEyZTRjZTU5ZmEiLCJub25jZSI6ImxvY2FsNDQwIiwic2VxIjoxLA0KZGF0YTogInRleHQiOiJDcsOobWUgYnLDu2zDqWUgJiDmnY4iLCJmaWxlcyI6eyJMSUNFTlNFIjp7ImJ5dGVzIjoxMDcyLCJzaGEyNTYiOiIyMGIwNjQ5MTBiMzJiY2UxYmMwNDU5NWE1YjIwNDc3YTI4YzUwMzk5NWVmODUyODkyOWEzMTFkNmNiN2EzYjA5In0sIkNIQU5HRUxPRyI6eyJieXRlcyI6MTgsInNoYTI1NiI6IjljNjVlMzY2MDU1ZWRkOWEwZjZhYjljN2I4YTM3ZmM5MjgwM2NmZTFkMzBmZmE3MjdjZWVkMGM2MzkzOWMyZTUifX19DQoNCjogaGVhcnRiZWF0DQppZDogMg0KZXZlbnQ6IHRpY2sNCmRhdGE6IHsibWFya2VyIjoiUUE0NDBfTE9DQUwiLCJib290IjoiZmIwNTU1MDItZjhjYi00NmFkLWI3NjEtMzExMmU0Y2U1OWZhIiwibm9uY2UiOiJsb2NhbDQ0MCIsInNlcSI6MiwNCmRhdGE6ICJ0ZXh0IjoiQ3LDqG1lIGJyw7tsw6llICYg5p2OIiwiZmlsZXMiOnsiTElDRU5TRSI6eyJieXRlcyI6MTA3Miwic2hhMjU2IjoiMjBiMDY0OTEwYjMyYmNlMWJjMDQ1OTVhNWIyMDQ3N2EyOGM1MDM5OTVlZjg1Mjg5MjlhMzExZDZjYjdhM2IwOSJ9LCJDSEFOR0VMT0ciOnsiYnl0ZXMiOjE4LCJzaGEyNTYiOiI5YzY1ZTM2NjA1NWVkZDlhMGY2YWI5YzdiOGEzN2ZjOTI4MDNjZmUxZDMwZmZhNzI3Y2VlZDBjNjM5MzljMmU1In19fQ0KDQo6IGhlYXJ0YmVhdA0KaWQ6IDMNCmV2ZW50OiB0aWNrDQpkYXRhOiB7Im1hcmtlciI6IlFBNDQwX0xPQ0FMIiwiYm9vdCI6ImZiMDU1NTAyLWY4Y2ItNDZhZC1iNzYxLTMxMTJlNGNlNTlmYSIsIm5vbmNlIjoibG9jYWw0NDAiLCJzZXEiOjMsDQpkYXRhOiAidGV4dCI6IkNyw6htZSBicsO7bMOpZSAmIOadjiIsImZpbGVzIjp7IkxJQ0VOU0UiOnsiYnl0ZXMiOjEwNzIsInNoYTI1NiI6IjIwYjA2NDkxMGIzMmJjZTFiYzA0NTk1YTViMjA0NzdhMjhjNTAzOTk1ZWY4NTI4OTI5YTMxMWQ2Y2I3YTNiMDkifSwiQ0hBTkdFTE9HIjp7ImJ5dGVzIjoxOCwic2hhMjU2IjoiOWM2NWUzNjYwNTVlZGQ5YTBmNmFiOWM3YjhhMzdmYzkyODAzY2ZlMWQzMGZmYTcyN2NlZWQwYzYzOTM5YzJlNSJ9fX0NCg0K",
+          "bytes": 1185,
+          "chunks": [
+            {
+              "at": 0.2187,
+              "bytes": 183
+            },
+            {
+              "at": 0.234,
+              "bytes": 220
+            },
+            {
+              "at": 0.9887,
+              "bytes": 171
+            },
+            {
+              "at": 1.0042,
+              "bytes": 220
+            },
+            {
+              "at": 1.758,
+              "bytes": 171
+            },
+            {
+              "at": 1.7734,
+              "bytes": 220
+            }
+          ]
+        },
+        "native_curl_exit": 0,
+        "stderr": "",
+        "HTTP": "200",
+        "http_version": "1.1",
+        "headers": "HTTP/1.1 200 OK\nContent-Type: text/event-stream; charset=utf-8\nCache-Control: no-cache\nX-Accel-Buffering: no\nDate: Sat, 17 Oct 2026 14:24:48 GMT\nConnection: keep-alive\nKeep-Alive: timeout=5\nTransfer-Encoding: chunked\n\n",
+        "raw_base64": "OiBoZWFydGJlYXQNCnJldHJ5OiA1MDANCmlkOiAxDQpldmVudDogdGljaw0KZGF0YTogeyJtYXJrZXIiOiJRQTQ0MF9MT0NBTCIsImJvb3QiOiJmYjA1NTUwMi1mOGNiLTQ2YWQtYjc2MS0zMTEyZTRjZTU5ZmEiLCJub25jZSI6ImxvY2FsNDQwIiwic2VxIjoxLA0KZGF0YTogInRleHQiOiJDcsOobWUgYnLDu2zDqWUgJiDmnY4iLCJmaWxlcyI6eyJMSUNFTlNFIjp7ImJ5dGVzIjoxMDcyLCJzaGEyNTYiOiIyMGIwNjQ5MTBiMzJiY2UxYmMwNDU5NWE1YjIwNDc3YTI4YzUwMzk5NWVmODUyODkyOWEzMTFkNmNiN2EzYjA5In0sIkNIQU5HRUxPRyI6eyJieXRlcyI6MTgsInNoYTI1NiI6IjljNjVlMzY2MDU1ZWRkOWEwZjZhYjljN2I4YTM3ZmM5MjgwM2NmZTFkMzBmZmE3MjdjZWVkMGM2MzkzOWMyZTUifX19DQoNCjogaGVhcnRiZWF0DQppZDogMg0KZXZlbnQ6IHRpY2sNCmRhdGE6IHsibWFya2VyIjoiUUE0NDBfTE9DQUwiLCJib290IjoiZmIwNTU1MDItZjhjYi00NmFkLWI3NjEtMzExMmU0Y2U1OWZhIiwibm9uY2UiOiJsb2NhbDQ0MCIsInNlcSI6MiwNCmRhdGE6ICJ0ZXh0IjoiQ3LDqG1lIGJyw7tsw6llICYg5p2OIiwiZmlsZXMiOnsiTElDRU5TRSI6eyJieXRlcyI6MTA3Miwic2hhMjU2IjoiMjBiMDY0OTEwYjMyYmNlMWJjMDQ1OTVhNWIyMDQ3N2EyOGM1MDM5OTVlZjg1Mjg5MjlhMzExZDZjYjdhM2IwOSJ9LCJDSEFOR0VMT0ciOnsiYnl0ZXMiOjE4LCJzaGEyNTYiOiI5YzY1ZTM2NjA1NWVkZDlhMGY2YWI5YzdiOGEzN2ZjOTI4MDNjZmUxZDMwZmZhNzI3Y2VlZDBjNjM5MzljMmU1In19fQ0KDQo6IGhlYXJ0YmVhdA0KaWQ6IDMNCmV2ZW50OiB0aWNrDQpkYXRhOiB7Im1hcmtlciI6IlFBNDQwX0xPQ0FMIiwiYm9vdCI6ImZiMDU1NTAyLWY4Y2ItNDZhZC1iNzYxLTMxMTJlNGNlNTlmYSIsIm5vbmNlIjoibG9jYWw0NDAiLCJzZXEiOjMsDQpkYXRhOiAidGV4dCI6IkNyw6htZSBicsO7bMOpZSAmIOadjiIsImZpbGVzIjp7IkxJQ0VOU0UiOnsiYnl0ZXMiOjEwNzIsInNoYTI1NiI6IjIwYjA2NDkxMGIzMmJjZTFiYzA0NTk1YTViMjA0NzdhMjhjNTAzOTk1ZWY4NTI4OTI5YTMxMWQ2Y2I3YTNiMDkifSwiQ0hBTkdFTE9HIjp7ImJ5dGVzIjoxOCwic2hhMjU2IjoiOWM2NWUzNjYwNTVlZGQ5YTBmNmFiOWM3YjhhMzdmYzkyODAzY2ZlMWQzMGZmYTcyN2NlZWQwYzYzOTM5YzJlNSJ9fX0NCg0K",
+        "raw_bytes": 1185,
+        "raw_sha256": "30ae26892dfe5b36955b14939aef326e137dce6df52f4e35114c55e20a84e630",
+        "chunks": [
+          {
+            "at": 0.2187,
+            "bytes": 183
+          },
+          {
+            "at": 0.234,
+            "bytes": 220
+          },
+          {
+            "at": 0.9887,
+            "bytes": 171
+          },
+          {
+            "at": 1.0042,
+            "bytes": 220
+          },
+          {
+            "at": 1.758,
+            "bytes": 171
+          },
+          {
+            "at": 1.7734,
+            "bytes": 220
+          }
+        ],
+        "events": [
+          {
+            "retry": "500",
+            "id": "1",
+            "event": "tick",
+            "data": {
+              "marker": "QA440_LOCAL",
+              "boot": "fb055502-f8cb-46ad-b761-3112e4ce59fa",
+              "nonce": "local440",
+              "seq": 1,
+              "text": "Crème brûlée & 李",
+              "files": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              }
+            },
+            "arrived_at": 0.234
+          },
+          {
+            "id": "2",
+            "event": "tick",
+            "data": {
+              "marker": "QA440_LOCAL",
+              "boot": "fb055502-f8cb-46ad-b761-3112e4ce59fa",
+              "nonce": "local440",
+              "seq": 2,
+              "text": "Crème brûlée & 李",
+              "files": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              }
+            },
+            "arrived_at": 1.0042
+          },
+          {
+            "id": "3",
+            "event": "tick",
+            "data": {
+              "marker": "QA440_LOCAL",
+              "boot": "fb055502-f8cb-46ad-b761-3112e4ce59fa",
+              "nonce": "local440",
+              "seq": 3,
+              "text": "Crème brûlée & 李",
+              "files": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              }
+            },
+            "arrived_at": 1.7734
+          }
+        ],
+        "event_arrival_span": 1.5394,
+        "elapsed": 1.7765,
+        "pass_": true,
+        "pass": true
+      }
+    },
+    {
+      "last": 3,
+      "capture": {
+        "client_process_id": 46416,
+        "command": [
+          "curl",
+          "--disable",
+          "-sS",
+          "-N",
+          "--http1.1",
+          "--max-time",
+          "12",
+          "-H",
+          "Accept: text/event-stream",
+          "-H",
+          "Accept-Encoding: identity",
+          "-D",
+          "<owned-temp>/sweep440-local-headers-3",
+          "-H",
+          "Last-Event-ID: 3",
+          "http://127.0.0.1:57331/events?run=local440&count=3"
+        ],
+        "protocol_requested": "http1.1",
+        "last_event_id": 3,
+        "nonce": "local440",
+        "progress": {
+          "raw_base64": "OiBoZWFydGJlYXQNCnJldHJ5OiA1MDANCmlkOiA0DQpldmVudDogdGljaw0KZGF0YTogeyJtYXJrZXIiOiJRQTQ0MF9MT0NBTCIsImJvb3QiOiJmYjA1NTUwMi1mOGNiLTQ2YWQtYjc2MS0zMTEyZTRjZTU5ZmEiLCJub25jZSI6ImxvY2FsNDQwIiwic2VxIjo0LA0KZGF0YTogInRleHQiOiJDcsOobWUgYnLDu2zDqWUgJiDmnY4iLCJmaWxlcyI6eyJMSUNFTlNFIjp7ImJ5dGVzIjoxMDcyLCJzaGEyNTYiOiIyMGIwNjQ5MTBiMzJiY2UxYmMwNDU5NWE1YjIwNDc3YTI4YzUwMzk5NWVmODUyODkyOWEzMTFkNmNiN2EzYjA5In0sIkNIQU5HRUxPRyI6eyJieXRlcyI6MTgsInNoYTI1NiI6IjljNjVlMzY2MDU1ZWRkOWEwZjZhYjljN2I4YTM3ZmM5MjgwM2NmZTFkMzBmZmE3MjdjZWVkMGM2MzkzOWMyZTUifX19DQoNCjogaGVhcnRiZWF0DQppZDogNQ0KZXZlbnQ6IHRpY2sNCmRhdGE6IHsibWFya2VyIjoiUUE0NDBfTE9DQUwiLCJib290IjoiZmIwNTU1MDItZjhjYi00NmFkLWI3NjEtMzExMmU0Y2U1OWZhIiwibm9uY2UiOiJsb2NhbDQ0MCIsInNlcSI6NSwNCmRhdGE6ICJ0ZXh0IjoiQ3LDqG1lIGJyw7tsw6llICYg5p2OIiwiZmlsZXMiOnsiTElDRU5TRSI6eyJieXRlcyI6MTA3Miwic2hhMjU2IjoiMjBiMDY0OTEwYjMyYmNlMWJjMDQ1OTVhNWIyMDQ3N2EyOGM1MDM5OTVlZjg1Mjg5MjlhMzExZDZjYjdhM2IwOSJ9LCJDSEFOR0VMT0ciOnsiYnl0ZXMiOjE4LCJzaGEyNTYiOiI5YzY1ZTM2NjA1NWVkZDlhMGY2YWI5YzdiOGEzN2ZjOTI4MDNjZmUxZDMwZmZhNzI3Y2VlZDBjNjM5MzljMmU1In19fQ0KDQo6IGhlYXJ0YmVhdA0KaWQ6IDYNCmV2ZW50OiB0aWNrDQpkYXRhOiB7Im1hcmtlciI6IlFBNDQwX0xPQ0FMIiwiYm9vdCI6ImZiMDU1NTAyLWY4Y2ItNDZhZC1iNzYxLTMxMTJlNGNlNTlmYSIsIm5vbmNlIjoibG9jYWw0NDAiLCJzZXEiOjYsDQpkYXRhOiAidGV4dCI6IkNyw6htZSBicsO7bMOpZSAmIOadjiIsImZpbGVzIjp7IkxJQ0VOU0UiOnsiYnl0ZXMiOjEwNzIsInNoYTI1NiI6IjIwYjA2NDkxMGIzMmJjZTFiYzA0NTk1YTViMjA0NzdhMjhjNTAzOTk1ZWY4NTI4OTI5YTMxMWQ2Y2I3YTNiMDkifSwiQ0hBTkdFTE9HIjp7ImJ5dGVzIjoxOCwic2hhMjU2IjoiOWM2NWUzNjYwNTVlZGQ5YTBmNmFiOWM3YjhhMzdmYzkyODAzY2ZlMWQzMGZmYTcyN2NlZWQwYzYzOTM5YzJlNSJ9fX0NCg0K",
+          "bytes": 1185,
+          "chunks": [
+            {
+              "at": 0.2249,
+              "bytes": 183
+            },
+            {
+              "at": 0.2405,
+              "bytes": 220
+            },
+            {
+              "at": 0.9936,
+              "bytes": 171
+            },
+            {
+              "at": 1.0093,
+              "bytes": 220
+            },
+            {
+              "at": 1.7642,
+              "bytes": 171
+            },
+            {
+              "at": 1.78,
+              "bytes": 220
+            }
+          ]
+        },
+        "native_curl_exit": 0,
+        "stderr": "",
+        "HTTP": "200",
+        "http_version": "1.1",
+        "headers": "HTTP/1.1 200 OK\nContent-Type: text/event-stream; charset=utf-8\nCache-Control: no-cache\nX-Accel-Buffering: no\nDate: Sat, 17 Oct 2026 14:24:49 GMT\nConnection: keep-alive\nKeep-Alive: timeout=5\nTransfer-Encoding: chunked\n\n",
+        "raw_base64": "OiBoZWFydGJlYXQNCnJldHJ5OiA1MDANCmlkOiA0DQpldmVudDogdGljaw0KZGF0YTogeyJtYXJrZXIiOiJRQTQ0MF9MT0NBTCIsImJvb3QiOiJmYjA1NTUwMi1mOGNiLTQ2YWQtYjc2MS0zMTEyZTRjZTU5ZmEiLCJub25jZSI6ImxvY2FsNDQwIiwic2VxIjo0LA0KZGF0YTogInRleHQiOiJDcsOobWUgYnLDu2zDqWUgJiDmnY4iLCJmaWxlcyI6eyJMSUNFTlNFIjp7ImJ5dGVzIjoxMDcyLCJzaGEyNTYiOiIyMGIwNjQ5MTBiMzJiY2UxYmMwNDU5NWE1YjIwNDc3YTI4YzUwMzk5NWVmODUyODkyOWEzMTFkNmNiN2EzYjA5In0sIkNIQU5HRUxPRyI6eyJieXRlcyI6MTgsInNoYTI1NiI6IjljNjVlMzY2MDU1ZWRkOWEwZjZhYjljN2I4YTM3ZmM5MjgwM2NmZTFkMzBmZmE3MjdjZWVkMGM2MzkzOWMyZTUifX19DQoNCjogaGVhcnRiZWF0DQppZDogNQ0KZXZlbnQ6IHRpY2sNCmRhdGE6IHsibWFya2VyIjoiUUE0NDBfTE9DQUwiLCJib290IjoiZmIwNTU1MDItZjhjYi00NmFkLWI3NjEtMzExMmU0Y2U1OWZhIiwibm9uY2UiOiJsb2NhbDQ0MCIsInNlcSI6NSwNCmRhdGE6ICJ0ZXh0IjoiQ3LDqG1lIGJyw7tsw6llICYg5p2OIiwiZmlsZXMiOnsiTElDRU5TRSI6eyJieXRlcyI6MTA3Miwic2hhMjU2IjoiMjBiMDY0OTEwYjMyYmNlMWJjMDQ1OTVhNWIyMDQ3N2EyOGM1MDM5OTVlZjg1Mjg5MjlhMzExZDZjYjdhM2IwOSJ9LCJDSEFOR0VMT0ciOnsiYnl0ZXMiOjE4LCJzaGEyNTYiOiI5YzY1ZTM2NjA1NWVkZDlhMGY2YWI5YzdiOGEzN2ZjOTI4MDNjZmUxZDMwZmZhNzI3Y2VlZDBjNjM5MzljMmU1In19fQ0KDQo6IGhlYXJ0YmVhdA0KaWQ6IDYNCmV2ZW50OiB0aWNrDQpkYXRhOiB7Im1hcmtlciI6IlFBNDQwX0xPQ0FMIiwiYm9vdCI6ImZiMDU1NTAyLWY4Y2ItNDZhZC1iNzYxLTMxMTJlNGNlNTlmYSIsIm5vbmNlIjoibG9jYWw0NDAiLCJzZXEiOjYsDQpkYXRhOiAidGV4dCI6IkNyw6htZSBicsO7bMOpZSAmIOadjiIsImZpbGVzIjp7IkxJQ0VOU0UiOnsiYnl0ZXMiOjEwNzIsInNoYTI1NiI6IjIwYjA2NDkxMGIzMmJjZTFiYzA0NTk1YTViMjA0NzdhMjhjNTAzOTk1ZWY4NTI4OTI5YTMxMWQ2Y2I3YTNiMDkifSwiQ0hBTkdFTE9HIjp7ImJ5dGVzIjoxOCwic2hhMjU2IjoiOWM2NWUzNjYwNTVlZGQ5YTBmNmFiOWM3YjhhMzdmYzkyODAzY2ZlMWQzMGZmYTcyN2NlZWQwYzYzOTM5YzJlNSJ9fX0NCg0K",
+        "raw_bytes": 1185,
+        "raw_sha256": "00f0f046e6562a0adcec8e65add28f7cf4bd70045b3514080d19e51445c75bbe",
+        "chunks": [
+          {
+            "at": 0.2249,
+            "bytes": 183
+          },
+          {
+            "at": 0.2405,
+            "bytes": 220
+          },
+          {
+            "at": 0.9936,
+            "bytes": 171
+          },
+          {
+            "at": 1.0093,
+            "bytes": 220
+          },
+          {
+            "at": 1.7642,
+            "bytes": 171
+          },
+          {
+            "at": 1.78,
+            "bytes": 220
+          }
+        ],
+        "events": [
+          {
+            "retry": "500",
+            "id": "4",
+            "event": "tick",
+            "data": {
+              "marker": "QA440_LOCAL",
+              "boot": "fb055502-f8cb-46ad-b761-3112e4ce59fa",
+              "nonce": "local440",
+              "seq": 4,
+              "text": "Crème brûlée & 李",
+              "files": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              }
+            },
+            "arrived_at": 0.2405
+          },
+          {
+            "id": "5",
+            "event": "tick",
+            "data": {
+              "marker": "QA440_LOCAL",
+              "boot": "fb055502-f8cb-46ad-b761-3112e4ce59fa",
+              "nonce": "local440",
+              "seq": 5,
+              "text": "Crème brûlée & 李",
+              "files": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              }
+            },
+            "arrived_at": 1.0093
+          },
+          {
+            "id": "6",
+            "event": "tick",
+            "data": {
+              "marker": "QA440_LOCAL",
+              "boot": "fb055502-f8cb-46ad-b761-3112e4ce59fa",
+              "nonce": "local440",
+              "seq": 6,
+              "text": "Crème brûlée & 李",
+              "files": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              }
+            },
+            "arrived_at": 1.78
+          }
+        ],
+        "event_arrival_span": 1.5395,
+        "elapsed": 1.7822,
+        "pass_": true,
+        "pass": true
+      },
+      "result": {
+        "client_process_id": 46416,
+        "command": [
+          "curl",
+          "--disable",
+          "-sS",
+          "-N",
+          "--http1.1",
+          "--max-time",
+          "12",
+          "-H",
+          "Accept: text/event-stream",
+          "-H",
+          "Accept-Encoding: identity",
+          "-D",
+          "<owned-temp>/sweep440-local-headers-3",
+          "-H",
+          "Last-Event-ID: 3",
+          "http://127.0.0.1:57331/events?run=local440&count=3"
+        ],
+        "protocol_requested": "http1.1",
+        "last_event_id": 3,
+        "nonce": "local440",
+        "progress": {
+          "raw_base64": "OiBoZWFydGJlYXQNCnJldHJ5OiA1MDANCmlkOiA0DQpldmVudDogdGljaw0KZGF0YTogeyJtYXJrZXIiOiJRQTQ0MF9MT0NBTCIsImJvb3QiOiJmYjA1NTUwMi1mOGNiLTQ2YWQtYjc2MS0zMTEyZTRjZTU5ZmEiLCJub25jZSI6ImxvY2FsNDQwIiwic2VxIjo0LA0KZGF0YTogInRleHQiOiJDcsOobWUgYnLDu2zDqWUgJiDmnY4iLCJmaWxlcyI6eyJMSUNFTlNFIjp7ImJ5dGVzIjoxMDcyLCJzaGEyNTYiOiIyMGIwNjQ5MTBiMzJiY2UxYmMwNDU5NWE1YjIwNDc3YTI4YzUwMzk5NWVmODUyODkyOWEzMTFkNmNiN2EzYjA5In0sIkNIQU5HRUxPRyI6eyJieXRlcyI6MTgsInNoYTI1NiI6IjljNjVlMzY2MDU1ZWRkOWEwZjZhYjljN2I4YTM3ZmM5MjgwM2NmZTFkMzBmZmE3MjdjZWVkMGM2MzkzOWMyZTUifX19DQoNCjogaGVhcnRiZWF0DQppZDogNQ0KZXZlbnQ6IHRpY2sNCmRhdGE6IHsibWFya2VyIjoiUUE0NDBfTE9DQUwiLCJib290IjoiZmIwNTU1MDItZjhjYi00NmFkLWI3NjEtMzExMmU0Y2U1OWZhIiwibm9uY2UiOiJsb2NhbDQ0MCIsInNlcSI6NSwNCmRhdGE6ICJ0ZXh0IjoiQ3LDqG1lIGJyw7tsw6llICYg5p2OIiwiZmlsZXMiOnsiTElDRU5TRSI6eyJieXRlcyI6MTA3Miwic2hhMjU2IjoiMjBiMDY0OTEwYjMyYmNlMWJjMDQ1OTVhNWIyMDQ3N2EyOGM1MDM5OTVlZjg1Mjg5MjlhMzExZDZjYjdhM2IwOSJ9LCJDSEFOR0VMT0ciOnsiYnl0ZXMiOjE4LCJzaGEyNTYiOiI5YzY1ZTM2NjA1NWVkZDlhMGY2YWI5YzdiOGEzN2ZjOTI4MDNjZmUxZDMwZmZhNzI3Y2VlZDBjNjM5MzljMmU1In19fQ0KDQo6IGhlYXJ0YmVhdA0KaWQ6IDYNCmV2ZW50OiB0aWNrDQpkYXRhOiB7Im1hcmtlciI6IlFBNDQwX0xPQ0FMIiwiYm9vdCI6ImZiMDU1NTAyLWY4Y2ItNDZhZC1iNzYxLTMxMTJlNGNlNTlmYSIsIm5vbmNlIjoibG9jYWw0NDAiLCJzZXEiOjYsDQpkYXRhOiAidGV4dCI6IkNyw6htZSBicsO7bMOpZSAmIOadjiIsImZpbGVzIjp7IkxJQ0VOU0UiOnsiYnl0ZXMiOjEwNzIsInNoYTI1NiI6IjIwYjA2NDkxMGIzMmJjZTFiYzA0NTk1YTViMjA0NzdhMjhjNTAzOTk1ZWY4NTI4OTI5YTMxMWQ2Y2I3YTNiMDkifSwiQ0hBTkdFTE9HIjp7ImJ5dGVzIjoxOCwic2hhMjU2IjoiOWM2NWUzNjYwNTVlZGQ5YTBmNmFiOWM3YjhhMzdmYzkyODAzY2ZlMWQzMGZmYTcyN2NlZWQwYzYzOTM5YzJlNSJ9fX0NCg0K",
+          "bytes": 1185,
+          "chunks": [
+            {
+              "at": 0.2249,
+              "bytes": 183
+            },
+            {
+              "at": 0.2405,
+              "bytes": 220
+            },
+            {
+              "at": 0.9936,
+              "bytes": 171
+            },
+            {
+              "at": 1.0093,
+              "bytes": 220
+            },
+            {
+              "at": 1.7642,
+              "bytes": 171
+            },
+            {
+              "at": 1.78,
+              "bytes": 220
+            }
+          ]
+        },
+        "native_curl_exit": 0,
+        "stderr": "",
+        "HTTP": "200",
+        "http_version": "1.1",
+        "headers": "HTTP/1.1 200 OK\nContent-Type: text/event-stream; charset=utf-8\nCache-Control: no-cache\nX-Accel-Buffering: no\nDate: Sat, 17 Oct 2026 14:24:49 GMT\nConnection: keep-alive\nKeep-Alive: timeout=5\nTransfer-Encoding: chunked\n\n",
+        "raw_base64": "OiBoZWFydGJlYXQNCnJldHJ5OiA1MDANCmlkOiA0DQpldmVudDogdGljaw0KZGF0YTogeyJtYXJrZXIiOiJRQTQ0MF9MT0NBTCIsImJvb3QiOiJmYjA1NTUwMi1mOGNiLTQ2YWQtYjc2MS0zMTEyZTRjZTU5ZmEiLCJub25jZSI6ImxvY2FsNDQwIiwic2VxIjo0LA0KZGF0YTogInRleHQiOiJDcsOobWUgYnLDu2zDqWUgJiDmnY4iLCJmaWxlcyI6eyJMSUNFTlNFIjp7ImJ5dGVzIjoxMDcyLCJzaGEyNTYiOiIyMGIwNjQ5MTBiMzJiY2UxYmMwNDU5NWE1YjIwNDc3YTI4YzUwMzk5NWVmODUyODkyOWEzMTFkNmNiN2EzYjA5In0sIkNIQU5HRUxPRyI6eyJieXRlcyI6MTgsInNoYTI1NiI6IjljNjVlMzY2MDU1ZWRkOWEwZjZhYjljN2I4YTM3ZmM5MjgwM2NmZTFkMzBmZmE3MjdjZWVkMGM2MzkzOWMyZTUifX19DQoNCjogaGVhcnRiZWF0DQppZDogNQ0KZXZlbnQ6IHRpY2sNCmRhdGE6IHsibWFya2VyIjoiUUE0NDBfTE9DQUwiLCJib290IjoiZmIwNTU1MDItZjhjYi00NmFkLWI3NjEtMzExMmU0Y2U1OWZhIiwibm9uY2UiOiJsb2NhbDQ0MCIsInNlcSI6NSwNCmRhdGE6ICJ0ZXh0IjoiQ3LDqG1lIGJyw7tsw6llICYg5p2OIiwiZmlsZXMiOnsiTElDRU5TRSI6eyJieXRlcyI6MTA3Miwic2hhMjU2IjoiMjBiMDY0OTEwYjMyYmNlMWJjMDQ1OTVhNWIyMDQ3N2EyOGM1MDM5OTVlZjg1Mjg5MjlhMzExZDZjYjdhM2IwOSJ9LCJDSEFOR0VMT0ciOnsiYnl0ZXMiOjE4LCJzaGEyNTYiOiI5YzY1ZTM2NjA1NWVkZDlhMGY2YWI5YzdiOGEzN2ZjOTI4MDNjZmUxZDMwZmZhNzI3Y2VlZDBjNjM5MzljMmU1In19fQ0KDQo6IGhlYXJ0YmVhdA0KaWQ6IDYNCmV2ZW50OiB0aWNrDQpkYXRhOiB7Im1hcmtlciI6IlFBNDQwX0xPQ0FMIiwiYm9vdCI6ImZiMDU1NTAyLWY4Y2ItNDZhZC1iNzYxLTMxMTJlNGNlNTlmYSIsIm5vbmNlIjoibG9jYWw0NDAiLCJzZXEiOjYsDQpkYXRhOiAidGV4dCI6IkNyw6htZSBicsO7bMOpZSAmIOadjiIsImZpbGVzIjp7IkxJQ0VOU0UiOnsiYnl0ZXMiOjEwNzIsInNoYTI1NiI6IjIwYjA2NDkxMGIzMmJjZTFiYzA0NTk1YTViMjA0NzdhMjhjNTAzOTk1ZWY4NTI4OTI5YTMxMWQ2Y2I3YTNiMDkifSwiQ0hBTkdFTE9HIjp7ImJ5dGVzIjoxOCwic2hhMjU2IjoiOWM2NWUzNjYwNTVlZGQ5YTBmNmFiOWM3YjhhMzdmYzkyODAzY2ZlMWQzMGZmYTcyN2NlZWQwYzYzOTM5YzJlNSJ9fX0NCg0K",
+        "raw_bytes": 1185,
+        "raw_sha256": "00f0f046e6562a0adcec8e65add28f7cf4bd70045b3514080d19e51445c75bbe",
+        "chunks": [
+          {
+            "at": 0.2249,
+            "bytes": 183
+          },
+          {
+            "at": 0.2405,
+            "bytes": 220
+          },
+          {
+            "at": 0.9936,
+            "bytes": 171
+          },
+          {
+            "at": 1.0093,
+            "bytes": 220
+          },
+          {
+            "at": 1.7642,
+            "bytes": 171
+          },
+          {
+            "at": 1.78,
+            "bytes": 220
+          }
+        ],
+        "events": [
+          {
+            "retry": "500",
+            "id": "4",
+            "event": "tick",
+            "data": {
+              "marker": "QA440_LOCAL",
+              "boot": "fb055502-f8cb-46ad-b761-3112e4ce59fa",
+              "nonce": "local440",
+              "seq": 4,
+              "text": "Crème brûlée & 李",
+              "files": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              }
+            },
+            "arrived_at": 0.2405
+          },
+          {
+            "id": "5",
+            "event": "tick",
+            "data": {
+              "marker": "QA440_LOCAL",
+              "boot": "fb055502-f8cb-46ad-b761-3112e4ce59fa",
+              "nonce": "local440",
+              "seq": 5,
+              "text": "Crème brûlée & 李",
+              "files": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              }
+            },
+            "arrived_at": 1.0093
+          },
+          {
+            "id": "6",
+            "event": "tick",
+            "data": {
+              "marker": "QA440_LOCAL",
+              "boot": "fb055502-f8cb-46ad-b761-3112e4ce59fa",
+              "nonce": "local440",
+              "seq": 6,
+              "text": "Crème brûlée & 李",
+              "files": {
+                "LICENSE": {
+                  "bytes": 1072,
+                  "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+                },
+                "CHANGELOG": {
+                  "bytes": 18,
+                  "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+                }
+              }
+            },
+            "arrived_at": 1.78
+          }
+        ],
+        "event_arrival_span": 1.5395,
+        "elapsed": 1.7822,
+        "pass_": true,
+        "pass": true
+      }
+    }
+  ],
+  "image": "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+  "pass": true,
+  "own_container_absent": true,
+  "own_context_removed": true
+}

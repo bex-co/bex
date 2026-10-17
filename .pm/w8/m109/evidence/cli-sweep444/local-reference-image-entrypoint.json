@@ -1,0 +1,10 @@
+{
+  "image": "pgduckdb/pgduckdb@sha256:44c88eb9207971af1d7f9804a37429b1bb36f413cd8d7118c81e1288ddde85d1",
+  "architecture": "arm64",
+  "entrypoint": [
+    "docker-entrypoint.sh"
+  ],
+  "command": [
+    "postgres"
+  ]
+}

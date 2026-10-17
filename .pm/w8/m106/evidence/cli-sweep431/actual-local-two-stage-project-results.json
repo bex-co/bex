@@ -1,0 +1,114 @@
+{
+  "image": "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+  "kind": "real public Hugo project on pinned Node base; not full generated Bex image",
+  "cases": [
+    {
+      "phase": "initial",
+      "container_name": "qa431-hugo-initial-710c9d",
+      "bound_seconds": 900,
+      "build": "set -e\ncat > qa431-reference.json <<'QA431_SOURCE'\n{\"at\": \"2026-10-17T12:11:04.873124+00:00\", \"repo\": \"https://github.com/render-examples/hugo-quick-start\", \"branch\": \"main\", \"commit\": \"48eaf95c3fd4a8c438df1c14dd9e2ff983a77b7c\", \"gitlinks\": [{\"path\": \"themes/ananke\", \"mode\": \"160000\", \"type\": \"commit\", \"sha\": \"a1a99cf12681ad95b006e648a28139e6b9b75f09\"}], \"files\": {\"config.toml\": {\"bytes\": 110, \"sha256\": \"92d852df5dfb777c852112815136bc2f76807edfb4478c3c74faf2c01e68587a\"}, \".gitmodules\": {\"bytes\": 108, \"sha256\": \"09b01e96c3a8f9041710dc09d325ecd59d12d93dc4c0004f9d42bd9e5cf78b64\"}, \"content/posts/my-first-post.md\": {\"bytes\": 84, \"sha256\": \"9daad584bd1ef94d7f8dd5cb10fd960c5d3e9f7cdfb5586bd8d8843337e307b6\"}, \"themes/ananke/theme.toml\": {\"bytes\": 652, \"sha256\": \"b88a6a6152e080e8092c36e52dfda0cb4bb63faaa78dd8999cc33a3c78d3e0f9\"}, \"themes/ananke/layouts/index.html\": {\"bytes\": 2461, \"sha256\": \"3a23493988682d44541cbdff9b8474de4f097e9f035ab708e49d8567b9f5ad5b\"}}}\nQA431_SOURCE\ncat > qa431-marker.json <<'QA431_SOURCE'\n\"QA431_LOCAL\"\nQA431_SOURCE\ncat > qa431-proof.cjs <<'QA431_SOURCE'\nconst fs=require('fs'),crypto=require('crypto'),cp=require('child_process'),path=require('path');\nconst reference=JSON.parse(fs.readFileSync('qa431-reference.json')),marker=JSON.parse(fs.readFileSync('qa431-marker.json'));\nconst hash=b=>({bytes:b.length,sha256:crypto.createHash('sha256').update(b).digest('hex')});\nconst files=Object.fromEntries(Object.keys(reference.files).map(n=>[n,hash(fs.readFileSync(n))]));if(JSON.stringify(files)!==JSON.stringify(reference.files))throw Error('original parent/theme bytes changed');\nconst index=fs.readFileSync('public/index.html');if(!index.includes(Buffer.from('Deploy Hugo on Render'))||!index.includes(Buffer.from('Hugo')))throw Error('actual Hugo index absent');\nfunction walk(d){return fs.readdirSync(d,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(path.join(d,e.name)):[path.join(d,e.name)])}\nconst css=walk('public').filter(n=>n.endsWith('.css')).sort().map(n=>({path:'/'+path.relative('public',n),...hash(fs.readFileSync(n))}));if(!css.length)throw Error('actual theme stylesheet absent');\nconst v={marker,files,node:process.version,hugo:cp.execFileSync('hugo',['version'],{encoding:'utf8'}).trim(),index:hash(index),css};fs.writeFileSync('public/qa431-evidence.json',JSON.stringify(v));console.log('QA431_AFTER '+JSON.stringify(v));\n\nQA431_SOURCE\nhugo --gc --minify\nnode qa431-proof.cjs",
+      "intent_at": 1792239277.8273962,
+      "command": [
+        "docker",
+        "run",
+        "--pull",
+        "never",
+        "--name",
+        "qa431-hugo-initial-710c9d",
+        "--network",
+        "bridge",
+        "--mount",
+        "type=bind,src=<owned-temp>/sweep431-local-case-initial,dst=/app",
+        "--workdir",
+        "/app",
+        "--entrypoint",
+        "/bin/bash",
+        "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+        "qa431-local-build.sh"
+      ],
+      "exit": 127,
+      "stdout": "",
+      "stderr": "qa431-local-build.sh: line 19: hugo: command not found\n",
+      "harness_timeout": false,
+      "elapsed": 0.22,
+      "pass": true,
+      "container_removal_exit": 0,
+      "own_container_removed": true,
+      "own_case_context_removed": true
+    },
+    {
+      "phase": "control",
+      "container_name": "qa431-hugo-control-aadaa5",
+      "bound_seconds": 900,
+      "build": "set -e\napt-get update -qq && apt-get install -y --no-install-recommends hugo\ncat > qa431-reference.json <<'QA431_SOURCE'\n{\"at\": \"2026-10-17T12:11:04.873124+00:00\", \"repo\": \"https://github.com/render-examples/hugo-quick-start\", \"branch\": \"main\", \"commit\": \"48eaf95c3fd4a8c438df1c14dd9e2ff983a77b7c\", \"gitlinks\": [{\"path\": \"themes/ananke\", \"mode\": \"160000\", \"type\": \"commit\", \"sha\": \"a1a99cf12681ad95b006e648a28139e6b9b75f09\"}], \"files\": {\"config.toml\": {\"bytes\": 110, \"sha256\": \"92d852df5dfb777c852112815136bc2f76807edfb4478c3c74faf2c01e68587a\"}, \".gitmodules\": {\"bytes\": 108, \"sha256\": \"09b01e96c3a8f9041710dc09d325ecd59d12d93dc4c0004f9d42bd9e5cf78b64\"}, \"content/posts/my-first-post.md\": {\"bytes\": 84, \"sha256\": \"9daad584bd1ef94d7f8dd5cb10fd960c5d3e9f7cdfb5586bd8d8843337e307b6\"}, \"themes/ananke/theme.toml\": {\"bytes\": 652, \"sha256\": \"b88a6a6152e080e8092c36e52dfda0cb4bb63faaa78dd8999cc33a3c78d3e0f9\"}, \"themes/ananke/layouts/index.html\": {\"bytes\": 2461, \"sha256\": \"3a23493988682d44541cbdff9b8474de4f097e9f035ab708e49d8567b9f5ad5b\"}}}\nQA431_SOURCE\ncat > qa431-marker.json <<'QA431_SOURCE'\n\"QA431_LOCAL\"\nQA431_SOURCE\ncat > qa431-proof.cjs <<'QA431_SOURCE'\nconst fs=require('fs'),crypto=require('crypto'),cp=require('child_process'),path=require('path');\nconst reference=JSON.parse(fs.readFileSync('qa431-reference.json')),marker=JSON.parse(fs.readFileSync('qa431-marker.json'));\nconst hash=b=>({bytes:b.length,sha256:crypto.createHash('sha256').update(b).digest('hex')});\nconst files=Object.fromEntries(Object.keys(reference.files).map(n=>[n,hash(fs.readFileSync(n))]));if(JSON.stringify(files)!==JSON.stringify(reference.files))throw Error('original parent/theme bytes changed');\nconst index=fs.readFileSync('public/index.html');if(!index.includes(Buffer.from('Deploy Hugo on Render'))||!index.includes(Buffer.from('Hugo')))throw Error('actual Hugo index absent');\nfunction walk(d){return fs.readdirSync(d,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(path.join(d,e.name)):[path.join(d,e.name)])}\nconst css=walk('public').filter(n=>n.endsWith('.css')).sort().map(n=>({path:'/'+path.relative('public',n),...hash(fs.readFileSync(n))}));if(!css.length)throw Error('actual theme stylesheet absent');\nconst v={marker,files,node:process.version,hugo:cp.execFileSync('hugo',['version'],{encoding:'utf8'}).trim(),index:hash(index),css};fs.writeFileSync('public/qa431-evidence.json',JSON.stringify(v));console.log('QA431_AFTER '+JSON.stringify(v));\n\nQA431_SOURCE\nhugo --gc --minify\nnode qa431-proof.cjs",
+      "intent_at": 1792239278.202921,
+      "command": [
+        "docker",
+        "run",
+        "--pull",
+        "never",
+        "--name",
+        "qa431-hugo-control-aadaa5",
+        "--network",
+        "bridge",
+        "--mount",
+        "type=bind,src=<owned-temp>/sweep431-local-case-control,dst=/app",
+        "--workdir",
+        "/app",
+        "--entrypoint",
+        "/bin/bash",
+        "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+        "qa431-local-build.sh"
+      ],
+      "exit": 0,
+      "stdout": "Reading package lists...\nBuilding dependency tree...\nReading state information...\nThe following additional packages will be installed:\n  libsass1\nSuggested packages:\n  asciidoctor npm pandoc python3-docutils\nRecommended packages:\n  golang-any\nThe following NEW packages will be installed:\n  hugo libsass1\n0 upgraded, 2 newly installed, 0 to remove and 8 not upgraded.\nNeed to get 10.9 MB of archives.\nAfter this operation, 54.8 MB of additional disk space will be used.\nGet:1 http://deb.debian.org/debian bookworm/main arm64 libsass1 arm64 3.6.5+20220909-1 [625 kB]\nGet:2 http://deb.debian.org/debian bookworm/main arm64 hugo arm64 0.111.3-1 [10.3 MB]\nFetched 10.9 MB in 2s (5706 kB/s)\nSelecting previously unselected package libsass1:arm64.\n(Reading database ... \n(Reading database ... 5%\n(Reading database ... 10%\n(Reading database ... 15%\n(Reading database ... 20%\n(Reading database ... 25%\n(Reading database ... 30%\n(Reading database ... 35%\n(Reading database ... 40%\n(Reading database ... 45%\n(Reading database ... 50%\n(Reading database ... 55%\n(Reading database ... 60%\n(Reading database ... 65%\n(Reading database ... 70%\n(Reading database ... 75%\n(Reading database ... 80%\n(Reading database ... 85%\n(Reading database ... 90%\n(Reading database ... 95%\n(Reading database ... 100%\n(Reading database ... 23286 files and directories currently installed.)\nPreparing to unpack .../libsass1_3.6.5+20220909-1_arm64.deb ...\nUnpacking libsass1:arm64 (3.6.5+20220909-1) ...\nSelecting previously unselected package hugo.\nPreparing to unpack .../hugo_0.111.3-1_arm64.deb ...\nUnpacking hugo (0.111.3-1) ...\nSetting up libsass1:arm64 (3.6.5+20220909-1) ...\nSetting up hugo (0.111.3-1) ...\nProcessing triggers for libc-bin (2.36-9+deb12u14) ...\nStart building sites … \nhugo v0.111.3+extended linux/arm64 BuildDate=2023-03-16T08:41:31Z VendorInfo=debian:0.111.3-1\n\n                   | EN  \n-------------------+-----\n  Pages            | 10  \n  Paginator pages  |  0  \n  Non-page files   |  0  \n  Static files     |  1  \n  Processed images |  0  \n  Aliases          |  1  \n  Sitemaps         |  1  \n  Cleaned          |  0  \n\nTotal in 76 ms\nQA431_AFTER {\"marker\":\"QA431_LOCAL\",\"files\":{\"config.toml\":{\"bytes\":110,\"sha256\":\"92d852df5dfb777c852112815136bc2f76807edfb4478c3c74faf2c01e68587a\"},\".gitmodules\":{\"bytes\":108,\"sha256\":\"09b01e96c3a8f9041710dc09d325ecd59d12d93dc4c0004f9d42bd9e5cf78b64\"},\"content/posts/my-first-post.md\":{\"bytes\":84,\"sha256\":\"9daad584bd1ef94d7f8dd5cb10fd960c5d3e9f7cdfb5586bd8d8843337e307b6\"},\"themes/ananke/theme.toml\":{\"bytes\":652,\"sha256\":\"b88a6a6152e080e8092c36e52dfda0cb4bb63faaa78dd8999cc33a3c78d3e0f9\"},\"themes/ananke/layouts/index.html\":{\"bytes\":2461,\"sha256\":\"3a23493988682d44541cbdff9b8474de4f097e9f035ab708e49d8567b9f5ad5b\"}},\"node\":\"v24.22.0\",\"hugo\":\"hugo v0.111.3+extended linux/arm64 BuildDate=2023-03-16T08:41:31Z VendorInfo=debian:0.111.3-1\",\"index\":{\"bytes\":2626,\"sha256\":\"5737d0a811f679277ca35d96f58a5338cec2e7649c86e173d37adfdb83a35968\"},\"css\":[{\"path\":\"/ananke/css/main.min.css\",\"bytes\":75301,\"sha256\":\"2438bcafd7af9675c426d1a4afcd16cfff18e4e10f401071e45b5ccd3be40a0d\"}]}\n",
+      "stderr": "debconf: delaying package configuration, since apt-utils is not installed\n",
+      "harness_timeout": false,
+      "elapsed": 7.601,
+      "actual_site_proof": {
+        "marker": "QA431_LOCAL",
+        "files": {
+          "config.toml": {
+            "bytes": 110,
+            "sha256": "92d852df5dfb777c852112815136bc2f76807edfb4478c3c74faf2c01e68587a"
+          },
+          ".gitmodules": {
+            "bytes": 108,
+            "sha256": "09b01e96c3a8f9041710dc09d325ecd59d12d93dc4c0004f9d42bd9e5cf78b64"
+          },
+          "content/posts/my-first-post.md": {
+            "bytes": 84,
+            "sha256": "9daad584bd1ef94d7f8dd5cb10fd960c5d3e9f7cdfb5586bd8d8843337e307b6"
+          },
+          "themes/ananke/theme.toml": {
+            "bytes": 652,
+            "sha256": "b88a6a6152e080e8092c36e52dfda0cb4bb63faaa78dd8999cc33a3c78d3e0f9"
+          },
+          "themes/ananke/layouts/index.html": {
+            "bytes": 2461,
+            "sha256": "3a23493988682d44541cbdff9b8474de4f097e9f035ab708e49d8567b9f5ad5b"
+          }
+        },
+        "node": "v24.22.0",
+        "hugo": "hugo v0.111.3+extended linux/arm64 BuildDate=2023-03-16T08:41:31Z VendorInfo=debian:0.111.3-1",
+        "index": {
+          "bytes": 2626,
+          "sha256": "5737d0a811f679277ca35d96f58a5338cec2e7649c86e173d37adfdb83a35968"
+        },
+        "css": [
+          {
+            "path": "/ananke/css/main.min.css",
+            "bytes": 75301,
+            "sha256": "2438bcafd7af9675c426d1a4afcd16cfff18e4e10f401071e45b5ccd3be40a0d"
+          }
+        ]
+      },
+      "pass": true,
+      "container_removal_exit": 0,
+      "own_container_removed": true,
+      "own_case_context_removed": true
+    }
+  ],
+  "pass": true,
+  "own_containers_and_contexts_removed": true
+}

@@ -1,0 +1,17 @@
+{
+  "classification": "next-journey isolated local availability triage only, no hosted fixture or full generated-image claim",
+  "image": "python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4",
+  "source_head": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+  "container": "qa408-sqlite-5ed9b21d",
+  "nonce": "5ed9b21d",
+  "absent_before": true,
+  "exit": 0,
+  "stdout": "{\"builtin_sqlite\": \"3.40.1\", \"builtin_select\": 43, \"external_sqlite3_path\": null}\n",
+  "stderr": "",
+  "decoded": {
+    "builtin_sqlite": "3.40.1",
+    "builtin_select": 43,
+    "external_sqlite3_path": null
+  },
+  "own_container_removed": true
+}

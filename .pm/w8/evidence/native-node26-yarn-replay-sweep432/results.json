@@ -1,0 +1,39 @@
+{
+  "sweep": 432,
+  "source_head": "01798d4959c933508d4b6eee061295adaa9ebf6d",
+  "kind": "partial positive hosted acceptance of existing w4/320; no new issue",
+  "original_build_start_and_program_byte_identical": true,
+  "original_program_sha256": "a41e8ae460bc2ed70704110aa5a3f009dd712d29ef18e6e9b264450c1865f049",
+  "actual_observed_source_commit_by_client": {
+    "bex": "01798d4959c933508d4b6eee061295adaa9ebf6d",
+    "render": "01798d4959c933508d4b6eee061295adaa9ebf6d"
+  },
+  "original_historical_source_commit": "e5ff3a6f013e6060c09b9ce7291515f1b14bd1e4",
+  "branch_has_advanced_original_historical_commit_not_replayed": true,
+  "native_original_Node26_first_creates_POST201_exit0_Live": 2,
+  "actual_Node26": [
+    "v26.12.0"
+  ],
+  "Node26_real_startup_Yarn1_22_22_HTTP200": 6,
+  "API_only_save_only_Node24_updates_rolledOut_false": 2,
+  "native_same_original_commit_Node24_deploys_exit0_Live": 2,
+  "actual_Node24": [
+    "v24.22.0"
+  ],
+  "Node24_real_startup_Yarn1_22_22_HTTP200": 6,
+  "build_exact_Yarn_version_output_lines_by_client": {
+    "bex": 1,
+    "render": 1
+  },
+  "build_cache_reuse_allowed_stdout_not_required": true,
+  "shared_REST_GraphQL_MCP_root_source_Free_commands": 12,
+  "explicit_env_API_only_reads": 4,
+  "exact_owned_two_parents_four_children_former_URLs_absent": true,
+  "baseline_current_inventory_quota_match_termination0": true,
+  "relays_copied_configs_removed": true,
+  "actual_serving_SHA_OCI": "unknown",
+  "remaining_existing_320_gate": "fresh Bun opt-in/omission control not exercised; broader source gates inherited not rerun",
+  "existing_w4_320_status_not_changed": true,
+  "product_implementation": false,
+  "uncommitted": true
+}

@@ -1,0 +1,26 @@
+from pathlib import Path
+import json,subprocess,secrets,time,hashlib,fcntl,shutil,tempfile
+P=Path(__file__).resolve().parent;R=P.parent.parent;CP=R/'.playwright-mcp/cli-qa-w8-checkpoint.json';lock=(P/'checkpoint-writer.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB);c=json.loads(CP.read_text());assert c['sync402_result']==0
+image='postgres:15-bookworm@sha256:d4a8e1f88f475ee3e0137fa89d21ebc59f6c6ab16bf369ee92907607cc3455ae';nonce=secrets.token_hex(3);name='qa402-backup-'+nonce;D=Path(tempfile.mkdtemp(prefix='sweep402-backup-',dir=P));out={'image':image,'container':name,'nonce':nonce,'context':str(D),'qualification':'owned loopback-free, network-none local PG15 server and real pg_dump; not hosted database coverage','calls':[],'removed':False}
+def save():
+ (P/'sweep402-backup-fixture.json').write_text(json.dumps(out,indent=2));c['sweep402_local_backup']=out;t=CP.with_name('.'+CP.name+'.qa402backup.tmp');t.write_text(json.dumps(c,indent=2));t.chmod(0o600);t.replace(CP)
+def run(args,body=None,bound=120,binary=False):
+ r=subprocess.run(args,input=body,capture_output=True,timeout=bound,text=not binary);e={'command':args,'exit':r.returncode,'stdout':r.stdout if not binary else '<binary backup retained separately>','stderr':r.stderr if not binary else r.stderr.decode(errors='replace')};out['calls'].append(e);save();r.check_returncode();return r
+assert subprocess.run(['docker','inspect',name],capture_output=True).returncode!=0;save()
+try:
+ run(['docker','run','--detach','--name',name,'--label','bex.qa.run='+nonce,'--network','none','--tmpfs','/var/lib/postgresql/data:rw','-e','POSTGRES_HOST_AUTH_METHOD=trust','-e','POSTGRES_DB=qa402',image],bound=180)
+ for i in range(20):
+  r=subprocess.run(['docker','exec',name,'pg_isready','-U','postgres','-d','qa402'],capture_output=True,text=True,timeout=8)
+  if r.returncode==0:break
+  time.sleep(1)
+ assert r.returncode==0
+ sql="CREATE TABLE qa402_backup (id integer PRIMARY KEY, label text NOT NULL); INSERT INTO qa402_backup VALUES (1,'QA402 alpha'),(2,'QA402 café 雪'),(3,'QA402 quote '' and comma,');"
+ run(['docker','exec','-i',name,'psql','-U','postgres','-d','qa402','-v','ON_ERROR_STOP=1'],sql)
+ r=run(['docker','exec',name,'pg_dump','-U','postgres','-d','qa402','--format=custom','--inserts','--no-owner','--no-privileges','--table=public.qa402_backup'],binary=True);backup=r.stdout;assert backup.startswith(b'PGDMP') and len(backup)>1000;(P/'sweep402-qa-only.dump').write_bytes(backup)
+ r=run(['docker','exec','-i',name,'pg_restore','--data-only','--no-owner','--no-privileges','--file=-'],backup,binary=True);decoded=r.stdout.decode();inserts=[s for s in decoded.splitlines() if s.startswith('INSERT INTO public.qa402_backup VALUES')];assert len(inserts)==3 and 'café 雪' in '\n'.join(inserts) and "quote '' and comma," in '\n'.join(inserts);canonical='\n'.join(inserts)+'\n';out.update(backup={'bytes':len(backup),'sha256':hashlib.sha256(backup).hexdigest()},canonical_inserts=inserts,canonical_sha256=hashlib.sha256(canonical.encode()).hexdigest(),SQL_fixture=sql,pass_fixture=True);save();print(json.dumps({'real_backup_bytes':len(backup),'exact_rows':len(inserts),'pass':True}),flush=True)
+finally:
+ r=subprocess.run(['docker','inspect',name],capture_output=True,text=True)
+ if r.returncode==0:
+  v=json.loads(r.stdout)[0];assert v['Config']['Labels']['bex.qa.run']==nonce and v['HostConfig']['NetworkMode']=='none';subprocess.run(['docker','rm','-f',name],capture_output=True,check=True)
+ shutil.rmtree(D);out['removed']=not D.exists() and subprocess.run(['docker','inspect',name],capture_output=True).returncode!=0;save()
+print(json.dumps({'own_PG_server_removed':out['removed']}))

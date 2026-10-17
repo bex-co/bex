@@ -1,0 +1,16 @@
+[
+  {
+    "marker": "QA426_2aaf2c_bex",
+    "node": "v24.22.0",
+    "files": {
+      ".gitmodules": null,
+      "basic/LICENSE": null,
+      "basic/CHANGELOG": null
+    },
+    "absent": {
+      "README.md": true,
+      "itself": true
+    },
+    "program_sha256": "250c627f8d7723a3ec652b041a2a29c4c2f42db116554ae9549edd26e796293f"
+  }
+]

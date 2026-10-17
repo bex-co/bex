@@ -1,0 +1,13 @@
+{
+  "binary": "released v0.3.2",
+  "command": [
+    "bex",
+    "deploys",
+    "create",
+    "--help"
+  ],
+  "exit": 0,
+  "elapsed": 0.031,
+  "stdout": "bex CLI v0.3.2\n\nTrigger a service deploy and stream logs in real time\n\nUSAGE\n  bex deploys create [serviceID] [flags]\n\nFLAGS\n      --clear-cache          Clear build cache before deploying\n      --commit <COMMIT_ID>   Deploy the specified commit ID\n  -h, --help                 Show help for this command\n      --image <IMAGE_URL>    Deploy the specified Docker image URL\n      --wait                 Wait for deploy completion and exit non-zero if deploy fails\n      --confirm              Skip all confirmation prompts\n  -o, --output <FORMAT>      Set output format to interactive, json, yaml, or text. Auto-switches to text on non-TTY (default: \"interactive\")\n\nEXAMPLES\n  # Trigger a deploy for a service\n  bex deploys create srv-abc123\n\n  # Deploy a specific commit\n  bex deploys create srv-abc123 --commit 0123abcd\n\n  # Wait until deploy completes\n  bex deploys create srv-abc123 --wait\n\n",
+  "stderr": ""
+}

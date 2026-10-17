@@ -1,0 +1,25 @@
+import math
+
+def cases(nonce,client):
+ prefix='qa439:'+nonce+':'+client+':'
+ return [(name,[prefix+v for v in suffixes],script) for name,suffixes,script in [
+ ('geo',['geo'],"local n=redis.call('GEOADD',KEYS[1],179.999,0,'east',-179.999,0,'west',170,0,'far',179.999,1,'north',179.998,0,'café:雪');local near=redis.call('GEOSEARCH',KEYS[1],'FROMLONLAT',179.999,0,'BYRADIUS',500,'m','ASC','WITHDIST','WITHCOORD');local absent=redis.call('GEOSEARCH',KEYS[1],'FROMLONLAT',0,0,'BYRADIUS',500,'m');return 'QA439_RESULT '..cjson.encode({case='geo',marker=ARGV[1],seeded=n,near=near,distance=redis.call('GEODIST',KEYS[1],'east','west','m'),absent_count=#absent,dbkey_count=redis.call('ZCARD',KEYS[1])})"),
+ ('bits',['bits','cross'],"local initial=redis.call('BITFIELD',KEYS[1],'SET','u4',0,14,'SET','i4',4,-2,'GET','u4',0,'GET','i4',4);local sat=redis.call('BITFIELD',KEYS[1],'OVERFLOW','SAT','INCRBY','u4',0,5);local wrap=redis.call('BITFIELD',KEYS[1],'OVERFLOW','WRAP','INCRBY','i4',4,-9);local fail=redis.call('BITFIELD',KEYS[1],'OVERFLOW','FAIL','INCRBY','u4',0,1);redis.call('BITFIELD',KEYS[2],'SET','u12',4,2748,'INCRBY','u12',4,1,'SET','i8',16,-128,'OVERFLOW','WRAP','INCRBY','i8',16,-1);local cross=redis.call('GET',KEYS[2]);return 'QA439_RESULT '..cjson.encode({case='bits',marker=ARGV[1],initial=initial,saturated=sat[1],wrapped=wrap[1],overflow_failed=fail[1]==false,unchanged=redis.call('BITFIELD',KEYS[1],'GET','u4',0)[1],byte=string.byte(redis.call('GET',KEYS[1])),bitcount=redis.call('BITCOUNT',KEYS[1]),cross_bytes={string.byte(cross,1,#cross)},cross_fields=redis.call('BITFIELD',KEYS[2],'GET','u12',4,'GET','i8',16)})"),
+ ('hll',['hll-a','hll-b','hll-union'],"local added=redis.call('PFADD',KEYS[1],'A','B','C','café','雪','李','two words','D');local again=redis.call('PFADD',KEYS[1],'A','B','café');redis.call('PFADD',KEYS[2],'C','D','E','F');redis.call('PFMERGE',KEYS[3],KEYS[1],KEYS[2]);return 'QA439_RESULT '..cjson.encode({case='hll',marker=ARGV[1],added=added,duplicate_change=again,a=redis.call('PFCOUNT',KEYS[1]),b=redis.call('PFCOUNT',KEYS[2]),combined=redis.call('PFCOUNT',KEYS[1],KEYS[2]),merged=redis.call('PFCOUNT',KEYS[3])})")]]
+
+def protected(script):return "if redis.call('EXISTS',unpack(KEYS))~=0 then return redis.error_reply('Own fixture keys already exist; reconcile before retry') end;"+script
+
+def validate(v,case,marker):
+ if v.get('case')!=case or v.get('marker')!=marker:return False
+ if case=='geo':
+  if v.get('seeded')!=5 or v.get('dbkey_count')!=5 or v.get('absent_count')!=0 or [r[0] for r in v.get('near',[])]!=['east','café:雪','west']:return False
+  locations={'east':(179.999,0),'west':(-179.999,0),'café:雪':(179.998,0)}
+  def distance(a,b):
+   lon1,lat1=map(math.radians,a);lon2,lat2=map(math.radians,b);dlat=lat2-lat1;dlon=lon2-lon1;h=math.sin(dlat/2)**2+math.cos(lat1)*math.cos(lat2)*math.sin(dlon/2)**2;return 2*6371000*math.asin(math.sqrt(h))
+  for name,d,coords in v['near']:
+   if abs(float(d)-distance(locations['east'],locations[name]))>1:return False
+   if any(abs(float(actual)-expected)>1e-5 for actual,expected in zip(coords,locations[name])):return False
+  return abs(float(v['distance'])-distance(locations['east'],locations['west']))<=1
+ if case=='bits':
+  expected={'initial':[0,0,14,-2],'saturated':min(14+5,15),'wrapped':((-2-9+8)%16)-8,'overflow_failed':True,'unchanged':15,'byte':(15<<4)|5,'bitcount':((15<<4)|5).bit_count(),'cross_bytes':list((2748+1).to_bytes(2,'big'))+[127],'cross_fields':[2749,127]};return all(v.get(k)==want for k,want in expected.items())
+ return all(v.get(k)==want for k,want in {'added':1,'duplicate_change':0,'a':8,'b':4,'combined':10,'merged':10}.items())

@@ -1,0 +1,18 @@
+from pathlib import Path
+import subprocess,json,secrets,shutil,tempfile,os
+os.umask(0o077);P=Path(__file__).resolve().parent;nonce=secrets.token_hex(3);image='node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0';ctx=Path(tempfile.mkdtemp(prefix='candidate-webpack-',dir=P));meta=json.loads((P/'candidate-webpack-official-package-reference.json').read_text());versions={v['name']:v['version'] for v in meta['packages']};install='npm install --global --no-audit --no-fund webpack@'+versions['webpack']+' webpack-cli@'+versions['webpack-cli'];out={'nonce':nonce,'image':image,'context':str(ctx),'control_install':install,'cases':[],'qualification':'selected cached Node24 base and genuine two-module production bundle; not full generated native image or hosted finding'}
+def save():(P/'candidate-webpack-small-prerequisite.json').write_text(json.dumps(out,indent=2,ensure_ascii=False))
+try:
+ for control in [False,True]:
+  case='control' if control else 'original';name='qa-webpack-'+nonce+'-'+case;d=ctx/case;d.mkdir();assert subprocess.run(['docker','container','inspect',name],capture_output=True).returncode!=0
+  (d/'domain.mjs').write_text('export const summarize = rows => ({labels:rows.map(r=>r.label),total:rows.reduce((n,r)=>n+r.quantity,0)});\n');(d/'entry.mjs').write_text('import {summarize} from "./domain.mjs"; const result=summarize([{label:"Crème brûlée",quantity:2},{label:"李",quantity:3}]); if(result.total!==5||result.labels.join("|")!=="Crème brûlée|李")throw Error("wrong result");console.log("QA_WEBPACK_REAL_BUNDLE",JSON.stringify(result));\n');command='set -e\nnode -e \'const c=require("node:child_process").spawnSync("webpack",["--version"],{encoding:"utf8"});console.log(JSON.stringify({node:process.version,status:c.status,error:c.error?.code||null,stdout:c.stdout||null}))\'\n'
+  if control:command+=install+'\n'
+  command+='webpack ./entry.mjs --mode production --target node --output-path '+str('/qa/dist')+' --output-filename bundle.cjs\nnode dist/bundle.cjs';e={'case':case,'container':name,'absent_before':True,'command':command};out['cases'].append(e);save()
+  try:
+   r=subprocess.run(['docker','run','--name',name,'--label','bex.qa.webpack='+nonce,'--mount','type=bind,source='+str(d)+',target=/qa','--workdir','/qa',image,'bash','-lc',command],capture_output=True,text=True,timeout=180);e.update(exit=r.returncode,stdout=r.stdout,stderr=r.stderr);e['pass']=(r.returncode==0 and 'QA_WEBPACK_REAL_BUNDLE' in r.stdout) if control else r.returncode==127 and 'webpack: command not found' in r.stderr;save();print(json.dumps({'case':case,'exit':r.returncode,'pass':e['pass']}),flush=True);assert e['pass']
+  finally:
+   r=subprocess.run(['docker','container','inspect',name],capture_output=True,text=True)
+   if r.returncode==0:
+    v=json.loads(r.stdout)[0];assert v['Config']['Labels'].get('bex.qa.webpack')==nonce and any(m.get('Source')==str(d) and m.get('Destination')=='/qa' for m in v['Mounts']);subprocess.run(['docker','rm','-f',name],check=True,capture_output=True)
+ out['pass']=all(v['pass'] for v in out['cases']);save()
+finally:shutil.rmtree(ctx);out['own_containers_context_removed']=not ctx.exists() and all(subprocess.run(['docker','container','inspect',v['container']],capture_output=True).returncode!=0 for v in out['cases']);save()

@@ -1,0 +1,13 @@
+{
+  "image": "pgduckdb/pgduckdb:18-v1.1.1",
+  "scope": "local SQL prerequisite only; no production allocation",
+  "at": "2026-10-17T15:20:39.716524+00:00",
+  "phase": "finished",
+  "exit": 0,
+  "stdout": "18-v1.1.1: Pulling from pgduckdb/pgduckdb\n435f1ce1604d: Pulling fs layer\n3ac51941b358: Pulling fs layer\n6c5039352746: Pulling fs layer\nf05c91f4b5ea: Pulling fs layer\na326b33c168a: Pulling fs layer\nff8919aaa347: Pulling fs layer\n8146abf1dff1: Pulling fs layer\ndbfb9c3db61f: Pulling fs layer\nae8eb2cf7a2d: Pulling fs layer\n34c6fdfe850f: Pulling fs layer\n8fad3e9ec6e0: Pulling fs layer\nba2d457458a5: Pulling fs layer\na05b0326ab0a: Pulling fs layer\n8a4a7306158c: Pulling fs layer\n8dec8597fc9a: Pulling fs layer\nb6ba526dc589: Pulling fs layer\n3de8d92fb268: Pulling fs layer\nce9e9cc819e9: Download complete\n6c5039352746: Download complete\n3ac51941b358: Download complete\nff8919aaa347: Download complete\nae8eb2cf7a2d: Download complete\na326b33c168a: Download complete\n8146abf1dff1: Download complete\nf05c91f4b5ea: Download complete\nba2d457458a5: Download complete\n34c6fdfe850f: Download complete\n435f1ce1604d: Download complete\n8fad3e9ec6e0: Download complete\na05b0326ab0a: Download complete\n3de8d92fb268: Download complete\n8dec8597fc9a: Download complete\n8a4a7306158c: Download complete\n8dec8597fc9a: Pull complete\n8a4a7306158c: Pull complete\n435f1ce1604d: Pull complete\n6c5039352746: Pull complete\na326b33c168a: Pull complete\n8146abf1dff1: Pull complete\nf05c91f4b5ea: Pull complete\nff8919aaa347: Pull complete\ndbfb9c3db61f: Download complete\nae8eb2cf7a2d: Pull complete\nba2d457458a5: Pull complete\n34c6fdfe850f: Pull complete\n8fad3e9ec6e0: Pull complete\ndbfb9c3db61f: Pull complete\nb6ba526dc589: Download complete\na05b0326ab0a: Pull complete\n3de8d92fb268: Pull complete\nb6ba526dc589: Pull complete\n3ac51941b358: Pull complete\nDigest: sha256:44c88eb9207971af1d7f9804a37429b1bb36f413cd8d7118c81e1288ddde85d1\nStatus: Downloaded newer image for pgduckdb/pgduckdb:18-v1.1.1\ndocker.io/pgduckdb/pgduckdb:18-v1.1.1\n",
+  "stderr": "",
+  "immutable_resolved_digests": [
+    "pgduckdb/pgduckdb@sha256:44c88eb9207971af1d7f9804a37429b1bb36f413cd8d7118c81e1288ddde85d1"
+  ],
+  "architecture": "arm64"
+}

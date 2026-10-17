@@ -1,0 +1,204 @@
+{
+  "version": "traefik-helm-chart/v41.0.0",
+  "qualification": "public source for repository-described chart version, not a live configuration read",
+  "files": [
+    {
+      "url": "https://raw.githubusercontent.com/traefik/traefik-helm-chart/v41.0.0/traefik/values.yaml",
+      "bytes": 78774,
+      "sha256": "e6b0cfa34f035329007b8445a19f8b7b79c2eeaf983f98a0ee93d1185d8219e3",
+      "matches": [
+        {
+          "line": 241,
+          "text": "    entryPoints: [\"traefik\"]"
+        },
+        {
+          "line": 262,
+          "text": "    entryPoints: [\"traefik\"]"
+        },
+        {
+          "line": 979,
+          "text": "      respondingTimeouts:"
+        },
+        {
+          "line": 980,
+          "text": "        readTimeout:   # @schema type:[string, integer, null]"
+        },
+        {
+          "line": 1064,
+          "text": "      respondingTimeouts:"
+        },
+        {
+          "line": 1065,
+          "text": "        readTimeout:   # @schema type:[string, integer, null]"
+        },
+        {
+          "line": 1448,
+          "text": "            forwardingTimeouts:"
+        },
+        {
+          "line": 1472,
+          "text": "              readTimeout:"
+        }
+      ]
+    },
+    {
+      "url": "https://raw.githubusercontent.com/traefik/traefik-helm-chart/v41.0.0/traefik/templates/_podtemplate.tpl",
+      "bytes": 50427,
+      "sha256": "20967b8c7661addd7c3b3d29f9e1aeb391a948e64237d3463ea1f3b013ddd4a2",
+      "matches": [
+        {
+          "line": 218,
+          "text": "            {{- $entryPoints := (empty $config.uplink) | ternary \"entryPoints\" \"hub.uplinkEntryPoints\" }}"
+        },
+        {
+          "line": 219,
+          "text": "          - \"--{{$entryPoints}}.{{$name}}.address={{ $config.hostIP }}:{{ $config.port }}/{{ default \"tcp\" $config.protocol | lower }}\""
+        },
+        {
+          "line": 221,
+          "text": "          - \"--{{$entryPoints}}.{{$name}}.asDefault={{ . }}\""
+        },
+        {
+          "line": 225,
+          "text": "          - \"--{{$entryPoints}}.{{$name}}.observability.accessLogs={{ .accessLogs }}\""
+        },
+        {
+          "line": 228,
+          "text": "          - \"--{{$entryPoints}}.{{$name}}.observability.metrics={{ .metrics }}\""
+        },
+        {
+          "line": 231,
+          "text": "          - \"--{{$entryPoints}}.{{$name}}.observability.tracing={{ .tracing }}\""
+        },
+        {
+          "line": 234,
+          "text": "          - \"--{{$entryPoints}}.{{$name}}.observability.traceVerbosity={{ .traceVerbosity }}\""
+        },
+        {
+          "line": 647,
+          "text": "            {{- $entryPoints := (empty $config.uplink) | ternary \"entryPoints\" \"hub.uplinkEntryPoints\" }}"
+        },
+        {
+          "line": 649,
+          "text": "              {{- include \"traefik.yaml2CommandLineArgs\" (dict \"path\" (printf \"%s.%s.http.encodedCharacters\" $entryPoints $name) \"content\" .encodedCharacters) | nindent 10 }}"
+        },
+        {
+          "line": 651,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.http.maxHeaderBytes={{ . | int64 }}\""
+        },
+        {
+          "line": 654,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.http.middlewares={{ join \",\" . }}\""
+        },
+        {
+          "line": 666,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.http.redirections.entryPoint.to=:{{ $toPort.exposedPort }}\""
+        },
+        {
+          "line": 668,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.http.redirections.entryPoint.scheme={{ . }}\""
+        },
+        {
+          "line": 671,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.http.redirections.entryPoint.priority={{ . }}\""
+        },
+        {
+          "line": 674,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.http.redirections.entryPoint.permanent={{ .permanent }}\""
+        },
+        {
+          "line": 679,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.http.sanitizePath={{ . }}\""
+        },
+        {
+          "line": 683,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.http.tls=true\""
+        },
+        {
+          "line": 685,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.http.tls.options={{ . }}\""
+        },
+        {
+          "line": 688,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.http.tls.certResolver={{ . }}\""
+        },
+        {
+          "line": 692,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.http.tls.domains[{{ $index }}].main={{ . }}\""
+        },
+        {
+          "line": 695,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.http.tls.domains[{{ $index }}].sans={{ join \",\" . }}\""
+        },
+        {
+          "line": 702,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.http3\""
+        },
+        {
+          "line": 704,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.http3.advertisedPort={{ . }}\""
+        },
+        {
+          "line": 709,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.allowACMEByPass=true\""
+        },
+        {
+          "line": 713,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.forwardedHeaders.trustedIPs={{ join \",\" $config.forwardedHeaders.trustedIPs }}\""
+        },
+        {
+          "line": 716,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.forwardedHeaders.insecure\""
+        },
+        {
+          "line": 719,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.forwardedHeaders.notAppendXForwardedFor=true\""
+        },
+        {
+          "line": 724,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.proxyProtocol.trustedIPs={{ join \",\" $config.proxyProtocol.trustedIPs }}\""
+        },
+        {
+          "line": 727,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.proxyProtocol.insecure\""
+        },
+        {
+          "line": 731,
+          "text": "              {{- with .respondingTimeouts }}"
+        },
+        {
+          "line": 732,
+          "text": "                {{- if and (ne .readTimeout nil) (toString .readTimeout) }}"
+        },
+        {
+          "line": 733,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.transport.respondingTimeouts.readTimeout={{ .readTimeout }}\""
+        },
+        {
+          "line": 736,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.transport.respondingTimeouts.writeTimeout={{ .writeTimeout }}\""
+        },
+        {
+          "line": 739,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.transport.respondingTimeouts.idleTimeout={{ .idleTimeout }}\""
+        },
+        {
+          "line": 744,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.transport.lifeCycle.requestAcceptGraceTimeout={{ .requestAcceptGraceTimeout }}\""
+        },
+        {
+          "line": 747,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.transport.lifeCycle.graceTimeOut={{ .graceTimeOut }}\""
+        },
+        {
+          "line": 751,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.transport.keepAliveMaxRequests={{ .keepAliveMaxRequests }}\""
+        },
+        {
+          "line": 754,
+          "text": "          - \"--{{$entryPoints}}.{{ $name }}.transport.keepAliveMaxTime={{ .keepAliveMaxTime }}\""
+        }
+      ]
+    }
+  ]
+}

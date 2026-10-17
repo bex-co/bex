@@ -1,0 +1,27 @@
+{
+  "url": "https://codeload.github.com/render-examples/jekyll/tar.gz/3b8ab7b410353d995588b79ae412ee40efd4bdd9",
+  "bytes": 4500,
+  "sha256": "63cd2435ceeb9aa8f518e27d94715e58f48015347f2fc4a9e42926d7a07e20b4",
+  "files_verified": {
+    "Gemfile": {
+      "bytes": 1007,
+      "sha256": "46bd29e6de1dffff356e789e463cf5af452c65d159aa87940f9d3083f2e948cf"
+    },
+    "Gemfile.lock": {
+      "bytes": 2014,
+      "sha256": "6e5cabe8fa6c9fa0faf38a81d067020afa6b4bb360420296d79df30c2a99e5a8"
+    },
+    "_config.yml": {
+      "bytes": 1786,
+      "sha256": "8ca83b6c5e52a9630db83adedd0c7c31fdbd45c5a9fe9e5ab90152f6e0c0399d"
+    },
+    "index.md": {
+      "bytes": 175,
+      "sha256": "a5383927fa36f1317893fd2c3823a5c7a45e0ef1a33b1f9071b67b8751af95e0"
+    },
+    ".ruby-version": {
+      "bytes": 6,
+      "sha256": "649819783a78ba424b97fcf4d29fb809866b0b3659f901c0c0dac285ad9cca78"
+    }
+  }
+}

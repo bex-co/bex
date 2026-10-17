@@ -1,0 +1,2677 @@
+{
+  "proxy_image": "traefik@sha256:e4d98158c01ad752fc1071d4e9573788747230d902cdde00a772516e692d07c9",
+  "network": "qa441-proxy-47bdae7d",
+  "app": "qa441-app-47bdae7d",
+  "kind": "owned local pinned Traefik version: default versus100s body read, identical app/body/pacing; not full production topology",
+  "intents": [
+    {
+      "kind": "own isolated network",
+      "name": "qa441-proxy-47bdae7d"
+    },
+    {
+      "kind": "own app container",
+      "name": "qa441-app-47bdae7d",
+      "network": "qa441-proxy-47bdae7d"
+    },
+    {
+      "kind": "own proxy container",
+      "name": "qa441-default-47bdae7d",
+      "network": "qa441-proxy-47bdae7d",
+      "changed_settings": []
+    },
+    {
+      "kind": "own proxy container",
+      "name": "qa441-extended-47bdae7d",
+      "network": "qa441-proxy-47bdae7d",
+      "changed_settings": [
+        "--entryPoints.fixture.transport.respondingTimeouts.readTimeout=100s"
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "label": "create-own-network",
+      "command": [
+        "docker",
+        "network",
+        "create",
+        "qa441-proxy-47bdae7d"
+      ],
+      "exit": 0,
+      "stdout": "fa34eef69cf1f20aafb3213f0d5c79de65d2d4b78408609652963edf18ad703e\n",
+      "stderr": ""
+    },
+    {
+      "label": "start-own-app",
+      "command": [
+        "docker",
+        "run",
+        "--pull",
+        "never",
+        "-d",
+        "--network",
+        "qa441-proxy-47bdae7d",
+        "--name",
+        "qa441-app-47bdae7d",
+        "--mount",
+        "type=bind,src=<owned-temp>/sweep441-local-proxy-context,dst=/app",
+        "--workdir",
+        "/app",
+        "--entrypoint",
+        "/bin/bash",
+        "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+        "-c",
+        "set -e\nnode -e 'const fs=require('\"'\"'node:fs'\"'\"'),z=require('\"'\"'node:zlib'\"'\"');for(const[n,s]of Object.entries(JSON.parse(z.gunzipSync(Buffer.from('\"'\"'H4sIAAAAAAAC/61WbVPbRhD+K46nM5ImsnyW8IvEiBka3CSdDKQB2qaYMqfTylaiN+7OJlT4v3dPJ/FiaJsPhQ+29253n91n95Hq/jXd2xsNaFU57IvoB31WFkL2EhFyuF6nHEyjKGMIEmFY9krKaseuTHjC+G0ly50zbTSs/UWho+aUfwUe/nx6cuxUlAswE+FwoPFPaQantwUzDQ1HX3S+iLIwLMvmkHyHE94CDgWDez+xomEUHmgcDkMnCe+oWJkGnrjjiWE56ypGoxlZTpwuQUjTWMG3R5BFueYMQtMKD06iL8Ckk/AynxeSpyDM1vQVboWJ6Z0EIQnLyWllFuFBrUNE4S7gwtrnINe8uCjsOrqVIILIyaBYypWtkQX4gaC2l1tLYUnWBZNpWfQqXpaJabWRm3Shhmha+2liNl0SCK5YpsmtqfG8CsMd+wNWS654edObc15ybEsTqpenIqeSrYwOZ60JsRtaEQMDIZwNcIGY7CaQjdYlp/nVI/y7ZV9dqasFzcGytttFgXi7WJQvNxfuZRiGRrROs9joStyEbcn7GO2GpxJ2aVf3pabc3ilzg81TYcoMnKxcmsYvh+hx9eP5+w9HPeP189sICjIBvZeRCeAbuEcWlaUM29HitIjL/Pz8/ZFp2Q2g75jXR8BbnDhuKgUP1Va183raWEzz2uY4gzUie3XtrHmGwCmX4rdU4jgP11VW0niIgWqu2/QOM5ouIXZtvCkLCYUcnN1WYAQG7nqWMqrmadhk3yLNDhTx7vTUjuO03ddF2apmWy05bspZmkO5loGG7Dy1qrHVo7PVhRUlLmbYIsf0YM6agX01/POCDv46HPxBBv7V4LIe2TOy/WHoSLWMjZd1d3ft5CBXZYyTbHw8PzOeVrlHSFeBkRYbmqVxr7wperopuCXfEAjcD/M2A2RPbV1I7IwKiR/oC3GYUCS/ZWKFOhH+i3LYVIZHaHWK8sbs6IMN9jk0K3QGG75JTsN6i7S9MITzX+fHZ8+HsNu0ptNN+baO1gC2IaOVgPgqF8FD8gGVNlLV5FONb1CYRgTLFHeijoFllEMcXDsrbBdu7YXB2pHQomNc2rq/QddoHIlrpyxMA9WRGjaKqNap12EnVPuqQQ/yqbhsbgxURw/CyXjsTay6aW9j71A1OoGLZaAEdEmw+4atJLbWPEi+7mjQqhw2yZ4qdBuPlXmFhAIW2kqPvtYM9f+2Cc9Z0Xw8SfnP7DQSGXRCjRzdl06jkktoy29LurfVqB8ypVknqk0XWFndmjuPK8V620ol5IYN98HavRy0ByheKOHgqI8HL5aVAloK1FI2NFhdh9VhPIggKTkMFFeYDwt4cfHD0YzgX3fYDlx3OHl8lqUCyTCP13mEAtfpLRQb5+PJp7O7Ow/vWrZBnOZfo3thkT7ND48+/+civfDc+k4ds7bNI+HJczLHeM1LQt/uv/Tyge9R9aJP5aIf9BZ9l7iTwYgMRtOzkReM3IC4jod8uuQ1IQEhi76NtzhUpb6v1F8Ew+EStX0dIVW5+jpodUwMIypSpp0ifPKwlXbLcdeAazv65GmbfgIsIZC4zI2TJJr6E+J5MKbEdUc+TWZ4PBnP9mCsPZtRVY5YwIf3b+bHp/P2VzPx6vuITF11VU9lV2NEJnv+iESeGzEYRYzsjf0xHUcu2ZtOqTtjY+L5/hiS2did+a5PvdEonrBoSr2I+Iv+VoV88+7w+O38w8nbZzlnuxl9hA3eZELGY4hjn5JkQiOfTaMZ9aYJ890Z8VgCo9gjSUKn7pQBxIRNPN/zmavK3W639/w9euNE8hZ9PVsfP538/nnR72//Blt9upgoCwAA'\"'\"','\"'\"'base64'\"'\"')))))fs.writeFileSync(n,s)'\nnode qa441-app.cjs build\nexec node qa441-app.cjs serve"
+      ],
+      "exit": 0,
+      "stdout": "ed7dcb7872aaab04bc4534d89254bdc913a96dad2ffad58358ae1664c9550d65\n",
+      "stderr": ""
+    },
+    {
+      "label": "start-own-proxy-default",
+      "command": [
+        "docker",
+        "run",
+        "--pull",
+        "never",
+        "-d",
+        "--network",
+        "qa441-proxy-47bdae7d",
+        "-p",
+        "127.0.0.1::8000",
+        "--name",
+        "qa441-default-47bdae7d",
+        "--mount",
+        "type=bind,src=<owned-temp>/sweep441-local-proxy-context/proxy.yaml,dst=/etc/fixture.yaml,readonly",
+        "traefik@sha256:e4d98158c01ad752fc1071d4e9573788747230d902cdde00a772516e692d07c9",
+        "--entryPoints.fixture.address=:8000",
+        "--providers.file.filename=/etc/fixture.yaml",
+        "--log.level=INFO",
+        "--accesslog=true",
+        "--accesslog.format=json"
+      ],
+      "exit": 0,
+      "stdout": "64e8ad2dd037c598cfe5f2993a88cad85e8a7b0704a024179fab3c58bf4f17ee\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-proxy-port-default",
+      "command": [
+        "docker",
+        "port",
+        "qa441-default-47bdae7d",
+        "8000/tcp"
+      ],
+      "exit": 0,
+      "stdout": "127.0.0.1:58675\n",
+      "stderr": ""
+    },
+    {
+      "label": "same-paced-upload-default",
+      "command": [
+        "<local-user>/.nvm/versions/node/v22.17.1/bin/node",
+        "<owned-temp>/sweep441-paced-client.cjs",
+        "http://127.0.0.1:58675/upload/local-default",
+        "<owned-temp>/sweep441-local-proxy-context/payload.bin",
+        "300",
+        "<owned-temp>/sweep441-local-proxy-default-client.json"
+      ],
+      "exit": 0,
+      "stdout": "{\"HTTP\":499,\"elapsed\":60.012549542,\"submitted\":815104,\"response_complete\":true,\"error\":[]}\n",
+      "stderr": ""
+    },
+    {
+      "label": "actual-proxy-log-default",
+      "command": [
+        "docker",
+        "logs",
+        "qa441-default-47bdae7d"
+      ],
+      "exit": 0,
+      "stdout": "\u001b[90m2026-10-17T14:44:48Z\u001b[0m \u001b[33mWRN\u001b[0m \u001b[1mTraefik can reject some encoded characters in the request path.When your backend is not fully compliant with [RFC 3986](https://datatracker.ietf.org/doc/html/rfc3986),it is recommended to set these options to `false` to avoid split-view situation.Refer to the documentation for more details: https://doc.traefik.io/traefik/v3.7/migrate/v3/#encoded-characters-configuration-default-values\u001b[0m\n\u001b[90m2026-10-17T14:44:48Z\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mTraefik version 3.7.5 built on 2026-06-10T14:52:09Z\u001b[0m \u001b[36mversion=\u001b[0m3.7.5\n\u001b[90m2026-10-17T14:44:48Z\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mVersion check is enabled.\u001b[0m\n\u001b[90m2026-10-17T14:44:48Z\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mTraefik checks for new releases to notify you if your version is out of date.\u001b[0m\n\u001b[90m2026-10-17T14:44:48Z\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mIt also collects usage data during this process.\u001b[0m\n\u001b[90m2026-10-17T14:44:48Z\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mCheck the documentation to get more info: https://doc.traefik.io/traefik/contributing/data-collection/\u001b[0m\n\u001b[90m2026-10-17T14:44:48Z\u001b[0m \u001b[32mINF\u001b[0m \u001b[1m\nStats collection is disabled.\nHelp us improve Traefik by turning this feature on :)\nMore details on: https://doc.traefik.io/traefik/contributing/data-collection/\n\u001b[0m\n\u001b[90m2026-10-17T14:44:48Z\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mStarting provider aggregator *aggregator.ProviderAggregator\u001b[0m\n\u001b[90m2026-10-17T14:44:48Z\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mStarting provider *file.Provider\u001b[0m\n\u001b[90m2026-10-17T14:44:48Z\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mStarting provider *traefik.Provider\u001b[0m\n\u001b[90m2026-10-17T14:44:48Z\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mStarting provider *acme.ChallengeTLSALPN\u001b[0m\n{\"ClientAddr\":\"172.29.0.1:59858\",\"ClientHost\":\"172.29.0.1\",\"ClientPort\":\"59858\",\"ClientUsername\":\"-\",\"DownstreamContentSize\":755,\"DownstreamStatus\":200,\"Duration\":4867958,\"OriginContentSize\":755,\"OriginDuration\":4824083,\"OriginStatus\":200,\"Overhead\":43875,\"RequestAddr\":\"127.0.0.1:58675\",\"RequestContentSize\":0,\"RequestCount\":1,\"RequestHost\":\"127.0.0.1\",\"RequestMethod\":\"GET\",\"RequestPath\":\"/\",\"RequestPort\":\"58675\",\"RequestProtocol\":\"HTTP/1.1\",\"RequestScheme\":\"http\",\"RetryAttempts\":0,\"RouterName\":\"app@file\",\"ServiceAddr\":\"qa441-app-47bdae7d:3000\",\"ServiceName\":\"app@file\",\"ServiceURL\":\"http://qa441-app-47bdae7d:3000\",\"StartLocal\":\"2026-10-17T14:44:48.728423928Z\",\"StartUTC\":\"2026-10-17T14:44:48.728423928Z\",\"entryPointName\":\"fixture\",\"level\":\"info\",\"msg\":\"\",\"time\":\"2026-10-17T14:44:48Z\"}\n{\"ClientAddr\":\"172.29.0.1:59860\",\"ClientHost\":\"172.29.0.1\",\"ClientPort\":\"59860\",\"ClientUsername\":\"-\",\"DownstreamContentSize\":21,\"DownstreamStatus\":499,\"Duration\":60000830167,\"OriginContentSize\":21,\"OriginDuration\":60000771625,\"OriginStatus\":499,\"Overhead\":58542,\"RequestAddr\":\"127.0.0.1:58675\",\"RequestContentSize\":815104,\"RequestCount\":2,\"RequestHost\":\"127.0.0.1\",\"RequestMethod\":\"PUT\",\"RequestPath\":\"/upload/local-default\",\"RequestPort\":\"58675\",\"RequestProtocol\":\"HTTP/1.1\",\"RequestScheme\":\"http\",\"RetryAttempts\":0,\"RouterName\":\"app@file\",\"ServiceAddr\":\"qa441-app-47bdae7d:3000\",\"ServiceName\":\"app@file\",\"ServiceURL\":\"http://qa441-app-47bdae7d:3000\",\"StartLocal\":\"2026-10-17T14:44:48.769261511Z\",\"StartUTC\":\"2026-10-17T14:44:48.769261511Z\",\"entryPointName\":\"fixture\",\"level\":\"info\",\"msg\":\"\",\"time\":\"2026-10-17T14:45:48Z\"}\n",
+      "stderr": ""
+    },
+    {
+      "label": "remove-exact-own-proxy-default",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa441-default-47bdae7d"
+      ],
+      "exit": 0,
+      "stdout": "qa441-default-47bdae7d\n",
+      "stderr": ""
+    },
+    {
+      "label": "start-own-proxy-extended",
+      "command": [
+        "docker",
+        "run",
+        "--pull",
+        "never",
+        "-d",
+        "--network",
+        "qa441-proxy-47bdae7d",
+        "-p",
+        "127.0.0.1::8000",
+        "--name",
+        "qa441-extended-47bdae7d",
+        "--mount",
+        "type=bind,src=<owned-temp>/sweep441-local-proxy-context/proxy.yaml,dst=/etc/fixture.yaml,readonly",
+        "traefik@sha256:e4d98158c01ad752fc1071d4e9573788747230d902cdde00a772516e692d07c9",
+        "--entryPoints.fixture.address=:8000",
+        "--providers.file.filename=/etc/fixture.yaml",
+        "--log.level=INFO",
+        "--accesslog=true",
+        "--accesslog.format=json",
+        "--entryPoints.fixture.transport.respondingTimeouts.readTimeout=100s"
+      ],
+      "exit": 0,
+      "stdout": "7113be597f3108a51f78ca3907bdf1a6d6a0a4d6b5d0b44e7bdf227aeb72dbf2\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-proxy-port-extended",
+      "command": [
+        "docker",
+        "port",
+        "qa441-extended-47bdae7d",
+        "8000/tcp"
+      ],
+      "exit": 0,
+      "stdout": "127.0.0.1:58746\n",
+      "stderr": ""
+    },
+    {
+      "label": "same-paced-upload-extended",
+      "command": [
+        "<local-user>/.nvm/versions/node/v22.17.1/bin/node",
+        "<owned-temp>/sweep441-paced-client.cjs",
+        "http://127.0.0.1:58746/upload/local-extended",
+        "<owned-temp>/sweep441-local-proxy-context/payload.bin",
+        "300",
+        "<owned-temp>/sweep441-local-proxy-extended-client.json"
+      ],
+      "exit": 0,
+      "stdout": "{\"HTTP\":200,\"elapsed\":77.221744166,\"submitted\":1048576,\"response_complete\":true,\"error\":[]}\n",
+      "stderr": ""
+    },
+    {
+      "label": "actual-proxy-log-extended",
+      "command": [
+        "docker",
+        "logs",
+        "qa441-extended-47bdae7d"
+      ],
+      "exit": 0,
+      "stdout": "\u001b[90m2026-10-17T14:45:49Z\u001b[0m \u001b[33mWRN\u001b[0m \u001b[1mTraefik can reject some encoded characters in the request path.When your backend is not fully compliant with [RFC 3986](https://datatracker.ietf.org/doc/html/rfc3986),it is recommended to set these options to `false` to avoid split-view situation.Refer to the documentation for more details: https://doc.traefik.io/traefik/v3.7/migrate/v3/#encoded-characters-configuration-default-values\u001b[0m\n\u001b[90m2026-10-17T14:45:49Z\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mTraefik version 3.7.5 built on 2026-06-10T14:52:09Z\u001b[0m \u001b[36mversion=\u001b[0m3.7.5\n\u001b[90m2026-10-17T14:45:49Z\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mVersion check is enabled.\u001b[0m\n\u001b[90m2026-10-17T14:45:49Z\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mTraefik checks for new releases to notify you if your version is out of date.\u001b[0m\n\u001b[90m2026-10-17T14:45:49Z\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mIt also collects usage data during this process.\u001b[0m\n\u001b[90m2026-10-17T14:45:49Z\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mCheck the documentation to get more info: https://doc.traefik.io/traefik/contributing/data-collection/\u001b[0m\n\u001b[90m2026-10-17T14:45:49Z\u001b[0m \u001b[32mINF\u001b[0m \u001b[1m\nStats collection is disabled.\nHelp us improve Traefik by turning this feature on :)\nMore details on: https://doc.traefik.io/traefik/contributing/data-collection/\n\u001b[0m\n\u001b[90m2026-10-17T14:45:49Z\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mStarting provider aggregator *aggregator.ProviderAggregator\u001b[0m\n\u001b[90m2026-10-17T14:45:49Z\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mStarting provider *file.Provider\u001b[0m\n\u001b[90m2026-10-17T14:45:49Z\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mStarting provider *traefik.Provider\u001b[0m\n\u001b[90m2026-10-17T14:45:49Z\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mStarting provider *acme.ChallengeTLSALPN\u001b[0m\n{\"ClientAddr\":\"172.29.0.1:59942\",\"ClientHost\":\"172.29.0.1\",\"ClientPort\":\"59942\",\"ClientUsername\":\"-\",\"DownstreamContentSize\":755,\"DownstreamStatus\":200,\"Duration\":2414833,\"OriginContentSize\":755,\"OriginDuration\":2368500,\"OriginStatus\":200,\"Overhead\":46333,\"RequestAddr\":\"127.0.0.1:58746\",\"RequestContentSize\":0,\"RequestCount\":1,\"RequestHost\":\"127.0.0.1\",\"RequestMethod\":\"GET\",\"RequestPath\":\"/\",\"RequestPort\":\"58746\",\"RequestProtocol\":\"HTTP/1.1\",\"RequestScheme\":\"http\",\"RetryAttempts\":0,\"RouterName\":\"app@file\",\"ServiceAddr\":\"qa441-app-47bdae7d:3000\",\"ServiceName\":\"app@file\",\"ServiceURL\":\"http://qa441-app-47bdae7d:3000\",\"StartLocal\":\"2026-10-17T14:45:49.401828012Z\",\"StartUTC\":\"2026-10-17T14:45:49.401828012Z\",\"entryPointName\":\"fixture\",\"level\":\"info\",\"msg\":\"\",\"time\":\"2026-10-17T14:45:49Z\"}\n{\"ClientAddr\":\"172.29.0.1:59946\",\"ClientHost\":\"172.29.0.1\",\"ClientPort\":\"59946\",\"ClientUsername\":\"-\",\"DownstreamContentSize\":418,\"DownstreamStatus\":200,\"Duration\":77213830328,\"OriginContentSize\":418,\"OriginDuration\":77213796327,\"OriginStatus\":200,\"Overhead\":34001,\"RequestAddr\":\"127.0.0.1:58746\",\"RequestContentSize\":1048576,\"RequestCount\":2,\"RequestHost\":\"127.0.0.1\",\"RequestMethod\":\"PUT\",\"RequestPath\":\"/upload/local-extended\",\"RequestPort\":\"58746\",\"RequestProtocol\":\"HTTP/1.1\",\"RequestScheme\":\"http\",\"RetryAttempts\":0,\"RouterName\":\"app@file\",\"ServiceAddr\":\"qa441-app-47bdae7d:3000\",\"ServiceName\":\"app@file\",\"ServiceURL\":\"http://qa441-app-47bdae7d:3000\",\"StartLocal\":\"2026-10-17T14:45:49.441031678Z\",\"StartUTC\":\"2026-10-17T14:45:49.441031678Z\",\"entryPointName\":\"fixture\",\"level\":\"info\",\"msg\":\"\",\"time\":\"2026-10-17T14:47:06Z\"}\n",
+      "stderr": ""
+    },
+    {
+      "label": "remove-exact-own-proxy-extended",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa441-extended-47bdae7d"
+      ],
+      "exit": 0,
+      "stdout": "qa441-extended-47bdae7d\n",
+      "stderr": ""
+    },
+    {
+      "label": "actual-own-app-log",
+      "command": [
+        "docker",
+        "logs",
+        "qa441-app-47bdae7d"
+      ],
+      "exit": 0,
+      "stdout": "QA441_BUILD {\"marker\":\"QA441_PROXY\",\"node\":\"v24.22.0\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"program_sha256\":\"95069bb2ed895809e2218317e7e8c59c7783fa0a7ef6ca1ef61910775beea34c\"}\nQA441_READY {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"node\":\"v24.22.0\",\"requestTimeout\":180000}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-default\",\"phase\":\"begin\",\"bytes\":0,\"elapsed_ms\":0,\"declared\":\"1048576\",\"method\":\"PUT\"}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-default\",\"phase\":\"progress\",\"bytes\":65536,\"elapsed_ms\":4539}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-default\",\"phase\":\"progress\",\"bytes\":131072,\"elapsed_ms\":9380}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-default\",\"phase\":\"progress\",\"bytes\":196608,\"elapsed_ms\":14225}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-default\",\"phase\":\"progress\",\"bytes\":262144,\"elapsed_ms\":19063}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-default\",\"phase\":\"progress\",\"bytes\":327680,\"elapsed_ms\":23909}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-default\",\"phase\":\"progress\",\"bytes\":393216,\"elapsed_ms\":28751}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-default\",\"phase\":\"progress\",\"bytes\":458752,\"elapsed_ms\":33597}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-default\",\"phase\":\"progress\",\"bytes\":524288,\"elapsed_ms\":38443}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-default\",\"phase\":\"progress\",\"bytes\":589824,\"elapsed_ms\":43294}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-default\",\"phase\":\"progress\",\"bytes\":655360,\"elapsed_ms\":48138}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-default\",\"phase\":\"progress\",\"bytes\":720896,\"elapsed_ms\":52987}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-default\",\"phase\":\"progress\",\"bytes\":786432,\"elapsed_ms\":57835}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-default\",\"phase\":\"aborted\",\"bytes\":815104,\"elapsed_ms\":60004,\"partial_sha256\":\"bf5dcc46e2056a37c3dd42dfb799a93a4c5103d6dab9bc317950ac59574a99a2\"}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-default\",\"phase\":\"request-error\",\"bytes\":815104,\"elapsed_ms\":60004,\"code\":\"ECONNRESET\"}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-default\",\"phase\":\"closed-before-end\",\"bytes\":815104,\"elapsed_ms\":60004}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-extended\",\"phase\":\"begin\",\"bytes\":0,\"elapsed_ms\":0,\"declared\":\"1048576\",\"method\":\"PUT\"}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-extended\",\"phase\":\"progress\",\"bytes\":65536,\"elapsed_ms\":4545}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-extended\",\"phase\":\"progress\",\"bytes\":131072,\"elapsed_ms\":9390}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-extended\",\"phase\":\"progress\",\"bytes\":196608,\"elapsed_ms\":14236}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-extended\",\"phase\":\"progress\",\"bytes\":262144,\"elapsed_ms\":19088}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-extended\",\"phase\":\"progress\",\"bytes\":327680,\"elapsed_ms\":23941}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-extended\",\"phase\":\"progress\",\"bytes\":393216,\"elapsed_ms\":28789}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-extended\",\"phase\":\"progress\",\"bytes\":458752,\"elapsed_ms\":33637}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-extended\",\"phase\":\"progress\",\"bytes\":524288,\"elapsed_ms\":38483}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-extended\",\"phase\":\"progress\",\"bytes\":589824,\"elapsed_ms\":43333}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-extended\",\"phase\":\"progress\",\"bytes\":655360,\"elapsed_ms\":48178}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-extended\",\"phase\":\"progress\",\"bytes\":720896,\"elapsed_ms\":53011}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-extended\",\"phase\":\"progress\",\"bytes\":786432,\"elapsed_ms\":57849}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-extended\",\"phase\":\"progress\",\"bytes\":851968,\"elapsed_ms\":62688}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-extended\",\"phase\":\"progress\",\"bytes\":917504,\"elapsed_ms\":67522}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-extended\",\"phase\":\"progress\",\"bytes\":983040,\"elapsed_ms\":72369}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-extended\",\"phase\":\"progress\",\"bytes\":1048576,\"elapsed_ms\":77211}\nQA441_EVENT {\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-extended\",\"phase\":\"complete\",\"bytes\":1048576,\"elapsed_ms\":77211,\"sha256\":\"bd8a5183fdafb052402b7f52480145004a781b927f0d376e4fbd922da44f6926\"}\n",
+      "stderr": ""
+    },
+    {
+      "label": "cleanup-exact-own-container",
+      "command": [
+        "docker",
+        "rm",
+        "-f",
+        "-v",
+        "qa441-app-47bdae7d"
+      ],
+      "exit": 0,
+      "stdout": "qa441-app-47bdae7d\n",
+      "stderr": ""
+    },
+    {
+      "label": "remove-exact-own-network",
+      "command": [
+        "docker",
+        "network",
+        "rm",
+        "qa441-proxy-47bdae7d"
+      ],
+      "exit": 0,
+      "stdout": "qa441-proxy-47bdae7d\n",
+      "stderr": ""
+    },
+    {
+      "label": "own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa441-app-47bdae7d"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa441-app-47bdae7d\n"
+    },
+    {
+      "label": "own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa441-default-47bdae7d"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa441-default-47bdae7d\n"
+    },
+    {
+      "label": "own-container-absence",
+      "command": [
+        "docker",
+        "container",
+        "inspect",
+        "qa441-extended-47bdae7d"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: No such container: qa441-extended-47bdae7d\n"
+    },
+    {
+      "label": "own-network-absence",
+      "command": [
+        "docker",
+        "network",
+        "inspect",
+        "qa441-proxy-47bdae7d"
+      ],
+      "exit": 1,
+      "stdout": "[]\n",
+      "stderr": "Error response from daemon: network qa441-proxy-47bdae7d not found\n"
+    }
+  ],
+  "cases": [
+    {
+      "label": "default",
+      "container": "qa441-default-47bdae7d",
+      "changed_settings": [],
+      "client": {
+        "client": "v22.17.1",
+        "url": "http://127.0.0.1:58675/upload/local-default",
+        "bytes": 1048576,
+        "sha256": "bd8a5183fdafb052402b7f52480145004a781b927f0d376e4fbd922da44f6926",
+        "chunk_bytes": 4096,
+        "interval_ms": 300,
+        "writes": [
+          {
+            "at": 0.0025995,
+            "bytes": 4096,
+            "backpressure": false
+          },
+          {
+            "at": 0.30311325,
+            "bytes": 8192,
+            "backpressure": false
+          },
+          {
+            "at": 0.606611209,
+            "bytes": 12288,
+            "backpressure": false
+          },
+          {
+            "at": 0.910445709,
+            "bytes": 16384,
+            "backpressure": false
+          },
+          {
+            "at": 1.213404042,
+            "bytes": 20480,
+            "backpressure": false
+          },
+          {
+            "at": 1.514824792,
+            "bytes": 24576,
+            "backpressure": false
+          },
+          {
+            "at": 1.815907084,
+            "bytes": 28672,
+            "backpressure": false
+          },
+          {
+            "at": 2.120250167,
+            "bytes": 32768,
+            "backpressure": false
+          },
+          {
+            "at": 2.423498834,
+            "bytes": 36864,
+            "backpressure": false
+          },
+          {
+            "at": 2.726577125,
+            "bytes": 40960,
+            "backpressure": false
+          },
+          {
+            "at": 3.027518709,
+            "bytes": 45056,
+            "backpressure": false
+          },
+          {
+            "at": 3.329835209,
+            "bytes": 49152,
+            "backpressure": false
+          },
+          {
+            "at": 3.632946,
+            "bytes": 53248,
+            "backpressure": false
+          },
+          {
+            "at": 3.93464925,
+            "bytes": 57344,
+            "backpressure": false
+          },
+          {
+            "at": 4.238742209,
+            "bytes": 61440,
+            "backpressure": false
+          },
+          {
+            "at": 4.54065525,
+            "bytes": 65536,
+            "backpressure": false
+          },
+          {
+            "at": 4.844218542,
+            "bytes": 69632,
+            "backpressure": false
+          },
+          {
+            "at": 5.146386334,
+            "bytes": 73728,
+            "backpressure": false
+          },
+          {
+            "at": 5.44914475,
+            "bytes": 77824,
+            "backpressure": false
+          },
+          {
+            "at": 5.753148209,
+            "bytes": 81920,
+            "backpressure": false
+          },
+          {
+            "at": 6.0561635,
+            "bytes": 86016,
+            "backpressure": false
+          },
+          {
+            "at": 6.358153959,
+            "bytes": 90112,
+            "backpressure": false
+          },
+          {
+            "at": 6.659837042,
+            "bytes": 94208,
+            "backpressure": false
+          },
+          {
+            "at": 6.962448917,
+            "bytes": 98304,
+            "backpressure": false
+          },
+          {
+            "at": 7.265339167,
+            "bytes": 102400,
+            "backpressure": false
+          },
+          {
+            "at": 7.567034209,
+            "bytes": 106496,
+            "backpressure": false
+          },
+          {
+            "at": 7.870904,
+            "bytes": 110592,
+            "backpressure": false
+          },
+          {
+            "at": 8.174727417,
+            "bytes": 114688,
+            "backpressure": false
+          },
+          {
+            "at": 8.475665459,
+            "bytes": 118784,
+            "backpressure": false
+          },
+          {
+            "at": 8.776966584,
+            "bytes": 122880,
+            "backpressure": false
+          },
+          {
+            "at": 9.0790175,
+            "bytes": 126976,
+            "backpressure": false
+          },
+          {
+            "at": 9.382304167,
+            "bytes": 131072,
+            "backpressure": false
+          },
+          {
+            "at": 9.685484709,
+            "bytes": 135168,
+            "backpressure": false
+          },
+          {
+            "at": 9.988935834,
+            "bytes": 139264,
+            "backpressure": false
+          },
+          {
+            "at": 10.291021084,
+            "bytes": 143360,
+            "backpressure": false
+          },
+          {
+            "at": 10.593394917,
+            "bytes": 147456,
+            "backpressure": false
+          },
+          {
+            "at": 10.8947955,
+            "bytes": 151552,
+            "backpressure": false
+          },
+          {
+            "at": 11.198441709,
+            "bytes": 155648,
+            "backpressure": false
+          },
+          {
+            "at": 11.502027709,
+            "bytes": 159744,
+            "backpressure": false
+          },
+          {
+            "at": 11.803742917,
+            "bytes": 163840,
+            "backpressure": false
+          },
+          {
+            "at": 12.107042084,
+            "bytes": 167936,
+            "backpressure": false
+          },
+          {
+            "at": 12.410540125,
+            "bytes": 172032,
+            "backpressure": false
+          },
+          {
+            "at": 12.714160959,
+            "bytes": 176128,
+            "backpressure": false
+          },
+          {
+            "at": 13.018081709,
+            "bytes": 180224,
+            "backpressure": false
+          },
+          {
+            "at": 13.320666875,
+            "bytes": 184320,
+            "backpressure": false
+          },
+          {
+            "at": 13.624305834,
+            "bytes": 188416,
+            "backpressure": false
+          },
+          {
+            "at": 13.925839209,
+            "bytes": 192512,
+            "backpressure": false
+          },
+          {
+            "at": 14.227157292,
+            "bytes": 196608,
+            "backpressure": false
+          },
+          {
+            "at": 14.529061209,
+            "bytes": 200704,
+            "backpressure": false
+          },
+          {
+            "at": 14.832061834,
+            "bytes": 204800,
+            "backpressure": false
+          },
+          {
+            "at": 15.133179042,
+            "bytes": 208896,
+            "backpressure": false
+          },
+          {
+            "at": 15.434907625,
+            "bytes": 212992,
+            "backpressure": false
+          },
+          {
+            "at": 15.736899,
+            "bytes": 217088,
+            "backpressure": false
+          },
+          {
+            "at": 16.040572875,
+            "bytes": 221184,
+            "backpressure": false
+          },
+          {
+            "at": 16.3409465,
+            "bytes": 225280,
+            "backpressure": false
+          },
+          {
+            "at": 16.643736584,
+            "bytes": 229376,
+            "backpressure": false
+          },
+          {
+            "at": 16.944938625,
+            "bytes": 233472,
+            "backpressure": false
+          },
+          {
+            "at": 17.245998125,
+            "bytes": 237568,
+            "backpressure": false
+          },
+          {
+            "at": 17.5490525,
+            "bytes": 241664,
+            "backpressure": false
+          },
+          {
+            "at": 17.851941375,
+            "bytes": 245760,
+            "backpressure": false
+          },
+          {
+            "at": 18.154797625,
+            "bytes": 249856,
+            "backpressure": false
+          },
+          {
+            "at": 18.458658542,
+            "bytes": 253952,
+            "backpressure": false
+          },
+          {
+            "at": 18.762104542,
+            "bytes": 258048,
+            "backpressure": false
+          },
+          {
+            "at": 19.065337,
+            "bytes": 262144,
+            "backpressure": false
+          },
+          {
+            "at": 19.36849525,
+            "bytes": 266240,
+            "backpressure": false
+          },
+          {
+            "at": 19.671360042,
+            "bytes": 270336,
+            "backpressure": false
+          },
+          {
+            "at": 19.972967459,
+            "bytes": 274432,
+            "backpressure": false
+          },
+          {
+            "at": 20.277119125,
+            "bytes": 278528,
+            "backpressure": false
+          },
+          {
+            "at": 20.578025334,
+            "bytes": 282624,
+            "backpressure": false
+          },
+          {
+            "at": 20.879927625,
+            "bytes": 286720,
+            "backpressure": false
+          },
+          {
+            "at": 21.1824925,
+            "bytes": 290816,
+            "backpressure": false
+          },
+          {
+            "at": 21.486690209,
+            "bytes": 294912,
+            "backpressure": false
+          },
+          {
+            "at": 21.788664834,
+            "bytes": 299008,
+            "backpressure": false
+          },
+          {
+            "at": 22.090834667,
+            "bytes": 303104,
+            "backpressure": false
+          },
+          {
+            "at": 22.393169875,
+            "bytes": 307200,
+            "backpressure": false
+          },
+          {
+            "at": 22.696436709,
+            "bytes": 311296,
+            "backpressure": false
+          },
+          {
+            "at": 22.999869125,
+            "bytes": 315392,
+            "backpressure": false
+          },
+          {
+            "at": 23.304109125,
+            "bytes": 319488,
+            "backpressure": false
+          },
+          {
+            "at": 23.606798042,
+            "bytes": 323584,
+            "backpressure": false
+          },
+          {
+            "at": 23.910566334,
+            "bytes": 327680,
+            "backpressure": false
+          },
+          {
+            "at": 24.213257417,
+            "bytes": 331776,
+            "backpressure": false
+          },
+          {
+            "at": 24.515647667,
+            "bytes": 335872,
+            "backpressure": false
+          },
+          {
+            "at": 24.818852542,
+            "bytes": 339968,
+            "backpressure": false
+          },
+          {
+            "at": 25.122530792,
+            "bytes": 344064,
+            "backpressure": false
+          },
+          {
+            "at": 25.423333959,
+            "bytes": 348160,
+            "backpressure": false
+          },
+          {
+            "at": 25.725530125,
+            "bytes": 352256,
+            "backpressure": false
+          },
+          {
+            "at": 26.028504917,
+            "bytes": 356352,
+            "backpressure": false
+          },
+          {
+            "at": 26.330285417,
+            "bytes": 360448,
+            "backpressure": false
+          },
+          {
+            "at": 26.631582125,
+            "bytes": 364544,
+            "backpressure": false
+          },
+          {
+            "at": 26.933147042,
+            "bytes": 368640,
+            "backpressure": false
+          },
+          {
+            "at": 27.237028209,
+            "bytes": 372736,
+            "backpressure": false
+          },
+          {
+            "at": 27.540880084,
+            "bytes": 376832,
+            "backpressure": false
+          },
+          {
+            "at": 27.844764334,
+            "bytes": 380928,
+            "backpressure": false
+          },
+          {
+            "at": 28.1468785,
+            "bytes": 385024,
+            "backpressure": false
+          },
+          {
+            "at": 28.449556,
+            "bytes": 389120,
+            "backpressure": false
+          },
+          {
+            "at": 28.752464167,
+            "bytes": 393216,
+            "backpressure": false
+          },
+          {
+            "at": 29.055420459,
+            "bytes": 397312,
+            "backpressure": false
+          },
+          {
+            "at": 29.355629542,
+            "bytes": 401408,
+            "backpressure": false
+          },
+          {
+            "at": 29.658834084,
+            "bytes": 405504,
+            "backpressure": false
+          },
+          {
+            "at": 29.962587125,
+            "bytes": 409600,
+            "backpressure": false
+          },
+          {
+            "at": 30.262451167,
+            "bytes": 413696,
+            "backpressure": false
+          },
+          {
+            "at": 30.566465834,
+            "bytes": 417792,
+            "backpressure": false
+          },
+          {
+            "at": 30.869110709,
+            "bytes": 421888,
+            "backpressure": false
+          },
+          {
+            "at": 31.172302334,
+            "bytes": 425984,
+            "backpressure": false
+          },
+          {
+            "at": 31.476742042,
+            "bytes": 430080,
+            "backpressure": false
+          },
+          {
+            "at": 31.77903775,
+            "bytes": 434176,
+            "backpressure": false
+          },
+          {
+            "at": 32.081138959,
+            "bytes": 438272,
+            "backpressure": false
+          },
+          {
+            "at": 32.384303959,
+            "bytes": 442368,
+            "backpressure": false
+          },
+          {
+            "at": 32.686948459,
+            "bytes": 446464,
+            "backpressure": false
+          },
+          {
+            "at": 32.990922209,
+            "bytes": 450560,
+            "backpressure": false
+          },
+          {
+            "at": 33.295008625,
+            "bytes": 454656,
+            "backpressure": false
+          },
+          {
+            "at": 33.598340542,
+            "bytes": 458752,
+            "backpressure": false
+          },
+          {
+            "at": 33.901374625,
+            "bytes": 462848,
+            "backpressure": false
+          },
+          {
+            "at": 34.205530917,
+            "bytes": 466944,
+            "backpressure": false
+          },
+          {
+            "at": 34.506871042,
+            "bytes": 471040,
+            "backpressure": false
+          },
+          {
+            "at": 34.809677709,
+            "bytes": 475136,
+            "backpressure": false
+          },
+          {
+            "at": 35.113830459,
+            "bytes": 479232,
+            "backpressure": false
+          },
+          {
+            "at": 35.418152042,
+            "bytes": 483328,
+            "backpressure": false
+          },
+          {
+            "at": 35.720127792,
+            "bytes": 487424,
+            "backpressure": false
+          },
+          {
+            "at": 36.024497792,
+            "bytes": 491520,
+            "backpressure": false
+          },
+          {
+            "at": 36.325745667,
+            "bytes": 495616,
+            "backpressure": false
+          },
+          {
+            "at": 36.627494459,
+            "bytes": 499712,
+            "backpressure": false
+          },
+          {
+            "at": 36.931800542,
+            "bytes": 503808,
+            "backpressure": false
+          },
+          {
+            "at": 37.2361325,
+            "bytes": 507904,
+            "backpressure": false
+          },
+          {
+            "at": 37.537461667,
+            "bytes": 512000,
+            "backpressure": false
+          },
+          {
+            "at": 37.841150292,
+            "bytes": 516096,
+            "backpressure": false
+          },
+          {
+            "at": 38.143935375,
+            "bytes": 520192,
+            "backpressure": false
+          },
+          {
+            "at": 38.445108084,
+            "bytes": 524288,
+            "backpressure": false
+          },
+          {
+            "at": 38.747932167,
+            "bytes": 528384,
+            "backpressure": false
+          },
+          {
+            "at": 39.051658584,
+            "bytes": 532480,
+            "backpressure": false
+          },
+          {
+            "at": 39.355115167,
+            "bytes": 536576,
+            "backpressure": false
+          },
+          {
+            "at": 39.657869584,
+            "bytes": 540672,
+            "backpressure": false
+          },
+          {
+            "at": 39.9621855,
+            "bytes": 544768,
+            "backpressure": false
+          },
+          {
+            "at": 40.266114875,
+            "bytes": 548864,
+            "backpressure": false
+          },
+          {
+            "at": 40.569443959,
+            "bytes": 552960,
+            "backpressure": false
+          },
+          {
+            "at": 40.873175334,
+            "bytes": 557056,
+            "backpressure": false
+          },
+          {
+            "at": 41.177072917,
+            "bytes": 561152,
+            "backpressure": false
+          },
+          {
+            "at": 41.480077,
+            "bytes": 565248,
+            "backpressure": false
+          },
+          {
+            "at": 41.780892917,
+            "bytes": 569344,
+            "backpressure": false
+          },
+          {
+            "at": 42.08160725,
+            "bytes": 573440,
+            "backpressure": false
+          },
+          {
+            "at": 42.385789917,
+            "bytes": 577536,
+            "backpressure": false
+          },
+          {
+            "at": 42.690138459,
+            "bytes": 581632,
+            "backpressure": false
+          },
+          {
+            "at": 42.992773375,
+            "bytes": 585728,
+            "backpressure": false
+          },
+          {
+            "at": 43.295466792,
+            "bytes": 589824,
+            "backpressure": false
+          },
+          {
+            "at": 43.59783925,
+            "bytes": 593920,
+            "backpressure": false
+          },
+          {
+            "at": 43.900464959,
+            "bytes": 598016,
+            "backpressure": false
+          },
+          {
+            "at": 44.201982375,
+            "bytes": 602112,
+            "backpressure": false
+          },
+          {
+            "at": 44.504790209,
+            "bytes": 606208,
+            "backpressure": false
+          },
+          {
+            "at": 44.807491625,
+            "bytes": 610304,
+            "backpressure": false
+          },
+          {
+            "at": 45.10999025,
+            "bytes": 614400,
+            "backpressure": false
+          },
+          {
+            "at": 45.412754167,
+            "bytes": 618496,
+            "backpressure": false
+          },
+          {
+            "at": 45.715360667,
+            "bytes": 622592,
+            "backpressure": false
+          },
+          {
+            "at": 46.016783167,
+            "bytes": 626688,
+            "backpressure": false
+          },
+          {
+            "at": 46.320798709,
+            "bytes": 630784,
+            "backpressure": false
+          },
+          {
+            "at": 46.621820875,
+            "bytes": 634880,
+            "backpressure": false
+          },
+          {
+            "at": 46.925266792,
+            "bytes": 638976,
+            "backpressure": false
+          },
+          {
+            "at": 47.227733917,
+            "bytes": 643072,
+            "backpressure": false
+          },
+          {
+            "at": 47.53164575,
+            "bytes": 647168,
+            "backpressure": false
+          },
+          {
+            "at": 47.835805375,
+            "bytes": 651264,
+            "backpressure": false
+          },
+          {
+            "at": 48.139071667,
+            "bytes": 655360,
+            "backpressure": false
+          },
+          {
+            "at": 48.441011209,
+            "bytes": 659456,
+            "backpressure": false
+          },
+          {
+            "at": 48.745725625,
+            "bytes": 663552,
+            "backpressure": false
+          },
+          {
+            "at": 49.047959834,
+            "bytes": 667648,
+            "backpressure": false
+          },
+          {
+            "at": 49.351894375,
+            "bytes": 671744,
+            "backpressure": false
+          },
+          {
+            "at": 49.655054625,
+            "bytes": 675840,
+            "backpressure": false
+          },
+          {
+            "at": 49.956623,
+            "bytes": 679936,
+            "backpressure": false
+          },
+          {
+            "at": 50.2609465,
+            "bytes": 684032,
+            "backpressure": false
+          },
+          {
+            "at": 50.56243525,
+            "bytes": 688128,
+            "backpressure": false
+          },
+          {
+            "at": 50.867090834,
+            "bytes": 692224,
+            "backpressure": false
+          },
+          {
+            "at": 51.169313209,
+            "bytes": 696320,
+            "backpressure": false
+          },
+          {
+            "at": 51.47320875,
+            "bytes": 700416,
+            "backpressure": false
+          },
+          {
+            "at": 51.777491625,
+            "bytes": 704512,
+            "backpressure": false
+          },
+          {
+            "at": 52.078341167,
+            "bytes": 708608,
+            "backpressure": false
+          },
+          {
+            "at": 52.381177334,
+            "bytes": 712704,
+            "backpressure": false
+          },
+          {
+            "at": 52.684989792,
+            "bytes": 716800,
+            "backpressure": false
+          },
+          {
+            "at": 52.988413709,
+            "bytes": 720896,
+            "backpressure": false
+          },
+          {
+            "at": 53.290604542,
+            "bytes": 724992,
+            "backpressure": false
+          },
+          {
+            "at": 53.594082792,
+            "bytes": 729088,
+            "backpressure": false
+          },
+          {
+            "at": 53.897451625,
+            "bytes": 733184,
+            "backpressure": false
+          },
+          {
+            "at": 54.202040917,
+            "bytes": 737280,
+            "backpressure": false
+          },
+          {
+            "at": 54.506195792,
+            "bytes": 741376,
+            "backpressure": false
+          },
+          {
+            "at": 54.80898275,
+            "bytes": 745472,
+            "backpressure": false
+          },
+          {
+            "at": 55.111424625,
+            "bytes": 749568,
+            "backpressure": false
+          },
+          {
+            "at": 55.413977834,
+            "bytes": 753664,
+            "backpressure": false
+          },
+          {
+            "at": 55.717354042,
+            "bytes": 757760,
+            "backpressure": false
+          },
+          {
+            "at": 56.021662584,
+            "bytes": 761856,
+            "backpressure": false
+          },
+          {
+            "at": 56.323574834,
+            "bytes": 765952,
+            "backpressure": false
+          },
+          {
+            "at": 56.625782792,
+            "bytes": 770048,
+            "backpressure": false
+          },
+          {
+            "at": 56.929786459,
+            "bytes": 774144,
+            "backpressure": false
+          },
+          {
+            "at": 57.231306834,
+            "bytes": 778240,
+            "backpressure": false
+          },
+          {
+            "at": 57.534088292,
+            "bytes": 782336,
+            "backpressure": false
+          },
+          {
+            "at": 57.837900042,
+            "bytes": 786432,
+            "backpressure": false
+          },
+          {
+            "at": 58.14005325,
+            "bytes": 790528,
+            "backpressure": false
+          },
+          {
+            "at": 58.442210834,
+            "bytes": 794624,
+            "backpressure": false
+          },
+          {
+            "at": 58.743046417,
+            "bytes": 798720,
+            "backpressure": false
+          },
+          {
+            "at": 59.046055792,
+            "bytes": 802816,
+            "backpressure": false
+          },
+          {
+            "at": 59.350055125,
+            "bytes": 806912,
+            "backpressure": false
+          },
+          {
+            "at": 59.6515535,
+            "bytes": 811008,
+            "backpressure": false
+          },
+          {
+            "at": 59.953817417,
+            "bytes": 815104,
+            "backpressure": false
+          }
+        ],
+        "errors": [],
+        "response": {
+          "status": 499,
+          "headers": {
+            "date": "Sat, 17 Oct 2026 14:45:48 GMT",
+            "content-length": "21",
+            "connection": "close"
+          },
+          "started_at": 60.007512709,
+          "body": "Client Closed Request",
+          "complete": true
+        },
+        "finished_at": 60.012549542,
+        "bytes_submitted": 815104,
+        "complete": true
+      },
+      "pass": true
+    },
+    {
+      "label": "extended",
+      "container": "qa441-extended-47bdae7d",
+      "changed_settings": [
+        "--entryPoints.fixture.transport.respondingTimeouts.readTimeout=100s"
+      ],
+      "client": {
+        "client": "v22.17.1",
+        "url": "http://127.0.0.1:58746/upload/local-extended",
+        "bytes": 1048576,
+        "sha256": "bd8a5183fdafb052402b7f52480145004a781b927f0d376e4fbd922da44f6926",
+        "chunk_bytes": 4096,
+        "interval_ms": 300,
+        "writes": [
+          {
+            "at": 0.002548041,
+            "bytes": 4096,
+            "backpressure": false
+          },
+          {
+            "at": 0.30383575,
+            "bytes": 8192,
+            "backpressure": false
+          },
+          {
+            "at": 0.606281458,
+            "bytes": 12288,
+            "backpressure": false
+          },
+          {
+            "at": 0.909394333,
+            "bytes": 16384,
+            "backpressure": false
+          },
+          {
+            "at": 1.212746,
+            "bytes": 20480,
+            "backpressure": false
+          },
+          {
+            "at": 1.5148665,
+            "bytes": 24576,
+            "backpressure": false
+          },
+          {
+            "at": 1.81760125,
+            "bytes": 28672,
+            "backpressure": false
+          },
+          {
+            "at": 2.1228085,
+            "bytes": 32768,
+            "backpressure": false
+          },
+          {
+            "at": 2.426503,
+            "bytes": 36864,
+            "backpressure": false
+          },
+          {
+            "at": 2.728101916,
+            "bytes": 40960,
+            "backpressure": false
+          },
+          {
+            "at": 3.030812666,
+            "bytes": 45056,
+            "backpressure": false
+          },
+          {
+            "at": 3.332492541,
+            "bytes": 49152,
+            "backpressure": false
+          },
+          {
+            "at": 3.635995916,
+            "bytes": 53248,
+            "backpressure": false
+          },
+          {
+            "at": 3.939547375,
+            "bytes": 57344,
+            "backpressure": false
+          },
+          {
+            "at": 4.242793666,
+            "bytes": 61440,
+            "backpressure": false
+          },
+          {
+            "at": 4.546255375,
+            "bytes": 65536,
+            "backpressure": false
+          },
+          {
+            "at": 4.850341625,
+            "bytes": 69632,
+            "backpressure": false
+          },
+          {
+            "at": 5.154352,
+            "bytes": 73728,
+            "backpressure": false
+          },
+          {
+            "at": 5.456404625,
+            "bytes": 77824,
+            "backpressure": false
+          },
+          {
+            "at": 5.75888675,
+            "bytes": 81920,
+            "backpressure": false
+          },
+          {
+            "at": 6.060982791,
+            "bytes": 86016,
+            "backpressure": false
+          },
+          {
+            "at": 6.363779958,
+            "bytes": 90112,
+            "backpressure": false
+          },
+          {
+            "at": 6.666898708,
+            "bytes": 94208,
+            "backpressure": false
+          },
+          {
+            "at": 6.970122625,
+            "bytes": 98304,
+            "backpressure": false
+          },
+          {
+            "at": 7.273060166,
+            "bytes": 102400,
+            "backpressure": false
+          },
+          {
+            "at": 7.574404541,
+            "bytes": 106496,
+            "backpressure": false
+          },
+          {
+            "at": 7.878261875,
+            "bytes": 110592,
+            "backpressure": false
+          },
+          {
+            "at": 8.182052708,
+            "bytes": 114688,
+            "backpressure": false
+          },
+          {
+            "at": 8.485700083,
+            "bytes": 118784,
+            "backpressure": false
+          },
+          {
+            "at": 8.789063708,
+            "bytes": 122880,
+            "backpressure": false
+          },
+          {
+            "at": 9.090982333,
+            "bytes": 126976,
+            "backpressure": false
+          },
+          {
+            "at": 9.392468083,
+            "bytes": 131072,
+            "backpressure": false
+          },
+          {
+            "at": 9.693626958,
+            "bytes": 135168,
+            "backpressure": false
+          },
+          {
+            "at": 9.997577833,
+            "bytes": 139264,
+            "backpressure": false
+          },
+          {
+            "at": 10.301091416,
+            "bytes": 143360,
+            "backpressure": false
+          },
+          {
+            "at": 10.602322208,
+            "bytes": 147456,
+            "backpressure": false
+          },
+          {
+            "at": 10.905231083,
+            "bytes": 151552,
+            "backpressure": false
+          },
+          {
+            "at": 11.208483041,
+            "bytes": 155648,
+            "backpressure": false
+          },
+          {
+            "at": 11.510120916,
+            "bytes": 159744,
+            "backpressure": false
+          },
+          {
+            "at": 11.814282583,
+            "bytes": 163840,
+            "backpressure": false
+          },
+          {
+            "at": 12.117027791,
+            "bytes": 167936,
+            "backpressure": false
+          },
+          {
+            "at": 12.419821125,
+            "bytes": 172032,
+            "backpressure": false
+          },
+          {
+            "at": 12.723622833,
+            "bytes": 176128,
+            "backpressure": false
+          },
+          {
+            "at": 13.024890416,
+            "bytes": 180224,
+            "backpressure": false
+          },
+          {
+            "at": 13.327336916,
+            "bytes": 184320,
+            "backpressure": false
+          },
+          {
+            "at": 13.631258875,
+            "bytes": 188416,
+            "backpressure": false
+          },
+          {
+            "at": 13.933680333,
+            "bytes": 192512,
+            "backpressure": false
+          },
+          {
+            "at": 14.236902833,
+            "bytes": 196608,
+            "backpressure": false
+          },
+          {
+            "at": 14.541041416,
+            "bytes": 200704,
+            "backpressure": false
+          },
+          {
+            "at": 14.842821083,
+            "bytes": 204800,
+            "backpressure": false
+          },
+          {
+            "at": 15.146597583,
+            "bytes": 208896,
+            "backpressure": false
+          },
+          {
+            "at": 15.449742,
+            "bytes": 212992,
+            "backpressure": false
+          },
+          {
+            "at": 15.752764708,
+            "bytes": 217088,
+            "backpressure": false
+          },
+          {
+            "at": 16.055396333,
+            "bytes": 221184,
+            "backpressure": false
+          },
+          {
+            "at": 16.358491541,
+            "bytes": 225280,
+            "backpressure": false
+          },
+          {
+            "at": 16.661257833,
+            "bytes": 229376,
+            "backpressure": false
+          },
+          {
+            "at": 16.964484791,
+            "bytes": 233472,
+            "backpressure": false
+          },
+          {
+            "at": 17.266700625,
+            "bytes": 237568,
+            "backpressure": false
+          },
+          {
+            "at": 17.570762375,
+            "bytes": 241664,
+            "backpressure": false
+          },
+          {
+            "at": 17.875339083,
+            "bytes": 245760,
+            "backpressure": false
+          },
+          {
+            "at": 18.179760708,
+            "bytes": 249856,
+            "backpressure": false
+          },
+          {
+            "at": 18.482759958,
+            "bytes": 253952,
+            "backpressure": false
+          },
+          {
+            "at": 18.786652708,
+            "bytes": 258048,
+            "backpressure": false
+          },
+          {
+            "at": 19.0898655,
+            "bytes": 262144,
+            "backpressure": false
+          },
+          {
+            "at": 19.392077583,
+            "bytes": 266240,
+            "backpressure": false
+          },
+          {
+            "at": 19.694720875,
+            "bytes": 270336,
+            "backpressure": false
+          },
+          {
+            "at": 19.997271833,
+            "bytes": 274432,
+            "backpressure": false
+          },
+          {
+            "at": 20.305315416,
+            "bytes": 278528,
+            "backpressure": false
+          },
+          {
+            "at": 20.607987458,
+            "bytes": 282624,
+            "backpressure": false
+          },
+          {
+            "at": 20.911091375,
+            "bytes": 286720,
+            "backpressure": false
+          },
+          {
+            "at": 21.214299166,
+            "bytes": 290816,
+            "backpressure": false
+          },
+          {
+            "at": 21.517467958,
+            "bytes": 294912,
+            "backpressure": false
+          },
+          {
+            "at": 21.821140916,
+            "bytes": 299008,
+            "backpressure": false
+          },
+          {
+            "at": 22.124555,
+            "bytes": 303104,
+            "backpressure": false
+          },
+          {
+            "at": 22.428662416,
+            "bytes": 307200,
+            "backpressure": false
+          },
+          {
+            "at": 22.73230375,
+            "bytes": 311296,
+            "backpressure": false
+          },
+          {
+            "at": 23.034926208,
+            "bytes": 315392,
+            "backpressure": false
+          },
+          {
+            "at": 23.338051458,
+            "bytes": 319488,
+            "backpressure": false
+          },
+          {
+            "at": 23.6402135,
+            "bytes": 323584,
+            "backpressure": false
+          },
+          {
+            "at": 23.943989333,
+            "bytes": 327680,
+            "backpressure": false
+          },
+          {
+            "at": 24.245499333,
+            "bytes": 331776,
+            "backpressure": false
+          },
+          {
+            "at": 24.548327,
+            "bytes": 335872,
+            "backpressure": false
+          },
+          {
+            "at": 24.850080083,
+            "bytes": 339968,
+            "backpressure": false
+          },
+          {
+            "at": 25.152688375,
+            "bytes": 344064,
+            "backpressure": false
+          },
+          {
+            "at": 25.456430958,
+            "bytes": 348160,
+            "backpressure": false
+          },
+          {
+            "at": 25.757302458,
+            "bytes": 352256,
+            "backpressure": false
+          },
+          {
+            "at": 26.061510875,
+            "bytes": 356352,
+            "backpressure": false
+          },
+          {
+            "at": 26.365558625,
+            "bytes": 360448,
+            "backpressure": false
+          },
+          {
+            "at": 26.669267833,
+            "bytes": 364544,
+            "backpressure": false
+          },
+          {
+            "at": 26.973002125,
+            "bytes": 368640,
+            "backpressure": false
+          },
+          {
+            "at": 27.274239875,
+            "bytes": 372736,
+            "backpressure": false
+          },
+          {
+            "at": 27.578177958,
+            "bytes": 376832,
+            "backpressure": false
+          },
+          {
+            "at": 27.880973791,
+            "bytes": 380928,
+            "backpressure": false
+          },
+          {
+            "at": 28.185053083,
+            "bytes": 385024,
+            "backpressure": false
+          },
+          {
+            "at": 28.487543,
+            "bytes": 389120,
+            "backpressure": false
+          },
+          {
+            "at": 28.790733208,
+            "bytes": 393216,
+            "backpressure": false
+          },
+          {
+            "at": 29.093485625,
+            "bytes": 397312,
+            "backpressure": false
+          },
+          {
+            "at": 29.395047166,
+            "bytes": 401408,
+            "backpressure": false
+          },
+          {
+            "at": 29.6969875,
+            "bytes": 405504,
+            "backpressure": false
+          },
+          {
+            "at": 29.999908166,
+            "bytes": 409600,
+            "backpressure": false
+          },
+          {
+            "at": 30.302122416,
+            "bytes": 413696,
+            "backpressure": false
+          },
+          {
+            "at": 30.605218083,
+            "bytes": 417792,
+            "backpressure": false
+          },
+          {
+            "at": 30.907104625,
+            "bytes": 421888,
+            "backpressure": false
+          },
+          {
+            "at": 31.211187208,
+            "bytes": 425984,
+            "backpressure": false
+          },
+          {
+            "at": 31.51533475,
+            "bytes": 430080,
+            "backpressure": false
+          },
+          {
+            "at": 31.819147208,
+            "bytes": 434176,
+            "backpressure": false
+          },
+          {
+            "at": 32.123364708,
+            "bytes": 438272,
+            "backpressure": false
+          },
+          {
+            "at": 32.427274291,
+            "bytes": 442368,
+            "backpressure": false
+          },
+          {
+            "at": 32.731686625,
+            "bytes": 446464,
+            "backpressure": false
+          },
+          {
+            "at": 33.0334045,
+            "bytes": 450560,
+            "backpressure": false
+          },
+          {
+            "at": 33.337049541,
+            "bytes": 454656,
+            "backpressure": false
+          },
+          {
+            "at": 33.6381195,
+            "bytes": 458752,
+            "backpressure": false
+          },
+          {
+            "at": 33.942174083,
+            "bytes": 462848,
+            "backpressure": false
+          },
+          {
+            "at": 34.245642958,
+            "bytes": 466944,
+            "backpressure": false
+          },
+          {
+            "at": 34.548858541,
+            "bytes": 471040,
+            "backpressure": false
+          },
+          {
+            "at": 34.85085175,
+            "bytes": 475136,
+            "backpressure": false
+          },
+          {
+            "at": 35.154204333,
+            "bytes": 479232,
+            "backpressure": false
+          },
+          {
+            "at": 35.457924,
+            "bytes": 483328,
+            "backpressure": false
+          },
+          {
+            "at": 35.761768208,
+            "bytes": 487424,
+            "backpressure": false
+          },
+          {
+            "at": 36.065468541,
+            "bytes": 491520,
+            "backpressure": false
+          },
+          {
+            "at": 36.3686335,
+            "bytes": 495616,
+            "backpressure": false
+          },
+          {
+            "at": 36.672327583,
+            "bytes": 499712,
+            "backpressure": false
+          },
+          {
+            "at": 36.974796208,
+            "bytes": 503808,
+            "backpressure": false
+          },
+          {
+            "at": 37.276459541,
+            "bytes": 507904,
+            "backpressure": false
+          },
+          {
+            "at": 37.58040675,
+            "bytes": 512000,
+            "backpressure": false
+          },
+          {
+            "at": 37.881200083,
+            "bytes": 516096,
+            "backpressure": false
+          },
+          {
+            "at": 38.182300916,
+            "bytes": 520192,
+            "backpressure": false
+          },
+          {
+            "at": 38.486074166,
+            "bytes": 524288,
+            "backpressure": false
+          },
+          {
+            "at": 38.787701041,
+            "bytes": 528384,
+            "backpressure": false
+          },
+          {
+            "at": 39.088891375,
+            "bytes": 532480,
+            "backpressure": false
+          },
+          {
+            "at": 39.392242541,
+            "bytes": 536576,
+            "backpressure": false
+          },
+          {
+            "at": 39.693138583,
+            "bytes": 540672,
+            "backpressure": false
+          },
+          {
+            "at": 39.996738833,
+            "bytes": 544768,
+            "backpressure": false
+          },
+          {
+            "at": 40.300346458,
+            "bytes": 548864,
+            "backpressure": false
+          },
+          {
+            "at": 40.60393175,
+            "bytes": 552960,
+            "backpressure": false
+          },
+          {
+            "at": 40.906637666,
+            "bytes": 557056,
+            "backpressure": false
+          },
+          {
+            "at": 41.211073083,
+            "bytes": 561152,
+            "backpressure": false
+          },
+          {
+            "at": 41.515150875,
+            "bytes": 565248,
+            "backpressure": false
+          },
+          {
+            "at": 41.8185085,
+            "bytes": 569344,
+            "backpressure": false
+          },
+          {
+            "at": 42.121594291,
+            "bytes": 573440,
+            "backpressure": false
+          },
+          {
+            "at": 42.424427,
+            "bytes": 577536,
+            "backpressure": false
+          },
+          {
+            "at": 42.728410125,
+            "bytes": 581632,
+            "backpressure": false
+          },
+          {
+            "at": 43.032780166,
+            "bytes": 585728,
+            "backpressure": false
+          },
+          {
+            "at": 43.33447775,
+            "bytes": 589824,
+            "backpressure": false
+          },
+          {
+            "at": 43.636307083,
+            "bytes": 593920,
+            "backpressure": false
+          },
+          {
+            "at": 43.939941958,
+            "bytes": 598016,
+            "backpressure": false
+          },
+          {
+            "at": 44.242893416,
+            "bytes": 602112,
+            "backpressure": false
+          },
+          {
+            "at": 44.54647225,
+            "bytes": 606208,
+            "backpressure": false
+          },
+          {
+            "at": 44.849876166,
+            "bytes": 610304,
+            "backpressure": false
+          },
+          {
+            "at": 45.152088625,
+            "bytes": 614400,
+            "backpressure": false
+          },
+          {
+            "at": 45.456135666,
+            "bytes": 618496,
+            "backpressure": false
+          },
+          {
+            "at": 45.758864166,
+            "bytes": 622592,
+            "backpressure": false
+          },
+          {
+            "at": 46.060818833,
+            "bytes": 626688,
+            "backpressure": false
+          },
+          {
+            "at": 46.363234916,
+            "bytes": 630784,
+            "backpressure": false
+          },
+          {
+            "at": 46.66804725,
+            "bytes": 634880,
+            "backpressure": false
+          },
+          {
+            "at": 46.970303458,
+            "bytes": 638976,
+            "backpressure": false
+          },
+          {
+            "at": 47.271767375,
+            "bytes": 643072,
+            "backpressure": false
+          },
+          {
+            "at": 47.573367541,
+            "bytes": 647168,
+            "backpressure": false
+          },
+          {
+            "at": 47.876280166,
+            "bytes": 651264,
+            "backpressure": false
+          },
+          {
+            "at": 48.179181041,
+            "bytes": 655360,
+            "backpressure": false
+          },
+          {
+            "at": 48.481935041,
+            "bytes": 659456,
+            "backpressure": false
+          },
+          {
+            "at": 48.784983583,
+            "bytes": 663552,
+            "backpressure": false
+          },
+          {
+            "at": 49.08634125,
+            "bytes": 667648,
+            "backpressure": false
+          },
+          {
+            "at": 49.389784125,
+            "bytes": 671744,
+            "backpressure": false
+          },
+          {
+            "at": 49.693422958,
+            "bytes": 675840,
+            "backpressure": false
+          },
+          {
+            "at": 49.995527916,
+            "bytes": 679936,
+            "backpressure": false
+          },
+          {
+            "at": 50.299115,
+            "bytes": 684032,
+            "backpressure": false
+          },
+          {
+            "at": 50.600558708,
+            "bytes": 688128,
+            "backpressure": false
+          },
+          {
+            "at": 50.902998416,
+            "bytes": 692224,
+            "backpressure": false
+          },
+          {
+            "at": 51.204426916,
+            "bytes": 696320,
+            "backpressure": false
+          },
+          {
+            "at": 51.505168875,
+            "bytes": 700416,
+            "backpressure": false
+          },
+          {
+            "at": 51.807402208,
+            "bytes": 704512,
+            "backpressure": false
+          },
+          {
+            "at": 52.108329041,
+            "bytes": 708608,
+            "backpressure": false
+          },
+          {
+            "at": 52.409027708,
+            "bytes": 712704,
+            "backpressure": false
+          },
+          {
+            "at": 52.710468041,
+            "bytes": 716800,
+            "backpressure": false
+          },
+          {
+            "at": 53.013099708,
+            "bytes": 720896,
+            "backpressure": false
+          },
+          {
+            "at": 53.315940875,
+            "bytes": 724992,
+            "backpressure": false
+          },
+          {
+            "at": 53.617228458,
+            "bytes": 729088,
+            "backpressure": false
+          },
+          {
+            "at": 53.920220416,
+            "bytes": 733184,
+            "backpressure": false
+          },
+          {
+            "at": 54.22355525,
+            "bytes": 737280,
+            "backpressure": false
+          },
+          {
+            "at": 54.524706375,
+            "bytes": 741376,
+            "backpressure": false
+          },
+          {
+            "at": 54.82856175,
+            "bytes": 745472,
+            "backpressure": false
+          },
+          {
+            "at": 55.13023,
+            "bytes": 749568,
+            "backpressure": false
+          },
+          {
+            "at": 55.433175791,
+            "bytes": 753664,
+            "backpressure": false
+          },
+          {
+            "at": 55.73414675,
+            "bytes": 757760,
+            "backpressure": false
+          },
+          {
+            "at": 56.037549666,
+            "bytes": 761856,
+            "backpressure": false
+          },
+          {
+            "at": 56.338489333,
+            "bytes": 765952,
+            "backpressure": false
+          },
+          {
+            "at": 56.642122666,
+            "bytes": 770048,
+            "backpressure": false
+          },
+          {
+            "at": 56.943751416,
+            "bytes": 774144,
+            "backpressure": false
+          },
+          {
+            "at": 57.244444833,
+            "bytes": 778240,
+            "backpressure": false
+          },
+          {
+            "at": 57.5468095,
+            "bytes": 782336,
+            "backpressure": false
+          },
+          {
+            "at": 57.85010275,
+            "bytes": 786432,
+            "backpressure": false
+          },
+          {
+            "at": 58.152550791,
+            "bytes": 790528,
+            "backpressure": false
+          },
+          {
+            "at": 58.456315041,
+            "bytes": 794624,
+            "backpressure": false
+          },
+          {
+            "at": 58.759090583,
+            "bytes": 798720,
+            "backpressure": false
+          },
+          {
+            "at": 59.061956666,
+            "bytes": 802816,
+            "backpressure": false
+          },
+          {
+            "at": 59.36645225,
+            "bytes": 806912,
+            "backpressure": false
+          },
+          {
+            "at": 59.668856458,
+            "bytes": 811008,
+            "backpressure": false
+          },
+          {
+            "at": 59.971625833,
+            "bytes": 815104,
+            "backpressure": false
+          },
+          {
+            "at": 60.275911708,
+            "bytes": 819200,
+            "backpressure": false
+          },
+          {
+            "at": 60.577464458,
+            "bytes": 823296,
+            "backpressure": false
+          },
+          {
+            "at": 60.879401375,
+            "bytes": 827392,
+            "backpressure": false
+          },
+          {
+            "at": 61.181520708,
+            "bytes": 831488,
+            "backpressure": false
+          },
+          {
+            "at": 61.48214325,
+            "bytes": 835584,
+            "backpressure": false
+          },
+          {
+            "at": 61.784051291,
+            "bytes": 839680,
+            "backpressure": false
+          },
+          {
+            "at": 62.086458291,
+            "bytes": 843776,
+            "backpressure": false
+          },
+          {
+            "at": 62.388322708,
+            "bytes": 847872,
+            "backpressure": false
+          },
+          {
+            "at": 62.690585625,
+            "bytes": 851968,
+            "backpressure": false
+          },
+          {
+            "at": 62.991515166,
+            "bytes": 856064,
+            "backpressure": false
+          },
+          {
+            "at": 63.294484791,
+            "bytes": 860160,
+            "backpressure": false
+          },
+          {
+            "at": 63.598408666,
+            "bytes": 864256,
+            "backpressure": false
+          },
+          {
+            "at": 63.900456708,
+            "bytes": 868352,
+            "backpressure": false
+          },
+          {
+            "at": 64.202074125,
+            "bytes": 872448,
+            "backpressure": false
+          },
+          {
+            "at": 64.504075875,
+            "bytes": 876544,
+            "backpressure": false
+          },
+          {
+            "at": 64.805329208,
+            "bytes": 880640,
+            "backpressure": false
+          },
+          {
+            "at": 65.109201833,
+            "bytes": 884736,
+            "backpressure": false
+          },
+          {
+            "at": 65.412062166,
+            "bytes": 888832,
+            "backpressure": false
+          },
+          {
+            "at": 65.712256791,
+            "bytes": 892928,
+            "backpressure": false
+          },
+          {
+            "at": 66.014174791,
+            "bytes": 897024,
+            "backpressure": false
+          },
+          {
+            "at": 66.316209041,
+            "bytes": 901120,
+            "backpressure": false
+          },
+          {
+            "at": 66.61718025,
+            "bytes": 905216,
+            "backpressure": false
+          },
+          {
+            "at": 66.920168958,
+            "bytes": 909312,
+            "backpressure": false
+          },
+          {
+            "at": 67.2220635,
+            "bytes": 913408,
+            "backpressure": false
+          },
+          {
+            "at": 67.523435,
+            "bytes": 917504,
+            "backpressure": false
+          },
+          {
+            "at": 67.82683625,
+            "bytes": 921600,
+            "backpressure": false
+          },
+          {
+            "at": 68.129096166,
+            "bytes": 925696,
+            "backpressure": false
+          },
+          {
+            "at": 68.43227725,
+            "bytes": 929792,
+            "backpressure": false
+          },
+          {
+            "at": 68.734805708,
+            "bytes": 933888,
+            "backpressure": false
+          },
+          {
+            "at": 69.037525791,
+            "bytes": 937984,
+            "backpressure": false
+          },
+          {
+            "at": 69.341229833,
+            "bytes": 942080,
+            "backpressure": false
+          },
+          {
+            "at": 69.643383458,
+            "bytes": 946176,
+            "backpressure": false
+          },
+          {
+            "at": 69.947085125,
+            "bytes": 950272,
+            "backpressure": false
+          },
+          {
+            "at": 70.251039708,
+            "bytes": 954368,
+            "backpressure": false
+          },
+          {
+            "at": 70.55168575,
+            "bytes": 958464,
+            "backpressure": false
+          },
+          {
+            "at": 70.85383225,
+            "bytes": 962560,
+            "backpressure": false
+          },
+          {
+            "at": 71.156944666,
+            "bytes": 966656,
+            "backpressure": false
+          },
+          {
+            "at": 71.461308041,
+            "bytes": 970752,
+            "backpressure": false
+          },
+          {
+            "at": 71.764002,
+            "bytes": 974848,
+            "backpressure": false
+          },
+          {
+            "at": 72.066918791,
+            "bytes": 978944,
+            "backpressure": false
+          },
+          {
+            "at": 72.370494958,
+            "bytes": 983040,
+            "backpressure": false
+          },
+          {
+            "at": 72.67257175,
+            "bytes": 987136,
+            "backpressure": false
+          },
+          {
+            "at": 72.97423325,
+            "bytes": 991232,
+            "backpressure": false
+          },
+          {
+            "at": 73.277741166,
+            "bytes": 995328,
+            "backpressure": false
+          },
+          {
+            "at": 73.580023708,
+            "bytes": 999424,
+            "backpressure": false
+          },
+          {
+            "at": 73.881351708,
+            "bytes": 1003520,
+            "backpressure": false
+          },
+          {
+            "at": 74.185220916,
+            "bytes": 1007616,
+            "backpressure": false
+          },
+          {
+            "at": 74.488462833,
+            "bytes": 1011712,
+            "backpressure": false
+          },
+          {
+            "at": 74.792027333,
+            "bytes": 1015808,
+            "backpressure": false
+          },
+          {
+            "at": 75.095080958,
+            "bytes": 1019904,
+            "backpressure": false
+          },
+          {
+            "at": 75.398967125,
+            "bytes": 1024000,
+            "backpressure": false
+          },
+          {
+            "at": 75.703070083,
+            "bytes": 1028096,
+            "backpressure": false
+          },
+          {
+            "at": 76.004400791,
+            "bytes": 1032192,
+            "backpressure": false
+          },
+          {
+            "at": 76.306213208,
+            "bytes": 1036288,
+            "backpressure": false
+          },
+          {
+            "at": 76.607051333,
+            "bytes": 1040384,
+            "backpressure": false
+          },
+          {
+            "at": 76.910414916,
+            "bytes": 1044480,
+            "backpressure": false
+          },
+          {
+            "at": 77.213152416,
+            "bytes": 1048576,
+            "backpressure": false
+          }
+        ],
+        "errors": [],
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json",
+            "date": "Sat, 17 Oct 2026 14:47:06 GMT",
+            "transfer-encoding": "chunked"
+          },
+          "started_at": 77.2192525,
+          "body": "{\"marker\":\"QA441_PROXY\",\"boot\":\"2811997b-a882-411c-875a-a80b75600ccf\",\"nonce\":\"local-extended\",\"bytes\":1048576,\"sha256\":\"bd8a5183fdafb052402b7f52480145004a781b927f0d376e4fbd922da44f6926\",\"elapsed_ms\":77212,\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}}",
+          "complete": true,
+          "decoded": {
+            "marker": "QA441_PROXY",
+            "boot": "2811997b-a882-411c-875a-a80b75600ccf",
+            "nonce": "local-extended",
+            "bytes": 1048576,
+            "sha256": "bd8a5183fdafb052402b7f52480145004a781b927f0d376e4fbd922da44f6926",
+            "elapsed_ms": 77212,
+            "files": {
+              "LICENSE": {
+                "bytes": 1072,
+                "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+              },
+              "CHANGELOG": {
+                "bytes": 18,
+                "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+              }
+            }
+          }
+        },
+        "finished_at": 77.221744166,
+        "bytes_submitted": 1048576,
+        "complete": true
+      },
+      "pass": true
+    }
+  ],
+  "payload": {
+    "bytes": 1048576,
+    "sha256": "bd8a5183fdafb052402b7f52480145004a781b927f0d376e4fbd922da44f6926"
+  },
+  "pass": true,
+  "own_containers_absent": true,
+  "own_network_absent": true,
+  "own_context_payload_removed": true
+}

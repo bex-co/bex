@@ -1,0 +1,1 @@
+{"exit": 0, "stdout": "{\"client\": \"render\", \"native_logs_exit\": 0, \"exact_redirect_and_target_events\": 8, \"pass\": true}\n{\"client\": \"bex\", \"native_logs_exit\": 0, \"exact_redirect_and_target_events\": 8, \"pass\": true}\n", "stderr": ""}

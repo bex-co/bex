@@ -1,0 +1,13 @@
+from pathlib import Path
+import sys,json,re
+P=Path(__file__).resolve().parent;f=P/'sweep402-common.py';sys.argv=[str(f),'app-logs','bex'];exec(compile(f.read_text(),str(f),'exec'));xs=[v for v in c['resources'] if v.get('sweep')==402 and not v.get('excluded_setup')];assert len(xs)==2
+for x in xs:
+ own(x);accepted=[v for v in x.get('runtime_receipts',[]) if v['phase']=='control' and v['pass']];assert len(accepted)==1;paths={v['path'] for v in accepted[0]['requests']};r=cli(['logs','--resources',x['id'],'--type','app','--limit','100','--confirm','-o','json'],client=x['client']);e={'at':now(),'native':r,'expected_request_paths':sorted(paths),'matched':[]};x.setdefault('application_log_correlations',[]).append(e);save();assert r['native_exit']==0;raw=r['stdout'];decoder=json.JSONDecoder();objs=[]
+ while raw.strip():
+  raw=raw.lstrip();v,n=decoder.raw_decode(raw);objs.extend(v if isinstance(v,list) else [v]);raw=raw[n:]
+ for v in objs:
+  for m in re.finditer(r'QA402_RUNTIME (\{[^\n]+\})',v.get('message','')):
+   try:z=json.loads(m.group(1))
+   except ValueError:continue
+   if z.get('marker')==x['marker'] and z.get('request_url') in paths:e['matched'].append(z)
+ e['pass']={v['request_url'] for v in e['matched']}==paths and all(v['restored_from_archive'] and v['rows']==x['primary_reference']['rows'] and v['rows_sha256']==x['primary_reference']['rows_sha256'] for v in e['matched']);save();print(json.dumps({'client':x['client'],'native_app_logs_exit':r['native_exit'],'unique_HTTP_paths_correlated':len({v['request_url'] for v in e['matched']}),'pass':e['pass']}),flush=True);assert e['pass']

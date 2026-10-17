@@ -1,0 +1,33 @@
+from pathlib import Path
+import subprocess,json,shutil,secrets,time,hashlib
+P=Path(__file__).resolve().parent;ctx=P/'sweep433-local-context';assert not ctx.exists();ctx.mkdir();donor=json.loads((P/'next-Bun-Yarn-local-base-inventory.json').read_text())['bun13'];base='node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0';out={'kind':'authored Bun/Node/Yarn fixture prerequisite on cached Node24 + exact pinned Bun1.3 donor; not full generated image or Node26','steps':[],'cases':[]};receipt=P/'sweep433-local-prerequisite.json';donor_name='qa433-donor-'+secrets.token_hex(3);names=[]
+def save():receipt.write_text(json.dumps(out,indent=2,ensure_ascii=False))
+def run(label,args,check=True,bound=35):
+ r=subprocess.run(args,capture_output=True,text=True,timeout=bound);e={'label':label,'command':args,'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr};out['steps'].append(e);save()
+ if check:r.check_returncode()
+ return e
+try:
+ names.append(donor_name);save();run('create-own-donor-handle',['docker','create','--pull','never','--network','none','--name',donor_name,donor['image'],'/bin/true']);run('copy-only-selected-Bun-binary',['docker','cp',donor_name+':/usr/local/bin/bun',str(ctx/'bun')]);run('remove-own-donor-handle',['docker','rm','-v',donor_name]);names.remove(donor_name)
+ for phase in ['selected','omitted']:
+  case=ctx/phase;case.mkdir();(case/'qa433-app.cjs').write_bytes((P/'sweep433-app.cjs').read_bytes());(case/'qa433-transform.ts').write_bytes((P/'sweep433-transform.ts').read_bytes());(case/'qa433-marker.json').write_text(json.dumps('QA433_LOCAL_'+phase));name='qa433-'+phase+'-'+secrets.token_hex(3);names.append(name);env=[]
+  if phase=='selected':(case/'bin').mkdir();shutil.copyfile(ctx/'bun',case/'bin/bun');(case/'bin/bun').chmod(0o755);env=['-e','PATH=/app/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin','-e','BUN_VERSION=1.3']
+  e={'phase':phase,'container_name':name,'HTTP':[]};out['cases'].append(e);save();run('start-own-'+phase,['docker','run','-d','--pull','never','--network','none','--name',name,'--mount','type=bind,src='+str(case)+',dst=/app','--workdir','/app',*env,'--entrypoint','/bin/bash',base,'-c','node qa433-app.cjs build && exec node qa433-app.cjs serve'])
+  for attempt in range(12):
+   r=run('own-loopback-ready-'+phase+'-'+str(attempt),['docker','exec',name,'node','-e',"fetch('http://127.0.0.1:3000/?qa=ready').then(r=>{if(!r.ok)process.exit(2);return r.text()}).then(console.log).catch(()=>process.exit(3))"],False)
+   if r['exit']==0:break
+   time.sleep(1)
+  else:raise RuntimeError('Own local readiness pending')
+  for nonce in ['one','two','three']:
+   r=run('own-HTTP-'+phase+'-'+nonce,['docker','exec',name,'node','-e',"fetch('http://127.0.0.1:3000/?qa="+nonce+"').then(async r=>{if(!r.ok)process.exit(2);console.log(await r.text())})"]);v=json.loads(r['stdout']);assert v['nonce']==nonce and v['built']['tools']['yarn']==v['runtime']['tools']['yarn']=='1.22.22' and v['built']['files']==v['runtime']['files']=={n:hashlib.sha256((case/n).read_bytes()).hexdigest() for n in ['qa433-app.cjs','qa433-transform.ts']}
+   for label,snap in [('build',v['built']),('runtime',v['runtime'])]:
+    assert snap['bun_env_present']==(phase=='selected') and snap['bun_env']==('1.3' if phase=='selected' else None) and snap['bun']['present']==(phase=='selected')
+    if phase=='selected':
+     b=snap['bun']['result'];expected='QA433_LOCAL_'+phase+'|Crème brûlée & 李|'+('build' if label=='build' else nonce);assert b=={'label':expected,'sum':10,'weighted':23,'sorted':[2,3,5],'factor':2,'bun':'1.3.14','sha256':hashlib.sha256(expected.encode()).hexdigest()}
+    else:assert snap['bun']=={'present':False,'error':'ENOENT'}
+   e['HTTP'].append(v);save()
+  assert len({v['boot'] for v in e['HTTP']})==1;e['pass']=True;run('own-runtime-logs-'+phase,['docker','logs',name]);run('remove-own-'+phase,['docker','rm','-f','-v',name]);names.remove(name);save();print(json.dumps({'phase':phase,'actual_HTTP_controls':3,'pass':True}),flush=True)
+ out['pass']=len(out['cases'])==2 and all(v['pass'] for v in out['cases']);save()
+finally:
+ for name in list(names):run('cleanup-exact-owned-'+name,['docker','rm','-f','-v',name],False)
+ out['own_containers_absent']=all(run('absence-'+v,['docker','container','inspect',v],False)['exit']!=0 for v in [donor_name,*[v['container_name'] for v in out['cases']]]);shutil.rmtree(ctx);out['own_context_removed']=not ctx.exists();save()
+print(json.dumps({'pass':out.get('pass',False),'own_containers_absent':out['own_containers_absent'],'own_context_removed':out['own_context_removed']}))

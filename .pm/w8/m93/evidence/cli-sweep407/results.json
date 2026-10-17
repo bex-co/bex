@@ -1,0 +1,30 @@
+{
+  "sweep": 407,
+  "source_head": "3d73a5515bcc0f9e9e1ed6b42056396cdabaa450",
+  "severity": "major",
+  "attribution": "native build/runtime image assembly",
+  "native_clients": [
+    "published Bex0.3.2",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "original_unchanged_creates201_native0": 2,
+  "original_first_builds_failed_missing_Pandoc": 2,
+  "original_failed_runtime_URLs404": 2,
+  "only_control_change": "one explicit build-time apt-get install pandoc line",
+  "control_native_updates0_and_deployments_live": 2,
+  "control_HTTPS_requests_actual_document_conversion": 6,
+  "independent_hosted_HTML_parses": 6,
+  "native_app_log_events_correlated": 6,
+  "shared_REST_GraphQL_MCP_readbacks": 12,
+  "explicit_env_API_only_readbacks": 4,
+  "local_selected_base_original127_control0": true,
+  "local_control_Pandoc": "2.17.1.1",
+  "full_generated_image_locally_executed": false,
+  "official3_12_1_candidates_executed_or_adopted": false,
+  "serving_revision": "unknown",
+  "exact_owned_parents4children_URLs_absent": true,
+  "baseline6_Blueprint1_other_managed_data0_quota_and_termination_restored": true,
+  "own_local_containers_contexts_and_configs_removed": true,
+  "product_implementation": false,
+  "uncommitted": true
+}

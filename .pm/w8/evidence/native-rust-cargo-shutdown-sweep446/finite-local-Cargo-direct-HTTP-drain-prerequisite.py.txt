@@ -1,0 +1,37 @@
+from pathlib import Path
+import subprocess,json,urllib.request,secrets,time,shutil,hashlib,shlex
+P=Path(__file__).resolve().parent;ctx=P/'candidate446-local-context';assert not ctx.exists();ctx.mkdir();helper=P/'candidate446-native-init';assert helper.exists();ns={};f=P/'candidate446-command-factory.py';exec(compile(f.read_text(),str(f),'exec'),ns);ref=json.loads((P/'sweep441-primary-reference.json').read_text());image='rust:1-bookworm@sha256:e12566d5abc17a0da741628782cdb504b68b8961f5bfcf677936bf3e8b32de29';out={'image':image,'kind':'local Rust40s HTTP upload completion under Cargo/direct and checkout-built native-init; not hosted/generated-image evidence','helper_sha256':hashlib.sha256(helper.read_bytes()).hexdigest(),'steps':[],'cases':[],'intents':[]};receipt=P/'candidate446-local-prerequisite.json';names=[];all_names=[];proc=None
+
+def save():receipt.write_text(json.dumps(out,indent=2))
+def run(label,args,check=True,bound=45):
+ r=subprocess.run(args,capture_output=True,text=True,timeout=bound);out['steps'].append({'label':label,'command':args,'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr});save()
+ if check:r.check_returncode()
+ return r
+
+def request(url):
+ with urllib.request.urlopen(url,timeout=3) as r:return json.loads(r.read())
+def register(name):names.append(name);all_names.append(name);out['intents'].append({'own_container':name});save()
+save()
+try:
+ for n,e in ref['files'].items():
+  b=urllib.request.urlopen('https://raw.githubusercontent.com/git-fixtures/basic/'+ref['commit']+'/'+n,timeout=25).read();assert {'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}==e;(ctx/n).write_bytes(b)
+ payload='café:李'.encode();(ctx/'payload.bin').write_bytes(payload);cmd=ns['commands'](P,'QA446_LOCAL');name='qa446-build-'+secrets.token_hex(4);register(name);run('compile-real-no-dependency-Rust',['docker','run','--pull','never','--network','none','--name',name,'--mount','type=bind,src='+str(ctx)+',dst=/app','--workdir','/app','--entrypoint','/bin/bash',image,'-c',cmd['build']],bound=100);run('remove-own-build',['docker','rm','-f','-v',name]);names.remove(name)
+ for phase,start in [('cargo',cmd['start']),('direct','qa446/target/release/qa446_fixture')]:
+  name='qa446-'+phase+'-'+secrets.token_hex(4);register(name);e={'phase':phase,'container':name,'start':start};out['cases'].append(e);save();run('start-own-'+phase,['docker','run','--pull','never','-d','--network','bridge','-p','127.0.0.1::3000','--name',name,'-e','PORT=3000','--mount','type=bind,src='+str(ctx)+',dst=/app','--mount','type=bind,src='+str(helper)+',dst=/fixture-init,readonly','--workdir','/app','--entrypoint','/bin/bash',image,'-c','exec /fixture-init /bin/bash -c '+shlex.quote(start)]);port=run('own-port-'+phase,['docker','port',name,'3000/tcp']).stdout.strip();assert port.startswith('127.0.0.1:');url='http://'+port
+  for i in range(30):
+   try:initial=request(url);break
+   except Exception:time.sleep(.2)
+  else:raise RuntimeError('Own local Rust server not ready')
+  assert initial['marker']=='QA446_LOCAL' and initial['program_sha256']==hashlib.sha256((P/'candidate446-server.rs').read_bytes()).hexdigest();token=secrets.token_hex(8);at=time.monotonic();proc=subprocess.Popen(['curl','--disable','-sS','--max-time','70','-X','POST','--data-binary','@'+str(ctx/'payload.bin'),'-w','\n%{http_code}',url+'/hold/'+token],stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+  for i in range(25):
+   logs=run('hold-active-'+phase+'-'+str(i),['docker','logs',name]);events=[json.loads(s.split('QA446_EVENT ',1)[1]) for s in logs.stdout.splitlines() if 'QA446_EVENT ' in s]
+   if any(v['phase']=='hold-begin' and v['token']==token and v['boot']==initial['boot'] for v in events):break
+   time.sleep(.2)
+  else:raise RuntimeError('Own hold not observed active')
+  run('SIGTERM-exact-own-'+phase,['docker','kill','--signal','TERM',name]);stdout,stderr=proc.communicate(timeout=72);raw,_,status=stdout.rpartition('\n');v=json.loads(raw);e.update(client_exit=proc.returncode,HTTP=status,decoded=v,stderr=stderr,elapsed=time.monotonic()-at);assert proc.returncode==0 and status=='200' and v['boot']==initial['boot'] and v['token']==token and v['body_hex']==payload.hex();proc=None;e['container_exit']=int(run('own-exit-'+phase,['docker','wait',name],bound=15).stdout.strip());logs=run('own-events-'+phase,['docker','logs',name]);events=[json.loads(s.split('QA446_EVENT ',1)[1]) for s in logs.stdout.splitlines() if 'QA446_EVENT ' in s];assert [v['phase'] for v in events]==['ready','hold-begin','sigterm','hold-end','closed'] and next(v['active'] for v in events if v['phase']=='sigterm')==1;e.update(events=events);e['pass']=True;save();run('remove-exact-own-'+phase,['docker','rm','-f','-v',name]);names.remove(name);print(json.dumps({'phase':phase,'HTTP':status,'elapsed':e['elapsed'],'wrapper_exit':e['container_exit'],'pass':True}),flush=True)
+ out['pass']=True
+finally:
+ if proc and proc.poll() is None:proc.terminate();proc.communicate(timeout=5)
+ for name in names:run('cleanup-exact-own',['docker','rm','-f','-v',name],False)
+ out['own_containers_absent']=all(run('own-container-absence',['docker','container','inspect',name],False).returncode!=0 for name in all_names);shutil.rmtree(ctx);helper.unlink();out['own_context_and_helper_removed']=not ctx.exists() and not helper.exists();save()
+print(json.dumps({'pass':out.get('pass',False),'own_containers_absent':out['own_containers_absent'],'own_context_and_helper_removed':out['own_context_and_helper_removed']}))

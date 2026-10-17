@@ -1,0 +1,24 @@
+{
+  "image": "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--pull",
+    "never",
+    "--network",
+    "none",
+    "--name",
+    "qa-jekyll-prereq-02711a22",
+    "--entrypoint",
+    "/bin/sh",
+    "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+    "-c",
+    "node --version; command -v ruby || true; command -v bundle || true; bundle exec jekyll build"
+  ],
+  "exit": 127,
+  "stdout": "v24.22.0\n",
+  "stderr": "/bin/sh: 1: bundle: not found\n",
+  "own_container_absent": true,
+  "source": "base-image-only command availability prerequisite; no project/context and not full generated image"
+}

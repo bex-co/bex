@@ -1,0 +1,13 @@
+from pathlib import Path
+import json,sys,re,hashlib
+P=Path(__file__).resolve().parent;f=P/'sweep419-common.py';sys.argv=[str(f),'app-logs','bex'];exec(compile(f.read_text(),str(f),'exec'));xs=[x for x in c['resources'] if x.get('sweep')==419];assert len(xs)==2
+for x in xs:
+ own(x);accepted=[v for v in x.get('runtime_receipts',[]) if v['phase']=='both-tools' and v['pass']];assert len(accepted)==1;paths={v['path'] for v in accepted[0]['requests']};ref=x['primary_reference'];expected={'release':ref['manifest']['release'],'paths':[v['path'] for v in ref['manifest']['assets'] if v['publish']]};files={n:{'bytes':len(ref['assets'][n].encode()),'sha256':hashlib.sha256(ref['assets'][n].encode()).hexdigest()} for n in expected['paths']};r=cli(['logs','--resources',x['id'],'--type','app','--text','QA_ASSET_HTTP','--start',datetime.datetime.fromisoformat(x['durable_HTTP_attempts'][-1]['at']).strftime('%Y-%m-%dT%H:%M:%SZ'),'--limit','100','--confirm','-o','json'],client=x['client']);e={'at':now(),'native':r,'expected_paths':sorted(paths),'matched':[]};x.setdefault('application_log_correlations',[]).append(e);save();assert r['native_exit']==0;raw=r['stdout'];decoder=json.JSONDecoder()
+ while raw.strip():
+  raw=raw.lstrip();v,n=decoder.raw_decode(raw);raw=raw[n:]
+  for z in v if isinstance(v,list) else [v]:
+   for m in re.finditer(r'QA_ASSET_HTTP (\{[^\n]+\})',z.get('message','')):
+    try:p=json.loads(m[1])
+    except ValueError:continue
+    if p.get('marker')==x['marker'] and p.get('path') in paths and p.get('manifest')==expected and p.get('copied_files')==files:e['matched'].append(p)
+ e['pass']={v['path'] for v in e['matched']}==paths;save();print(json.dumps({'client':x['client'],'actual_manifest_file_copy_request_events':len(e['matched']),'pass':e['pass']}),flush=True);assert e['pass']

@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-17T11:34:53.338256+00:00",
+  "sources": [
+    {
+      "label": "render-contract",
+      "url": "https://render.com/docs/postgresql-extensions",
+      "status": 200,
+      "bytes": 329095,
+      "sha256": "8a7a378cd68be2e47956c822b0e72aed1514d45c4fdf7672e20ce1610154c6d3",
+      "file": "sweep428-render-contract-public-reference.txt"
+    },
+    {
+      "label": "partman-latest-release",
+      "url": "https://api.github.com/repos/pgpartman/pg_partman/releases/latest",
+      "status": 200,
+      "bytes": 5346,
+      "sha256": "1cd4324cffcf9d50ee8c930972d8e04f3f9c6e4da913e144fef16f0fcbfd138d",
+      "file": "sweep428-partman-latest-release-public-reference.txt"
+    }
+  ],
+  "release": {
+    "tag_name": "v5.5.0",
+    "target_commitish": "development",
+    "published_at": "2026-07-22T14:46:50Z",
+    "html_url": "https://github.com/pgpartman/pg_partman/releases/tag/v5.5.0"
+  }
+}

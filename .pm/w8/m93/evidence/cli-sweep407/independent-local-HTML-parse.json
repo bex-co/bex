@@ -1,0 +1,35 @@
+{
+  "bytes": 227,
+  "sha256": "bd4c53e484bc6ff61e67e7dcb195ceb7866f5c4ddaca84af76fcf39de738fd68",
+  "elements": {
+    "h1": [
+      "Café 雪"
+    ],
+    "p": [
+      "This is ",
+      " and ",
+      ", with ",
+      "."
+    ],
+    "strong": [
+      "bold"
+    ],
+    "em": [
+      "emphasis"
+    ],
+    "code": [
+      "x < 7"
+    ],
+    "li": [
+      "alpha",
+      "beta"
+    ],
+    "a": [
+      "Guide"
+    ]
+  },
+  "links": [
+    "https://example.invalid/guide?q=qa407"
+  ],
+  "pass": true
+}

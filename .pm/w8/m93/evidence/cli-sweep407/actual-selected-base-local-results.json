@@ -1,0 +1,154 @@
+{
+  "image": "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+  "nonce": "161e3b",
+  "qualification": "actual resolved pinned Node base plus exact authored command; not full generated-image execution, only own Markdown input, no hosted or full generated-image acceptance",
+  "context": "<owned-temp>/sweep407-local-8cjql3cx",
+  "cases": [
+    {
+      "label": "default",
+      "container": "qa407-161e3b-default",
+      "absent_before": true,
+      "manual_install": false,
+      "command": {
+        "build": "set -e\ncat > qa407-probe.cjs <<'QA407_QA407_PROBE_CJS'\nconst fs=require('node:fs'),cp=require('node:child_process'),http=require('node:http'),crypto=require('node:crypto'),ref=require('./qa407-reference.json'),marker=require('./qa407-marker.json'),sha=b=>crypto.createHash('sha256').update(b).digest('hex');\nconst files=Object.fromEntries(Object.keys(ref.files).map(p=>{const b=fs.readFileSync(p);return[p,{bytes:b.length,sha256:sha(b)}]}));if(JSON.stringify(files)!==JSON.stringify(ref.files))throw Error('source differs');fs.writeFileSync('qa407.md',ref.document.text);const input=fs.readFileSync('qa407.md');if(sha(input)!==ref.document.sha256)throw Error('document differs');\nfunction tools(){const r=cp.spawnSync('pandoc',['--version'],{encoding:'utf8',timeout:4000});return{pandoc:{status:r.status,error:r.error?.code||null,stdout:r.stdout||'',stderr:r.stderr||''}}}\nconst base={marker,files,document:{bytes:input.length,sha256:sha(input)},node:process.version,program_sha256:sha(fs.readFileSync(__filename))};\nif(process.argv[2]==='before'){const v={...base,tools:tools()};fs.writeFileSync('qa407-before.json',JSON.stringify(v));console.log('QA407_BEFORE '+JSON.stringify(v));process.exit(0)}\nfunction output(b){const text=b.toString('utf8');for(const token of ref.document.required_html)if(!text.includes(token))throw Error('HTML differs');return{...base,tools:tools(),html:{bytes:b.length,sha256:sha(b),text}}}\nif(process.argv[2]==='build'){const v={...output(fs.readFileSync('qa407.html')),before:require('./qa407-before.json')};fs.writeFileSync('qa407-build.json',JSON.stringify(v));console.log('QA407_AFTER '+JSON.stringify(v));process.exit(0)}\nconst built=require('./qa407-build.json');http.createServer((req,res)=>{const b=cp.execFileSync('pandoc',['--from=markdown','--to=html5','--wrap=none','qa407.md'],{timeout:4000}),runtime={...output(b),request_url:req.url},v={build:built,runtime};res.setHeader('Cache-Control','no-store');res.setHeader('Content-Type',req.url.startsWith('/document')?'text/html; charset=utf-8':'application/json');res.end(req.url.startsWith('/document')?b:JSON.stringify(v));if(req.url.includes('qa407='))console.log('QA407_REQUEST '+JSON.stringify(v))}).listen(Number(process.env.PORT||10000),'0.0.0.0',function(){console.log('QA407_READY '+JSON.stringify({port:this.address().port,...base}))});\nQA407_QA407_PROBE_CJS\ncat > qa407-reference.json <<'QA407_QA407_REFERENCE_JSON'\n{\"repo\":\"https://github.com/git-fixtures/basic\",\"branch\":\"master\",\"commit\":\"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"document\":{\"text\":\"# Caf\u00e9 \u96ea\\n\\nThis is **bold** and *emphasis*, with `x < 7`.\\n\\n- alpha\\n- beta\\n\\n[Guide](https://example.invalid/guide?q=qa407)\\n\",\"bytes\":124,\"sha256\":\"edba9bdcd88fbcb00cc68a873033b73462c90471213d181ac342bebbd9d38865\",\"required_html\":[\"Caf\u00e9 \u96ea</h1>\",\"<strong>bold</strong>\",\"<em>emphasis</em>\",\"<code>x &lt; 7</code>\",\"<li>alpha</li>\",\"<li>beta</li>\",\"href=\\\"https://example.invalid/guide?q=qa407\\\"\"]}}\nQA407_QA407_REFERENCE_JSON\ncat > qa407-marker.json <<'QA407_QA407_MARKER_JSON'\n\"QA407_LOCAL\"\nQA407_QA407_MARKER_JSON\nnode qa407-probe.cjs before\npandoc --from=markdown --to=html5 --wrap=none qa407.md --output=qa407.html\nnode qa407-probe.cjs build",
+        "start": "node qa407-probe.cjs serve",
+        "program_sha256": "ce9ef793a506d115ebf0781ce8926bf08e845259d298c143b0f88cd4b2736beb"
+      },
+      "exit": 127,
+      "stdout": "QA407_BEFORE {\"marker\":\"QA407_LOCAL\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"document\":{\"bytes\":124,\"sha256\":\"edba9bdcd88fbcb00cc68a873033b73462c90471213d181ac342bebbd9d38865\"},\"node\":\"v24.22.0\",\"program_sha256\":\"ce9ef793a506d115ebf0781ce8926bf08e845259d298c143b0f88cd4b2736beb\",\"tools\":{\"pandoc\":{\"status\":null,\"error\":\"ENOENT\",\"stdout\":\"\",\"stderr\":\"\"}}}\n",
+      "stderr": "bash: line 19: pandoc: command not found\n",
+      "before": {
+        "marker": "QA407_LOCAL",
+        "files": {
+          "LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        },
+        "document": {
+          "bytes": 124,
+          "sha256": "edba9bdcd88fbcb00cc68a873033b73462c90471213d181ac342bebbd9d38865"
+        },
+        "node": "v24.22.0",
+        "program_sha256": "ce9ef793a506d115ebf0781ce8926bf08e845259d298c143b0f88cd4b2736beb",
+        "tools": {
+          "pandoc": {
+            "status": null,
+            "error": "ENOENT",
+            "stdout": "",
+            "stderr": ""
+          }
+        }
+      },
+      "pass": true
+    },
+    {
+      "label": "manual",
+      "container": "qa407-161e3b-manual",
+      "absent_before": true,
+      "manual_install": true,
+      "command": {
+        "build": "set -e\ncat > qa407-probe.cjs <<'QA407_QA407_PROBE_CJS'\nconst fs=require('node:fs'),cp=require('node:child_process'),http=require('node:http'),crypto=require('node:crypto'),ref=require('./qa407-reference.json'),marker=require('./qa407-marker.json'),sha=b=>crypto.createHash('sha256').update(b).digest('hex');\nconst files=Object.fromEntries(Object.keys(ref.files).map(p=>{const b=fs.readFileSync(p);return[p,{bytes:b.length,sha256:sha(b)}]}));if(JSON.stringify(files)!==JSON.stringify(ref.files))throw Error('source differs');fs.writeFileSync('qa407.md',ref.document.text);const input=fs.readFileSync('qa407.md');if(sha(input)!==ref.document.sha256)throw Error('document differs');\nfunction tools(){const r=cp.spawnSync('pandoc',['--version'],{encoding:'utf8',timeout:4000});return{pandoc:{status:r.status,error:r.error?.code||null,stdout:r.stdout||'',stderr:r.stderr||''}}}\nconst base={marker,files,document:{bytes:input.length,sha256:sha(input)},node:process.version,program_sha256:sha(fs.readFileSync(__filename))};\nif(process.argv[2]==='before'){const v={...base,tools:tools()};fs.writeFileSync('qa407-before.json',JSON.stringify(v));console.log('QA407_BEFORE '+JSON.stringify(v));process.exit(0)}\nfunction output(b){const text=b.toString('utf8');for(const token of ref.document.required_html)if(!text.includes(token))throw Error('HTML differs');return{...base,tools:tools(),html:{bytes:b.length,sha256:sha(b),text}}}\nif(process.argv[2]==='build'){const v={...output(fs.readFileSync('qa407.html')),before:require('./qa407-before.json')};fs.writeFileSync('qa407-build.json',JSON.stringify(v));console.log('QA407_AFTER '+JSON.stringify(v));process.exit(0)}\nconst built=require('./qa407-build.json');http.createServer((req,res)=>{const b=cp.execFileSync('pandoc',['--from=markdown','--to=html5','--wrap=none','qa407.md'],{timeout:4000}),runtime={...output(b),request_url:req.url},v={build:built,runtime};res.setHeader('Cache-Control','no-store');res.setHeader('Content-Type',req.url.startsWith('/document')?'text/html; charset=utf-8':'application/json');res.end(req.url.startsWith('/document')?b:JSON.stringify(v));if(req.url.includes('qa407='))console.log('QA407_REQUEST '+JSON.stringify(v))}).listen(Number(process.env.PORT||10000),'0.0.0.0',function(){console.log('QA407_READY '+JSON.stringify({port:this.address().port,...base}))});\nQA407_QA407_PROBE_CJS\ncat > qa407-reference.json <<'QA407_QA407_REFERENCE_JSON'\n{\"repo\":\"https://github.com/git-fixtures/basic\",\"branch\":\"master\",\"commit\":\"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"document\":{\"text\":\"# Caf\u00e9 \u96ea\\n\\nThis is **bold** and *emphasis*, with `x < 7`.\\n\\n- alpha\\n- beta\\n\\n[Guide](https://example.invalid/guide?q=qa407)\\n\",\"bytes\":124,\"sha256\":\"edba9bdcd88fbcb00cc68a873033b73462c90471213d181ac342bebbd9d38865\",\"required_html\":[\"Caf\u00e9 \u96ea</h1>\",\"<strong>bold</strong>\",\"<em>emphasis</em>\",\"<code>x &lt; 7</code>\",\"<li>alpha</li>\",\"<li>beta</li>\",\"href=\\\"https://example.invalid/guide?q=qa407\\\"\"]}}\nQA407_QA407_REFERENCE_JSON\ncat > qa407-marker.json <<'QA407_QA407_MARKER_JSON'\n\"QA407_LOCAL\"\nQA407_QA407_MARKER_JSON\nnode qa407-probe.cjs before\napt-get update -qq && apt-get install -y --no-install-recommends pandoc\npandoc --from=markdown --to=html5 --wrap=none qa407.md --output=qa407.html\nnode qa407-probe.cjs build",
+        "start": "node qa407-probe.cjs serve",
+        "program_sha256": "ce9ef793a506d115ebf0781ce8926bf08e845259d298c143b0f88cd4b2736beb"
+      },
+      "exit": 0,
+      "stdout": "QA407_BEFORE {\"marker\":\"QA407_LOCAL\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"document\":{\"bytes\":124,\"sha256\":\"edba9bdcd88fbcb00cc68a873033b73462c90471213d181ac342bebbd9d38865\"},\"node\":\"v24.22.0\",\"program_sha256\":\"ce9ef793a506d115ebf0781ce8926bf08e845259d298c143b0f88cd4b2736beb\",\"tools\":{\"pandoc\":{\"status\":null,\"error\":\"ENOENT\",\"stdout\":\"\",\"stderr\":\"\"}}}\nReading package lists...\nBuilding dependency tree...\nReading state information...\nThe following additional packages will be installed:\n  liblua5.3-0 pandoc-data\nSuggested packages:\n  texlive-latex-recommended texlive-xetex texlive-luatex pandoc-citeproc\n  texlive-latex-extra context wkhtmltopdf librsvg2-bin groff ghc nodejs php\n  python ruby r-base-core libjs-mathjax libjs-katex\n  citation-style-language-styles\nThe following NEW packages will be installed:\n  liblua5.3-0 pandoc pandoc-data\n0 upgraded, 3 newly installed, 0 to remove and 8 not upgraded.\nNeed to get 29.5 MB of archives.\nAfter this operation, 227 MB of additional disk space will be used.\nGet:1 http://deb.debian.org/debian bookworm/main arm64 liblua5.3-0 arm64 5.3.6-2 [110 kB]\nGet:2 http://deb.debian.org/debian bookworm/main arm64 pandoc-data all 2.17.1.1-2~deb12u1 [418 kB]\nGet:3 http://deb.debian.org/debian bookworm/main arm64 pandoc arm64 2.17.1.1-2~deb12u1 [29.0 MB]\nFetched 29.5 MB in 1s (37.8 MB/s)\nSelecting previously unselected package liblua5.3-0:arm64.\n(Reading database ... \n(Reading database ... 5%\n(Reading database ... 10%\n(Reading database ... 15%\n(Reading database ... 20%\n(Reading database ... 25%\n(Reading database ... 30%\n(Reading database ... 35%\n(Reading database ... 40%\n(Reading database ... 45%\n(Reading database ... 50%\n(Reading database ... 55%\n(Reading database ... 60%\n(Reading database ... 65%\n(Reading database ... 70%\n(Reading database ... 75%\n(Reading database ... 80%\n(Reading database ... 85%\n(Reading database ... 90%\n(Reading database ... 95%\n(Reading database ... 100%\n(Reading database ... 23286 files and directories currently installed.)\nPreparing to unpack .../liblua5.3-0_5.3.6-2_arm64.deb ...\nUnpacking liblua5.3-0:arm64 (5.3.6-2) ...\nSelecting previously unselected package pandoc-data.\nPreparing to unpack .../pandoc-data_2.17.1.1-2~deb12u1_all.deb ...\nUnpacking pandoc-data (2.17.1.1-2~deb12u1) ...\nSelecting previously unselected package pandoc.\nPreparing to unpack .../pandoc_2.17.1.1-2~deb12u1_arm64.deb ...\nUnpacking pandoc (2.17.1.1-2~deb12u1) ...\nSetting up liblua5.3-0:arm64 (5.3.6-2) ...\nSetting up pandoc-data (2.17.1.1-2~deb12u1) ...\nSetting up pandoc (2.17.1.1-2~deb12u1) ...\nProcessing triggers for libc-bin (2.36-9+deb12u14) ...\nQA407_AFTER {\"marker\":\"QA407_LOCAL\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"document\":{\"bytes\":124,\"sha256\":\"edba9bdcd88fbcb00cc68a873033b73462c90471213d181ac342bebbd9d38865\"},\"node\":\"v24.22.0\",\"program_sha256\":\"ce9ef793a506d115ebf0781ce8926bf08e845259d298c143b0f88cd4b2736beb\",\"tools\":{\"pandoc\":{\"status\":0,\"error\":null,\"stdout\":\"pandoc 2.17.1.1\\nCompiled with pandoc-types 1.22.2.1, texmath 0.12.4, skylighting 0.12.3.1,\\nciteproc 0.6.0.1, ipynb 0.2\\nUser data directory: /root/.local/share/pandoc\\nCopyright (C) 2006-2022 John MacFarlane. Web:  https://pandoc.org\\nThis is free software; see the source for copying conditions. There is no\\nwarranty, not even for merchantability or fitness for a particular purpose.\\n\",\"stderr\":\"\"}},\"html\":{\"bytes\":227,\"sha256\":\"bd4c53e484bc6ff61e67e7dcb195ceb7866f5c4ddaca84af76fcf39de738fd68\",\"text\":\"<h1 id=\\\"caf\u00e9-\u96ea\\\">Caf\u00e9 \u96ea</h1>\\n<p>This is <strong>bold</strong> and <em>emphasis</em>, with <code>x &lt; 7</code>.</p>\\n<ul>\\n<li>alpha</li>\\n<li>beta</li>\\n</ul>\\n<p><a href=\\\"https://example.invalid/guide?q=qa407\\\">Guide</a></p>\\n\"},\"before\":{\"marker\":\"QA407_LOCAL\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"document\":{\"bytes\":124,\"sha256\":\"edba9bdcd88fbcb00cc68a873033b73462c90471213d181ac342bebbd9d38865\"},\"node\":\"v24.22.0\",\"program_sha256\":\"ce9ef793a506d115ebf0781ce8926bf08e845259d298c143b0f88cd4b2736beb\",\"tools\":{\"pandoc\":{\"status\":null,\"error\":\"ENOENT\",\"stdout\":\"\",\"stderr\":\"\"}}}}\n",
+      "stderr": "debconf: delaying package configuration, since apt-utils is not installed\n",
+      "before": {
+        "marker": "QA407_LOCAL",
+        "files": {
+          "LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        },
+        "document": {
+          "bytes": 124,
+          "sha256": "edba9bdcd88fbcb00cc68a873033b73462c90471213d181ac342bebbd9d38865"
+        },
+        "node": "v24.22.0",
+        "program_sha256": "ce9ef793a506d115ebf0781ce8926bf08e845259d298c143b0f88cd4b2736beb",
+        "tools": {
+          "pandoc": {
+            "status": null,
+            "error": "ENOENT",
+            "stdout": "",
+            "stderr": ""
+          }
+        }
+      },
+      "after": {
+        "marker": "QA407_LOCAL",
+        "files": {
+          "LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        },
+        "document": {
+          "bytes": 124,
+          "sha256": "edba9bdcd88fbcb00cc68a873033b73462c90471213d181ac342bebbd9d38865"
+        },
+        "node": "v24.22.0",
+        "program_sha256": "ce9ef793a506d115ebf0781ce8926bf08e845259d298c143b0f88cd4b2736beb",
+        "tools": {
+          "pandoc": {
+            "status": 0,
+            "error": null,
+            "stdout": "pandoc 2.17.1.1\nCompiled with pandoc-types 1.22.2.1, texmath 0.12.4, skylighting 0.12.3.1,\nciteproc 0.6.0.1, ipynb 0.2\nUser data directory: /root/.local/share/pandoc\nCopyright (C) 2006-2022 John MacFarlane. Web:  https://pandoc.org\nThis is free software; see the source for copying conditions. There is no\nwarranty, not even for merchantability or fitness for a particular purpose.\n",
+            "stderr": ""
+          }
+        },
+        "html": {
+          "bytes": 227,
+          "sha256": "bd4c53e484bc6ff61e67e7dcb195ceb7866f5c4ddaca84af76fcf39de738fd68",
+          "text": "<h1 id=\"caf\u00e9-\u96ea\">Caf\u00e9 \u96ea</h1>\n<p>This is <strong>bold</strong> and <em>emphasis</em>, with <code>x &lt; 7</code>.</p>\n<ul>\n<li>alpha</li>\n<li>beta</li>\n</ul>\n<p><a href=\"https://example.invalid/guide?q=qa407\">Guide</a></p>\n"
+        },
+        "before": {
+          "marker": "QA407_LOCAL",
+          "files": {
+            "LICENSE": {
+              "bytes": 1072,
+              "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+            },
+            "CHANGELOG": {
+              "bytes": 18,
+              "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+            }
+          },
+          "document": {
+            "bytes": 124,
+            "sha256": "edba9bdcd88fbcb00cc68a873033b73462c90471213d181ac342bebbd9d38865"
+          },
+          "node": "v24.22.0",
+          "program_sha256": "ce9ef793a506d115ebf0781ce8926bf08e845259d298c143b0f88cd4b2736beb",
+          "tools": {
+            "pandoc": {
+              "status": null,
+              "error": "ENOENT",
+              "stdout": "",
+              "stderr": ""
+            }
+          }
+        }
+      },
+      "pass": true,
+      "converted_HTML": "<h1 id=\"caf\u00e9-\u96ea\">Caf\u00e9 \u96ea</h1>\n<p>This is <strong>bold</strong> and <em>emphasis</em>, with <code>x &lt; 7</code>.</p>\n<ul>\n<li>alpha</li>\n<li>beta</li>\n</ul>\n<p><a href=\"https://example.invalid/guide?q=qa407\">Guide</a></p>\n"
+    }
+  ],
+  "pass": true,
+  "own_containers_context_removed": true
+}

@@ -1,0 +1,37 @@
+{
+  "sweep": 409,
+  "source_head": "b8aa43fc3c01f82703110950cea767c1f778a9e6",
+  "severity": "major",
+  "attribution": "native build/runtime image assembly",
+  "native_clients": [
+    "published Bex0.3.2",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "original_unchanged_creates201_native0": 2,
+  "original_first_builds_failed_missing_sqlite3_executable": 2,
+  "independent_Python_library_SQL_and_three_rows_before_failure": true,
+  "original_failed_runtime_URLs404": 2,
+  "only_control_change": "one explicit build-time apt-get install sqlite3 line",
+  "control_native_updates0_and_deployments_live": 2,
+  "control_HTTPS_requests_actual_readonly_CLI_exports": 6,
+  "exact_library_and_CLI_three_row_comparisons": 6,
+  "native_app_log_events_correlated": 6,
+  "shared_REST_GraphQL_MCP_readbacks": 12,
+  "explicit_env_API_only_readbacks": 4,
+  "local_selected_Python_base_original127_control0": true,
+  "local_builtin_and_control_CLI_version": "3.40.1",
+  "local_control_package": "sqlite3 3.40.1-2+deb12u2 arm64",
+  "local_real_seed_database_bytes": 8192,
+  "full_generated_image_locally_executed": false,
+  "serving_revision": "unknown",
+  "exact_owned_parents4children_URLs_absent": true,
+  "baseline6_Blueprint1_other_managed_data0_owned_cleanup_and_consistent_quota_termination0": true,
+  "unrelated_service_IDs_preserved": [
+    "srv-db9i6bhu2fhc73e10bq0",
+    "srv-db9i6g9u2fhc73e10bsg"
+  ],
+  "final_service_used": 8,
+  "own_local_containers_contexts_and_configs_removed": true,
+  "product_implementation": false,
+  "uncommitted": true
+}

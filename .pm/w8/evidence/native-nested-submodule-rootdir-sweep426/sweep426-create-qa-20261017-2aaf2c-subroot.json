@@ -1,0 +1,49 @@
+{
+  "phase": "actual native response captured",
+  "captures": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/v1/services",
+        "body": {
+          "autoDeploy": "no",
+          "branch": "master",
+          "envVars": [
+            {
+              "key": "NODE_VERSION",
+              "value": "24"
+            }
+          ],
+          "name": "qa-20261017-2aaf2c-subroot",
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "repo": "https://github.com/git-fixtures/submodule",
+          "rootDir": "itself/itself",
+          "serviceDetails": {
+            "envSpecificDetails": {
+              "buildCommand": "set -e\nnode - <<'QA_SUBROOT_SOURCE'\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\nQA_SUBROOT_SOURCE\nnode qa426-app.cjs build",
+              "startCommand": "node qa426-app.cjs serve"
+            },
+            "healthCheckPath": "/",
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "node"
+          },
+          "type": "web_service"
+        },
+        "raw_body": "{\"autoDeploy\":\"no\",\"branch\":\"master\",\"envVars\":[{\"key\":\"NODE_VERSION\",\"value\":\"24\"}],\"name\":\"qa-20261017-2aaf2c-subroot\",\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"repo\":\"https://github.com/git-fixtures/submodule\",\"rootDir\":\"itself/itself\",\"serviceDetails\":{\"envSpecificDetails\":{\"buildCommand\":\"set -e\\nnode - \\u003c\\u003c'QA_SUBROOT_SOURCE'\\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\\nQA_SUBROOT_SOURCE\\nnode qa426-app.cjs build\",\"startCommand\":\"node qa426-app.cjs serve\"},\"healthCheckPath\":\"/\",\"plan\":\"free\",\"region\":\"frankfurt\",\"runtime\":\"node\"},\"type\":\"web_service\"}",
+        "headers": {
+          "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "Content-Type": "application/json",
+          "X-Bex-Cli-Version": "0.3.2"
+        },
+        "authorization": "[REDACTED]"
+      },
+      "status": 201,
+      "response": "{\"service\":{\"id\":\"srv-db9lh8ks300s73dskd70\",\"name\":\"qa-20261017-2aaf2c-subroot\",\"immutableName\":\"qa-20261017-2aaf2c-subroot\",\"slug\":\"qa-20261017-2aaf2c-subroot\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db9lh8ks300s73dskd70\",\"createdAt\":\"2026-10-17T11:14:43Z\",\"updatedAt\":\"2026-10-17T11:14:43Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"QA_PRIVATE_VALUE_REDACTED\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"node\",\"envSpecificDetails\":{\"buildCommand\":\"set -e\\nnode - \\u003c\\u003c'QA_SUBROOT_SOURCE'\\nconst fs=require('node:fs'),zlib=require('node:zlib');for(const[n,v]of Object.entries(JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/41Wa2/aShD9K758sS25jlm/iaiUtrTpVW/SJumnEqF9zIJbsyZrmwZR/vsdPyCE5l5VkYKZ3Zk558zDbAcPNCDRK7paufx7ORgNeKHKypDlWMNDnWmwTFUIGMnStB2uN6uqODnpjHhKyxJ0dXLaGc/KSme8wkuLqlqdXGlMpn3eJdYgx3/fXl+5K6pLsGTpaqDifZbD7UZxy+zg4i3QoDi438tCmY5ZVzIxbdtZUv0D9B9E6C6euPcYygUds/HrjpjL0b2CS1ouLBNPSBiZtluvBBotZrsim0NZWeYCHpHEVMla8SorlFEwZL4GYdnbXlOEUI6v2XfglSt1sZwoVAVKqzf9gE1pITO3vWi7S7qy1Pj1NpPWX8gCHrOyKlsOyrY1VLVW35Sj6jy/74Gz8SlbZZ8fbm7ZpoJyxNwc1LxaOB2ZEX4gj9397sCfInJVvYS0Qded7tFh3N/A3dv7rMa209lpC73SBYeydNegS1TIaXk6XTwHD+eaLmdHqE7JzGaNh6JLsO3d+e5Ia4yYyY21trddv7kCYDV5qGlurTs5nSdhz7s7e9nXNK+R2ronZruA0TbWm6LIgaLS/XUX+nDPgbZxn5sO5NcNRqzenjfV8/U3cj8ej01WZ7kw952xHj81S1sDTO3mxdwyv1zMbr++ubm+vpu9mby/vpmYTtvbzTypecfZPj/QP0fJfuqsgtN2b/P13f5CgP/KefH+bnLzogcyg7wE42V6LZkDvTb5H8zkMcjDRLOiqMb9KGqqRLH8+vXjO9SpWRv9cN426bSF7fmA9ShtHJp+m9SqypYw7gV6Uhlr1B0homrRLCS31jkWrtfvEuFZxPOcrYmRKuyLV9VmBebIxE2ZZ5w2bXfWQt3ZrRsoYZ3otG0JOX2mlsnuf8S+vLv7/JvW+wFqYI56mN3gjPYMjsfoYOynap9zZ7s5Tigo66peMtRqXzRQa/fz9c3dr1++53m2Y3pu+2c+lbha6OKnMdG60JZZqx+q+KmMJQ50u+8GzuClnYxvku10oGFVTAej6aApVjk6O5tn1aJmLi+WzeMrmT3ipEB5VtYMI9Y5TAfOdMCw0HzROi4potatFZ2WWdVaWZSEgefxoUz9YST90EujkIZp6gt8ZjwOIuYxGbR+GjWYiUy3nllVQi7Puo+n41WmFIjZUQqM4Q9ZyHgqglCyKKBJLPBfGnLwxdCLfZ6kiSBtDNwU8oUYEXDpgSScCClZnEae70NIPUKGKZUJHkdhEkDYxmjLiG4om4vadHL0hnZz42Pi48Vuy7QJSEiH0iNpHMZ+wBPCUiFTgV+jaDiEQERRJIWHwAUJBAnjNMbbNCYBCxBOiPrsGrlpmfGzTx/fTq5uJ88TIk9yktJjXhSkQ4/5hHEYMu4FYYriM+IFcUxJwkPPT9MQZBKSJCUp9YdDEXEWU5956XHKt5cXVx8mn64/nCRNnqdMUSbwo8gLQxAipZ6MKEt5zBLqx5KnJPF8LmEofE9KZBdzAOHxyE/9lJNG3l2TsxsJjPhtOriZXLz7Z+IuRSv9vhvu8fn5Lu9VxmAklomIY+JTvykbYV4wpISSlAecyIAINhxGYRhQQF1TxEkiwIqT1O/arHl7ZLLfHG3YQotMUb0xmsG/NVY1w8ViKPw1AcLADsgz9aM0VnldGjnMaW40nfou0+cGPFJeGU3TGfgzhBq4Fg2B453h69Do2nAf56iVHEMVxoesMpZQ0c5vTbOcsizPqo3Bc5otUarDQB/9RMJpng6+XKB1RijFhp4xeJwOBrt/AQm/ssxACgAA','base64')))))fs.writeFileSync(n,v);\\nQA_SUBROOT_SOURCE\\nnode qa426-app.cjs build\",\"preDeployCommand\":\"\",\"startCommand\":\"node qa426-app.cjs serve\"},\"healthCheckPath\":\"/\",\"internalAddress\":\"qa-20261017-2aaf2c-subroot:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"node\",\"url\":\"https://qa-20261017-2aaf2c-subroot.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"replicas\":1,\"idleTTLSeconds\":0,\"rootDir\":\"itself/itself\",\"repo\":\"https://github.com/git-fixtures/submodule\",\"branch\":\"master\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\",\"healthCheckPath\":\"/\"},\"deployId\":\"dep-db9lh8ks300s73dskd7g\"}\n",
+      "response_headers": {
+        "Content-Type": "application/json",
+        "CF-RAY": "a4bee19649f2586f-SJC"
+      }
+    }
+  ]
+}

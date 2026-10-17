@@ -1,0 +1,1 @@
+{"exit": 0, "stdout": "{\"client\": \"bex\", \"actual_request_paths_correlated\": 6, \"pass\": true}\n{\"client\": \"render\", \"actual_request_paths_correlated\": 6, \"pass\": true}\n", "stderr": ""}

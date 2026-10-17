@@ -1,0 +1,32 @@
+{
+  "nonce": "292a3d",
+  "image": "python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4",
+  "context": "<owned-temp>/candidate-swig-_e_avq1u",
+  "cases": [
+    {
+      "case": "original",
+      "container": "qa-swig-292a3d-original",
+      "command": "set -e\npython -c 'import json,shutil,sys; print(json.dumps({\"python\":sys.version.split()[0],\"swig\":shutil.which(\"swig\"),\"gcc\":shutil.which(\"gcc\"),\"python_config\":shutil.which(\"python3-config\")}))'\nswig -python qa_swig.i\ngcc -shared -fPIC $(python3-config --includes) qa_swig_wrap.c -o _qa_swig$(python3-config --extension-suffix)\npython - <<'QA_SWIG_CHECK'\nimport qa_swig,json\nassert qa_swig.weighted_sum(2,3)==13\nassert qa_swig.weighted_sum(-4,7)==13\nassert qa_swig.dessert()==\"Crème brûlée & 李\"\nprint(\"QA_SWIG_REAL_EXTENSION\",json.dumps({\"weighted\":qa_swig.weighted_sum(2,3),\"unicode\":qa_swig.dessert()},ensure_ascii=False))\nQA_SWIG_CHECK",
+      "interface_sha256": "1384c8b26f56ff58a352327279efe41af9928292f3752716ccd8bfe6fc7c4f2a",
+      "absent_before": true,
+      "exit": 127,
+      "stdout": "{\"python\": \"3.13.16\", \"swig\": null, \"gcc\": \"/usr/bin/gcc\", \"python_config\": \"/usr/local/bin/python3-config\"}\n",
+      "stderr": "bash: line 3: swig: command not found\n",
+      "pass": true
+    },
+    {
+      "case": "control",
+      "container": "qa-swig-292a3d-control",
+      "command": "set -e\npython -c 'import json,shutil,sys; print(json.dumps({\"python\":sys.version.split()[0],\"swig\":shutil.which(\"swig\"),\"gcc\":shutil.which(\"gcc\"),\"python_config\":shutil.which(\"python3-config\")}))'\napt-get update -qq && apt-get install -y --no-install-recommends swig\nswig -python qa_swig.i\ngcc -shared -fPIC $(python3-config --includes) qa_swig_wrap.c -o _qa_swig$(python3-config --extension-suffix)\npython - <<'QA_SWIG_CHECK'\nimport qa_swig,json\nassert qa_swig.weighted_sum(2,3)==13\nassert qa_swig.weighted_sum(-4,7)==13\nassert qa_swig.dessert()==\"Crème brûlée & 李\"\nprint(\"QA_SWIG_REAL_EXTENSION\",json.dumps({\"weighted\":qa_swig.weighted_sum(2,3),\"unicode\":qa_swig.dessert()},ensure_ascii=False))\nQA_SWIG_CHECK",
+      "interface_sha256": "1384c8b26f56ff58a352327279efe41af9928292f3752716ccd8bfe6fc7c4f2a",
+      "absent_before": true,
+      "exit": 0,
+      "stdout": "{\"python\": \"3.13.16\", \"swig\": null, \"gcc\": \"/usr/bin/gcc\", \"python_config\": \"/usr/local/bin/python3-config\"}\nReading package lists...\nBuilding dependency tree...\nReading state information...\nThe following additional packages will be installed:\n  swig4.0\nSuggested packages:\n  swig-doc swig-examples swig4.0-examples swig4.0-doc\nThe following NEW packages will be installed:\n  swig swig4.0\n0 upgraded, 2 newly installed, 0 to remove and 8 not upgraded.\nNeed to get 1620 kB of archives.\nAfter this operation, 6010 kB of additional disk space will be used.\nGet:1 http://deb.debian.org/debian bookworm/main arm64 swig4.0 arm64 4.1.0-0.2 [1299 kB]\nGet:2 http://deb.debian.org/debian bookworm/main arm64 swig all 4.1.0-0.2 [321 kB]\nFetched 1620 kB in 1s (2982 kB/s)\nSelecting previously unselected package swig4.0.\n(Reading database ... \n(Reading database ... 5%\n(Reading database ... 10%\n(Reading database ... 15%\n(Reading database ... 20%\n(Reading database ... 25%\n(Reading database ... 30%\n(Reading database ... 35%\n(Reading database ... 40%\n(Reading database ... 45%\n(Reading database ... 50%\n(Reading database ... 55%\n(Reading database ... 60%\n(Reading database ... 65%\n(Reading database ... 70%\n(Reading database ... 75%\n(Reading database ... 80%\n(Reading database ... 85%\n(Reading database ... 90%\n(Reading database ... 95%\n(Reading database ... 100%\n(Reading database ... 24001 files and directories currently installed.)\nPreparing to unpack .../swig4.0_4.1.0-0.2_arm64.deb ...\nUnpacking swig4.0 (4.1.0-0.2) ...\nSelecting previously unselected package swig.\nPreparing to unpack .../swig_4.1.0-0.2_all.deb ...\nUnpacking swig (4.1.0-0.2) ...\nSetting up swig4.0 (4.1.0-0.2) ...\nSetting up swig (4.1.0-0.2) ...\nQA_SWIG_REAL_EXTENSION {\"weighted\": 13, \"unicode\": \"Crème brûlée & 李\"}\n",
+      "stderr": "debconf: delaying package configuration, since apt-utils is not installed\n",
+      "pass": true
+    }
+  ],
+  "qualification": "selected cached Python3.13 base, real own SWIG/C extension, not full generated native image or hosted finding",
+  "pass": true,
+  "own_containers_context_removed": true
+}

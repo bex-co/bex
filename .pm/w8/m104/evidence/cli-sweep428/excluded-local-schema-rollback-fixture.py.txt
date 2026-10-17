@@ -1,0 +1,35 @@
+from pathlib import Path
+import subprocess,json,secrets,time,hashlib,shutil
+P=Path(__file__).resolve().parent;ctx=P/'sweep428-local-partman-source';out={'kind':'isolated cached official PG17 SQL-only pg_partman reference; not Bex/CNPG image acceptance','steps':[]};name='qa428-partman-'+secrets.token_hex(4);image='postgres@sha256:67f41722b7a8cbdb868a44a4995c846eddfdc2973bccb291ce937dce88ad5675';out.update(image=image,container_name=name,network='none; no ports, mounts or other resources');receipt=P/'sweep428-local-prerequisite.json'
+def save():receipt.write_text(json.dumps(out,indent=2,ensure_ascii=False))
+def run(label,args,check=True,bound=35):
+ r=subprocess.run(args,capture_output=True,text=True,timeout=bound);e={'label':label,'command':args,'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr};out['steps'].append(e);save()
+ if check:r.check_returncode()
+ return e
+def sql(label,query,check=True,user='qa428_app',db='qa428_db'):
+ return run(label,['docker','exec',name,'psql','-U',user,'-d',db,'-X','-q','-t','-A','-v','ON_ERROR_STOP=1','-c',query],check)
+created=False
+try:
+ save();run('start-own-networkless-PG17',['docker','run','-d','--pull','never','--network','none','--name',name,'-e','POSTGRES_HOST_AUTH_METHOD=trust',image]);created=True
+ for i in range(20):
+  r=run('own-unix-readiness-'+str(i),['docker','exec',name,'pg_isready','-U','postgres'],False)
+  if r['exit']==0:break
+  time.sleep(1)
+ else:raise RuntimeError('Own local readiness did not converge')
+ sql('create-own-ordinary-app-role','CREATE ROLE qa428_app LOGIN;',user='postgres',db='postgres');run('create-own-app-database',['docker','exec',name,'createdb','-U','postgres','-O','qa428_app','qa428_db'])
+ r=sql('original-missing-package','CREATE SCHEMA partman; CREATE EXTENSION pg_partman SCHEMA partman;',False);assert r['exit']!=0 and 'is not available' in r['stderr']
+ # Same order as official Makefile: types, tables, functions, procedures; @extschema@ is PostgreSQL's extension substitution.
+ files=[p for category in ('types','tables','functions','procedures') for p in sorted((ctx/'sql'/category).glob('*.sql'))];assert len(files)>30
+ data=b''.join(p.read_bytes() for p in files);target=ctx/'pg_partman--5.5.0.sql';target.write_bytes(data);out['SQL_only_NO_BGW_equivalent_assembly']={'official_Makefile_rule':"cat sql/types/*.sql sql/tables/*.sql sql/functions/*.sql sql/procedures/*.sql > sql/pg_partman--5.5.0.sql",'files':len(files),'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'control_superuser_false':True,'compiled_BG_worker':False};save()
+ run('copy-control-only-to-own-container',['docker','cp',str(ctx/'pg_partman.control'),name+':/usr/share/postgresql/17/extension/pg_partman.control']);run('copy-actual-assembled-extension-SQL',['docker','cp',str(target),name+':/usr/share/postgresql/17/extension/pg_partman--5.5.0.sql'])
+ sql('install-as-own-ordinary-app','CREATE EXTENSION pg_partman SCHEMA partman;')
+ q="CREATE SCHEMA qa428_data; CREATE TABLE qa428_data.events(id bigint NOT NULL,label text NOT NULL) PARTITION BY RANGE(id); DO $$ BEGIN IF NOT partman.create_parent(p_parent_table:='qa428_data.events',p_control:='id',p_interval:='10',p_premake:=2,p_start_partition:='0',p_jobmon:=false) THEN RAISE EXCEPTION 'partition initialization failed'; END IF; END $$; INSERT INTO qa428_data.events VALUES(1,'Crème brûlée'),(12,'李'),(19,'two words'); SELECT jsonb_build_object('version',current_setting('server_version_num'),'extension',(SELECT extversion FROM pg_extension WHERE extname='pg_partman'),'rows',(SELECT jsonb_agg(jsonb_build_array(id,label) ORDER BY id) FROM qa428_data.events),'routing',(SELECT jsonb_agg(jsonb_build_array(id,split_part(tableoid::regclass::text,'.',2)) ORDER BY id) FROM qa428_data.events),'config_interval',(SELECT partition_interval FROM partman.part_config WHERE parent_table='qa428_data.events'))::text;"
+ r=sql('real-extension-partition-generation-and-routing',q);v=json.loads(r['stdout'].strip());assert v['extension']=='5.5.0' and int(v['version'])//10000==17 and v['rows']==[[1,'Crème brûlée'],[12,'李'],[19,'two words']] and v['routing']==[[1,'events_p0'],[12,'events_p10'],[19,'events_p10']] and v['config_interval']=='10';out['actual_partition_result']=v
+ r=sql('manual-maintenance-no-BG-worker',"DO $$ BEGIN PERFORM partman.run_maintenance('qa428_data.events',false,false); END $$; INSERT INTO qa428_data.events VALUES(25,'manual maintenance'); SELECT jsonb_build_object('count',(SELECT count(*) FROM qa428_data.events),'partition',(SELECT split_part(tableoid::regclass::text,'.',2) FROM qa428_data.events WHERE id=25),'worker_preload',current_setting('shared_preload_libraries'))::text;");v=json.loads(r['stdout'].strip());assert v=={'count':4,'partition':'events_p20','worker_preload':''};out['actual_manual_maintenance_result']=v;out['pass']=True;save()
+finally:
+ if created:run('remove-exact-own-container',['docker','rm','-f','-v',name])
+ r=run('confirm-own-container-absent',['docker','container','inspect',name],False);out['own_container_removed']=r['exit']!=0
+ if out.get('pass') and out['own_container_removed']:
+  shutil.rmtree(ctx);(P/'sweep428-partman-source.tar.gz').unlink();out['own_source_archive_and_extraction_removed']=True
+ save()
+print(json.dumps({'pass':out.get('pass',False),'actual_partition_result':out.get('actual_partition_result'),'actual_manual_maintenance_result':out.get('actual_manual_maintenance_result'),'own_container_removed':out.get('own_container_removed'),'reference_only_PG17_not_hosted_PG18_CNPGequivalent':True}))

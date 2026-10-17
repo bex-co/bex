@@ -1,0 +1,28 @@
+{
+  "contract": {
+    "url": "https://render.com/docs/native-runtimes#tools-and-utilities",
+    "reviewed_at": "2026-10-17",
+    "tools": [
+      "zip",
+      "unzip"
+    ],
+    "availability": "both during builds and at runtime; all native runtimes"
+  },
+  "package_reference": {
+    "url": "https://packages.debian.org/bookworm/zip",
+    "documented_version": "3.0-13+deb12u1 amd64/arm64 (not adopted platform pin)",
+    "dependencies": [
+      "libbz2-1.0",
+      "libc6 >=2.34"
+    ],
+    "unzip": "recommended separate extractor; existing unzip does not supply zip"
+  },
+  "mechanism": {
+    "generator": "lego/operator/internal/build/native.go:283-321",
+    "base_inventory": "lego/operator/internal/build/native.go:94-129",
+    "resolver": "lego/operator/internal/build/nativeresolve.go:53-120",
+    "known_suppliers": "Node/Yarn/pnpm, FFmpeg, language companions; no ZIP producer"
+  },
+  "scope": "six primary runtimes/16 reviewed lines plus native static builds; original hosted proof Node24 only",
+  "proposed_repair": "review immutable multiarch zip binary/package and required libbz2/glibc closure; add before authored native builds in shared image so build/pre-deploy/runtime consumers use it; preserve unzip/zipinfo and other suppliers; verify bookworm/trixie rather than replace filesystem"
+}

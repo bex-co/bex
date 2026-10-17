@@ -1,0 +1,10 @@
+from pathlib import Path
+import sys,json
+P=Path(__file__).resolve().parent;f=P/'sweep403-common.py';sys.argv=[str(f),'final-inventory','bex'];exec(compile(f.read_text(),str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==403 and v.get('id'));assert x['state'].startswith('deleted:') and x['cached_connection_checks'][-1]['phase']=='after' and x['cached_connection_checks'][-1]['pass'] and all(v for k,v in x['cached_connection_private_files_removed'].items() if k.endswith('_removed'));out={}
+for label,path in [('env-groups','/v1/env-groups?ownerId='+WS),('projects','/v1/projects?ownerId='+WS),('blueprints','/v1/blueprints?ownerId='+WS),('quota','/v1/owners/'+WS+'/limits')]:
+ r=api('GET',path);assert r['status']=='200';v=json.loads(r['response'])
+ if label=='blueprints':
+  views=[z.get('blueprint',z) for z in v];passed={z['id'] for z in views}=={'blp-db136288mmqc73d4hpug'};r['response']=json.dumps([{'id':z['id'],'projection':'immutable baseline identity only; configuration omitted'} for z in views])
+ elif label=='quota':passed=v['services']['used']==6 and v['services']['terminating']==v['postgres']['used']==v['postgres']['terminating']==v['keyValues']['used']==v['keyValues']['terminating']==0
+ else:passed=v==[]
+ out[label]={'at':now(),'receipt':r,'pass':bool(passed)};c['sweep403_cleanup_inventory']=out;save();print(json.dumps({'kind':label,'pass':bool(passed)}),flush=True);assert passed

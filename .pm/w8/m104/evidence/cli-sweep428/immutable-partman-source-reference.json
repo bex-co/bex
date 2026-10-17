@@ -1,0 +1,33 @@
+{
+  "source_url": "https://codeload.github.com/pgpartman/pg_partman/tar.gz/f7e83b9c441c7e97066d815bbe14e02a9dc5ff94",
+  "commit": "f7e83b9c441c7e97066d815bbe14e02a9dc5ff94",
+  "version": "5.5.0",
+  "archive_bytes": 1409547,
+  "archive_sha256": "394f4b5ee2ec6fd82941387df98df254c14fbfd0342b61afb4e383d1adbe90be",
+  "files": {
+    "LICENSE.txt": {
+      "bytes": 1201,
+      "sha256": "657cd7bde17fc758e47824280a7ccb9bc7d44067e3f3790c2ef4b07e8a04223a"
+    },
+    "Makefile": {
+      "bytes": 1269,
+      "sha256": "36d256ce050091256a465f4e47407f8f80fff053fac61b963c0408d40f5b44d0"
+    },
+    "README.md": {
+      "bytes": 13969,
+      "sha256": "c01648bcfa52f2f8e1dce32c80407fef143fcb0958f015fb2ed31c02d7ec222a"
+    },
+    "doc/pg_partman.md": {
+      "bytes": 100001,
+      "sha256": "73a635e100726f2f1d92e11c67ebf16c50c7d84752b2347029a570d5ea419f13"
+    },
+    "doc/pg_partman_howto.md": {
+      "bytes": 62713,
+      "sha256": "a5de5f9952edc1591f7a5a932bdb58d64ad0fdd7448dd283ad15f20c5d30521f"
+    },
+    "pg_partman.control": {
+      "bytes": 150,
+      "sha256": "58b0138d387dc69556bc26d83779722b3d4603bc38f287dbbb7c37f8350412fd"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+const fs=require('node:fs'),crypto=require('node:crypto'),http=require('node:http');
+const reference=JSON.parse(fs.readFileSync('qa393-reference.json')),marker=JSON.parse(fs.readFileSync('qa393-marker.json')),phase=process.argv[2];
+const meta=p=>{const b=fs.readFileSync(p);return {bytes:b.length,sha256:crypto.createHash('sha256').update(b).digest('hex')}};
+const parents=Object.fromEntries(Object.keys(reference.parent_files).map(p=>[p,meta(p)]));
+if(JSON.stringify(parents)!==JSON.stringify(reference.parent_files))throw Error('parent source differs');
+const path=reference.child_file.path,exists=fs.existsSync(path),child=exists?{path,...meta(path)}:null;
+const snapshot={marker,phase,parent_files:parents,child_file_exists:exists,child_file:child,git_metadata_present:fs.existsSync('.git'),node:process.version};
+console.log('QA393_SOURCE '+JSON.stringify(snapshot));
+if(!exists||JSON.stringify(child)!==JSON.stringify(reference.child_file)){process.exitCode=1;}
+else if(phase==='build'){fs.writeFileSync('qa393-built.json',JSON.stringify(snapshot));}
+else if(phase==='runtime'){
+ const built=JSON.parse(fs.readFileSync('qa393-built.json'));if(built.marker!==marker||JSON.stringify(built.child_file)!==JSON.stringify(child))throw Error('built source differs');
+ const boot=crypto.randomUUID();http.createServer((req,res)=>{res.setHeader('content-type','application/json');res.end(JSON.stringify({marker,boot,build:built,runtime:snapshot}));}).listen(Number(process.env.PORT),'0.0.0.0');
+}else throw Error('unknown phase');
+

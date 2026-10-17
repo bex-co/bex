@@ -1,0 +1,10 @@
+{
+  "qa433-app.cjs": {
+    "bytes": 2775,
+    "sha256": "e13070cd29014af2a07ea8c6cbfa10336ac56fd734e54637cf17a53b5161c4e7"
+  },
+  "qa433-transform.ts": {
+    "bytes": 433,
+    "sha256": "c929fa8fe86a55f36b6e20c3a56e2c5cdfd655516a350ad35a16b1fb61ba02df"
+  }
+}

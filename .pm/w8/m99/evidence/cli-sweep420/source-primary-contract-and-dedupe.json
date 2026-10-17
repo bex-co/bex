@@ -1,0 +1,127 @@
+{
+  "at": "2026-10-17T09:51:08.000552+00:00",
+  "source_head": "7fa064b894d6f75e7f44f5bc65d10c5d0dd4d8c5",
+  "scope": "ordinary strict TypeScript compile then serve emitted JavaScript through native Free Node service",
+  "native_contract": {
+    "url": "https://render.com/docs/native-runtimes",
+    "fact": "typescript is listed as available during builds and at runtime in every native runtime; exact hosted Render compiler version unobserved"
+  },
+  "primary_usage": [
+    {
+      "url": "https://www.typescriptlang.org/docs/handbook/compiler-options.html",
+      "fact": "literal tsc file inputs compile supplied TypeScript files; strict/noEmitOnError/module/target/outDir compiler options"
+    },
+    {
+      "url": "https://registry.npmjs.org/typescript/7.0.2",
+      "fact": "current official observed compiler control; tsc bin and native per-platform packages; not adopted as platform pin"
+    }
+  ],
+  "one_shared_generator_primary_runtimes": 6,
+  "reviewed_primary_lines": 16,
+  "dedupe": {
+    "board": {
+      "command": [
+        "rg",
+        "-n",
+        "-i",
+        "tsc: command not found|native.{0,90}typescript|typescript.{0,90}(missing|supply|compiler|native)|typescript-linux",
+        ".pm",
+        "--glob",
+        "*.md"
+      ],
+      "exit": 0,
+      "stdout": ".pm/w6/done/m122/done/t003.md:12:Three guards already cover this feed and none crosses the Go/TypeScript boundary, which is why five types drifted in unnoticed. Add the missing one: a test that fails when the backend's emitted event vocabulary is not a subset of the dashboard catalog.\n",
+      "stderr": ""
+    },
+    "typescript-history": {
+      "command": [
+        "git",
+        "log",
+        "--oneline",
+        "-S",
+        "typescript",
+        "--",
+        "lego/operator/internal/build"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "tsc-history": {
+      "command": [
+        "git",
+        "log",
+        "--oneline",
+        "-S",
+        "tsc",
+        "--",
+        "lego/operator/internal/build"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  },
+  "source_excerpts": [
+    {
+      "file": "lego/operator/internal/build/native.go",
+      "from_line": 283,
+      "to_line": 320,
+      "text": "func nativeDockerfile(o Options) string {\n\tvar fileMounts strings.Builder\n\tfor i, name := range o.NativeFiles {\n\t\tfmt.Fprintf(&fileMounts, \" --mount=type=secret,id=%s,target=%s/%s,required=true\",\n\t\t\tnativeFileSecretID(i), nativeSecretFilesDir, name)\n\t}\n\t// The decoder is resolved once, under the image's PATH, into a function a\n\t// decoded variable cannot overwrite: a decoded PATH is exported mid-loop\n\t// and must reach the command exactly, not stop the next decode (w8/m61).\n\tloader := fmt.Sprintf(\": bex-native-env-rev=%s\\n\", nativeEnvRevision(o)) + `decoder=\"$(command -v base64)\" || exit 1\neval \"bex_decode() { '$decoder' -d; }\"\nwhile IFS= read -r record; do\n  [ -n \"$record\" ] || continue\n  key=${record%%=*}\n  encoded=${record#*=}\n  value=\"$(printf '%s' \"$encoded\" | bex_decode 2>/dev/null && printf '.')\" || exit 1\n  export \"$key=${value%.}\"\ndone < ` + nativeEnvSecretPath + \"\\n\"\n\tinstallLines, installStep := nativeStaticInstall(o)\n\trun := shellJSON(nativeEnvLoaderPrefix + installStep + o.BuildCommand)\n\tbase := fmt.Sprintf(`# syntax=docker/dockerfile:1.7\nFROM %s\n%sWORKDIR /opt/render/project/src\nCOPY . .\nCOPY <<'%s' %s\n%s%s\n%sRUN --mount=type=secret,id=render-env,target=%s%s %s\n`, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeNodeTools(o)+nativeMediaTools+nativeBuildDefaults(o), nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,\n\t\tinstallLines, nativeEnvSecretPath, fileMounts.String(), run)\n\tif o.StaticSite {\n\t\t// No PORT/CMD: the image only carries the built site for the publish\n\t\t// Job's extract initContainer (ADR029) and never runs as a workload.\n\t\treturn base\n\t}\n\t// nativeEntrypoint replaces the toolchain image's ENTRYPOINT (w8/m61).\n\tstart := shellJSON(o.StartCommand)\n\treturn base + fmt.Sprintf(`%sENV PORT=10000\n%sCMD %s"
+    },
+    {
+      "file": "lego/operator/internal/build/native.go",
+      "from_line": 404,
+      "to_line": 414,
+      "text": "func nativeBuildPreparer(o Options) corev1.Container {\n\tenv, keys := indexedLiteralEnv(BuildLiterals(o.BuildEnv), nativeLiteralEnvPrefix)\n\tenv = append(env,\n\t\tcorev1.EnvVar{Name: \"BEX_NATIVE_DOCKERFILE\", Value: nativeDockerfile(o)},\n\t\tcorev1.EnvVar{Name: \"BEX_NATIVE_LITERAL_KEYS\", Value: keys},\n\t\tcorev1.EnvVar{Name: \"BEX_NATIVE_FILES\", Value: strings.Join(o.NativeFiles, \"\\n\")},\n\t)\n\n\tmounts := []corev1.VolumeMount{{Name: \"native-build\", MountPath: \"/native\"}}\n\tif o.RuntimeEnvSecret != \"\" {\n\t\tmounts = append(mounts, corev1.VolumeMount{Name: runtimeEnvVolume, MountPath: \"/runtime-env\", ReadOnly: true})"
+    },
+    {
+      "file": "lego/operator/internal/build/nativeresolve.go",
+      "from_line": 53,
+      "to_line": 120,
+      "text": "func ResolveNativeBuild(runtime, bundlePath, dockerfilePath, sourceDir string) ([]NativeChoice, error) {\n\tenv, err := readEnvBundle(bundlePath)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\treadFile := func(name string) ([]byte, bool) { return readVersionFile(sourceDir, name) }\n\tchoice, err := ResolveNativeVersion(runtime, env, readFile)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\tbun, withBun, err := ResolveNativeBun(env, readFile)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\tdockerfile, err := os.ReadFile(dockerfilePath)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"read generated Dockerfile: %w\", err)\n\t}\n\trewritten, err := rewriteNativeBase(string(dockerfile), nativeToolchains[runtime].defaultImage(), choice.Image)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\tchoices := []NativeChoice{choice}\n\tif runtime == nativePythonRuntime {\n\t\tpoetry, err := ResolveNativePoetry(env)\n\t\tif err != nil {\n\t\t\treturn nil, err\n\t\t}\n\t\tuv, withUV, err := ResolveNativeUV(env, readFile)\n\t\tif err != nil {\n\t\t\treturn nil, err\n\t\t}\n\t\t// Each step lands right after the FROM, so uv goes in first to follow\n\t\t// Poetry's layer, which a uv version change then leaves cached.\n\t\tif withUV {\n\t\t\tif rewritten, err = addNativeUV(rewritten, choice.Image, uv.Line); err != nil {\n\t\t\t\treturn nil, err\n\t\t\t}\n\t\t}\n\t\tif rewritten, err = addNativePoetry(rewritten, choice.Image, poetry.Line); err != nil {\n\t\t\treturn nil, err\n\t\t}\n\t\tchoices = append(choices, poetry)\n\t\tif withUV {\n\t\t\tchoices = append(choices, uv)\n\t\t}\n\t}\n\tif nativeJSCompanionRuntimes[runtime] {\n\t\tnode, err := ResolveNativeVersion(nativeNodeRuntime, env, readFile)\n\t\tif err != nil {\n\t\t\treturn nil, err\n\t\t}\n\t\tif rewritten, err = addNativeJSTools(rewritten, choice.Image, node.Image); err != nil {\n\t\t\treturn nil, err\n\t\t}\n\t\tchoices = append(choices, node)\n\t}\n\tif withBun {\n\t\tif rewritten, err = addNativeBun(rewritten, choice.Image, bun.Image); err != nil {\n\t\t\treturn nil, err\n\t\t}\n\t\tchoices = append(choices, bun)\n\t}\n\tif err := os.WriteFile(dockerfilePath, []byte(rewritten), 0o600); err != nil {\n\t\treturn nil, fmt.Errorf(\"write generated Dockerfile: %w\", err)\n\t}\n\treturn choices, nil\n}"
+    },
+    {
+      "file": "lego/operator/internal/build/build.go",
+      "from_line": 936,
+      "to_line": 960,
+      "text": "func buildctlRecipeArgs(o Options, dockerfileDir string) []string {\n\tif o.Builder != BuilderNative {\n\t\targs := []string{\"--local\", \"dockerfile=\" + dockerfileDir}\n\t\tif o.DockerfilePath != \"\" {\n\t\t\targs = append(args, \"--opt\", \"filename=\"+o.DockerfilePath)\n\t\t}\n\t\treturn append(args, dockerBuildSecretArgs(o)...)\n\t}\n\targs := []string{\n\t\t\"--local\", \"dockerfile=/native\",\n\t\t\"--opt\", \"filename=Dockerfile\",\n\t\t\"--secret\", \"id=render-env,src=/native/render-env\",\n\t}\n\tfor i, name := range o.NativeFiles {\n\t\targs = append(args, \"--secret\", \"id=\"+nativeFileSecretID(i)+\",src=/native/files/\"+name)\n\t}\n\tif nativeServingInit(o) {\n\t\targs = append(args,\n\t\t\t\"--local\", nativeInitContext+\"=\"+nativeInitDir,\n\t\t\t\"--opt\", \"context:\"+nativeInitContext+\"=local:\"+nativeInitContext,\n\t\t)\n\t}\n\treturn args\n}\n"
+    },
+    {
+      "file": "lego/operator/internal/build/build.go",
+      "from_line": 1176,
+      "to_line": 1183,
+      "text": "\tif o.Builder == BuilderNative {\n\t\tpodSpec.InitContainers = append(podSpec.InitContainers, nativeBuildPreparer(o))\n\t\tif o.NativeResolverImage != \"\" {\n\t\t\tpodSpec.InitContainers = append(podSpec.InitContainers, nativeVersionResolver(o))\n\t\t}\n\t}\n\tpodSpec.InitContainers = append(podSpec.InitContainers, buildkit)\n\texecution.HardenPod(&podSpec)"
+    },
+    {
+      "file": "lego/backend/internal/apps/rest.go",
+      "from_line": 455,
+      "to_line": 500,
+      "text": "func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerID string) (CreateRequest, error) {\n\tplan, health, schedule, command, publishPath := r.Plan, \"\", r.Schedule, r.Command, r.PublishPath\n\trootDir := r.RootDir\n\tsubdomainPolicy := r.RenderSubdomainPolicy\n\tvar runtime, buildCommand, startCommand, dockerfilePath, dockerContext string\n\tvar nestedRegistryCredentialID json.RawMessage\n\tpreDeploy := r.PreDeployCommand\n\tvar replicas int32\n\tvar maxShutdownDelaySeconds *int32\n\tvar maintenanceMode *MaintenanceModeView\n\tvar disk *ServiceDiskView\n\timagePath := \"\"\n\tif r.Image != nil {\n\t\timagePath = r.Image.ImagePath\n\t}\n\tif r.ServiceDetails != nil {\n\t\tvar err error\n\t\tif maintenanceMode, err = decodeMaintenanceMode(ctx, r.ServiceDetails.MaintenanceMode); err != nil {\n\t\t\treturn CreateRequest{}, err\n\t\t}\n\t\tif r.ServiceDetails.Plan != \"\" {\n\t\t\tplan = r.ServiceDetails.Plan\n\t\t}\n\t\thealth = r.ServiceDetails.HealthCheckPath\n\t\truntime = r.ServiceDetails.Runtime\n\t\tif runtime == \"\" {\n\t\t\truntime = r.ServiceDetails.Env\n\t\t}\n\t\tif d := r.ServiceDetails.EnvSpecificDetails; d != nil {\n\t\t\tbuildCommand = d.BuildCommand\n\t\t\tnestedRegistryCredentialID = d.RegistryCredentialID\n\t\t\t// Render's envSpecificDetails is docker-or-native details, read\n\t\t\t// the same way for every service type. startCommand stays the\n\t\t\t// command unless the build reads a dockerCommand: the pinned\n\t\t\t// CLI's cron builder sends a cron's command as startCommand on\n\t\t\t// every runtime (pkg/service/create.go\n\t\t\t// buildCronEnvSpecificDetails, w9/m165), and a prebuilt image's\n\t\t\t// CMD override travels as dockerCommand (w4/188). dockerContext\n\t\t\t// is its own spec field (repo-root-relative, independent of\n\t\t\t// rootDir); the pre-w8/m19 rootDir fold was a lossy approximation.\n\t\t\tdocker := dockerDetails{runtime: runtime, builder: r.Builder, image: imagePath,\n\t\t\t\tstartCommand: d.StartCommand, dockerCommand: d.DockerCommand, dockerContext: d.DockerContext}\n\t\t\tstartCommand, _, dockerContext = docker.resolve()\n\t\t\tdockerfilePath = docker.dockerfileOnly(d.DockerfilePath)\n\t\t}\n\t\tif r.ServiceDetails.BuildCommand != \"\" {"
+    },
+    {
+      "file": "lego/backend/internal/apps/service.go",
+      "from_line": 2935,
+      "to_line": 2950,
+      "text": "\t}\n\tspec := appv1alpha1.AppSpec{\n\t\tType:            svcType,\n\t\tRepo:            req.Repo,\n\t\tImage:           req.Image,\n\t\tBranch:          branch,\n\t\tRuntime:         runtime,\n\t\tBuildCommand:    commandText(req.BuildCommand),\n\t\tStartCommand:    commandText(req.StartCommand),\n\t\tBuilder:         builder,\n\t\tRootDir:         req.RootDir,\n\t\tBuildFilter:     buildFilter,\n\t\tMaintenanceMode: maintenanceMode,\n\t\tDockerfilePath:  req.DockerfilePath,\n\t\tDockerContext:   req.DockerContext,\n\t\tPort:            port,"
+    },
+    {
+      "file": "lego/operator/internal/controller/app_controller.go",
+      "from_line": 1048,
+      "to_line": 1064,
+      "text": "\tobs, err := build.EnsureBuild(ctx, build.Options{\n\t\tRepo: app.Spec.Repo, Ref: ref, ExpectedCommit: expectedGitObjectID(app.Spec.BuildCommit), RootDir: app.Spec.RootDir,\n\t\tDockerfilePath: app.Spec.DockerfilePath, DockerContext: app.Spec.DockerContext,\n\t\tName: app.Name, AppUID: string(app.UID),\n\t\tRegistry: r.Registry, KpackRegistry: r.KpackRegistry,\n\t\tBuilder:           builder,\n\t\tRuntime:           app.Spec.Runtime,\n\t\tStaticSite:        app.Spec.Type == appv1alpha1.TypeStaticSite,\n\t\tStaticPublishPath: app.Spec.PublishPath,\n\t\tBuildCommand:      app.Spec.BuildCommand,\n\t\tStartCommand:      app.Spec.StartCommand,\n\t\tBuildEnv:          buildLiterals,\n\t\tRuntimeEnvSecret:  inputs.envSecret,\n\t\tNativeEnvRevision: inputs.revision,\n\t\tNativeFilesSecret: inputs.filesSecret,\n\t\tNativeFiles:       inputs.files,\n\t\t// bex's own image runs the version resolver (w8/m51); unresolved, the"
+    },
+    {
+      "file": "lego/operator/internal/build/nativepnpm.go",
+      "from_line": 31,
+      "to_line": 94,
+      "text": "}\n\n// nativeNodeTools is the generated layers that complete a primary Node\n// toolchain image, right after its FROM and before the source and the authored\n// build, so the build, the pre-deploy step and the started service all find\n// them: Yarn 1 from the reviewed Yarn source (Node 26's official image ships\n// none, w4/320; on 22/24 it lays down the same 1.22.22 the image carries) and\n// the pinned pnpm, unpacked into npm's global prefix in the official node\n// images \u2014 exactly where `npm install -g pnpm` would put it, on the image PATH\n// beside node and npm. Other runtimes get nothing here. ADD --checksum verifies\n// the tarball before anything runs; --link keeps these layers cached when the\n// primary Node line changes. The RUNs are bex's own, under the image's PATH,\n// never the tenant's env.\nfunc nativeNodeTools(o Options) string {\n\tif nativeRuntime(o) != nativeNodeRuntime {\n\t\treturn \"\"\n\t}\n\treturn nativeYarnInstall() + nativePnpmInstall()\n}\n\n// nativePnpmInstall is the pnpm layer pair itself, shared by primary Node\n// builds and the JavaScript companion of Ruby and Python builds (w8/m77).\nfunc nativePnpmInstall() string {\n\treturn \"ADD --link --checksum=\" + nativePnpm.checksum + \" https://registry.npmjs.org/pnpm/-/pnpm-\" + nativePnpm.version + \".tgz /opt/bex/pnpm.tgz\\n\" +\n\t\t\"RUN mkdir -p /usr/local/lib/node_modules/pnpm\" +\n\t\t\" && tar -xzf /opt/bex/pnpm.tgz -C /usr/local/lib/node_modules/pnpm --strip-components=1 --no-same-owner && rm /opt/bex/pnpm.tgz\" +\n\t\t\" && ln -sf ../lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm && ln -sf ../lib/node_modules/pnpm/bin/pnpx.cjs /usr/local/bin/pnpx\\n\"\n}"
+    },
+    {
+      "file": "lego/operator/internal/build/nativeresolve.go",
+      "from_line": 131,
+      "to_line": 185,
+      "text": "// nativeJSCompanionRuntimes are the primary runtimes whose native builds also\n// carry Render's documented JavaScript tools \u2014 Node, npm, Yarn and pnpm, at\n// build and runtime: a Rails, Django, Phoenix or Go/Rust web app builds its\n// frontend assets with them (w8/m77 Ruby/Python, w4/m213 Go/Rust/Elixir).\n// Primary Node already has them.\nvar nativeJSCompanionRuntimes = map[string]bool{nativeRubyRuntime: true, nativePythonRuntime: true, \"go\": true, \"rust\": true, \"elixir\": true}\n\n// nativeYarnDir is Yarn 1 as the official Node 22/24 images ship it.\nconst nativeYarnDir = \"/opt/yarn-v1.22.22\"\n\n// nativeYarnSourceLine is the reviewed Node line whose pinned image Yarn 1 is\n// copied from. Yarn 1 is plain JavaScript, so one source serves every Node\n// line and every companion; it is named rather than \"the default image\" so a\n// later default of 26 \u2014 whose image ships no Yarn \u2014 cannot silently drop it.\nconst nativeYarnSourceLine = \"24\"\n\n// nativeYarnInstall copies Yarn 1 out of the reviewed source image and links\n// yarn and yarnpkg onto the image PATH, the way the official node images do.\n// Shared by primary Node (w4/320) and the JavaScript companion (w8/m77).\nfunc nativeYarnInstall() string {\n\tsource, _ := nativeToolchains[nativeNodeRuntime].find(nativeYarnSourceLine)\n\treturn \"COPY --link --from=\" + source.image + \" \" + nativeYarnDir + \" \" + nativeYarnDir + \"\\n\" +\n\t\t\"RUN ln -sf \" + nativeYarnDir + \"/bin/yarn /usr/local/bin/yarn && ln -sf \" + nativeYarnDir + \"/bin/yarnpkg /usr/local/bin/yarnpkg\\n\"\n}\n\n// addNativeJSTools copies the selected Node line's node binary and its global\n// node_modules (npm, plus Corepack where the line has it) out of that line's\n// pinned image, then adds Yarn and the pinned pnpm \u2014 right after the primary\n// FROM, before the source and the authored build, with the links the official\n// node images use. The Node images are Debian bookworm; every primary image is\n// bookworm or (Elixir 1.18/1.19) trixie, whose glibc and libstdc++ are newer\n// and backward compatible, so the copied binary runs on the primary image's own\n// libraries \u2014 the real-image gate executes it on every line. --link keeps these\n// layers cached when the primary line changes.\nfunc addNativeJSTools(dockerfile, baseImage, nodeImage string) (string, error) {\n\treturn afterNativeBase(dockerfile, baseImage, nativeJSToolLines(nodeImage))\n}\n\nfunc nativeJSToolLines(nodeImage string) string {\n\treturn \"COPY --link --from=\" + nodeImage + \" /usr/local/bin/node /usr/local/bin/node\\n\" +\n\t\t\"COPY --link --from=\" + nodeImage + \" /usr/local/lib/node_modules /usr/local/lib/node_modules\\n\" +\n\t\t\"RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm\" +\n\t\t\" && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx\\n\" +\n\t\tnativeYarnInstall() + nativePnpmInstall()\n}\n\n// addNativePoetry installs the chosen Poetry (w8/m72); see\n// nativePythonToolInstall.\nfunc addNativePoetry(dockerfile, baseImage, version string) (string, error) {\n\treturn afterNativeBase(dockerfile, baseImage, nativePythonToolInstall(\"poetry\", version, \"poetry\"))\n}\n\n// addNativeUV installs the chosen uv, with uvx (w8/m81); see\n// nativePythonToolInstall. uv discovers interpreters itself: the image's\n// selected Python on PATH serves a project whose pin it satisfies, and a"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "source_note": "w4/blocked/320",
+  "source_evidence": ".pm/w4/evidence/320-native-node26-yarn.json",
+  "original_source_commit": "e5ff3a6f013e6060c09b9ce7291515f1b14bd1e4",
+  "build": "printf %s 'Y29uc3QgaHR0cD1yZXF1aXJlKCdub2RlOmh0dHAnKSxmcz1yZXF1aXJlKCdub2RlOmZzJyksY3A9cmVxdWlyZSgnbm9kZTpjaGlsZF9wcm9jZXNzJyk7Y29uc3QgZGF0YT17bWFya2VyOidRQV9BNjcxX1lBUk5fUlVOVElNRScsYnVpbHQ6ZnMucmVhZEZpbGVTeW5jKCdxYV95YXJuX21hcmtlci50eHQnLCd1dGY4Jyksbm9kZTpwcm9jZXNzLnZlcnNpb24seWFybjpjcC5leGVjRmlsZVN5bmMoJ3lhcm4nLFsnLS12ZXJzaW9uJ10se2VuY29kaW5nOid1dGY4J30pLnRyaW0oKX07aHR0cC5jcmVhdGVTZXJ2ZXIoKHEscik9PntyLndyaXRlSGVhZCgyMDAseydDb250ZW50LVR5cGUnOidhcHBsaWNhdGlvbi9qc29uJ30pO3IuZW5kKEpTT04uc3RyaW5naWZ5KGRhdGEpKX0pLmxpc3RlbihOdW1iZXIocHJvY2Vzcy5lbnYuUE9SVHx8MzAwMCksJzAuMC4wLjAnKTs=' | base64 -d > qa_yarn.cjs && yarn --version && printf QA_A671_YARN_BUILT > qa_yarn_marker.txt",
+  "start": "node qa_yarn.cjs",
+  "program_bytes": 428,
+  "program_sha256": "a41e8ae460bc2ed70704110aa5a3f009dd712d29ef18e6e9b264450c1865f049",
+  "original_byte_identical": true,
+  "marker": "QA_A671_YARN_RUNTIME",
+  "built": "QA_A671_YARN_BUILT"
+}

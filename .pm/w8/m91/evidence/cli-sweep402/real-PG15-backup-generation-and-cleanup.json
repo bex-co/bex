@@ -1,0 +1,99 @@
+{
+  "image": "postgres:15-bookworm@sha256:d4a8e1f88f475ee3e0137fa89d21ebc59f6c6ab16bf369ee92907607cc3455ae",
+  "container": "qa402-backup-ed9162",
+  "nonce": "ed9162",
+  "context": "<owned-temp>/sweep402-backup-5ouwy11b",
+  "qualification": "owned loopback-free, network-none local PG15 server and real pg_dump; not hosted database coverage",
+  "calls": [
+    {
+      "command": [
+        "docker",
+        "run",
+        "--detach",
+        "--name",
+        "qa402-backup-ed9162",
+        "--label",
+        "bex.qa.run=ed9162",
+        "--network",
+        "none",
+        "--tmpfs",
+        "/var/lib/postgresql/data:rw",
+        "-e",
+        "POSTGRES_HOST_AUTH_METHOD=trust",
+        "-e",
+        "POSTGRES_DB=qa402",
+        "postgres:15-bookworm@sha256:d4a8e1f88f475ee3e0137fa89d21ebc59f6c6ab16bf369ee92907607cc3455ae"
+      ],
+      "exit": 0,
+      "stdout": "a39eee00f500f555c9f2af947db34b6da69f3c97949bfe75a4facb5e90cc2517\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "-i",
+        "qa402-backup-ed9162",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "qa402",
+        "-v",
+        "ON_ERROR_STOP=1"
+      ],
+      "exit": 0,
+      "stdout": "CREATE TABLE\nINSERT 0 3\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "qa402-backup-ed9162",
+        "pg_dump",
+        "-U",
+        "postgres",
+        "-d",
+        "qa402",
+        "--format=custom",
+        "--inserts",
+        "--no-owner",
+        "--no-privileges",
+        "--table=public.qa402_backup"
+      ],
+      "exit": 0,
+      "stdout": "<binary backup retained separately>",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "-i",
+        "qa402-backup-ed9162",
+        "pg_restore",
+        "--data-only",
+        "--no-owner",
+        "--no-privileges",
+        "--file=-"
+      ],
+      "exit": 0,
+      "stdout": "<binary backup retained separately>",
+      "stderr": ""
+    }
+  ],
+  "removed": true,
+  "backup": {
+    "bytes": 1721,
+    "sha256": "5beaea91d80ee9a3f7f637bd096446102952aa20a916f614fcb73575d1ece4a4"
+  },
+  "canonical_inserts": [
+    "INSERT INTO public.qa402_backup VALUES (1, 'QA402 alpha');",
+    "INSERT INTO public.qa402_backup VALUES (2, 'QA402 caf\u00e9 \u96ea');",
+    "INSERT INTO public.qa402_backup VALUES (3, 'QA402 quote '' and comma,');"
+  ],
+  "canonical_sha256": "5090a6d28f0eddaa146a603028c04deaa63c6c796a16fe07ae7c81a10ae85624",
+  "SQL_fixture": "CREATE TABLE qa402_backup (id integer PRIMARY KEY, label text NOT NULL); INSERT INTO qa402_backup VALUES (1,'QA402 alpha'),(2,'QA402 caf\u00e9 \u96ea'),(3,'QA402 quote '' and comma,');",
+  "pass_fixture": true
+}

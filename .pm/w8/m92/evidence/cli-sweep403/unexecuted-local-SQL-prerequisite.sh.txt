@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+qa403_tmp=$(mktemp -d /tmp/qa403-pg-XXXXXX)
+qa403_data="$qa403_tmp/data"
+trap 'pg_ctl -D "$qa403_data" -m immediate -w stop >/dev/null 2>&1 || true; rm -rf "$qa403_tmp"' EXIT INT TERM
+initdb -D "$qa403_data" -U qa403_owner -A trust --no-locale --encoding=UTF8 >"$qa403_tmp/initdb.log"
+pg_ctl -D "$qa403_data" -l "$qa403_tmp/postgres.log" -o "-k $qa403_tmp -c listen_addresses= -p 15403" -w start >/dev/null
+export PGHOST="$qa403_tmp" PGPORT=15403 PGUSER=qa403_owner PGDATABASE=postgres
+psql -X -qAt -v ON_ERROR_STOP=1 -c "SELECT 'QA403_CATALOG '||jsonb_build_object('version',current_setting('server_version_num'),'database',current_database(),'extensions',COALESCE((SELECT jsonb_agg(jsonb_build_object('name',name,'default_version',default_version,'installed_version',installed_version) ORDER BY name) FROM pg_available_extensions WHERE name IN ('postgis','postgis_raster','postgis_topology','vector','hstore','pg_stat_statements','plpgsql')),'[]'::jsonb))::text;"
+psql -X -qAt -v ON_ERROR_STOP=1 -c "BEGIN; CREATE EXTENSION IF NOT EXISTS hstore; SELECT 'QA403_HEALTHY '||jsonb_build_object('hstore',('QA403=>healthy')::hstore->'QA403','point_distance',point(0,0)<->point(3,4),'one',1)::text; ROLLBACK;"
+set +e
+psql -X -qAt -v ON_ERROR_STOP=1 -c "BEGIN; CREATE EXTENSION IF NOT EXISTS postgis; WITH p AS (SELECT ST_SetSRID(ST_MakePoint(0,0),4326) a,ST_SetSRID(ST_MakePoint(1,0),4326) b) SELECT 'QA403_SPATIAL '||jsonb_build_object('srid',ST_SRID(a),'wkt',ST_AsText(a),'distance_m',round(ST_Distance(a::geography,b::geography)::numeric,3),'extension',(SELECT extversion FROM pg_extension WHERE extname='postgis'))::text FROM p; ROLLBACK;" >"$qa403_tmp/postgis.out" 2>"$qa403_tmp/postgis.err"
+qa403_status=$?
+set -e
+printf 'QA403_POSTGIS_STATUS %s\n' "$qa403_status"
+cat "$qa403_tmp/postgis.out"
+cat "$qa403_tmp/postgis.err" >&2

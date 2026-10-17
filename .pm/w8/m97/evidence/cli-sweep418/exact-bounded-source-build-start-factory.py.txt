@@ -1,0 +1,7 @@
+import json,gzip,base64,hashlib
+def commands(P,reference,marker,control=False):
+ program=(P/'sweep418-app.py').read_text();files={'qa-gs-app.py':program,'qa-gs-reference.json':json.dumps(reference,separators=(',',':'),ensure_ascii=False),'qa-gs-marker.json':json.dumps(marker)};blob=base64.b64encode(gzip.compress(json.dumps(files,separators=(',',':')).encode(),mtime=0)).decode();assert json.loads(gzip.decompress(base64.b64decode(blob)))==files
+ build="set -e\npython - <<'QA_GS_SOURCE'\nimport json,gzip,base64\nfrom pathlib import Path\nfiles=json.loads(gzip.decompress(base64.b64decode('"+blob+"')))\nfor name,text in files.items(): Path(name).write_text(text)\nQA_GS_SOURCE\npython qa-gs-app.py before\n"
+ if control:build+='apt-get update -qq && apt-get install -y --no-install-recommends ghostscript\n'
+ build+='gs -q -dBATCH -dNOPAUSE -sDEVICE=png16m -r72 -dFirstPage=1 -dLastPage=1 -sOutputFile=qa-gs-build.png qa-gs.pdf\npython qa-gs-app.py build';assert len(build.encode())<=4096
+ return {'build':build,'start':'python -u qa-gs-app.py serve','program_sha256':hashlib.sha256(program.encode()).hexdigest()}

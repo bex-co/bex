@@ -1,0 +1,64 @@
+{
+  "sweep": 419,
+  "source_head": "94e8cea37f4177c9092f8cd2a5a63a6eda695c0c",
+  "severity": "major",
+  "bugs": [
+    "missing native jq breaks JSON manifest generation",
+    "missing native rsync breaks local asset copying after jq alone is supplied"
+  ],
+  "attribution": "operator shared native-image utility assembly",
+  "native_clients": [
+    "published Bex0.3.2/a6350da0",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "original_native_creates_POST201_exit0": 2,
+  "original_first_builds_failed_missing_jq": 2,
+  "jq_only_native_updates0": 2,
+  "jq_only_builds_prove_correct_manifest_then_fail_missing_rsync": 2,
+  "complete_tool_native_updates0_and_replacements_Live": 2,
+  "actual_final_manifest_copy_HTTP200": 6,
+  "JSON_build_runtime_manifest_and_copied_file_proofs": 4,
+  "copied_HTML_responses_exact_bytes": 2,
+  "published_files_per_copy": 3,
+  "Unicode_and_space_filenames": true,
+  "excluded_own_draft_and_deleted_own_stale_output": true,
+  "native_app_request_events_correlated": 6,
+  "shared_REST_GraphQL_MCP_reads": 18,
+  "explicit_env_API_only_reads": 6,
+  "local_selected_Node_base_stages_exit": [
+    127,
+    127,
+    0
+  ],
+  "local_three_asserted_app_HTTP_controls": 3,
+  "actual_Node": "v24.22.0",
+  "actual_local_tools": {
+    "jq": {
+      "status": 0,
+      "error": null,
+      "version": "jq-1.6"
+    },
+    "rsync": {
+      "status": 0,
+      "error": null,
+      "version": "rsync  version 3.2.7  protocol version 32"
+    }
+  },
+  "full_generated_image_executed_locally": false,
+  "actual_default_and_complete_source_recipe_exports": 2,
+  "exact_owned_two_parents_six_children_URLs_absent": true,
+  "baseline_current_inventory_quota_accounted_termination0": true,
+  "unrelated_service_IDs_preserved": [],
+  "unrelated_datastore_IDs_preserved": {
+    "postgres": [
+      "dpg-db9jlfddkths73a1si80"
+    ],
+    "keyValues": []
+  },
+  "local_containers_contexts_runtime_copy_scratch_relays_configs_removed": "local container scratch directly checked; hosted scratch is removed by app finally and parent teardown, no filesystem-inspection claim",
+  "actual_serving_SHA_OCI": "unknown",
+  "product_implementation": false,
+  "uncommitted": true,
+  "milestone": "w8/m98",
+  "evidence": ".pm/w8/m98/evidence/cli-sweep419"
+}

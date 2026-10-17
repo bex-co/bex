@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -e
+qa404_script="$1"
+shift
+set -a
+. /Volumes/nvme4tbfish/projects/bex8/muse.env
+set +a
+exec python3 "<owned-temp>/$qa404_script" "$@"

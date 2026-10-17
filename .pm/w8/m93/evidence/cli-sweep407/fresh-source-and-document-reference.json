@@ -1,0 +1,29 @@
+{
+  "repo": "https://github.com/git-fixtures/basic",
+  "branch": "master",
+  "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+  "files": {
+    "LICENSE": {
+      "bytes": 1072,
+      "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+    },
+    "CHANGELOG": {
+      "bytes": 18,
+      "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+    }
+  },
+  "document": {
+    "text": "# Café 雪\n\nThis is **bold** and *emphasis*, with `x < 7`.\n\n- alpha\n- beta\n\n[Guide](https://example.invalid/guide?q=qa407)\n",
+    "bytes": 124,
+    "sha256": "edba9bdcd88fbcb00cc68a873033b73462c90471213d181ac342bebbd9d38865",
+    "required_html": [
+      "Café 雪</h1>",
+      "<strong>bold</strong>",
+      "<em>emphasis</em>",
+      "<code>x &lt; 7</code>",
+      "<li>alpha</li>",
+      "<li>beta</li>",
+      "href=\"https://example.invalid/guide?q=qa407\""
+    ]
+  }
+}

@@ -1,0 +1,43 @@
+from pathlib import Path
+import os,subprocess,threading,time,json,codecs,signal,shutil,yaml
+class NativeTail:
+ def __init__(self,P,actor,token,workspace,sid,marker,secrets_to_mask=(),origin='https://api.bex.co/v1/',capture_tag='sweep449'):
+  self.P=P;self.actor=actor;self.secret_values=[token,*[s for s in secrets_to_mask if s]];self.lock=threading.Lock();self.started=time.monotonic();self.directory=P/(capture_tag+'-tail-'+actor+'-config');assert not self.directory.exists();self.directory.mkdir(mode=0o700);cfg=self.directory/'cli.yaml';cfg.write_text(yaml.safe_dump({'api':{'host':origin},'workspace':workspace}));cfg.chmod(0o600);self.capture=P/(capture_tag+'-'+actor+'-live-tail.json');assert not self.capture.exists();prefix='BEX' if actor=='bex' else 'RENDER';env={k:v for k,v in os.environ.items() if not k.startswith(('BEX_','RENDER_','QA_'))};env.update({prefix+'_HOST':origin,prefix+'_CLI_CONFIG_PATH':str(cfg),prefix+'_CLI_CONFIG_DIR':str(self.directory),prefix+'_WORKSPACE':workspace,prefix+'_CLI_DISABLE_ANALYTICS':'1','BEX_NO_UPDATE_NOTIFIER':'1','DO_NOT_TRACK':'1','BROWSER':'/usr/bin/true'});env['BEX_ACCESS_TOKEN' if actor=='bex' else 'RENDER_API_KEY']=token;binary=P/('release/bex' if actor=='bex' else 'render-pin');args=[str(binary),'logs','--resources',sid,'--tail','--type','app','--text',marker,'--confirm','-o','json'];self.out={'actor':actor,'command':args,'auth':'local fake credential' if origin.startswith('http://127.0.0.1:') else 'same own human OAuth access token; value omitted','stdout':'','stderr':'','chunks':[],'phase':'own follower start intent','config_directory':str(self.directory)};self.save();self.proc=subprocess.Popen(args,env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,start_new_session=True);self.out['PID']=self.proc.pid;self.save();self.threads=[]
+  for name,pipe in [('stdout',self.proc.stdout),('stderr',self.proc.stderr)]:
+   t=threading.Thread(target=self.reader,args=(name,pipe),daemon=True);self.threads.append(t);t.start()
+ def save(self):
+  temporary=self.capture.with_suffix('.tmp');temporary.write_text(json.dumps(self.out,indent=2,ensure_ascii=False));temporary.chmod(0o600);temporary.replace(self.capture)
+ def reader(self,name,pipe):
+  decoder=codecs.getincrementaldecoder('utf8')()
+  while True:
+   raw=os.read(pipe.fileno(),4096)
+   if not raw:break
+   text=decoder.decode(raw)
+   for secret in self.secret_values:text=text.replace(secret,'[QA_VALUE_REDACTED]')
+   with self.lock:self.out[name]+=text;self.out['chunks'].append({'stream':name,'bytes':len(raw),'at':time.monotonic()-self.started});self.save()
+  text=decoder.decode(b'',final=True)
+  if text:
+   with self.lock:self.out[name]+=text;self.save()
+ def snapshot(self):
+  with self.lock:return json.loads(json.dumps(self.out))
+ def logs(self):
+  raw=self.snapshot()['stdout'];out=[];decoder=json.JSONDecoder()
+  while raw.strip():
+   raw=raw.lstrip()
+   try:v,n=decoder.raw_decode(raw)
+   except ValueError:break
+   out.append(v);raw=raw[n:]
+  return out
+ def stop(self):
+  with self.lock:self.out['stop_intent_at']=time.monotonic()-self.started;self.out['exited_before_own_interrupt']=self.proc.poll() is not None;self.save()
+  for sig,wait in [(signal.SIGINT,5),(signal.SIGTERM,3),(signal.SIGKILL,3)]:
+   if self.proc.poll() is not None:break
+   try:os.killpg(self.proc.pid,sig)
+   except ProcessLookupError:pass
+   try:self.proc.wait(timeout=wait)
+   except subprocess.TimeoutExpired:continue
+  assert self.proc.poll() is not None
+  for thread in self.threads:thread.join(timeout=2)
+  shutil.rmtree(self.directory)
+  with self.lock:self.out.update(native_exit=self.proc.returncode,reader_threads_stopped=all(not t.is_alive() for t in self.threads),own_config_directory_removed=not self.directory.exists(),phase='bounded own follower finished');self.save()
+  return self.snapshot()

@@ -1,0 +1,28 @@
+#!/bin/bash
+case "${SKIP_INSTALL_DEPS:-}" in
+  [Tt][Rr][Uu][Ee]) echo "==> Skipping dependency installation (SKIP_INSTALL_DEPS=true)"; exit 0 ;;
+esac
+[ -f package.json ] || exit 0
+other=
+for lock in yarn.lock pnpm-lock.yaml bun.lock bun.lockb; do
+  [ -e "$lock" ] && other="$other $lock"
+done
+manifest=$(<package.json)
+if [[ $manifest =~ \"packageManager\"[[:space:]]*:[[:space:]]*\"(yarn|pnpm|bun)@ ]]; then
+  other="$other packageManager ${BASH_REMATCH[1]}"
+fi
+if [ -n "$other" ]; then
+  echo "==> Not installing dependencies automatically:$other is another package manager's; install them in the build command"
+  exit 0
+fi
+lockfile=
+for lock in npm-shrinkwrap.json package-lock.json; do
+  if [ -f "$lock" ]; then lockfile=" ($lock)"; break; fi
+done
+echo "==> Installing dependencies with npm$lockfile"
+PATH="${PATH:+$PATH:}/usr/local/bin:/usr/bin:/bin" npm install --include=dev --no-audit --no-fund
+status=$?
+if [ "$status" -ne 0 ]; then
+  echo "==> Automatic dependency installation failed (exit $status); running the build command anyway. Set SKIP_INSTALL_DEPS=true to install in the build command instead"
+fi
+exit 0

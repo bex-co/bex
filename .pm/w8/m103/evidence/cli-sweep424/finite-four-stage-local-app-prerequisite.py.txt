@@ -1,0 +1,38 @@
+from pathlib import Path
+import subprocess,json,secrets,shutil,tempfile,os
+os.umask(0o077);P=Path(__file__).resolve().parent;nonce=secrets.token_hex(3);image='node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0';ctx=Path(tempfile.mkdtemp(prefix='candidate-python-tools-app-',dir=P));reference=json.loads((P/'candidate-python-tools-reference.json').read_text());factory=P/'candidate-python-tools-command-factory.py';factory.write_text(factory.read_text().replace('QA_PYTOOLS_SOURCES','QPY'));ns={};exec(factory.read_text(),ns);out={'nonce':nonce,'context':str(ctx),'image':image,'cases':[],'qualification':'selected cached Node24 base plus exact bounded hosted source pack, own wheel/no PyPI and genuine C extension through own Node server HTTP; not full generated native image or hosted finding'}
+check='''import json,time,urllib.request
+ref=json.load(open('qref.json'));rows=[]
+for attempt in range(60):
+ try:urllib.request.urlopen('http://127.0.0.1:3000/',timeout=3).read();break
+ except OSError:time.sleep(0.25)
+else:raise RuntimeError('own Node server not ready')
+for path in ['/native?qa=1','/?qa=2','/native?qa=3']:
+ r=urllib.request.urlopen('http://127.0.0.1:3000'+path,timeout=5);v=json.load(r);assert r.status==200 and v['node'].startswith('v24.')
+ for label in ['build','runtime']:
+  p=v[label];assert p['marker']=='QA_PYTOOLS_LOCAL' and p['files']==ref['files'] and p['fixture_sha256']==ref['fixture_sha256'];assert all(p['tools'].values()) and p['result']==ref['expected'] and p['unicode']==ref['unicode'];assert p['distribution']=={'name':'qa-native-helper','version':'1.0'} and p['wheel']['label']==ref['unicode']
+ assert v['build']['extension']==v['runtime']['extension'] and v['build']['wheel']==v['runtime']['wheel'] and v['runtime']['request_path']==path;rows.append({'path':path,'HTTP':r.status,'result':v['runtime']['result'],'unicode':v['runtime']['unicode'],'extension':v['runtime']['extension'],'wheel':v['runtime']['wheel']})
+print('QA_PYTOOLS_LOCAL_HTTP '+json.dumps(rows,ensure_ascii=False))
+'''
+def save():(P/'candidate-python-tools-full-prerequisite.json').write_text(json.dumps(out,indent=2,ensure_ascii=False))
+try:
+ for stage in ['original','setuptools','packaging','full']:
+  name='qa-pytools-'+nonce+'-'+stage;d=ctx/stage;d.mkdir();assert subprocess.run(['docker','container','inspect',name],capture_output=True).returncode!=0
+  for f in reference['files']:shutil.copyfile(P/('sweep423-source-'+f),d/f)
+  (d/'check.py').write_text(check);cmd=ns['commands'](P,reference,'QA_PYTOOLS_LOCAL',stage);assert cmd['within_API_limit'];command=cmd['build']
+  if stage=='full':command+='\n'+cmd['start']+' > own-server.log 2>&1 &\nqa_pytools_pid=$!\ntrap \'kill "$qa_pytools_pid" 2>/dev/null || true\' EXIT\npython3 check.py\ncat own-server.log'
+  e={'stage':stage,'container':name,'absent_before':True,'command':command,'hosted_build_bytes':cmd['build_bytes']};out['cases'].append(e);save()
+  try:
+   r=subprocess.run(['docker','run','--name',name,'--label','bex.qa.pytools='+nonce,'--mount','type=bind,source='+str(d)+',target=/qa','--workdir','/qa','-e','PORT=3000',image,'bash','-lc',command],capture_output=True,text=True,timeout=240);e.update(exit=r.returncode,stdout=r.stdout,stderr=r.stderr)
+   if stage=='original':e['pass']=r.returncode!=0 and "No module named 'setuptools'" in r.stderr and 'QA_PYTOOLS_METADATA' not in r.stdout
+   elif stage=='setuptools':e['pass']=r.returncode!=0 and 'QA_PYTOOLS_METADATA' in r.stdout and 'No module named pip' in r.stderr and 'QA_PYTOOLS_WHEEL' not in r.stdout
+   elif stage=='packaging':e['pass']=r.returncode!=0 and 'QA_PYTOOLS_WHEEL' in r.stdout and 'Python.h: No such file or directory' in r.stderr and 'QA_PYTOOLS_AFTER' not in r.stdout
+   else:e['pass']=r.returncode==0 and 'QA_PYTOOLS_LOCAL_HTTP' in r.stdout
+   if stage=='full' and e['pass']:e['build']=json.loads((d/'qbuild.json').read_text())
+   save();print(json.dumps({'stage':stage,'exit':r.returncode,'pass':e['pass'],'hosted_build_bytes':cmd['build_bytes']}),flush=True);assert e['pass']
+  finally:
+   r=subprocess.run(['docker','container','inspect',name],capture_output=True,text=True)
+   if r.returncode==0:
+    v=json.loads(r.stdout)[0];assert v['Config']['Labels'].get('bex.qa.pytools')==nonce and any(m.get('Source')==str(d) and m.get('Destination')=='/qa' for m in v['Mounts']);subprocess.run(['docker','rm','-f',name],check=True,capture_output=True)
+ out['pass']=all(v['pass'] for v in out['cases']);save()
+finally:shutil.rmtree(ctx);out['own_containers_context_removed']=not ctx.exists() and all(subprocess.run(['docker','container','inspect',v['container']],capture_output=True).returncode!=0 for v in out['cases']);save()

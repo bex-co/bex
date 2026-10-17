@@ -1,0 +1,28 @@
+{
+  "repo": "https://github.com/git-fixtures/submodule",
+  "branch": "master",
+  "commit": "b685400c1f9316f350965a5993d350bc746b0bf4",
+  "root_dir": "itself/itself",
+  "root_pinned_commit": "c7431b5bc9d45fb64a87d4a895ce3d1073c898d2",
+  "leaf_pinned_commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+  "files": {
+    ".gitmodules": {
+      "bytes": 83,
+      "sha256": "25a1f02975734c82b9df9d9756611e4d666fd087dd24d25797f02a724b4b7954"
+    },
+    "basic/LICENSE": {
+      "bytes": 1072,
+      "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+    },
+    "basic/CHANGELOG": {
+      "bytes": 18,
+      "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+    }
+  },
+  "absent": [
+    "README.md",
+    "itself"
+  ],
+  "program_sha256": "250c627f8d7723a3ec652b041a2a29c4c2f42db116554ae9549edd26e796293f",
+  "qualification": "ordinary HTTPS public nested gitlinks plus legal rootDir; exact leaf data and distinct pinned nested .gitmodules, no Git metadata availability claim"
+}

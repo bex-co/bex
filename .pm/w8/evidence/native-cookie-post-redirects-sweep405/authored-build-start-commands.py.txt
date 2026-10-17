@@ -1,0 +1,6 @@
+import json,hashlib
+def commands(P,reference,marker):
+ program=(P/'sweep405-server.cjs').read_text();build='set -e\nmkdir qa405\n'
+ for name,value in [('server.cjs',program),('reference.json',json.dumps(reference,separators=(',',':'))),('marker.json',json.dumps(marker))]:
+  tag='QA405_'+name.replace('.','_').upper();build+="cat > qa405/"+name+" <<'"+tag+"'\n"+value+('' if value.endswith('\n') else '\n')+tag+'\n'
+ build+='node qa405/server.cjs --build';assert len(build.encode())<=4096,len(build.encode());return {'build':build,'start':'node qa405/server.cjs','program_sha256':hashlib.sha256(program.encode()).hexdigest()}

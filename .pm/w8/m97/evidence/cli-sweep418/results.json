@@ -1,0 +1,56 @@
+{
+  "sweep": 418,
+  "source_head": "1845a897afb1ef1e50becd8ed54c97e10c771953",
+  "severity": "major",
+  "attribution": "operator shared native-image utility assembly",
+  "native_clients": [
+    "published Bex0.3.2/a6350da0",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "original_unchanged_native_creates_POST201_exit0": 2,
+  "original_first_builds_failed_missing_gs": 2,
+  "original_failed_URLs404": 2,
+  "only_control_change": "one apt-get update/install ghostscript build line",
+  "native_control_updates0_replacement_Live": 2,
+  "actual_HTTP_PDF_conversions200": 6,
+  "JSON_PDF_runtime_conversion_responses": 4,
+  "direct_PNG_responses": 2,
+  "all_measured_output_pixels_independently_verified": true,
+  "own_input_PDF_bytes": 471,
+  "own_input_PDF_SHA256": "02768c7fec79fea6ae1edcf29baa3a039568fe93113c757067cc51d260ec5fec",
+  "own_input_pages": 1,
+  "expected_PNG": "2x1 RGB8, ff00000000ff",
+  "native_request_events_correlated": 6,
+  "shared_REST_GraphQL_MCP_reads": 12,
+  "API_only_env_reads": 4,
+  "actual_hosted_versions": {
+    "bex": {
+      "python": "3.13.16",
+      "gs_version": "10.00.0"
+    },
+    "render": {
+      "python": "3.13.16",
+      "gs_version": "10.00.0"
+    }
+  },
+  "local_selected_base_original127_control0": true,
+  "local_actual_Ghostscript": "10.00.0",
+  "full_app_local_asserted_HTTP_controls": 3,
+  "full_generated_image_executed_locally": false,
+  "actual_source_recipe_exports": 2,
+  "exact_owned_two_parents_four_children_URLs_absent": true,
+  "baseline_current_inventory_quota_accounted_termination0": true,
+  "unrelated_service_IDs_preserved": [],
+  "unrelated_datastore_IDs_preserved": {
+    "postgres": [
+      "dpg-db9jlfddkths73a1si80"
+    ],
+    "keyValues": []
+  },
+  "own_local_containers_contexts_relays_configs_removed": true,
+  "actual_serving_SHA_OCI": "unknown",
+  "product_implementation": false,
+  "uncommitted": true,
+  "milestone": "w8/m97",
+  "evidence": ".pm/w8/m97/evidence/cli-sweep418"
+}

@@ -1,0 +1,36 @@
+from pathlib import Path
+import subprocess,json,secrets,shutil,tempfile,os
+os.umask(0o077);P=Path(__file__).resolve().parent;nonce=secrets.token_hex(3);image='python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4';ctx=Path(tempfile.mkdtemp(prefix='candidate-swig-app-',dir=P));out={'nonce':nonce,'image':image,'context':str(ctx),'cases':[],'qualification':'selected cached Python3.13 base plus own real SWIG extension and own-container-loopback HTTP; not full generated native image or hosted finding'}
+check='''import json,time,urllib.request
+ref=json.load(open('qa-swig-reference.json'));rows=[]
+for attempt in range(60):
+ try:urllib.request.urlopen('http://127.0.0.1:3000/',timeout=2).read();break
+ except OSError:time.sleep(0.25)
+else:raise RuntimeError('own local server not ready')
+for path in ['/native?qa=1','/?qa=2','/native?qa=3']:
+ r=urllib.request.urlopen('http://127.0.0.1:3000'+path,timeout=4);v=json.load(r);assert r.status==200
+ for label in ['build','runtime']:
+  p=v[label];assert p['marker']=='QA_SWIG_LOCAL' and p['files']==ref['files'] and p['interface_sha256']==ref['interface_sha256'] and p['program_sha256']==ref['program_sha256'];assert p['result']==ref['expected'] and p['unicode']==ref['unicode'] and p['swig_path'] and p['swig_version'];assert p['extension']['bytes']>0 and len(p['extension']['sha256'])==64
+ assert v['build']['extension']==v['runtime']['extension'] and v['runtime']['request_path']==path;rows.append({'path':path,'status':r.status,'result':v['runtime']['result'],'unicode':v['runtime']['unicode'],'extension_sha256':v['runtime']['extension']['sha256']})
+print('QA_SWIG_LOCAL_HTTP '+json.dumps(rows,ensure_ascii=False))
+'''
+def save():(P/'candidate-swig-full-app-prerequisite.json').write_text(json.dumps(out,indent=2,ensure_ascii=False))
+try:
+ for control in [False,True]:
+  case='control' if control else 'original';name='qa-swig-app-'+nonce+'-'+case;d=ctx/case;d.mkdir();assert subprocess.run(['docker','container','inspect',name],capture_output=True).returncode!=0
+  for src,dst in [('candidate-swig-app.py','qa-swig-app.py'),('candidate-swig-interface.i','qa_swig.i'),('candidate-swig-reference.json','qa-swig-reference.json'),('sweep420-source-LICENSE','LICENSE'),('sweep420-source-CHANGELOG','CHANGELOG')]:shutil.copyfile(P/src,d/dst)
+  (d/'qa-swig-marker.json').write_text(json.dumps('QA_SWIG_LOCAL'));(d/'check.py').write_text(check);command='set -e\npython qa-swig-app.py before\n'
+  if control:command+='apt-get update -qq && apt-get install -y --no-install-recommends swig\n'
+  command+='swig -python qa_swig.i\ngcc -shared -fPIC $(python3-config --includes) qa_swig_wrap.c -o _qa_swig$(python3-config --extension-suffix)\npython qa-swig-app.py build'
+  if control:command+='\npython qa-swig-app.py serve > own-server.log 2>&1 &\nqa_swig_pid=$!\ntrap \'kill "$qa_swig_pid" 2>/dev/null || true\' EXIT\npython check.py\ncat own-server.log'
+  e={'case':case,'container':name,'command':command,'absent_before':True};out['cases'].append(e);save()
+  try:
+   r=subprocess.run(['docker','run','--name',name,'--label','bex.qa.swig-app='+nonce,'--mount','type=bind,source='+str(d)+',target=/qa','--workdir','/qa','-e','PORT=3000',image,'bash','-lc',command],capture_output=True,text=True,timeout=180);e.update(exit=r.returncode,stdout=r.stdout,stderr=r.stderr);e['pass']=(r.returncode==0 and 'QA_SWIG_LOCAL_HTTP' in r.stdout) if control else r.returncode==127 and 'swig: command not found' in r.stderr
+   if control and e['pass']:e['build']=json.loads(next(v.split('QA_SWIG_AFTER ',1)[1] for v in r.stdout.splitlines() if v.startswith('QA_SWIG_AFTER ')))
+   save();print(json.dumps({'case':case,'exit':r.returncode,'pass':e['pass']}),flush=True);assert e['pass']
+  finally:
+   r=subprocess.run(['docker','container','inspect',name],capture_output=True,text=True)
+   if r.returncode==0:
+    v=json.loads(r.stdout)[0];assert v['Config']['Labels'].get('bex.qa.swig-app')==nonce and any(m.get('Source')==str(d) and m.get('Destination')=='/qa' for m in v['Mounts']);subprocess.run(['docker','rm','-f',name],check=True,capture_output=True)
+ out['pass']=all(v['pass'] for v in out['cases']);save()
+finally:shutil.rmtree(ctx);out['own_containers_context_removed']=not ctx.exists() and all(subprocess.run(['docker','container','inspect',v['container']],capture_output=True).returncode!=0 for v in out['cases']);save()

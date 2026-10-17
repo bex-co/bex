@@ -1,0 +1,18 @@
+from pathlib import Path
+import sys,json
+P=Path(__file__).resolve().parent;f=P/'sweep401-common.py';sys.argv=[str(f),'shared-state','bex'];exec(compile(f.read_text(),str(f),'exec'));xs=[v for v in c['resources'] if v.get('sweep')==401 and v.get('id')]
+for x in xs:
+ own(x);sid=x['id'];phase='control' if 'control_intent' in x else 'initial';query='query QA401 {service(id:'+json.dumps(sid)+'){id name repo branch plan buildCommand autoDeploy}}'
+ for surface,method,path,body in [('REST','GET','/v1/services/'+sid,None),('GraphQL','POST','/graphql',{'query':query}),('MCP','POST','/mcp',{'jsonrpc':'2.0','id':401,'method':'tools/call','params':{'name':'get_service','arguments':{'serviceId':sid,'workspaceId':ws}}})]:
+  if any(v['surface']==surface and v['phase']==phase and v.get('pass') for v in x.get('shared_state',[])):continue
+  assert not any(v['surface']==surface and v['phase']==phase for v in x.get('shared_state',[]));e={'at':now(),'surface':surface,'phase':phase};x.setdefault('shared_state',[]).append(e);save();r=api(method,path,body);e['receipt']=r;save();assert r['status']=='200';v=decode(r)
+  if surface=='GraphQL':assert not v.get('errors');v=v['data']['service'];build=v['buildCommand'];plan=v['plan'];type_publish=True
+  else:
+   if surface=='MCP':
+    assert not v.get('error') and not v['result'].get('isError');z=v['result'];v=z.get('structuredContent')
+    if v is None:v=json.loads(next(a['text'] for a in z['content'] if a['type']=='text'))
+    v=v.get('service',v)
+   d=v['serviceDetails'];build=d['buildCommand'];plan=d['plan'];type_publish=v['type']=='static_site' and d['publishPath']=='_site'
+  e['pass']=v['id']==sid and v['name']==x['name'] and v['repo']==x['primary_reference']['repo'] and v['branch']==x['primary_reference']['branch'] and plan=='free' and build==x['commands'][phase]['build'] and v['autoDeploy'] in (False,'no') and type_publish;save();assert e['pass'];print(json.dumps({'client':x['client'],'phase':phase,'surface':surface,'pass':True}),flush=True)
+ if not any(v['phase']==phase for v in x.get('explicit_env_readbacks',[])):
+  r=api('GET','/v1/services/'+sid+'/env-vars');e={'at':now(),'phase':phase,'receipt':r};x.setdefault('explicit_env_readbacks',[]).append(e);save();assert r['status']=='200';vs=[v.get('envVar',v) for v in decode(r)];e['pass']={v['key']:v['value'] for v in vs}=={'NODE_VERSION':'24'};save();assert e['pass']

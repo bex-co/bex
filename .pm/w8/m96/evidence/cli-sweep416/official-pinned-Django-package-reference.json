@@ -1,0 +1,27 @@
+{
+  "name": "Django",
+  "version": "5.2.18",
+  "requires_python": ">=3.10",
+  "requires_dist": [
+    "asgiref>=3.8.1",
+    "sqlparse>=0.3.1",
+    "tzdata; sys_platform == \"win32\"",
+    "argon2-cffi>=19.1.0; extra == \"argon2\"",
+    "bcrypt; extra == \"bcrypt\""
+  ],
+  "source": "https://pypi.org/pypi/Django/5.2.18/json",
+  "files": [
+    {
+      "filename": "django-5.2.18-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/d6/01/6568ec52b26548ca1b83d33249f7274db3bf74698f42c0da42ec9db1a24a/django-5.2.18-py3-none-any.whl",
+      "sha256": "92ed81d500be6408ecd704d7bd1366c534f30427bffcc63c5fefb129561aec7c",
+      "yanked": false
+    },
+    {
+      "filename": "django-5.2.18.tar.gz",
+      "url": "https://files.pythonhosted.org/packages/85/fe/79e692b430c7721bf4b812c328bfe687e73e3f28f56611a6a18a97e887cc/django-5.2.18.tar.gz",
+      "sha256": "461c5dd06d2ea16bd5ca37d3f46e4def1d6b0fe7588c6f4e2119517bb0af8b2d",
+      "yanked": false
+    }
+  ]
+}

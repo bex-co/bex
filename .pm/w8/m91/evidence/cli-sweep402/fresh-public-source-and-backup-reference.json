@@ -1,0 +1,25 @@
+{
+  "repo": "https://github.com/git-fixtures/basic",
+  "branch": "master",
+  "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+  "files": {
+    "LICENSE": {
+      "bytes": 1072,
+      "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+    },
+    "CHANGELOG": {
+      "bytes": 18,
+      "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+    }
+  },
+  "backup": {
+    "bytes": 1721,
+    "sha256": "5beaea91d80ee9a3f7f637bd096446102952aa20a916f614fcb73575d1ece4a4"
+  },
+  "rows": [
+    "INSERT INTO public.qa402_backup VALUES (1, 'QA402 alpha');",
+    "INSERT INTO public.qa402_backup VALUES (2, 'QA402 caf\u00e9 \u96ea');",
+    "INSERT INTO public.qa402_backup VALUES (3, 'QA402 quote '' and comma,');"
+  ],
+  "rows_sha256": "5090a6d28f0eddaa146a603028c04deaa63c6c796a16fe07ae7c81a10ae85624"
+}

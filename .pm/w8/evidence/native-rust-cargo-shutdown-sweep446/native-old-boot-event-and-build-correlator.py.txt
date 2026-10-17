@@ -1,0 +1,16 @@
+from pathlib import Path
+import sys,json,hashlib,datetime,re
+P=Path(__file__).resolve().parent;f=P/'sweep446-common.py';sys.argv=[str(f),'correlate-logs','bex'];exec(compile(f.read_text(),str(f),'exec'));xs=[v for v in c['resources'] if v.get('sweep')==446];assert len(xs)==2;sha=hashlib.sha256((P/'candidate446-server.rs').read_bytes()).hexdigest()
+def objects(raw):
+ out=[];decoder=json.JSONDecoder()
+ while raw.strip():raw=raw.lstrip();v,n=decoder.raw_decode(raw);out.extend(v if isinstance(v,list) else [v]);raw=raw[n:]
+ return out
+def stamp(v):return datetime.datetime.fromisoformat(v['_log_timestamp'].replace('Z','+00:00'))
+for x in xs:
+ own(x);assert len(x['restart_exercises'])==1;e=x['restart_exercises'][0];events=x['native_event_log_receipts'][-1]['events'];old=[v for v in events if v.get('boot')==e['old_boot']];token=e['token'];matches={phase:[v for v in old if v['phase']==phase and (v['active']==1 if phase=='sigterm' else v['token']==token if phase in ['hold-begin','hold-end'] else v['active']==0)] for phase in ['hold-begin','sigterm','hold-end','closed']};chronology=all(matches.values()) and min(map(stamp,matches['hold-begin']))<=min(map(stamp,matches['sigterm']))<=min(map(stamp,matches['hold-end']))<=min(map(stamp,matches['closed']));body=e['client_result'].get('decoded',{});new=e['new_live_snapshot']['decoded'];source_same=len(e['after_history'])==2 and all(v.get('commit',{}).get('id')==x['primary_reference']['commit'] for v in e['after_history']) and new.get('program_sha256')==body.get('program_sha256')==sha and new.get('rust')==body.get('rust');r=cli(['logs','--resources',x['id'],'--type','build','--text','QA446_BUILD','--start',e['before_history'][0]['createdAt'][:19]+'Z','--limit','30','--confirm','-o','json'],client=x['client']);proofs=[];z={'at':now(),'matched_old_boot_events':matches,'chronology_pass':bool(chronology),'native_build_log':r};x['restart_acceptance']=z;save();assert r['native_exit']==0
+ for row in objects(r['stdout']):
+  for match in re.finditer(r'QA446_BUILD (\{[^\n]+\})',row.get('message','')):
+   v=json.loads(match[1])
+   if v.get('marker')==x['marker']:proofs.append(v)
+ z['actual_build_proofs']=proofs;z['Rust_Cargo_restart_acceptance_pass']=bool(e['native_restart']['native_exit']==0 and not e['client_failed_or_replayed'] and e['all_short_reads_own_HTTP200'] and body.get('body_hex')==e['payload_hex'] and body.get('program_sha256')==sha and chronology and source_same and any(v.get('program_sha256')==sha and v.get('rust')==body.get('rust') for v in proofs));save();print(json.dumps({'client':x['client'],'old_HTTP':e['client_result']['HTTP'],'native_restart_exit':0,'short_reads':len(e['samples']),'all_short_reads200':e['all_short_reads_own_HTTP200'],'actual_SIGTERM_active_then_end_closed':bool(chronology),'Rust_Cargo_acceptance':z['Rust_Cargo_restart_acceptance_pass']}),flush=True)
+assert all(x['restart_acceptance']['Rust_Cargo_restart_acceptance_pass'] for x in xs)

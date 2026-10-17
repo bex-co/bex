@@ -1,0 +1,32 @@
+{
+  "sweep": 437,
+  "kind": "Node26 Yarn-start graceful restart neighbor",
+  "new_findings": 0,
+  "existing_fix": "w8/done/m88",
+  "source_head": "0f455bd84b0a2232ab27b702516a3be9bdbfd3cf",
+  "actual_Node_versions": [
+    "v26.12.0"
+  ],
+  "unchanged_native_creates_POST201_exit0": 2,
+  "first_children_Live": 2,
+  "configured_shutdown_seconds": 45,
+  "hold_milliseconds": 40000,
+  "native_restarts_exit0": 2,
+  "replacement_children_Live": 2,
+  "original_inflight_POSTs_finished200_on_old_boot_token": 2,
+  "short_HTTP200_samples": 48,
+  "SIGTERM_with_active_token_then_hold_end_closed": 2,
+  "shared_REST_GraphQL_MCP_reads": 6,
+  "exact_env_API_only_reads": 2,
+  "same_public_source_commit": "a419aa7350389a275ab45fde2e849ed1f02449ef",
+  "same_program_sha256": "ad36e3734b331d1e688fbe07c86b355be2740dbfda2f9e6fc7b494e5fed5f677",
+  "local_Node24_Yarn_and_direct40s_controls": true,
+  "local_checkout_helper_not_deployed_identity": true,
+  "excluded_wrong_local_zero_Yarn_wrapper_exit_guard": true,
+  "two_parents_four_children_URLs_absent": true,
+  "baseline_current_inventory_quota_termination0": true,
+  "local_containers_contexts_helper_relays_configs_removed": true,
+  "actual_serving_SHA_OCI": "unknown",
+  "product_implementation": false,
+  "uncommitted": true
+}

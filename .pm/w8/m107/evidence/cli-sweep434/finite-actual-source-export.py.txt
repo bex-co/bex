@@ -1,0 +1,20 @@
+from pathlib import Path
+import json,os,subprocess,tempfile,shutil,fcntl
+P=Path(__file__).resolve().parent;R=P.parent.parent;CP=R/'.playwright-mcp/cli-qa-w8-checkpoint.json';lock=(P/'checkpoint-writer.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB);c=json.loads(CP.read_text());D=Path(tempfile.mkdtemp(prefix='.qa434-export-',dir=R/'lego/operator'));S=Path(tempfile.mkdtemp(prefix='sweep434-resolve-',dir=P));ref=json.loads((P/'sweep434-primary-reference.json').read_text());ns={};exec((P/'sweep434-command-factory.py').read_text(),ns);commands={v:ns['commands'](P,ref,'QA434_EXPORT',v=='manual') for v in ['default','manual']};commands={label:{k:v for k,v in cmd.items() if k in ['build','start']} for label,cmd in commands.items()};(S/'commands.json').write_text(json.dumps(commands))
+import urllib.request,hashlib
+for name,expected in ref['files'].items():
+ b=urllib.request.urlopen('https://raw.githubusercontent.com/git-fixtures/basic/'+ref['commit']+'/'+name,timeout=25).read();assert {'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}==expected;(S/name).write_bytes(b)
+def save():
+ t=CP.with_name('.'+CP.name+'.qa434-export.tmp');t.write_text(json.dumps(c,indent=2));t.chmod(0o600);t.replace(CP)
+c['sweep434_local_export']={'own_Go_package':str(D),'own_resolver_context':str(S),'removed':False};save()
+program=(R/'lego/operator/hack/boilerplate.go.txt').read_text().replace('YEAR','2026')+'''
+package main
+import("encoding/json";"os";"path/filepath";"github.com/bex-co/bex/lego/operator/internal/build")
+func main(){root:=os.Args[1];blob,e:=os.ReadFile(filepath.Join(root,"commands.json"));if e!=nil{panic(e)};commands:=map[string]map[string]string{};if e=json.Unmarshal(blob,&commands);e!=nil{panic(e)};rows:=[]map[string]any{}
+for _,label:=range []string{"default","manual"}{cmd:=commands[label];o:=build.Options{Repo:"https://github.com/git-fixtures/basic",Ref:"master",Name:"qa434-export",Revision:"qa434",AppUID:"qa434-local",Namespace:"qa434-local",Builder:build.BuilderNative,Runtime:"node",BuildCommand:cmd["build"],StartCommand:cmd["start"],NativeResolverImage:"example.invalid/qa434:source-export-only"};job:=build.BuildJob(o,"example.invalid/qa434:not-pushed");recipe:="";for _,c:=range job.Spec.Template.Spec.InitContainers{if c.Name=="prepare-native-build"{for _,v:=range c.Env{if v.Name=="BEX_NATIVE_DOCKERFILE"{recipe=v.Value}}}};if recipe==""{panic("recipe missing")};file:=filepath.Join(root,label+".Dockerfile");env:=filepath.Join(root,"env");if e=os.WriteFile(file,[]byte(recipe),0600);e!=nil{panic(e)};if e=os.WriteFile(env,[]byte(""),0600);e!=nil{panic(e)};choices,e:=build.ResolveNativeBuild("node",env,file,root);if e!=nil{panic(e)};b,e:=os.ReadFile(file);if e!=nil{panic(e)};rows=append(rows,map[string]any{"label":label,"choices":choices,"generated_recipe":string(b)})};if e:=json.NewEncoder(os.Stdout).Encode(rows);e!=nil{panic(e)}}
+''';(P/'sweep434-actual-export-program.go.txt').write_text(program);(D/'main.go').write_text(program)
+try:
+ r=subprocess.run(['go','run','./'+D.name,str(S)],cwd=R/'lego/operator',env={**os.environ,'GOWORK':'off'},capture_output=True,text=True,timeout=150);receipt={'source_head':subprocess.check_output(['git','rev-parse','HEAD'],cwd=R,text=True).strip(),'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr,'qualification':'actual BuildJob/ResolveNativeBuild recipes; local controls execute selected base plus authored command, not full generated image'};(P/'sweep434-source-export-receipt.json').write_text(json.dumps(receipt,indent=2));r.check_returncode();rows=json.loads(r.stdout)
+ for row in rows:(P/('sweep434-'+row['label']+'-resolved.Dockerfile.txt')).write_text(row['generated_recipe'])
+ assert len(rows)==2;(P/'sweep434-resolved-recipes.json').write_text(json.dumps(rows,indent=2));print(json.dumps({'actual_resolved_recipes':2,'source_head':receipt['source_head']}))
+finally:shutil.rmtree(D);shutil.rmtree(S);c['sweep434_local_export']['removed']=not D.exists() and not S.exists();save();print('Own Go/source export contexts removed')

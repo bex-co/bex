@@ -1,0 +1,1 @@
+{"exit": 0, "stdout": "{\"client\": \"render\", \"case\": \"hll\", \"native_exit\": 0, \"pass\": true, \"decoded\": {\"a\": 8, \"combined\": 10, \"merged\": 10, \"marker\": \"QA439_f10eab_render_hll\", \"case\": \"hll\", \"added\": 1, \"duplicate_change\": 0, \"b\": 4}}\n", "stderr": ""}

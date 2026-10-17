@@ -1,0 +1,60 @@
+{
+  "requested_commit": "e7a5c56626fab0673f244d169389bf34070e754c",
+  "HTTP": 200,
+  "tree": {
+    "sha": "e7a5c56626fab0673f244d169389bf34070e754c",
+    "url": "https://api.github.com/repos/render-examples/express-hello-world/git/trees/e7a5c56626fab0673f244d169389bf34070e754c",
+    "tree": [
+      {
+        "path": ".gitignore",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "fd4f2b066b339e4fd5c0efd44938231a398e9a81",
+        "size": 23,
+        "url": "https://api.github.com/repos/render-examples/express-hello-world/git/blobs/fd4f2b066b339e4fd5c0efd44938231a398e9a81"
+      },
+      {
+        "path": "LICENSE",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "b3f4102b3981556030dc2c7b604aba5fb512e73c",
+        "size": 1085,
+        "url": "https://api.github.com/repos/render-examples/express-hello-world/git/blobs/b3f4102b3981556030dc2c7b604aba5fb512e73c"
+      },
+      {
+        "path": "README.md",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "cac07f3f83d891d0190898b37e1429b474eea6db",
+        "size": 559,
+        "url": "https://api.github.com/repos/render-examples/express-hello-world/git/blobs/cac07f3f83d891d0190898b37e1429b474eea6db"
+      },
+      {
+        "path": "app.js",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "07870a245a0508b359e75d0964a300aef31af43c",
+        "size": 1932,
+        "url": "https://api.github.com/repos/render-examples/express-hello-world/git/blobs/07870a245a0508b359e75d0964a300aef31af43c"
+      },
+      {
+        "path": "package.json",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "a99d05911671c9f581352d4d39b2b93dbce4160f",
+        "size": 411,
+        "url": "https://api.github.com/repos/render-examples/express-hello-world/git/blobs/a99d05911671c9f581352d4d39b2b93dbce4160f"
+      },
+      {
+        "path": "yarn.lock",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "7013c56186fd1961046738e4ba7b14a0f6d21788",
+        "size": 17064,
+        "url": "https://api.github.com/repos/render-examples/express-hello-world/git/blobs/7013c56186fd1961046738e4ba7b14a0f6d21788"
+      }
+    ],
+    "truncated": false
+  },
+  "unambiguous_Yarn_Classic_root": true
+}

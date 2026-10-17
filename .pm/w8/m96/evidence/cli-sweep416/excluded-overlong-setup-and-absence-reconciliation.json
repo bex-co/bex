@@ -1,0 +1,324 @@
+[
+  {
+    "sweep": 416,
+    "client": "bex",
+    "workspace": "tea-daif693dqjvc73e7as3g",
+    "type": "web_service",
+    "name": "qa-20261017-9b5f8b-i18n",
+    "nonce": "9b5f8b",
+    "marker": "QA416_9b5f8b_bex",
+    "time": "2026-10-17T08:35:27.578477+00:00",
+    "source_head": "8f80d74efaffc23342cccad2f275051a1501396f",
+    "primary_reference": {
+      "repo": "https://github.com/git-fixtures/basic",
+      "branch": "master",
+      "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+      "files": {
+        "LICENSE": {
+          "bytes": 1072,
+          "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+        },
+        "CHANGELOG": {
+          "bytes": 18,
+          "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+        }
+      },
+      "po": {
+        "bytes": 508,
+        "sha256": "cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a"
+      },
+      "expected": {
+        "hello": "Bonjour, Zoë & 李 !",
+        "dessert": "Crème brûlée",
+        "plurals": {
+          "0": "Il y a 0 pomme.",
+          "1": "Il y a 1 pomme.",
+          "2": "Il y a 2 pommes.",
+          "5": "Il y a 5 pommes."
+        }
+      },
+      "django": "5.2.18"
+    },
+    "commands": {
+      "initial": {
+        "build": "set -e\nmkdir -p locale/fr/LC_MESSAGES\ncat > qa-gettext-app.py <<'QA_GETTEXT_QA_GETTEXT_APP_PY'\nimport gettext,hashlib,io,json,os,platform,shutil,subprocess,sys\nfrom pathlib import Path\nfrom http.server import BaseHTTPRequestHandler,ThreadingHTTPServer\nimport django\nreference=json.loads(Path('qa-gettext-reference.json').read_text());marker=json.loads(Path('qa-gettext-marker.json').read_text());program_sha=hashlib.sha256(Path(__file__).read_bytes()).hexdigest();catalog=Path('locale/fr/LC_MESSAGES/django.mo')\ndef digest(path):\n b=Path(path).read_bytes();return {'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}\ndef before():\n files={n:digest(n) for n in reference['files']};assert files==reference['files'];po=digest('locale/fr/LC_MESSAGES/django.po');assert po==reference['po']\n return {'marker':marker,'python':platform.python_version(),'django':django.get_version(),'files':files,'po':po,'program_sha256':program_sha,'tools':{n:shutil.which(n) for n in ['msgfmt','msgmerge','msguniq','xgettext']}}\nif sys.argv[1]=='before':print('QA_GETTEXT_BEFORE '+json.dumps(before(),separators=(',',':')),flush=True);raise SystemExit(0)\nos.environ.setdefault('DJANGO_SETTINGS_MODULE','qa_gettext_settings');django.setup()\nfrom django.utils.translation import gettext as dg,ngettext as dn,override\n\ndef translate():\n with catalog.open('rb') as f:g=gettext.GNUTranslations(f)\n def values(t,n):return {'hello':t('Hello, %(name)s!')%{'name':'Zoë & 李'},'dessert':t('Dessert'),'plurals':{str(i):n('There is %(count)d apple.','There are %(count)d apples.',i)%{'count':i} for i in [0,1,2,5]}}\n std=values(g.gettext,g.ngettext)\n with override('fr'):actual=values(dg,dn)\n assert actual==std==reference['expected'];mo=catalog.read_bytes();assert mo[:4].hex() in ['de120495','950412de'];compiled=subprocess.run(['msgfmt','--check-format','-o','-','locale/fr/LC_MESSAGES/django.po'],capture_output=True,timeout=5);assert compiled.returncode==0 and compiled.stdout==mo;fresh=gettext.GNUTranslations(io.BytesIO(compiled.stdout));assert values(fresh.gettext,fresh.ngettext)==reference['expected'];r=subprocess.run(['msgfmt','--version'],capture_output=True,text=True,timeout=5);assert r.returncode==0\n return {**before(),'translations':actual,'independent_stdlib_translations':std,'catalog':{**digest(catalog),'GNU_MO_magic':True},'fresh_msgfmt_compilation':{'exit':compiled.returncode,'bytes':len(compiled.stdout),'sha256':hashlib.sha256(compiled.stdout).hexdigest()},'msgfmt_version':r.stdout.splitlines()[0]}\nif sys.argv[1]=='build':\n v=translate();Path('qa-gettext-build.json').write_text(json.dumps(v));print('QA_GETTEXT_AFTER '+json.dumps(v,separators=(',',':')),flush=True)\nelse:\n build=json.loads(Path('qa-gettext-build.json').read_text())\n class Handler(BaseHTTPRequestHandler):\n  def log_message(self,*args):pass\n  def do_GET(self):\n   v=translate();v['request_url']=self.path;path=self.path.split('?',1)[0]\n   if path not in ['/','/translations','/catalog.mo']:self.send_error(404);return\n   data=catalog.read_bytes() if path=='/catalog.mo' else json.dumps({'build':build,'runtime':v},ensure_ascii=False).encode();self.send_response(200);self.send_header('Content-Type','application/octet-stream' if path=='/catalog.mo' else 'application/json');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data);print('QA_GETTEXT_HTTP '+json.dumps({'marker':marker,'path':self.path,'catalog_sha256':v['catalog']['sha256']},separators=(',',':')),flush=True)\n ThreadingHTTPServer(('0.0.0.0',int(os.environ.get('PORT','10000'))),Handler).serve_forever()\nQA_GETTEXT_QA_GETTEXT_APP_PY\ncat > qa_gettext_settings.py <<'QA_GETTEXT_QA_GETTEXT_SETTINGS_PY'\nfrom pathlib import Path\nBASE_DIR=Path(__file__).resolve().parent\nSECRET_KEY='public-functional-QA-boot-constant'\nUSE_I18N=True\nLANGUAGE_CODE='en'\nLOCALE_PATHS=[BASE_DIR/'locale']\nINSTALLED_APPS=[]\nQA_GETTEXT_QA_GETTEXT_SETTINGS_PY\ncat > locale/fr/LC_MESSAGES/django.po <<'QA_GETTEXT_LOCALE_FR_LC_MESSAGES_DJANGO_PO'\nmsgid \"\"\nmsgstr \"\"\n\"Project-Id-Version: bex-functional-qa\\n\"\n\"Language: fr\\n\"\n\"MIME-Version: 1.0\\n\"\n\"Content-Type: text/plain; charset=UTF-8\\n\"\n\"Content-Transfer-Encoding: 8bit\\n\"\n\"Plural-Forms: nplurals=2; plural=(n > 1);\\n\"\n\n#, python-format\nmsgid \"Hello, %(name)s!\"\nmsgstr \"Bonjour, %(name)s !\"\n\n#, python-format\nmsgid \"There is %(count)d apple.\"\nmsgid_plural \"There are %(count)d apples.\"\nmsgstr[0] \"Il y a %(count)d pomme.\"\nmsgstr[1] \"Il y a %(count)d pommes.\"\n\nmsgid \"Dessert\"\nmsgstr \"Crème brûlée\"\nQA_GETTEXT_LOCALE_FR_LC_MESSAGES_DJANGO_PO\ncat > qa-gettext-reference.json <<'QA_GETTEXT_QA_GETTEXT_REFERENCE_JSON'\n{\"repo\":\"https://github.com/git-fixtures/basic\",\"branch\":\"master\",\"commit\":\"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"po\":{\"bytes\":508,\"sha256\":\"cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a\"},\"expected\":{\"hello\":\"Bonjour, Zoë & 李 !\",\"dessert\":\"Crème brûlée\",\"plurals\":{\"0\":\"Il y a 0 pomme.\",\"1\":\"Il y a 1 pomme.\",\"2\":\"Il y a 2 pommes.\",\"5\":\"Il y a 5 pommes.\"}},\"django\":\"5.2.18\"}\nQA_GETTEXT_QA_GETTEXT_REFERENCE_JSON\ncat > qa-gettext-marker.json <<'QA_GETTEXT_QA_GETTEXT_MARKER_JSON'\n\"QA416_9b5f8b_bex\"\nQA_GETTEXT_QA_GETTEXT_MARKER_JSON\npip install --disable-pip-version-check Django==5.2.18\npython qa-gettext-app.py before\nDJANGO_SETTINGS_MODULE=qa_gettext_settings python -m django compilemessages -l fr --verbosity 1\npython qa-gettext-app.py build",
+        "start": "python -u qa-gettext-app.py serve",
+        "program_sha256": "5ec748dd00ea9e3d6d48374e460171b89314cc6d066b5106e38418ec08cedca0"
+      },
+      "control": {
+        "build": "set -e\nmkdir -p locale/fr/LC_MESSAGES\ncat > qa-gettext-app.py <<'QA_GETTEXT_QA_GETTEXT_APP_PY'\nimport gettext,hashlib,io,json,os,platform,shutil,subprocess,sys\nfrom pathlib import Path\nfrom http.server import BaseHTTPRequestHandler,ThreadingHTTPServer\nimport django\nreference=json.loads(Path('qa-gettext-reference.json').read_text());marker=json.loads(Path('qa-gettext-marker.json').read_text());program_sha=hashlib.sha256(Path(__file__).read_bytes()).hexdigest();catalog=Path('locale/fr/LC_MESSAGES/django.mo')\ndef digest(path):\n b=Path(path).read_bytes();return {'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}\ndef before():\n files={n:digest(n) for n in reference['files']};assert files==reference['files'];po=digest('locale/fr/LC_MESSAGES/django.po');assert po==reference['po']\n return {'marker':marker,'python':platform.python_version(),'django':django.get_version(),'files':files,'po':po,'program_sha256':program_sha,'tools':{n:shutil.which(n) for n in ['msgfmt','msgmerge','msguniq','xgettext']}}\nif sys.argv[1]=='before':print('QA_GETTEXT_BEFORE '+json.dumps(before(),separators=(',',':')),flush=True);raise SystemExit(0)\nos.environ.setdefault('DJANGO_SETTINGS_MODULE','qa_gettext_settings');django.setup()\nfrom django.utils.translation import gettext as dg,ngettext as dn,override\n\ndef translate():\n with catalog.open('rb') as f:g=gettext.GNUTranslations(f)\n def values(t,n):return {'hello':t('Hello, %(name)s!')%{'name':'Zoë & 李'},'dessert':t('Dessert'),'plurals':{str(i):n('There is %(count)d apple.','There are %(count)d apples.',i)%{'count':i} for i in [0,1,2,5]}}\n std=values(g.gettext,g.ngettext)\n with override('fr'):actual=values(dg,dn)\n assert actual==std==reference['expected'];mo=catalog.read_bytes();assert mo[:4].hex() in ['de120495','950412de'];compiled=subprocess.run(['msgfmt','--check-format','-o','-','locale/fr/LC_MESSAGES/django.po'],capture_output=True,timeout=5);assert compiled.returncode==0 and compiled.stdout==mo;fresh=gettext.GNUTranslations(io.BytesIO(compiled.stdout));assert values(fresh.gettext,fresh.ngettext)==reference['expected'];r=subprocess.run(['msgfmt','--version'],capture_output=True,text=True,timeout=5);assert r.returncode==0\n return {**before(),'translations':actual,'independent_stdlib_translations':std,'catalog':{**digest(catalog),'GNU_MO_magic':True},'fresh_msgfmt_compilation':{'exit':compiled.returncode,'bytes':len(compiled.stdout),'sha256':hashlib.sha256(compiled.stdout).hexdigest()},'msgfmt_version':r.stdout.splitlines()[0]}\nif sys.argv[1]=='build':\n v=translate();Path('qa-gettext-build.json').write_text(json.dumps(v));print('QA_GETTEXT_AFTER '+json.dumps(v,separators=(',',':')),flush=True)\nelse:\n build=json.loads(Path('qa-gettext-build.json').read_text())\n class Handler(BaseHTTPRequestHandler):\n  def log_message(self,*args):pass\n  def do_GET(self):\n   v=translate();v['request_url']=self.path;path=self.path.split('?',1)[0]\n   if path not in ['/','/translations','/catalog.mo']:self.send_error(404);return\n   data=catalog.read_bytes() if path=='/catalog.mo' else json.dumps({'build':build,'runtime':v},ensure_ascii=False).encode();self.send_response(200);self.send_header('Content-Type','application/octet-stream' if path=='/catalog.mo' else 'application/json');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data);print('QA_GETTEXT_HTTP '+json.dumps({'marker':marker,'path':self.path,'catalog_sha256':v['catalog']['sha256']},separators=(',',':')),flush=True)\n ThreadingHTTPServer(('0.0.0.0',int(os.environ.get('PORT','10000'))),Handler).serve_forever()\nQA_GETTEXT_QA_GETTEXT_APP_PY\ncat > qa_gettext_settings.py <<'QA_GETTEXT_QA_GETTEXT_SETTINGS_PY'\nfrom pathlib import Path\nBASE_DIR=Path(__file__).resolve().parent\nSECRET_KEY='public-functional-QA-boot-constant'\nUSE_I18N=True\nLANGUAGE_CODE='en'\nLOCALE_PATHS=[BASE_DIR/'locale']\nINSTALLED_APPS=[]\nQA_GETTEXT_QA_GETTEXT_SETTINGS_PY\ncat > locale/fr/LC_MESSAGES/django.po <<'QA_GETTEXT_LOCALE_FR_LC_MESSAGES_DJANGO_PO'\nmsgid \"\"\nmsgstr \"\"\n\"Project-Id-Version: bex-functional-qa\\n\"\n\"Language: fr\\n\"\n\"MIME-Version: 1.0\\n\"\n\"Content-Type: text/plain; charset=UTF-8\\n\"\n\"Content-Transfer-Encoding: 8bit\\n\"\n\"Plural-Forms: nplurals=2; plural=(n > 1);\\n\"\n\n#, python-format\nmsgid \"Hello, %(name)s!\"\nmsgstr \"Bonjour, %(name)s !\"\n\n#, python-format\nmsgid \"There is %(count)d apple.\"\nmsgid_plural \"There are %(count)d apples.\"\nmsgstr[0] \"Il y a %(count)d pomme.\"\nmsgstr[1] \"Il y a %(count)d pommes.\"\n\nmsgid \"Dessert\"\nmsgstr \"Crème brûlée\"\nQA_GETTEXT_LOCALE_FR_LC_MESSAGES_DJANGO_PO\ncat > qa-gettext-reference.json <<'QA_GETTEXT_QA_GETTEXT_REFERENCE_JSON'\n{\"repo\":\"https://github.com/git-fixtures/basic\",\"branch\":\"master\",\"commit\":\"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"po\":{\"bytes\":508,\"sha256\":\"cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a\"},\"expected\":{\"hello\":\"Bonjour, Zoë & 李 !\",\"dessert\":\"Crème brûlée\",\"plurals\":{\"0\":\"Il y a 0 pomme.\",\"1\":\"Il y a 1 pomme.\",\"2\":\"Il y a 2 pommes.\",\"5\":\"Il y a 5 pommes.\"}},\"django\":\"5.2.18\"}\nQA_GETTEXT_QA_GETTEXT_REFERENCE_JSON\ncat > qa-gettext-marker.json <<'QA_GETTEXT_QA_GETTEXT_MARKER_JSON'\n\"QA416_9b5f8b_bex\"\nQA_GETTEXT_QA_GETTEXT_MARKER_JSON\npip install --disable-pip-version-check Django==5.2.18\npython qa-gettext-app.py before\napt-get update -qq && apt-get install -y --no-install-recommends gettext\nDJANGO_SETTINGS_MODULE=qa_gettext_settings python -m django compilemessages -l fr --verbosity 1\npython qa-gettext-app.py build",
+        "start": "python -u qa-gettext-app.py serve",
+        "program_sha256": "5ec748dd00ea9e3d6d48374e460171b89314cc6d066b5106e38418ec08cedca0"
+      }
+    },
+    "pre_ids": [
+      "srv-dap3v694dm7c7390q930",
+      "srv-dap3umrbdpcs73f5eeug",
+      "srv-dap3r714dm7c7390q91g",
+      "red-db9ipku22tos73dl1svg",
+      "dpg-db9ipkm22tos73dl1sug",
+      "srv-daif6dsmg29s73d1umvg",
+      "srv-db09vbgehcmc739j12i0",
+      "srv-db09u90ehcmc739j12cg",
+      "srv-db9ijnhu2fhc73e10clg"
+    ],
+    "pre_inventory": {
+      "binary": "released v0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 0,
+      "elapsed": 0.61,
+      "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"keyValue\": {\"id\": \"red-db9ipku22tos73dl1svg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"postgres\": {\"id\": \"dpg-db9ipkm22tos73dl1sug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db9ijnhu2fhc73e10clg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}]",
+      "stderr": "",
+      "native_exit": 0
+    },
+    "capacity": {
+      "at": "2026-10-17T08:35:26.903046+00:00",
+      "API_only": true,
+      "request": {
+        "method": "GET",
+        "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+        "body": null,
+        "workspace": "tea-daif693dqjvc73e7as3g",
+        "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+        "authorization": "REDACTED"
+      },
+      "status": "200",
+      "curl_exit": 0,
+      "elapsed": 0.442,
+      "response": "{\"services\": {\"used\": 7, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 1, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 1, \"terminating\": 0, \"limit\": 1}}",
+      "stderr": ""
+    },
+    "dependency_ids": [],
+    "recorded_child_ids": [],
+    "create_command": [
+      "bex",
+      "services",
+      "create",
+      "--name",
+      "qa-20261017-9b5f8b-i18n",
+      "--type",
+      "web_service",
+      "--plan",
+      "free",
+      "--region",
+      "frankfurt",
+      "--runtime",
+      "python",
+      "--repo",
+      "https://github.com/git-fixtures/basic",
+      "--branch",
+      "master",
+      "--build-command",
+      "set -e\nmkdir -p locale/fr/LC_MESSAGES\ncat > qa-gettext-app.py <<'QA_GETTEXT_QA_GETTEXT_APP_PY'\nimport gettext,hashlib,io,json,os,platform,shutil,subprocess,sys\nfrom pathlib import Path\nfrom http.server import BaseHTTPRequestHandler,ThreadingHTTPServer\nimport django\nreference=json.loads(Path('qa-gettext-reference.json').read_text());marker=json.loads(Path('qa-gettext-marker.json').read_text());program_sha=hashlib.sha256(Path(__file__).read_bytes()).hexdigest();catalog=Path('locale/fr/LC_MESSAGES/django.mo')\ndef digest(path):\n b=Path(path).read_bytes();return {'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}\ndef before():\n files={n:digest(n) for n in reference['files']};assert files==reference['files'];po=digest('locale/fr/LC_MESSAGES/django.po');assert po==reference['po']\n return {'marker':marker,'python':platform.python_version(),'django':django.get_version(),'files':files,'po':po,'program_sha256':program_sha,'tools':{n:shutil.which(n) for n in ['msgfmt','msgmerge','msguniq','xgettext']}}\nif sys.argv[1]=='before':print('QA_GETTEXT_BEFORE '+json.dumps(before(),separators=(',',':')),flush=True);raise SystemExit(0)\nos.environ.setdefault('DJANGO_SETTINGS_MODULE','qa_gettext_settings');django.setup()\nfrom django.utils.translation import gettext as dg,ngettext as dn,override\n\ndef translate():\n with catalog.open('rb') as f:g=gettext.GNUTranslations(f)\n def values(t,n):return {'hello':t('Hello, %(name)s!')%{'name':'Zoë & 李'},'dessert':t('Dessert'),'plurals':{str(i):n('There is %(count)d apple.','There are %(count)d apples.',i)%{'count':i} for i in [0,1,2,5]}}\n std=values(g.gettext,g.ngettext)\n with override('fr'):actual=values(dg,dn)\n assert actual==std==reference['expected'];mo=catalog.read_bytes();assert mo[:4].hex() in ['de120495','950412de'];compiled=subprocess.run(['msgfmt','--check-format','-o','-','locale/fr/LC_MESSAGES/django.po'],capture_output=True,timeout=5);assert compiled.returncode==0 and compiled.stdout==mo;fresh=gettext.GNUTranslations(io.BytesIO(compiled.stdout));assert values(fresh.gettext,fresh.ngettext)==reference['expected'];r=subprocess.run(['msgfmt','--version'],capture_output=True,text=True,timeout=5);assert r.returncode==0\n return {**before(),'translations':actual,'independent_stdlib_translations':std,'catalog':{**digest(catalog),'GNU_MO_magic':True},'fresh_msgfmt_compilation':{'exit':compiled.returncode,'bytes':len(compiled.stdout),'sha256':hashlib.sha256(compiled.stdout).hexdigest()},'msgfmt_version':r.stdout.splitlines()[0]}\nif sys.argv[1]=='build':\n v=translate();Path('qa-gettext-build.json').write_text(json.dumps(v));print('QA_GETTEXT_AFTER '+json.dumps(v,separators=(',',':')),flush=True)\nelse:\n build=json.loads(Path('qa-gettext-build.json').read_text())\n class Handler(BaseHTTPRequestHandler):\n  def log_message(self,*args):pass\n  def do_GET(self):\n   v=translate();v['request_url']=self.path;path=self.path.split('?',1)[0]\n   if path not in ['/','/translations','/catalog.mo']:self.send_error(404);return\n   data=catalog.read_bytes() if path=='/catalog.mo' else json.dumps({'build':build,'runtime':v},ensure_ascii=False).encode();self.send_response(200);self.send_header('Content-Type','application/octet-stream' if path=='/catalog.mo' else 'application/json');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data);print('QA_GETTEXT_HTTP '+json.dumps({'marker':marker,'path':self.path,'catalog_sha256':v['catalog']['sha256']},separators=(',',':')),flush=True)\n ThreadingHTTPServer(('0.0.0.0',int(os.environ.get('PORT','10000'))),Handler).serve_forever()\nQA_GETTEXT_QA_GETTEXT_APP_PY\ncat > qa_gettext_settings.py <<'QA_GETTEXT_QA_GETTEXT_SETTINGS_PY'\nfrom pathlib import Path\nBASE_DIR=Path(__file__).resolve().parent\nSECRET_KEY='public-functional-QA-boot-constant'\nUSE_I18N=True\nLANGUAGE_CODE='en'\nLOCALE_PATHS=[BASE_DIR/'locale']\nINSTALLED_APPS=[]\nQA_GETTEXT_QA_GETTEXT_SETTINGS_PY\ncat > locale/fr/LC_MESSAGES/django.po <<'QA_GETTEXT_LOCALE_FR_LC_MESSAGES_DJANGO_PO'\nmsgid \"\"\nmsgstr \"\"\n\"Project-Id-Version: bex-functional-qa\\n\"\n\"Language: fr\\n\"\n\"MIME-Version: 1.0\\n\"\n\"Content-Type: text/plain; charset=UTF-8\\n\"\n\"Content-Transfer-Encoding: 8bit\\n\"\n\"Plural-Forms: nplurals=2; plural=(n > 1);\\n\"\n\n#, python-format\nmsgid \"Hello, %(name)s!\"\nmsgstr \"Bonjour, %(name)s !\"\n\n#, python-format\nmsgid \"There is %(count)d apple.\"\nmsgid_plural \"There are %(count)d apples.\"\nmsgstr[0] \"Il y a %(count)d pomme.\"\nmsgstr[1] \"Il y a %(count)d pommes.\"\n\nmsgid \"Dessert\"\nmsgstr \"Crème brûlée\"\nQA_GETTEXT_LOCALE_FR_LC_MESSAGES_DJANGO_PO\ncat > qa-gettext-reference.json <<'QA_GETTEXT_QA_GETTEXT_REFERENCE_JSON'\n{\"repo\":\"https://github.com/git-fixtures/basic\",\"branch\":\"master\",\"commit\":\"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"po\":{\"bytes\":508,\"sha256\":\"cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a\"},\"expected\":{\"hello\":\"Bonjour, Zoë & 李 !\",\"dessert\":\"Crème brûlée\",\"plurals\":{\"0\":\"Il y a 0 pomme.\",\"1\":\"Il y a 1 pomme.\",\"2\":\"Il y a 2 pommes.\",\"5\":\"Il y a 5 pommes.\"}},\"django\":\"5.2.18\"}\nQA_GETTEXT_QA_GETTEXT_REFERENCE_JSON\ncat > qa-gettext-marker.json <<'QA_GETTEXT_QA_GETTEXT_MARKER_JSON'\n\"QA416_9b5f8b_bex\"\nQA_GETTEXT_QA_GETTEXT_MARKER_JSON\npip install --disable-pip-version-check Django==5.2.18\npython qa-gettext-app.py before\nDJANGO_SETTINGS_MODULE=qa_gettext_settings python -m django compilemessages -l fr --verbosity 1\npython qa-gettext-app.py build",
+      "--start-command",
+      "python -u qa-gettext-app.py serve",
+      "--env-var",
+      "PYTHON_VERSION=3.13",
+      "--auto-deploy=false",
+      "--confirm",
+      "-o",
+      "json"
+    ],
+    "state": "excluded setup: native POST400 correctly rejected build command over4096 bytes; exact unique name twice absent/current quota accounted, no returned ID or owned resource",
+    "durable_create_capture": "<owned-temp>/sweep416-create-qa-20261017-9b5f8b-i18n.json",
+    "create_result": {
+      "binary": "published Bex 0.3.2",
+      "command": [
+        "bex",
+        "services",
+        "create",
+        "--name",
+        "qa-20261017-9b5f8b-i18n",
+        "--type",
+        "web_service",
+        "--plan",
+        "free",
+        "--region",
+        "frankfurt",
+        "--runtime",
+        "python",
+        "--repo",
+        "https://github.com/git-fixtures/basic",
+        "--branch",
+        "master",
+        "--build-command",
+        "set -e\nmkdir -p locale/fr/LC_MESSAGES\ncat > qa-gettext-app.py <<'QA_GETTEXT_QA_GETTEXT_APP_PY'\nimport gettext,hashlib,io,json,os,platform,shutil,subprocess,sys\nfrom pathlib import Path\nfrom http.server import BaseHTTPRequestHandler,ThreadingHTTPServer\nimport django\nreference=json.loads(Path('qa-gettext-reference.json').read_text());marker=json.loads(Path('qa-gettext-marker.json').read_text());program_sha=hashlib.sha256(Path(__file__).read_bytes()).hexdigest();catalog=Path('locale/fr/LC_MESSAGES/django.mo')\ndef digest(path):\n b=Path(path).read_bytes();return {'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}\ndef before():\n files={n:digest(n) for n in reference['files']};assert files==reference['files'];po=digest('locale/fr/LC_MESSAGES/django.po');assert po==reference['po']\n return {'marker':marker,'python':platform.python_version(),'django':django.get_version(),'files':files,'po':po,'program_sha256':program_sha,'tools':{n:shutil.which(n) for n in ['msgfmt','msgmerge','msguniq','xgettext']}}\nif sys.argv[1]=='before':print('QA_GETTEXT_BEFORE '+json.dumps(before(),separators=(',',':')),flush=True);raise SystemExit(0)\nos.environ.setdefault('DJANGO_SETTINGS_MODULE','qa_gettext_settings');django.setup()\nfrom django.utils.translation import gettext as dg,ngettext as dn,override\n\ndef translate():\n with catalog.open('rb') as f:g=gettext.GNUTranslations(f)\n def values(t,n):return {'hello':t('Hello, %(name)s!')%{'name':'Zoë & 李'},'dessert':t('Dessert'),'plurals':{str(i):n('There is %(count)d apple.','There are %(count)d apples.',i)%{'count':i} for i in [0,1,2,5]}}\n std=values(g.gettext,g.ngettext)\n with override('fr'):actual=values(dg,dn)\n assert actual==std==reference['expected'];mo=catalog.read_bytes();assert mo[:4].hex() in ['de120495','950412de'];compiled=subprocess.run(['msgfmt','--check-format','-o','-','locale/fr/LC_MESSAGES/django.po'],capture_output=True,timeout=5);assert compiled.returncode==0 and compiled.stdout==mo;fresh=gettext.GNUTranslations(io.BytesIO(compiled.stdout));assert values(fresh.gettext,fresh.ngettext)==reference['expected'];r=subprocess.run(['msgfmt','--version'],capture_output=True,text=True,timeout=5);assert r.returncode==0\n return {**before(),'translations':actual,'independent_stdlib_translations':std,'catalog':{**digest(catalog),'GNU_MO_magic':True},'fresh_msgfmt_compilation':{'exit':compiled.returncode,'bytes':len(compiled.stdout),'sha256':hashlib.sha256(compiled.stdout).hexdigest()},'msgfmt_version':r.stdout.splitlines()[0]}\nif sys.argv[1]=='build':\n v=translate();Path('qa-gettext-build.json').write_text(json.dumps(v));print('QA_GETTEXT_AFTER '+json.dumps(v,separators=(',',':')),flush=True)\nelse:\n build=json.loads(Path('qa-gettext-build.json').read_text())\n class Handler(BaseHTTPRequestHandler):\n  def log_message(self,*args):pass\n  def do_GET(self):\n   v=translate();v['request_url']=self.path;path=self.path.split('?',1)[0]\n   if path not in ['/','/translations','/catalog.mo']:self.send_error(404);return\n   data=catalog.read_bytes() if path=='/catalog.mo' else json.dumps({'build':build,'runtime':v},ensure_ascii=False).encode();self.send_response(200);self.send_header('Content-Type','application/octet-stream' if path=='/catalog.mo' else 'application/json');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data);print('QA_GETTEXT_HTTP '+json.dumps({'marker':marker,'path':self.path,'catalog_sha256':v['catalog']['sha256']},separators=(',',':')),flush=True)\n ThreadingHTTPServer(('0.0.0.0',int(os.environ.get('PORT','10000'))),Handler).serve_forever()\nQA_GETTEXT_QA_GETTEXT_APP_PY\ncat > qa_gettext_settings.py <<'QA_GETTEXT_QA_GETTEXT_SETTINGS_PY'\nfrom pathlib import Path\nBASE_DIR=Path(__file__).resolve().parent\nSECRET_KEY='public-functional-QA-boot-constant'\nUSE_I18N=True\nLANGUAGE_CODE='en'\nLOCALE_PATHS=[BASE_DIR/'locale']\nINSTALLED_APPS=[]\nQA_GETTEXT_QA_GETTEXT_SETTINGS_PY\ncat > locale/fr/LC_MESSAGES/django.po <<'QA_GETTEXT_LOCALE_FR_LC_MESSAGES_DJANGO_PO'\nmsgid \"\"\nmsgstr \"\"\n\"Project-Id-Version: bex-functional-qa\\n\"\n\"Language: fr\\n\"\n\"MIME-Version: 1.0\\n\"\n\"Content-Type: text/plain; charset=UTF-8\\n\"\n\"Content-Transfer-Encoding: 8bit\\n\"\n\"Plural-Forms: nplurals=2; plural=(n > 1);\\n\"\n\n#, python-format\nmsgid \"Hello, %(name)s!\"\nmsgstr \"Bonjour, %(name)s !\"\n\n#, python-format\nmsgid \"There is %(count)d apple.\"\nmsgid_plural \"There are %(count)d apples.\"\nmsgstr[0] \"Il y a %(count)d pomme.\"\nmsgstr[1] \"Il y a %(count)d pommes.\"\n\nmsgid \"Dessert\"\nmsgstr \"Crème brûlée\"\nQA_GETTEXT_LOCALE_FR_LC_MESSAGES_DJANGO_PO\ncat > qa-gettext-reference.json <<'QA_GETTEXT_QA_GETTEXT_REFERENCE_JSON'\n{\"repo\":\"https://github.com/git-fixtures/basic\",\"branch\":\"master\",\"commit\":\"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"po\":{\"bytes\":508,\"sha256\":\"cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a\"},\"expected\":{\"hello\":\"Bonjour, Zoë & 李 !\",\"dessert\":\"Crème brûlée\",\"plurals\":{\"0\":\"Il y a 0 pomme.\",\"1\":\"Il y a 1 pomme.\",\"2\":\"Il y a 2 pommes.\",\"5\":\"Il y a 5 pommes.\"}},\"django\":\"5.2.18\"}\nQA_GETTEXT_QA_GETTEXT_REFERENCE_JSON\ncat > qa-gettext-marker.json <<'QA_GETTEXT_QA_GETTEXT_MARKER_JSON'\n\"QA416_9b5f8b_bex\"\nQA_GETTEXT_QA_GETTEXT_MARKER_JSON\npip install --disable-pip-version-check Django==5.2.18\npython qa-gettext-app.py before\nDJANGO_SETTINGS_MODULE=qa_gettext_settings python -m django compilemessages -l fr --verbosity 1\npython qa-gettext-app.py build",
+        "--start-command",
+        "python -u qa-gettext-app.py serve",
+        "--env-var",
+        "PYTHON_VERSION=3.13",
+        "--auto-deploy=false",
+        "--confirm",
+        "-o",
+        "json"
+      ],
+      "exit": 1,
+      "elapsed": 1.325,
+      "stdout": "",
+      "stderr": "Error: received response code 400: bad request: spec.buildCommand: Too long: may not be more than 4096 bytes\n",
+      "captures": [
+        {
+          "request": {
+            "method": "POST",
+            "path": "/v1/services",
+            "body": {
+              "autoDeploy": "no",
+              "branch": "master",
+              "envVars": [
+                {
+                  "key": "PYTHON_VERSION",
+                  "value": "3.13"
+                }
+              ],
+              "name": "qa-20261017-9b5f8b-i18n",
+              "ownerId": "tea-daif693dqjvc73e7as3g",
+              "repo": "https://github.com/git-fixtures/basic",
+              "serviceDetails": {
+                "envSpecificDetails": {
+                  "buildCommand": "set -e\nmkdir -p locale/fr/LC_MESSAGES\ncat > qa-gettext-app.py <<'QA_GETTEXT_QA_GETTEXT_APP_PY'\nimport gettext,hashlib,io,json,os,platform,shutil,subprocess,sys\nfrom pathlib import Path\nfrom http.server import BaseHTTPRequestHandler,ThreadingHTTPServer\nimport django\nreference=json.loads(Path('qa-gettext-reference.json').read_text());marker=json.loads(Path('qa-gettext-marker.json').read_text());program_sha=hashlib.sha256(Path(__file__).read_bytes()).hexdigest();catalog=Path('locale/fr/LC_MESSAGES/django.mo')\ndef digest(path):\n b=Path(path).read_bytes();return {'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}\ndef before():\n files={n:digest(n) for n in reference['files']};assert files==reference['files'];po=digest('locale/fr/LC_MESSAGES/django.po');assert po==reference['po']\n return {'marker':marker,'python':platform.python_version(),'django':django.get_version(),'files':files,'po':po,'program_sha256':program_sha,'tools':{n:shutil.which(n) for n in ['msgfmt','msgmerge','msguniq','xgettext']}}\nif sys.argv[1]=='before':print('QA_GETTEXT_BEFORE '+json.dumps(before(),separators=(',',':')),flush=True);raise SystemExit(0)\nos.environ.setdefault('DJANGO_SETTINGS_MODULE','qa_gettext_settings');django.setup()\nfrom django.utils.translation import gettext as dg,ngettext as dn,override\n\ndef translate():\n with catalog.open('rb') as f:g=gettext.GNUTranslations(f)\n def values(t,n):return {'hello':t('Hello, %(name)s!')%{'name':'Zoë & 李'},'dessert':t('Dessert'),'plurals':{str(i):n('There is %(count)d apple.','There are %(count)d apples.',i)%{'count':i} for i in [0,1,2,5]}}\n std=values(g.gettext,g.ngettext)\n with override('fr'):actual=values(dg,dn)\n assert actual==std==reference['expected'];mo=catalog.read_bytes();assert mo[:4].hex() in ['de120495','950412de'];compiled=subprocess.run(['msgfmt','--check-format','-o','-','locale/fr/LC_MESSAGES/django.po'],capture_output=True,timeout=5);assert compiled.returncode==0 and compiled.stdout==mo;fresh=gettext.GNUTranslations(io.BytesIO(compiled.stdout));assert values(fresh.gettext,fresh.ngettext)==reference['expected'];r=subprocess.run(['msgfmt','--version'],capture_output=True,text=True,timeout=5);assert r.returncode==0\n return {**before(),'translations':actual,'independent_stdlib_translations':std,'catalog':{**digest(catalog),'GNU_MO_magic':True},'fresh_msgfmt_compilation':{'exit':compiled.returncode,'bytes':len(compiled.stdout),'sha256':hashlib.sha256(compiled.stdout).hexdigest()},'msgfmt_version':r.stdout.splitlines()[0]}\nif sys.argv[1]=='build':\n v=translate();Path('qa-gettext-build.json').write_text(json.dumps(v));print('QA_GETTEXT_AFTER '+json.dumps(v,separators=(',',':')),flush=True)\nelse:\n build=json.loads(Path('qa-gettext-build.json').read_text())\n class Handler(BaseHTTPRequestHandler):\n  def log_message(self,*args):pass\n  def do_GET(self):\n   v=translate();v['request_url']=self.path;path=self.path.split('?',1)[0]\n   if path not in ['/','/translations','/catalog.mo']:self.send_error(404);return\n   data=catalog.read_bytes() if path=='/catalog.mo' else json.dumps({'build':build,'runtime':v},ensure_ascii=False).encode();self.send_response(200);self.send_header('Content-Type','application/octet-stream' if path=='/catalog.mo' else 'application/json');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data);print('QA_GETTEXT_HTTP '+json.dumps({'marker':marker,'path':self.path,'catalog_sha256':v['catalog']['sha256']},separators=(',',':')),flush=True)\n ThreadingHTTPServer(('0.0.0.0',int(os.environ.get('PORT','10000'))),Handler).serve_forever()\nQA_GETTEXT_QA_GETTEXT_APP_PY\ncat > qa_gettext_settings.py <<'QA_GETTEXT_QA_GETTEXT_SETTINGS_PY'\nfrom pathlib import Path\nBASE_DIR=Path(__file__).resolve().parent\nSECRET_KEY='public-functional-QA-boot-constant'\nUSE_I18N=True\nLANGUAGE_CODE='en'\nLOCALE_PATHS=[BASE_DIR/'locale']\nINSTALLED_APPS=[]\nQA_GETTEXT_QA_GETTEXT_SETTINGS_PY\ncat > locale/fr/LC_MESSAGES/django.po <<'QA_GETTEXT_LOCALE_FR_LC_MESSAGES_DJANGO_PO'\nmsgid \"\"\nmsgstr \"\"\n\"Project-Id-Version: bex-functional-qa\\n\"\n\"Language: fr\\n\"\n\"MIME-Version: 1.0\\n\"\n\"Content-Type: text/plain; charset=UTF-8\\n\"\n\"Content-Transfer-Encoding: 8bit\\n\"\n\"Plural-Forms: nplurals=2; plural=(n > 1);\\n\"\n\n#, python-format\nmsgid \"Hello, %(name)s!\"\nmsgstr \"Bonjour, %(name)s !\"\n\n#, python-format\nmsgid \"There is %(count)d apple.\"\nmsgid_plural \"There are %(count)d apples.\"\nmsgstr[0] \"Il y a %(count)d pomme.\"\nmsgstr[1] \"Il y a %(count)d pommes.\"\n\nmsgid \"Dessert\"\nmsgstr \"Crème brûlée\"\nQA_GETTEXT_LOCALE_FR_LC_MESSAGES_DJANGO_PO\ncat > qa-gettext-reference.json <<'QA_GETTEXT_QA_GETTEXT_REFERENCE_JSON'\n{\"repo\":\"https://github.com/git-fixtures/basic\",\"branch\":\"master\",\"commit\":\"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"po\":{\"bytes\":508,\"sha256\":\"cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a\"},\"expected\":{\"hello\":\"Bonjour, Zoë & 李 !\",\"dessert\":\"Crème brûlée\",\"plurals\":{\"0\":\"Il y a 0 pomme.\",\"1\":\"Il y a 1 pomme.\",\"2\":\"Il y a 2 pommes.\",\"5\":\"Il y a 5 pommes.\"}},\"django\":\"5.2.18\"}\nQA_GETTEXT_QA_GETTEXT_REFERENCE_JSON\ncat > qa-gettext-marker.json <<'QA_GETTEXT_QA_GETTEXT_MARKER_JSON'\n\"QA416_9b5f8b_bex\"\nQA_GETTEXT_QA_GETTEXT_MARKER_JSON\npip install --disable-pip-version-check Django==5.2.18\npython qa-gettext-app.py before\nDJANGO_SETTINGS_MODULE=qa_gettext_settings python -m django compilemessages -l fr --verbosity 1\npython qa-gettext-app.py build",
+                  "startCommand": "python -u qa-gettext-app.py serve"
+                },
+                "plan": "free",
+                "region": "frankfurt",
+                "runtime": "python"
+              },
+              "type": "web_service"
+            },
+            "raw_body": "{\"autoDeploy\": \"no\", \"branch\": \"master\", \"envVars\": [{\"key\": \"PYTHON_VERSION\", \"value\": \"3.13\"}], \"name\": \"qa-20261017-9b5f8b-i18n\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/git-fixtures/basic\", \"serviceDetails\": {\"envSpecificDetails\": {\"buildCommand\": \"set -e\\nmkdir -p locale/fr/LC_MESSAGES\\ncat > qa-gettext-app.py <<'QA_GETTEXT_QA_GETTEXT_APP_PY'\\nimport gettext,hashlib,io,json,os,platform,shutil,subprocess,sys\\nfrom pathlib import Path\\nfrom http.server import BaseHTTPRequestHandler,ThreadingHTTPServer\\nimport django\\nreference=json.loads(Path('qa-gettext-reference.json').read_text());marker=json.loads(Path('qa-gettext-marker.json').read_text());program_sha=hashlib.sha256(Path(__file__).read_bytes()).hexdigest();catalog=Path('locale/fr/LC_MESSAGES/django.mo')\\ndef digest(path):\\n b=Path(path).read_bytes();return {'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}\\ndef before():\\n files={n:digest(n) for n in reference['files']};assert files==reference['files'];po=digest('locale/fr/LC_MESSAGES/django.po');assert po==reference['po']\\n return {'marker':marker,'python':platform.python_version(),'django':django.get_version(),'files':files,'po':po,'program_sha256':program_sha,'tools':{n:shutil.which(n) for n in ['msgfmt','msgmerge','msguniq','xgettext']}}\\nif sys.argv[1]=='before':print('QA_GETTEXT_BEFORE '+json.dumps(before(),separators=(',',':')),flush=True);raise SystemExit(0)\\nos.environ.setdefault('DJANGO_SETTINGS_MODULE','qa_gettext_settings');django.setup()\\nfrom django.utils.translation import gettext as dg,ngettext as dn,override\\n\\ndef translate():\\n with catalog.open('rb') as f:g=gettext.GNUTranslations(f)\\n def values(t,n):return {'hello':t('Hello, %(name)s!')%{'name':'Zoë & 李'},'dessert':t('Dessert'),'plurals':{str(i):n('There is %(count)d apple.','There are %(count)d apples.',i)%{'count':i} for i in [0,1,2,5]}}\\n std=values(g.gettext,g.ngettext)\\n with override('fr'):actual=values(dg,dn)\\n assert actual==std==reference['expected'];mo=catalog.read_bytes();assert mo[:4].hex() in ['de120495','950412de'];compiled=subprocess.run(['msgfmt','--check-format','-o','-','locale/fr/LC_MESSAGES/django.po'],capture_output=True,timeout=5);assert compiled.returncode==0 and compiled.stdout==mo;fresh=gettext.GNUTranslations(io.BytesIO(compiled.stdout));assert values(fresh.gettext,fresh.ngettext)==reference['expected'];r=subprocess.run(['msgfmt','--version'],capture_output=True,text=True,timeout=5);assert r.returncode==0\\n return {**before(),'translations':actual,'independent_stdlib_translations':std,'catalog':{**digest(catalog),'GNU_MO_magic':True},'fresh_msgfmt_compilation':{'exit':compiled.returncode,'bytes':len(compiled.stdout),'sha256':hashlib.sha256(compiled.stdout).hexdigest()},'msgfmt_version':r.stdout.splitlines()[0]}\\nif sys.argv[1]=='build':\\n v=translate();Path('qa-gettext-build.json').write_text(json.dumps(v));print('QA_GETTEXT_AFTER '+json.dumps(v,separators=(',',':')),flush=True)\\nelse:\\n build=json.loads(Path('qa-gettext-build.json').read_text())\\n class Handler(BaseHTTPRequestHandler):\\n  def log_message(self,*args):pass\\n  def do_GET(self):\\n   v=translate();v['request_url']=self.path;path=self.path.split('?',1)[0]\\n   if path not in ['/','/translations','/catalog.mo']:self.send_error(404);return\\n   data=catalog.read_bytes() if path=='/catalog.mo' else json.dumps({'build':build,'runtime':v},ensure_ascii=False).encode();self.send_response(200);self.send_header('Content-Type','application/octet-stream' if path=='/catalog.mo' else 'application/json');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data);print('QA_GETTEXT_HTTP '+json.dumps({'marker':marker,'path':self.path,'catalog_sha256':v['catalog']['sha256']},separators=(',',':')),flush=True)\\n ThreadingHTTPServer(('0.0.0.0',int(os.environ.get('PORT','10000'))),Handler).serve_forever()\\nQA_GETTEXT_QA_GETTEXT_APP_PY\\ncat > qa_gettext_settings.py <<'QA_GETTEXT_QA_GETTEXT_SETTINGS_PY'\\nfrom pathlib import Path\\nBASE_DIR=Path(__file__).resolve().parent\\nSECRET_KEY='public-functional-QA-boot-constant'\\nUSE_I18N=True\\nLANGUAGE_CODE='en'\\nLOCALE_PATHS=[BASE_DIR/'locale']\\nINSTALLED_APPS=[]\\nQA_GETTEXT_QA_GETTEXT_SETTINGS_PY\\ncat > locale/fr/LC_MESSAGES/django.po <<'QA_GETTEXT_LOCALE_FR_LC_MESSAGES_DJANGO_PO'\\nmsgid \\\"\\\"\\nmsgstr \\\"\\\"\\n\\\"Project-Id-Version: bex-functional-qa\\\\n\\\"\\n\\\"Language: fr\\\\n\\\"\\n\\\"MIME-Version: 1.0\\\\n\\\"\\n\\\"Content-Type: text/plain; charset=UTF-8\\\\n\\\"\\n\\\"Content-Transfer-Encoding: 8bit\\\\n\\\"\\n\\\"Plural-Forms: nplurals=2; plural=(n > 1);\\\\n\\\"\\n\\n#, python-format\\nmsgid \\\"Hello, %(name)s!\\\"\\nmsgstr \\\"Bonjour, %(name)s !\\\"\\n\\n#, python-format\\nmsgid \\\"There is %(count)d apple.\\\"\\nmsgid_plural \\\"There are %(count)d apples.\\\"\\nmsgstr[0] \\\"Il y a %(count)d pomme.\\\"\\nmsgstr[1] \\\"Il y a %(count)d pommes.\\\"\\n\\nmsgid \\\"Dessert\\\"\\nmsgstr \\\"Crème brûlée\\\"\\nQA_GETTEXT_LOCALE_FR_LC_MESSAGES_DJANGO_PO\\ncat > qa-gettext-reference.json <<'QA_GETTEXT_QA_GETTEXT_REFERENCE_JSON'\\n{\\\"repo\\\":\\\"https://github.com/git-fixtures/basic\\\",\\\"branch\\\":\\\"master\\\",\\\"commit\\\":\\\"6ecf0ef2c2dffb796033e5a02219af86ec6584e5\\\",\\\"files\\\":{\\\"LICENSE\\\":{\\\"bytes\\\":1072,\\\"sha256\\\":\\\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\\\"},\\\"CHANGELOG\\\":{\\\"bytes\\\":18,\\\"sha256\\\":\\\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\\\"}},\\\"po\\\":{\\\"bytes\\\":508,\\\"sha256\\\":\\\"cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a\\\"},\\\"expected\\\":{\\\"hello\\\":\\\"Bonjour, Zoë & 李 !\\\",\\\"dessert\\\":\\\"Crème brûlée\\\",\\\"plurals\\\":{\\\"0\\\":\\\"Il y a 0 pomme.\\\",\\\"1\\\":\\\"Il y a 1 pomme.\\\",\\\"2\\\":\\\"Il y a 2 pommes.\\\",\\\"5\\\":\\\"Il y a 5 pommes.\\\"}},\\\"django\\\":\\\"5.2.18\\\"}\\nQA_GETTEXT_QA_GETTEXT_REFERENCE_JSON\\ncat > qa-gettext-marker.json <<'QA_GETTEXT_QA_GETTEXT_MARKER_JSON'\\n\\\"QA416_9b5f8b_bex\\\"\\nQA_GETTEXT_QA_GETTEXT_MARKER_JSON\\npip install --disable-pip-version-check Django==5.2.18\\npython qa-gettext-app.py before\\nDJANGO_SETTINGS_MODULE=qa_gettext_settings python -m django compilemessages -l fr --verbosity 1\\npython qa-gettext-app.py build\", \"startCommand\": \"python -u qa-gettext-app.py serve\"}, \"plan\": \"free\", \"region\": \"frankfurt\", \"runtime\": \"python\"}, \"type\": \"web_service\"}",
+            "headers": {
+              "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+              "Content-Type": "application/json",
+              "X-Bex-Cli-Version": "0.3.2"
+            },
+            "authorization": "[REDACTED]"
+          },
+          "status": 400,
+          "response": "{\"error\": \"bad request: spec.buildCommand: Too long: may not be more than 4096 bytes\", \"id\": \"bad_request\", \"message\": \"bad request: spec.buildCommand: Too long: may not be more than 4096 bytes\"}",
+          "response_headers": {
+            "Content-Type": "application/json",
+            "CF-RAY": "a4bdf8566ccf168c-SJC"
+          }
+        }
+      ],
+      "qualification": "actual native POST forwarded unchanged to production; owned local relay and copied config cleaned",
+      "native_exit": 1
+    },
+    "rejected_create_reconciliation": [
+      {
+        "at": "2026-10-17T08:36:40.328841+00:00",
+        "native_inventory": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "services",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.707,
+          "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"keyValue\": {\"id\": \"red-db9ipku22tos73dl1svg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"postgres\": {\"id\": \"dpg-db9ipkm22tos73dl1sug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db9ijnhu2fhc73e10clg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}]",
+          "stderr": "",
+          "native_exit": 0
+        },
+        "quota": {
+          "at": "2026-10-17T08:36:40.327665+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.488,
+          "response": "{\"services\": {\"used\": 7, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 1, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 1, \"terminating\": 0, \"limit\": 1}}",
+          "stderr": ""
+        },
+        "IDs": {
+          "services": [
+            "srv-daif6dsmg29s73d1umvg",
+            "srv-dap3r714dm7c7390q91g",
+            "srv-dap3umrbdpcs73f5eeug",
+            "srv-dap3v694dm7c7390q930",
+            "srv-db09u90ehcmc739j12cg",
+            "srv-db09vbgehcmc739j12i0",
+            "srv-db9ijnhu2fhc73e10clg"
+          ],
+          "postgres": [
+            "dpg-db9ipkm22tos73dl1sug"
+          ],
+          "keyValues": [
+            "red-db9ipku22tos73dl1svg"
+          ]
+        },
+        "exact_name_absent": true,
+        "pass": true
+      },
+      {
+        "at": "2026-10-17T08:36:46.682090+00:00",
+        "native_inventory": {
+          "binary": "released v0.3.2",
+          "command": [
+            "bex",
+            "services",
+            "--confirm",
+            "-o",
+            "json"
+          ],
+          "exit": 0,
+          "elapsed": 0.68,
+          "stdout": "[{\"service\": {\"id\": \"srv-dap3v694dm7c7390q930\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3umrbdpcs73f5eeug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-dap3r714dm7c7390q91g\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"keyValue\": {\"id\": \"red-db9ipku22tos73dl1svg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"postgres\": {\"id\": \"dpg-db9ipkm22tos73dl1sug\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-daif6dsmg29s73d1umvg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09vbgehcmc739j12i0\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db09u90ehcmc739j12cg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}, {\"service\": {\"id\": \"srv-db9ijnhu2fhc73e10clg\", \"projection\": \"immutable baseline or unrelated identity only; configuration omitted\"}}]",
+          "stderr": "",
+          "native_exit": 0
+        },
+        "quota": {
+          "at": "2026-10-17T08:36:46.681705+00:00",
+          "API_only": true,
+          "request": {
+            "method": "GET",
+            "path": "/v1/owners/tea-daif693dqjvc73e7as3g/limits",
+            "body": null,
+            "workspace": "tea-daif693dqjvc73e7as3g",
+            "user_agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+            "authorization": "REDACTED"
+          },
+          "status": "200",
+          "curl_exit": 0,
+          "elapsed": 0.376,
+          "response": "{\"services\": {\"used\": 7, \"terminating\": 0, \"limit\": 25}, \"postgres\": {\"used\": 1, \"terminating\": 0, \"limit\": 1}, \"keyValues\": {\"used\": 1, \"terminating\": 0, \"limit\": 1}}",
+          "stderr": ""
+        },
+        "IDs": {
+          "services": [
+            "srv-daif6dsmg29s73d1umvg",
+            "srv-dap3r714dm7c7390q91g",
+            "srv-dap3umrbdpcs73f5eeug",
+            "srv-dap3v694dm7c7390q930",
+            "srv-db09u90ehcmc739j12cg",
+            "srv-db09vbgehcmc739j12i0",
+            "srv-db9ijnhu2fhc73e10clg"
+          ],
+          "postgres": [
+            "dpg-db9ipkm22tos73dl1sug"
+          ],
+          "keyValues": [
+            "red-db9ipku22tos73dl1svg"
+          ]
+        },
+        "exact_name_absent": true,
+        "pass": true
+      }
+    ],
+    "excluded_setup": true
+  }
+]

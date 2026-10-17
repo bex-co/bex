@@ -1,0 +1,35 @@
+{
+  "same_member_bytes": true,
+  "variants": {
+    "small-deflated": {
+      "bytes": 972,
+      "sha256": "96211a13dbaa8bb6f4090b2fc56824d12b54712d7942ace1836f86994189e9e6"
+    },
+    "complete-stored": {
+      "bytes": 1069,
+      "sha256": "f6d24b7717e0c82bdabfa4ff7f57428c7ae2520645c197f23bfc58aee76c39dc"
+    }
+  },
+  "members": {
+    "qa_local_data/__init__.py": {
+      "bytes": 48,
+      "sha256": "b63a48ce057becd06dd5cfab31f5d57ec4a0c0ee8d90c34e1a1f55bd38ebe4b5",
+      "text": "def label():\n    return \"Crème brûlée & 李\"\n"
+    },
+    "qa_local_data-1.0.dist-info/METADATA": {
+      "bytes": 55,
+      "sha256": "ab4c7f156e549cc32589e86ab2dd41745d2d59c61c24627a9956e57d67826b3c",
+      "text": "Metadata-Version: 2.1\nName: qa-local-data\nVersion: 1.0\n"
+    },
+    "qa_local_data-1.0.dist-info/WHEEL": {
+      "bytes": 88,
+      "sha256": "d09d49961a391b954c77b49c6019c27e3433bdb003cdee21a621531656358031",
+      "text": "Wheel-Version: 1.0\nGenerator: own-functional-qa\nRoot-Is-Purelib: true\nTag: py3-none-any\n"
+    },
+    "qa_local_data-1.0.dist-info/RECORD": {
+      "bytes": 296,
+      "sha256": "3d2cf5351afbac8d694b0e0478624ca8fc1ea8ef89239971c4851dd730b8f10c",
+      "text": "qa_local_data/__init__.py,sha256=tjpIzgV77NBt1c-rMfXVfsSgwO6NkMNOGh9VvTjr5LU,48\nqa_local_data-1.0.dist-info/METADATA,sha256=q0x_FW5UnMMliehqst1BdF0tWcYcJGJ6mVblfWeCazw,55\nqa_local_data-1.0.dist-info/WHEEL,sha256=0J1Jlho5G5VMd7ScYBnCfjQzvbADze4hpiFTFlY1gDE,88\nqa_local_data-1.0.dist-info/RECORD,,\n"
+    }
+  }
+}

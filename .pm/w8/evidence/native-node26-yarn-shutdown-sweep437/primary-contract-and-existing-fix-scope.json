@@ -1,0 +1,37 @@
+{
+  "journey": "native Node26 Yarn-start graceful restart neighbor; no new finding assumed",
+  "primary": "https://render.com/docs/deploys",
+  "Render_contract": "Yarn start listed as ordinary Node command; SIGTERM and configured graceful shutdown for in-flight work",
+  "source": "nativeinit.go primary Node serving init plus Yarn repair w4/done/320; existing w8/done/m88 is already accepted npm24 case",
+  "actual_hosted_versions": "not yet exercised; local fixture on selected Node24 only",
+  "dedupe": [
+    {
+      "command": [
+        "rg",
+        "-n",
+        "-i",
+        "Yarn.*(shutdown|SIGTERM|graceful)|Node26.*(shutdown|graceful)|nativeServingInit",
+        ".pm",
+        "--glob",
+        "*.md"
+      ],
+      "exit": 0,
+      "stdout": ".pm/w8/done/m88/done/t007.md:41:- the opt-in gate: pinned BuildKit with the Job's exact args, then skopeo conversion. The npm, pnpm, Yarn and direct-node shapes are each stopped mid-request with `docker stop -t 20` and each gets 200 plus exactly one SIGTERM \u2192 hold_end \u2192 closed. Fail-before (native-init disabled in a worktree): npm/pnpm/Yarn get EOF, direct node passes (control);\n.pm/w5/done/m52/README.md:24:Live local walk (`yarn local-bex` + `yarn dev:local`). The **web service** `eden-cms-v2` settings page renders in Render's exact section order: **General** (Name, `Region: fsn1` read-only disabled textbox, Instance Type, Idle timeout, Max shutdown delay) \u203a **Build** (Source, Branch, Root Directory, Dockerfile Path) \u203a **Deploy** (Docker Command, Auto-Deploy, **Deploy Hook** embedded) \u203a **Custom Domains** (with the **Platform Subdomain** toggle folded in) \u203a **Networking** \u203a **Notifications** \u203a **Health Checks** \u203a **Maintenance Mode** \u203a **Suspend / Delete** danger area. The **cron** `nightly-report` keeps its own Deploy (Schedule/Command) section with no duplicate Deploy card, Auto-Deploy folds into Build for a git-cron, and its Deploy Hook stays a standalone card \u2014 type gating intact. **Outcome: clean**, matches `.playwright-mcp/render-settings-full.png`. Snapshots: `.playwright-mcp/m52-web.md`, `m52-cron.md`. The `region` field was spliced into `server.graphql` + the generated `ServerQuery`/`ServerDocument` per the codegen note (no backend change \u2014 the GraphQL `Service.region` already existed).\n.pm/w1/done/m64/README.md:3:**Worker:** worker1 **Goal:** the Devin-shaped session surface \u2014 `/agents` list + composer, `/agents/$id` detail with a live conversation column \u2014 built **directly on the D9 target API**: control-plane metadata over GraphQL polling, the conversation over `useChat` + the same-origin stream endpoint (`api.bex.co/v1/agent-sessions/{id}/stream`, transcript replay + live tail). No interim transcript synthesis, no client-side prompt persistence \u2014 the stream's replay mode is the single history source. **Status:** done (2026-08-18) \u2014 t001\u2013t008 **DONE**, shipped + deployed to prod (dashboard image `b31301c8`). The one DoD item never met, the **logged-in prod live-substrate walk**, was **explicitly waived by the user on 2026-08-18** (see `done/t008.md`): the live stream is proven by w3/m43's own green live E2E, the dashboard transport is unit-tested against that exact v1 wire format, and the full UI is render-verified locally \u2014 but no logged-in browser walk against a real prod session is claimed. t001 \u2014 agent-sessions feature scaffold (GraphQL ops + per-feature `definitions.ts` splice, phase-aware polling hooks, typed `AGENT_SESSION_*` error mapping, `AgentSessionView` mapper). t003 \u2014 `/agents` route: sessions list (phase chips + PR badges + relative time) + sidebar nav (en/zh) + Devin-style new-session composer (task/repo/branch/agent + Advanced model/endpoint/egress) with inline typed-error mapping + 503 house callout; a minimal placeholder `/agents/$agentSessionId` route keeps links typed until t004 replaces it. `yarn typecheck && yarn lint && yarn test` green (1841 tests). **w3/m43 done \u21d2 t004's live gate lifted.** t002 (AI-SDK-v6 conversation column + transport + AI Elements + mock harness), t004 (detail page: header/PR/evidence/conversation/steering), t006 (Simplify \u2014 reviewed, already DRY, no changes), t007 (Test coverage \u2014 58 tests across mapper/errors/composer/list/evidence/steering; 1905 total) all **DONE**. **t005 Render parity:** agent sessions are a **bex extension** (Render has no equivalent); the dashboard consumes the same GraphQL surface (agentSessions/agentSession/create/steer/resume/cancel/attach) that mirrors REST/MCP (shipped m39/m41/m43), and the UI exposes it consistently (list + all `agentConfig`/egress create fields, phase/PR/evidence/turns/deliveryMode/failureReason, state-routed steer/cancel). No drift. **Route-nesting bug found + fixed via the live render walk:** the detail route was `agents.$agentSessionId.tsx` (dot \u21d2 nested under the Outlet-less `/agents` list route \u21d2 rendered the list at `/agents/{id}`, shipped to prod); renamed to the flat `agents_.$agentSessionId.tsx` (repo's opt-out convention, cf. `env-groups_`) \u2014 the route-inventory test now pins the filename as the regression tripwire. **Remaining for t008:** the live-substrate browser walk against real m43 needs a logged-in prod session (Playwright can't auth); the full UI incl. detail + graceful degradation is render-verified locally, and the live stream itself is proven by w3/m43's green E2E.\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "log",
+        "-5",
+        "--oneline",
+        "--",
+        "lego/operator/internal/build/nativeinit.go",
+        "lego/operator/cmd/native-init"
+      ],
+      "exit": 0,
+      "stdout": "af4f7fefb fix(operator): native Node apps drain on SIGTERM under npm start (w8/m88)\n",
+      "stderr": ""
+    }
+  ]
+}

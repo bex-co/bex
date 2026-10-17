@@ -1,0 +1,27 @@
+from pathlib import Path
+import json,subprocess,tempfile,shutil,hashlib,secrets,fcntl
+P=Path(__file__).resolve().parent;R=P.parent.parent;CP=R/'.playwright-mcp/cli-qa-w8-checkpoint.json';lock=(P/'checkpoint-writer.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB);c=json.loads(CP.read_text());ref=json.loads((P/'sweep401-primary-reference.json').read_text());ns={};exec((P/'sweep401-command-factory.py').read_text(),ns);root=Path(tempfile.mkdtemp(prefix='sweep401-local-',dir=P));nonce=secrets.token_hex(3);rows=json.loads((P/'sweep401-resolved-recipes.json').read_text());image=next(s.split()[1] for s in rows[0]['generated_recipe'].splitlines() if s.startswith('FROM '));out={'image':image,'nonce':nonce,'qualification':'actual extracted production dependency step plus exact authored command under selected pinned Node base; not full generated-image execution','context':str(root),'cases':[]}
+def save():
+ (P/'sweep401-local-prerequisite.json').write_text(json.dumps(out,indent=2));c['sweep401_local_controls']={'context':str(root),'nonce':nonce,'container_names':[v['container'] for v in out['cases']],'removed':out.get('own_containers_context_removed',False)};t=CP.with_name('.'+CP.name+'.qa401-local.tmp');t.write_text(json.dumps(c,indent=2));t.chmod(0o600);t.replace(CP)
+save()
+try:
+ for label,manual,skip in [('default',False,False),('manual',True,False),('skip-manual',True,True)]:
+  D=root/label;D.mkdir();name='qa401-'+nonce+'-'+label;assert subprocess.run(['docker','inspect',name],capture_output=True).returncode!=0
+  for f in ref['files']:shutil.copyfile(P/('sweep401-source-'+f),D/f)
+  shutil.copyfile(P/'sweep401-actual-install-deps.sh',D/'actual-install-deps.sh');command=ns['commands'](P,ref,'QA401_LOCAL',manual)['build'];args=['docker','run','--rm','--name',name,'--label','bex.qa.run='+nonce,'-v',str(D)+':/work','-w','/work','-e','NODE_VERSION=24']
+  if skip:args+=['-e','SKIP_INSTALL_DEPS=true']
+  args += [image,'bash','-c','set -e\n/bin/bash /work/actual-install-deps.sh || exit\n'+command];e={'label':label,'container':name,'absent_before':True,'manual_install':manual,'explicit_skip':skip,'command':command};out['cases'].append(e);save()
+  try:r=subprocess.run(args,text=True,capture_output=True,timeout=150);e.update(exit=r.returncode,stdout=r.stdout,stderr=r.stderr);save()
+  finally:
+   inspect=subprocess.run(['docker','inspect',name],capture_output=True,text=True)
+   if inspect.returncode==0:
+    v=json.loads(inspect.stdout)[0];assert v['Config']['Labels']['bex.qa.run']==nonce and any(m['Source']==str(D) for m in v['Mounts']);subprocess.run(['docker','rm','-f',name],capture_output=True,check=True)
+  before=json.loads((D/'qa401-before.json').read_text());e['before']=before;assert before['files']==ref['files'] and not before['node_modules_present'] and before['express_version'] is None and before['yarn'].startswith('1.22.') and before['node'].startswith('v24.') and before['skip_present']==skip
+  if manual:
+   v=json.loads((D/'_site/qa401-evidence.json').read_text());index=(D/'_site/index.html').read_bytes();e['after']=v;e['pass']=r.returncode==0 and v['files']==ref['files'] and v['express_version']=='4.18.2' and v['instantiated_express'] and v['index']=={'bytes':len(index),'sha256':hashlib.sha256(index).hexdigest()}
+  else:e['pass']=r.returncode==1 and "Cannot find module 'express'" in r.stderr and 'another package manager' in r.stdout and not (D/'_site').exists()
+  save();assert e['pass'];print(json.dumps({'case':label,'exit':r.returncode,'expected_outcome_verified':True}),flush=True)
+ out['pass']=True;save()
+finally:
+ assert root.parent==P and root.name.startswith('sweep401-local-');shutil.rmtree(root);out['own_containers_context_removed']=not root.exists() and all(subprocess.run(['docker','inspect',e['container']],capture_output=True).returncode!=0 for e in out['cases']);save()
+print(json.dumps({'pass':out.get('pass'),'own_containers_context_removed':out['own_containers_context_removed']}))

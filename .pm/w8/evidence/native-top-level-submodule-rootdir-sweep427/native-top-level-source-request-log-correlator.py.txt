@@ -1,0 +1,13 @@
+from pathlib import Path
+import json,sys,re
+P=Path(__file__).resolve().parent;f=P/'sweep427-common.py';sys.argv=[str(f),'app-logs','bex'];exec(compile(f.read_text(),str(f),'exec'));xs=[x for x in c['resources'] if x.get('sweep')==427];assert len(xs)==2
+for x in xs:
+ own(x);accepted=x['runtime_receipt'];assert accepted['pass'];paths={v['path'] for v in accepted['requests']};boot={v['decoded']['boot'] for v in accepted['requests']};assert len(boot)==1;ref=x['primary_reference'];r=cli(['logs','--resources',x['id'],'--type','app','--text','QA_SUBROOT_HTTP','--start',datetime.datetime.fromisoformat(accepted['at']).strftime('%Y-%m-%dT%H:%M:%SZ'),'--limit','100','--confirm','-o','json'],client=x['client']);e={'at':now(),'native':r,'expected_paths':sorted(paths),'matched':[]};x.setdefault('application_log_correlations',[]).append(e);save();assert r['native_exit']==0;raw=r['stdout'];decoder=json.JSONDecoder()
+ while raw.strip():
+  raw=raw.lstrip();v,n=decoder.raw_decode(raw);raw=raw[n:]
+  for row in v if isinstance(v,list) else [v]:
+   for m in re.finditer(r'QA_SUBROOT_HTTP (\{[^\n]+\})',row.get('message','')):
+    try:d=json.loads(m[1])
+    except ValueError:continue
+    if d.get('marker')==x['marker'] and d.get('path') in paths and d.get('files')==ref['files'] and d.get('absent')=={n:True for n in ref['absent']} and d.get('boot') in boot:e['matched'].append(d)
+ e['pass']={v['path'] for v in e['matched']}==paths;save();assert e['pass'];print(json.dumps({'client':x['client'],'real_top-level_source_request_events':len(e['matched']),'pass':e['pass']}),flush=True)

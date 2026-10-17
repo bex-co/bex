@@ -1,0 +1,9 @@
+{
+  "qualification": "actual disposable selected-base apt control, not the final platform supplier",
+  "lines": [
+    "Get:1 http://deb.debian.org/debian bookworm/main arm64 sqlite3 arm64 3.40.1-2+deb12u2 [342 kB]",
+    "Preparing to unpack .../sqlite3_3.40.1-2+deb12u2_arm64.deb ...",
+    "Unpacking sqlite3 (3.40.1-2+deb12u2) ...",
+    "Setting up sqlite3 (3.40.1-2+deb12u2) ..."
+  ]
+}

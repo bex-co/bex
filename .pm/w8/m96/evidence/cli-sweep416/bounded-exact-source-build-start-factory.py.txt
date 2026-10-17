@@ -1,0 +1,10 @@
+import json,hashlib,gzip,base64
+def commands(P,reference,marker,control=False):
+ program=(P/'sweep416-app.py').read_text();files={'qa-gettext-app.py':program,'qa_gettext_settings.py':(P/'sweep416-settings.py').read_text(),'locale/fr/LC_MESSAGES/django.po':(P/'sweep416.po').read_text(),'qa-gettext-reference.json':json.dumps(reference,separators=(',',':'),ensure_ascii=False),'qa-gettext-marker.json':json.dumps(marker)}
+ blob=base64.b64encode(gzip.compress(json.dumps(files,ensure_ascii=False,separators=(',',':')).encode(),mtime=0)).decode();assert json.loads(gzip.decompress(base64.b64decode(blob)))==files
+ build="set -e\nmkdir -p locale/fr/LC_MESSAGES\npython - <<'QA_GETTEXT_SOURCES'\nimport json,gzip,base64\nfrom pathlib import Path\nfiles=json.loads(gzip.decompress(base64.b64decode('"+blob+"')))\nfor name,text in files.items(): Path(name).write_text(text)\nQA_GETTEXT_SOURCES\n"
+ build+='pip install --disable-pip-version-check Django=='+reference['django']+'\npython qa-gettext-app.py before\n'
+ if control:build+='apt-get update -qq && apt-get install -y --no-install-recommends gettext\n'
+ build+='DJANGO_SETTINGS_MODULE=qa_gettext_settings python -m django compilemessages -l fr --verbosity 1\npython qa-gettext-app.py build'
+ assert len(build.encode())<=4096,len(build.encode())
+ return {'build':build,'start':'python -u qa-gettext-app.py serve','program_sha256':hashlib.sha256(program.encode()).hexdigest()}

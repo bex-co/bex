@@ -1,0 +1,17 @@
+{
+  "image": "ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172",
+  "name": "qa417-match-03a0b3",
+  "nonce": "03a0b3",
+  "context": "<owned-temp>/sweep417-matched-qhujfwt8",
+  "absent_before": true,
+  "purpose": "generate genuine Bundler2.6.9 matching lock for the original Gemfile; no production allocation",
+  "exit": 0,
+  "stdout": "Bundler version 2.6.9\nWriting lockfile to /work/Gemfile.lock\nFetching gem metadata from https://rubygems.org/.\nResolving dependencies...\n",
+  "stderr": "",
+  "pass_result": true,
+  "matched_lock": "GEM\n  remote: https://rubygems.org/\n  specs:\n    rake (13.3.1)\n\nPLATFORMS\n  aarch64-linux\n  ruby\n\nDEPENDENCIES\n  rake (= 13.3.1)\n\nBUNDLED WITH\n   2.6.9\n",
+  "bytes": 152,
+  "sha256": "e68a4d6cf70ba95f8a1dc48bc1ce885b207d54147543059eaf88a6c6b28141b4",
+  "only_lock_changes": "the two rake spec/dependency13.2.1 versions become13.3.1; genuine bundle lock output",
+  "own_container_context_removed": true
+}

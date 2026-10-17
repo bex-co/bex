@@ -1,0 +1,59 @@
+{
+  "phase": "actual native response captured",
+  "captures": [
+    {
+      "request": {
+        "method": "POST",
+        "path": "/v1/services",
+        "body": {
+          "autoDeploy": "no",
+          "branch": "main",
+          "envVars": [
+            {
+              "key": "GREETING",
+              "value": "QA408_eb3aa5_bex_caf\u00e9_\u96ea"
+            }
+          ],
+          "name": "qa-20261017-eb3aa5-docenv",
+          "ownerId": "tea-daif693dqjvc73e7as3g",
+          "repo": "https://github.com/bex-co/bex",
+          "rootDir": "examples/docker-build-env",
+          "secretFiles": [
+            {
+              "content": "[QA_FIXTURE_FILE_CONTENT_REDACTED]",
+              "name": ".env"
+            }
+          ],
+          "serviceDetails": {
+            "plan": "free",
+            "region": "frankfurt",
+            "runtime": "docker"
+          },
+          "type": "web_service"
+        },
+        "raw_body_with_documented_redaction": "{\"autoDeploy\": \"no\", \"branch\": \"main\", \"envVars\": [{\"key\": \"GREETING\", \"value\": \"QA408_eb3aa5_bex_caf\\u00e9_\\u96ea\"}], \"name\": \"qa-20261017-eb3aa5-docenv\", \"ownerId\": \"tea-daif693dqjvc73e7as3g\", \"repo\": \"https://github.com/bex-co/bex\", \"rootDir\": \"examples/docker-build-env\", \"secretFiles\": [{\"content\": \"[QA_FIXTURE_FILE_CONTENT_REDACTED]\", \"name\": \".env\"}], \"serviceDetails\": {\"plan\": \"free\", \"region\": \"frankfurt\", \"runtime\": \"docker\"}, \"type\": \"web_service\"}",
+        "redactions": [
+          {
+            "filename": ".env",
+            "UTF8_bytes": 35,
+            "sha256": "4e499becff92a0e8ee2320f4c1961590a654276f37551cb0aa4acbe2641dd6da",
+            "redaction": "entire own QA file content omitted"
+          }
+        ],
+        "raw_body_sha256": "ea0e87753455bd946146ae498549bae8c70bf421becc48331beb9f422d0edec2",
+        "headers": {
+          "User-Agent": "render-cli/2.27.0 (macOS - 26.5.1)",
+          "Content-Type": "application/json",
+          "X-Bex-Cli-Version": "0.3.2"
+        },
+        "authorization": "[REDACTED]"
+      },
+      "status": 201,
+      "response": "{\"service\":{\"id\":\"srv-db9hsu5496fs739dn280\",\"name\":\"qa-20261017-eb3aa5-docenv\",\"immutableName\":\"qa-20261017-eb3aa5-docenv\",\"slug\":\"qa-20261017-eb3aa5-docenv\",\"displayName\":\"\",\"type\":\"web_service\",\"suspended\":\"not_suspended\",\"dashboardUrl\":\"https://dashboard.bex.co/web/srv-db9hsu5496fs739dn280\",\"createdAt\":\"2026-10-17T07:06:33Z\",\"updatedAt\":\"2026-10-17T07:06:33Z\",\"owner\":{\"id\":\"tea-daif693dqjvc73e7as3g\",\"name\":\"bex-canary\",\"email\":\"QA_PRIVATE_VALUE_REDACTED\",\"type\":\"team\"},\"serviceDetails\":{\"env\":\"docker\",\"envSpecificDetails\":{\"dockerCommand\":\"\",\"dockerContext\":\"examples/docker-build-env\",\"dockerfilePath\":\"\"},\"internalAddress\":\"qa-20261017-eb3aa5-docenv:3000\",\"maintenanceMode\":{\"enabled\":false,\"uri\":\"\"},\"maxShutdownDelaySeconds\":30,\"numInstances\":1,\"plan\":\"free\",\"port\":3000,\"region\":\"fsn1\",\"renderSubdomainPolicy\":\"enabled\",\"runtime\":\"docker\",\"url\":\"https://qa-20261017-eb3aa5-docenv.onbex.co\"},\"suspenders\":[],\"ownerId\":\"tea-daif693dqjvc73e7as3g\",\"replicas\":1,\"idleTTLSeconds\":0,\"rootDir\":\"examples/docker-build-env\",\"repo\":\"https://github.com/bex-co/bex\",\"branch\":\"main\",\"autoDeploy\":\"no\",\"autoDeployTrigger\":\"off\",\"notifyOnFail\":\"default\",\"notificationsToSend\":\"default\"},\"deployId\":\"dep-db9hsu5496fs739dn28g\"}\n",
+      "response_headers": {
+        "Content-Type": "application/json",
+        "CF-RAY": "a4bd76100b66152b-SJC"
+      }
+    }
+  ]
+}

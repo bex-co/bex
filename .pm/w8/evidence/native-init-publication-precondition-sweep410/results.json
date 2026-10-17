@@ -1,0 +1,20 @@
+{
+  "sweep": 410,
+  "source_head": "8f37dc877a89418e8e8e5b096c53efb048998ff7",
+  "native_client": "published Bex0.3.2",
+  "native_create201_exit0_and_original_first_deploy_live": true,
+  "exact_source_program_build_runtime_proofs": true,
+  "native_init_present": true,
+  "PID1_native_init": true,
+  "fixed_helper_serving_precondition": true,
+  "desired_operator_image": "sha256:a8bd31c7c5d55365d7d3cb64b88cdfba9e99755251f89ccd43586b585a886f58",
+  "actual_serving_revision_and_OCI": "unknown",
+  "original_npm_restart_gate_exercised": false,
+  "new_findings": 0,
+  "own_parent_first_child_URL_absent": true,
+  "baseline_preserved_and_quota_matches_concurrent_inventory": true,
+  "unrelated_service_IDs_preserved": [
+    "srv-db9i6g9u2fhc73e10bsg"
+  ],
+  "uncommitted": true
+}

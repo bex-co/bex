@@ -1,0 +1,13 @@
+# Native startup-helper publication precondition — sweep410
+
+[Results](results.json) · [complete native create, helper observation and cleanup](complete-native-helper-observation-and-cleanup.json) · [final inventory](final-inventory.json) · [qualifications](harness-qualifications.json).
+
+Source refresh8f37dc877 includes fa9d44b85, which changes the operator's desired image digest to a8bd31c7c5d55365d7d3cb64b88cdfba9e99755251f89ccd43586b585a886f58, described by that commit as buildb3dbca6013a3. This change warrants a new publication check after405 observed no helper. A Git pin alone does not prove rollout or identify the actual serving operator.
+
+Published Bex0.3.2 creates one fresh explicitly Free Node24 service through an unchanged captured native POST201/exit0; its original first child reaches Live. [Actual helps/contract](actual-native-helps-and-contract.json), [source](fresh-public-source-reference.json), [authored observer](authored-startup-helper-observer.cjs.txt), [build/start factory](exact-build-start-factory.py.txt), [native lifecycle](finite-native-create-observe-and-cleanup.py.txt), [isolated wire capture](isolated-native-client-and-wire-capture.py.txt). Native build logs and actual HTTPS verify original LICENSE/CHANGELOG, Node24 and exact authored program/build proofs.
+
+The own app reports only two startup booleans: whether /native-init exists and whether its own container PID1 executable is /native-init. Raw process arguments and environment are not returned. Results preserve the actual booleans, including absence if observed. This is a necessary publication precondition for w8/m88's original npm restart gate; the probe starts direct Node and performs no restart, so it is not that milestone's hosted acceptance or a new defect. Actual operator/runtime OCI remains unobserved.
+
+The initial bounded observer ended while the same original first child was building; a resumed observer collects its terminal source/runtime proof without create/update/deploy replay. [Exact owned cleanup](finite-exact-owned-cleanup.py.txt), [concurrent inventory reconciliation](concurrent-inventory-reconciliation.py.txt): native delete0, exact parent/first child/runtime URL404 and list absence, original six services/one Blueprint present, managed data/projects/groups empty, and zero termination with quota matching current inventory. Unrelated concurrent service IDs are preserved, with configurations omitted. Own capture relays/copied configs are removed. The isolated human login remains for the continuing loop.
+
+No product implementation, original npm restart, Render comparison, browser/full-suite, actual image-config inspection or physical teardown is claimed. Evidence is uncommitted.

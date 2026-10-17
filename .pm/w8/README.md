@@ -15,9 +15,53 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m89** — [Materialize pinned Git submodules before source builds](blocked/m89/README.md) (7 tasks;130m/2h10m) — **BLOCKED (2026-10-16: t001, t002, t004–t006 done — build and static direct-publish clones now initialize every top-level `.gitmodules` gitlink at its parent-pinned commit (HTTPS only, GitHub SSH rewritten, existing token) before the source checks, failing visibly on an unreachable child; clone image moved to alpine/git 2.52.0 past CVE-2025-48384 with control-character paths refused; real-clone, busybox, public-fixture and fail-before verified; needs the operator deployed plus the hosted both-client first-deployment replay (t003) and closeout (t007), runnable with the QA CLI login)**
+- [ ] **m111** — [Make documented text similarity usable in managed Postgres](m111/README.md) (7 tasks;220m) ← major functional CLI sweep450:both pg_similarity migrations unavailable on PG15, ordinary SQL and real local functions/operators pass; exact cleanup.
 
-- [ ] **m88** — [Preserve graceful shutdown through native npm startup](blocked/m88/README.md) (8 tasks) — **BLOCKED (2026-10-16: t001–t003, t005–t007 done — primary Node service images now start under bex's `native-init`, which forwards signals and, when `npm start` exits on SIGTERM before its app, passes the signal on and waits for the app to drain within the grace period; pinned-BuildKit gate stops npm/pnpm/Yarn/direct-node apps mid-request and gets 200 with one SIGTERM each, fail-before EOF for npm/pnpm/Yarn; needs the operator deployed plus the hosted both-client npm restart replay (t004) and closeout (t008), runnable with the QA CLI login)**
+- [ ] **m110** — [Make incremental views usable in managed Postgres](m110/README.md) (7 tasks;285m) ← major functional CLI sweep447:both pg_ivm migrations unavailable, normal SQL and actual local IMMV controls pass; exact cleanup.
+
+- [ ] **m109** — [Make documented DuckDB analytics usable in managed Postgres](m109/README.md) (7 tasks;290m) ← major functional CLI sweep444:both pg_duckdb migrations unavailable, normal SQL and actual local analytics controls pass; exact cleanup.
+
+- [ ] **m108** — [Preserve ordinary uploads beyond the ingress body-read deadline](m108/README.md) (6 tasks;210m) ← major functional CLI sweep441:both one-MiB paced uploads499 at60s; same-body fast and local one-setting controls succeed; exact cleanup.
+
+- [ ] **m107** — [Supply ZIP creation in native builds and runtimes](m107/README.md) (6 tasks;190m) ← major functional CLI sweep434:both first builds fail missing ZIP; install-only controls create real build/runtime archives; exact cleanup.
+
+- [ ] **m106** — [Supply Hugo for the documented static quickstart](m106/README.md) (6 tasks;195m) ← major functional CLI sweep431:both first builds fail missing Hugo; install-only controls generate real index and theme stylesheet; exact cleanup.
+
+- [ ] **m105** — [Make the Jekyll static quickstart build normally](m105/README.md) (7 tasks;260m) ← major functional CLI sweep430:both original missing-Bundler failures and Ruby-only missing-dependency failures; frozen bundle-install controls produce real sites; exact cleanup.
+
+- [ ] **m104** — [Supply pg_partman for ordinary partition migrations](m104/README.md) (6 tasks;200m) ← major functional CLI sweep428:both native migrations fail missing server extension; healthy real partition/extension controls, ordinary-owner local reference and exact cleanup.
+
+- [ ] **m103** — [Supply native Python packaging and development tools](m103/README.md) (8 tasks, 335m, 3 major omissions) — both native stages independently fail missing setuptools, then pip, then Python.h; complete controls Live with real wheel/C-extension HTTP results (sweep424).
+
+- [ ] **m102** — [Supply pigz for native asset builds](m102/README.md) (6 tasks, 190m, major) — both native first builds fail missing-pigz; install-only controls Live with exact built gzip JSON/download proofs (sweep423).
+
+- [ ] **m101** — [Supply Webpack for native production bundles](m101/README.md) (6 tasks, 225m, major) — both original native first builds fail missing-webpack; compiler/CLI-only controls Live with six generated-bundle HTTP responses (sweep422).
+
+- [ ] **m100** — [Supply SWIG for native C-binding builds](m100/README.md) (6 tasks,200m,major) — both original native first builds fail missing-swig; SWIG-only controls Live with six real compiled-C-extension arithmetic/Unicode HTTP responses (sweep421).
+
+- [ ] **m99** — [Supply TypeScript for native builds and runtime](m99/README.md) (6 tasks,225m,major) — both original native first builds fail missing-tsc; compiler-only controls Live with six real emitted-JavaScript typed-result responses (sweep420).
+
+- [ ] **m98** — [Supply jq and rsync for native asset builds](m98/README.md) (7 tasks,270m,2 major omissions) — both native stages independently fail missing-jq then missing-rsync; complete-tool controls Live with exact manifests/Unicode file copies and six HTTP responses (sweep419).
+
+- [ ] **m97** — [Supply Ghostscript for native PDF rendering](m97/README.md) (6 tasks,215m,major) — both native first builds fail missing-gs; one-line tool controls Live and six exact PDF/PNG/pixel runtime checks pass (sweep418).
+
+- [ ] **m96** — [Supply GNU gettext for native message compilation](m96/README.md) (6 tasks,195m,major) — both valid native first builds fail Django missing-msgfmt; one-line gettext controls Live and exact Unicode/plural catalog/runtime checks pass (sweep416).
+
+- [ ] **m95** — [Supply libvips in native builds and runtime](m95/README.md) (6 tasks,230m,major) — both native first builds fail missing libvips.so.42 after PyVips installs; one-line library controls Live and six exact pixel/PNG transformations pass (sweep414).
+
+- [ ] **m94** — [Supply SQLite CLI in native builds and runtime](m94/README.md) (6 tasks) ← CLI sweep409
+
+- [ ] **m93** — [Supply Pandoc in native builds and runtime](m93/README.md) (6 tasks) ← CLI sweep407
+
+- [ ] **m92** — [Make PostGIS usable in managed Postgres](m92/README.md) (7 tasks;250m) ← major functional CLI sweep403:both original PostGIS migrations fail unavailable extension; healthy controls/catalog preservation and complete owned cleanup pass.
+
+- [ ] **m91** — [Supply PostgreSQL clients in native builds and runtime](m91/README.md) (6 tasks;205m) ← major functional CLI sweep402:both original builds fail missing pg_restore; both install controls serve exact backup rows, full owned cleanup verified.
+
+- [ ] **m90** — [Install Yarn dependencies before static builds](m90/README.md) (6 tasks;140m) ← major functional CLI sweep401:both first default builds fail with Yarn present and dependencies absent; both one-line controls publish exact files, complete owned cleanup verified.
+
+- [x] **m89** — [Materialize pinned Git submodules before source builds](done/m89/README.md) (7 tasks) — **DONE 2026-10-17:** both original native first deployments Live, exact pinned file/source proofs and six HTTP200 responses without authored fetch; exact cleanup in sweep412.
+
+- [x] **m88** — [Preserve graceful shutdown through native npm startup](done/m88/README.md) (8 tasks) — **DONE 2026-10-17:** original both-client npm restart replay passes; both old40s POSTs200,44 short reads200, native signal/drain logs and exact cleanup in sweep411.
 
 - [ ] **m87** — [Make psql Ctrl+C stop external PostgreSQL queries](blocked/m87/README.md) (8 tasks,435m) — **BLOCKED (2026-10-16: t001 done — [design](blocked/m87/design.md): psql's legacy PQcancel carries only PID+key with no SNI, so it can be routed only if `pg-sni-proxy` terminates client TLS with each database's own CNPG serving pair to observe BackendKeyData; needs the user to accept that trust-boundary change (internet-facing proxy holds every tenant DB server key and sees plaintext; ADR009 passthrough revised; security re-review) or decide to keep passthrough and document modern-libpq-only cancellation)**
 
@@ -157,7 +201,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [Native5MiB downloads and bounded upload observations](evidence/native-file-transfers-sweep396/README.md) — sweep396:both first native fixtures serve exact full/range/header/conditional controls (16 passes); three smaller uploads match native logs. Five5MiB upload attempts time out or499near61s, with variable observed progress; cause/compatibility unconfirmed, no new issue. Exact cleanup passes.
 
-- **New major [117](blocked/117.md)** — native Ruby silently rewrites stale dependency locks; both first deployments serve the changed gem, build-only deployment-mode controls correctly refuse, prior boots remain serving and exact cleanup passes ([sweep394 evidence](evidence/117/README.md)).
+- **New major [117](done/117.md)** — native Ruby silently rewrites stale dependency locks; both first deployments serve the changed gem, build-only deployment-mode controls correctly refuse, prior boots remain serving and exact cleanup passes ([sweep394 evidence](evidence/117/README.md)).
 
 - [Native Poetry installed application environments](evidence/native-poetry-project-sweep392/README.md) — sweep392:default2.1.3/explicit1.8.5 real dependency installs, generated lock and isolated project interpreter persist through build/pre-deploy/runtime; both first children serve original Flask HTTP200,8 shared/env reads and exact cleanup pass. No new issue.
 
@@ -297,15 +341,15 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **118** — [Forward stdin to noninteractive psql imports](blocked/118.md) (55m, major) — **BLOCKED (2026-10-16: upstream patch + real-child regressions prepared in `blocked/118-upstream.patch` (and a variant stacked on 079 in `blocked/118-upstream-stacked-on-079.patch`): the pinned CLI's non-interactive psql never sets the child's stdin, so `\copy … FROM pstdin` reads EOF and imports 0 rows; needs the user to authorize external submission to render-oss/cli after a fresh dedupe, then upstream acceptance/release, a Bex CLI pin/release and the two-client import replay with cleanup; no fork per DO_NOT_DO)**
 
-- [ ] **117** — [Native Ruby builds silently rewrite stale dependency lockfiles](blocked/117.md) (55m, major) — **BLOCKED (2026-10-16: implemented — primary Ruby images default Render's BUNDLE_DEPLOYMENT=true with its BUNDLE_PATH/BUNDLE_BIN outside the source tree (binstubs first on PATH), so a stale or missing Gemfile.lock fails the build while matched locks install and serve exactly; service values (deployment/frozen off, own path) win; real-Bundler gate + fail-before verified; needs the operator deployed plus the hosted both-client stale/matched replay, runnable with the QA CLI login)**
+- [x] **117** — [Native Ruby enforces committed dependency locks](done/117.md) (55m, major) — **DONE 2026-10-17:** both original stale first builds correctly reject without prefix; matched-lock-only replacements Live with exact locked gem and six HTTP200 responses, shared reads and full cleanup (sweep417).
 
-- [ ] **116** — [Native Python generates HTTP URLs for HTTPS requests](blocked/116.md) (55m, major) — **BLOCKED (2026-10-16: implemented — primary Python images default Render's FORWARDED_ALLOW_IPS="*" before the build RUN, the service's own value (incl. empty) and explicit Gunicorn --forwarded-allow-ips winning; real-Gunicorn gate from a non-loopback peer + fail-before verified, Traefik header-trust reviewed; needs the operator deployed plus the hosted both-client Flask replay, runnable with the QA CLI login)**
+- [x] **116** — [Native Python preserves HTTPS URLs and redirect completion](done/116.md) (55m, major) — **DONE 2026-10-17:** both original first native deployments Live, twelve ordinary HTTPS requests with correct URLs/redirects and build/runtime defaults; exact cleanup/shared reads in sweep415.
 
 - [ ] **115** — [Correct MCP idle field omission and WebSocket-direction instructions](blocked/115.md) (30m, minor) — **BLOCKED (2026-10-16: implemented — MCP update_service idleTTLSeconds says omission preserves, 0 selects the 15-minute default, positive overrides, and WebSocket frames received or sent count; CRD source comment + regenerated YAML and the dashboard comment say both directions; behavior unchanged; needs the API deployed plus the live tools/list read and owned-fixture omitted-60/explicit-0 check, runnable with the QA CLI login)**
 
-- [ ] **114** — [Native Ruby starts Rails in development on loopback](blocked/114.md) (55m, major) — **BLOCKED (2026-10-16: implemented — primary Ruby images default RAILS_ENV=production before the build RUN for build and runtime, the service's own value (incl. empty) winning; real Rails 8 BuildKit gate on the container address + fail-before verified, every Ruby line placement-checked; needs the operator deployed plus the hosted both-client Rails replay, runnable with the QA CLI login)**
+- [x] **114** — [Native Ruby defaults Rails to production](done/114.md) (55m, major) — **DONE 2026-10-17:** both original native first deployments Live, real production build/runtime and six HTTP200 responses without authored override; exact cleanup and shared reads in sweep413.
 
-- [ ] **113** — [Native Python omits Gunicorn application access logging](blocked/113.md) (55m, minor) — **BLOCKED (2026-10-16: implemented — primary Python images default GUNICORN_CMD_ARGS="--preload --access-logfile -" before the build RUN (no Render --bind; Gunicorn binds PORT), the service's own value incl. empty winning; real-Gunicorn BuildKit gate + fail-before verified; needs the operator deployed plus the hosted both-client Flask replay, runnable with the QA login)**
+- [ ] **113** — [Native Python omits Gunicorn application access logging](blocked/113.md) (55m, minor) — **BLOCKED:** implemented; hosted defaults3.10–3.14, group override subset451 and actual generated web/static default/custom/empty subset452 pass. Remaining Python-line/source/type/phase gates stay open.
 
 - [x] **112** — [Native Elixir production build/runtime MIX_ENV](done/112.md) (55m, major) — **DONE 2026-10-16:** sweep385 accepts both original unprefixed first production-dependency/compiler deployments and runtime Mix/prod artifacts, exact source,8 native log reads/6 shared reads and full exact-owned cleanup; source artifact/override/exclusion gates inherited.
 

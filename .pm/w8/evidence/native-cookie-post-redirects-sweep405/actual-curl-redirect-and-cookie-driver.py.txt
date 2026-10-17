@@ -1,0 +1,35 @@
+from pathlib import Path
+import json,subprocess,secrets,hashlib,re,os
+def exercise(P,url,marker,label,protocol):
+ code=int(label);nonce=secrets.token_hex(5)+'-'+protocol+'-'+label;prefix='sweep405-http-'+nonce;payload=P/(prefix+'.body');jar=P/(prefix+'.jar');headers=P/(prefix+'.headers');assert not any(f.exists() for f in [payload,jar,headers]);body=json.dumps({'marker':marker,'case':nonce,'text':'café 雪🙂'*43,'numbers':list(range(256))},ensure_ascii=False,separators=(',',':')).encode();payload.write_bytes(body);jar.touch(mode=0o600);expected={'qa_flow':marker+'_'+label+'_'+nonce,'qa_color':'caf%C3%A9_'+label,'qa_expiry':'keep_'+nonce};path='/redirect?status='+label+'&nonce='+nonce;command=['curl','--disable','-sS','--max-time','25','--max-redirs','3','--http1.1' if protocol=='h1' else '--http2','--location','-H','Accept-Encoding: identity','-H','Content-Type: application/json','--data-binary','@'+str(payload),'--cookie',str(jar),'--cookie-jar',str(jar),'--dump-header',str(headers),'-w','\n%{http_code} %{http_version} %{num_redirects}',url+path];record={'protocol_requested':protocol,'status_requested':code,'nonce':nonce,'command':command,'request':{'path':path,'method':'POST','bytes':len(body),'sha256':hashlib.sha256(body).hexdigest()},'expected_qa_cookies':expected}
+ try:
+  r=subprocess.run(command,capture_output=True,timeout=32);raw,_,summary=r.stdout.rpartition(b'\n');status,version,redirects=summary.decode().split();blocks=[]
+  for block in re.split(rb'\r?\n\r?\n',headers.read_bytes() if headers.exists() else b''):
+   lines=block.decode(errors='replace').splitlines()
+   if not lines:continue
+   match=re.match(r'HTTP/[0-9.]+\s+(\d+)',lines[0])
+   if not match:continue
+   fields=[]
+   for line in lines[1:]:
+    name,colon,value=line.partition(':')
+    if not colon:continue
+    value=value.strip()
+    if name.lower()=='set-cookie' and value.split('=',1)[0] not in expected:value=value.split('=',1)[0]+'=[NON_QA_COOKIE_VALUE_REDACTED]'
+    fields.append([name,value])
+   blocks.append({'status':int(match.group(1)),'status_line':lines[0],'headers':fields})
+  record.update(curl_exit=r.returncode,HTTP=status,http_version=version,redirects=int(redirects),headers=blocks,stderr=r.stderr.decode(errors='replace'),response_bytes=len(raw),response_sha256=hashlib.sha256(raw).hexdigest())
+  try:v=json.loads(raw)
+  except ValueError:
+   private=P/(prefix+'.response-private');private.write_bytes(raw);private.chmod(0o600);record['non_JSON_full_response_private_path']=str(private);raise
+  cookies={}
+  for line in jar.read_text().splitlines():
+   fields=line.split('\t')
+   if not line.startswith('#') and len(fields)==7 and fields[5] in expected:cookies[fields[5]]=fields[6]
+  redirect=next((b for b in blocks if b['status']==code),None);values=[value for name,value in redirect['headers'] if name.lower()=='set-cookie' and value.split('=',1)[0] in expected] if redirect else [];location=next((value for name,value in redirect['headers'] if name.lower()=='location'),None) if redirect else None;target='/target?status='+label+'&nonce='+nonce
+  passed=r.returncode==0 and status=='200' and redirects=='1' and redirect is not None and len(values)==3 and {s.split('=',1)[0] for s in values}==set(expected) and location==target and cookies==expected and v.get('marker')==marker and v.get('request_path')==target and v.get('method')=='POST' and v.get('body')=={'bytes':len(body),'sha256':hashlib.sha256(body).hexdigest()} and v.get('qa_cookies')==expected and v.get('response_status')==200 and (protocol!='h2' or version=='2')
+  record.update(curl_exit=r.returncode,HTTP=status,http_version=version,redirects=int(redirects),headers=blocks,qa_cookie_jar=cookies,response=v,stderr=r.stderr.decode(errors='replace'),pass_=bool(passed))
+ except Exception as exc:record.update(pass_=False,harness_exception_type=type(exc).__name__);raise
+ finally:
+  for f in [payload,jar,headers]:f.unlink(missing_ok=True)
+  record['own_body_jar_header_files_removed']=not any(f.exists() for f in [payload,jar,headers]);(P/(prefix+'.json')).write_text(json.dumps(record,indent=2,ensure_ascii=False))
+ return record

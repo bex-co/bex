@@ -1,0 +1,50 @@
+{
+  "qualification": "independent committed Git objects for selected examples/hello-node root; not a new read inside hosted workloads",
+  "commits": {
+    "01798d4959c933508d4b6eee061295adaa9ebf6d": {
+      "tree_exit": 0,
+      "tree_id": "0fa36c50458b85ac3c0e89cb364bac293a54e7a9",
+      "files": {
+        "examples/hello-node/Dockerfile": {
+          "bytes": 141,
+          "sha256": "d28284a7e1bada126dbcae48a355c722232e4e9faf3c345945d89b02e166fdef"
+        },
+        "examples/hello-node/main.js": {
+          "bytes": 540,
+          "sha256": "a2aa7e86aee19f31c813fef79eca723bedda1206d99c6c268d5ab828e8f10850"
+        },
+        "examples/hello-node/package.json": {
+          "bytes": 157,
+          "sha256": "98fbea22585dbdd74f4f00c9c891640d1043133114e2b57712c737d2199eabec"
+        },
+        "examples/hello-node/render.yaml": {
+          "bytes": 518,
+          "sha256": "3912910d6eb7f628dbf9d03e5370285f05bb698a4ff89bbeab2d4303995d5bdd"
+        }
+      }
+    },
+    "e5ff3a6f013e6060c09b9ce7291515f1b14bd1e4": {
+      "tree_exit": 0,
+      "tree_id": "0fa36c50458b85ac3c0e89cb364bac293a54e7a9",
+      "files": {
+        "examples/hello-node/Dockerfile": {
+          "bytes": 141,
+          "sha256": "d28284a7e1bada126dbcae48a355c722232e4e9faf3c345945d89b02e166fdef"
+        },
+        "examples/hello-node/main.js": {
+          "bytes": 540,
+          "sha256": "a2aa7e86aee19f31c813fef79eca723bedda1206d99c6c268d5ab828e8f10850"
+        },
+        "examples/hello-node/package.json": {
+          "bytes": 157,
+          "sha256": "98fbea22585dbdd74f4f00c9c891640d1043133114e2b57712c737d2199eabec"
+        },
+        "examples/hello-node/render.yaml": {
+          "bytes": 518,
+          "sha256": "3912910d6eb7f628dbf9d03e5370285f05bb698a4ff89bbeab2d4303995d5bdd"
+        }
+      }
+    }
+  },
+  "same_selected_root_tree": true
+}

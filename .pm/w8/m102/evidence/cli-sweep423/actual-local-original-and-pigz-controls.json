@@ -1,0 +1,59 @@
+{
+  "nonce": "82672b",
+  "image": "python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4",
+  "context": "<owned-temp>/candidate-pigz-app-8kucjqea",
+  "cases": [
+    {
+      "case": "original",
+      "container": "qa-pigz-app-82672b-original",
+      "command": "set -e\npython qa-pigz-app.py before\npigz -n -p 2 -c qa-pigz-input.txt > qa-pigz-output.gz\npython qa-pigz-app.py build",
+      "absent_before": true,
+      "exit": 127,
+      "stdout": "QA_PIGZ_BEFORE {\"marker\": \"QA_PIGZ_LOCAL\", \"python\": \"3.13.16\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"25bf894b6c81f4f702ab9f72dd9abf36f32beb11675b0bdbfcf7c4c7ca1be74b\", \"input\": {\"bytes\": 12544, \"sha256\": \"15cd0238de80b995ca27c45a8b222cfe3b79942d3c161d2b4338753da88d75b8\"}, \"pigz_path\": null}\n",
+      "stderr": "bash: line 3: pigz: command not found\n",
+      "pass": true
+    },
+    {
+      "case": "control",
+      "container": "qa-pigz-app-82672b-control",
+      "command": "set -e\npython qa-pigz-app.py before\napt-get update -qq && apt-get install -y --no-install-recommends pigz\npigz -n -p 2 -c qa-pigz-input.txt > qa-pigz-output.gz\npython qa-pigz-app.py build\npython qa-pigz-app.py serve > own-server.log 2>&1 &\nqa_pigz_pid=$!\ntrap 'kill \"$qa_pigz_pid\" 2>/dev/null || true' EXIT\npython check.py\ncat own-server.log",
+      "absent_before": true,
+      "exit": 0,
+      "stdout": "QA_PIGZ_BEFORE {\"marker\": \"QA_PIGZ_LOCAL\", \"python\": \"3.13.16\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"25bf894b6c81f4f702ab9f72dd9abf36f32beb11675b0bdbfcf7c4c7ca1be74b\", \"input\": {\"bytes\": 12544, \"sha256\": \"15cd0238de80b995ca27c45a8b222cfe3b79942d3c161d2b4338753da88d75b8\"}, \"pigz_path\": null}\nReading package lists...\nBuilding dependency tree...\nReading state information...\nThe following NEW packages will be installed:\n  pigz\n0 upgraded, 1 newly installed, 0 to remove and 8 not upgraded.\nNeed to get 56.2 kB of archives.\nAfter this operation, 145 kB of additional disk space will be used.\nGet:1 http://deb.debian.org/debian bookworm/main arm64 pigz arm64 2.6-1 [56.2 kB]\nFetched 56.2 kB in 0s (296 kB/s)\nSelecting previously unselected package pigz.\n(Reading database ... \n(Reading database ... 5%\n(Reading database ... 10%\n(Reading database ... 15%\n(Reading database ... 20%\n(Reading database ... 25%\n(Reading database ... 30%\n(Reading database ... 35%\n(Reading database ... 40%\n(Reading database ... 45%\n(Reading database ... 50%\n(Reading database ... 55%\n(Reading database ... 60%\n(Reading database ... 65%\n(Reading database ... 70%\n(Reading database ... 75%\n(Reading database ... 80%\n(Reading database ... 85%\n(Reading database ... 90%\n(Reading database ... 95%\n(Reading database ... 100%\n(Reading database ... 24001 files and directories currently installed.)\nPreparing to unpack .../archives/pigz_2.6-1_arm64.deb ...\nUnpacking pigz (2.6-1) ...\nSetting up pigz (2.6-1) ...\nQA_PIGZ_AFTER {\"marker\": \"QA_PIGZ_LOCAL\", \"python\": \"3.13.16\", \"files\": {\"LICENSE\": {\"bytes\": 1072, \"sha256\": \"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"}, \"CHANGELOG\": {\"bytes\": 18, \"sha256\": \"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}}, \"program_sha256\": \"25bf894b6c81f4f702ab9f72dd9abf36f32beb11675b0bdbfcf7c4c7ca1be74b\", \"input\": {\"bytes\": 12544, \"sha256\": \"15cd0238de80b995ca27c45a8b222cfe3b79942d3c161d2b4338753da88d75b8\"}, \"gzip\": {\"bytes\": 130, \"sha256\": \"8aecad5d82730581c6039f179160de01f9f1a3c9f03745548e701394d3d540ee\", \"header_hex\": \"1f8b0800000000000003\", \"CRC32\": 2259013187, \"ISIZE\": 12544, \"inflated_bytes\": 12544, \"inflated_sha256\": \"15cd0238de80b995ca27c45a8b222cfe3b79942d3c161d2b4338753da88d75b8\"}, \"build_compressor_version\": \"pigz 2.6\"}\nQA_PIGZ_LOCAL_HTTP [{\"path\": \"/inspect?qa=1\", \"HTTP\": 200, \"gzip\": {\"bytes\": 130, \"sha256\": \"8aecad5d82730581c6039f179160de01f9f1a3c9f03745548e701394d3d540ee\", \"header_hex\": \"1f8b0800000000000003\", \"CRC32\": 2259013187, \"ISIZE\": 12544, \"inflated_bytes\": 12544, \"inflated_sha256\": \"15cd0238de80b995ca27c45a8b222cfe3b79942d3c161d2b4338753da88d75b8\"}}, {\"path\": \"/?qa=2\", \"HTTP\": 200, \"gzip\": {\"bytes\": 130, \"sha256\": \"8aecad5d82730581c6039f179160de01f9f1a3c9f03745548e701394d3d540ee\", \"header_hex\": \"1f8b0800000000000003\", \"CRC32\": 2259013187, \"ISIZE\": 12544, \"inflated_bytes\": 12544, \"inflated_sha256\": \"15cd0238de80b995ca27c45a8b222cfe3b79942d3c161d2b4338753da88d75b8\"}}, {\"path\": \"/asset.gz?qa=3\", \"HTTP\": 200, \"gzip_base64\": \"H4sIAAAAAAAAA+3LsRGCQBBA0dwqthcrOWSzQxzOGRNrsANyqMHwerEOqYLoJT/4M29+3aO0ls94x3Xp25QxLP1b+57H+a2fo+1RbjlGLUPWywwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAu+ANDzqWGADEAAA==\", \"gzip\": {\"bytes\": 130, \"sha256\": \"8aecad5d82730581c6039f179160de01f9f1a3c9f03745548e701394d3d540ee\", \"header_hex\": \"1f8b0800000000000003\", \"CRC32\": 2259013187, \"ISIZE\": 12544, \"inflated_bytes\": 12544, \"inflated_sha256\": \"15cd0238de80b995ca27c45a8b222cfe3b79942d3c161d2b4338753da88d75b8\"}}]\nQA_PIGZ_HTTP {\"marker\": \"QA_PIGZ_LOCAL\", \"path\": \"/\", \"gzip_sha256\": \"8aecad5d82730581c6039f179160de01f9f1a3c9f03745548e701394d3d540ee\", \"inflated_sha256\": \"15cd0238de80b995ca27c45a8b222cfe3b79942d3c161d2b4338753da88d75b8\"}\nQA_PIGZ_HTTP {\"marker\": \"QA_PIGZ_LOCAL\", \"path\": \"/inspect?qa=1\", \"gzip_sha256\": \"8aecad5d82730581c6039f179160de01f9f1a3c9f03745548e701394d3d540ee\", \"inflated_sha256\": \"15cd0238de80b995ca27c45a8b222cfe3b79942d3c161d2b4338753da88d75b8\"}\nQA_PIGZ_HTTP {\"marker\": \"QA_PIGZ_LOCAL\", \"path\": \"/?qa=2\", \"gzip_sha256\": \"8aecad5d82730581c6039f179160de01f9f1a3c9f03745548e701394d3d540ee\", \"inflated_sha256\": \"15cd0238de80b995ca27c45a8b222cfe3b79942d3c161d2b4338753da88d75b8\"}\nQA_PIGZ_HTTP {\"marker\": \"QA_PIGZ_LOCAL\", \"path\": \"/asset.gz?qa=3\", \"gzip_sha256\": \"8aecad5d82730581c6039f179160de01f9f1a3c9f03745548e701394d3d540ee\", \"inflated_sha256\": \"15cd0238de80b995ca27c45a8b222cfe3b79942d3c161d2b4338753da88d75b8\"}\n",
+      "stderr": "debconf: delaying package configuration, since apt-utils is not installed\n",
+      "pass": true,
+      "build": {
+        "marker": "QA_PIGZ_LOCAL",
+        "python": "3.13.16",
+        "files": {
+          "LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        },
+        "program_sha256": "25bf894b6c81f4f702ab9f72dd9abf36f32beb11675b0bdbfcf7c4c7ca1be74b",
+        "input": {
+          "bytes": 12544,
+          "sha256": "15cd0238de80b995ca27c45a8b222cfe3b79942d3c161d2b4338753da88d75b8"
+        },
+        "gzip": {
+          "bytes": 130,
+          "sha256": "8aecad5d82730581c6039f179160de01f9f1a3c9f03745548e701394d3d540ee",
+          "header_hex": "1f8b0800000000000003",
+          "CRC32": 2259013187,
+          "ISIZE": 12544,
+          "inflated_bytes": 12544,
+          "inflated_sha256": "15cd0238de80b995ca27c45a8b222cfe3b79942d3c161d2b4338753da88d75b8"
+        },
+        "build_compressor_version": "pigz 2.6"
+      }
+    }
+  ],
+  "qualification": "selected cached Python3.13 base plus own real build-time gzip artifact and own-container-loopback HTTP; not full generated native image or hosted finding",
+  "pass": true,
+  "own_containers_context_removed": true
+}

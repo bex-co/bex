@@ -1,0 +1,5 @@
+{
+  "initial_bex_reader": "original first child pending after eight observations; resumed same child without create/update/deploy replay",
+  "early_correlator": "parent attempted log correlation before Bex request round existed; stopped on KeyError before new mutation; initial receipt retained and parent gate corrected",
+  "actual_requests": "Render original six request/log receipts retained; no HTTP replay"
+}

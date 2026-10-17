@@ -1,0 +1,1 @@
+{"exit": 0, "stdout": "{\"client\": \"bex\", \"phase\": \"original-npm\", \"native_restart_exit\": 0, \"new_first_restart_child_live\": true, \"old_inflight_POST_HTTP\": \"200\", \"old_inflight_failed_or_replayed\": false, \"short_HTTP_samples\": 22, \"all_short_reads_200\": true, \"elapsed\": 41.59}\n", "stderr": ""}

@@ -1,0 +1,38 @@
+from pathlib import Path
+import subprocess,json,urllib.request,urllib.parse,secrets,time,shutil,hashlib
+P=Path(__file__).resolve().parent;ctx=P/'sweep437-local-context';assert not ctx.exists();ctx.mkdir();helper=P/'sweep437-local-native-init';assert helper.exists();ns={};f=P/'sweep437-command-factory.py';ns['__file__']=str(f);exec(compile(f.read_text(),str(f),'exec'),ns);ref=json.loads((P/'sweep437-primary-reference.json').read_text());repo=urllib.parse.urlparse(ref['repo']).path.strip('/');image='node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0';out={'image':image,'kind':'Node24/Yarn and checkout-built native-init local prerequisite; not generated image, Node26, or deployed helper identity','helper_sha256':hashlib.sha256(helper.read_bytes()).hexdigest(),'steps':[],'cases':[]};receipt=P/'sweep437-local-prerequisite.json';names=[];proc=None
+
+def save():receipt.write_text(json.dumps(out,indent=2,ensure_ascii=False))
+def run(label,args,check=True,bound=30):
+ r=subprocess.run(args,capture_output=True,text=True,timeout=bound);out['steps'].append({'label':label,'command':args,'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr});save()
+ if check:r.check_returncode()
+ return r
+
+def request(url):
+ with urllib.request.urlopen(url,timeout=3) as r:return json.loads(r.read())
+try:
+ for phase in ['Yarn','direct']:
+  root=ctx/phase;root.mkdir()
+  for n,e in ref['files'].items():
+   if e.get('absent'):continue
+   b=urllib.request.urlopen('https://raw.githubusercontent.com/'+repo+'/'+ref['commit']+'/'+n,timeout=25).read();assert {'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}==e;target=root/n;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(b)
+  cmd=ns['commands']('QA437_LOCAL');start=cmd['start'] if phase=='Yarn' else 'node qa386/server.js';name='qa437-'+phase.lower()+'-'+secrets.token_hex(3);names.append(name);e={'phase':phase,'container':name,'start':start};out['cases'].append(e);save();run('start-'+phase,['docker','run','--pull','never','-d','--network','bridge','-p','127.0.0.1::10000','--name',name,'--mount','type=bind,src='+str(root)+',dst=/app','--mount','type=bind,src='+str(helper)+',dst=/fixture-init,readonly','--workdir','/app','--entrypoint','/bin/bash',image,'-c',cmd['build']+'\nexec /fixture-init /bin/bash -c '+__import__('shlex').quote(start)])
+  port=run('own-port-'+phase,['docker','port',name,'10000/tcp']).stdout.strip();assert port.startswith('127.0.0.1:');url='http://'+port
+  for i in range(25):
+   try:initial=request(url);break
+   except Exception:time.sleep(.3)
+  else:raise RuntimeError('Own local Yarn server not ready')
+  assert initial['marker']=='QA437_LOCAL' and initial['npm_lifecycle_event']==('start' if phase=='Yarn' else None);token=secrets.token_hex(8);t=time.monotonic();proc=subprocess.Popen(['curl','--disable','-sS','--max-time','70','-X','POST','--data-binary','','-w','\n%{http_code}',url+'/hold/'+token],stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+  for i in range(15):
+   active=request(url)
+   if token in active['active']:break
+   time.sleep(.2)
+  else:raise RuntimeError('Own local hold was not active')
+  run('SIGTERM-own-'+phase,['docker','kill','--signal','TERM',name]);stdout,stderr=proc.communicate(timeout=72);raw,_,status=stdout.rpartition('\n');value=json.loads(raw);e.update(client_exit=proc.returncode,HTTP=status,decoded=value,stderr=stderr,elapsed=round(time.monotonic()-t,3));assert proc.returncode==0 and status=='200' and value['boot']==initial['boot'] and value['token']==token and value['holdMs']==40000;proc=None
+  r=run('own-exit-'+phase,['docker','wait',name],bound=15);assert r.stdout.strip()=='0';logs=run('own-events-'+phase,['docker','logs',name]);events=[json.loads(v.split('QA386_EVENT ',1)[1]) for v in logs.stdout.splitlines() if 'QA386_EVENT ' in v];kinds=[v['kind'] for v in events];assert kinds==['ready','hold_begin','sigterm','hold_end','closed'] and token in next(v['active'] for v in events if v['kind']=='sigterm');e.update(events=events,pass_=True);e['pass']=True;save();run('remove-own-'+phase,['docker','rm','-f','-v',name]);names.remove(name);print(json.dumps({'phase':phase,'HTTP':status,'pass':True,'elapsed':e['elapsed']}),flush=True)
+ out['pass']=True
+finally:
+ if proc and proc.poll() is None:proc.terminate();proc.communicate(timeout=5)
+ for name in names:run('cleanup-exact-own',['docker','rm','-f','-v',name],False)
+ out['own_containers_absent']=all(run('own-container-absence',['docker','container','inspect',e['container']],False).returncode!=0 for e in out['cases']);shutil.rmtree(ctx);helper.unlink(missing_ok=True);out['own_context_and_helper_removed']=not ctx.exists() and not helper.exists();save()
+print(json.dumps({'pass':out.get('pass',False),'own_containers_absent':out['own_containers_absent'],'own_context_and_helper_removed':out['own_context_and_helper_removed']}))

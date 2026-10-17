@@ -1,0 +1,8 @@
+import json
+def commands(P,reference,marker,control=False):
+ program=(P/'sweep401-probe.cjs').read_text();build='set -e\n'
+ for name,value in [('qa401-probe.cjs',program),('qa401-reference.json',json.dumps(reference)),('qa401-marker.json',json.dumps(marker))]:
+  tag='QA401_'+name.replace('.','_').replace('-','_').upper();build+="cat > "+name+" <<'"+tag+"'\n"+value+('' if value.endswith('\n') else '\n')+tag+'\n'
+ build+='node qa401-probe.cjs before\n'
+ if control:build+='yarn install --frozen-lockfile --non-interactive\n'
+ build+='node qa401-probe.cjs build';assert len(build.encode())<=4096;return {'build':build,'program':program}

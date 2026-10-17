@@ -1,0 +1,100 @@
+{
+  "scope": "loopback fake-key protocol/capture prerequisite using both real binaries; not production behavior",
+  "cases": [
+    {
+      "actor": "bex",
+      "capture": "<owned-temp>/sweep449-local-incremental-bex-live-tail.json",
+      "pass": true,
+      "parsed": [
+        {
+          "id": "qa449-local-log-0",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-db9pgqks300s73dskh40"
+            }
+          ],
+          "message": "QA449_EVENT {\"marker\": \"QA449_LOCAL\", \"boot\": \"local\", \"nonce\": \"local\", \"sequence\": 0, \"text\": \"Render CLI preserves café:李\\nsecond line\"}",
+          "timestamp": "2026-10-17T16:25:00.123456789Z"
+        },
+        {
+          "id": "qa449-local-log-1",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-db9pgqks300s73dskh40"
+            }
+          ],
+          "message": "QA449_EVENT {\"marker\": \"QA449_LOCAL\", \"boot\": \"local\", \"nonce\": \"local\", \"sequence\": 1, \"text\": \"Render CLI preserves café:李\\nsecond line\"}",
+          "timestamp": "2026-10-17T16:25:00.123456789Z"
+        },
+        {
+          "id": "qa449-local-log-2",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-db9pgqks300s73dskh40"
+            }
+          ],
+          "message": "QA449_EVENT {\"marker\": \"QA449_LOCAL\", \"boot\": \"local\", \"nonce\": \"local\", \"sequence\": 2, \"text\": \"Render CLI preserves café:李\\nsecond line\"}",
+          "timestamp": "2026-10-17T16:25:00.123456789Z"
+        }
+      ]
+    },
+    {
+      "actor": "render",
+      "capture": "<owned-temp>/sweep449-local-incremental-render-live-tail.json",
+      "pass": true,
+      "parsed": [
+        {
+          "id": "qa449-local-log-0",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-db9pgqks300s73dskh40"
+            }
+          ],
+          "message": "QA449_EVENT {\"marker\": \"QA449_LOCAL\", \"boot\": \"local\", \"nonce\": \"local\", \"sequence\": 0, \"text\": \"Render CLI preserves café:李\\nsecond line\"}",
+          "timestamp": "2026-10-17T16:25:00.123456789Z"
+        },
+        {
+          "id": "qa449-local-log-1",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-db9pgqks300s73dskh40"
+            }
+          ],
+          "message": "QA449_EVENT {\"marker\": \"QA449_LOCAL\", \"boot\": \"local\", \"nonce\": \"local\", \"sequence\": 1, \"text\": \"Render CLI preserves café:李\\nsecond line\"}",
+          "timestamp": "2026-10-17T16:25:00.123456789Z"
+        },
+        {
+          "id": "qa449-local-log-2",
+          "labels": [
+            {
+              "name": "resource",
+              "value": "srv-db9pgqks300s73dskh40"
+            }
+          ],
+          "message": "QA449_EVENT {\"marker\": \"QA449_LOCAL\", \"boot\": \"local\", \"nonce\": \"local\", \"sequence\": 2, \"text\": \"Render CLI preserves café:李\\nsecond line\"}",
+          "timestamp": "2026-10-17T16:25:00.123456789Z"
+        }
+      ]
+    }
+  ],
+  "requests": [
+    {
+      "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db9pgqks300s73dskh40&type=app&text=QA449_EVENT&limit=100",
+      "fake_authorization_matches": true,
+      "authorization": "local fake value omitted"
+    },
+    {
+      "path": "/v1/logs/subscribe?ownerId=tea-daif693dqjvc73e7as3g&direction=backward&resource=srv-db9pgqks300s73dskh40&type=app&text=QA449_EVENT&limit=100",
+      "fake_authorization_matches": true,
+      "authorization": "local fake value omitted"
+    }
+  ],
+  "pass": true,
+  "own_server_stopped": true,
+  "own_context_removed": true
+}

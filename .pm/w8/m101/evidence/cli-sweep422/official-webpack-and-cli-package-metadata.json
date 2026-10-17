@@ -1,0 +1,110 @@
+{
+  "at": "2026-10-17T10:03:33.665279+00:00",
+  "packages": [
+    {
+      "source": "https://registry.npmjs.org/webpack/5.112.0",
+      "name": "webpack",
+      "version": "5.112.0",
+      "engines": {
+        "node": ">=10.13.0"
+      },
+      "bin": {
+        "webpack": "bin/webpack.js"
+      },
+      "dependencies": {
+        "events": "^3.2.0",
+        "mime-db": "^1.54.0",
+        "tapable": "^2.3.0",
+        "watchpack": "^2.6.1",
+        "graceful-fs": "^4.2.11",
+        "browserslist": "^4.28.1",
+        "schema-utils": "^4.5.0",
+        "@types/estree": "^1.0.8",
+        "es-module-lexer": "^2.1.0",
+        "webpack-sources": "^3.6.0",
+        "enhanced-resolve": "^5.26.0",
+        "@types/json-schema": "^7.0.15",
+        "@webassemblyjs/ast": "^1.14.1",
+        "chrome-trace-event": "^1.0.2",
+        "@webassemblyjs/wasm-edit": "^1.14.1",
+        "minimizer-webpack-plugin": "^5.13.0",
+        "@webassemblyjs/wasm-parser": "^1.14.1"
+      },
+      "dist": {
+        "shasum": "e8710dcc0329ef076bd3b5c3bd6cf78e971c009a",
+        "tarball": "https://registry.npmjs.org/webpack/-/webpack-5.112.0.tgz",
+        "fileCount": 891,
+        "integrity": "sha512-NIBpsRuCll036haDDt/CfcTDfsWNR9Z782nMRMI9D377BsGcYzZDTNU5TyzhCJzPIcihAxMBaMAhq2WSaDrH8Q==",
+        "signatures": [
+          {
+            "sig": "MEUCIQDnG3WA5mZbvz1HoEOYssuQdkLzrO1w6yyliEvrDHfa/gIgMGF7lpxRnD7o5rHFAsb/Peb4luybdauqyy68NiLVTrU=",
+            "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+          },
+          {
+            "sig": "MEYCIQDYdtVTBwghJJQSeLiWaXzV5GoF15h7MKhQKCGlQSFykwIhAP77lLdK61oQDlGycH1vpRqrBgkiG7JFJ+Ny1ppq8uS1",
+            "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/webpack@5.112.0",
+          "provenance": {
+            "predicateType": "https://slsa.dev/provenance/v1"
+          }
+        },
+        "unpackedSize": 13651450
+      }
+    },
+    {
+      "source": "https://registry.npmjs.org/webpack-cli/7.2.3",
+      "name": "webpack-cli",
+      "version": "7.2.3",
+      "engines": {
+        "node": ">=20.9.0"
+      },
+      "bin": {
+        "webpack-cli": "bin/cli.js"
+      },
+      "dependencies": {
+        "envinfo": "^7.21.0",
+        "rechoir": "^0.8.0",
+        "commander": "^14.0.3",
+        "interpret": "^3.1.1",
+        "cross-spawn": "^7.0.6",
+        "import-local": "^3.2.0",
+        "webpack-merge": "^6.0.1",
+        "@discoveryjs/json-ext": "^1.1.0"
+      },
+      "peerDependencies": {
+        "toml": "^3.0.0 || ^4.0.0 || ^5.0.0",
+        "json5": "^2.2.3",
+        "js-yaml": "^4.0.0 || ^5.0.0",
+        "webpack": "^5.101.0",
+        "webpack-dev-server": "^5.0.0 || ^6.0.0",
+        "webpack-bundle-analyzer": "^4.0.0 || ^5.0.0"
+      },
+      "dist": {
+        "shasum": "becafbd777df5ff3e1a35ec398ad2ad54ec4d456",
+        "tarball": "https://registry.npmjs.org/webpack-cli/-/webpack-cli-7.2.3.tgz",
+        "fileCount": 9,
+        "integrity": "sha512-vDFU7jrfCctnN7jJQWPl+V26B51GLp11prVZXg50oeonsgeBzSTJEWmXkjHsOjTgMjlPOQM8GWLh33X9RN/0ow==",
+        "signatures": [
+          {
+            "sig": "MEUCIQD4j+q6DifemVx8GiS4TxI06tsTglUOd6IGlfyH06p2QwIgAvb8mV9XMX2I7OkKsHFADJ2+LHRNc8TaMO4Gq6HOEvY=",
+            "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+          },
+          {
+            "sig": "MEQCICB2+eLncIEgHLLjgcRjVGkrvf0QAIDe/onWt0iEBUGwAiBV0ZdNtuO7S9YqN2bTllfMr+clBC2BTuBmo542L+zNmg==",
+            "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/webpack-cli@7.2.3",
+          "provenance": {
+            "predicateType": "https://slsa.dev/provenance/v1"
+          }
+        },
+        "unpackedSize": 139307
+      }
+    }
+  ]
+}

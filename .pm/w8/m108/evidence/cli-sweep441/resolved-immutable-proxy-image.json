@@ -1,0 +1,10 @@
+{
+  "tag": "traefik:v3.7.5",
+  "exit": 0,
+  "stdout": "docker.io/library/traefik:v3.7.5\n",
+  "stderr": "",
+  "elapsed": 8.8,
+  "immutable_resolved_digests": [
+    "traefik@sha256:e4d98158c01ad752fc1071d4e9573788747230d902cdde00a772516e692d07c9"
+  ]
+}

@@ -1,0 +1,24 @@
+from pathlib import Path
+import json,subprocess,tempfile,shutil,secrets,gettext,io,hashlib
+P=Path(__file__).resolve().parent;ref=json.loads((P/'candidate-gettext-reference.json').read_text());nonce=secrets.token_hex(3);root=Path(tempfile.mkdtemp(prefix='candidate-gettext-',dir=P));out={'nonce':nonce,'context':str(root),'image':'python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4','cases':[],'qualification':'selected cached pinned Python base plus actual authored Django compilemessages/translation program, not full generated image or hosted evidence'}
+def save():(P/'candidate-gettext-local-control.json').write_text(json.dumps(out,indent=2))
+save()
+try:
+ for label,manual in [('original',False),('tool-control',True)]:
+  D=root/label;D.mkdir();name='qa-gettext-'+nonce+'-'+label;assert subprocess.run(['docker','inspect',name],capture_output=True).returncode!=0
+  for f in ref['files']:shutil.copyfile(P/('sweep414-source-'+f),D/f)
+  (D/'locale/fr/LC_MESSAGES').mkdir(parents=True);shutil.copyfile(P/'candidate-gettext.po',D/'locale/fr/LC_MESSAGES/django.po');shutil.copyfile(P/'candidate-gettext-settings.py',D/'qa_gettext_settings.py');shutil.copyfile(P/'candidate-gettext-app.py',D/'qa-gettext-app.py');(D/'qa-gettext-reference.json').write_text(json.dumps(ref));(D/'qa-gettext-marker.json').write_text(json.dumps('QA_GETTEXT_LOCAL'))
+  command='set -e\npip install --disable-pip-version-check Django=='+ref['django']+'\npython qa-gettext-app.py before\n'+('apt-get update -qq && apt-get install -y --no-install-recommends gettext\n' if manual else '')+'DJANGO_SETTINGS_MODULE=qa_gettext_settings python -m django compilemessages -l fr --verbosity 1\npython qa-gettext-app.py build';e={'label':label,'container':name,'absent_before':True,'manual_control':manual,'command':command};out['cases'].append(e);save()
+  try:r=subprocess.run(['docker','run','--pull=never','--rm','--name',name,'--label','bex.qa.run='+nonce,'-v',str(D)+':/work','-w','/work',out['image'],'bash','-c',command],capture_output=True,text=True,timeout=210);e.update(exit=r.returncode,stdout=r.stdout,stderr=r.stderr);save()
+  finally:
+   z=subprocess.run(['docker','inspect',name],capture_output=True,text=True)
+   if z.returncode==0:
+    v=json.loads(z.stdout)[0];assert v['Config']['Labels']['bex.qa.run']==nonce and any(m['Source']==str(D) for m in v['Mounts']);subprocess.run(['docker','rm','-f',name],capture_output=True,check=True)
+  if manual:
+   e['result']=json.loads((D/'qa-gettext-build.json').read_text());b=(D/'locale/fr/LC_MESSAGES/django.mo').read_bytes();g=gettext.GNUTranslations(io.BytesIO(b));e['independent_host_translations']={'hello':g.gettext('Hello, %(name)s!')%{'name':'Zoë & 李'},'dessert':g.gettext('Dessert'),'plurals':{str(i):g.ngettext('There is %(count)d apple.','There are %(count)d apples.',i)%{'count':i} for i in [0,1,2,5]}};e['pass']=r.returncode==0 and e['independent_host_translations']==ref['expected'] and e['result']['catalog']['sha256']==hashlib.sha256(b).hexdigest()
+  else:e['pass']=r.returncode==1 and "Can't find msgfmt" in r.stderr and not (D/'qa-gettext-build.json').exists()
+  save();print(json.dumps({'case':label,'exit':r.returncode,'expected_result':e['pass']}),flush=True);assert e['pass']
+ out['pass']=True;save()
+finally:
+ assert root.parent==P and root.name.startswith('candidate-gettext-');shutil.rmtree(root);out['own_containers_context_removed']=not root.exists() and all(subprocess.run(['docker','inspect',e['container']],capture_output=True).returncode!=0 for e in out['cases']);save()
+print(json.dumps({'pass':out.get('pass'),'cleanup':out['own_containers_context_removed']}))

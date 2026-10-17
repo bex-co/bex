@@ -1,0 +1,13 @@
+{
+  "image": "pgvector/pgvector:0.8.6-pg17-bookworm",
+  "scope": "local SQL prerequisite only; no production allocation",
+  "at": "2026-10-17T15:10:41.385212+00:00",
+  "phase": "finished",
+  "exit": 0,
+  "stdout": "0.8.6-pg17-bookworm: Pulling from pgvector/pgvector\nae29a5867340: Pulling fs layer\n4dc0aa23bca1: Pulling fs layer\n4bf34144b1fa: Pulling fs layer\n73304bcbeb88: Pulling fs layer\n30e6179bb7b0: Pulling fs layer\nfa52f252213a: Pulling fs layer\nd15747052c79: Pulling fs layer\n7987e1efd416: Pulling fs layer\n9ef6b0a1be9e: Pulling fs layer\ne6c76de02782: Pulling fs layer\n037c66138bca: Pulling fs layer\n27e745f2bc46: Pulling fs layer\nebaf900c48a9: Pulling fs layer\n2ccb5f80426c: Pulling fs layer\n2e059a492b81: Pulling fs layer\n73304bcbeb88: Download complete\nae29a5867340: Download complete\nd15747052c79: Download complete\n4bf34144b1fa: Download complete\n4dc0aa23bca1: Download complete\n30e6179bb7b0: Download complete\n7987e1efd416: Download complete\nfa52f252213a: Download complete\n9ef6b0a1be9e: Download complete\n037c66138bca: Download complete\ne6c76de02782: Download complete\n2ccb5f80426c: Download complete\n2e059a492b81: Download complete\nae29a5867340: Pull complete\n4bf34144b1fa: Pull complete\n037c66138bca: Pull complete\n0d01e404e150: Download complete\nebaf900c48a9: Download complete\n27e745f2bc46: Download complete\ne6c76de02782: Pull complete\n2ccb5f80426c: Pull complete\n2e059a492b81: Pull complete\n27e745f2bc46: Pull complete\n73304bcbeb88: Pull complete\n30e6179bb7b0: Pull complete\nfa52f252213a: Pull complete\nebaf900c48a9: Pull complete\nd15747052c79: Pull complete\n4dc0aa23bca1: Pull complete\n7987e1efd416: Pull complete\n9ef6b0a1be9e: Pull complete\nDigest: sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f\nStatus: Downloaded newer image for pgvector/pgvector:0.8.6-pg17-bookworm\ndocker.io/pgvector/pgvector:0.8.6-pg17-bookworm\n",
+  "stderr": "",
+  "immutable_resolved_digests": [
+    "pgvector/pgvector@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f"
+  ],
+  "architecture": "arm64"
+}

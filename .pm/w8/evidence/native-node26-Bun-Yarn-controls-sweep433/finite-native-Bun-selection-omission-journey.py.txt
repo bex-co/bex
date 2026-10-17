@@ -1,0 +1,69 @@
+from pathlib import Path
+import sys,json,re,hashlib,urllib.request,urllib.error
+P=Path(__file__).resolve().parent;f=P/'sweep433-common.py';exec(compile(f.read_text(),str(f),'exec'));ns={};f=P/'sweep433-command-factory.py';exec(compile(f.read_text(),str(f),'exec'),ns);reference={'repo':'https://github.com/bex-co/bex','branch':'main','rootDir':'examples/hello-node'};programs=json.loads((P/'sweep433-authored-source-reference.json').read_text())
+def commands(marker):return ns['commands'](P,marker)
+def objects(raw):
+ out=[];d=json.JSONDecoder()
+ while raw.strip():
+  raw=raw.lstrip();v,n=d.raw_decode(raw);out.extend(v if isinstance(v,list) else [v]);raw=raw[n:]
+ return out
+def valid_snapshot(v,x,phase,present,label):
+ if not isinstance(v,dict):return False
+ if v.get('marker')!=x['marker'] or v.get('phase')!=phase or v.get('files')!={n:z['sha256'] for n,z in programs.items()} or not v.get('tools',{}).get('node','').startswith('v26.') or v['tools'].get('yarn')!='1.22.22' or v['tools'].get('yarnpkg')!='1.22.22' or not re.fullmatch(r'\d+\.\d+\.\d+',v['tools'].get('npm','')) or v.get('bun_env_present')!=present or v.get('bun_env')!=('1.3' if present else None):return False
+ b=v.get('bun',{})
+ if not present:return b=={'present':False,'error':'ENOENT'}
+ return b.get('present') is True and b.get('result')=={'label':label,'sum':10,'weighted':23,'sorted':[2,3,5],'factor':2,'bun':'1.3.14','sha256':hashlib.sha256(label.encode()).hexdigest()}
+if mode=='create':
+ local=json.loads((P/'sweep433-local-prerequisite.json').read_text());assert local['pass'] and local['own_containers_absent'] and local['own_context_removed'];assert not any(x.get('sweep')==433 and x.get('client')==client for x in c['resources']);q=api('GET','/v1/owners/'+ws+'/limits');assert q['status']=='200';lim=decode(q)['services'];assert lim['terminating']==0 and lim['used']<lim['limit'];inv,ss=inventory();nonce=secrets.token_hex(3);name='qa-'+datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d')+'-'+nonce+'-bun';assert len(name)<=30 and not any(x['name']==name for x in ss);marker='QA433_'+nonce+'_'+client;cmd=commands(marker);args=['services','create','--name',name,'--type','web_service','--runtime','node','--repo',reference['repo'],'--branch','main','--root-directory',reference['rootDir'],'--build-command',cmd['build'],'--start-command',cmd['start'],'--env-var','NODE_VERSION=26','--env-var','BUN_VERSION=1.3','--plan','free','--region','frankfurt','--health-check-path','/','--auto-deploy=false','--confirm','-o','json'];x={'sweep':433,'client':client,'workspace':ws,'type':'web_service','name':name,'nonce':nonce,'marker':marker,'stage':'initial','time':now(),'source_head':c['head'],'primary_reference':reference,'commands':{'initial':cmd,'omitted':dict(cmd)},'pre_ids':[v['id'] for v in ss],'pre_inventory':inv,'capacity':q,'dependency_ids':[],'recorded_child_ids':[],'create_command':[client,*args],'state':'native explicit Free Node26 Bun1.3 selected create intent persisted'};c['resources'].append(x);save();r=captured_create(args);r['native_exit']=None if r['exit']==124 else r['exit'];x.update(create_result=r,state='native create returned; reconcile before retry');save();assert r['native_exit']==0 and len(r['captures'])==1 and r['captures'][0]['status']==201;v=json.loads(r['stdout']);v=v.get('data',v);v=v.get('service',v);assert v['id'] not in x['pre_ids'] and v['name']==name and v['ownerId']==ws and v['serviceDetails']['plan']=='free' and v['serviceDetails']['runtime']=='node' and v['rootDir']==reference['rootDir'];x.update(id=v['id'],create_view=v,state='created: native0/POST201/exact owned Free Node26/Bun source proved');save();h=history(x);assert len(h)==1;x.update(first_deploy_id=h[0]['id'],actual_source_commit=h[0]['commit']['id']);save();print(json.dumps({'client':client,'id':v['id'],'native_exit':0,'POST':201,'first_child':h[0]['id'],'source_commit':x['actual_source_commit']}));raise SystemExit(0)
+x=next(x for x in c['resources'] if x.get('sweep')==433 and x['client']==client);own(x);sid=x['id'];phase=x['stage'];present=phase=='initial'
+if mode=='source-proof':
+ assert not x.get('Bun_source_signal_absence');out={'at':now(),'source_commit':x['actual_source_commit'],'API_only_public_source':True,'reads':[]};x['Bun_source_signal_absence']=out;save()
+ for name in ['.bun-version','bun.lock','bun.lockb']:
+  url='https://raw.githubusercontent.com/bex-co/bex/'+x['actual_source_commit']+'/examples/hello-node/'+name
+  try:
+   r=urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'bex-functional-cli-qa'}),timeout=25);status=r.status;raw=r.read().decode()
+  except urllib.error.HTTPError as e:status=e.code;raw=e.read().decode()
+  out['reads'].append({'url':url,'status':status,'body':raw});save();assert status==404
+ out['pass']=True;save();print(json.dumps({'client':client,'exact_commit_Bun_version_file_and_locks_absent':True}))
+elif mode=='observe':
+ h=history(x);d=api('GET','/v1/services/'+sid);x.setdefault('observations',[]).append({'at':now(),'phase':phase,'history':h,'detail':d});save();print(json.dumps({'client':client,'phase':phase,'status':h[0]['status'],'children':len(h),'child':h[0]['id']}))
+elif mode=='request':
+ assert x['Bun_source_signal_absence']['pass'] and not any(z['phase']==phase for z in x.get('runtime_receipts',[]));h=history(x);assert len(h)==(1 if present else 2+len(x.get('excluded_noop_deploy_ids',[]))) and h[0]['id']==x['first_deploy_id' if present else 'omitted_deploy_id'] and h[0]['status']=='live' and h[0]['commit']['id']==x['actual_source_commit'];e={'at':now(),'phase':phase,'history':h,'requests':[]};x.setdefault('runtime_receipts',[]).append(e);save();url=x['create_view']['serviceDetails']['url']
+ for i in range(3):
+  nonce=phase+'-'+x['nonce']+'-'+str(i+1);path='/?qa='+nonce;r=subprocess.run(['curl','--disable','-sS','--max-time','15','-w','\n%{http_code}',url+path],capture_output=True,text=True,timeout=20);raw,_,status=r.stdout.rpartition('\n');v=None
+  try:v=json.loads(raw)
+  except ValueError:pass
+  z={'at':now(),'nonce':nonce,'path':path,'HTTP':status,'curl_exit':r.returncode,'raw':raw,'decoded':v,'stderr':r.stderr};e['requests'].append(z);save();z['pass']=r.returncode==0 and status=='200' and isinstance(v,dict) and v.get('marker')==x['marker'] and v.get('nonce')==nonce and valid_snapshot(v.get('built'),x,'build',present,x['marker']+'|Crème brûlée & 李|build') and valid_snapshot(v.get('runtime'),x,'runtime',present,x['marker']+'|Crème brûlée & 李|'+nonce);save();assert z['pass']
+ boots={z['decoded']['boot'] for z in e['requests']};e['pass']=all(z['pass'] for z in e['requests']) and len(boots)==1
+ if not present:e['pass']=e['pass'] and next(v for v in x['runtime_receipts'] if v['phase']=='initial')['requests'][0]['decoded']['boot']!=e['requests'][0]['decoded']['boot']
+ save();print(json.dumps({'client':client,'phase':phase,'real_Bun_TS_or_ENOENT_HTTP200':3,'pass':e['pass']}));assert e['pass']
+elif mode=='logs':
+ h=history(x);e={'at':now(),'phase':phase,'history':h,'queries':[],'build':[],'runtime':[],'requests':[]};x.setdefault('native_log_receipts',[]).append(e);save();round=next(v for v in x['runtime_receipts'] if v['phase']==phase);nonces={v['nonce'] for v in round['requests']};boot=round['requests'][0]['decoded']['boot']
+ for kind,label in [('build','BUILD'),('app','RUNTIME'),('app','HTTP')]:
+  r=cli(['logs','--resources',sid,'--type',kind,'--text','QA433_'+label,'--start',h[0]['createdAt'][:19]+'Z','--limit','100','--confirm','-o','json']);e['queries'].append(r);save();assert r['native_exit']==0
+  for row in objects(r['stdout']):
+   for m in re.finditer('QA433_'+label+r' (\{[^\n]+\})',row.get('message','')):
+    try:v=json.loads(m.group(1))
+    except ValueError:continue
+    if v.get('marker')!=x['marker']:continue
+    if label=='BUILD' and valid_snapshot(v,x,'build',present,x['marker']+'|Crème brûlée & 李|build'):e['build'].append(v)
+    elif label=='RUNTIME' and v.get('boot')==boot and valid_snapshot(v,x,'runtime',present,x['marker']+'|Crème brûlée & 李|startup'):e['runtime'].append(v)
+    elif label=='HTTP' and v.get('boot')==boot and v.get('nonce') in nonces and v.get('bun_present')==present:e['requests'].append(v)
+  save()
+ e['pass']=bool(e['build']) and bool(e['runtime']) and {v['nonce'] for v in e['requests']}==nonces;save();print(json.dumps({'client':client,'phase':phase,'build_runtime_actual_TS_or_absence_proofs':bool(e['build']) and bool(e['runtime']),'native_HTTP_events':len(e['requests']),'pass':e['pass']}));assert e['pass']
+elif mode=='omit-save':
+ assert 'omit_save_intent' not in x and present and x['runtime_receipts'][-1]['pass'] and x['native_log_receipts'][-1]['pass'];h=history(x);assert len(h)==1+len(x.get('excluded_noop_deploy_ids',[]));before_id=h[0]['id'];body={'envVars':[{'key':'BUN_VERSION','delete':True}],'saveMode':'save_only'};x['omit_save_intent']={'at':now(),'API_only':True,'body':body,'before_children':h};save();r=api('PATCH','/v1/services/'+sid+'/environment',body);x['omit_save_result']=r;save();assert r['status']=='200' and decode(r)['rolledOut'] is False and decode(r)['envVarKeys']==['NODE_VERSION'];env=api('GET','/v1/services/'+sid+'/env-vars');x['omit_explicit_env_before_deploy']=env;save();assert env['status']=='200' and {z.get('envVar',z)['key']:z.get('envVar',z)['value'] for z in decode(env)}=={'NODE_VERSION':'26'};h=history(x);assert len(h)==1+len(x.get('excluded_noop_deploy_ids',[])) and h[0]['id']==before_id and h[0]['status']=='live';print(json.dumps({'client':client,'API_only_remove_BUN_VERSION_save_only':200,'rolledOut':False}))
+elif mode=='omit-deploy':
+ assert 'omit_deploy_intent' not in x and x['omit_save_result']['status']=='200';args=['deploys','create',sid,'--commit',x['actual_source_commit'],'--confirm','-o','json'];x['omit_deploy_intent']={'at':now(),'command':[client,*args],'only_change':'BUN_VERSION omitted; source/build/start/Node26 unchanged'};save();r=cli(args);x['omit_deploy_result']=r;save();assert r['native_exit']==0
+ for attempt in range(5):
+  h=history(x)
+  if len(h)==2+len(x.get('excluded_noop_deploy_ids',[])):break
+  time.sleep(1)
+ assert len(h)==2+len(x.get('excluded_noop_deploy_ids',[])) and h[0]['id'] not in {x['first_deploy_id'],*x.get('excluded_noop_deploy_ids',[])};x.update(stage='omitted',omitted_deploy_id=h[0]['id']);save();print(json.dumps({'client':client,'native_same_commit_omission_deploy_exit':0,'child':h[0]['id']}))
+elif mode=='failed-inspection':
+ h=history(x);x.setdefault('unexpected_deployments',[]).append({'at':now(),'history':h,'build':cli(['logs','--resources',sid,'--type','build','--limit','100','--confirm','-o','json'])});save();print(json.dumps({'client':client,'phase':phase,'status':h[0]['status'],'diagnostic_saved':True}))
+elif mode=='delete':
+ assert 'delete_intent' not in x;h=history(x);assert all(z['id'] in x['recorded_child_ids'] and z['status'] in ('live','deactivated','canceled','build_failed','update_failed','pre_deploy_failed') for z in h) and not any(sid in z.get('dependency_ids',[]) and not z['state'].startswith('deleted:') for z in c['resources']);x['delete_intent']={'at':now(),'children':h};save();x['delete_result']=cli(['services','delete',sid,'--confirm','-o','json']);save();assert x['delete_result']['native_exit']==0;print(json.dumps({'client':client,'native_delete_exit':0,'children':len(h)}))
+elif mode=='reconcile':
+ assert 'delete_result' in x;d=api('GET','/v1/services/'+sid);inv,ss=inventory();r=subprocess.run(['curl','--disable','-sS','--max-time','10','-o','/dev/null','-w','%{http_code}',x['create_view']['serviceDetails']['url']],text=True,capture_output=True,timeout=15);q=api('GET','/v1/owners/'+ws+'/limits');assert q['status']=='200';limits=decode(q);children=[api('GET','/v1/services/'+sid+'/deploys/'+did) for did in x['recorded_child_ids']];passed=d['status']=='404' and sid not in {z['id'] for z in ss} and baseline<={z['id'] for z in ss} and r.returncode==0 and r.stdout=='404' and limits['services']['terminating']==0 and all(z['status']=='404' for z in children);e={'at':now(),'detail':d,'inventory':inv,'runtime_HTTP':r.stdout,'runtime_exit':r.returncode,'quota':q,'children':children,'pass':passed};x.setdefault('cleanup_receipts',[]).append(e);x['state']='deleted: native0/detail404/listabsent/runtime404/children404/baseline6/quota terminating0' if passed else 'delete acknowledged: convergence pending';save();print(json.dumps({'client':client,'cleanup_pass':passed,'terminating':limits['services']['terminating']}))
+else:raise ValueError(mode)

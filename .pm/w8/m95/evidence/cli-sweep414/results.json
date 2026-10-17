@@ -1,0 +1,62 @@
+{
+  "sweep": 414,
+  "source_head": "8f80d74efaffc23342cccad2f275051a1501396f",
+  "severity": "major",
+  "attribution": "operator shared native-image assembly",
+  "native_clients": [
+    "published Bex0.3.2/a6350da0",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "unchanged_native_creates_POST201_exit0": 2,
+  "original_first_builds_failed_missing_libvips_so42": 2,
+  "installed_binding_before_failure": "pyvips3.2.0",
+  "original_failed_runtime_URLs404": 2,
+  "only_control_change": "one explicit apt-get update/install libvips42 build line",
+  "native_control_updates0_replacement_Live": 2,
+  "actual_image_conversion_HTTP200": 6,
+  "JSON_runtime_conversion_responses": 4,
+  "real_PNG_responses_independently_decoded": 2,
+  "own_input_PPM_bytes": 107,
+  "exact_output_dimensions": "2x1 RGB8",
+  "expected_pixels_hex": "ff00000000ff",
+  "native_app_events_correlated": 6,
+  "shared_REST_GraphQL_MCP_reads": 12,
+  "API_only_env_reads": 4,
+  "local_selected_base_original1_control0": true,
+  "actual_local_libvips": "8.14.1",
+  "actual_local_package": "libvips42 8.14.1-3+deb12u3 arm64",
+  "full_generated_image_executed_locally": false,
+  "source_exported_recipes": 2,
+  "primary_runtime_lines_requiring_audit": 16,
+  "actual_serving_revision": "unknown",
+  "both_owned_parents_four_deploy_children_URLs_absent": true,
+  "baseline_and_current_inventories_quota_accounted_termination0": true,
+  "unrelated_service_IDs_preserved": [
+    "srv-db9ijnhu2fhc73e10clg"
+  ],
+  "unrelated_datastore_IDs_preserved": {
+    "postgres": [
+      "dpg-db9ipkm22tos73dl1sug"
+    ],
+    "keyValues": [
+      "red-db9ipku22tos73dl1svg"
+    ]
+  },
+  "local_containers_contexts_relays_configs_removed": true,
+  "product_implementation": false,
+  "uncommitted": true,
+  "actual_hosted_versions": {
+    "bex": {
+      "python": "3.13.16",
+      "installed_pyvips": "3.2.0",
+      "libvips": "8.14.1"
+    },
+    "render": {
+      "python": "3.13.16",
+      "installed_pyvips": "3.2.0",
+      "libvips": "8.14.1"
+    }
+  },
+  "milestone": "w8/m95",
+  "evidence": ".pm/w8/m95/evidence/cli-sweep414"
+}

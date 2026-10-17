@@ -1,0 +1,32 @@
+from pathlib import Path
+import os,pty,subprocess,select,signal,time,re
+class Session:
+ def __init__(self,command,env):
+  self.master,slave=pty.openpty();self.started=time.monotonic();self.data=bytearray();self.proc=subprocess.Popen(command,stdin=slave,stdout=slave,stderr=slave,env=env,start_new_session=True);os.close(slave);os.set_blocking(self.master,False);self.closed=False
+ def step(self):
+  if self.closed:return
+  r,_,_=select.select([self.master],[],[],.1)
+  if r:
+   try:b=os.read(self.master,65536)
+   except OSError:return
+   self.data.extend(b);assert len(self.data)<4*1024*1024
+ def wait(self,predicate,bound):
+  end=time.monotonic()+bound
+  while time.monotonic()<end:
+   self.step()
+   if predicate():
+    for _ in range(4):self.step()
+    return True
+  return False
+ def close(self):
+  if self.proc.poll() is None:
+   os.killpg(self.proc.pid,signal.SIGTERM)
+   try:self.proc.wait(timeout=3)
+   except subprocess.TimeoutExpired:os.killpg(self.proc.pid,signal.SIGKILL);self.proc.wait(timeout=3)
+  try:os.killpg(self.proc.pid,signal.SIGTERM)
+  except ProcessLookupError:pass
+  self.step();os.close(self.master);self.closed=True
+ def record(self,command):
+  from evidence_sanitizer import safe
+  s=safe(self.data.decode(errors='replace'));s=re.sub(r'(?:postgres(?:ql)?|rediss?)://[^\s"<>]+','[CONNECTION URI REDACTED]',s);s=re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]','',s);s=re.sub(r'\x1b\][^\x07]*(?:\x07|\x1b\\)','',s)
+  return {'command':command,'native_exit':self.proc.returncode,'elapsed':round(time.monotonic()-self.started,3),'output':s,'streams_merged_PTY':True,'exact_owned_group_closed':self.closed}

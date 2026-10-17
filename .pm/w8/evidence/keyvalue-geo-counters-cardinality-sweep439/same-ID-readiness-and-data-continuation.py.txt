@@ -1,0 +1,23 @@
+from pathlib import Path
+import subprocess,json
+P=Path(__file__).resolve().parent;CP=P.parent/'cli-qa-w8-checkpoint.json'
+def owned():
+ x=next(v for v in json.loads(CP.read_text())['resources'] if v.get('sweep')==439);assert x['create_result']['native_exit']==0 and x['create_response']['id']==x['id'];return x
+
+def run(label,args,bound=150):
+ r=subprocess.run(['python3',str(P/args[0]),*args[1:]],capture_output=True,text=True,timeout=bound);(P/('sweep439-resumed-'+label+'-receipt.json')).write_text(json.dumps({'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr}));print(r.stdout,flush=True);r.check_returncode()
+run('same-ID-readiness',['sweep439-kv.py','wait-ready','bex'],300)
+x=owned();assert json.loads(x['details'][-1]['response'])['status']=='available','Same exact instance pending; no create or setup replay'
+if not x.get('publish_result'):
+ assert not x.get('publish_intent');run('publish',['sweep439-kv.py','publish','bex'])
+for actor in ['bex','render']:
+ if not any(v['client']==actor and v.get('pass') for v in owned().get('native_ping',[])):run('ping-'+actor,['sweep439-kv.py','ping',actor])
+if not owned().get('cached_endpoint_acquisition'):run('cached-acquire',['sweep439-cached-tls.py','acquire'])
+if not any(not v['after_delete'] and v['PONG'] for v in owned().get('cached_endpoint_probes',[])):run('cached-before',['sweep439-cached-tls.py','probe'])
+for actor in ['bex','render']:
+ for case in ['geo','bits','hll']:
+  prior=[v for v in owned().get('data_cases',[]) if v['client']==actor and v['case']==case]
+  if prior:assert len(prior)==1 and prior[0]['pass'],'Reconcile existing own data-case intent; do not replay'
+  else:run(actor+'-'+case,['sweep439-kv.py','exercise',actor,case])
+if not owned().get('erase_pass'):
+ assert not owned().get('erase_result');run('erase',['sweep439-kv.py','erase','bex'])

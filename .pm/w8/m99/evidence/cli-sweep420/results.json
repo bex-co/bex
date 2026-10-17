@@ -1,0 +1,45 @@
+{
+  "sweep": 420,
+  "source_head": "7fa064b894d6f75e7f44f5bc65d10c5d0dd4d8c5",
+  "severity": "major",
+  "bug": "native TypeScript compiler absent: literal tsc build cannot compile an ordinary typed app",
+  "attribution": "operator shared native-image tool assembly",
+  "native_clients": [
+    "published Bex0.3.2/a6350da0",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "original_native_POST201_exit0": 2,
+  "original_first_builds_failed_missing_tsc": 2,
+  "one_pinned_compiler_install_native_updates0_replacements_Live": 2,
+  "actual_emitted_JS_HTTP200": 6,
+  "independent_expected_typed_summaries_at_build_and_runtime": true,
+  "original_source_ts_sha256": "1c86c902d725dd09ba9b776ee3a5e238f3f623588df6852afae0317ac065b00f",
+  "compiled_JS_build_runtime_hashes_correlated_per_service": true,
+  "native_request_events": 6,
+  "shared_REST_GraphQL_MCP_reads": 12,
+  "explicit_env_API_only_reads": 4,
+  "actual_Node": "v24.22.0",
+  "observed_control_compiler": "TypeScript7.0.2",
+  "local_selected_Node_base_original_control_exit": [
+    127,
+    0
+  ],
+  "local_three_asserted_emitted_JS_HTTP_controls": 3,
+  "full_generated_image_executed_locally": false,
+  "actual_original_and_control_source_recipe_exports": 2,
+  "exact_owned_two_parents_four_children_URLs_absent": true,
+  "baseline_current_inventory_quota_accounted_termination0": true,
+  "unrelated_service_IDs_preserved": [],
+  "unrelated_datastore_IDs_preserved": {
+    "postgres": [
+      "dpg-db9jlfddkths73a1si80"
+    ],
+    "keyValues": []
+  },
+  "local_containers_contexts_relays_copied_configs_removed": true,
+  "actual_serving_SHA_OCI": "unknown",
+  "product_implementation": false,
+  "uncommitted": true,
+  "milestone": "w8/m99",
+  "evidence": ".pm/w8/m99/evidence/cli-sweep420"
+}

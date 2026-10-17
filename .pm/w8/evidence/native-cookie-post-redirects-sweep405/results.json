@@ -1,0 +1,27 @@
+{
+  "sweep": 405,
+  "source_head": "b3dbca6013a318be3e050ba080ec3fcaf1648aaf",
+  "native_clients": [
+    "published Bex0.3.2",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "new_confirmed_findings": 0,
+  "unresolved_original_native_create500": 1,
+  "failed_create_exact_name_absence_and_capacity_checks": 2,
+  "fresh_successful_native_creates201_exit0": 2,
+  "original_first_deployments_live": 2,
+  "hosted_redirect_cases_pass": 8,
+  "actual_HTTP1_cases": 4,
+  "actual_HTTP2_cases": 4,
+  "exact_redirect_and_target_native_app_log_events": 16,
+  "shared_REST_GraphQL_MCP_readbacks": 6,
+  "explicit_env_API_only_readbacks": 2,
+  "local_HTTP1_cases_pass": 2,
+  "native_init_present": false,
+  "serving_revision": "unknown",
+  "exact_owned_parents_children_URLs_absent": true,
+  "baseline6_Blueprint1_other_managed_data0_quota_and_termination_restored": true,
+  "own_local_server_and_per_request_cookie_files_removed": true,
+  "product_implementation": false,
+  "uncommitted": true
+}

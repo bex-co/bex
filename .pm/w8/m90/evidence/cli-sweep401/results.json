@@ -1,0 +1,33 @@
+{
+  "sweep": 401,
+  "finding": "w8/m90",
+  "severity": "major",
+  "source_head": "2c95fd35b8b1ac980dfddec9cb7de77fcb01a584",
+  "serving_revision": "unknown",
+  "native_intrinsic_Free_static_POST201_create_exit0": 2,
+  "original_first_children_build_failed_missing_express": 2,
+  "exact_source_and_Yarn_available_before_failure": 2,
+  "actual_Node": "v24.22.0",
+  "actual_Yarn": "1.22.22",
+  "locked_Express": "4.18.2",
+  "native_build_only_one_line_updates_exit0": 2,
+  "replacement_children_Live_exact_same_source": 2,
+  "control_HTTPS200_exact_dependency_and_index_checks": 6,
+  "shared_REST_GraphQL_MCP_source_command_readbacks": 12,
+  "API_only_explicit_env_readbacks": 4,
+  "actual_generated_recipe_observations": 2,
+  "real_local_controls": 3,
+  "excluded_clean_400_limit150_read": 1,
+  "native_deletes0": 2,
+  "owned_parents_children_URLs_absent": [
+    2,
+    4,
+    2
+  ],
+  "original_six_services_one_Blueprint_managed_data_quota_termination_intact": true,
+  "own_local_containers_contexts_Go_export_packages_relays_copied_configs_removed": true,
+  "estimate_minutes": 140,
+  "tasks": 6,
+  "product_implementation": false,
+  "uncommitted": true
+}

@@ -1,0 +1,10 @@
+from pathlib import Path
+import sys,json,re
+P=Path(__file__).resolve().parent;f=P/'sweep415-common.py';sys.argv=[str(f),'correlate','bex'];exec(compile(f.read_text(),str(f),'exec'));xs=[v for v in c['resources'] if v.get('sweep')==415];assert len(xs)==2
+for x in xs:
+ own(x);e=x['request_rounds'][0];assert e['correct_HTTPS_behavior'] and len(e['requests'])==6;queries=x['log_receipts'][0]['queries'];r=queries[-1]['native'];assert r['native_exit']==0;raw=r['stdout'];decoder=json.JSONDecoder();observed=[]
+ while raw.strip():
+  raw=raw.lstrip();v,n=decoder.raw_decode(raw);raw=raw[n:]
+  for z in v if isinstance(v,list) else [v]:
+   observed.extend(re.findall(r'GET ([^ ]+) HTTP/',z.get('message','')))
+ expected={v['path'] for v in e['requests']};matched=[v for v in observed if v in expected];proof={'at':now(),'expected_unique_paths':sorted(expected),'matched_paths':matched,'pass':expected<=set(matched) and len(matched)>=6};x['original_request_log_correlation']=proof;save();print(json.dumps({'client':x['client'],'actual_request_paths_correlated':len(matched),'pass':proof['pass']}),flush=True);assert proof['pass']

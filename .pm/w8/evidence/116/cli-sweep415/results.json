@@ -1,0 +1,54 @@
+{
+  "sweep": 415,
+  "source_head": "8f80d74efaffc23342cccad2f275051a1501396f",
+  "note": "w8/116",
+  "native_clients": [
+    "published Bex0.3.2/a6350da0",
+    "unchanged Render2.27.0/a764810a7682"
+  ],
+  "original_build_identity_except_external_nonce_and_exact_start": true,
+  "native_original_creates_POST201_exit0": 2,
+  "original_first_children_Live": 2,
+  "ordinary_HTTPS_GETs": 12,
+  "real_successful_HTTPS_redirect_route_responses": 4,
+  "correct_HTTPS_absolute_redirect_Locations": 2,
+  "correct_Flask_external_HTTPS_URLs": 2,
+  "build_and_runtime_default_FORWARDED_ALLOW_IPS": "*",
+  "authored_env_or_command_override": false,
+  "forwarding_header_override_or_redirect_following": false,
+  "replacement_or_control_deploy": false,
+  "actual_original_request_events_correlated": 12,
+  "shared_REST_GraphQL_MCP_config_reads": 6,
+  "API_only_explicit_env_reads": 2,
+  "exact_two_parents_two_first_children_URLs_absent": true,
+  "baseline_preserved_current_inventory_quota_accounted_termination0": true,
+  "unrelated_IDs_preserved": [
+    "srv-db9ijnhu2fhc73e10clg"
+  ],
+  "unrelated_datastore_IDs_preserved": {
+    "postgres": [
+      "dpg-db9ipkm22tos73dl1sug"
+    ],
+    "keyValues": [
+      "red-db9ipku22tos73dl1svg"
+    ]
+  },
+  "actual_versions": {
+    "bex": {
+      "python": "3.12.15",
+      "flask": "3.1.3",
+      "gunicorn": "26.2.0"
+    },
+    "render": {
+      "python": "3.12.15",
+      "flask": "3.1.3",
+      "gunicorn": "26.2.0"
+    }
+  },
+  "prior_generated_image_default_override_checks": "completed with 4d0b19325; not rerun by docs-only QA",
+  "actual_serving_SHA_OCI": "unknown",
+  "product_code_changed": false,
+  "uncommitted": true,
+  "note_closed": true,
+  "evidence": ".pm/w8/evidence/116/cli-sweep415"
+}

@@ -1,0 +1,24 @@
+from pathlib import Path
+import subprocess,json,secrets,shutil,tempfile,os
+os.umask(0o077);P=Path(__file__).resolve().parent;nonce=secrets.token_hex(3);image='python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4';ctx=Path(tempfile.mkdtemp(prefix='candidate-pigz-app-',dir=P));out={'nonce':nonce,'image':image,'context':str(ctx),'cases':[],'qualification':'selected cached Python3.13 base plus own real build-time gzip artifact and own-container-loopback HTTP; not full generated native image or hosted finding'}
+check="import json,time,urllib.request,zlib,hashlib,base64,struct\nref=json.load(open('qa-pigz-reference.json'));data=(ref['input']['unit']*ref['input']['repetitions']).encode();rows=[];expected=None\nfor attempt in range(60):\n try:urllib.request.urlopen('http://127.0.0.1:3000/',timeout=2).read();break\n except OSError:time.sleep(0.25)\nelse:raise RuntimeError('own local server not ready')\nfor i,path in enumerate(['/inspect?qa=1','/?qa=2','/asset.gz?qa=3']):\n r=urllib.request.urlopen('http://127.0.0.1:3000'+path,timeout=4);body=r.read();assert r.status==200\n if i<2:\n  v=json.loads(body)\n  for label in ['build','runtime']:\n   p=v[label];assert p['marker']=='QA_PIGZ_LOCAL' and p['files']==ref['files'] and p['program_sha256']==ref['program_sha256'];assert p['input']=={k:ref['input'][k] for k in ['bytes','sha256']};assert p['gzip']['inflated_sha256']==ref['input']['sha256'] and p['gzip']['inflated_bytes']==len(data) and p['gzip']['ISIZE']==len(data) and p['gzip']['CRC32']==zlib.crc32(data)\n  assert v['build']['build_compressor_version'].startswith('pigz ');assert v['build']['gzip']==v['runtime']['gzip'] and v['runtime']['request_path']==path;expected=v['runtime']['gzip'];rows.append({'path':path,'HTTP':r.status,'gzip':expected})\n else:\n  assert r.headers['Content-Type']=='application/gzip' and zlib.decompress(body,wbits=31)==data and hashlib.sha256(body).hexdigest()==expected['sha256'];assert struct.unpack('<II',body[-8:])==(zlib.crc32(data),len(data));rows.append({'path':path,'HTTP':r.status,'gzip_base64':base64.b64encode(body).decode(),'gzip':expected})\nprint('QA_PIGZ_LOCAL_HTTP '+json.dumps(rows))\n"
+def save():(P/'candidate-pigz-full-app-prerequisite.json').write_text(json.dumps(out,indent=2,ensure_ascii=False))
+try:
+ for control in [False,True]:
+  case='control' if control else 'original';name='qa-pigz-app-'+nonce+'-'+case;d=ctx/case;d.mkdir();assert subprocess.run(['docker','container','inspect',name],capture_output=True).returncode!=0
+  for src,dst in [('candidate-pigz-app.py','qa-pigz-app.py'),('candidate-pigz-reference.json','qa-pigz-reference.json'),('sweep422-source-LICENSE','LICENSE'),('sweep422-source-CHANGELOG','CHANGELOG')]:shutil.copyfile(P/src,d/dst)
+  (d/'qa-pigz-marker.json').write_text(json.dumps('QA_PIGZ_LOCAL'));(d/'check.py').write_text(check);command='set -e\npython qa-pigz-app.py before\n'
+  if control:command+='apt-get update -qq && apt-get install -y --no-install-recommends pigz\n'
+  command+='pigz -n -p 2 -c qa-pigz-input.txt > qa-pigz-output.gz\npython qa-pigz-app.py build'
+  if control:command+='\npython qa-pigz-app.py serve > own-server.log 2>&1 &\nqa_pigz_pid=$!\ntrap \'kill "$qa_pigz_pid" 2>/dev/null || true\' EXIT\npython check.py\ncat own-server.log'
+  e={'case':case,'container':name,'command':command,'absent_before':True};out['cases'].append(e);save()
+  try:
+   r=subprocess.run(['docker','run','--name',name,'--label','bex.qa.pigz-app='+nonce,'--mount','type=bind,source='+str(d)+',target=/qa','--workdir','/qa','-e','PORT=3000',image,'bash','-lc',command],capture_output=True,text=True,timeout=180);e.update(exit=r.returncode,stdout=r.stdout,stderr=r.stderr);e['pass']=(r.returncode==0 and 'QA_PIGZ_LOCAL_HTTP' in r.stdout) if control else r.returncode==127 and 'pigz: command not found' in r.stderr
+   if control and e['pass']:e['build']=json.loads(next(v.split('QA_PIGZ_AFTER ',1)[1] for v in r.stdout.splitlines() if v.startswith('QA_PIGZ_AFTER ')))
+   save();print(json.dumps({'case':case,'exit':r.returncode,'pass':e['pass']}),flush=True);assert e['pass']
+  finally:
+   r=subprocess.run(['docker','container','inspect',name],capture_output=True,text=True)
+   if r.returncode==0:
+    v=json.loads(r.stdout)[0];assert v['Config']['Labels'].get('bex.qa.pigz-app')==nonce and any(m.get('Source')==str(d) and m.get('Destination')=='/qa' for m in v['Mounts']);subprocess.run(['docker','rm','-f',name],check=True,capture_output=True)
+ out['pass']=all(v['pass'] for v in out['cases']);save()
+finally:shutil.rmtree(ctx);out['own_containers_context_removed']=not ctx.exists() and all(subprocess.run(['docker','container','inspect',v['container']],capture_output=True).returncode!=0 for v in out['cases']);save()

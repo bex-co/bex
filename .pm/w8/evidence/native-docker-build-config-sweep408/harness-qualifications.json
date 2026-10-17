@@ -1,0 +1,8 @@
+{
+  "bounded_Render_observation": {
+    "result": "same original first child remained in build_in_progress after eight reads; finite parent stopped before shared-state or cleanup",
+    "no_mutation_replay": true,
+    "resume": "continue observing same original child"
+  },
+  "capture_redaction": "entire generated QA file content omitted before durable capture, while native POST forwarded unchanged; pure projection control passed"
+}

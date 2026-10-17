@@ -1,0 +1,24 @@
+from pathlib import Path
+import subprocess,json,secrets,time
+P=Path(__file__).resolve().parent;ns={};f=P/'sweep436-query-factory.py';exec(compile(f.read_text(),str(f),'exec'),ns);name='qa436-search-'+secrets.token_hex(4);image='postgres@sha256:67f41722b7a8cbdb868a44a4995c846eddfdc2973bccb291ce937dce88ad5675';out={'image':image,'container':name,'kind':'isolated cached PG17 ordinary search fixture; not Bex/CNPG/PG18 acceptance','steps':[]};file=P/'sweep436-local-prerequisite.json'
+def save():file.write_text(json.dumps(out,indent=2,ensure_ascii=False))
+def run(label,args,check=True):
+ r=subprocess.run(args,capture_output=True,text=True,timeout=45);out['steps'].append({'label':label,'command':args,'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr});save()
+ if check:r.check_returncode()
+ return r
+save()
+try:
+ run('start-own-isolated-server',['docker','run','--pull','never','-d','--network','none','--name',name,'-e','POSTGRES_HOST_AUTH_METHOD=trust',image])
+ for i in range(25):
+  r=run('ready-'+str(i),['docker','exec',name,'pg_isready','-U','postgres'],False)
+  if r.returncode==0:break
+  time.sleep(1)
+ else:raise RuntimeError('Own local search server readiness exceeded bound')
+ run('local-only-normal-owner',['docker','exec',name,'psql','-X','-q','-v','ON_ERROR_STOP=1','-U','postgres','-c','CREATE ROLE qa436_owner LOGIN;','-c','CREATE DATABASE qa436_owner OWNER qa436_owner;'])
+ out['cases']=[]
+ for case,query in ns['queries']('qa436_local').items():
+  r=run(case,['docker','exec',name,'psql','-X','-q','-t','-A','-v','ON_ERROR_STOP=1','-U','qa436_owner','-d','qa436_owner','-c',query]);decoded,passed=ns['decode'](r.stdout,case);out['cases'].append({'case':case,'decoded':decoded,'pass':passed});save();assert passed
+ r=run('rollback-proof',['docker','exec',name,'psql','-X','-q','-t','-A','-v','ON_ERROR_STOP=1','-U','qa436_owner','-d','qa436_owner','-c',"SELECT count(*) FROM pg_namespace WHERE nspname='qa436_local'; SELECT count(*) FROM pg_extension WHERE extname='pg_trgm';"]);assert r.stdout.strip()=='0\n0';out['pass']=True
+finally:
+ run('remove-exact-own-server',['docker','rm','-f','-v',name],False);out['own_container_absent']=run('own-container-absence',['docker','container','inspect',name],False).returncode!=0;save()
+print(json.dumps({'pass':out.get('pass',False),'own_container_absent':out['own_container_absent'],'cases':[(x['case'],x['pass']) for x in out.get('cases',[])]}))

@@ -1,0 +1,29 @@
+from pathlib import Path
+import sys,json,re
+P=Path(__file__).resolve().parent;f=P/'sweep451-native-gunicorn.py';s=f.read_text();exec(compile(s[:s.index("if mode=='create':")],str(f),'exec'));x=next(v for v in c['resources'] if v.get('sweep')==451 and v.get('client')==client);own(x);assert x['group_rebuild_result']['native_exit']==0 and x['group_id'];h=history(x);assert len(h)==2 and h[0]['id']==x['group_rebuild_id'];sid=x['id'];expected=x['group_expected_args']
+def valid_group(v,phase):
+ return v.get('marker')==x['marker'] and v.get('phase')==phase and v.get('files')==reference['files'] and v.get('python','').startswith('3.12.') and v.get('gunicorn_cmd_args_present') is True and v.get('gunicorn_cmd_args')==expected and v.get('preload_app') is bool(expected) and v.get('accesslog')==('/dev/null' if expected else None) and bool(v.get('bind')) and (phase=='build' or all(s.startswith('0.0.0.0:') and int(s.rsplit(':',1)[1])>0 for s in v['bind']))
+if mode=='observe':
+ print(json.dumps({'client':client,'status':h[0]['status'],'children':len(h),'exact_rebuild_child':True}))
+elif mode=='request':
+ assert h[0]['status']=='live' and h[0]['commit']['id']==reference['commit'] and not x.get('group_request_rounds');e={'at':now(),'history':h,'requests':[]};x.setdefault('group_request_rounds',[]).append(e);save();url=x['create_view']['serviceDetails']['url']
+ for i in range(3):
+  path='/?qa451g='+x['nonce']+'-'+str(i+1);r=subprocess.run(['curl','--disable','-sS','--max-time','15','-H','Accept-Encoding: identity','-w','\n%{http_code} %{http_version}',url+path],capture_output=True,text=True,timeout=20);body,_,meta=r.stdout.rpartition('\n');status,_,protocol=meta.partition(' ');v={'at':now(),'path':path,'HTTP':status,'http_version':protocol,'body':body,'curl_exit':r.returncode,'stderr':r.stderr};e['requests'].append(v);save();v['pass']=r.returncode==0 and status=='200' and body=='Hello, World!';save();assert v['pass']
+ e['pass']=True;save();print(json.dumps({'client':client,'group_rebuild_HTTP200':3,'pass':True}))
+elif mode=='logs':
+ assert h[0]['status']=='live' and x['group_request_rounds'][-1]['pass'];e={'at':now(),'history':h,'queries':[],'build':[],'runtime':[],'access':[]};x.setdefault('group_log_acceptance',[]).append(e);save();paths={v['path'] for v in x['group_request_rounds'][-1]['requests']}
+ for kind,text in [('build','QA362_OBSERVER'),('app','QA362_OBSERVER'),('app','qa451g='+x['nonce'])]:
+  r=cli(['logs','--resources',sid,'--type',kind,'--text',text,'--start',h[0]['createdAt'][:19]+'Z','--limit','100','--confirm','-o','json']);e['queries'].append({'type':kind,'text':text,'native':r});save();assert r['native_exit']==0
+  for row in objects(r['stdout']):
+   message=row.get('message','')
+   if text=='QA362_OBSERVER':
+    for m in re.finditer(r'QA362_OBSERVER (\{[^\n]+\})',message):
+     try:v=json.loads(m[1])
+     except ValueError:continue
+     if v.get('marker')==x['marker'] and v.get('phase') in ['build','runtime']:e[v['phase']].append(v)
+   else:
+    for path in paths:
+     if re.search(re.escape('GET '+path)+r' HTTP/[^\s"]+"\s+200\b',message):e['access'].append({'path':path,'message':message,'row':row})
+  save()
+ e['pass']=any(valid_group(v,'build') for v in e['build']) and any(valid_group(v,'runtime') for v in e['runtime']) and e['access']==[];save();print(json.dumps({'client':client,'group_value_kind':'custom' if expected else 'present empty','actual_build_and_runtime_group_override':e['pass'],'app_access_lines_disabled_as_authored':not e['access']}));assert e['pass']
+else:raise ValueError(mode)

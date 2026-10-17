@@ -1,0 +1,33 @@
+{
+  "sweep": 426,
+  "source_head": "46084c87396de84b1c0ee1b94ce8abbb2691bb41",
+  "disposition": "nested checkout requirement not established by the pinned/upstream contract; no bug filed",
+  "native_clients_exercised": [
+    "published Bex0.3.2/a6350da0"
+  ],
+  "Render_pin_fixture_created": false,
+  "native_create_POST201_exit0": 1,
+  "rootDir_readback_exact": "itself/itself",
+  "first_build_status": "build_failed",
+  "actual_nested_source_files_all_absent": true,
+  "actual_program_hash_matches": true,
+  "producer_top_level_only": true,
+  "existing_m89_scope": "top-level only, remains done",
+  "primary_contract": "Render docs promise root .gitmodules entries; separate official feedback requests nested support",
+  "Render_hosted_nested_behavior": "unverified",
+  "local_real_recursive_clone_commits_verified": {
+    ".": "b685400c1f9316f350965a5993d350bc746b0bf4",
+    "itself": "47770b26e71b0f69c0ecd494b1066f8d1da4fc03",
+    "itself/itself": "c7431b5bc9d45fb64a87d4a895ce3d1073c898d2",
+    "itself/itself/basic": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5"
+  },
+  "local_wrong_parent_rejected_correct_nested_HTTP_controls_pass": true,
+  "local_full_generated_image_executed": false,
+  "native_delete_exit0_parent_child_former_URL_absent": true,
+  "baseline_current_inventory_quota_match_termination0": true,
+  "local_clone_containers_relays_configs_removed": true,
+  "actual_serving_SHA_OCI": "unknown",
+  "new_issue": false,
+  "product_implementation": false,
+  "uncommitted": true
+}

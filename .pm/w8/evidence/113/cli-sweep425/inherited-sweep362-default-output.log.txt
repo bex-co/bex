@@ -1,0 +1,9 @@
+[2026-10-16 02:24:21 -0700] [28476] [INFO] Starting gunicorn 26.2.0
+[2026-10-16 02:24:21 -0700] [28476] [INFO] Listening at: http://0.0.0.0:63689 (28476)
+[2026-10-16 02:24:21 -0700] [28476] [INFO] Using worker: sync
+[2026-10-16 02:24:21 -0700] [28477] [INFO] Booting worker with pid: 28477
+[2026-10-16 02:24:21 -0700] [28476] [INFO] Control socket listening at <local-user>/.gunicorn/gunicorn.ctl
+[2026-10-16 02:24:21 -0700] [28476] [INFO] Handling signal: term
+[2026-10-16 02:24:21 -0700] [28477] [INFO] Worker exiting (pid: 28477)
+[2026-10-16 02:24:21 -0700] [28476] [INFO] Worker (pid:28477) was sent SIGTERM!
+[2026-10-16 02:24:21 -0700] [28476] [INFO] Shutting down: Master

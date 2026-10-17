@@ -1,0 +1,55 @@
+{
+  "repo": "https://github.com/git-fixtures/basic",
+  "branch": "master",
+  "commit": "6ecf0ef2c2dffb796033e5a02219af86ec6584e5",
+  "files": {
+    "LICENSE": {
+      "bytes": 1072,
+      "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+    },
+    "CHANGELOG": {
+      "bytes": 18,
+      "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+    }
+  },
+  "pairs": [
+    [
+      2,
+      3
+    ],
+    [
+      -4,
+      7
+    ],
+    [
+      0,
+      0
+    ]
+  ],
+  "expected": [
+    {
+      "a": 2,
+      "b": 3,
+      "value": 13
+    },
+    {
+      "a": -4,
+      "b": 7,
+      "value": 13
+    },
+    {
+      "a": 0,
+      "b": 0,
+      "value": 0
+    }
+  ],
+  "unicode": "Crème brûlée & 李",
+  "source_names": [
+    "setup.py",
+    "qa_native_ext.c",
+    "qapy.py",
+    "qsrv.cjs",
+    "qa_local_data-1.0-py3-none-any.whl"
+  ],
+  "fixture_sha256": "648688821eb4bf85607c6055ff0d8dc54ab45bd5ea00ebfc5227b16f9071af25"
+}

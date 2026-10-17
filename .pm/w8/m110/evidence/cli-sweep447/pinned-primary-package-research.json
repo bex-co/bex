@@ -1,0 +1,173 @@
+{
+  "at": "2026-10-17T15:58:54.726071+00:00",
+  "repo": "https://github.com/sraoss/pg_ivm.git",
+  "release_tag": "refs/tags/v1.17",
+  "commit": "678c37861080aa221b859cefaca98725646dbf7c",
+  "files": {
+    "pg_ivm.control": {
+      "url": "https://raw.githubusercontent.com/sraoss/pg_ivm/678c37861080aa221b859cefaca98725646dbf7c/pg_ivm.control",
+      "bytes": 197,
+      "sha256": "533600716350762c4871aa8ce6e75f71bf707cea871a22f4f1799b84149b7178",
+      "relevant_lines": [
+        {
+          "line": 1,
+          "text": "# incremental view maintenance extension"
+        },
+        {
+          "line": 2,
+          "text": "comment = 'incremental view maintenance on PostgreSQL'"
+        },
+        {
+          "line": 3,
+          "text": "default_version = '1.17'"
+        },
+        {
+          "line": 4,
+          "text": "module_pathname = '$libdir/pg_ivm'"
+        },
+        {
+          "line": 5,
+          "text": "relocatable = false "
+        },
+        {
+          "line": 6,
+          "text": "schema = pg_catalog"
+        }
+      ]
+    },
+    "README.md": {
+      "url": "https://raw.githubusercontent.com/sraoss/pg_ivm/678c37861080aa221b859cefaca98725646dbf7c/README.md",
+      "bytes": 26871,
+      "sha256": "2d16cf963e1469b143b99cefa0cae3cee12a9cc73ea4b18eedb3f433aa81ba2f",
+      "relevant_lines": [
+        {
+          "line": 5,
+          "text": "The extension supports PostgreSQL 13-19."
+        },
+        {
+          "line": 13,
+          "text": "We call a materialized view supporting IVM an **Incrementally Maintainable Materialized View (IMMV)**. To create IMMV, you have to call `create_immv` function with a relation name and a view definition query. For example:"
+        },
+        {
+          "line": 16,
+          "text": "SELECT pgivm.create_immv('myview', 'SELECT * FROM mytab');"
+        },
+        {
+          "line": 28,
+          "text": "postgres=# SELECT pgivm.create_immv('m', 'SELECT * FROM t0');"
+        },
+        {
+          "line": 32,
+          "text": " create_immv "
+        },
+        {
+          "line": 69,
+          "text": "> **Important:** Don't forget to set the `PG_CONFIG` variable (`make PG_CONFIG=...`) or the `PATH` to the `pg_config` command in case you want to use `pg_ivm` on a non-default or custom build of PostgreSQL. Read more [here](https://wiki.postgresql.org/wiki/Building_and_Installing_PostgreSQL_Extension_Modules)."
+        },
+        {
+          "line": 79,
+          "text": "To ensure `pg_ivm` maintains IMMVs correctly, add it to either shared_preload_libraries or session_preload_libraries in postgresql.conf:"
+        },
+        {
+          "line": 83,
+          "text": "shared_preload_libraries = 'pg_ivm'"
+        },
+        {
+          "line": 85,
+          "text": "session_preload_libraries = 'pg_ivm'"
+        },
+        {
+          "line": 100,
+          "text": "#### `create_immv`"
+        },
+        {
+          "line": 102,
+          "text": "Use `create_immv` function to create IMMV."
+        },
+        {
+          "line": 104,
+          "text": "pgivm.create_immv(immv text, view_definition text) RETURNS bigint"
+        },
+        {
+          "line": 106,
+          "text": "`create_immv` defines a new IMMV of a query. A table of the name `immv_name` is created and a query specified by `view_definition` is executed and used to populate the IMMV. The query is stored in `pg_ivm_immv`, so that it can be refreshed later upon incremental view maintenance. `create_immv` returns the number of rows in the created IMMV."
+        },
+        {
+          "line": 110,
+          "text": "`create_immv` acquires an `AccessExclusiveLock` on the view. However, even if we are able to acquire the lock, a concurrent transaction may have already incrementally updated and committed the view before we can acquire it. In the `REPEATABLE READ` or `SERIALIZABLE` isolation levels, this could lead to an inconsistent state of the view. Unfortunately, this situation cannot be detected during the creation of the view. As a result, `create_immv` raises a warning in these isolation levels, suggesting that the command be used in `READ COMMITTED` or that `refresh_immv` be executed afterward to make the view's contents remain consistent."
+        },
+        {
+          "line": 112,
+          "text": "Note that if you use PostgreSQL 17 or later, while `create_immv` is running, the `search_path` is temporarily changed to `pg_catalog, pg_temp`."
+        },
+        {
+          "line": 121,
+          "text": "Unlike `create_immv()`, this function assumes that the IMMV table already exists. It recreates the metadata, triggers, and indexes required by `pg_ivm` without recreating the IMMV table itself."
+        },
+        {
+          "line": 127,
+          "text": "To execute this function, you must be the owner of the IMMV.  When `replace` is true, superuser privileges are required instead."
+        },
+        {
+          "line": 154,
+          "text": "#### `get_create_immv_commands`"
+        },
+        {
+          "line": 157,
+          "text": "pgivm.get_create_immv_commands() RETURNS SETOF text"
+        },
+        {
+          "line": 160,
+          "text": "Returns SQL commands that invoke `pgivm.create_immv()` to recreate all IMMVs."
+        }
+      ]
+    },
+    "Makefile": {
+      "url": "https://raw.githubusercontent.com/sraoss/pg_ivm/678c37861080aa221b859cefaca98725646dbf7c/Makefile",
+      "bytes": 1316,
+      "sha256": "6c7d0c546930b8357622f1f85eae701fbcb1dcbf387dd7c0eb1c52bdb4302158",
+      "relevant_lines": [
+        {
+          "line": 3,
+          "text": "PG_CONFIG ?= pg_config"
+        },
+        {
+          "line": 16,
+          "text": "DATA = pg_ivm--1.0.sql \\"
+        },
+        {
+          "line": 25,
+          "text": "SCRIPTS = scripts/pg_ivm_dump_metadata"
+        },
+        {
+          "line": 29,
+          "text": "PGVER = $(shell $(PG_CONFIG) --version | sed \"s/^[^ ]* \\([0-9]*\\).*$$/\\1/\" 2>/dev/null)"
+        },
+        {
+          "line": 41,
+          "text": "PGXS := $(shell $(PG_CONFIG) --pgxs)"
+        }
+      ]
+    },
+    "pg_ivm.c": {
+      "url": "https://raw.githubusercontent.com/sraoss/pg_ivm/678c37861080aa221b859cefaca98725646dbf7c/pg_ivm.c",
+      "bytes": 14287,
+      "sha256": "5bd74bb29f36038334af43b59ccca2600abee59ed0a4c5e52378eac13b7aed7f",
+      "relevant_lines": [
+        {
+          "line": 46,
+          "text": "void\t\t_PG_init(void);"
+        },
+        {
+          "line": 88,
+          "text": "_PG_init(void)"
+        },
+        {
+          "line": 90,
+          "text": "\tRegisterXactCallback(IvmXactCallback, NULL);"
+        }
+      ]
+    }
+  },
+  "scope": "Selected pg_ivm1.17 source supports13\u201319; Bex currently permits13\u201318, so19 is outside this repair. Makefile installs the metadata-dump helper; its restore/upgrade behavior needs explicit consumer audit and is not live-tested here."
+}

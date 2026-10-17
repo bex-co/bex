@@ -1,0 +1,31 @@
+{
+  "nonce": "4b2378",
+  "image": "node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0",
+  "context": "<owned-temp>/candidate-webpack-fmd2b0qr",
+  "control_install": "npm install --global --no-audit --no-fund webpack@5.112.0 webpack-cli@7.2.3",
+  "cases": [
+    {
+      "case": "original",
+      "container": "qa-webpack-4b2378-original",
+      "absent_before": true,
+      "command": "set -e\nnode -e 'const c=require(\"node:child_process\").spawnSync(\"webpack\",[\"--version\"],{encoding:\"utf8\"});console.log(JSON.stringify({node:process.version,status:c.status,error:c.error?.code||null,stdout:c.stdout||null}))'\nwebpack ./entry.mjs --mode production --target node --output-path /qa/dist --output-filename bundle.cjs\nnode dist/bundle.cjs",
+      "exit": 127,
+      "stdout": "{\"node\":\"v24.22.0\",\"status\":null,\"error\":\"ENOENT\",\"stdout\":null}\n",
+      "stderr": "bash: line 3: webpack: command not found\n",
+      "pass": true
+    },
+    {
+      "case": "control",
+      "container": "qa-webpack-4b2378-control",
+      "absent_before": true,
+      "command": "set -e\nnode -e 'const c=require(\"node:child_process\").spawnSync(\"webpack\",[\"--version\"],{encoding:\"utf8\"});console.log(JSON.stringify({node:process.version,status:c.status,error:c.error?.code||null,stdout:c.stdout||null}))'\nnpm install --global --no-audit --no-fund webpack@5.112.0 webpack-cli@7.2.3\nwebpack ./entry.mjs --mode production --target node --output-path /qa/dist --output-filename bundle.cjs\nnode dist/bundle.cjs",
+      "exit": 0,
+      "stdout": "{\"node\":\"v24.22.0\",\"status\":null,\"error\":\"ENOENT\",\"stdout\":null}\n\nadded 100 packages in 3s\nasset bundle.cjs 311 bytes [emitted] [minimized] (name: main)\norphan modules 107 bytes [orphan] 1 module\n./entry.mjs + 1 modules 395 bytes [built] [code generated]\nwebpack 5.112.0 compiled successfully in 112 ms\nQA_WEBPACK_REAL_BUNDLE {\"labels\":[\"Crème brûlée\",\"李\"],\"total\":5}\n",
+      "stderr": "npm notice\nnpm notice New major version of npm available! 11.19.1 -> 12.2.0\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0\nnpm notice To update run: npm install -g npm@12.2.0\nnpm notice\n",
+      "pass": true
+    }
+  ],
+  "qualification": "selected cached Node24 base and genuine two-module production bundle; not full generated native image or hosted finding",
+  "pass": true,
+  "own_containers_context_removed": true
+}

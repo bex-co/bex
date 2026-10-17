@@ -1,0 +1,38 @@
+from pathlib import Path
+import subprocess,json,secrets,time
+P=Path(__file__).resolve().parent;ns={};f=P/'sweep444-query-factory.py';exec(compile(f.read_text(),str(f),'exec'),ns);name='qa444-analytics-'+secrets.token_hex(4);image=json.loads((P/'candidate444-local-image-pull.json').read_text())['immutable_resolved_digests'][0];out={'container':name,'image':image,'kind':'own local official pg_duckdb reference, normal owner aggregation; not Bex/CNPG candidate acceptance','steps':[],'cases':[]};file=P/'sweep444-local-prerequisite.json'
+def save():file.write_text(json.dumps(out,indent=2,ensure_ascii=False))
+def run(label,args,check=True):
+ r=subprocess.run(args,capture_output=True,text=True,timeout=45);out['steps'].append({'label':label,'command':args,'exit':r.returncode,'stdout':r.stdout,'stderr':r.stderr});save()
+ if check:r.check_returncode()
+ return r
+save()
+try:
+ run('start-exact-own-local-server',['docker','run','--pull','never','-d','--network','none','--name',name,'-e','POSTGRES_HOST_AUTH_METHOD=trust',image,'postgres','-c','shared_preload_libraries=pg_duckdb','-c','duckdb.postgres_role=qa444_owner'])
+ for i in range(30):
+  r=run('ready-'+str(i),['docker','exec',name,'pg_isready','-U','postgres'],False)
+  if r.returncode==0:break
+  time.sleep(1)
+ else:raise RuntimeError('Own local analytics readiness exceeded bound')
+ run('local-only-normal-owner-and-database',['docker','exec',name,'psql','-X','-q','-v','ON_ERROR_STOP=1','-U','postgres','-c','ALTER ROLE qa444_owner LOGIN;','-c','CREATE DATABASE qa444_owner OWNER qa444_owner;'])
+ run('local-only-package-initialization',['docker','exec',name,'psql','-X','-q','-v','ON_ERROR_STOP=1','-U','postgres','-d','qa444_owner','-c','CREATE EXTENSION pg_duckdb;'])
+ for case,query in ns['queries']('qa444_local').items():
+  r=run(case,['docker','exec',name,'psql','-X','-q','-t','-A','-v','ON_ERROR_STOP=1','-U','qa444_owner','-d','qa444_owner','-c',query]);e={'case':case}
+  if case=='catalog':e.update(value=json.loads(r.stdout),pass_result=True)
+  elif case=='enable':e.update(pass_result=r.stdout.strip()=='')
+  else:
+   raw,_,plan=r.stdout.partition('\n[') if case=='duckdb' else (r.stdout,'','');rows=ns['decode_rows'](raw);e.update(rows=rows,expected=ns['expected'](),pass_result=rows==ns['expected']())
+   if case=='duckdb':
+    assert plan;v=json.loads('['+plan);e['plan']=v
+    def nodes(v):
+     if isinstance(v,dict):
+      yield v
+      for z in v.values():yield from nodes(z)
+     elif isinstance(v,list):
+      for z in v:yield from nodes(z)
+    matches=[z for z in nodes(v) if z.get('Custom Plan Provider')=='DuckDBScan'];e['pass_result']=e['pass_result'] and len(matches)==1 and matches[0].get('Actual Loops')==1 and any(z.get('operator_name')=='HASH_GROUP_BY' and z.get('operator_cardinality')==3 for z in nodes(v)) and any(z.get('operator_type')=='TABLE_SCAN' and z.get('operator_cardinality')==5 and z.get('operator_name','').strip()=='PGDUCKDB_POSTGRES_SCAN' for z in nodes(v))
+  out['cases'].append(e);save();assert e['pass_result'];print(json.dumps({'local_case':case,'pass':True}),flush=True)
+ r=run('rollback-proof',['docker','exec',name,'psql','-X','-q','-t','-A','-v','ON_ERROR_STOP=1','-U','qa444_owner','-d','qa444_owner','-c',"SELECT count(*) FROM pg_namespace WHERE nspname='qa444_local';"]);assert r.stdout.strip()=='0';out['pass']=True
+finally:
+ run('remove-exact-own-server',['docker','rm','-f','-v',name],False);out['own_container_absent']=run('own-container-absence',['docker','container','inspect',name],False).returncode!=0;save()
+print(json.dumps({'pass':out.get('pass',False),'own_container_absent':out['own_container_absent']}))

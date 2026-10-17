@@ -1,0 +1,17 @@
+from pathlib import Path
+import sys,json
+P=Path(__file__).resolve().parent;f=P/'sweep448-common.py';sys.argv=[str(f),'shared-state','bex'];exec(compile(f.read_text(),str(f),'exec'));xs=[v for v in c['resources'] if v.get('sweep')==448 and not v.get('excluded_setup')];assert len(xs)==2
+for x in xs:
+ own(x);sid=x['id'];phase=x.get('stage','initial');cmd=x['commands'][phase];query='query QA448 {service(id:'+json.dumps(sid)+'){id name repo branch runtime plan buildCommand startCommand preDeployCommand autoDeploy}}'
+ for surface,method,path,body in [('REST','GET','/v1/services/'+sid,None),('GraphQL','POST','/graphql',{'query':query}),('MCP','POST','/mcp',{'jsonrpc':'2.0','id':448,'method':'tools/call','params':{'name':'get_service','arguments':{'serviceId':sid,'workspaceId':ws}}})]:
+  if any(z['surface']==surface and z['phase']==phase and z.get('pass') for z in x.get('shared_state',[])):continue
+  assert not any(z['surface']==surface and z['phase']==phase for z in x.get('shared_state',[]));e={'at':now(),'surface':surface,'phase':phase};x.setdefault('shared_state',[]).append(e);save();r=api(method,path,body);e['receipt']=r;save();assert r['status']=='200';v=decode(r)
+  if surface=='GraphQL':assert not v.get('errors');v=v['data']['service']
+  elif surface=='MCP':
+   assert not v.get('error') and not v['result'].get('isError');z=v['result'];v=z.get('structuredContent')
+   if v is None:v=json.loads(next(a['text'] for a in z['content'] if a['type']=='text'))
+   v=v.get('service',v)
+  d=v.get('serviceDetails',{});ec=d.get('envSpecificDetails',{});runtime=v.get('runtime') or d.get('runtime');plan=v.get('plan') or d.get('plan');build=v.get('buildCommand') if surface=='GraphQL' else ec.get('buildCommand');start=v.get('startCommand') if surface=='GraphQL' else ec.get('startCommand');pre=v.get('preDeployCommand') if surface=='GraphQL' else ec.get('preDeployCommand');e['pass']=v['id']==sid and v['name']==x['name'] and v['repo']==x['primary_reference']['repo'] and v['branch']==x['primary_reference']['branch'] and runtime=='python' and plan=='free' and build==cmd['build'] and start==cmd['start'] and v['autoDeploy'] in (False,'no');save();print(json.dumps({'client':x['client'],'surface':surface,'exact_source_runtime_plan_commands':e['pass']}),flush=True);assert e['pass']
+
+ if any(z.get('phase')==phase and z.get('pass') for z in x.get('explicit_env_readbacks',[])):continue
+ r=api('GET','/v1/services/'+sid+'/env-vars');e={'at':now(),'phase':phase,'receipt':r};x.setdefault('explicit_env_readbacks',[]).append(e);save();assert r['status']=='200';vs=[v.get('envVar',v) for v in decode(r)];e['pass']={v['key']:v['value'] for v in vs}=={'PYTHON_VERSION':'3.13'};save();assert e['pass'];print(json.dumps({'client':x['client'],'phase':phase,'exact_API_only_env_readback':True}))

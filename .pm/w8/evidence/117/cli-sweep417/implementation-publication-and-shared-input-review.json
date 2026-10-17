@@ -1,0 +1,48 @@
+{
+  "at": "2026-10-17T08:54:21.233400+00:00",
+  "source_head": "e7422581eec50211819e3f1691538eb9830d68b6",
+  "implementation": "b9e12f689",
+  "desired_operator_publication": {
+    "commit": "e7422581eec50211819e3f1691538eb9830d68b6",
+    "build_source": "8f80d74efaff",
+    "digest": "6d409efd73f26575f6914cc3f861219e29c10ba152a983823a915d7587ddc9d6"
+  },
+  "actual_serving_SHA_OCI": "unknown; Git pin alone does not prove rollout",
+  "contract": {
+    "url": "https://render.com/docs/environment-variables",
+    "default": "primary Ruby BUNDLE_DEPLOYMENT=true with external bundle path/bin at build and runtime; user values override"
+  },
+  "scope": "fresh exact original stale-lock rejection and genuine matched-lock-only controls; no authored deployment flag or source application change",
+  "source_excerpts": [
+    {
+      "file": "lego/operator/internal/build/native.go",
+      "from_line": 324,
+      "to_line": 366,
+      "text": "// nativeBuildDefaults is the environment Render gives a native runtime at\n// build and runtime alike, as image ENV before the build RUN: the env loader\n// exports the service's own values over it for the build, and the container's\n// configured values override it at runtime, an explicit empty one included in\n// either phase. An explicit Elixir, Python or Ruby static build gets it for\n// its build.\n//\n// Elixir builds and runs with MIX_ENV=prod (w8/112), so a Phoenix app's\n// production dependencies and config are the ones compiled and started.\n// Ruby does the same with RAILS_ENV=production (w8/114): in development\n// `rails server` binds localhost only, which no readiness probe or request\n// reaches; in production it binds every interface on PORT. It also gets\n// Render's Bundler settings (w8/117): deployment mode, so a missing lock or\n// one that no longer matches its Gemfile fails the build instead of being\n// re-resolved, and Render's gem directory outside the source tree with\n// binstubs first on PATH \u2014 deployment mode alone would install into the\n// app's vendor/bundle, where a static site publishing its root or a Jekyll\n// build would pick the gems up, and a bare `puma` would no longer resolve.\n// Python gets Render's Gunicorn flags, preloading the app and writing access\n// lines to stdout (w8/113). Render's --bind is left out: Gunicorn binds the\n// platform's PORT by default, which a bind in gunicorn.conf.py or on the\n// command line still replaces, as it would without these flags. It also gets\n// Render's FORWARDED_ALLOW_IPS=* (w8/116): requests arrive from the ingress,\n// never loopback, so without it Gunicorn (and Uvicorn, which reads the same\n// variable) ignores X-Forwarded-Proto and an HTTPS request reaches the app\n// as http. The ingress replaces the client's forwarding headers with its own,\n// and only it and the platform's namespaces reach a pod from outside its\n// workspace.\nfunc nativeBuildDefaults(o Options) string {\n\tswitch nativeRuntime(o) {\n\tcase \"elixir\":\n\t\treturn \"ENV MIX_ENV=prod\\n\"\n\tcase nativePythonRuntime:\n\t\treturn `ENV GUNICORN_CMD_ARGS=\"--preload --access-logfile -\"` + \"\\n\" +\n\t\t\t`ENV FORWARDED_ALLOW_IPS=\"*\"` + \"\\n\"\n\tcase nativeRubyRuntime:\n\t\treturn \"ENV RAILS_ENV=production\\n\" +\n\t\t\t\"ENV BUNDLE_DEPLOYMENT=true BUNDLE_PATH=\" + nativeRubyGems + \" BUNDLE_BIN=\" + nativeRubyGems + \"/bin\\n\" +\n\t\t\t\"ENV PATH=\" + nativeRubyGems + \"/bin:$PATH\\n\"\n\t}\n\treturn \"\"\n}\n"
+    },
+    {
+      "file": "lego/backend/internal/apps/blueprint_generate.go",
+      "from_line": 331,
+      "to_line": 360,
+      "text": "\t// The read surfaces' runtime (effectiveRuntime), not the raw spec field:\n\t// a Dockerfile build commonly leaves spec.runtime empty and says so through\n\t// spec.builder, and render.yaml requires a runtime, so emitting only the\n\t// raw field failed the self-check for an ordinary git service (w4/193).\n\truntime := effectiveRuntime(a.Spec, svcType)\n\tbuilder := exportedBuilder(a.Spec)\n\t// A bound registry credential exports by name (w5/089): on image.creds for\n\t// a prebuilt image, as Render spells it, else on registryCredential.\n\tcreds, err := s.exportedRegistryCredential(ctx, a)\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\tswitch {\n\tcase a.Spec.Image != \"\":\n\t\tentry[\"runtime\"] = \"image\"\n\t\timage := map[string]any{\"url\": a.Spec.Image}\n\t\tif creds != nil {\n\t\t\timage[\"creds\"] = creds\n\t\t}\n\t\tentry[\"image\"] = image\n\tcase static:\n\t\tentry[\"runtime\"] = \"static\"\n\tcase runtime != \"\":\n\t\tentry[\"runtime\"] = runtime\n\tcase builder == buildBuildpack:\n\t\tentry[\"runtime\"] = blueprintBuildpackRuntime\n\t}\n\tif builder != \"\" {\n\t\tentry[\"x-bex\"] = map[string]any{\"builder\": builder}\n\t}"
+    },
+    {
+      "file": "lego/backend/internal/apps/blueprint_generate.go",
+      "from_line": 398,
+      "to_line": 405,
+      "text": "\t// beside any other runtime: a Dockerfile or buildpack build's would fail\n\t// the export's own check.\n\tif a.Spec.BuildCommand != \"\" && nativeBuild(buildStrategy(a.Spec)) {\n\t\tentry[\"buildCommand\"] = a.Spec.BuildCommand\n\t}\n\tif a.Spec.StartCommand != \"\" && !static {\n\t\tentry[blueprintCommandField(a.Spec)] = a.Spec.StartCommand\n\t}"
+    },
+    {
+      "file": "dashboard/src/features/services/lib/create-service-input.ts",
+      "from_line": 185,
+      "to_line": 267,
+      "text": "    : form.tab === \"github\" && form.selectedRepo\n      ? {\n          repo: form.selectedRepo.cloneUrl,\n          branch: form.branch || form.selectedRepo.defaultBranch || undefined,\n        }\n      : { repo: form.gitUrl.trim(), branch: form.branch || undefined };\n\n  return {\n    ...source,\n    name: form.name,\n    type: form.serviceType,\n    environmentId: form.environmentId || undefined,\n    registryCredentialId: shape.usesRegistryCredential\n      ? form.registryCredentialId\n      : undefined,\n    // The Git draft's root survives a tab switch so returning restores it, but\n    // an image source has no repository root to scope (w4/226).\n    rootDir: shape.isGitSource ? form.rootDir || undefined : undefined,\n    runtime: shape.isImageSource\n      ? \"image\"\n      : shape.isBuildableGit\n        ? form.runtime\n        : undefined,\n    buildCommand: shape.isStaticBuild\n      ? optionalCommand(form.staticBuildCommand)\n      : shape.isNativeBuild\n        ? commandText(form.buildCommand)\n        : undefined,\n    startCommand: shape.isBuildableGit\n      ? shape.isCronType\n        ? commandText(form.command)\n        : optionalCommand(form.startCommand)\n      : shape.showImageCommand\n        ? optionalCommand(form.imageCommand)\n        : undefined,\n    dockerfilePath: shape.isDockerBuild ? set(form.dockerfilePath) : undefined,\n    buildFilter:\n      shape.isStaticBuild && (paths.length || ignoredPaths.length)\n        ? { paths, ignoredPaths }\n        : undefined,\n    plan: shape.showPlan ? form.plan || undefined : undefined,\n    autoDeploy: shape.isGitSource ? form.autoDeploy : undefined,\n    schedule: shape.isCronType ? set(form.schedule) : undefined,\n    command: shape.isCronType ? optionalCommand(form.command) : undefined,\n    publishPath: shape.isStaticType ? set(form.publishPath) : undefined,\n    // The wizard used to send no port at all, so an image binding anything but\n    // 3000 (nginx:alpine binds :80) came up unroutable and answered 503\n    // (.pm/w4/m121 Evidence 1). Only the port-binding types send one.\n    port: shape.showPort ? (parsePort(form.port) ?? undefined) : undefined,\n    envVars: submittableEnvVars(form.envVars),\n    secretFiles: submittableSecretFiles(form.secretFiles),\n  };\n}"
+    },
+    {
+      "file": "dashboard/src/features/services/hooks/use-create-service.ts",
+      "from_line": 108,
+      "to_line": 140,
+      "text": "      if (currentWorkspaceId == null) {\n        toast.error(t(\"services.createError\", { name: input.name }));\n        return null;\n      }\n      setCapLimit(null);\n      setNameConflict(false);\n      try {\n        const res = await paymentGate.run(() =>\n          mutate({\n            variables: {\n              ...input,\n              ownerId: currentWorkspaceId,\n              // An empty list is \"no rows staged\", not \"clear them\" \u2014 the\n              // create editors' blank placeholder row must not reach the wire.\n              envVars: input.envVars?.length ? input.envVars : undefined,\n              secretFiles: input.secretFiles?.length\n                ? input.secretFiles\n                : undefined,\n            },\n          }),\n        );\n        const svc = res.data?.createService;\n        const id = svc?.id;\n        if (!id) throw new Error(\"createService returned no id\");\n        const deployId = svc?.latestDeployId ?? undefined;\n        toast.success(t(\"services.createSuccess\", { name: input.name }));\n        return { id, deployId };\n      } catch (err) {\n        if (isPaymentOnboardingCancelled(err)) return null;\n        // \"workspace is limited to N services\" \u2014 surface inline with upgrade CTA\n        // rather than a toast that leaves the user with nowhere to go (w7/m9).\n        // A name conflict (w4/m19; w6/m49 moved the detection off message\n        // text) \u2014 a raced duplicate the debounced check missed; same inline"
+    }
+  ]
+}

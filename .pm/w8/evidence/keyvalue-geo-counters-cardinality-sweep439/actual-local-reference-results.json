@@ -1,0 +1,136 @@
+{
+  "qualification": "isolated Unix-only local Redis reference, not hosted Valkey/production acceptance",
+  "context": "/tmp/qa439-xn9meoze",
+  "cases": [
+    {
+      "case": "geo",
+      "command": [
+        "redis-cli",
+        "-s",
+        "/tmp/qa439-xn9meoze/redis.sock",
+        "--raw",
+        "EVAL",
+        "if redis.call('EXISTS',unpack(KEYS))~=0 then return redis.error_reply('Own fixture keys already exist; reconcile before retry') end;local n=redis.call('GEOADD',KEYS[1],179.999,0,'east',-179.999,0,'west',170,0,'far',179.999,1,'north',179.998,0,'café:雪');local near=redis.call('GEOSEARCH',KEYS[1],'FROMLONLAT',179.999,0,'BYRADIUS',500,'m','ASC','WITHDIST','WITHCOORD');local absent=redis.call('GEOSEARCH',KEYS[1],'FROMLONLAT',0,0,'BYRADIUS',500,'m');return 'QA439_RESULT '..cjson.encode({case='geo',marker=ARGV[1],seeded=n,near=near,distance=redis.call('GEODIST',KEYS[1],'east','west','m'),absent_count=#absent,dbkey_count=redis.call('ZCARD',KEYS[1])})",
+        "1",
+        "qa439:local:reference:geo",
+        "QA439_LOCAL_geo"
+      ],
+      "exit": 0,
+      "stdout": "QA439_RESULT {\"dbkey_count\":5,\"absent_count\":0,\"distance\":\"222.5558\",\"marker\":\"QA439_LOCAL_geo\",\"seeded\":5,\"near\":[[\"east\",\"0.1501\",[\"179.99899953603745\",\"1.2673605796694755e-6\"]],[\"café:雪\",\"111.0313\",[\"179.9980017542839\",\"1.2673605796694755e-6\"]],[\"west\",\"222.5042\",[\"-179.99899953603745\",\"1.2673605796694755e-6\"]]],\"case\":\"geo\"}\n",
+      "stderr": "",
+      "decoded": {
+        "dbkey_count": 5,
+        "absent_count": 0,
+        "distance": "222.5558",
+        "marker": "QA439_LOCAL_geo",
+        "seeded": 5,
+        "near": [
+          [
+            "east",
+            "0.1501",
+            [
+              "179.99899953603745",
+              "1.2673605796694755e-6"
+            ]
+          ],
+          [
+            "café:雪",
+            "111.0313",
+            [
+              "179.9980017542839",
+              "1.2673605796694755e-6"
+            ]
+          ],
+          [
+            "west",
+            "222.5042",
+            [
+              "-179.99899953603745",
+              "1.2673605796694755e-6"
+            ]
+          ]
+        ],
+        "case": "geo"
+      },
+      "pass": true
+    },
+    {
+      "case": "bits",
+      "command": [
+        "redis-cli",
+        "-s",
+        "/tmp/qa439-xn9meoze/redis.sock",
+        "--raw",
+        "EVAL",
+        "if redis.call('EXISTS',unpack(KEYS))~=0 then return redis.error_reply('Own fixture keys already exist; reconcile before retry') end;local initial=redis.call('BITFIELD',KEYS[1],'SET','u4',0,14,'SET','i4',4,-2,'GET','u4',0,'GET','i4',4);local sat=redis.call('BITFIELD',KEYS[1],'OVERFLOW','SAT','INCRBY','u4',0,5);local wrap=redis.call('BITFIELD',KEYS[1],'OVERFLOW','WRAP','INCRBY','i4',4,-9);local fail=redis.call('BITFIELD',KEYS[1],'OVERFLOW','FAIL','INCRBY','u4',0,1);redis.call('BITFIELD',KEYS[2],'SET','u12',4,2748,'INCRBY','u12',4,1,'SET','i8',16,-128,'OVERFLOW','WRAP','INCRBY','i8',16,-1);local cross=redis.call('GET',KEYS[2]);return 'QA439_RESULT '..cjson.encode({case='bits',marker=ARGV[1],initial=initial,saturated=sat[1],wrapped=wrap[1],overflow_failed=fail[1]==false,unchanged=redis.call('BITFIELD',KEYS[1],'GET','u4',0)[1],byte=string.byte(redis.call('GET',KEYS[1])),bitcount=redis.call('BITCOUNT',KEYS[1]),cross_bytes={string.byte(cross,1,#cross)},cross_fields=redis.call('BITFIELD',KEYS[2],'GET','u12',4,'GET','i8',16)})",
+        "2",
+        "qa439:local:reference:bits",
+        "qa439:local:reference:cross",
+        "QA439_LOCAL_bits"
+      ],
+      "exit": 0,
+      "stdout": "QA439_RESULT {\"initial\":[0,0,14,-2],\"unchanged\":15,\"marker\":\"QA439_LOCAL_bits\",\"overflow_failed\":true,\"bitcount\":6,\"cross_bytes\":[10,189,127],\"cross_fields\":[2749,127],\"byte\":245,\"wrapped\":5,\"saturated\":15,\"case\":\"bits\"}\n",
+      "stderr": "",
+      "decoded": {
+        "initial": [
+          0,
+          0,
+          14,
+          -2
+        ],
+        "unchanged": 15,
+        "marker": "QA439_LOCAL_bits",
+        "overflow_failed": true,
+        "bitcount": 6,
+        "cross_bytes": [
+          10,
+          189,
+          127
+        ],
+        "cross_fields": [
+          2749,
+          127
+        ],
+        "byte": 245,
+        "wrapped": 5,
+        "saturated": 15,
+        "case": "bits"
+      },
+      "pass": true
+    },
+    {
+      "case": "hll",
+      "command": [
+        "redis-cli",
+        "-s",
+        "/tmp/qa439-xn9meoze/redis.sock",
+        "--raw",
+        "EVAL",
+        "if redis.call('EXISTS',unpack(KEYS))~=0 then return redis.error_reply('Own fixture keys already exist; reconcile before retry') end;local added=redis.call('PFADD',KEYS[1],'A','B','C','café','雪','李','two words','D');local again=redis.call('PFADD',KEYS[1],'A','B','café');redis.call('PFADD',KEYS[2],'C','D','E','F');redis.call('PFMERGE',KEYS[3],KEYS[1],KEYS[2]);return 'QA439_RESULT '..cjson.encode({case='hll',marker=ARGV[1],added=added,duplicate_change=again,a=redis.call('PFCOUNT',KEYS[1]),b=redis.call('PFCOUNT',KEYS[2]),combined=redis.call('PFCOUNT',KEYS[1],KEYS[2]),merged=redis.call('PFCOUNT',KEYS[3])})",
+        "3",
+        "qa439:local:reference:hll-a",
+        "qa439:local:reference:hll-b",
+        "qa439:local:reference:hll-union",
+        "QA439_LOCAL_hll"
+      ],
+      "exit": 0,
+      "stdout": "QA439_RESULT {\"a\":8,\"merged\":10,\"combined\":10,\"b\":4,\"marker\":\"QA439_LOCAL_hll\",\"duplicate_change\":0,\"added\":1,\"case\":\"hll\"}\n",
+      "stderr": "",
+      "decoded": {
+        "a": 8,
+        "merged": 10,
+        "combined": 10,
+        "b": 4,
+        "marker": "QA439_LOCAL_hll",
+        "duplicate_change": 0,
+        "added": 1,
+        "case": "hll"
+      },
+      "pass": true
+    }
+  ],
+  "server_pid": 44096,
+  "server_version": "Redis server v=8.10.1 sha=00000000:1 malloc=libc bits=64 build=81870544b30d700a",
+  "pass": true,
+  "own_context_server_removed": true
+}

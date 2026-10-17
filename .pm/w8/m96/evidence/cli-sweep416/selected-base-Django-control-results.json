@@ -1,0 +1,99 @@
+{
+  "nonce": "dcd049",
+  "context": "<owned-temp>/candidate-gettext-l8gwepdy",
+  "image": "python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4",
+  "cases": [
+    {
+      "label": "original",
+      "container": "qa-gettext-dcd049-original",
+      "absent_before": true,
+      "manual_control": false,
+      "command": "set -e\npip install --disable-pip-version-check Django==5.2.18\npython qa-gettext-app.py before\nDJANGO_SETTINGS_MODULE=qa_gettext_settings python -m django compilemessages -l fr --verbosity 1\npython qa-gettext-app.py build",
+      "exit": 1,
+      "stdout": "Collecting Django==5.2.18\n  Downloading django-5.2.18-py3-none-any.whl.metadata (4.1 kB)\nCollecting asgiref>=3.8.1 (from Django==5.2.18)\n  Downloading asgiref-3.12.1-py3-none-any.whl.metadata (9.4 kB)\nCollecting sqlparse>=0.3.1 (from Django==5.2.18)\n  Downloading sqlparse-0.6.0-py3-none-any.whl.metadata (6.0 kB)\nDownloading django-5.2.18-py3-none-any.whl (8.3 MB)\n   \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501 8.3/8.3 MB 14.6 MB/s  0:00:00\nDownloading asgiref-3.12.1-py3-none-any.whl (25 kB)\nDownloading sqlparse-0.6.0-py3-none-any.whl (50 kB)\nInstalling collected packages: sqlparse, asgiref, Django\n\nSuccessfully installed Django-5.2.18 asgiref-3.12.1 sqlparse-0.6.0\nQA_GETTEXT_BEFORE {\"marker\":\"QA_GETTEXT_LOCAL\",\"python\":\"3.13.16\",\"django\":\"5.2.18\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"po\":{\"bytes\":508,\"sha256\":\"cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a\"},\"program_sha256\":\"5ec748dd00ea9e3d6d48374e460171b89314cc6d066b5106e38418ec08cedca0\",\"tools\":{\"msgfmt\":null,\"msgmerge\":null,\"msguniq\":null,\"xgettext\":null}}\n",
+      "stderr": "WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\nCommandError: Can't find msgfmt. Make sure you have GNU gettext tools 0.19 or newer installed.\n",
+      "pass": true
+    },
+    {
+      "label": "tool-control",
+      "container": "qa-gettext-dcd049-tool-control",
+      "absent_before": true,
+      "manual_control": true,
+      "command": "set -e\npip install --disable-pip-version-check Django==5.2.18\npython qa-gettext-app.py before\napt-get update -qq && apt-get install -y --no-install-recommends gettext\nDJANGO_SETTINGS_MODULE=qa_gettext_settings python -m django compilemessages -l fr --verbosity 1\npython qa-gettext-app.py build",
+      "exit": 0,
+      "stdout": "Collecting Django==5.2.18\n  Downloading django-5.2.18-py3-none-any.whl.metadata (4.1 kB)\nCollecting asgiref>=3.8.1 (from Django==5.2.18)\n  Downloading asgiref-3.12.1-py3-none-any.whl.metadata (9.4 kB)\nCollecting sqlparse>=0.3.1 (from Django==5.2.18)\n  Downloading sqlparse-0.6.0-py3-none-any.whl.metadata (6.0 kB)\nDownloading django-5.2.18-py3-none-any.whl (8.3 MB)\n   \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501 8.3/8.3 MB 9.4 MB/s  0:00:00\nDownloading asgiref-3.12.1-py3-none-any.whl (25 kB)\nDownloading sqlparse-0.6.0-py3-none-any.whl (50 kB)\nInstalling collected packages: sqlparse, asgiref, Django\n\nSuccessfully installed Django-5.2.18 asgiref-3.12.1 sqlparse-0.6.0\nQA_GETTEXT_BEFORE {\"marker\":\"QA_GETTEXT_LOCAL\",\"python\":\"3.13.16\",\"django\":\"5.2.18\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"po\":{\"bytes\":508,\"sha256\":\"cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a\"},\"program_sha256\":\"5ec748dd00ea9e3d6d48374e460171b89314cc6d066b5106e38418ec08cedca0\",\"tools\":{\"msgfmt\":null,\"msgmerge\":null,\"msguniq\":null,\"xgettext\":null}}\nReading package lists...\nBuilding dependency tree...\nReading state information...\nThe following additional packages will be installed:\n  gettext-base\nSuggested packages:\n  autopoint gettext-doc libasprintf-dev libgettextpo-dev\nThe following NEW packages will be installed:\n  gettext gettext-base\n0 upgraded, 2 newly installed, 0 to remove and 8 not upgraded.\nNeed to get 1406 kB of archives.\nAfter this operation, 7468 kB of additional disk space will be used.\nGet:1 http://deb.debian.org/debian bookworm/main arm64 gettext-base arm64 0.21-12 [159 kB]\nGet:2 http://deb.debian.org/debian bookworm/main arm64 gettext arm64 0.21-12 [1248 kB]\nFetched 1406 kB in 0s (3237 kB/s)\nSelecting previously unselected package gettext-base.\n(Reading database ... \n(Reading database ... 5%\n(Reading database ... 10%\n(Reading database ... 15%\n(Reading database ... 20%\n(Reading database ... 25%\n(Reading database ... 30%\n(Reading database ... 35%\n(Reading database ... 40%\n(Reading database ... 45%\n(Reading database ... 50%\n(Reading database ... 55%\n(Reading database ... 60%\n(Reading database ... 65%\n(Reading database ... 70%\n(Reading database ... 75%\n(Reading database ... 80%\n(Reading database ... 85%\n(Reading database ... 90%\n(Reading database ... 95%\n(Reading database ... 100%\n(Reading database ... 24001 files and directories currently installed.)\nPreparing to unpack .../gettext-base_0.21-12_arm64.deb ...\nUnpacking gettext-base (0.21-12) ...\nSelecting previously unselected package gettext.\nPreparing to unpack .../gettext_0.21-12_arm64.deb ...\nUnpacking gettext (0.21-12) ...\nSetting up gettext-base (0.21-12) ...\nSetting up gettext (0.21-12) ...\nProcessing triggers for libc-bin (2.36-9+deb12u14) ...\nprocessing file django.po in /work/locale/fr/LC_MESSAGES\nQA_GETTEXT_AFTER {\"marker\":\"QA_GETTEXT_LOCAL\",\"python\":\"3.13.16\",\"django\":\"5.2.18\",\"files\":{\"LICENSE\":{\"bytes\":1072,\"sha256\":\"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09\"},\"CHANGELOG\":{\"bytes\":18,\"sha256\":\"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5\"}},\"po\":{\"bytes\":508,\"sha256\":\"cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a\"},\"program_sha256\":\"5ec748dd00ea9e3d6d48374e460171b89314cc6d066b5106e38418ec08cedca0\",\"tools\":{\"msgfmt\":\"/usr/bin/msgfmt\",\"msgmerge\":\"/usr/bin/msgmerge\",\"msguniq\":\"/usr/bin/msguniq\",\"xgettext\":\"/usr/bin/xgettext\"},\"translations\":{\"hello\":\"Bonjour, Zo\\u00eb & \\u674e !\",\"dessert\":\"Cr\\u00e8me br\\u00fbl\\u00e9e\",\"plurals\":{\"0\":\"Il y a 0 pomme.\",\"1\":\"Il y a 1 pomme.\",\"2\":\"Il y a 2 pommes.\",\"5\":\"Il y a 5 pommes.\"}},\"independent_stdlib_translations\":{\"hello\":\"Bonjour, Zo\\u00eb & \\u674e !\",\"dessert\":\"Cr\\u00e8me br\\u00fbl\\u00e9e\",\"plurals\":{\"0\":\"Il y a 0 pomme.\",\"1\":\"Il y a 1 pomme.\",\"2\":\"Il y a 2 pommes.\",\"5\":\"Il y a 5 pommes.\"}},\"catalog\":{\"bytes\":461,\"sha256\":\"641f0dd75324b4a70b206ea3fdb2b0820bf4ea15f70b758ccedb88aa1f2ce9ce\",\"GNU_MO_magic\":true},\"fresh_msgfmt_compilation\":{\"exit\":0,\"bytes\":461,\"sha256\":\"641f0dd75324b4a70b206ea3fdb2b0820bf4ea15f70b758ccedb88aa1f2ce9ce\"},\"msgfmt_version\":\"msgfmt (GNU gettext-tools) 0.21\"}\n",
+      "stderr": "WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.\ndebconf: delaying package configuration, since apt-utils is not installed\n",
+      "result": {
+        "marker": "QA_GETTEXT_LOCAL",
+        "python": "3.13.16",
+        "django": "5.2.18",
+        "files": {
+          "LICENSE": {
+            "bytes": 1072,
+            "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"
+          },
+          "CHANGELOG": {
+            "bytes": 18,
+            "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"
+          }
+        },
+        "po": {
+          "bytes": 508,
+          "sha256": "cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a"
+        },
+        "program_sha256": "5ec748dd00ea9e3d6d48374e460171b89314cc6d066b5106e38418ec08cedca0",
+        "tools": {
+          "msgfmt": "/usr/bin/msgfmt",
+          "msgmerge": "/usr/bin/msgmerge",
+          "msguniq": "/usr/bin/msguniq",
+          "xgettext": "/usr/bin/xgettext"
+        },
+        "translations": {
+          "hello": "Bonjour, Zo\u00eb & \u674e !",
+          "dessert": "Cr\u00e8me br\u00fbl\u00e9e",
+          "plurals": {
+            "0": "Il y a 0 pomme.",
+            "1": "Il y a 1 pomme.",
+            "2": "Il y a 2 pommes.",
+            "5": "Il y a 5 pommes."
+          }
+        },
+        "independent_stdlib_translations": {
+          "hello": "Bonjour, Zo\u00eb & \u674e !",
+          "dessert": "Cr\u00e8me br\u00fbl\u00e9e",
+          "plurals": {
+            "0": "Il y a 0 pomme.",
+            "1": "Il y a 1 pomme.",
+            "2": "Il y a 2 pommes.",
+            "5": "Il y a 5 pommes."
+          }
+        },
+        "catalog": {
+          "bytes": 461,
+          "sha256": "641f0dd75324b4a70b206ea3fdb2b0820bf4ea15f70b758ccedb88aa1f2ce9ce",
+          "GNU_MO_magic": true
+        },
+        "fresh_msgfmt_compilation": {
+          "exit": 0,
+          "bytes": 461,
+          "sha256": "641f0dd75324b4a70b206ea3fdb2b0820bf4ea15f70b758ccedb88aa1f2ce9ce"
+        },
+        "msgfmt_version": "msgfmt (GNU gettext-tools) 0.21"
+      },
+      "independent_host_translations": {
+        "hello": "Bonjour, Zo\u00eb & \u674e !",
+        "dessert": "Cr\u00e8me br\u00fbl\u00e9e",
+        "plurals": {
+          "0": "Il y a 0 pomme.",
+          "1": "Il y a 1 pomme.",
+          "2": "Il y a 2 pommes.",
+          "5": "Il y a 5 pommes."
+        }
+      },
+      "pass": true
+    }
+  ],
+  "qualification": "selected cached pinned Python base plus actual authored Django compilemessages/translation program, not full generated image or hosted evidence",
+  "pass": true,
+  "own_containers_context_removed": true
+}

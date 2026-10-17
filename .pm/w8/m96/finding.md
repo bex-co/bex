@@ -1,0 +1,33 @@
+# Django translation builds cannot find GNU msgfmt
+
+Why: ordinary internationalized Django services fail their build even though their Python dependencies install correctly.
+
+**Severity:** major. **Attribution:** operator native-image utility assembly. **Estimate:**195m across6 tasks. Functional CLI sweep416,2026-10-17. Published Bex0.3.2/a6350da0 and unchanged Render2.27.0/a764810a7682, isolated human-QA bex-canary/tea-daif693dqjvc73e7as3g, noninteractive JSON, api.bex.co/v1. Source8f80d74efaffc23342cccad2f275051a1501396f; serving revision unknown. [Complete evidence](evidence/cli-sweep416/README.md).
+
+## Exact functional reproduction
+
+Both clients create fresh explicit Free Python3.13 web services through unchanged native POST201/exit0. The authored build reconstructs the exact small app/settings/own French PO/reference files, installs Django5.2.18, records exact source/program/PO and tool locators, then runs `DJANGO_SETTINGS_MODULE=qa_gettext_settings python -m django compilemessages -l fr --verbosity 1`. The original start command is `python -u qa-gettext-app.py serve`. Full argv, redacted wire, stdout/stderr/exit/duration and source bytes are durable.
+
+Both original first children become build_failed with Django's missing-msgfmt CommandError. The language dependency is installed; source and PO checks pass; msgfmt/msgmerge/msguniq/xgettext locators are all absent. Both original URLs404. Each client changes only one build line installing GNU gettext. Both native updates0 and replacement children Live. The same Django command now compiles a real461-byte GNU MO catalog and returns correct Unicode/format/French0/1/2/5 plural translations. Six HTTP200 calls perform fresh external msgfmt compilations and actual Django plus independent standard-library translations. Two binary catalog downloads independently parse and translate on the host. Six native events and12 REST/GraphQL/MCP plus4 explicit-env reads agree. All exact parents/four children/URLs/local resources are removed, baseline/current inventory/quota checks pass.
+
+[Render](https://render.com/docs/native-runtimes) includes GNU gettext during build and runtime. [Django](https://docs.djangoproject.com/en/5.2/topics/i18n/translation/) documents msgfmt and its sibling tools as dependencies for message compilation/extraction; minimum0.19. The [observed pinned package](evidence/cli-sweep416/official-pinned-Django-package-reference.json) is Django5.2.18. The selected-base control observes gettext0.21/Debian0.21-12 arm64. Exact Render version and a Render-hosted comparative run remain unverified.
+
+An earlier oversized authored-command setup correctly returned400/4096-byte limit, no ID. Two exact-name native inventory/quota reconciliations verify absence. The fresh valid cohort uses a bounded compressed source transport preserving exact app/settings/PO/reference bytes and matching the local program hash. This setup rejection is excluded, fully retained and not a finding. The only valid original/control change remains the single install line.
+
+## Producer, consumer and fix
+
+Pinned CLI `pkg/service/create.go:272–310` serializes native build/start commands; `pkg/service/update.go:361–377` serializes their supported updates. Backend `lego/backend/internal/apps/rest.go:455–505,1039–1075` accepts them and `apps/service.go:2935–2950` stores them. `operator/internal/controller/app_controller.go:1048–1064` passes them to build.Options. Matching metadata and actual source/runtime proofs show this path works; no client fork or request repair is needed.
+
+`lego/operator/internal/build/native.go:283–320` creates native images from pinned language bases plus existing JS/FFmpeg/default steps, without a GNU gettext supplier. `native.go:404–407` supplies the sole recipe; `build.go:1176–1183,936–960` passes it and inputs to BuildKit. `nativeresolve.go:53–120` selects bases/companions without providing gettext. Actual generated/resolved recipe exports and selected-base controls reproduce the absence. Python's standard gettext reader does not provide the external GNU compilation executable used by Django.
+
+Add a reviewed immutable amd64/arm64 GNU gettext tool supplier before source/authored build and retain it for runtime/pre-deploy/native-static builds. Include msgfmt plus the coherent message utility set (msgmerge/msguniq/xgettext), complete ABI-matched library/data/locale closure, meaningful version/content/platform identity and freshness/cache tracking. Review delivery compatibility across bookworm/trixie bases; a symlink to a missing program, copied donor root filesystem or tenant install requirement is insufficient. The apt control is diagnostic, not the final supplier. Coordinate actually shared delivery mechanics with m91/m93/m94/m95, retaining distinct consumers and acceptance.
+
+Keep primary/companion selections, explicit env/PATH, locale behavior, native-init/FFmpeg, source roots, files/env/cache revisions and existing app libraries. Preserve Dockerfile/prebuilt-image/CNB exclusions. No new API field, gettext-version product selector or launcher workaround.
+
+## Blast radius and acceptance
+
+One native generator/preparer/resolve/BuildJob chain serves6 primary runtimes/16 reviewed base lines and native static artifacts. Give distribution/architecture/phase and sibling checks their own task. Shared REST/GraphQL/MCP/Blueprint/dashboard inputs remain compatible.
+
+Regressions must fail before/pass after using real generated images and real Django compilation of an exact PO. Verify compiled MO bytes, Unicode/format/plural values, independent reader and fresh external msgfmt at runtime with network disabled. Check meaningful invalid-catalog/format failure, extraction/merge utilities, all intended bases/architectures, env/PATH/locale/cache/companions/static/excluded neighbors. After publication both unchanged native clients must create fresh original first Free services without the install line, become Live and pass exact source/program/PO/catalog/translation/log/shared-readback and cleanup checks. Existing controls or source changes alone do not meet DoD.
+
+All PM open/blocked/done records and native source history were searched: no matching gettext repair. Python dependency installation and m95's libvips library, m94 SQLite, m93 Pandoc and m91 PostgreSQL tools do not supply GNU gettext. No documented non-goal or intentional divergence found. Only Free Python3.13/Django5.2.18/one French PO compilation and translation are hosted. Other bases/architectures/languages, complete extraction/merge coverage, static/pre-deploy/browser, full local generated-image execution and actual serving SHA/OCI remain unverified. Product code unchanged; this schedules the fix only.

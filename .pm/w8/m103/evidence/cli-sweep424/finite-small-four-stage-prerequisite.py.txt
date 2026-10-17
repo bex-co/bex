@@ -1,0 +1,27 @@
+from pathlib import Path
+import subprocess,json,secrets,shutil,tempfile,hashlib,base64,zipfile,io,csv,os
+os.umask(0o077);P=Path(__file__).resolve().parent;nonce=secrets.token_hex(3);image='node:24-bookworm@sha256:14078204b6bb268c107ceff6d3c43f45a888105e5c2b18b14c32b3409d93a1b0';ctx=Path(tempfile.mkdtemp(prefix='candidate-python-native-',dir=P));wheel='qa_local_data-1.0-py3-none-any.whl';files={'qa_local_data/__init__.py':'def label():\n    return "Crème brûlée & 李"\n','qa_local_data-1.0.dist-info/METADATA':'Metadata-Version: 2.1\nName: qa-local-data\nVersion: 1.0\n','qa_local_data-1.0.dist-info/WHEEL':'Wheel-Version: 1.0\nGenerator: own-functional-qa\nRoot-Is-Purelib: true\nTag: py3-none-any\n'};records=[]
+for name,v in files.items():b=v.encode();records.append([name,'sha256='+base64.urlsafe_b64encode(hashlib.sha256(b).digest()).decode().rstrip('='),str(len(b))])
+rec='qa_local_data-1.0.dist-info/RECORD';records.append([rec,'','']);f=io.StringIO();csv.writer(f,lineterminator='\n').writerows(records);files[rec]=f.getvalue();b=io.BytesIO()
+with zipfile.ZipFile(b,'w',compression=zipfile.ZIP_DEFLATED) as z:
+ for name,v in files.items():q=zipfile.ZipInfo(name,date_time=(2000,1,1,0,0,0));q.compress_type=zipfile.ZIP_DEFLATED;z.writestr(q,v.encode())
+(P/('candidate-'+wheel)).write_bytes(b.getvalue());out={'nonce':nonce,'context':str(ctx),'image':image,'wheel':{'name':wheel,'bytes':len(b.getvalue()),'sha256':hashlib.sha256(b.getvalue()).hexdigest()},'cases':[],'qualification':'selected cached Node24 base, own wheel only/no PyPI, real Setuptools metadata, pip target install and C extension; not full generated image or hosted finding'}
+def save():(P/'candidate-python-native-prerequisite.json').write_text(json.dumps(out,indent=2,ensure_ascii=False))
+try:
+ for stage,pkgs in [('original',''),('setuptools','python3-setuptools'),('packaging','python3-setuptools python3-pip'),('full','python3-setuptools python3-pip python3-dev')]:
+  name='qa-py-native-'+nonce+'-'+stage;d=ctx/stage;d.mkdir();assert subprocess.run(['docker','container','inspect',name],capture_output=True).returncode!=0;shutil.copyfile(P/'candidate-python-native-setup.py',d/'setup.py');shutil.copyfile(P/'candidate-python-native-extension.c',d/'qa_native_ext.c');shutil.copyfile(P/('candidate-'+wheel),d/wheel);command='set -e\n'
+  if pkgs:command+='apt-get update -qq && apt-get install -y --no-install-recommends '+pkgs+'\n'
+  command+='python3 setup.py egg_info\npython3 - <<\'QA_META\'\nfrom email.parser import Parser\nfrom pathlib import Path\np=Parser().parsestr(Path("qa_native_helper.egg-info/PKG-INFO").read_text());assert p["Name"]=="qa-native-helper" and p["Version"]=="1.0";print("QA_PY_METADATA",p["Name"],p["Version"])\nQA_META\npython3 -m pip install --no-index --no-deps --target qa-site-packages '+wheel+'\nPYTHONPATH=qa-site-packages python3 -c \'import qa_local_data;assert qa_local_data.label()=="Crème brûlée & 李";print("QA_PY_WHEEL",qa_local_data.label())\'\npython3 setup.py build_ext --inplace\nPYTHONPATH=qa-site-packages python3 - <<\'QA_EXT\'\nimport qa_native_ext,qa_local_data,json\nassert qa_native_ext.weighted_sum(2,3)==13 and qa_native_ext.weighted_sum(-4,7)==13 and qa_native_ext.weighted_sum(0,0)==0;assert qa_native_ext.dessert()==qa_local_data.label()=="Crème brûlée & 李";print("QA_PY_REAL_EXTENSION",json.dumps({"weighted":qa_native_ext.weighted_sum(2,3),"unicode":qa_native_ext.dessert()},ensure_ascii=False))\nQA_EXT';e={'stage':stage,'container':name,'command':command,'absent_before':True};out['cases'].append(e);save()
+  try:
+   r=subprocess.run(['docker','run','--name',name,'--label','bex.qa.py-native='+nonce,'--mount','type=bind,source='+str(d)+',target=/qa','--workdir','/qa',image,'bash','-lc',command],capture_output=True,text=True,timeout=210);e.update(exit=r.returncode,stdout=r.stdout,stderr=r.stderr)
+   if stage=='original':e['pass']=r.returncode!=0 and "No module named 'setuptools'" in r.stderr and 'QA_PY_METADATA' not in r.stdout
+   elif stage=='setuptools':e['pass']=r.returncode!=0 and 'QA_PY_METADATA' in r.stdout and 'No module named pip' in r.stderr and 'QA_PY_WHEEL' not in r.stdout
+   elif stage=='packaging':e['pass']=r.returncode!=0 and 'QA_PY_WHEEL' in r.stdout and 'Python.h: No such file or directory' in r.stderr and 'QA_PY_REAL_EXTENSION' not in r.stdout
+   else:e['pass']=r.returncode==0 and 'QA_PY_REAL_EXTENSION' in r.stdout
+   save();print(json.dumps({'stage':stage,'exit':r.returncode,'pass':e['pass']}),flush=True);assert e['pass']
+  finally:
+   r=subprocess.run(['docker','container','inspect',name],capture_output=True,text=True)
+   if r.returncode==0:
+    v=json.loads(r.stdout)[0];assert v['Config']['Labels'].get('bex.qa.py-native')==nonce and any(m.get('Source')==str(d) and m.get('Destination')=='/qa' for m in v['Mounts']);subprocess.run(['docker','rm','-f',name],check=True,capture_output=True)
+ out['pass']=all(v['pass'] for v in out['cases']);save()
+finally:shutil.rmtree(ctx);out['own_containers_context_removed']=not ctx.exists() and all(subprocess.run(['docker','container','inspect',v['container']],capture_output=True).returncode!=0 for v in out['cases']);save()

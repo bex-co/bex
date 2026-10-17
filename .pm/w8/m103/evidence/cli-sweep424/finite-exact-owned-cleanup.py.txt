@@ -1,0 +1,12 @@
+from pathlib import Path
+import subprocess,time,json
+P=Path(__file__).resolve().parent;CP=Path('/Volumes/nvme4tbfish/projects/bex8/.playwright-mcp/cli-qa-w8-checkpoint.json');rs=[v for v in json.loads(CP.read_text())['resources'] if v.get('sweep')==424 and not v.get('excluded_setup') and v.get('id')]
+for x in reversed(rs):
+ actor=x['client']
+ if not x.get('delete_result'):subprocess.run(['python3',str(P/'sweep424-native-pytools.py'),'delete',actor],check=True,timeout=110)
+ for attempt in range(4):
+  r=subprocess.run(['python3',str(P/'sweep424-native-pytools.py'),'reconcile',actor],capture_output=True,text=True,check=True,timeout=120);print(r.stdout,flush=True)
+  if json.loads(r.stdout)['cleanup_pass']:break
+  if attempt<3:time.sleep(12)
+ else:raise RuntimeError('Exact deletion convergence pending; preserve ledger')
+subprocess.run(['python3',str(P/'sweep424-final-inventory.py')],check=True,timeout=100)
