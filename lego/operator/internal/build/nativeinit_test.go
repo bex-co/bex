@@ -241,7 +241,7 @@ func TestNativeInitLayerIsReproducible(t *testing.T) {
 	}
 	bin := compileNativeInit(t)
 	copyLine := strings.SplitAfter(nativeEntrypoint(nativeInitOptions()), "\n")[0]
-	var digests []string
+	digests := make([]string, 0, 2)
 	for i := range 2 {
 		dir := t.TempDir()
 		must(t, StageNativeInit(bin, filepath.Join(dir, "init", nativeInitFile)))
