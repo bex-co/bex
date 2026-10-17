@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ManageResourcesDialog } from "@/features/environments/components/manage-resources-dialog";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
@@ -135,6 +135,38 @@ function renderDialog(onOpenChange = vi.fn()) {
 }
 
 describe("ManageResourcesDialog", () => {
+  // w4/m227: a tab whose list failed offers no checklist or Save, so an empty
+  // unread list cannot be mistaken for "no services" and submitted.
+  it("offers no Save on a tab whose list could not load", async () => {
+    const onRetry = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <ManageResourcesDialog
+        environment={env}
+        services={[]}
+        databases={[db("primary-db")]}
+        keyValues={[kv("cache")]}
+        open
+        onOpenChange={vi.fn()}
+        unread={{
+          pending: [],
+          failed: ["services"],
+          onRetry,
+          retrying: false,
+        }}
+      />,
+    );
+    const alert = screen.getByRole("alert");
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Save/ })).toBeNull();
+    await user.click(within(alert).getByRole("button", { name: "Try again" }));
+    expect(onRetry).toHaveBeenCalledOnce();
+    expect(setServices).not.toHaveBeenCalled();
+    // Healthy tabs keep working.
+    await user.click(screen.getByRole("tab", { name: /Databases/ }));
+    expect(screen.getByRole("checkbox", { name: /primary-db/ })).toBeChecked();
+  });
+
   it("pre-checks the environment's current services on the Services tab", () => {
     renderDialog();
 
