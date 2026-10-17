@@ -1,0 +1,1793 @@
+{
+  "schemaVersion": 1,
+  "item": "w4/292",
+  "pass": "a873",
+  "date": "2026-10-17",
+  "outcome": "production-null-marker-acceptance-passed",
+  "fixture": {
+    "name": "qa-20261017-a873-results",
+    "databaseId": "dpg-db9jvrtdkths73a1sil0",
+    "plan": "Free",
+    "public": false,
+    "deleted": true
+  },
+  "originalQuery": "SELECT value\nFROM (VALUES\n  (1,NULL::text),\n  (2,'NULL'::text),\n  (3,'null'::text),\n  (4,''::text),\n  (5,'雪 café'::text)\n) AS sample(ord,value)\nORDER BY ord;",
+  "target": {
+    "apiValues": [null, "NULL", "null", "", "雪 café"],
+    "nullAppearance": "Dashed1px border and italic marker; visual token aria-hidden; accessible SQL NULL (no value)",
+    "literalAppearance": "Plain unstyled NULL/null strings; empty and Unicode remain unchanged"
+  },
+  "additionalChecks": {
+    "paging": "Native55-row result retains exact64-bit integer strings, quote/comma/newline/Unicode and null/literal controls. Mobile displays50 then5 rows, ordinals51–55 on page2, with no new SQL request.",
+    "history": "Choosing history restores exact SQL draft and leaves old results/pagination;0 SQL dispatches. Ctrl+Enter then dispatches exactly1 read-only native query, resets results to5 rows; two unique history statements remain.",
+    "clear": "Native Clear removes only own2-item history, keeps draft/results and dispatches0 SQL; only this database's resulting empty local key was removed."
+  },
+  "initialSurface": "Current SQLConsole offers no result export/copy control. No missing-feature issue filed. Recovery logical database export was not exercised.",
+  "captureNotes": [
+    "Both bare-filename screenshots were saved by the MCP bridge at workspace root, then moved into the ignored evidence directory and visually inspected.",
+    "Durable native API/DOM/computed-style/ARIA records establish behavior; screenshots are local supplements.",
+    "Creating UI had an enabled editor/Run control, overlapping existing w4/177. No query was executed while Creating, so its full failure is not claimed replayed.",
+    "Availability observation timeouts were not terminal failures. Exact owned physical state later showed core Ready, ExtensionsReady and applied application database before the read-only checks."
+  ],
+  "limits": [
+    "No assistive-technology audio, dark mode or Chinese locale tested",
+    "No authenticated Render SQL-console comparison",
+    "No full m157 typed-adapter or m223 first-availability gate acceptance",
+    "No schema/table changes by the test SELECT statements; no backup/export action"
+  ],
+  "originalEvidence": {
+    "path": "292-sql-null.json",
+    "sha256": "9365dfdb7557fd62bebd8500343b7ba05646d4a26b46623811029e101a64356a"
+  },
+  "records": {
+    "a873Created": {
+      "at": "2026-10-17T09:29:20.167Z",
+      "request": {
+        "operationName": "CreateDatabase",
+        "variables": {
+          "name": "qa-20261017-a873-results",
+          "ownerId": "tea-d98210cbbpdc73dcrkvg",
+          "plan": "free",
+          "public": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation CreateDatabase($name: String!, $databaseName: String, $databaseUser: String, $ownerId: String, $environmentId: String, $plan: String, $version: String, $diskSizeGB: Int, $public: Boolean) {\n  createDatabase(\n    name: $name\n    databaseName: $databaseName\n    databaseUser: $databaseUser\n    ownerId: $ownerId\n    environmentId: $environmentId\n    plan: $plan\n    version: $version\n    diskSizeGB: $diskSizeGB\n    public: $public\n  ) {\n    id\n    name\n    databaseName\n    databaseUser\n    plan\n    status\n    projectId\n    environmentId\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "createDatabase": {
+            "__typename": "Database",
+            "databaseName": "dpg_db9jvrtdkths73a1sil0",
+            "databaseUser": "dpg_db9jvrtdkths73a1sil0_user",
+            "environmentId": null,
+            "id": "dpg-db9jvrtdkths73a1sil0",
+            "name": "qa-20261017-a873-results",
+            "plan": "free",
+            "projectId": null,
+            "status": "creating"
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792229359116.097,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.142,
+        "responseStart": 325.364,
+        "responseEnd": 326.056
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9jvrtdkths73a1sil0"
+    },
+    "a873SqlMounted": {
+      "initial": {
+        "at": "2026-10-17T09:29:40.112Z",
+        "available": 0,
+        "url": "https://dashboard.bex.co/databases/dpg-db9jvrtdkths73a1sil0"
+      },
+      "at": "2026-10-17T09:29:40.146Z",
+      "editorReady": true,
+      "url": "https://dashboard.bex.co/databases/dpg-db9jvrtdkths73a1sil0#sql-console",
+      "runDisabled": false,
+      "headings": ["qa-20261017-a873-results"]
+    },
+    "a873AvailabilityWait1": {
+      "startedAt": "2026-10-17T09:29:41.353Z",
+      "at": "2026-10-17T09:30:11.355Z",
+      "available": false,
+      "observationTimedOut": true
+    },
+    "a873AvailabilityWait2": {
+      "startedAt": "2026-10-17T09:30:29.315Z",
+      "at": "2026-10-17T09:30:59.315Z",
+      "available": false,
+      "observationTimedOut": true,
+      "creating": 2,
+      "alerts": []
+    },
+    "a873AvailabilityRecheck": {
+      "at": "2026-10-17T09:31:48.639Z",
+      "available": 2,
+      "creating": 0,
+      "unavailable": 0,
+      "url": "https://dashboard.bex.co/databases/dpg-db9jvrtdkths73a1sil0#sql-console"
+    },
+    "a873DesktopNullQuery": {
+      "at": "2026-10-17T09:32:22.983Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db9jvrtdkths73a1sil0",
+          "sql": "SELECT value\nFROM (VALUES\n  (1,NULL::text),\n  (2,'NULL'::text),\n  (3,'null'::text),\n  (4,''::text),\n  (5,'雪 café'::text)\n) AS sample(ord,value)\nORDER BY ord;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["value"],
+            "rowCount": 5,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [null]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["NULL"]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["null"]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [""]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["雪 café"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792229541761.811,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.138,
+        "responseStart": 515.133,
+        "responseEnd": 515.871
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9jvrtdkths73a1sil0#sql-console"
+    },
+    "a873DesktopNullView": {
+      "at": "2026-10-17T09:32:24.076Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db9jvrtdkths73a1sil0#sql-console",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "documentWidth": 1440,
+      "query": "SELECT value\nFROM (VALUES\n  (1,NULL::text),\n  (2,'NULL'::text),\n  (3,'null'::text),\n  (4,''::text),\n  (5,'雪 café'::text)\n) AS sample(ord,value)\nORDER BY ord;",
+      "tableAria": "- table:\n  - rowgroup:\n    - row \"value\":\n      - columnheader \"value\"\n  - rowgroup:\n    - row \"SQL NULL (no value)\":\n      - cell \"SQL NULL (no value)\"\n    - row \"NULL\":\n      - cell \"NULL\"\n    - row \"null\":\n      - cell \"null\"\n    - row:\n      - cell\n    - row \"雪 café\":\n      - cell \"雪 café\"",
+      "cardAria": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": SELECT value FROM (VALUES (1,NULL::text), (2,'NULL'::text), (3,'null'::text), (4,''::text), (5,'雪 café'::text) ) AS sample(ord,value) ORDER BY ord;\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- paragraph: 5 rows returned\n- table:\n  - rowgroup:\n    - row \"value\":\n      - columnheader \"value\"\n  - rowgroup:\n    - row \"SQL NULL (no value)\":\n      - cell \"SQL NULL (no value)\"\n    - row \"NULL\":\n      - cell \"NULL\"\n    - row \"null\":\n      - cell \"null\"\n    - row:\n      - cell\n    - row \"雪 café\":\n      - cell \"雪 café\"\n- paragraph: Query history\n- button \"Clear\"\n- button \"SELECT value FROM (VALUES (1,NULL::text), (2,'NULL'::text), (3,'null'::text), (4,''::text), (5,'雪 café'::text) ) AS sample(ord,value) ORDER BY ord;\"",
+      "cells": [
+        {
+          "text": "NULLSQL NULL (no value)",
+          "html": "<span aria-hidden=\"true\" class=\"rounded-sm border border-dashed px-1 text-xs italic text-muted-foreground\">NULL</span><span class=\"sr-only\">SQL NULL (no value)</span>",
+          "fontStyle": "normal",
+          "color": "oklch(0.15 0.008 260)",
+          "children": [
+            {
+              "text": "NULL",
+              "ariaHidden": "true",
+              "className": "rounded-sm border border-dashed px-1 text-xs italic text-muted-foreground",
+              "fontStyle": "italic",
+              "borderStyle": "dashed",
+              "borderWidth": "1px",
+              "position": "static",
+              "width": "auto",
+              "height": "auto"
+            },
+            {
+              "text": "SQL NULL (no value)",
+              "ariaHidden": null,
+              "className": "sr-only",
+              "fontStyle": "normal",
+              "borderStyle": "solid",
+              "borderWidth": "0px",
+              "position": "absolute",
+              "width": "1px",
+              "height": "1px"
+            }
+          ]
+        },
+        {
+          "text": "NULL",
+          "html": "NULL",
+          "fontStyle": "normal",
+          "color": "oklch(0.15 0.008 260)",
+          "children": []
+        },
+        {
+          "text": "null",
+          "html": "null",
+          "fontStyle": "normal",
+          "color": "oklch(0.15 0.008 260)",
+          "children": []
+        },
+        {
+          "text": "",
+          "html": "",
+          "fontStyle": "normal",
+          "color": "oklch(0.15 0.008 260)",
+          "children": []
+        },
+        {
+          "text": "雪 café",
+          "html": "雪 café",
+          "fontStyle": "normal",
+          "color": "oklch(0.15 0.008 260)",
+          "children": []
+        }
+      ],
+      "tableBounds": {
+        "x": 302,
+        "y": 552,
+        "width": 844,
+        "height": 200.5
+      }
+    },
+    "a873MobileFreshConsole": {
+      "at": "2026-10-17T09:33:05.123Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db9jvrtdkths73a1sil0#sql-console",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "draft": "SELECT version();",
+      "history": "[\"SELECT value\\nFROM (VALUES\\n  (1,NULL::text),\\n  (2,'NULL'::text),\\n  (3,'null'::text),\\n  (4,''::text),\\n  (5,'雪 café'::text)\\n) AS sample(ord,value)\\nORDER BY ord;\"]"
+    },
+    "a873MobileNullQuery": {
+      "at": "2026-10-17T09:33:07.581Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db9jvrtdkths73a1sil0",
+          "sql": "SELECT value\nFROM (VALUES\n  (1,NULL::text),\n  (2,'NULL'::text),\n  (3,'null'::text),\n  (4,''::text),\n  (5,'雪 café'::text)\n) AS sample(ord,value)\nORDER BY ord;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["value"],
+            "rowCount": 5,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [null]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["NULL"]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["null"]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [""]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": ["雪 café"]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792229585742.4302,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.186,
+        "responseStart": 1134.699,
+        "responseEnd": 1135.107
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9jvrtdkths73a1sil0#sql-console"
+    },
+    "a873MobileNullView": {
+      "at": "2026-10-17T09:33:08.176Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db9jvrtdkths73a1sil0#sql-console",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "query": "SELECT value\nFROM (VALUES\n  (1,NULL::text),\n  (2,'NULL'::text),\n  (3,'null'::text),\n  (4,''::text),\n  (5,'雪 café'::text)\n) AS sample(ord,value)\nORDER BY ord;",
+      "tableAria": "- table:\n  - rowgroup:\n    - row \"value\":\n      - columnheader \"value\"\n  - rowgroup:\n    - row \"SQL NULL (no value)\":\n      - cell \"SQL NULL (no value)\"\n    - row \"NULL\":\n      - cell \"NULL\"\n    - row \"null\":\n      - cell \"null\"\n    - row:\n      - cell\n    - row \"雪 café\":\n      - cell \"雪 café\"",
+      "cardAria": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": SELECT value FROM (VALUES (1,NULL::text), (2,'NULL'::text), (3,'null'::text), (4,''::text), (5,'雪 café'::text) ) AS sample(ord,value) ORDER BY ord;\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- paragraph: 5 rows returned\n- table:\n  - rowgroup:\n    - row \"value\":\n      - columnheader \"value\"\n  - rowgroup:\n    - row \"SQL NULL (no value)\":\n      - cell \"SQL NULL (no value)\"\n    - row \"NULL\":\n      - cell \"NULL\"\n    - row \"null\":\n      - cell \"null\"\n    - row:\n      - cell\n    - row \"雪 café\":\n      - cell \"雪 café\"\n- paragraph: Query history\n- button \"Clear\"\n- button \"SELECT value FROM (VALUES (1,NULL::text), (2,'NULL'::text), (3,'null'::text), (4,''::text), (5,'雪 café'::text) ) AS sample(ord,value) ORDER BY ord;\"",
+      "cells": [
+        {
+          "text": "NULLSQL NULL (no value)",
+          "html": "<span aria-hidden=\"true\" class=\"rounded-sm border border-dashed px-1 text-xs italic text-muted-foreground\">NULL</span><span class=\"sr-only\">SQL NULL (no value)</span>",
+          "fontStyle": "normal",
+          "color": "oklch(0.15 0.008 260)",
+          "children": [
+            {
+              "text": "NULL",
+              "ariaHidden": "true",
+              "className": "rounded-sm border border-dashed px-1 text-xs italic text-muted-foreground",
+              "fontStyle": "italic",
+              "borderStyle": "dashed",
+              "borderWidth": "1px",
+              "position": "static",
+              "width": "auto",
+              "height": "auto"
+            },
+            {
+              "text": "SQL NULL (no value)",
+              "ariaHidden": null,
+              "className": "sr-only",
+              "fontStyle": "normal",
+              "borderStyle": "solid",
+              "borderWidth": "0px",
+              "position": "absolute",
+              "width": "1px",
+              "height": "1px"
+            }
+          ]
+        },
+        {
+          "text": "NULL",
+          "html": "NULL",
+          "fontStyle": "normal",
+          "color": "oklch(0.15 0.008 260)",
+          "children": []
+        },
+        {
+          "text": "null",
+          "html": "null",
+          "fontStyle": "normal",
+          "color": "oklch(0.15 0.008 260)",
+          "children": []
+        },
+        {
+          "text": "",
+          "html": "",
+          "fontStyle": "normal",
+          "color": "oklch(0.15 0.008 260)",
+          "children": []
+        },
+        {
+          "text": "雪 café",
+          "html": "雪 café",
+          "fontStyle": "normal",
+          "color": "oklch(0.15 0.008 260)",
+          "children": []
+        }
+      ],
+      "tableBounds": {
+        "x": 38,
+        "y": 643,
+        "width": 314,
+        "height": 200.5
+      }
+    },
+    "a873PagingQuery": {
+      "at": "2026-10-17T09:34:07.675Z",
+      "request": {
+        "operationName": "ExecuteDatabaseQuery",
+        "variables": {
+          "id": "dpg-db9jvrtdkths73a1sil0",
+          "sql": "SELECT n AS ordinal,\n       CASE n % 5 WHEN 1 THEN NULL::text WHEN 2 THEN 'NULL' WHEN 3 THEN 'null' WHEN 4 THEN '' ELSE '雪 café' END AS value,\n       E'quoted \"a,b\"\\n雪𝒜' AS note,\n       9223372036854775000::bigint + n AS exact_integer\nFROM generate_series(1,55) AS series(n)\nORDER BY n;",
+          "allowWrites": false
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "executeDatabaseQuery": {
+            "__typename": "DatabaseQueryResult",
+            "columns": ["ordinal", "value", "note", "exact_integer"],
+            "rowCount": 55,
+            "rows": [
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "1",
+                  null,
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775001"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "2",
+                  "NULL",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775002"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "3",
+                  "null",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775003"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "4",
+                  "",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775004"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "5",
+                  "雪 café",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775005"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "6",
+                  null,
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775006"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "7",
+                  "NULL",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775007"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "8",
+                  "null",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775008"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "9",
+                  "",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775009"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "10",
+                  "雪 café",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775010"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "11",
+                  null,
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775011"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "12",
+                  "NULL",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775012"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "13",
+                  "null",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775013"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "14",
+                  "",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775014"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "15",
+                  "雪 café",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775015"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "16",
+                  null,
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775016"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "17",
+                  "NULL",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775017"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "18",
+                  "null",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775018"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "19",
+                  "",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775019"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "20",
+                  "雪 café",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775020"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "21",
+                  null,
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775021"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "22",
+                  "NULL",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775022"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "23",
+                  "null",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775023"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "24",
+                  "",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775024"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "25",
+                  "雪 café",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775025"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "26",
+                  null,
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775026"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "27",
+                  "NULL",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775027"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "28",
+                  "null",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775028"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "29",
+                  "",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775029"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "30",
+                  "雪 café",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775030"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "31",
+                  null,
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775031"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "32",
+                  "NULL",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775032"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "33",
+                  "null",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775033"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "34",
+                  "",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775034"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "35",
+                  "雪 café",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775035"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "36",
+                  null,
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775036"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "37",
+                  "NULL",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775037"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "38",
+                  "null",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775038"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "39",
+                  "",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775039"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "40",
+                  "雪 café",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775040"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "41",
+                  null,
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775041"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "42",
+                  "NULL",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775042"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "43",
+                  "null",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775043"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "44",
+                  "",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775044"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "45",
+                  "雪 café",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775045"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "46",
+                  null,
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775046"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "47",
+                  "NULL",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775047"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "48",
+                  "null",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775048"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "49",
+                  "",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775049"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "50",
+                  "雪 café",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775050"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "51",
+                  null,
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775051"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "52",
+                  "NULL",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775052"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "53",
+                  "null",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775053"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "54",
+                  "",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775054"
+                ]
+              },
+              {
+                "__typename": "DatabaseQueryRow",
+                "values": [
+                  "55",
+                  "雪 café",
+                  "quoted \"a,b\"\n雪𝒜",
+                  "9223372036854775055"
+                ]
+              }
+            ],
+            "truncated": false
+          }
+        }
+      },
+      "timing": {
+        "startTime": 1792229646125.5957,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.14,
+        "responseStart": 846.676,
+        "responseEnd": 847.101
+      },
+      "url": "https://dashboard.bex.co/databases/dpg-db9jvrtdkths73a1sil0#sql-console"
+    },
+    "a873PageOneView": {
+      "at": "2026-10-17T09:34:08.757Z",
+      "url": "https://dashboard.bex.co/databases/dpg-db9jvrtdkths73a1sil0#sql-console",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "documentWidth": 390,
+      "query": "SELECT n AS ordinal,\n       CASE n % 5 WHEN 1 THEN NULL::text WHEN 2 THEN 'NULL' WHEN 3 THEN 'null' WHEN 4 THEN '' ELSE '雪 café' END AS value,\n       E'quoted \"a,b\"\\n雪𝒜' AS note,\n       9223372036854775000::bigint + n AS exact_integer\nFROM generate_series(1,55) AS series(n)\nORDER BY n;",
+      "rows": [
+        [
+          "1",
+          "NULLSQL NULL (no value)",
+          "quoted \"a,b\"\n雪𝒜",
+          "9223372036854775001"
+        ],
+        ["2", "NULL", "quoted \"a,b\"\n雪𝒜", "9223372036854775002"],
+        ["3", "null", "quoted \"a,b\"\n雪𝒜", "9223372036854775003"],
+        ["4", "", "quoted \"a,b\"\n雪𝒜", "9223372036854775004"],
+        ["5", "雪 café", "quoted \"a,b\"\n雪𝒜", "9223372036854775005"],
+        [
+          "6",
+          "NULLSQL NULL (no value)",
+          "quoted \"a,b\"\n雪𝒜",
+          "9223372036854775006"
+        ],
+        ["7", "NULL", "quoted \"a,b\"\n雪𝒜", "9223372036854775007"],
+        ["8", "null", "quoted \"a,b\"\n雪𝒜", "9223372036854775008"],
+        ["9", "", "quoted \"a,b\"\n雪𝒜", "9223372036854775009"],
+        ["10", "雪 café", "quoted \"a,b\"\n雪𝒜", "9223372036854775010"],
+        [
+          "11",
+          "NULLSQL NULL (no value)",
+          "quoted \"a,b\"\n雪𝒜",
+          "9223372036854775011"
+        ],
+        ["12", "NULL", "quoted \"a,b\"\n雪𝒜", "9223372036854775012"],
+        ["13", "null", "quoted \"a,b\"\n雪𝒜", "9223372036854775013"],
+        ["14", "", "quoted \"a,b\"\n雪𝒜", "9223372036854775014"],
+        ["15", "雪 café", "quoted \"a,b\"\n雪𝒜", "9223372036854775015"],
+        [
+          "16",
+          "NULLSQL NULL (no value)",
+          "quoted \"a,b\"\n雪𝒜",
+          "9223372036854775016"
+        ],
+        ["17", "NULL", "quoted \"a,b\"\n雪𝒜", "9223372036854775017"],
+        ["18", "null", "quoted \"a,b\"\n雪𝒜", "9223372036854775018"],
+        ["19", "", "quoted \"a,b\"\n雪𝒜", "9223372036854775019"],
+        ["20", "雪 café", "quoted \"a,b\"\n雪𝒜", "9223372036854775020"],
+        [
+          "21",
+          "NULLSQL NULL (no value)",
+          "quoted \"a,b\"\n雪𝒜",
+          "9223372036854775021"
+        ],
+        ["22", "NULL", "quoted \"a,b\"\n雪𝒜", "9223372036854775022"],
+        ["23", "null", "quoted \"a,b\"\n雪𝒜", "9223372036854775023"],
+        ["24", "", "quoted \"a,b\"\n雪𝒜", "9223372036854775024"],
+        ["25", "雪 café", "quoted \"a,b\"\n雪𝒜", "9223372036854775025"],
+        [
+          "26",
+          "NULLSQL NULL (no value)",
+          "quoted \"a,b\"\n雪𝒜",
+          "9223372036854775026"
+        ],
+        ["27", "NULL", "quoted \"a,b\"\n雪𝒜", "9223372036854775027"],
+        ["28", "null", "quoted \"a,b\"\n雪𝒜", "9223372036854775028"],
+        ["29", "", "quoted \"a,b\"\n雪𝒜", "9223372036854775029"],
+        ["30", "雪 café", "quoted \"a,b\"\n雪𝒜", "9223372036854775030"],
+        [
+          "31",
+          "NULLSQL NULL (no value)",
+          "quoted \"a,b\"\n雪𝒜",
+          "9223372036854775031"
+        ],
+        ["32", "NULL", "quoted \"a,b\"\n雪𝒜", "9223372036854775032"],
+        ["33", "null", "quoted \"a,b\"\n雪𝒜", "9223372036854775033"],
+        ["34", "", "quoted \"a,b\"\n雪𝒜", "9223372036854775034"],
+        ["35", "雪 café", "quoted \"a,b\"\n雪𝒜", "9223372036854775035"],
+        [
+          "36",
+          "NULLSQL NULL (no value)",
+          "quoted \"a,b\"\n雪𝒜",
+          "9223372036854775036"
+        ],
+        ["37", "NULL", "quoted \"a,b\"\n雪𝒜", "9223372036854775037"],
+        ["38", "null", "quoted \"a,b\"\n雪𝒜", "9223372036854775038"],
+        ["39", "", "quoted \"a,b\"\n雪𝒜", "9223372036854775039"],
+        ["40", "雪 café", "quoted \"a,b\"\n雪𝒜", "9223372036854775040"],
+        [
+          "41",
+          "NULLSQL NULL (no value)",
+          "quoted \"a,b\"\n雪𝒜",
+          "9223372036854775041"
+        ],
+        ["42", "NULL", "quoted \"a,b\"\n雪𝒜", "9223372036854775042"],
+        ["43", "null", "quoted \"a,b\"\n雪𝒜", "9223372036854775043"],
+        ["44", "", "quoted \"a,b\"\n雪𝒜", "9223372036854775044"],
+        ["45", "雪 café", "quoted \"a,b\"\n雪𝒜", "9223372036854775045"],
+        [
+          "46",
+          "NULLSQL NULL (no value)",
+          "quoted \"a,b\"\n雪𝒜",
+          "9223372036854775046"
+        ],
+        ["47", "NULL", "quoted \"a,b\"\n雪𝒜", "9223372036854775047"],
+        ["48", "null", "quoted \"a,b\"\n雪𝒜", "9223372036854775048"],
+        ["49", "", "quoted \"a,b\"\n雪𝒜", "9223372036854775049"],
+        ["50", "雪 café", "quoted \"a,b\"\n雪𝒜", "9223372036854775050"]
+      ],
+      "tableAria": "- table:\n  - rowgroup:\n    - row \"ordinal value note exact_integer\":\n      - columnheader \"ordinal\"\n      - columnheader \"value\"\n      - columnheader \"note\"\n      - columnheader \"exact_integer\"\n  - rowgroup:\n    - row \"1 SQL NULL (no value) quoted \\\"a,b\\\" 雪𝒜 9223372036854775001\":\n      - cell \"1\"\n      - cell \"SQL NULL (no value)\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775001\"\n    - row \"2 NULL quoted \\\"a,b\\\" 雪𝒜 9223372036854775002\":\n      - cell \"2\"\n      - cell \"NULL\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775002\"\n    - row \"3 null quoted \\\"a,b\\\" 雪𝒜 9223372036854775003\":\n      - cell \"3\"\n      - cell \"null\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775003\"\n    - row \"4 quoted \\\"a,b\\\" 雪𝒜 9223372036854775004\":\n      - cell \"4\"\n      - cell\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775004\"\n    - row \"5 雪 café quoted \\\"a,b\\\" 雪𝒜 9223372036854775005\":\n      - cell \"5\"\n      - cell \"雪 café\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775005\"\n    - row \"6 SQL NULL (no value) quoted \\\"a,b\\\" 雪𝒜 9223372036854775006\":\n      - cell \"6\"\n      - cell \"SQL NULL (no value)\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775006\"\n    - row \"7 NULL quoted \\\"a,b\\\" 雪𝒜 9223372036854775007\":\n      - cell \"7\"\n      - cell \"NULL\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775007\"\n    - row \"8 null quoted \\\"a,b\\\" 雪𝒜 9223372036854775008\":\n      - cell \"8\"\n      - cell \"null\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775008\"\n    - row \"9 quoted \\\"a,b\\\" 雪𝒜 9223372036854775009\":\n      - cell \"9\"\n      - cell\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775009\"\n    - row \"10 雪 café quoted \\\"a,b\\\" 雪𝒜 9223372036854775010\":\n      - cell \"10\"\n      - cell \"雪 café\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775010\"\n    - row \"11 SQL NULL (no value) quoted \\\"a,b\\\" 雪𝒜 9223372036854775011\":\n      - cell \"11\"\n      - cell \"SQL NULL (no value)\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775011\"\n    - row \"12 NULL quoted \\\"a,b\\\" 雪𝒜 9223372036854775012\":\n      - cell \"12\"\n      - cell \"NULL\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775012\"\n    - row \"13 null quoted \\\"a,b\\\" 雪𝒜 9223372036854775013\":\n      - cell \"13\"\n      - cell \"null\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775013\"\n    - row \"14 quoted \\\"a,b\\\" 雪𝒜 9223372036854775014\":\n      - cell \"14\"\n      - cell\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775014\"\n    - row \"15 雪 café quoted \\\"a,b\\\" 雪𝒜 9223372036854775015\":\n      - cell \"15\"\n      - cell \"雪 café\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775015\"\n    - row \"16 SQL NULL (no value) quoted \\\"a,b\\\" 雪𝒜 9223372036854775016\":\n      - cell \"16\"\n      - cell \"SQL NULL (no value)\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775016\"\n    - row \"17 NULL quoted \\\"a,b\\\" 雪𝒜 9223372036854775017\":\n      - cell \"17\"\n      - cell \"NULL\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775017\"\n    - row \"18 null quoted \\\"a,b\\\" 雪𝒜 9223372036854775018\":\n      - cell \"18\"\n      - cell \"null\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775018\"\n    - row \"19 quoted \\\"a,b\\\" 雪𝒜 9223372036854775019\":\n      - cell \"19\"\n      - cell\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775019\"\n    - row \"20 雪 café quoted \\\"a,b\\\" 雪𝒜 9223372036854775020\":\n      - cell \"20\"\n      - cell \"雪 café\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775020\"\n    - row \"21 SQL NULL (no value) quoted \\\"a,b\\\" 雪𝒜 9223372036854775021\":\n      - cell \"21\"\n      - cell \"SQL NULL (no value)\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775021\"\n    - row \"22 NULL quoted \\\"a,b\\\" 雪𝒜 9223372036854775022\":\n      - cell \"22\"\n      - cell \"NULL\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775022\"\n    - row \"23 null quoted \\\"a,b\\\" 雪𝒜 9223372036854775023\":\n      - cell \"23\"\n      - cell \"null\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775023\"\n    - row \"24 quoted \\\"a,b\\\" 雪𝒜 9223372036854775024\":\n      - cell \"24\"\n      - cell\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775024\"\n    - row \"25 雪 café quoted \\\"a,b\\\" 雪𝒜 9223372036854775025\":\n      - cell \"25\"\n      - cell \"雪 café\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775025\"\n    - row \"26 SQL NULL (no value) quoted \\\"a,b\\\" 雪𝒜 9223372036854775026\":\n      - cell \"26\"\n      - cell \"SQL NULL (no value)\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775026\"\n    - row \"27 NULL quoted \\\"a,b\\\" 雪𝒜 9223372036854775027\":\n      - cell \"27\"\n      - cell \"NULL\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775027\"\n    - row \"28 null quoted \\\"a,b\\\" 雪𝒜 9223372036854775028\":\n      - cell \"28\"\n      - cell \"null\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775028\"\n    - row \"29 quoted \\\"a,b\\\" 雪𝒜 9223372036854775029\":\n      - cell \"29\"\n      - cell\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775029\"\n    - row \"30 雪 café quoted \\\"a,b\\\" 雪𝒜 9223372036854775030\":\n      - cell \"30\"\n      - cell \"雪 café\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775030\"\n    - row \"31 SQL NULL (no value) quoted \\\"a,b\\\" 雪𝒜 9223372036854775031\":\n      - cell \"31\"\n      - cell \"SQL NULL (no value)\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775031\"\n    - row \"32 NULL quoted \\\"a,b\\\" 雪𝒜 9223372036854775032\":\n      - cell \"32\"\n      - cell \"NULL\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775032\"\n    - row \"33 null quoted \\\"a,b\\\" 雪𝒜 9223372036854775033\":\n      - cell \"33\"\n      - cell \"null\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775033\"\n    - row \"34 quoted \\\"a,b\\\" 雪𝒜 9223372036854775034\":\n      - cell \"34\"\n      - cell\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775034\"\n    - row \"35 雪 café quoted \\\"a,b\\\" 雪𝒜 9223372036854775035\":\n      - cell \"35\"\n      - cell \"雪 café\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775035\"\n    - row \"36 SQL NULL (no value) quoted \\\"a,b\\\" 雪𝒜 9223372036854775036\":\n      - cell \"36\"\n      - cell \"SQL NULL (no value)\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775036\"\n    - row \"37 NULL quoted \\\"a,b\\\" 雪𝒜 9223372036854775037\":\n      - cell \"37\"\n      - cell \"NULL\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775037\"\n    - row \"38 null quoted \\\"a,b\\\" 雪𝒜 9223372036854775038\":\n      - cell \"38\"\n      - cell \"null\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775038\"\n    - row \"39 quoted \\\"a,b\\\" 雪𝒜 9223372036854775039\":\n      - cell \"39\"\n      - cell\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775039\"\n    - row \"40 雪 café quoted \\\"a,b\\\" 雪𝒜 9223372036854775040\":\n      - cell \"40\"\n      - cell \"雪 café\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775040\"\n    - row \"41 SQL NULL (no value) quoted \\\"a,b\\\" 雪𝒜 9223372036854775041\":\n      - cell \"41\"\n      - cell \"SQL NULL (no value)\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775041\"\n    - row \"42 NULL quoted \\\"a,b\\\" 雪𝒜 9223372036854775042\":\n      - cell \"42\"\n      - cell \"NULL\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775042\"\n    - row \"43 null quoted \\\"a,b\\\" 雪𝒜 9223372036854775043\":\n      - cell \"43\"\n      - cell \"null\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775043\"\n    - row \"44 quoted \\\"a,b\\\" 雪𝒜 9223372036854775044\":\n      - cell \"44\"\n      - cell\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775044\"\n    - row \"45 雪 café quoted \\\"a,b\\\" 雪𝒜 9223372036854775045\":\n      - cell \"45\"\n      - cell \"雪 café\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775045\"\n    - row \"46 SQL NULL (no value) quoted \\\"a,b\\\" 雪𝒜 9223372036854775046\":\n      - cell \"46\"\n      - cell \"SQL NULL (no value)\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775046\"\n    - row \"47 NULL quoted \\\"a,b\\\" 雪𝒜 9223372036854775047\":\n      - cell \"47\"\n      - cell \"NULL\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775047\"\n    - row \"48 null quoted \\\"a,b\\\" 雪𝒜 9223372036854775048\":\n      - cell \"48\"\n      - cell \"null\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775048\"\n    - row \"49 quoted \\\"a,b\\\" 雪𝒜 9223372036854775049\":\n      - cell \"49\"\n      - cell\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775049\"\n    - row \"50 雪 café quoted \\\"a,b\\\" 雪𝒜 9223372036854775050\":\n      - cell \"50\"\n      - cell \"雪 café\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775050\"",
+      "nextCount": 1,
+      "previousCount": 1,
+      "cardText": "SQL console\nRun a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n\nPress Ctrl+Enter or ⌘+Enter to run\n\nRun query\n\n55 rows returned\n\nordinal\tvalue\tnote\texact_integer\n1\tNULL\nSQL NULL (no value)\n\tquoted \"a,b\"\n雪𝒜\t9223372036854775001\n2\tNULL\tquoted \"a,b\"\n雪𝒜\t9223372036854775002\n3\tnull\tquoted \"a,b\"\n雪𝒜\t9223372036854775003\n4\t\tquoted \"a,b\"\n雪𝒜\t9223372036854775004\n5\t雪 café\tquoted \"a,b\"\n雪𝒜\t9223372036854775005\n6\tNULL\nSQL NULL (no value)\n\tquoted \"a,b\"\n雪𝒜\t9223372036854775006\n7\tNULL\tquoted \"a,b\"\n雪𝒜\t9223372036854775007\n8\tnull\tquoted \"a,b\"\n雪𝒜\t9223372036854775008\n9\t\tquoted \"a,b\"\n雪𝒜\t9223372036854775009\n10\t雪 café\tquoted \"a,b\"\n雪𝒜\t9223372036854775010\n11\tNULL\nSQL NULL (no value)\n\tquoted \"a,b\"\n雪𝒜\t9223372036854775011\n12\tNULL\tquoted \"a,b\"\n雪𝒜\t9223372036854775012\n13\tnull\tquoted \"a,b\"\n雪𝒜\t9223372036854775013\n14\t\tquoted \"a,b\"\n雪𝒜\t9223372036854775014\n15\t雪 café\tquoted \"a,b\"\n雪𝒜\t9223372036854775015\n16\tNULL\nSQL NULL (no value)\n\tquoted \"a,b\"\n雪𝒜\t9223372036854775016\n17\tNULL\tquoted \"a,b\"\n雪𝒜\t9223372036854775017\n18\tnull\tquoted \"a,b\"\n雪𝒜\t9223372036854775018\n19\t\tquoted \"a,b\"\n雪𝒜\t9223372036854775019\n20\t雪 café\tquoted \"a,b\"\n雪𝒜\t9223372036854775020\n21\tNULL\nSQL NULL (no value)\n\tquoted \"a,b\"\n雪𝒜\t9223372036854775021\n22\tNULL\tquoted \"a,b\"\n雪𝒜\t9223372036854775022\n23\tnull\tquoted \"a,b\"\n雪𝒜\t9223372036854775023\n24\t\tquoted \"a,b\"\n雪𝒜\t9223372036854775024\n25\t雪 café\tquoted \"a,b\"\n雪𝒜\t9223372036854775025\n26\tNULL\nSQL NULL (no value)\n\tquoted \"a,b\"\n雪𝒜\t9223372036854775026\n27\tNULL\tquoted \"a,b\"\n雪𝒜\t9223372036854775027\n28\tnull\tquoted \"a,b\"\n雪𝒜\t9223372036854775028\n29\t\tquoted \"a,b\"\n雪𝒜\t9223372036854775029\n30\t雪 café\tquoted \"a,b\"\n雪𝒜\t9223372036854775030\n31\tNULL\nSQL NULL (no value)\n\tquoted \"a,b\"\n雪𝒜\t9223372036854775031\n32\tNULL\tquoted \"a,b\"\n雪𝒜\t9223372036854775032\n33\tnull\tquoted \"a,b\"\n雪𝒜\t9223372036854775033\n34\t\tquoted \"a,b\"\n雪𝒜\t9223372036854775034\n35\t雪 café\tquoted \"a,b\"\n雪𝒜\t9223372036854775035\n36\tNULL\nSQL NULL (no value)\n\tquoted \"a,b\"\n雪𝒜\t9223372036854775036\n37\tNULL\tquoted \"a,b\"\n雪𝒜\t9223372036854775037\n38\tnull\tquoted \"a,b\"\n雪𝒜\t9223372036854775038\n39\t\tquoted \"a,b\"\n雪𝒜\t9223372036854775039\n40\t雪 café\tquoted \"a,b\"\n雪𝒜\t9223372036854775040\n41\tNULL\nSQL NULL (no value)\n\tquoted \"a,b\"\n雪𝒜\t9223372036854775041\n42\tNULL\tquoted \"a,b\"\n雪𝒜\t9223372036854775042\n43\tnull\tquoted \"a,b\"\n雪𝒜\t9223372036854775043\n44\t\tquoted \"a,b\"\n雪𝒜\t9223372036854775044\n45\t雪 café\tquoted \"a,b\"\n雪𝒜\t9223372036854775045\n46\tNULL\nSQL NULL (no value)\n\tquoted \"a,b\"\n雪𝒜\t9223372036854775046\n47\tNULL\tquoted \"a,b\"\n雪𝒜\t9223372036854775047\n48\tnull\tquoted \"a,b\"\n雪𝒜\t9223372036854775048\n49\t\tquoted \"a,b\"\n雪𝒜\t9223372036854775049\n50\t雪 café\tquoted \"a,b\"\n雪𝒜\t9223372036854775050\nPrevious\nPage 1 of 2\nNext\n\nQuery history\n\nClear\nSELECT n AS ordinal, CASE n % 5 WHEN 1 THEN NULL::text WHEN 2 THEN 'NULL' WHEN 3 THEN 'null' WHEN 4 THEN '' ELSE '雪 café' END AS value, E'quoted \"a,b\"\\n雪𝒜' AS note, 9223372036854775000::bigint + n AS exact_integer FROM generate_series(1,55) AS series(n) ORDER BY n;\nSELECT value FROM (VALUES (1,NULL::text), (2,'NULL'::text), (3,'null'::text), (4,''::text), (5,'雪 café'::text) ) AS sample(ord,value) ORDER BY ord;",
+      "history": "[\"SELECT n AS ordinal,\\n       CASE n % 5 WHEN 1 THEN NULL::text WHEN 2 THEN 'NULL' WHEN 3 THEN 'null' WHEN 4 THEN '' ELSE '雪 café' END AS value,\\n       E'quoted \\\"a,b\\\"\\\\n雪𝒜' AS note,\\n       9223372036854775000::bigint + n AS exact_integer\\nFROM generate_series(1,55) AS series(n)\\nORDER BY n;\",\"SELECT value\\nFROM (VALUES\\n  (1,NULL::text),\\n  (2,'NULL'::text),\\n  (3,'null'::text),\\n  (4,''::text),\\n  (5,'雪 café'::text)\\n) AS sample(ord,value)\\nORDER BY ord;\"]"
+    },
+    "a873NextPage": {
+      "before": {
+        "at": "2026-10-17T09:34:57.289Z",
+        "url": "https://dashboard.bex.co/databases/dpg-db9jvrtdkths73a1sil0#sql-console",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "documentWidth": 390,
+        "query": "SELECT n AS ordinal,\n       CASE n % 5 WHEN 1 THEN NULL::text WHEN 2 THEN 'NULL' WHEN 3 THEN 'null' WHEN 4 THEN '' ELSE '雪 café' END AS value,\n       E'quoted \"a,b\"\\n雪𝒜' AS note,\n       9223372036854775000::bigint + n AS exact_integer\nFROM generate_series(1,55) AS series(n)\nORDER BY n;",
+        "rows": [
+          [
+            "1",
+            "NULLSQL NULL (no value)",
+            "quoted \"a,b\"\n雪𝒜",
+            "9223372036854775001"
+          ],
+          ["2", "NULL", "quoted \"a,b\"\n雪𝒜", "9223372036854775002"],
+          ["3", "null", "quoted \"a,b\"\n雪𝒜", "9223372036854775003"],
+          ["4", "", "quoted \"a,b\"\n雪𝒜", "9223372036854775004"],
+          ["5", "雪 café", "quoted \"a,b\"\n雪𝒜", "9223372036854775005"],
+          [
+            "6",
+            "NULLSQL NULL (no value)",
+            "quoted \"a,b\"\n雪𝒜",
+            "9223372036854775006"
+          ],
+          ["7", "NULL", "quoted \"a,b\"\n雪𝒜", "9223372036854775007"],
+          ["8", "null", "quoted \"a,b\"\n雪𝒜", "9223372036854775008"],
+          ["9", "", "quoted \"a,b\"\n雪𝒜", "9223372036854775009"],
+          ["10", "雪 café", "quoted \"a,b\"\n雪𝒜", "9223372036854775010"],
+          [
+            "11",
+            "NULLSQL NULL (no value)",
+            "quoted \"a,b\"\n雪𝒜",
+            "9223372036854775011"
+          ],
+          ["12", "NULL", "quoted \"a,b\"\n雪𝒜", "9223372036854775012"],
+          ["13", "null", "quoted \"a,b\"\n雪𝒜", "9223372036854775013"],
+          ["14", "", "quoted \"a,b\"\n雪𝒜", "9223372036854775014"],
+          ["15", "雪 café", "quoted \"a,b\"\n雪𝒜", "9223372036854775015"],
+          [
+            "16",
+            "NULLSQL NULL (no value)",
+            "quoted \"a,b\"\n雪𝒜",
+            "9223372036854775016"
+          ],
+          ["17", "NULL", "quoted \"a,b\"\n雪𝒜", "9223372036854775017"],
+          ["18", "null", "quoted \"a,b\"\n雪𝒜", "9223372036854775018"],
+          ["19", "", "quoted \"a,b\"\n雪𝒜", "9223372036854775019"],
+          ["20", "雪 café", "quoted \"a,b\"\n雪𝒜", "9223372036854775020"],
+          [
+            "21",
+            "NULLSQL NULL (no value)",
+            "quoted \"a,b\"\n雪𝒜",
+            "9223372036854775021"
+          ],
+          ["22", "NULL", "quoted \"a,b\"\n雪𝒜", "9223372036854775022"],
+          ["23", "null", "quoted \"a,b\"\n雪𝒜", "9223372036854775023"],
+          ["24", "", "quoted \"a,b\"\n雪𝒜", "9223372036854775024"],
+          ["25", "雪 café", "quoted \"a,b\"\n雪𝒜", "9223372036854775025"],
+          [
+            "26",
+            "NULLSQL NULL (no value)",
+            "quoted \"a,b\"\n雪𝒜",
+            "9223372036854775026"
+          ],
+          ["27", "NULL", "quoted \"a,b\"\n雪𝒜", "9223372036854775027"],
+          ["28", "null", "quoted \"a,b\"\n雪𝒜", "9223372036854775028"],
+          ["29", "", "quoted \"a,b\"\n雪𝒜", "9223372036854775029"],
+          ["30", "雪 café", "quoted \"a,b\"\n雪𝒜", "9223372036854775030"],
+          [
+            "31",
+            "NULLSQL NULL (no value)",
+            "quoted \"a,b\"\n雪𝒜",
+            "9223372036854775031"
+          ],
+          ["32", "NULL", "quoted \"a,b\"\n雪𝒜", "9223372036854775032"],
+          ["33", "null", "quoted \"a,b\"\n雪𝒜", "9223372036854775033"],
+          ["34", "", "quoted \"a,b\"\n雪𝒜", "9223372036854775034"],
+          ["35", "雪 café", "quoted \"a,b\"\n雪𝒜", "9223372036854775035"],
+          [
+            "36",
+            "NULLSQL NULL (no value)",
+            "quoted \"a,b\"\n雪𝒜",
+            "9223372036854775036"
+          ],
+          ["37", "NULL", "quoted \"a,b\"\n雪𝒜", "9223372036854775037"],
+          ["38", "null", "quoted \"a,b\"\n雪𝒜", "9223372036854775038"],
+          ["39", "", "quoted \"a,b\"\n雪𝒜", "9223372036854775039"],
+          ["40", "雪 café", "quoted \"a,b\"\n雪𝒜", "9223372036854775040"],
+          [
+            "41",
+            "NULLSQL NULL (no value)",
+            "quoted \"a,b\"\n雪𝒜",
+            "9223372036854775041"
+          ],
+          ["42", "NULL", "quoted \"a,b\"\n雪𝒜", "9223372036854775042"],
+          ["43", "null", "quoted \"a,b\"\n雪𝒜", "9223372036854775043"],
+          ["44", "", "quoted \"a,b\"\n雪𝒜", "9223372036854775044"],
+          ["45", "雪 café", "quoted \"a,b\"\n雪𝒜", "9223372036854775045"],
+          [
+            "46",
+            "NULLSQL NULL (no value)",
+            "quoted \"a,b\"\n雪𝒜",
+            "9223372036854775046"
+          ],
+          ["47", "NULL", "quoted \"a,b\"\n雪𝒜", "9223372036854775047"],
+          ["48", "null", "quoted \"a,b\"\n雪𝒜", "9223372036854775048"],
+          ["49", "", "quoted \"a,b\"\n雪𝒜", "9223372036854775049"],
+          ["50", "雪 café", "quoted \"a,b\"\n雪𝒜", "9223372036854775050"]
+        ],
+        "tableAria": "- table:\n  - rowgroup:\n    - row \"ordinal value note exact_integer\":\n      - columnheader \"ordinal\"\n      - columnheader \"value\"\n      - columnheader \"note\"\n      - columnheader \"exact_integer\"\n  - rowgroup:\n    - row \"1 SQL NULL (no value) quoted \\\"a,b\\\" 雪𝒜 9223372036854775001\":\n      - cell \"1\"\n      - cell \"SQL NULL (no value)\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775001\"\n    - row \"2 NULL quoted \\\"a,b\\\" 雪𝒜 9223372036854775002\":\n      - cell \"2\"\n      - cell \"NULL\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775002\"\n    - row \"3 null quoted \\\"a,b\\\" 雪𝒜 9223372036854775003\":\n      - cell \"3\"\n      - cell \"null\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775003\"\n    - row \"4 quoted \\\"a,b\\\" 雪𝒜 9223372036854775004\":\n      - cell \"4\"\n      - cell\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775004\"\n    - row \"5 雪 café quoted \\\"a,b\\\" 雪𝒜 9223372036854775005\":\n      - cell \"5\"\n      - cell \"雪 café\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775005\"\n    - row \"6 SQL NULL (no value) quoted \\\"a,b\\\" 雪𝒜 9223372036854775006\":\n      - cell \"6\"\n      - cell \"SQL NULL (no value)\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775006\"\n    - row \"7 NULL quoted \\\"a,b\\\" 雪𝒜 9223372036854775007\":\n      - cell \"7\"\n      - cell \"NULL\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775007\"\n    - row \"8 null quoted \\\"a,b\\\" 雪𝒜 9223372036854775008\":\n      - cell \"8\"\n      - cell \"null\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775008\"\n    - row \"9 quoted \\\"a,b\\\" 雪𝒜 9223372036854775009\":\n      - cell \"9\"\n      - cell\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775009\"\n    - row \"10 雪 café quoted \\\"a,b\\\" 雪𝒜 9223372036854775010\":\n      - cell \"10\"\n      - cell \"雪 café\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775010\"\n    - row \"11 SQL NULL (no value) quoted \\\"a,b\\\" 雪𝒜 9223372036854775011\":\n      - cell \"11\"\n      - cell \"SQL NULL (no value)\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775011\"\n    - row \"12 NULL quoted \\\"a,b\\\" 雪𝒜 9223372036854775012\":\n      - cell \"12\"\n      - cell \"NULL\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775012\"\n    - row \"13 null quoted \\\"a,b\\\" 雪𝒜 9223372036854775013\":\n      - cell \"13\"\n      - cell \"null\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775013\"\n    - row \"14 quoted \\\"a,b\\\" 雪𝒜 9223372036854775014\":\n      - cell \"14\"\n      - cell\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775014\"\n    - row \"15 雪 café quoted \\\"a,b\\\" 雪𝒜 9223372036854775015\":\n      - cell \"15\"\n      - cell \"雪 café\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775015\"\n    - row \"16 SQL NULL (no value) quoted \\\"a,b\\\" 雪𝒜 9223372036854775016\":\n      - cell \"16\"\n      - cell \"SQL NULL (no value)\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775016\"\n    - row \"17 NULL quoted \\\"a,b\\\" 雪𝒜 9223372036854775017\":\n      - cell \"17\"\n      - cell \"NULL\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775017\"\n    - row \"18 null quoted \\\"a,b\\\" 雪𝒜 9223372036854775018\":\n      - cell \"18\"\n      - cell \"null\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775018\"\n    - row \"19 quoted \\\"a,b\\\" 雪𝒜 9223372036854775019\":\n      - cell \"19\"\n      - cell\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775019\"\n    - row \"20 雪 café quoted \\\"a,b\\\" 雪𝒜 9223372036854775020\":\n      - cell \"20\"\n      - cell \"雪 café\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775020\"\n    - row \"21 SQL NULL (no value) quoted \\\"a,b\\\" 雪𝒜 9223372036854775021\":\n      - cell \"21\"\n      - cell \"SQL NULL (no value)\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775021\"\n    - row \"22 NULL quoted \\\"a,b\\\" 雪𝒜 9223372036854775022\":\n      - cell \"22\"\n      - cell \"NULL\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775022\"\n    - row \"23 null quoted \\\"a,b\\\" 雪𝒜 9223372036854775023\":\n      - cell \"23\"\n      - cell \"null\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775023\"\n    - row \"24 quoted \\\"a,b\\\" 雪𝒜 9223372036854775024\":\n      - cell \"24\"\n      - cell\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775024\"\n    - row \"25 雪 café quoted \\\"a,b\\\" 雪𝒜 9223372036854775025\":\n      - cell \"25\"\n      - cell \"雪 café\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775025\"\n    - row \"26 SQL NULL (no value) quoted \\\"a,b\\\" 雪𝒜 9223372036854775026\":\n      - cell \"26\"\n      - cell \"SQL NULL (no value)\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775026\"\n    - row \"27 NULL quoted \\\"a,b\\\" 雪𝒜 9223372036854775027\":\n      - cell \"27\"\n      - cell \"NULL\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775027\"\n    - row \"28 null quoted \\\"a,b\\\" 雪𝒜 9223372036854775028\":\n      - cell \"28\"\n      - cell \"null\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775028\"\n    - row \"29 quoted \\\"a,b\\\" 雪𝒜 9223372036854775029\":\n      - cell \"29\"\n      - cell\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775029\"\n    - row \"30 雪 café quoted \\\"a,b\\\" 雪𝒜 9223372036854775030\":\n      - cell \"30\"\n      - cell \"雪 café\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775030\"\n    - row \"31 SQL NULL (no value) quoted \\\"a,b\\\" 雪𝒜 9223372036854775031\":\n      - cell \"31\"\n      - cell \"SQL NULL (no value)\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775031\"\n    - row \"32 NULL quoted \\\"a,b\\\" 雪𝒜 9223372036854775032\":\n      - cell \"32\"\n      - cell \"NULL\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775032\"\n    - row \"33 null quoted \\\"a,b\\\" 雪𝒜 9223372036854775033\":\n      - cell \"33\"\n      - cell \"null\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775033\"\n    - row \"34 quoted \\\"a,b\\\" 雪𝒜 9223372036854775034\":\n      - cell \"34\"\n      - cell\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775034\"\n    - row \"35 雪 café quoted \\\"a,b\\\" 雪𝒜 9223372036854775035\":\n      - cell \"35\"\n      - cell \"雪 café\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775035\"\n    - row \"36 SQL NULL (no value) quoted \\\"a,b\\\" 雪𝒜 9223372036854775036\":\n      - cell \"36\"\n      - cell \"SQL NULL (no value)\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775036\"\n    - row \"37 NULL quoted \\\"a,b\\\" 雪𝒜 9223372036854775037\":\n      - cell \"37\"\n      - cell \"NULL\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775037\"\n    - row \"38 null quoted \\\"a,b\\\" 雪𝒜 9223372036854775038\":\n      - cell \"38\"\n      - cell \"null\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775038\"\n    - row \"39 quoted \\\"a,b\\\" 雪𝒜 9223372036854775039\":\n      - cell \"39\"\n      - cell\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775039\"\n    - row \"40 雪 café quoted \\\"a,b\\\" 雪𝒜 9223372036854775040\":\n      - cell \"40\"\n      - cell \"雪 café\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775040\"\n    - row \"41 SQL NULL (no value) quoted \\\"a,b\\\" 雪𝒜 9223372036854775041\":\n      - cell \"41\"\n      - cell \"SQL NULL (no value)\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775041\"\n    - row \"42 NULL quoted \\\"a,b\\\" 雪𝒜 9223372036854775042\":\n      - cell \"42\"\n      - cell \"NULL\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775042\"\n    - row \"43 null quoted \\\"a,b\\\" 雪𝒜 9223372036854775043\":\n      - cell \"43\"\n      - cell \"null\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775043\"\n    - row \"44 quoted \\\"a,b\\\" 雪𝒜 9223372036854775044\":\n      - cell \"44\"\n      - cell\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775044\"\n    - row \"45 雪 café quoted \\\"a,b\\\" 雪𝒜 9223372036854775045\":\n      - cell \"45\"\n      - cell \"雪 café\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775045\"\n    - row \"46 SQL NULL (no value) quoted \\\"a,b\\\" 雪𝒜 9223372036854775046\":\n      - cell \"46\"\n      - cell \"SQL NULL (no value)\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775046\"\n    - row \"47 NULL quoted \\\"a,b\\\" 雪𝒜 9223372036854775047\":\n      - cell \"47\"\n      - cell \"NULL\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775047\"\n    - row \"48 null quoted \\\"a,b\\\" 雪𝒜 9223372036854775048\":\n      - cell \"48\"\n      - cell \"null\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775048\"\n    - row \"49 quoted \\\"a,b\\\" 雪𝒜 9223372036854775049\":\n      - cell \"49\"\n      - cell\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775049\"\n    - row \"50 雪 café quoted \\\"a,b\\\" 雪𝒜 9223372036854775050\":\n      - cell \"50\"\n      - cell \"雪 café\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775050\"",
+        "nextCount": 1,
+        "previousCount": 1,
+        "cardText": "SQL console\nRun a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n\nPress Ctrl+Enter or ⌘+Enter to run\n\nRun query\n\n55 rows returned\n\nordinal\tvalue\tnote\texact_integer\n1\tNULL\nSQL NULL (no value)\n\tquoted \"a,b\"\n雪𝒜\t9223372036854775001\n2\tNULL\tquoted \"a,b\"\n雪𝒜\t9223372036854775002\n3\tnull\tquoted \"a,b\"\n雪𝒜\t9223372036854775003\n4\t\tquoted \"a,b\"\n雪𝒜\t9223372036854775004\n5\t雪 café\tquoted \"a,b\"\n雪𝒜\t9223372036854775005\n6\tNULL\nSQL NULL (no value)\n\tquoted \"a,b\"\n雪𝒜\t9223372036854775006\n7\tNULL\tquoted \"a,b\"\n雪𝒜\t9223372036854775007\n8\tnull\tquoted \"a,b\"\n雪𝒜\t9223372036854775008\n9\t\tquoted \"a,b\"\n雪𝒜\t9223372036854775009\n10\t雪 café\tquoted \"a,b\"\n雪𝒜\t9223372036854775010\n11\tNULL\nSQL NULL (no value)\n\tquoted \"a,b\"\n雪𝒜\t9223372036854775011\n12\tNULL\tquoted \"a,b\"\n雪𝒜\t9223372036854775012\n13\tnull\tquoted \"a,b\"\n雪𝒜\t9223372036854775013\n14\t\tquoted \"a,b\"\n雪𝒜\t9223372036854775014\n15\t雪 café\tquoted \"a,b\"\n雪𝒜\t9223372036854775015\n16\tNULL\nSQL NULL (no value)\n\tquoted \"a,b\"\n雪𝒜\t9223372036854775016\n17\tNULL\tquoted \"a,b\"\n雪𝒜\t9223372036854775017\n18\tnull\tquoted \"a,b\"\n雪𝒜\t9223372036854775018\n19\t\tquoted \"a,b\"\n雪𝒜\t9223372036854775019\n20\t雪 café\tquoted \"a,b\"\n雪𝒜\t9223372036854775020\n21\tNULL\nSQL NULL (no value)\n\tquoted \"a,b\"\n雪𝒜\t9223372036854775021\n22\tNULL\tquoted \"a,b\"\n雪𝒜\t9223372036854775022\n23\tnull\tquoted \"a,b\"\n雪𝒜\t9223372036854775023\n24\t\tquoted \"a,b\"\n雪𝒜\t9223372036854775024\n25\t雪 café\tquoted \"a,b\"\n雪𝒜\t9223372036854775025\n26\tNULL\nSQL NULL (no value)\n\tquoted \"a,b\"\n雪𝒜\t9223372036854775026\n27\tNULL\tquoted \"a,b\"\n雪𝒜\t9223372036854775027\n28\tnull\tquoted \"a,b\"\n雪𝒜\t9223372036854775028\n29\t\tquoted \"a,b\"\n雪𝒜\t9223372036854775029\n30\t雪 café\tquoted \"a,b\"\n雪𝒜\t9223372036854775030\n31\tNULL\nSQL NULL (no value)\n\tquoted \"a,b\"\n雪𝒜\t9223372036854775031\n32\tNULL\tquoted \"a,b\"\n雪𝒜\t9223372036854775032\n33\tnull\tquoted \"a,b\"\n雪𝒜\t9223372036854775033\n34\t\tquoted \"a,b\"\n雪𝒜\t9223372036854775034\n35\t雪 café\tquoted \"a,b\"\n雪𝒜\t9223372036854775035\n36\tNULL\nSQL NULL (no value)\n\tquoted \"a,b\"\n雪𝒜\t9223372036854775036\n37\tNULL\tquoted \"a,b\"\n雪𝒜\t9223372036854775037\n38\tnull\tquoted \"a,b\"\n雪𝒜\t9223372036854775038\n39\t\tquoted \"a,b\"\n雪𝒜\t9223372036854775039\n40\t雪 café\tquoted \"a,b\"\n雪𝒜\t9223372036854775040\n41\tNULL\nSQL NULL (no value)\n\tquoted \"a,b\"\n雪𝒜\t9223372036854775041\n42\tNULL\tquoted \"a,b\"\n雪𝒜\t9223372036854775042\n43\tnull\tquoted \"a,b\"\n雪𝒜\t9223372036854775043\n44\t\tquoted \"a,b\"\n雪𝒜\t9223372036854775044\n45\t雪 café\tquoted \"a,b\"\n雪𝒜\t9223372036854775045\n46\tNULL\nSQL NULL (no value)\n\tquoted \"a,b\"\n雪𝒜\t9223372036854775046\n47\tNULL\tquoted \"a,b\"\n雪𝒜\t9223372036854775047\n48\tnull\tquoted \"a,b\"\n雪𝒜\t9223372036854775048\n49\t\tquoted \"a,b\"\n雪𝒜\t9223372036854775049\n50\t雪 café\tquoted \"a,b\"\n雪𝒜\t9223372036854775050\nPrevious\nPage 1 of 2\nNext\n\nQuery history\n\nClear\nSELECT n AS ordinal, CASE n % 5 WHEN 1 THEN NULL::text WHEN 2 THEN 'NULL' WHEN 3 THEN 'null' WHEN 4 THEN '' ELSE '雪 café' END AS value, E'quoted \"a,b\"\\n雪𝒜' AS note, 9223372036854775000::bigint + n AS exact_integer FROM generate_series(1,55) AS series(n) ORDER BY n;\nSELECT value FROM (VALUES (1,NULL::text), (2,'NULL'::text), (3,'null'::text), (4,''::text), (5,'雪 café'::text) ) AS sample(ord,value) ORDER BY ord;",
+        "history": "[\"SELECT n AS ordinal,\\n       CASE n % 5 WHEN 1 THEN NULL::text WHEN 2 THEN 'NULL' WHEN 3 THEN 'null' WHEN 4 THEN '' ELSE '雪 café' END AS value,\\n       E'quoted \\\"a,b\\\"\\\\n雪𝒜' AS note,\\n       9223372036854775000::bigint + n AS exact_integer\\nFROM generate_series(1,55) AS series(n)\\nORDER BY n;\",\"SELECT value\\nFROM (VALUES\\n  (1,NULL::text),\\n  (2,'NULL'::text),\\n  (3,'null'::text),\\n  (4,''::text),\\n  (5,'雪 café'::text)\\n) AS sample(ord,value)\\nORDER BY ord;\"]"
+      },
+      "queries": [],
+      "after": {
+        "at": "2026-10-17T09:34:57.727Z",
+        "url": "https://dashboard.bex.co/databases/dpg-db9jvrtdkths73a1sil0#sql-console",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "documentWidth": 390,
+        "query": "SELECT n AS ordinal,\n       CASE n % 5 WHEN 1 THEN NULL::text WHEN 2 THEN 'NULL' WHEN 3 THEN 'null' WHEN 4 THEN '' ELSE '雪 café' END AS value,\n       E'quoted \"a,b\"\\n雪𝒜' AS note,\n       9223372036854775000::bigint + n AS exact_integer\nFROM generate_series(1,55) AS series(n)\nORDER BY n;",
+        "rows": [
+          [
+            "51",
+            "NULLSQL NULL (no value)",
+            "quoted \"a,b\"\n雪𝒜",
+            "9223372036854775051"
+          ],
+          ["52", "NULL", "quoted \"a,b\"\n雪𝒜", "9223372036854775052"],
+          ["53", "null", "quoted \"a,b\"\n雪𝒜", "9223372036854775053"],
+          ["54", "", "quoted \"a,b\"\n雪𝒜", "9223372036854775054"],
+          ["55", "雪 café", "quoted \"a,b\"\n雪𝒜", "9223372036854775055"]
+        ],
+        "tableAria": "- table:\n  - rowgroup:\n    - row \"ordinal value note exact_integer\":\n      - columnheader \"ordinal\"\n      - columnheader \"value\"\n      - columnheader \"note\"\n      - columnheader \"exact_integer\"\n  - rowgroup:\n    - row \"51 SQL NULL (no value) quoted \\\"a,b\\\" 雪𝒜 9223372036854775051\":\n      - cell \"51\"\n      - cell \"SQL NULL (no value)\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775051\"\n    - row \"52 NULL quoted \\\"a,b\\\" 雪𝒜 9223372036854775052\":\n      - cell \"52\"\n      - cell \"NULL\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775052\"\n    - row \"53 null quoted \\\"a,b\\\" 雪𝒜 9223372036854775053\":\n      - cell \"53\"\n      - cell \"null\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775053\"\n    - row \"54 quoted \\\"a,b\\\" 雪𝒜 9223372036854775054\":\n      - cell \"54\"\n      - cell\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775054\"\n    - row \"55 雪 café quoted \\\"a,b\\\" 雪𝒜 9223372036854775055\":\n      - cell \"55\"\n      - cell \"雪 café\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775055\"",
+        "nextCount": 1,
+        "previousCount": 1,
+        "cardText": "SQL console\nRun a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n\nPress Ctrl+Enter or ⌘+Enter to run\n\nRun query\n\n55 rows returned\n\nordinal\tvalue\tnote\texact_integer\n51\tNULL\nSQL NULL (no value)\n\tquoted \"a,b\"\n雪𝒜\t9223372036854775051\n52\tNULL\tquoted \"a,b\"\n雪𝒜\t9223372036854775052\n53\tnull\tquoted \"a,b\"\n雪𝒜\t9223372036854775053\n54\t\tquoted \"a,b\"\n雪𝒜\t9223372036854775054\n55\t雪 café\tquoted \"a,b\"\n雪𝒜\t9223372036854775055\nPrevious\nPage 2 of 2\nNext\n\nQuery history\n\nClear\nSELECT n AS ordinal, CASE n % 5 WHEN 1 THEN NULL::text WHEN 2 THEN 'NULL' WHEN 3 THEN 'null' WHEN 4 THEN '' ELSE '雪 café' END AS value, E'quoted \"a,b\"\\n雪𝒜' AS note, 9223372036854775000::bigint + n AS exact_integer FROM generate_series(1,55) AS series(n) ORDER BY n;\nSELECT value FROM (VALUES (1,NULL::text), (2,'NULL'::text), (3,'null'::text), (4,''::text), (5,'雪 café'::text) ) AS sample(ord,value) ORDER BY ord;",
+        "history": "[\"SELECT n AS ordinal,\\n       CASE n % 5 WHEN 1 THEN NULL::text WHEN 2 THEN 'NULL' WHEN 3 THEN 'null' WHEN 4 THEN '' ELSE '雪 café' END AS value,\\n       E'quoted \\\"a,b\\\"\\\\n雪𝒜' AS note,\\n       9223372036854775000::bigint + n AS exact_integer\\nFROM generate_series(1,55) AS series(n)\\nORDER BY n;\",\"SELECT value\\nFROM (VALUES\\n  (1,NULL::text),\\n  (2,'NULL'::text),\\n  (3,'null'::text),\\n  (4,''::text),\\n  (5,'雪 café'::text)\\n) AS sample(ord,value)\\nORDER BY ord;\"]"
+      },
+      "nextDisabled": true,
+      "previousDisabled": false
+    },
+    "a873HistoryDraftOnly": {
+      "queries": [],
+      "view": {
+        "at": "2026-10-17T09:35:01.077Z",
+        "url": "https://dashboard.bex.co/databases/dpg-db9jvrtdkths73a1sil0#sql-console",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "documentWidth": 390,
+        "query": "SELECT value\nFROM (VALUES\n  (1,NULL::text),\n  (2,'NULL'::text),\n  (3,'null'::text),\n  (4,''::text),\n  (5,'雪 café'::text)\n) AS sample(ord,value)\nORDER BY ord;",
+        "rows": [
+          [
+            "51",
+            "NULLSQL NULL (no value)",
+            "quoted \"a,b\"\n雪𝒜",
+            "9223372036854775051"
+          ],
+          ["52", "NULL", "quoted \"a,b\"\n雪𝒜", "9223372036854775052"],
+          ["53", "null", "quoted \"a,b\"\n雪𝒜", "9223372036854775053"],
+          ["54", "", "quoted \"a,b\"\n雪𝒜", "9223372036854775054"],
+          ["55", "雪 café", "quoted \"a,b\"\n雪𝒜", "9223372036854775055"]
+        ],
+        "tableAria": "- table:\n  - rowgroup:\n    - row \"ordinal value note exact_integer\":\n      - columnheader \"ordinal\"\n      - columnheader \"value\"\n      - columnheader \"note\"\n      - columnheader \"exact_integer\"\n  - rowgroup:\n    - row \"51 SQL NULL (no value) quoted \\\"a,b\\\" 雪𝒜 9223372036854775051\":\n      - cell \"51\"\n      - cell \"SQL NULL (no value)\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775051\"\n    - row \"52 NULL quoted \\\"a,b\\\" 雪𝒜 9223372036854775052\":\n      - cell \"52\"\n      - cell \"NULL\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775052\"\n    - row \"53 null quoted \\\"a,b\\\" 雪𝒜 9223372036854775053\":\n      - cell \"53\"\n      - cell \"null\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775053\"\n    - row \"54 quoted \\\"a,b\\\" 雪𝒜 9223372036854775054\":\n      - cell \"54\"\n      - cell\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775054\"\n    - row \"55 雪 café quoted \\\"a,b\\\" 雪𝒜 9223372036854775055\":\n      - cell \"55\"\n      - cell \"雪 café\"\n      - cell \"quoted \\\"a,b\\\" 雪𝒜\"\n      - cell \"9223372036854775055\"",
+        "nextCount": 1,
+        "previousCount": 1,
+        "cardText": "SQL console\nRun a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n\nPress Ctrl+Enter or ⌘+Enter to run\n\nRun query\n\n55 rows returned\n\nordinal\tvalue\tnote\texact_integer\n51\tNULL\nSQL NULL (no value)\n\tquoted \"a,b\"\n雪𝒜\t9223372036854775051\n52\tNULL\tquoted \"a,b\"\n雪𝒜\t9223372036854775052\n53\tnull\tquoted \"a,b\"\n雪𝒜\t9223372036854775053\n54\t\tquoted \"a,b\"\n雪𝒜\t9223372036854775054\n55\t雪 café\tquoted \"a,b\"\n雪𝒜\t9223372036854775055\nPrevious\nPage 2 of 2\nNext\n\nQuery history\n\nClear\nSELECT n AS ordinal, CASE n % 5 WHEN 1 THEN NULL::text WHEN 2 THEN 'NULL' WHEN 3 THEN 'null' WHEN 4 THEN '' ELSE '雪 café' END AS value, E'quoted \"a,b\"\\n雪𝒜' AS note, 9223372036854775000::bigint + n AS exact_integer FROM generate_series(1,55) AS series(n) ORDER BY n;\nSELECT value FROM (VALUES (1,NULL::text), (2,'NULL'::text), (3,'null'::text), (4,''::text), (5,'雪 café'::text) ) AS sample(ord,value) ORDER BY ord;",
+        "history": "[\"SELECT n AS ordinal,\\n       CASE n % 5 WHEN 1 THEN NULL::text WHEN 2 THEN 'NULL' WHEN 3 THEN 'null' WHEN 4 THEN '' ELSE '雪 café' END AS value,\\n       E'quoted \\\"a,b\\\"\\\\n雪𝒜' AS note,\\n       9223372036854775000::bigint + n AS exact_integer\\nFROM generate_series(1,55) AS series(n)\\nORDER BY n;\",\"SELECT value\\nFROM (VALUES\\n  (1,NULL::text),\\n  (2,'NULL'::text),\\n  (3,'null'::text),\\n  (4,''::text),\\n  (5,'雪 café'::text)\\n) AS sample(ord,value)\\nORDER BY ord;\"]"
+      }
+    },
+    "a873KeyboardRun": {
+      "native": {
+        "at": "2026-10-17T09:35:02.794Z",
+        "request": {
+          "operationName": "ExecuteDatabaseQuery",
+          "variables": {
+            "id": "dpg-db9jvrtdkths73a1sil0",
+            "sql": "SELECT value\nFROM (VALUES\n  (1,NULL::text),\n  (2,'NULL'::text),\n  (3,'null'::text),\n  (4,''::text),\n  (5,'雪 café'::text)\n) AS sample(ord,value)\nORDER BY ord;",
+            "allowWrites": false
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "executeDatabaseQuery": {
+              "__typename": "DatabaseQueryResult",
+              "columns": ["value"],
+              "rowCount": 5,
+              "rows": [
+                {
+                  "__typename": "DatabaseQueryRow",
+                  "values": [null]
+                },
+                {
+                  "__typename": "DatabaseQueryRow",
+                  "values": ["NULL"]
+                },
+                {
+                  "__typename": "DatabaseQueryRow",
+                  "values": ["null"]
+                },
+                {
+                  "__typename": "DatabaseQueryRow",
+                  "values": [""]
+                },
+                {
+                  "__typename": "DatabaseQueryRow",
+                  "values": ["雪 café"]
+                }
+              ],
+              "truncated": false
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792229701708.6309,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.126,
+          "responseStart": 371.642,
+          "responseEnd": 372.395
+        },
+        "url": "https://dashboard.bex.co/databases/dpg-db9jvrtdkths73a1sil0#sql-console"
+      },
+      "queries": [
+        {
+          "operationName": "ExecuteDatabaseQuery",
+          "variables": {
+            "id": "dpg-db9jvrtdkths73a1sil0",
+            "sql": "SELECT value\nFROM (VALUES\n  (1,NULL::text),\n  (2,'NULL'::text),\n  (3,'null'::text),\n  (4,''::text),\n  (5,'雪 café'::text)\n) AS sample(ord,value)\nORDER BY ord;",
+            "allowWrites": false
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "mutation ExecuteDatabaseQuery($id: String!, $sql: String!, $allowWrites: Boolean) {\n  executeDatabaseQuery(id: $id, sql: $sql, allowWrites: $allowWrites) {\n    columns\n    rows {\n      values\n      __typename\n    }\n    rowCount\n    truncated\n    __typename\n  }\n}"
+        }
+      ],
+      "view": {
+        "at": "2026-10-17T09:35:03.123Z",
+        "url": "https://dashboard.bex.co/databases/dpg-db9jvrtdkths73a1sil0#sql-console",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "documentWidth": 390,
+        "query": "SELECT value\nFROM (VALUES\n  (1,NULL::text),\n  (2,'NULL'::text),\n  (3,'null'::text),\n  (4,''::text),\n  (5,'雪 café'::text)\n) AS sample(ord,value)\nORDER BY ord;",
+        "tableAria": "- table:\n  - rowgroup:\n    - row \"value\":\n      - columnheader \"value\"\n  - rowgroup:\n    - row \"SQL NULL (no value)\":\n      - cell \"SQL NULL (no value)\"\n    - row \"NULL\":\n      - cell \"NULL\"\n    - row \"null\":\n      - cell \"null\"\n    - row:\n      - cell\n    - row \"雪 café\":\n      - cell \"雪 café\"",
+        "cardAria": "- text: SQL console Run a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n- textbox \"SQL query\": SELECT value FROM (VALUES (1,NULL::text), (2,'NULL'::text), (3,'null'::text), (4,''::text), (5,'雪 café'::text) ) AS sample(ord,value) ORDER BY ord;\n- paragraph: Press Ctrl+Enter or ⌘+Enter to run\n- button \"Run query\"\n- paragraph: 5 rows returned\n- table:\n  - rowgroup:\n    - row \"value\":\n      - columnheader \"value\"\n  - rowgroup:\n    - row \"SQL NULL (no value)\":\n      - cell \"SQL NULL (no value)\"\n    - row \"NULL\":\n      - cell \"NULL\"\n    - row \"null\":\n      - cell \"null\"\n    - row:\n      - cell\n    - row \"雪 café\":\n      - cell \"雪 café\"\n- paragraph: Query history\n- button \"Clear\"\n- button \"SELECT value FROM (VALUES (1,NULL::text), (2,'NULL'::text), (3,'null'::text), (4,''::text), (5,'雪 café'::text) ) AS sample(ord,value) ORDER BY ord;\"\n- button \"SELECT n AS ordinal, CASE n % 5 WHEN 1 THEN NULL::text WHEN 2 THEN 'NULL' WHEN 3 THEN 'null' WHEN 4 THEN '' ELSE '雪 café' END AS value, E'quoted \\\"a,b\\\"\\\\n雪𝒜' AS note, 9223372036854775000::bigint + n AS exact_integer FROM generate_series(1,55) AS series(n) ORDER BY n;\"",
+        "cells": [
+          {
+            "text": "NULLSQL NULL (no value)",
+            "html": "<span aria-hidden=\"true\" class=\"rounded-sm border border-dashed px-1 text-xs italic text-muted-foreground\">NULL</span><span class=\"sr-only\">SQL NULL (no value)</span>",
+            "fontStyle": "normal",
+            "color": "oklch(0.15 0.008 260)",
+            "children": [
+              {
+                "text": "NULL",
+                "ariaHidden": "true",
+                "className": "rounded-sm border border-dashed px-1 text-xs italic text-muted-foreground",
+                "fontStyle": "italic",
+                "borderStyle": "dashed",
+                "borderWidth": "1px",
+                "position": "static",
+                "width": "auto",
+                "height": "auto"
+              },
+              {
+                "text": "SQL NULL (no value)",
+                "ariaHidden": null,
+                "className": "sr-only",
+                "fontStyle": "normal",
+                "borderStyle": "solid",
+                "borderWidth": "0px",
+                "position": "absolute",
+                "width": "1px",
+                "height": "1px"
+              }
+            ]
+          },
+          {
+            "text": "NULL",
+            "html": "NULL",
+            "fontStyle": "normal",
+            "color": "oklch(0.15 0.008 260)",
+            "children": []
+          },
+          {
+            "text": "null",
+            "html": "null",
+            "fontStyle": "normal",
+            "color": "oklch(0.15 0.008 260)",
+            "children": []
+          },
+          {
+            "text": "",
+            "html": "",
+            "fontStyle": "normal",
+            "color": "oklch(0.15 0.008 260)",
+            "children": []
+          },
+          {
+            "text": "雪 café",
+            "html": "雪 café",
+            "fontStyle": "normal",
+            "color": "oklch(0.15 0.008 260)",
+            "children": []
+          }
+        ],
+        "tableBounds": {
+          "x": 38,
+          "y": 643,
+          "width": 314,
+          "height": 200.5
+        }
+      },
+      "history": "[\"SELECT value\\nFROM (VALUES\\n  (1,NULL::text),\\n  (2,'NULL'::text),\\n  (3,'null'::text),\\n  (4,''::text),\\n  (5,'雪 café'::text)\\n) AS sample(ord,value)\\nORDER BY ord;\",\"SELECT n AS ordinal,\\n       CASE n % 5 WHEN 1 THEN NULL::text WHEN 2 THEN 'NULL' WHEN 3 THEN 'null' WHEN 4 THEN '' ELSE '雪 café' END AS value,\\n       E'quoted \\\"a,b\\\"\\\\n雪𝒜' AS note,\\n       9223372036854775000::bigint + n AS exact_integer\\nFROM generate_series(1,55) AS series(n)\\nORDER BY n;\"]"
+    },
+    "a873ClearHistory": {
+      "before": {
+        "at": "2026-10-17T09:35:43.357Z",
+        "url": "https://dashboard.bex.co/databases/dpg-db9jvrtdkths73a1sil0#sql-console",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "documentWidth": 390,
+        "query": "SELECT value\nFROM (VALUES\n  (1,NULL::text),\n  (2,'NULL'::text),\n  (3,'null'::text),\n  (4,''::text),\n  (5,'雪 café'::text)\n) AS sample(ord,value)\nORDER BY ord;",
+        "rows": [
+          ["NULLSQL NULL (no value)"],
+          ["NULL"],
+          ["null"],
+          [""],
+          ["雪 café"]
+        ],
+        "tableAria": "- table:\n  - rowgroup:\n    - row \"value\":\n      - columnheader \"value\"\n  - rowgroup:\n    - row \"SQL NULL (no value)\":\n      - cell \"SQL NULL (no value)\"\n    - row \"NULL\":\n      - cell \"NULL\"\n    - row \"null\":\n      - cell \"null\"\n    - row:\n      - cell\n    - row \"雪 café\":\n      - cell \"雪 café\"",
+        "nextCount": 0,
+        "previousCount": 0,
+        "cardText": "SQL console\nRun a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n\nPress Ctrl+Enter or ⌘+Enter to run\n\nRun query\n\n5 rows returned\n\nvalue\nNULL\nSQL NULL (no value)\n\nNULL\nnull\n\n雪 café\n\nQuery history\n\nClear\nSELECT value FROM (VALUES (1,NULL::text), (2,'NULL'::text), (3,'null'::text), (4,''::text), (5,'雪 café'::text) ) AS sample(ord,value) ORDER BY ord;\nSELECT n AS ordinal, CASE n % 5 WHEN 1 THEN NULL::text WHEN 2 THEN 'NULL' WHEN 3 THEN 'null' WHEN 4 THEN '' ELSE '雪 café' END AS value, E'quoted \"a,b\"\\n雪𝒜' AS note, 9223372036854775000::bigint + n AS exact_integer FROM generate_series(1,55) AS series(n) ORDER BY n;",
+        "history": "[\"SELECT value\\nFROM (VALUES\\n  (1,NULL::text),\\n  (2,'NULL'::text),\\n  (3,'null'::text),\\n  (4,''::text),\\n  (5,'雪 café'::text)\\n) AS sample(ord,value)\\nORDER BY ord;\",\"SELECT n AS ordinal,\\n       CASE n % 5 WHEN 1 THEN NULL::text WHEN 2 THEN 'NULL' WHEN 3 THEN 'null' WHEN 4 THEN '' ELSE '雪 café' END AS value,\\n       E'quoted \\\"a,b\\\"\\\\n雪𝒜' AS note,\\n       9223372036854775000::bigint + n AS exact_integer\\nFROM generate_series(1,55) AS series(n)\\nORDER BY n;\"]"
+      },
+      "after": {
+        "at": "2026-10-17T09:35:43.695Z",
+        "url": "https://dashboard.bex.co/databases/dpg-db9jvrtdkths73a1sil0#sql-console",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "documentWidth": 390,
+        "query": "SELECT value\nFROM (VALUES\n  (1,NULL::text),\n  (2,'NULL'::text),\n  (3,'null'::text),\n  (4,''::text),\n  (5,'雪 café'::text)\n) AS sample(ord,value)\nORDER BY ord;",
+        "rows": [
+          ["NULLSQL NULL (no value)"],
+          ["NULL"],
+          ["null"],
+          [""],
+          ["雪 café"]
+        ],
+        "tableAria": "- table:\n  - rowgroup:\n    - row \"value\":\n      - columnheader \"value\"\n  - rowgroup:\n    - row \"SQL NULL (no value)\":\n      - cell \"SQL NULL (no value)\"\n    - row \"NULL\":\n      - cell \"NULL\"\n    - row \"null\":\n      - cell \"null\"\n    - row:\n      - cell\n    - row \"雪 café\":\n      - cell \"雪 café\"",
+        "nextCount": 0,
+        "previousCount": 0,
+        "cardText": "SQL console\nRun a single SQL statement against this database. Results are limited to 500 rows and queries time out after 10 seconds.\n\nPress Ctrl+Enter or ⌘+Enter to run\n\nRun query\n\n5 rows returned\n\nvalue\nNULL\nSQL NULL (no value)\n\nNULL\nnull\n\n雪 café\n\nQuery history\n\nQueries run in this browser session appear here.",
+        "history": "[]"
+      },
+      "queries": [],
+      "keyRemoved": true
+    },
+    "a873ConsoleBeforeCleanup": {
+      "error": false,
+      "summary": "### Result\nTotal messages: 0 (Errors: 0, Warnings: 0)\n"
+    },
+    "a873Deleted": {
+      "at": "2026-10-17T09:35:47.827Z",
+      "request": {
+        "operationName": "DeleteDatabase",
+        "variables": {
+          "id": "dpg-db9jvrtdkths73a1sil0"
+        },
+        "extensions": {
+          "clientLibrary": {
+            "name": "@apollo/client",
+            "version": "4.3.3"
+          }
+        },
+        "query": "mutation DeleteDatabase($id: String!, $confirm: String) {\n  deleteDatabase(id: $id, confirm: $confirm)\n}"
+      },
+      "status": 200,
+      "body": {
+        "data": {
+          "deleteDatabase": true
+        }
+      },
+      "timing": {
+        "startTime": 1792229746555.68,
+        "domainLookupStart": -1,
+        "domainLookupEnd": -1,
+        "connectStart": -1,
+        "secureConnectionStart": -1,
+        "connectEnd": -1,
+        "requestStart": 0.122,
+        "responseStart": 556.181,
+        "responseEnd": 556.769
+      },
+      "url": "https://dashboard.bex.co/"
+    },
+    "a873InventoryCleanup": {
+      "at": "2026-10-17T09:36:20.429Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [
+        {
+          "path": "/v1/postgres/dpg-db9jvrtdkths73a1sil0",
+          "status": 404
+        }
+      ]
+    },
+    "a873FinishSummary": {
+      "logoutConfirmed": true,
+      "exitCode": 0,
+      "browser": {
+        "at": "2026-10-17T09:36:27.506Z",
+        "whoami": 401,
+        "cookies": 0,
+        "pages": 1,
+        "url": "about:blank"
+      },
+      "handlesRemoved": true
+    }
+  },
+  "cleanup": {
+    "inventory": {
+      "at": "2026-10-17T09:36:20.429Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": [
+        {
+          "path": "/v1/postgres/dpg-db9jvrtdkths73a1sil0",
+          "status": 404
+        }
+      ]
+    },
+    "session": {
+      "logoutConfirmed": true,
+      "exitCode": 0,
+      "browser": {
+        "at": "2026-10-17T09:36:27.506Z",
+        "whoami": 401,
+        "cookies": 0,
+        "pages": 1,
+        "url": "about:blank"
+      },
+      "handlesRemoved": true
+    },
+    "physical": {
+      "at": "2026-10-17T09:36:28.178831+00:00",
+      "databaseId": "dpg-db9jvrtdkths73a1sil0",
+      "checks": {
+        "database": {
+          "count": 0,
+          "items": []
+        },
+        "cluster": {
+          "count": 0,
+          "items": []
+        },
+        "appDatabase": {
+          "count": 0,
+          "items": []
+        },
+        "pods": {
+          "count": 0,
+          "items": []
+        },
+        "pvc": {
+          "count": 0,
+          "items": []
+        }
+      }
+    }
+  },
+  "provisioning": {
+    "at": "2026-10-17T09:31:41.964746+00:00",
+    "databaseId": "dpg-db9jvrtdkths73a1sil0",
+    "database": {
+      "name": "dpg-db9jvrtdkths73a1sil0",
+      "generation": 1,
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-10-17T09:31:23Z",
+          "message": "vector is installed in the application database",
+          "observedGeneration": 1,
+          "reason": "Applied",
+          "status": "True",
+          "type": "ExtensionsReady"
+        },
+        {
+          "lastTransitionTime": "2026-10-17T09:31:07Z",
+          "message": "postgres ready",
+          "observedGeneration": 1,
+          "reason": "Provisioned",
+          "status": "True",
+          "type": "Ready"
+        }
+      ],
+      "phase": "Ready",
+      "phaseReason": null,
+      "instances": null,
+      "readyInstances": null,
+      "applied": null,
+      "observedGeneration": 1
+    },
+    "cluster": {
+      "name": "dpg-db9jvrtdkths73a1sil0",
+      "generation": 1,
+      "conditions": [
+        {
+          "lastTransitionTime": "2026-10-17T09:29:19Z",
+          "message": "Cluster has been bootstrapped",
+          "reason": "BootstrapCompleted",
+          "status": "True",
+          "type": "Initialized"
+        },
+        {
+          "lastTransitionTime": "2026-10-17T09:31:12Z",
+          "message": "A single, unique system ID was found across reporting instances.",
+          "reason": "Unique",
+          "status": "True",
+          "type": "ConsistentSystemID"
+        },
+        {
+          "lastTransitionTime": "2026-10-17T09:31:12Z",
+          "message": "Cluster is Ready",
+          "reason": "ClusterIsReady",
+          "status": "True",
+          "type": "Ready"
+        },
+        {
+          "lastTransitionTime": "2026-10-17T09:30:49Z",
+          "message": "Continuous archiving is working",
+          "reason": "ContinuousArchivingSuccess",
+          "status": "True",
+          "type": "ContinuousArchiving"
+        }
+      ],
+      "phase": "Cluster in healthy state",
+      "phaseReason": null,
+      "instances": 1,
+      "readyInstances": 1,
+      "applied": null,
+      "observedGeneration": null
+    },
+    "appDatabase": {
+      "name": "dpg-db9jvrtdkths73a1sil0-app",
+      "generation": 1,
+      "conditions": null,
+      "phase": null,
+      "phaseReason": null,
+      "instances": null,
+      "readyInstances": null,
+      "applied": true,
+      "observedGeneration": 1
+    },
+    "pods": [
+      {
+        "name": "dpg-db9jvrtdkths73a1sil0-1",
+        "phase": "Running",
+        "conditions": [
+          {
+            "type": "PodReadyToStartContainers",
+            "status": "True",
+            "reason": null,
+            "message": null
+          },
+          {
+            "type": "Initialized",
+            "status": "True",
+            "reason": null,
+            "message": null
+          },
+          {
+            "type": "Ready",
+            "status": "True",
+            "reason": null,
+            "message": null
+          },
+          {
+            "type": "ContainersReady",
+            "status": "True",
+            "reason": null,
+            "message": null
+          },
+          {
+            "type": "PodScheduled",
+            "status": "True",
+            "reason": null,
+            "message": null
+          }
+        ],
+        "containers": [
+          {
+            "name": "postgres",
+            "ready": true,
+            "restartCount": 0,
+            "state": {
+              "running": {
+                "startedAt": "2026-10-17T09:30:38Z"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "network": {
+    "afterIndex": 6845,
+    "recordCount": 117,
+    "statuses": {
+      "200": 112,
+      "204": 4
+    },
+    "httpErrors": [],
+    "failed": [
+      "6859. [POST] https://api.bex.co/graphql => [FAILED] net::ERR_ABORTED"
+    ]
+  },
+  "screenshots": [
+    {
+      "path": ".playwright-mcp/qa-a873-null-desktop.png",
+      "sha256": "85d47902519ca92f93489b168ab37cafacb152f53e155d1902e51ae5d90edda4",
+      "inspected": true
+    },
+    {
+      "path": ".playwright-mcp/qa-a873-null-mobile.png",
+      "sha256": "7025ad6baa5e6541add718ffc6ee85d900e84218dfc94bfa8c832afecf5531eb",
+      "inspected": true
+    }
+  ]
+}
