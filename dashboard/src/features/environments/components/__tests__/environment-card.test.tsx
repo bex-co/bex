@@ -212,6 +212,13 @@ describe("EnvironmentCard", () => {
       },
       onResourceFilterChange,
     });
+    // The named-environment caller exposes the selection too (w4/333).
+    expect(
+      within(screen.getByRole("group", { name: "Resource type" })).getByRole(
+        "button",
+        { name: /^All/ },
+      ),
+    ).toHaveAttribute("aria-pressed", "true");
 
     await user.type(
       screen.getByRole("searchbox", { name: "Search resources in staging" }),

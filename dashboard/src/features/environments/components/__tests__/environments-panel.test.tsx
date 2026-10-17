@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { EnvironmentsPanel } from "@/features/environments/components/environments-panel";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
@@ -174,6 +174,13 @@ describe("EnvironmentsPanel", () => {
       expect(
         screen.getByRole("heading", { name: "Unassigned" }),
       ).toBeInTheDocument();
+      // The Unassigned caller exposes the URL's kind as pressed (w4/333).
+      expect(
+        within(screen.getByRole("group", { name: "Resource type" })).getByRole(
+          "button",
+          { name: /^Services/ },
+        ),
+      ).toHaveAttribute("aria-pressed", "true");
     } else {
       expect(screen.getByTestId("env-card")).toHaveTextContent(
         expectedId === "env-1" ? "staging" : "production",
