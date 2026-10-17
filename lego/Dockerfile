@@ -38,6 +38,9 @@ RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/egress-meter ./cmd/egress-meter
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/backup-encrypt ./cmd/backup-encrypt
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/native-resolve ./cmd/native-resolve
+# native-init ships inside every native Node tenant image (w8/m88): stripped
+# and path-free so each release adds one small, reproducible layer.
+RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -trimpath -ldflags='-s -w' -o /workspace/native-init ./cmd/native-init
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/disk-snapshot ./cmd/disk-snapshot
 # Output name must not be "api" — that collides with the cmd/api source dir, so
 # go build would write the binary INTO that directory.
@@ -57,6 +60,7 @@ COPY --from=builder /workspace/kv-sni-proxy /kv-sni-proxy
 COPY --from=builder /workspace/egress-meter /egress-meter
 COPY --from=builder /workspace/backup-encrypt /backup-encrypt
 COPY --from=builder /workspace/native-resolve /native-resolve
+COPY --from=builder /workspace/native-init /native-init
 COPY --from=builder /workspace/disk-snapshot /disk-snapshot
 COPY --from=builder /workspace/ssh-gateway /ssh-gateway
 USER 65532:65532

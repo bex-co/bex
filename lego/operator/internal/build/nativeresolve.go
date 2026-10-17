@@ -274,14 +274,18 @@ func rewriteNativeBase(dockerfile, defaultImage, image string) (string, error) {
 // the preparer's non-root identity (it rewrites the 0600 Dockerfile the
 // preparer wrote), the checkout read-only, no service account token.
 func nativeVersionResolver(o Options) corev1.Container {
+	env := []corev1.EnvVar{
+		{Name: "BEX_NATIVE_RUNTIME", Value: nativeRuntime(o)},
+		{Name: "BEX_NATIVE_SOURCE_DIR", Value: boundedSourceDir(o.RootDir)},
+	}
+	if nativeServingInit(o) {
+		env = append(env, corev1.EnvVar{Name: NativeInitEnv, Value: nativeInitDir + "/" + nativeInitFile})
+	}
 	return corev1.Container{
 		Name:    nativeResolveContainer,
 		Image:   o.NativeResolverImage,
 		Command: []string{NativeResolveBinary},
-		Env: []corev1.EnvVar{
-			{Name: "BEX_NATIVE_RUNTIME", Value: nativeRuntime(o)},
-			{Name: "BEX_NATIVE_SOURCE_DIR", Value: boundedSourceDir(o.RootDir)},
-		},
+		Env:     env,
 		VolumeMounts: []corev1.VolumeMount{
 			{Name: "native-build", MountPath: "/native"},
 			{Name: "source", MountPath: sourceMount, ReadOnly: true},

@@ -275,14 +275,11 @@ COPY <<'%s' %s
 		// Job's extract initContainer (ADR029) and never runs as a workload.
 		return base
 	}
-	// The toolchain image's own ENTRYPOINT (node's docker-entrypoint.sh) is
-	// looked up on the user's PATH, which may be empty or narrow; the absolute
-	// bash CMD needs none of it, so the generated image runs that alone (w8/m61).
+	// nativeEntrypoint replaces the toolchain image's ENTRYPOINT (w8/m61).
 	start := shellJSON(o.StartCommand)
 	return base + fmt.Sprintf(`%sENV PORT=10000
-ENTRYPOINT []
-CMD %s
-`, nativeRuntimeDefaults(o), start)
+%sCMD %s
+`, nativeRuntimeDefaults(o), nativeEntrypoint(o), start)
 }
 
 // nativeBuildDefaults is the environment Render gives a native runtime at
