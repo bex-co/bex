@@ -70,6 +70,7 @@ const (
 	nativePreparerImage = "busybox:1.37.0@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e"
 	nativeNodeRuntime   = "node"
 	nativePythonRuntime = "python"
+	nativeRubyRuntime   = "ruby"
 )
 
 // nativeToolchains is the reviewed set of toolchain lines a native build may
@@ -102,7 +103,7 @@ var nativeToolchains = map[string]nativeToolchain{
 		{line: "3.13", version: "3.13.16", image: "python:3.13-bookworm@sha256:073ffebb96ae4d0ed73ccad59f08c47bd84af8a79f5258130f8458ac50ad9ff4"},
 		{line: "3.14", version: "3.14.8", image: "python:3.14-bookworm@sha256:7ee7e4d4fb42c3ad45b8fdc473b64ec69c3cf6e80ae5d52f6fa55f77fac29027"},
 	}},
-	"ruby": {label: "Ruby", defaultLine: "3.4", lines: []nativeLine{
+	nativeRubyRuntime: {label: "Ruby", defaultLine: "3.4", lines: []nativeLine{
 		{line: "3.3", version: "3.3.12", image: "ruby:3.3-bookworm@sha256:b899e7de6ffa6e974d947202d3ce2ac921c12e46c14cff3106214079388dcff4"},
 		{line: "3.4", version: "3.4.11", image: "ruby:3.4-bookworm@sha256:80259ba83f866aaa43c689e11569dc950b2e508effca0799d50608f7c4ca6172"},
 		{line: "4.0", version: "4.0.7", image: "ruby:4.0-bookworm@sha256:7671dc16cd740b9d8d653a568d8bd2df00e24a32c53a7b7a3fc39a0a194bb9ad"},
@@ -322,11 +323,14 @@ COPY <<'%s' %s
 // build and runtime alike, as image ENV before the build RUN: the env loader
 // exports the service's own values over it for the build, and the container's
 // configured values override it at runtime, an explicit empty one included in
-// either phase. An explicit Elixir or Python static build gets it for its
-// build.
+// either phase. An explicit Elixir, Python or Ruby static build gets it for
+// its build.
 //
 // Elixir builds and runs with MIX_ENV=prod (w8/112), so a Phoenix app's
 // production dependencies and config are the ones compiled and started.
+// Ruby does the same with RAILS_ENV=production (w8/114): in development
+// `rails server` binds localhost only, which no readiness probe or request
+// reaches; in production it binds every interface on PORT.
 // Python gets Render's Gunicorn flags, preloading the app and writing access
 // lines to stdout (w8/113). Render's --bind is left out: Gunicorn binds the
 // platform's PORT by default, which a bind in gunicorn.conf.py or on the
@@ -337,6 +341,8 @@ func nativeBuildDefaults(o Options) string {
 		return "ENV MIX_ENV=prod\n"
 	case nativePythonRuntime:
 		return `ENV GUNICORN_CMD_ARGS="--preload --access-logfile -"` + "\n"
+	case nativeRubyRuntime:
+		return "ENV RAILS_ENV=production\n"
 	}
 	return ""
 }

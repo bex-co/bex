@@ -17,6 +17,7 @@ limitations under the License.
 package build
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -97,14 +98,15 @@ func TestNativeNodeImageRuntimeEnvironment(t *testing.T) {
 // nativeBuildRun marks the generated build RUN in a Dockerfile.
 const nativeBuildRun = "\nRUN --mount=type=secret,id=render-env"
 
-// Elixir builds and runs with MIX_ENV=prod (w8/112) and Python with Render's
-// Gunicorn flags (w8/113): each default precedes the build RUN once on every
-// reviewed line and for an explicit static build of that runtime, and no
-// other runtime gets it.
+// Elixir builds and runs with MIX_ENV=prod (w8/112), Python with Render's
+// Gunicorn flags (w8/113) and Ruby with RAILS_ENV=production (w8/114): each
+// default precedes the build RUN once on every reviewed line and for an
+// explicit static build of that runtime, and no other runtime gets it.
 func TestNativeBuildDefaultsPrecedeTheBuild(t *testing.T) {
-	for _, tc := range []struct{ runtime, versionEnv, want, name string }{
-		{"elixir", "ELIXIR_VERSION", "ENV MIX_ENV=prod\n", "MIX_ENV"},
-		{nativePythonRuntime, "PYTHON_VERSION", `ENV GUNICORN_CMD_ARGS="--preload --access-logfile -"` + "\n", "GUNICORN_CMD_ARGS"},
+	for _, tc := range []struct{ runtime, versionEnv, versionFile, want, name string }{
+		{"elixir", "ELIXIR_VERSION", "", "ENV MIX_ENV=prod\n", "MIX_ENV"},
+		{nativePythonRuntime, "PYTHON_VERSION", "", `ENV GUNICORN_CMD_ARGS="--preload --access-logfile -"` + "\n", "GUNICORN_CMD_ARGS"},
+		{nativeRubyRuntime, "", ".ruby-version", "ENV RAILS_ENV=production\n", "RAILS_ENV"},
 	} {
 		precedesBuild := func(df string) bool {
 			at := strings.Index(df, "\n"+tc.want)
@@ -113,8 +115,13 @@ func TestNativeBuildDefaultsPrecedeTheBuild(t *testing.T) {
 		o := nativeOptions()
 		o.Runtime = tc.runtime
 		for _, line := range nativeToolchains[tc.runtime].lines {
-			if df := resolvedDockerfile(t, o, map[string]string{tc.versionEnv: line.line}); !precedesBuild(df) {
-				t.Fatalf("%s %s: %s default is not once before the build RUN:\n%s", tc.runtime, line.line, tc.name, df)
+			env, files := map[string]string{tc.versionEnv: line.line}, map[string]string(nil)
+			if tc.versionFile != "" {
+				env, files = nil, map[string]string{tc.versionFile: line.version + "\n"}
+			}
+			df := resolvedDockerfileFrom(t, o, env, files)
+			if !strings.Contains(df, "\nFROM "+line.image+"\n") || !precedesBuild(df) {
+				t.Fatalf("%s %s: %s default is not once before the build RUN on that line:\n%s", tc.runtime, line.line, tc.name, df)
 			}
 		}
 		static := o
@@ -213,41 +220,118 @@ def app(environ, start_response):
 		{"explicit empty", "GUNICORN_CMD_ARGS=", "build=--preload --access-logfile - runtime=", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			name := fmt.Sprintf("bex-native-gunicorn-it-%d-%d", i, os.Getpid())
-			args := []string{"run", "-d", "--name", name, "--network", "none"}
+			args := []string{"--network", "none"}
 			if tc.env != "" {
 				args = append(args, "-e", tc.env)
 			}
-			if out, err := exec.Command("docker", append(args, tag)...).CombinedOutput(); err != nil {
-				t.Fatalf("run: %v\n%s", err, out)
-			}
-			t.Cleanup(func() { _ = exec.Command("docker", "rm", "-f", name).Run() })
-			var body []byte
-			for deadline := time.Now().Add(time.Minute); ; time.Sleep(time.Second) {
-				out, err := exec.Command("docker", "exec", name, "curl", "-sf", "http://127.0.0.1:10000/?probe=m8113").Output()
-				if body = out; err == nil {
-					break
-				}
-				if time.Now().After(deadline) {
-					logs, _ := exec.Command("docker", "logs", name).CombinedOutput()
-					t.Fatalf("Gunicorn never served:\n%s", logs)
-				}
-			}
-			if string(body) != tc.body {
+			body, readLogs := runServing(t, tag, fmt.Sprintf("bex-native-gunicorn-it-%d-%d", i, os.Getpid()),
+				"http://127.0.0.1:10000/?probe=m8113", args...)
+			if body != tc.body {
 				t.Fatalf("body = %q, want %q", body, tc.body)
 			}
 			// The line follows the response; give it a few seconds to arrive
 			// (or, when it must not, to have arrived).
-			var logs []byte
+			var logs string
 			for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(250 * time.Millisecond) {
-				logs, _ = exec.Command("docker", "logs", name).CombinedOutput()
-				if strings.Contains(string(logs), `"GET /?probe=m8113 HTTP/1.1" 200`) {
+				if logs = readLogs(); strings.Contains(logs, `"GET /?probe=m8113 HTTP/1.1" 200`) {
 					break
 				}
 			}
-			if got := strings.Contains(string(logs), `"GET /?probe=m8113 HTTP/1.1" 200`); got != tc.accessLine {
+			if got := strings.Contains(logs, `"GET /?probe=m8113 HTTP/1.1" 200`); got != tc.accessLine {
 				t.Fatalf("access line present = %v, want %v:\n%s", got, tc.accessLine, logs)
 			}
 		})
+	}
+}
+
+// TestNativeRubyImageRailsEnvironment is w8/114's execution gate on a real
+// Rails 8 app started the ordinary way (`bin/rails server`, no binding flag):
+// the generated Ruby image builds and boots in production by default, so
+// Rails binds every interface on PORT and answers on the container's own
+// address, not only loopback. A configured development or empty value wins
+// at runtime, where Rails falls back to development on localhost.
+// Opt-in: needs Docker and network for RubyGems.
+func TestNativeRubyImageRailsEnvironment(t *testing.T) {
+	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
+		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the generated image")
+	}
+	app := map[string]string{
+		"Gemfile":        "source \"https://rubygems.org\"\ngem \"railties\", \"8.0.4\"\ngem \"actionpack\", \"8.0.4\"\ngem \"puma\", \"7.1.0\"\n",
+		"config.ru":      "require_relative \"config/environment\"\nrun Rails.application\n",
+		"config/boot.rb": "ENV[\"BUNDLE_GEMFILE\"] ||= File.expand_path(\"../Gemfile\", __dir__)\nrequire \"bundler/setup\"\n",
+		"config/application.rb": `require_relative "boot"
+require "rails"
+require "action_controller/railtie"
+module QA114
+  class Application < Rails::Application
+    config.load_defaults 8.0
+    config.eager_load = false
+    config.secret_key_base = "qa114" * 13
+    config.hosts.clear
+    config.logger = ActiveSupport::Logger.new($stdout)
+  end
+end
+`,
+		"config/environment.rb": "require_relative \"application\"\nRails.application.initialize!\n",
+		"config/routes.rb":      "Rails.application.routes.draw do\n  root to: proc { [200, {}, [\"built=#{File.read(\"build.txt\")} running=#{Rails.env}\"]] }\nend\n",
+		"bin/rails":             "#!/usr/bin/env ruby\nAPP_PATH = File.expand_path(\"../config/application\", __dir__)\nrequire_relative \"../config/boot\"\nrequire \"rails/commands\"\n",
+	}
+	o := nativeOptions()
+	o.Runtime, o.BuildEnv = nativeRubyRuntime, nil
+	o.BuildCommand = `bundle install --quiet && ruby -e 'print ENV.fetch("RAILS_ENV", "unset")' > build.txt`
+	o.StartCommand = "bundle exec ruby bin/rails server"
+	tag := buildResolvedImage(t, o, nil, app, fmt.Sprintf("bex-native-rails-env-it:%d", os.Getpid()))
+	for i, tc := range []struct {
+		name, env, running string
+		public             bool // reachable on the container's own address
+	}{
+		{"default", "", "production", true},
+		{"configured development", "RAILS_ENV=development", "development", false},
+		{"explicit empty", "RAILS_ENV=", "development", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			name := fmt.Sprintf("bex-native-rails-env-it-%d-%d", i, os.Getpid())
+			// Not --network none: the check needs the container's own,
+			// non-loopback address.
+			var args []string
+			if tc.env != "" {
+				args = append(args, "-e", tc.env)
+			}
+			body, readLogs := runServing(t, tag, name, "http://127.0.0.1:10000/", args...)
+			if want := "built=production running=" + tc.running; body != want {
+				t.Fatalf("body = %q, want %q", body, want)
+			}
+			ip, err := exec.Command("docker", "inspect", "-f", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", name).Output()
+			if err != nil || len(strings.TrimSpace(string(ip))) == 0 {
+				t.Fatalf("container address: %v %q", err, ip)
+			}
+			// curl exits 7 when the connection is refused: nothing listens there.
+			err = exec.Command("docker", "exec", name, "curl", "-s", "-o", "/dev/null",
+				"http://"+strings.TrimSpace(string(ip))+":10000/").Run()
+			var exit *exec.ExitError
+			if refused := errors.As(err, &exit) && exit.ExitCode() == 7; tc.public && err != nil || !tc.public && !refused {
+				t.Fatalf("on the container address: %v, want public=%v:\n%s", err, tc.public, readLogs())
+			}
+		})
+	}
+}
+
+// runServing starts tag as container name with the docker run flags given,
+// waits up to a minute for url to answer from inside it, and returns the
+// body and a reader of the container's log.
+func runServing(t *testing.T, tag, name, url string, args ...string) (string, func() string) {
+	t.Helper()
+	if out, err := exec.Command("docker", append(append([]string{"run", "-d", "--name", name}, args...), tag)...).CombinedOutput(); err != nil {
+		t.Fatalf("run: %v\n%s", err, out)
+	}
+	t.Cleanup(func() { _ = exec.Command("docker", "rm", "-f", name).Run() })
+	logs := func() string { out, _ := exec.Command("docker", "logs", name).CombinedOutput(); return string(out) }
+	for deadline := time.Now().Add(time.Minute); ; time.Sleep(time.Second) {
+		if out, err := exec.Command("docker", "exec", name, "curl", "-sf", url).Output(); err == nil {
+			return string(out), logs
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("%s never served %s:\n%s", name, url, logs())
+		}
 	}
 }

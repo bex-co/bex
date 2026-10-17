@@ -301,7 +301,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **115** — [Correct MCP idle field omission and WebSocket-direction instructions](115.md) (30m, minor) ← functional CLI sweep372; live preview preserves60 and incoming-only activity stays awake, while the field description says unset selects default and names only sent frames; exact fixture cleanup verified.
 
-- [ ] **114** — [Native Ruby starts Rails in development on loopback](114.md) (55m, major) ← functional CLI sweep364; both ordinary servers return503 with loopback listeners, production-only prefixes restore Live/HTTP200; own fixtures cleaned.
+- [ ] **114** — [Native Ruby starts Rails in development on loopback](blocked/114.md) (55m, major) — **BLOCKED (2026-10-16: implemented — primary Ruby images default RAILS_ENV=production before the build RUN for build and runtime, the service's own value (incl. empty) winning; real Rails 8 BuildKit gate on the container address + fail-before verified, every Ruby line placement-checked; needs the operator deployed plus the hosted both-client Rails replay, runnable with the QA CLI login)**
 
 - [ ] **113** — [Native Python omits Gunicorn application access logging](blocked/113.md) (55m, minor) — **BLOCKED (2026-10-16: implemented — primary Python images default GUNICORN_CMD_ARGS="--preload --access-logfile -" before the build RUN (no Render --bind; Gunicorn binds PORT), the service's own value incl. empty winning; real-Gunicorn BuildKit gate + fail-before verified; needs the operator deployed plus the hosted both-client Flask replay, runnable with the QA login)**
 

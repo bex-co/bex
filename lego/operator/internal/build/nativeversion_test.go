@@ -197,6 +197,7 @@ func writeResolveFixture(t *testing.T, o Options, env, src map[string]string) (b
 	must(t, os.WriteFile(dockerfile, []byte(nativeDockerfile(o)), 0o600))
 	must(t, os.MkdirAll(sourceDir, 0o755))
 	for name, content := range src {
+		must(t, os.MkdirAll(filepath.Dir(filepath.Join(sourceDir, name)), 0o755))
 		must(t, os.WriteFile(filepath.Join(sourceDir, name), []byte(content), 0o644))
 	}
 	return bundle, dockerfile, sourceDir
@@ -206,7 +207,13 @@ func writeResolveFixture(t *testing.T, o Options, env, src map[string]string) (b
 // env and an empty source.
 func resolvedDockerfile(t *testing.T, o Options, env map[string]string) string {
 	t.Helper()
-	bundle, dockerfile, src := writeResolveFixture(t, o, env, nil)
+	return resolvedDockerfileFrom(t, o, env, nil)
+}
+
+// resolvedDockerfileFrom is resolvedDockerfile for a source holding files.
+func resolvedDockerfileFrom(t *testing.T, o Options, env, files map[string]string) string {
+	t.Helper()
+	bundle, dockerfile, src := writeResolveFixture(t, o, env, files)
 	if _, err := ResolveNativeBuild(nativeRuntime(o), bundle, dockerfile, src); err != nil {
 		t.Fatal(err)
 	}
