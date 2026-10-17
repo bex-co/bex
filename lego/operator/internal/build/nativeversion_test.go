@@ -213,15 +213,24 @@ func resolvedDockerfile(t *testing.T, o Options, env map[string]string) string {
 // resolvedDockerfileFrom is resolvedDockerfile for a source holding files.
 func resolvedDockerfileFrom(t *testing.T, o Options, env, files map[string]string) string {
 	t.Helper()
+	dockerfile, _ := resolveFixture(t, o, env, files)
+	return dockerfile
+}
+
+// resolveFixture runs the resolve phase over o's generated Dockerfile, env and
+// files, returning the rewritten Dockerfile and the choices it made.
+func resolveFixture(t *testing.T, o Options, env, files map[string]string) (string, []NativeChoice) {
+	t.Helper()
 	bundle, dockerfile, src := writeResolveFixture(t, o, env, files)
-	if _, err := ResolveNativeBuild(nativeRuntime(o), bundle, dockerfile, src); err != nil {
+	choices, err := ResolveNativeBuild(nativeRuntime(o), bundle, dockerfile, src)
+	if err != nil {
 		t.Fatal(err)
 	}
 	raw, err := os.ReadFile(dockerfile)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return string(raw)
+	return string(raw), choices
 }
 
 func must(t *testing.T, err error) {
