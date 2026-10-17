@@ -6,7 +6,7 @@ Why: both log-search controls accept diagnostic text during startup, then silent
 
 ## Six fresh replays
 
-On owned Free web srv-db9emes50quc73dl5p2g, hold the real fetched /assets/index-D60ymwlM.js response, type with the browser keyboard, release unchanged, and sample20 times. Each response is HTTP200/1,952,882 bytes. [Durable evidence](../../evidence/m219-a838-log-search-startup.json) includes exact scripts, all six complete receipts, source census and cleanup.
+On owned Free web srv-db9emes50quc73dl5p2g, hold the real fetched /assets/index-D60ymwlM.js response, type with the browser keyboard, release unchanged, and sample20 times. Each response is HTTP200/1,952,882 bytes. [Durable evidence](../evidence/m219-a838-log-search-startup.json) includes exact scripts, all six complete receipts, source census and cleanup.
 
 | Root | Fresh widths | Result |
 | --- | --- | --- |

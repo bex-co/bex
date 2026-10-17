@@ -6,7 +6,7 @@ Why: a customer can type a valid workspace slug into a usable-looking field and 
 
 ## Reproduction and evidence
 
-Fresh-load `/new/workspace` with Hobby selected and no resume attempt. At1440×844 and390×844, fetch and hold the current real entry response, type into **Workspace slug** using the browser keyboard, then release it unchanged. Repeat mobile from a fresh load. [Durable artifact](../../evidence/m219-a846-workspace-startup.json) contains the exact scripts and complete receipts.
+Fresh-load `/new/workspace` with Hobby selected and no resume attempt. At1440×844 and390×844, fetch and hold the current real entry response, type into **Workspace slug** using the browser keyboard, then release it unchanged. Repeat mobile from a fresh load. [Durable artifact](../evidence/m219-a846-workspace-startup.json) contains the exact scripts and complete receipts.
 
 All three runs expose one effectively enabled, writable slug input without React props. Trusted input records the exact marker. The marker survives the first samples with React props, then becomes empty on the same node; all20 node-identity samples agree. The entry is HTTP200,1,954,259bytes, `index-pJFig2Dm.js`. No response was rewritten. Ready typing is retained; an additional native `QA-A846-READY` input settles to the intended lowercase `qa-a846-ready` after1.2s. No console or HTTP failures occurred during this pass.
 
