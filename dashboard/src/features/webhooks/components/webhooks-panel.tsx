@@ -10,23 +10,17 @@ import {
   CardAction,
   CardContent,
 } from "@/common/components/ui/card";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-} from "@/common/components/ui/table";
+import { Table, TableBody } from "@/common/components/ui/table";
 import {
   PanelCenteredState,
   PanelTableSkeleton,
-  TableActionsHead,
 } from "@/common/components/panel-states";
 import { isForbiddenError } from "@/common/lib/graphql-error";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWebhooks } from "@/features/webhooks/hooks/use-webhooks";
 import { useSetWebhookEnabled } from "@/features/webhooks/hooks/use-set-webhook-enabled";
 import { WebhookRow } from "@/features/webhooks/components/webhook-row";
+import { WebhooksTableHeader } from "@/features/webhooks/components/webhooks-table-header";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
@@ -144,15 +138,7 @@ export function WebhooksPanel() {
               </p>
             ) : (
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t("webhooks.colEndpoint")}</TableHead>
-                    <TableHead>{t("webhooks.colEvents")}</TableHead>
-                    <TableHead>{t("webhooks.colLatest")}</TableHead>
-                    <TableHead>{t("webhooks.colEnabled")}</TableHead>
-                    <TableActionsHead />
-                  </TableRow>
-                </TableHeader>
+                <WebhooksTableHeader />
                 <TableBody>
                   {filteredEndpoints.map((entry) => (
                     // No refetch on toggle: the mutation's selection set

@@ -1,6 +1,6 @@
 # a822 — Blueprints list headers also stack vertically on mobile
 
-**Severity:** minor. **Observed:** 2026-10-17 01:47–01:48 UTC. **Research main:** `57733a6dfa32a7b8c22ea1d2cdaa318ab2a9c735`. Extend m220's existing header-readability owner with a second observed route; its pending-layout work remains specific to Environment Groups. [Six complete durable receipts and exact scripts](../evidence/m220-a822-blueprint-headers.json).
+**Severity:** minor. **Observed:** 2026-10-17 01:47–01:48 UTC. **Research main:** `57733a6dfa32a7b8c22ea1d2cdaa318ab2a9c735`. Extend m220's existing header-readability owner with a second observed route; its pending-layout work remains specific to Environment Groups. [Six complete durable receipts and exact scripts](../../evidence/m220-a822-blueprint-headers.json).
 
 ## Reproduction and controls
 
