@@ -312,7 +312,42 @@ describe("isSubmittable", () => {
     expect(isSubmittable(form({ plan: "" }))).toBe(false);
     expect(
       isSubmittable(
-        form({ plan: "", serviceType: "static_site", buildCommand: "" }),
+        form({
+          plan: "",
+          serviceType: "static_site",
+          buildCommand: "",
+          publishPath: "dist",
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  // bex-api refuses a static site without a publish directory; the builder
+  // trims a blank one away, so an empty draft must not reach Submit (w4/332).
+  it("requires a nonblank publish directory for a static site only", () => {
+    const site = (publishPath: string) =>
+      form({ serviceType: "static_site", plan: "", publishPath });
+    expect(isSubmittable(site(""))).toBe(false);
+    expect(isSubmittable(site("   "))).toBe(false);
+    for (const path of ["dist", ".", "examples/static-site", "  build  "]) {
+      expect(isSubmittable(site(path))).toBe(true);
+    }
+    // Hidden for every other type, so a blank one never blocks them.
+    for (const serviceType of [
+      "web_service",
+      "private_service",
+      "background_worker",
+    ] as const) {
+      expect(isSubmittable(form({ serviceType, publishPath: "" }))).toBe(true);
+    }
+    expect(
+      isSubmittable(
+        form({
+          serviceType: "cron_job",
+          schedule: "0 * * * *",
+          command: "run",
+          publishPath: "",
+        }),
       ),
     ).toBe(true);
   });
