@@ -85,29 +85,38 @@ jobs:
           echo "ea4e7a581a32ccad6cc7923cb1576ac5859ba4b9a16ab22eb8f8a96e78e2e961  $RUNNER_TEMP/gh.tgz" | sha256sum -c -
           tar -xzf "$RUNNER_TEMP/gh.tgz" -C "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/gh_${v}_linux_arm64/bin" >> "$GITHUB_PATH"
+      # w1/131: every probe confirms over three attempts 30s apart before it
+      # counts as down, and records the failure class it actually saw, so a
+      # ~40s blip opens nothing and an issue's remedy fits its failure.
       - name: Probe the SSH edge for KEXINIT
         id: probe
         run: |
-          if bash scripts/ssh-kexinit-probe.sh "$SSH_EDGE" > probe.txt 2>&1; then
+          if bash scripts/edge-probe.sh ssh "$SSH_EDGE" probe.txt; then
             echo "down=false" >> "$GITHUB_OUTPUT"
           else
             echo "down=true" >> "$GITHUB_OUTPUT"
           fi
           cat probe.txt
+          echo "class=$(cat probe.txt.class)" >> "$GITHUB_OUTPUT"
       - name: Open or update the tracking issue
         if: steps.probe.outputs.down == 'true'
         run: |
           gh label create ssh-edge-down --repo "$GITHUB_REPOSITORY" \
             --color B60205 --description "ssh.bex.co is not completing the SSH handshake (w6/m132)" --force
-          body="$SSH_EDGE wrote its SSH banner but did not send SSH_MSG_KEXINIT — the handshake never reaches authentication."$'\n\n'
-          body+="Probe output:"$'\n\n```\n'"$(cat probe.txt)"$'\n```\n\n'
-          body+="Likely a PROXY-protocol mismatch between Traefik and the gateway (w6/m132): confirm the gateway Deployment sets BEX_SSH_PROXY_PROTOCOL_TRUSTED_CIDRS to the cluster pod CIDR while the ssh IngressRouteTCP sets proxyProtocol. \`scripts/gitops-validate.sh\` guards the manifests; this checks the live edge."
+          class="${{ steps.probe.outputs.class }}"
+          body="$SSH_EDGE failed the SSH liveness probe on every attempt: $class."$'\n\n'
+          body+="Probe output (last attempt):"$'\n\n```\n'"$(cat probe.txt)"$'\n```\n\n'
+          if [[ "$class" == "banner but no KEXINIT"* ]]; then
+            body+="The gateway answered but stopped before key exchange — the w6/m132 shape. Likely a PROXY-protocol mismatch between Traefik and the gateway: confirm the gateway Deployment sets BEX_SSH_PROXY_PROTOCOL_TRUSTED_CIDRS to the cluster pod CIDR while the ssh IngressRouteTCP sets proxyProtocol. \`scripts/gitops-validate.sh\` guards the manifests; this checks the live edge."
+          else
+            body+="No SSH conversation happened, so this is reachability, not the gateway's handshake. Check the load balancer's targets and Traefik's ssh entrypoint, and whether the runner host itself lost network (the self-hosted pool shares one host) before changing the gateway."
+          fi
           existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label ssh-edge-down --state open --json number --jq '.[0].number // empty')"
           if [[ -n "$existing" ]]; then
             gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
           else
             gh issue create --repo "$GITHUB_REPOSITORY" \
-              --title "SSH edge is down: no KEXINIT from $SSH_EDGE" \
+              --title "SSH edge is down at $SSH_EDGE: $class" \
               --label ssh-edge-down \
               --body "$body"
           fi
@@ -125,12 +134,13 @@ jobs:
         env:
           ONBEX_PROBE_HOST: ${{ github.event.inputs.host || 'notfound.onbex.co' }}
         run: |
-          if bash scripts/onbex-default-tls-verify.sh "$ONBEX_PROBE_HOST" > tls-probe.txt 2>&1; then
+          if bash scripts/edge-probe.sh tls "$ONBEX_PROBE_HOST" tls-probe.txt; then
             echo "down=false" >> "$GITHUB_OUTPUT"
           else
             echo "down=true" >> "$GITHUB_OUTPUT"
           fi
           cat tls-probe.txt
+          echo "class=$(cat tls-probe.txt.class)" >> "$GITHUB_OUTPUT"
       - name: Open a fallback-TLS tracking issue
         if: always() && steps.tls_probe.outputs.down == 'true'
         env:
@@ -140,13 +150,19 @@ jobs:
           if [[ -z "$existing" ]]; then
             gh label create onbex-fallback-tls-down --repo "$GITHUB_REPOSITORY" \
               --color B60205 --description "Unknown onbex.co hosts lack trusted fallback TLS" --force
+            class="${{ steps.tls_probe.outputs.class }}"
+            . scripts/edge-probe.sh
             {
-              printf 'The public fallback TLS synthetic failed for `%s`. This checks browser trust, the exact `*.onbex.co` SAN, at least 30 days of validity, and the intentional HTTP 404.\n\n' "$ONBEX_PROBE_HOST"
-              printf 'Probe output:\n\n```\n%s\n```\n\n' "$(cat tls-probe.txt)"
-              printf 'Rotate the externally issued certificate through `BEX_ONBEX_TLS_CERT_FILE` / `BEX_ONBEX_TLS_KEY_FILE`, run `scripts/gh-secrets.sh`, and dispatch `deploy.yml`. bex does not call a DNS provider.\n'
+              printf 'The public fallback TLS synthetic failed for `%s` on every attempt: %s. It checks browser trust, the exact `*.onbex.co` SAN, at least 30 days of validity, and the intentional HTTP 404.\n\n' "$ONBEX_PROBE_HOST" "$class"
+              printf 'Probe output (last attempt):\n\n```\n%s\n```\n\n' "$(cat tls-probe.txt)"
+              if certificate_failure "$class"; then
+                printf 'Rotate the externally issued certificate through `BEX_ONBEX_TLS_CERT_FILE` / `BEX_ONBEX_TLS_KEY_FILE`, run `scripts/gh-secrets.sh`, and dispatch `deploy.yml`. bex does not call a DNS provider.\n'
+              else
+                printf 'The certificate is not what failed, so rotating it would not help. Check the load balancer targets and the Traefik default route, and whether the runner host itself lost network (the self-hosted pool shares one host).\n'
+              fi
             } > issue-body.md
             gh issue create --repo "$GITHUB_REPOSITORY" \
-              --title "onbex.co fallback TLS is invalid or expiring" \
+              --title "onbex.co fallback edge failed: $class" \
               --label onbex-fallback-tls-down --body-file issue-body.md
           fi
       - name: Close the fallback-TLS issue after recovery
@@ -163,7 +179,7 @@ jobs:
         id: shell_ws_probe
         if: always()
         run: |
-          if bash scripts/shell-ws-probe.sh "$SHELL_WS_URL" > shell-ws-probe.txt 2>&1; then
+          if bash scripts/edge-probe.sh shell-ws "$SHELL_WS_URL" shell-ws-probe.txt; then
             echo "down=false" >> "$GITHUB_OUTPUT"
           else
             echo "down=true" >> "$GITHUB_OUTPUT"

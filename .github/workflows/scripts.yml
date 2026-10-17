@@ -66,6 +66,8 @@ jobs:
       # proven here on every push, not only when the daily job happens to run.
       - name: CI red-streak detector self-test
         run: bash scripts/ci-red-streak.test.sh
+      - name: Edge probe retry and failure classes (w1/131)
+        run: bash scripts/edge-probe.test.sh
       # w5/m112: /ship's pre-push gate refuses to stack commits on a red main
       # unless the push is the fix; proven with a stubbed gh, no network.
       - name: ship gates self-test
