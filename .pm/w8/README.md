@@ -57,7 +57,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m91** — [Supply PostgreSQL clients in native builds and runtime](m91/README.md) (6 tasks;205m) ← major functional CLI sweep402:both original builds fail missing pg_restore; both install controls serve exact backup rows, full owned cleanup verified.
 
-- [ ] **m90** — [Install Yarn dependencies before static builds](m90/README.md) (6 tasks;140m) ← major functional CLI sweep401:both first default builds fail with Yarn present and dependencies absent; both one-line controls publish exact files, complete owned cleanup verified.
+- [ ] **m90** — [Install Yarn dependencies before static builds](blocked/m90/README.md) (6 tasks;140m) — **BLOCKED (2026-10-17: t001–t005 done — native static builds now run `yarn install --production=false --non-interactive` for a project whose only manager signal is Yarn Classic (v1 `yarn.lock` and/or `packageManager: yarn@1`), keeping the lockfile and devDependencies; pnpm/Bun/Yarn 2+/multi-manager projects stay with the build command, named in the log; real-image and default-run tests fail before/pass after; needs the operator published plus the hosted both-client fresh first-build replay (t006), runnable with the QA CLI login)**
 
 - [x] **m89** — [Materialize pinned Git submodules before source builds](done/m89/README.md) (7 tasks) — **DONE 2026-10-17:** both original native first deployments Live, exact pinned file/source proofs and six HTTP200 responses without authored fetch; exact cleanup in sweep412.
 
