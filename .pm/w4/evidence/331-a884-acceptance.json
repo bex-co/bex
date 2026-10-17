@@ -1,0 +1,4226 @@
+{
+  "item": "w4/331",
+  "status": "live-acceptance-passed",
+  "pass": "a884",
+  "date": "2026-10-17",
+  "preparedAt": "2026-10-17T13:10:32.456914+00:00",
+  "researchHead": "c803eda8dfb70d7659eb81f716df8ca935dadf0a",
+  "scope": "Read-only Blueprint preview/validation and form draft controls. PM acceptance only; no Create/Sync/apply or paid submission. No product implementation or deployment.",
+  "servingShaLimit": "Preview commitId is the fetched repository revision; it is not proof of the serving dashboard build SHA.",
+  "records": [
+    {
+      "key": "a884Baseline",
+      "localArtifact": ".playwright-mcp/qa-recovered-a884Baseline.json",
+      "capture": {
+        "at": "2026-10-17T13:00:57.714Z",
+        "status": 200,
+        "inventory": {
+          "data": {
+            "blueprints": [
+              {
+                "id": "blp-d9nqg95cavls73fp8m10",
+                "name": "discourse_docker"
+              }
+            ],
+            "databases": [
+              {
+                "id": "dpg-d9nqg95cavls73fp8m20",
+                "name": "beancount-forum-db"
+              },
+              {
+                "id": "dpg-d9rrkoc4h4mc73edurp0",
+                "name": "tianpan-forum-db"
+              },
+              {
+                "id": "dpg-d9rs3ee0ccis738kc7c0",
+                "name": "blockeden-forum-db"
+              },
+              {
+                "id": "dpg-db34l9bor55s73cqpq9g",
+                "name": "qa-20261007-r16-owner-f208ab"
+              }
+            ],
+            "envGroups": [
+              {
+                "id": "evg-db0s94c48ccs739jikr0",
+                "name": "qa-20261003-keys-r85"
+              }
+            ],
+            "keyValues": [
+              {
+                "id": "red-d9p49kdrtmes73c34ovg",
+                "name": "beancount-forum-redis"
+              },
+              {
+                "id": "red-da4086iii7bs73drbqh0",
+                "name": "blockeden-forum-redis"
+              }
+            ],
+            "projects": [
+              {
+                "id": "prj-d9dgeo0bd9nc73a0vh1g",
+                "name": "bex.co"
+              },
+              {
+                "id": "prj-d9e5qct5qe4s73b1mjn0",
+                "name": "beancount.io"
+              },
+              {
+                "id": "prj-d9sgfnbjghus73cg6hg0",
+                "name": "forums"
+              }
+            ],
+            "services": [
+              {
+                "id": "srv-d9bkcspg9s7c73d0n8ug",
+                "name": "agentmarketcap-1",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9bj8s3eg85c7390eb9g",
+                "name": "beancount-cms-v2",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9nqg9dcavls73fp8m2g",
+                "name": "beancount-forum",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9ndt8hmcglc739fkp50",
+                "name": "eden-dash-v3",
+                "type": "web_service"
+              },
+              {
+                "id": "srv-d9e40ei9086p3l1jri30",
+                "name": "eden-cms-v2",
+                "type": "web_service"
+              }
+            ],
+            "webhookEndpoints": []
+          }
+        }
+      }
+    },
+    {
+      "key": "a884KubernetesYamlPreview",
+      "localArtifact": ".playwright-mcp/qa-recovered-a884KubernetesYamlPreview.json",
+      "capture": {
+        "at": "2026-10-17T13:02:22.213Z",
+        "request": {
+          "operationName": "BlueprintPreview",
+          "variables": {
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "path": "examples/whoami-app.yaml",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "blueprintId": null
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query BlueprintPreview($repo: String!, $branch: String!, $path: String, $ownerId: String, $blueprintId: String) {\n  blueprintPreview(\n    repo: $repo\n    branch: $branch\n    path: $path\n    ownerId: $ownerId\n    blueprintId: $blueprintId\n  ) {\n    found\n    commitId\n    error\n    reason\n    retryable\n    validation {\n      valid\n      errors\n      errorDetails {\n        code\n        line\n        column\n        path\n        error\n        __typename\n      }\n      plan {\n        mode\n        services\n        databases\n        keyValue\n        envGroups\n        syncFalseVars\n        totalActions\n        actions {\n          operation\n          kind\n          name\n          sourcePath\n          resourceId\n          changedFields {\n            path\n            __typename\n          }\n          message\n          __typename\n        }\n        __typename\n      }\n      estimatedPricing {\n        totalUsd\n        lines {\n          name\n          tierLabel\n          monthlyUsd\n          instanceUsd\n          storageUsd\n          storageGb\n          __typename\n        }\n        variable {\n          name\n          reason\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "blueprintPreview": {
+              "__typename": "BlueprintPreview",
+              "commitId": "c803eda8dfb70d7659eb81f716df8ca935dadf0a",
+              "error": "",
+              "found": true,
+              "reason": "",
+              "retryable": false,
+              "validation": {
+                "__typename": "BlueprintValidation",
+                "errorDetails": [
+                  {
+                    "__typename": "BlueprintValidationError",
+                    "code": "BLUEPRINT_SCHEMA_INVALID",
+                    "column": 1,
+                    "error": "at '': additional properties 'apiVersion', 'kind', 'metadata', 'spec' not allowed",
+                    "line": 4,
+                    "path": ""
+                  }
+                ],
+                "errors": [
+                  "at '': additional properties 'apiVersion', 'kind', 'metadata', 'spec' not allowed"
+                ],
+                "estimatedPricing": null,
+                "plan": null,
+                "valid": false
+              }
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792242140120.8533,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.144,
+          "responseStart": 1375.406,
+          "responseEnd": 1376.383
+        },
+        "url": "https://dashboard.bex.co/blueprints/new"
+      }
+    },
+    {
+      "key": "a884KubernetesYamlUi",
+      "localArtifact": ".playwright-mcp/qa-recovered-a884KubernetesYamlUi.json",
+      "capture": {
+        "at": "2026-10-17T13:02:23.301Z",
+        "ui": "- main:\n  - navigation \"Breadcrumbs\": Blueprints\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - heading \"New Blueprint Instance\" [level=1]\n  - text: Connect a repository containing a render.yaml Blueprint to create and sync a full stack of services.\n  - group:\n    - text: Connect a repository\n    - tablist:\n      - tab \"GitHub\"\n      - tab \"Public Git URL\" [selected]\n    - tabpanel \"Public Git URL\":\n      - text: Repository URL\n      - textbox \"Repository URL\":\n        - /placeholder: https://github.com/you/your-repo\n        - text: https://github.com/bex-co/bex\n    - text: Blueprint Name\n    - textbox \"Blueprint Name\":\n      - /placeholder: my-stack\n      - text: qa-20261017-a884-preview\n    - text: Branch\n    - combobox \"Branch\": main\n    - button \"Clear input\"\n    - paragraph: The repository branch with the render.yaml file.\n    - text: Blueprint path\n    - textbox \"Blueprint path\":\n      - /placeholder: render.yaml\n      - text: examples/whoami-app.yaml\n    - paragraph: The path to the Blueprint file in your repo — any .yaml/.yml file works (e.g. infra/bex/stack.yaml). Defaults to render.yaml at the root of your repository.\n    - paragraph: Review Blueprint configuration\n    - alert:\n      - text: Blueprint file has errors\n      - list:\n        - listitem: \"line 4, column 1at '': additional properties 'apiVersion', 'kind', 'metadata', 'spec' not allowed\"\n    - button \"Cancel\"\n    - button \"Deploy Blueprint\" [disabled]",
+        "deployDisabled": true,
+        "draft": {
+          "repo": "https://github.com/bex-co/bex",
+          "name": "qa-20261017-a884-preview",
+          "branch": "main",
+          "path": "examples/whoami-app.yaml"
+        }
+      }
+    },
+    {
+      "key": "a884HelloPreview",
+      "localArtifact": ".playwright-mcp/qa-recovered-a884HelloPreview.json",
+      "capture": {
+        "at": "2026-10-17T13:02:50.080Z",
+        "request": {
+          "operationName": "BlueprintPreview",
+          "variables": {
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "path": "examples/hello-go/render.yaml",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "blueprintId": null
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query BlueprintPreview($repo: String!, $branch: String!, $path: String, $ownerId: String, $blueprintId: String) {\n  blueprintPreview(\n    repo: $repo\n    branch: $branch\n    path: $path\n    ownerId: $ownerId\n    blueprintId: $blueprintId\n  ) {\n    found\n    commitId\n    error\n    reason\n    retryable\n    validation {\n      valid\n      errors\n      errorDetails {\n        code\n        line\n        column\n        path\n        error\n        __typename\n      }\n      plan {\n        mode\n        services\n        databases\n        keyValue\n        envGroups\n        syncFalseVars\n        totalActions\n        actions {\n          operation\n          kind\n          name\n          sourcePath\n          resourceId\n          changedFields {\n            path\n            __typename\n          }\n          message\n          __typename\n        }\n        __typename\n      }\n      estimatedPricing {\n        totalUsd\n        lines {\n          name\n          tierLabel\n          monthlyUsd\n          instanceUsd\n          storageUsd\n          storageGb\n          __typename\n        }\n        variable {\n          name\n          reason\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "blueprintPreview": {
+              "__typename": "BlueprintPreview",
+              "commitId": "c803eda8dfb70d7659eb81f716df8ca935dadf0a",
+              "error": "",
+              "found": true,
+              "reason": "",
+              "retryable": false,
+              "validation": {
+                "__typename": "BlueprintValidation",
+                "errorDetails": [],
+                "errors": [],
+                "estimatedPricing": {
+                  "__typename": "BlueprintEstimatedPricing",
+                  "lines": [],
+                  "totalUsd": "0.00",
+                  "variable": []
+                },
+                "plan": {
+                  "__typename": "BlueprintValidationPlan",
+                  "actions": [
+                    {
+                      "__typename": "BlueprintPlanAction",
+                      "changedFields": [],
+                      "kind": "service",
+                      "message": "",
+                      "name": "hello-go",
+                      "operation": "create",
+                      "resourceId": "",
+                      "sourcePath": "#/services/0"
+                    }
+                  ],
+                  "databases": [],
+                  "envGroups": [],
+                  "keyValue": [],
+                  "mode": "current_state",
+                  "services": ["hello-go"],
+                  "syncFalseVars": [],
+                  "totalActions": 1
+                },
+                "valid": true
+              }
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792242167969.7048,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.292,
+          "responseStart": 1395.123,
+          "responseEnd": 1396.431
+        },
+        "url": "https://dashboard.bex.co/blueprints/new"
+      }
+    },
+    {
+      "key": "a884HelloUi",
+      "localArtifact": ".playwright-mcp/qa-recovered-a884HelloUi.json",
+      "capture": {
+        "at": "2026-10-17T13:02:51.183Z",
+        "ui": "- main:\n  - navigation \"Breadcrumbs\": Blueprints\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - heading \"New Blueprint Instance\" [level=1]\n  - text: Connect a repository containing a render.yaml Blueprint to create and sync a full stack of services.\n  - group:\n    - text: Connect a repository\n    - tablist:\n      - tab \"GitHub\"\n      - tab \"Public Git URL\" [selected]\n    - tabpanel \"Public Git URL\":\n      - text: Repository URL\n      - textbox \"Repository URL\":\n        - /placeholder: https://github.com/you/your-repo\n        - text: https://github.com/bex-co/bex\n    - text: Blueprint Name\n    - textbox \"Blueprint Name\":\n      - /placeholder: my-stack\n      - text: qa-20261017-a884-preview\n    - text: Branch\n    - combobox \"Branch\": main\n    - button \"Clear input\"\n    - paragraph: The repository branch with the render.yaml file.\n    - text: Blueprint path\n    - textbox \"Blueprint path\":\n      - /placeholder: render.yaml\n      - text: examples/hello-go/render.yaml\n    - paragraph: The path to the Blueprint file in your repo — any .yaml/.yml file works (e.g. infra/bex/stack.yaml). Defaults to render.yaml at the root of your repository.\n    - paragraph: Review Blueprint configuration\n    - paragraph: Blueprint file parsed successfully — 1 resource will change.\n    - list:\n      - listitem: Create hello-go Service\n    - paragraph: All future updates to your Blueprint file on this branch will be synced automatically. You can pause auto-sync after creation.\n    - button \"Cancel\"\n    - button \"Deploy Blueprint\"",
+        "deployEnabled": true,
+        "name": "qa-20261017-a884-preview"
+      }
+    },
+    {
+      "key": "a884StackPreview",
+      "localArtifact": ".playwright-mcp/qa-recovered-a884StackPreview.json",
+      "capture": {
+        "at": "2026-10-17T13:02:54.469Z",
+        "request": {
+          "operationName": "BlueprintPreview",
+          "variables": {
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "path": "examples/stack-demo/render.yaml",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "blueprintId": null
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query BlueprintPreview($repo: String!, $branch: String!, $path: String, $ownerId: String, $blueprintId: String) {\n  blueprintPreview(\n    repo: $repo\n    branch: $branch\n    path: $path\n    ownerId: $ownerId\n    blueprintId: $blueprintId\n  ) {\n    found\n    commitId\n    error\n    reason\n    retryable\n    validation {\n      valid\n      errors\n      errorDetails {\n        code\n        line\n        column\n        path\n        error\n        __typename\n      }\n      plan {\n        mode\n        services\n        databases\n        keyValue\n        envGroups\n        syncFalseVars\n        totalActions\n        actions {\n          operation\n          kind\n          name\n          sourcePath\n          resourceId\n          changedFields {\n            path\n            __typename\n          }\n          message\n          __typename\n        }\n        __typename\n      }\n      estimatedPricing {\n        totalUsd\n        lines {\n          name\n          tierLabel\n          monthlyUsd\n          instanceUsd\n          storageUsd\n          storageGb\n          __typename\n        }\n        variable {\n          name\n          reason\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "blueprintPreview": {
+              "__typename": "BlueprintPreview",
+              "commitId": "c803eda8dfb70d7659eb81f716df8ca935dadf0a",
+              "error": "",
+              "found": true,
+              "reason": "",
+              "retryable": false,
+              "validation": {
+                "__typename": "BlueprintValidation",
+                "errorDetails": [],
+                "errors": [],
+                "estimatedPricing": {
+                  "__typename": "BlueprintEstimatedPricing",
+                  "lines": [
+                    {
+                      "__typename": "BlueprintPricingLine",
+                      "instanceUsd": "4.90",
+                      "monthlyUsd": "4.90",
+                      "name": "worker",
+                      "storageGb": 0,
+                      "storageUsd": "",
+                      "tierLabel": "Starter"
+                    }
+                  ],
+                  "totalUsd": "4.90",
+                  "variable": []
+                },
+                "plan": {
+                  "__typename": "BlueprintValidationPlan",
+                  "actions": [
+                    {
+                      "__typename": "BlueprintPlanAction",
+                      "changedFields": [],
+                      "kind": "postgres",
+                      "message": "",
+                      "name": "db",
+                      "operation": "create",
+                      "resourceId": "",
+                      "sourcePath": "#/databases/0"
+                    },
+                    {
+                      "__typename": "BlueprintPlanAction",
+                      "changedFields": [],
+                      "kind": "service",
+                      "message": "",
+                      "name": "web",
+                      "operation": "create",
+                      "resourceId": "",
+                      "sourcePath": "#/services/0"
+                    },
+                    {
+                      "__typename": "BlueprintPlanAction",
+                      "changedFields": [],
+                      "kind": "service",
+                      "message": "",
+                      "name": "worker",
+                      "operation": "create",
+                      "resourceId": "",
+                      "sourcePath": "#/services/1"
+                    }
+                  ],
+                  "databases": ["db"],
+                  "envGroups": [],
+                  "keyValue": [],
+                  "mode": "current_state",
+                  "services": ["web", "worker"],
+                  "syncFalseVars": [],
+                  "totalActions": 3
+                },
+                "valid": true
+              }
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792242172192.6638,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.432,
+          "responseStart": 1566.306,
+          "responseEnd": 1567.474
+        },
+        "url": "https://dashboard.bex.co/blueprints/new"
+      }
+    },
+    {
+      "key": "a884StackUi",
+      "localArtifact": ".playwright-mcp/qa-recovered-a884StackUi.json",
+      "capture": {
+        "at": "2026-10-17T13:02:55.564Z",
+        "ui": "- main:\n  - navigation \"Breadcrumbs\": Blueprints\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - heading \"New Blueprint Instance\" [level=1]\n  - text: Connect a repository containing a render.yaml Blueprint to create and sync a full stack of services.\n  - group:\n    - text: Connect a repository\n    - tablist:\n      - tab \"GitHub\"\n      - tab \"Public Git URL\" [selected]\n    - tabpanel \"Public Git URL\":\n      - text: Repository URL\n      - textbox \"Repository URL\":\n        - /placeholder: https://github.com/you/your-repo\n        - text: https://github.com/bex-co/bex\n    - text: Blueprint Name\n    - textbox \"Blueprint Name\":\n      - /placeholder: my-stack\n      - text: qa-20261017-a884-preview\n    - text: Branch\n    - combobox \"Branch\": main\n    - button \"Clear input\"\n    - paragraph: The repository branch with the render.yaml file.\n    - text: Blueprint path\n    - textbox \"Blueprint path\":\n      - /placeholder: render.yaml\n      - text: examples/stack-demo/render.yaml\n    - paragraph: The path to the Blueprint file in your repo — any .yaml/.yml file works (e.g. infra/bex/stack.yaml). Defaults to render.yaml at the root of your repository.\n    - paragraph: Review Blueprint configuration\n    - paragraph: Blueprint file parsed successfully — 3 resources will change.\n    - list:\n      - listitem: Create db Postgres\n      - listitem: Create web Service\n      - listitem: Create worker Service\n    - paragraph: All future updates to your Blueprint file on this branch will be synced automatically. You can pause auto-sync after creation.\n    - paragraph: Estimated pricing\n    - paragraph: Compute costs are prorated by the second. Billing occurs at the start of the month.\n    - list:\n      - listitem: worker (Starter) $4.90 / month\n    - text: Total $4.90 per month\n    - paragraph: Estimate only — storage is priced on provisioned size; your invoice meters actual usage.\n    - button \"Cancel\"\n    - button \"Deploy Blueprint\"",
+        "deployEnabled": true,
+        "name": "qa-20261017-a884-preview"
+      }
+    },
+    {
+      "key": "a884MobileHelloPreview",
+      "localArtifact": ".playwright-mcp/qa-recovered-a884MobileHelloPreview.json",
+      "capture": {
+        "at": "2026-10-17T13:03:56.132Z",
+        "request": {
+          "operationName": "BlueprintPreview",
+          "variables": {
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "path": "examples/hello-go/render.yaml",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "blueprintId": null
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query BlueprintPreview($repo: String!, $branch: String!, $path: String, $ownerId: String, $blueprintId: String) {\n  blueprintPreview(\n    repo: $repo\n    branch: $branch\n    path: $path\n    ownerId: $ownerId\n    blueprintId: $blueprintId\n  ) {\n    found\n    commitId\n    error\n    reason\n    retryable\n    validation {\n      valid\n      errors\n      errorDetails {\n        code\n        line\n        column\n        path\n        error\n        __typename\n      }\n      plan {\n        mode\n        services\n        databases\n        keyValue\n        envGroups\n        syncFalseVars\n        totalActions\n        actions {\n          operation\n          kind\n          name\n          sourcePath\n          resourceId\n          changedFields {\n            path\n            __typename\n          }\n          message\n          __typename\n        }\n        __typename\n      }\n      estimatedPricing {\n        totalUsd\n        lines {\n          name\n          tierLabel\n          monthlyUsd\n          instanceUsd\n          storageUsd\n          storageGb\n          __typename\n        }\n        variable {\n          name\n          reason\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "blueprintPreview": {
+              "__typename": "BlueprintPreview",
+              "commitId": "c803eda8dfb70d7659eb81f716df8ca935dadf0a",
+              "error": "",
+              "found": true,
+              "reason": "",
+              "retryable": false,
+              "validation": {
+                "__typename": "BlueprintValidation",
+                "errorDetails": [],
+                "errors": [],
+                "estimatedPricing": {
+                  "__typename": "BlueprintEstimatedPricing",
+                  "lines": [],
+                  "totalUsd": "0.00",
+                  "variable": []
+                },
+                "plan": {
+                  "__typename": "BlueprintValidationPlan",
+                  "actions": [
+                    {
+                      "__typename": "BlueprintPlanAction",
+                      "changedFields": [],
+                      "kind": "service",
+                      "message": "",
+                      "name": "hello-go",
+                      "operation": "create",
+                      "resourceId": "",
+                      "sourcePath": "#/services/0"
+                    }
+                  ],
+                  "databases": [],
+                  "envGroups": [],
+                  "keyValue": [],
+                  "mode": "current_state",
+                  "services": ["hello-go"],
+                  "syncFalseVars": [],
+                  "totalActions": 1
+                },
+                "valid": true
+              }
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792242233914.041,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.219,
+          "responseStart": 1506.312,
+          "responseEnd": 1507.269
+        },
+        "url": "https://dashboard.bex.co/blueprints/new"
+      }
+    },
+    {
+      "key": "a884MobileTabRoundtrip",
+      "localArtifact": ".playwright-mcp/qa-recovered-a884MobileTabRoundtrip.json",
+      "capture": {
+        "at": "2026-10-17T13:03:57.312Z",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "before": {
+          "name": "qa-20261017-a884-mobile",
+          "repo": "https://github.com/bex-co/bex",
+          "branch": "main",
+          "path": "examples/hello-go/render.yaml",
+          "deployEnabled": true,
+          "ui": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\": Blueprints\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - heading \"New Blueprint Instance\" [level=1]\n  - text: Connect a repository containing a render.yaml Blueprint to create and sync a full stack of services.\n  - group:\n    - text: Connect a repository\n    - tablist:\n      - tab \"GitHub\"\n      - tab \"Public Git URL\" [selected]\n    - tabpanel \"Public Git URL\":\n      - text: Repository URL\n      - textbox \"Repository URL\":\n        - /placeholder: https://github.com/you/your-repo\n        - text: https://github.com/bex-co/bex\n    - text: Blueprint Name\n    - textbox \"Blueprint Name\":\n      - /placeholder: my-stack\n      - text: qa-20261017-a884-mobile\n    - text: Branch\n    - combobox \"Branch\": main\n    - button \"Clear input\"\n    - paragraph: The repository branch with the render.yaml file.\n    - text: Blueprint path\n    - textbox \"Blueprint path\":\n      - /placeholder: render.yaml\n      - text: examples/hello-go/render.yaml\n    - paragraph: The path to the Blueprint file in your repo — any .yaml/.yml file works (e.g. infra/bex/stack.yaml). Defaults to render.yaml at the root of your repository.\n    - paragraph: Review Blueprint configuration\n    - paragraph: Blueprint file parsed successfully — 1 resource will change.\n    - list:\n      - listitem: Create hello-go Service\n    - paragraph: All future updates to your Blueprint file on this branch will be synced automatically. You can pause auto-sync after creation.\n    - button \"Cancel\"\n    - button \"Deploy Blueprint\""
+        },
+        "after": {
+          "name": "qa-20261017-a884-mobile",
+          "repo": "https://github.com/bex-co/bex",
+          "branch": "main",
+          "path": "examples/hello-go/render.yaml",
+          "deployEnabled": true,
+          "ui": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\": Blueprints\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - heading \"New Blueprint Instance\" [level=1]\n  - text: Connect a repository containing a render.yaml Blueprint to create and sync a full stack of services.\n  - group:\n    - text: Connect a repository\n    - tablist:\n      - tab \"GitHub\"\n      - tab \"Public Git URL\" [selected]\n    - tabpanel \"Public Git URL\":\n      - text: Repository URL\n      - textbox \"Repository URL\":\n        - /placeholder: https://github.com/you/your-repo\n        - text: https://github.com/bex-co/bex\n    - text: Blueprint Name\n    - textbox \"Blueprint Name\":\n      - /placeholder: my-stack\n      - text: qa-20261017-a884-mobile\n    - text: Branch\n    - combobox \"Branch\": main\n    - button \"Clear input\"\n    - paragraph: The repository branch with the render.yaml file.\n    - text: Blueprint path\n    - textbox \"Blueprint path\":\n      - /placeholder: render.yaml\n      - text: examples/hello-go/render.yaml\n    - paragraph: The path to the Blueprint file in your repo — any .yaml/.yml file works (e.g. infra/bex/stack.yaml). Defaults to render.yaml at the root of your repository.\n    - paragraph: Review Blueprint configuration\n    - paragraph: Blueprint file parsed successfully — 1 resource will change.\n    - list:\n      - listitem: Create hello-go Service\n    - paragraph: All future updates to your Blueprint file on this branch will be synced automatically. You can pause auto-sync after creation.\n    - button \"Cancel\"\n    - button \"Deploy Blueprint\""
+        },
+        "edited": {
+          "name": "qa-20261017-a884-mobile-edited",
+          "repo": "https://github.com/bex-co/bex",
+          "branch": "main",
+          "path": "examples/hello-go/render.yaml",
+          "deployEnabled": true,
+          "ui": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\": Blueprints\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - heading \"New Blueprint Instance\" [level=1]\n  - text: Connect a repository containing a render.yaml Blueprint to create and sync a full stack of services.\n  - group:\n    - text: Connect a repository\n    - tablist:\n      - tab \"GitHub\"\n      - tab \"Public Git URL\" [selected]\n    - tabpanel \"Public Git URL\":\n      - text: Repository URL\n      - textbox \"Repository URL\":\n        - /placeholder: https://github.com/you/your-repo\n        - text: https://github.com/bex-co/bex\n    - text: Blueprint Name\n    - textbox \"Blueprint Name\":\n      - /placeholder: my-stack\n      - text: qa-20261017-a884-mobile-edited\n    - text: Branch\n    - combobox \"Branch\": main\n    - button \"Clear input\"\n    - paragraph: The repository branch with the render.yaml file.\n    - text: Blueprint path\n    - textbox \"Blueprint path\":\n      - /placeholder: render.yaml\n      - text: examples/hello-go/render.yaml\n    - paragraph: The path to the Blueprint file in your repo — any .yaml/.yml file works (e.g. infra/bex/stack.yaml). Defaults to render.yaml at the root of your repository.\n    - paragraph: Review Blueprint configuration\n    - paragraph: Blueprint file parsed successfully — 1 resource will change.\n    - list:\n      - listitem: Create hello-go Service\n    - paragraph: All future updates to your Blueprint file on this branch will be synced automatically. You can pause auto-sync after creation.\n    - button \"Cancel\"\n    - button \"Deploy Blueprint\""
+        }
+      }
+    },
+    {
+      "key": "a884GithubDefaultPreview",
+      "localArtifact": ".playwright-mcp/qa-recovered-a884GithubDefaultPreview.json",
+      "capture": {
+        "at": "2026-10-17T13:04:30.529Z",
+        "request": {
+          "operationName": "BlueprintPreview",
+          "variables": {
+            "repo": "https://github.com/bex-co/onefx.git",
+            "branch": "master",
+            "path": "examples/hello-go/render.yaml",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "blueprintId": null
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query BlueprintPreview($repo: String!, $branch: String!, $path: String, $ownerId: String, $blueprintId: String) {\n  blueprintPreview(\n    repo: $repo\n    branch: $branch\n    path: $path\n    ownerId: $ownerId\n    blueprintId: $blueprintId\n  ) {\n    found\n    commitId\n    error\n    reason\n    retryable\n    validation {\n      valid\n      errors\n      errorDetails {\n        code\n        line\n        column\n        path\n        error\n        __typename\n      }\n      plan {\n        mode\n        services\n        databases\n        keyValue\n        envGroups\n        syncFalseVars\n        totalActions\n        actions {\n          operation\n          kind\n          name\n          sourcePath\n          resourceId\n          changedFields {\n            path\n            __typename\n          }\n          message\n          __typename\n        }\n        __typename\n      }\n      estimatedPricing {\n        totalUsd\n        lines {\n          name\n          tierLabel\n          monthlyUsd\n          instanceUsd\n          storageUsd\n          storageGb\n          __typename\n        }\n        variable {\n          name\n          reason\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "blueprintPreview": {
+              "__typename": "BlueprintPreview",
+              "commitId": "",
+              "error": "Blueprint file \"examples/hello-go/render.yaml\" not found on branch \"master\".",
+              "found": false,
+              "reason": "file_not_found",
+              "retryable": false,
+              "validation": null
+            }
+          }
+        },
+        "timing": {
+          "startTime": 1792242268397.964,
+          "domainLookupStart": -1,
+          "domainLookupEnd": -1,
+          "connectStart": -1,
+          "secureConnectionStart": -1,
+          "connectEnd": -1,
+          "requestStart": 0.301,
+          "responseStart": 1412.42,
+          "responseEnd": 1413.566
+        },
+        "url": "https://dashboard.bex.co/blueprints/new"
+      }
+    },
+    {
+      "key": "a884GithubAndBlankControls",
+      "localArtifact": ".playwright-mcp/qa-recovered-a884GithubAndBlankControls.json",
+      "capture": {
+        "at": "2026-10-17T13:04:31.842Z",
+        "github": {
+          "branch": "master"
+        },
+        "publicRestored": {
+          "branch": "main",
+          "repo": "https://github.com/bex-co/bex"
+        },
+        "secondGithubBranch": "master",
+        "blankPublic": {
+          "branch": "",
+          "name": "qa-20261017-a884-mobile-edited",
+          "path": "examples/hello-go/render.yaml",
+          "deployDisabled": true
+        },
+        "ui": "- main:\n  - button \"Toggle Sidebar\"\n  - navigation \"Breadcrumbs\": Blueprints\n  - button \"Search\"\n  - button \"New\"\n  - button \"P\"\n  - heading \"New Blueprint Instance\" [level=1]\n  - text: Connect a repository containing a render.yaml Blueprint to create and sync a full stack of services.\n  - group:\n    - text: Connect a repository\n    - tablist:\n      - tab \"GitHub\"\n      - tab \"Public Git URL\" [selected]\n    - tabpanel \"Public Git URL\":\n      - text: Repository URL\n      - textbox \"Repository URL\":\n        - /placeholder: https://github.com/you/your-repo\n        - text: https://github.com/bex-co/bex\n    - text: Blueprint Name\n    - textbox \"Blueprint Name\":\n      - /placeholder: my-stack\n      - text: qa-20261017-a884-mobile-edited\n    - text: Branch\n    - combobox \"Branch\"\n    - paragraph: The repository branch with the render.yaml file.\n    - text: Blueprint path\n    - textbox \"Blueprint path\":\n      - /placeholder: render.yaml\n      - text: examples/hello-go/render.yaml\n    - paragraph: The path to the Blueprint file in your repo — any .yaml/.yml file works (e.g. infra/bex/stack.yaml). Defaults to render.yaml at the root of your repository.\n    - paragraph: Review Blueprint configuration\n    - paragraph: Select a repository and branch to review its Blueprint file before deploying.\n    - button \"Cancel\"\n    - button \"Deploy Blueprint\" [disabled]",
+        "captureProjection": "The unrelated repository-picker listing is omitted from github.ui; actual branch values, public-draft states and the complete matching native preview are retained."
+      }
+    },
+    {
+      "key": "a884DesktopExactRoundtrip",
+      "localArtifact": ".playwright-mcp/qa-recovered-a884DesktopExactRoundtrip.json",
+      "capture": {
+        "at": "2026-10-17T13:05:09.165Z",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        },
+        "pending": {
+          "at": "2026-10-17T13:05:07.391Z",
+          "deployDisabled": true,
+          "ui": "- main:\n  - navigation \"Breadcrumbs\": Blueprints\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - heading \"New Blueprint Instance\" [level=1]\n  - text: Connect a repository containing a render.yaml Blueprint to create and sync a full stack of services.\n  - group:\n    - text: Connect a repository\n    - tablist:\n      - tab \"GitHub\"\n      - tab \"Public Git URL\" [selected]\n    - tabpanel \"Public Git URL\":\n      - text: Repository URL\n      - textbox \"Repository URL\":\n        - /placeholder: https://github.com/you/your-repo\n        - text: https://github.com/bex-co/bex\n    - text: Blueprint Name\n    - textbox \"Blueprint Name\":\n      - /placeholder: my-stack\n      - text: qa-20261017-a884-desktop\n    - text: Branch\n    - combobox \"Branch\": main\n    - button \"Clear input\"\n    - paragraph: The repository branch with the render.yaml file.\n    - text: Blueprint path\n    - textbox \"Blueprint path\":\n      - /placeholder: render.yaml\n      - text: examples/hello-go/render.yaml\n    - paragraph: The path to the Blueprint file in your repo — any .yaml/.yml file works (e.g. infra/bex/stack.yaml). Defaults to render.yaml at the root of your repository.\n    - paragraph: Review Blueprint configuration\n    - text: Fetching examples/hello-go/render.yaml from your repository…\n    - button \"Cancel\"\n    - button \"Deploy Blueprint\" [disabled]"
+        },
+        "request": {
+          "operationName": "BlueprintPreview",
+          "variables": {
+            "repo": "https://github.com/bex-co/bex",
+            "branch": "main",
+            "path": "examples/hello-go/render.yaml",
+            "ownerId": "tea-d98210cbbpdc73dcrkvg",
+            "blueprintId": null
+          },
+          "extensions": {
+            "clientLibrary": {
+              "name": "@apollo/client",
+              "version": "4.3.3"
+            }
+          },
+          "query": "query BlueprintPreview($repo: String!, $branch: String!, $path: String, $ownerId: String, $blueprintId: String) {\n  blueprintPreview(\n    repo: $repo\n    branch: $branch\n    path: $path\n    ownerId: $ownerId\n    blueprintId: $blueprintId\n  ) {\n    found\n    commitId\n    error\n    reason\n    retryable\n    validation {\n      valid\n      errors\n      errorDetails {\n        code\n        line\n        column\n        path\n        error\n        __typename\n      }\n      plan {\n        mode\n        services\n        databases\n        keyValue\n        envGroups\n        syncFalseVars\n        totalActions\n        actions {\n          operation\n          kind\n          name\n          sourcePath\n          resourceId\n          changedFields {\n            path\n            __typename\n          }\n          message\n          __typename\n        }\n        __typename\n      }\n      estimatedPricing {\n        totalUsd\n        lines {\n          name\n          tierLabel\n          monthlyUsd\n          instanceUsd\n          storageUsd\n          storageGb\n          __typename\n        }\n        variable {\n          name\n          reason\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}"
+        },
+        "status": 200,
+        "body": {
+          "data": {
+            "blueprintPreview": {
+              "__typename": "BlueprintPreview",
+              "commitId": "c803eda8dfb70d7659eb81f716df8ca935dadf0a",
+              "error": "",
+              "found": true,
+              "reason": "",
+              "retryable": false,
+              "validation": {
+                "__typename": "BlueprintValidation",
+                "errorDetails": [],
+                "errors": [],
+                "estimatedPricing": {
+                  "__typename": "BlueprintEstimatedPricing",
+                  "lines": [],
+                  "totalUsd": "0.00",
+                  "variable": []
+                },
+                "plan": {
+                  "__typename": "BlueprintValidationPlan",
+                  "actions": [
+                    {
+                      "__typename": "BlueprintPlanAction",
+                      "changedFields": [],
+                      "kind": "service",
+                      "message": "",
+                      "name": "hello-go",
+                      "operation": "create",
+                      "resourceId": "",
+                      "sourcePath": "#/services/0"
+                    }
+                  ],
+                  "databases": [],
+                  "envGroups": [],
+                  "keyValue": [],
+                  "mode": "current_state",
+                  "services": ["hello-go"],
+                  "syncFalseVars": [],
+                  "totalActions": 1
+                },
+                "valid": true
+              }
+            }
+          }
+        },
+        "before": {
+          "repo": "https://github.com/bex-co/bex",
+          "branch": "main",
+          "name": "qa-20261017-a884-desktop",
+          "path": "examples/hello-go/render.yaml",
+          "deployEnabled": true,
+          "ui": "- main:\n  - navigation \"Breadcrumbs\": Blueprints\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - heading \"New Blueprint Instance\" [level=1]\n  - text: Connect a repository containing a render.yaml Blueprint to create and sync a full stack of services.\n  - group:\n    - text: Connect a repository\n    - tablist:\n      - tab \"GitHub\"\n      - tab \"Public Git URL\" [selected]\n    - tabpanel \"Public Git URL\":\n      - text: Repository URL\n      - textbox \"Repository URL\":\n        - /placeholder: https://github.com/you/your-repo\n        - text: https://github.com/bex-co/bex\n    - text: Blueprint Name\n    - textbox \"Blueprint Name\":\n      - /placeholder: my-stack\n      - text: qa-20261017-a884-desktop\n    - text: Branch\n    - combobox \"Branch\": main\n    - button \"Clear input\"\n    - paragraph: The repository branch with the render.yaml file.\n    - text: Blueprint path\n    - textbox \"Blueprint path\":\n      - /placeholder: render.yaml\n      - text: examples/hello-go/render.yaml\n    - paragraph: The path to the Blueprint file in your repo — any .yaml/.yml file works (e.g. infra/bex/stack.yaml). Defaults to render.yaml at the root of your repository.\n    - paragraph: Review Blueprint configuration\n    - paragraph: Blueprint file parsed successfully — 1 resource will change.\n    - list:\n      - listitem: Create hello-go Service\n    - paragraph: All future updates to your Blueprint file on this branch will be synced automatically. You can pause auto-sync after creation.\n    - button \"Cancel\"\n    - button \"Deploy Blueprint\""
+        },
+        "after": {
+          "repo": "https://github.com/bex-co/bex",
+          "branch": "main",
+          "name": "qa-20261017-a884-desktop",
+          "path": "examples/hello-go/render.yaml",
+          "deployEnabled": true,
+          "ui": "- main:\n  - navigation \"Breadcrumbs\": Blueprints\n  - button \"Search\": Search ⌘ K\n  - button \"New\"\n  - button \"Help and resources\"\n  - button \"P\"\n  - heading \"New Blueprint Instance\" [level=1]\n  - text: Connect a repository containing a render.yaml Blueprint to create and sync a full stack of services.\n  - group:\n    - text: Connect a repository\n    - tablist:\n      - tab \"GitHub\"\n      - tab \"Public Git URL\" [selected]\n    - tabpanel \"Public Git URL\":\n      - text: Repository URL\n      - textbox \"Repository URL\":\n        - /placeholder: https://github.com/you/your-repo\n        - text: https://github.com/bex-co/bex\n    - text: Blueprint Name\n    - textbox \"Blueprint Name\":\n      - /placeholder: my-stack\n      - text: qa-20261017-a884-desktop\n    - text: Branch\n    - combobox \"Branch\": main\n    - button \"Clear input\"\n    - paragraph: The repository branch with the render.yaml file.\n    - text: Blueprint path\n    - textbox \"Blueprint path\":\n      - /placeholder: render.yaml\n      - text: examples/hello-go/render.yaml\n    - paragraph: The path to the Blueprint file in your repo — any .yaml/.yml file works (e.g. infra/bex/stack.yaml). Defaults to render.yaml at the root of your repository.\n    - paragraph: Review Blueprint configuration\n    - paragraph: Blueprint file parsed successfully — 1 resource will change.\n    - list:\n      - listitem: Create hello-go Service\n    - paragraph: All future updates to your Blueprint file on this branch will be synced automatically. You can pause auto-sync after creation.\n    - button \"Cancel\"\n    - button \"Deploy Blueprint\""
+        }
+      }
+    },
+    {
+      "key": "a884ServiceRoundtripControl",
+      "localArtifact": ".playwright-mcp/qa-recovered-a884ServiceRoundtripControl.json",
+      "capture": {
+        "at": "2026-10-17T13:05:36.075Z",
+        "before": {
+          "repo": "https://github.com/bex-co/bex",
+          "name": "qa-20261017-a884-service-control",
+          "branch": "main",
+          "deployEnabled": false
+        },
+        "githubBranch": "",
+        "after": {
+          "repo": "https://github.com/bex-co/bex",
+          "name": "qa-20261017-a884-service-control",
+          "branch": "main",
+          "deployEnabled": false
+        },
+        "cancelUrl": "https://dashboard.bex.co/"
+      }
+    },
+    {
+      "key": "a884Console",
+      "localArtifact": ".playwright-mcp/qa-recovered-a884Console.json",
+      "capture": {
+        "error": false,
+        "summary": "### Result\nTotal messages: 0 (Errors: 0, Warnings: 0)\n"
+      }
+    },
+    {
+      "key": "a884InventoryCleanup",
+      "localArtifact": ".playwright-mcp/qa-recovered-a884InventoryCleanup.json",
+      "capture": {
+        "at": "2026-10-17T13:06:41.769Z",
+        "inventoryStatus": 200,
+        "ids": {
+          "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+          "databases": [
+            "dpg-d9nqg95cavls73fp8m20",
+            "dpg-d9rrkoc4h4mc73edurp0",
+            "dpg-d9rs3ee0ccis738kc7c0",
+            "dpg-db34l9bor55s73cqpq9g"
+          ],
+          "envGroups": ["evg-db0s94c48ccs739jikr0"],
+          "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+          "projects": [
+            "prj-d9dgeo0bd9nc73a0vh1g",
+            "prj-d9e5qct5qe4s73b1mjn0",
+            "prj-d9sgfnbjghus73cg6hg0"
+          ],
+          "services": [
+            "srv-d9bj8s3eg85c7390eb9g",
+            "srv-d9bkcspg9s7c73d0n8ug",
+            "srv-d9e40ei9086p3l1jri30",
+            "srv-d9ndt8hmcglc739fkp50",
+            "srv-d9nqg9dcavls73fp8m2g"
+          ],
+          "webhookEndpoints": []
+        },
+        "comparison": {
+          "blueprints": true,
+          "databases": true,
+          "envGroups": true,
+          "keyValues": true,
+          "projects": true,
+          "services": true,
+          "webhookEndpoints": true
+        },
+        "details": []
+      }
+    },
+    {
+      "key": "a884SessionCleared",
+      "localArtifact": ".playwright-mcp/qa-recovered-a884SessionCleared.json",
+      "capture": {
+        "at": "2026-10-17T13:07:22.377Z",
+        "whoami": 401,
+        "cookies": 0,
+        "pages": 1,
+        "url": "about:blank"
+      }
+    },
+    {
+      "key": "a884FinishSummary",
+      "localArtifact": ".playwright-mcp/qa-recovered-a884FinishSummary.json",
+      "capture": {
+        "logoutConfirmed": true,
+        "exitCode": 0,
+        "browser": {
+          "at": "2026-10-17T13:07:22.377Z",
+          "whoami": 401,
+          "cookies": 0,
+          "pages": 1,
+          "url": "about:blank"
+        },
+        "handlesRemoved": true
+      }
+    }
+  ],
+  "probeSources": {
+    "desktopRoundtrip": "async(page)=>{const waited=page.waitForResponse(r=>{if(!r.url().endsWith('/graphql'))return false;try{const q=r.request().postDataJSON();return(Array.isArray(q)?q:[q]).some(x=>x.operationName==='BlueprintPreview'&&x.variables.repo==='https://github.com/bex-co/bex'&&x.variables.path==='examples/hello-go/render.yaml');}catch{return false;}},{timeout:45000});await page.getByRole('option',{name:'main',exact:true}).click();const pending={at:new Date().toISOString(),deployDisabled:await page.getByRole('button',{name:'Deploy Blueprint',exact:true}).isDisabled(),ui:await page.locator('main').ariaSnapshot()};const response=await waited;const raw=response.request().postDataJSON(),qs=Array.isArray(raw)?raw:[raw],rb=await response.json(),bs=Array.isArray(rb)?rb:[rb];const i=qs.findIndex(x=>x.operationName==='BlueprintPreview');await page.getByText('Blueprint file parsed successfully — 1 resource will change.',{exact:true}).waitFor();const capture=async()=>({repo:await page.getByRole('textbox',{name:'Repository URL',exact:true}).inputValue(),branch:await page.getByRole('combobox',{name:'Branch',exact:true}).inputValue(),name:await page.getByRole('textbox',{name:'Blueprint Name',exact:true}).inputValue(),path:await page.getByRole('textbox',{name:'Blueprint path',exact:true}).inputValue(),deployEnabled:await page.getByRole('button',{name:'Deploy Blueprint',exact:true}).isEnabled(),ui:await page.locator('main').ariaSnapshot()});const before=await capture();await page.getByRole('tab',{name:'GitHub',exact:true}).click();await page.getByRole('tab',{name:'Public Git URL',exact:true}).click();const after=await capture();return{at:new Date().toISOString(),viewport:page.viewportSize(),pending,request:qs[i],status:response.status(),body:bs[i],before,after}}",
+    "nativeCaptureFactory": "(function(operation,id,action){const base=((operation,id,action)=>`async(page)=>{const pending=page.waitForResponse(r=>{if(!r.url().endsWith(\"/graphql\")||r.request().method()!==\"POST\")return false;try{const q=r.request().postDataJSON();return(Array.isArray(q)?q:[q]).some(x=>x.operationName===${JSON.stringify(operation)}&&(!${JSON.stringify(id)}||x.variables.id===${JSON.stringify(id)}));}catch{return false;}},{timeout:45000}).then(response=>({response}),error=>({waitError:String(error)}));{${action}};const waited=await pending;if(waited.waitError)throw new Error(waited.waitError);const r=waited.response;const q=r.request().postDataJSON(),b=await r.json(),qs=Array.isArray(q)?q:[q],bs=Array.isArray(b)?b:[b];const i=qs.findIndex(x=>x.operationName===${JSON.stringify(operation)});await page.waitForTimeout(700);return{at:new Date().toISOString(),request:qs[i],status:r.status(),body:bs[i],timing:r.request().timing(),url:page.url()};}`);if(operation==='CreateDatabase'){action=\"const qaFreeType=page.getByRole('combobox',{name:'Instance type',exact:true});if(await qaFreeType.count()!==1||!/^Free\\\\b/.test(await qaFreeType.innerText()))throw new Error('Free Postgres type is not confirmed; create blocked');\\n\"+action;}else if(operation==='CreateService'){action=\"const qaStaticType=page.getByRole('radio',{name:'Static Site Build and serve a static site from object storage',exact:true});const qaStaticSelected=await qaStaticType.count()===1&&await qaStaticType.isChecked();if(qaStaticSelected){if(await page.getByRole('heading',{name:'New Static Site',exact:true}).count()!==1||await page.getByRole('radio',{name:/^Free/}).count()!==0)throw new Error('Static create shape is not confirmed; create blocked');}else{const qaFreePlan=page.getByRole('radio',{name:/^Free/});if(await qaFreePlan.count()!==1||!(await qaFreePlan.isChecked()))throw new Error('Free plan is not confirmed; create blocked');\\n}\\n\"+action;}else if(operation==='CreateKeyValue'){action=\"const qaFreePlan=page.getByRole('radio',{name:/^Free/});if(await qaFreePlan.count()!==1||!(await qaFreePlan.isChecked()))throw new Error('Free plan is not confirmed; create blocked');\\n\"+action;}return base(operation,id,action);})"
+  },
+  "operationAudit": {
+    "at": "2026-10-17T13:07:36.832Z",
+    "scope": "All GraphQL POST request bodies in the persistent QA browser's saved network log since the a883 harness restart, including the full a884 sweep. Request bodies only; no response-body wait.",
+    "requestCount": 180,
+    "rows": [
+      {
+        "index": 15,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          },
+          {
+            "operationName": "Environments",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 22,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 23,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 25,
+        "operations": [
+          {
+            "operationName": "Projects",
+            "type": "query"
+          },
+          {
+            "operationName": "BillingReadiness",
+            "type": "query"
+          },
+          {
+            "operationName": "Services",
+            "type": "query"
+          },
+          {
+            "operationName": "Databases",
+            "type": "query"
+          },
+          {
+            "operationName": "KeyValues",
+            "type": "query"
+          },
+          {
+            "operationName": "EnvGroups",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 26,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 27,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 29,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 30,
+        "operations": [
+          {
+            "operationName": "Environments",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 31,
+        "operations": [
+          {
+            "operationName": "Projects",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 32,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 33,
+        "operations": [
+          {
+            "operationName": "Services",
+            "type": "query"
+          },
+          {
+            "operationName": "Databases",
+            "type": "query"
+          },
+          {
+            "operationName": "KeyValues",
+            "type": "query"
+          },
+          {
+            "operationName": "EnvGroups",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 34,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 35,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 47,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 52,
+        "operations": [
+          {
+            "operationName": "Projects",
+            "type": "query"
+          },
+          {
+            "operationName": "BillingReadiness",
+            "type": "query"
+          },
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 53,
+        "operations": [
+          {
+            "operationName": "Environments",
+            "type": "query"
+          },
+          {
+            "operationName": "EnvGroups",
+            "type": "query"
+          },
+          {
+            "operationName": "Services",
+            "type": "query"
+          },
+          {
+            "operationName": "Databases",
+            "type": "query"
+          },
+          {
+            "operationName": "KeyValues",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 59,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 60,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 61,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 62,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 63,
+        "operations": [
+          {
+            "operationName": "Projects",
+            "type": "query"
+          },
+          {
+            "operationName": "Environments",
+            "type": "query"
+          },
+          {
+            "operationName": "EnvGroups",
+            "type": "query"
+          },
+          {
+            "operationName": "Services",
+            "type": "query"
+          },
+          {
+            "operationName": "Databases",
+            "type": "query"
+          },
+          {
+            "operationName": "KeyValues",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 64,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 65,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 71,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 72,
+        "operations": [
+          {
+            "operationName": "SetEnvironmentServices",
+            "type": "mutation"
+          },
+          {
+            "operationName": "SetEnvironmentKeyValues",
+            "type": "mutation"
+          }
+        ]
+      },
+      {
+        "index": 73,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 74,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 75,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 76,
+        "operations": [
+          {
+            "operationName": "Projects",
+            "type": "query"
+          },
+          {
+            "operationName": "Environments",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 77,
+        "operations": [
+          {
+            "operationName": "EnvGroups",
+            "type": "query"
+          },
+          {
+            "operationName": "Services",
+            "type": "query"
+          },
+          {
+            "operationName": "Databases",
+            "type": "query"
+          },
+          {
+            "operationName": "KeyValues",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 78,
+        "operations": [
+          {
+            "operationName": "Environments",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 79,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 80,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 81,
+        "operations": [
+          {
+            "operationName": "Projects",
+            "type": "query"
+          },
+          {
+            "operationName": "Environments",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 82,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 83,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 89,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 90,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 91,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 92,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 93,
+        "operations": [
+          {
+            "operationName": "EnvGroups",
+            "type": "query"
+          },
+          {
+            "operationName": "Services",
+            "type": "query"
+          },
+          {
+            "operationName": "Databases",
+            "type": "query"
+          },
+          {
+            "operationName": "KeyValues",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 94,
+        "operations": [
+          {
+            "operationName": "SetEnvironmentServices",
+            "type": "mutation"
+          }
+        ]
+      },
+      {
+        "index": 95,
+        "operations": [
+          {
+            "operationName": "Projects",
+            "type": "query"
+          },
+          {
+            "operationName": "Environments",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 96,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 97,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 98,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 99,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 100,
+        "operations": [
+          {
+            "operationName": "EnvGroups",
+            "type": "query"
+          },
+          {
+            "operationName": "Services",
+            "type": "query"
+          },
+          {
+            "operationName": "Databases",
+            "type": "query"
+          },
+          {
+            "operationName": "KeyValues",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 101,
+        "operations": [
+          {
+            "operationName": "Projects",
+            "type": "query"
+          },
+          {
+            "operationName": "Environments",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 102,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 103,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 104,
+        "operations": [
+          {
+            "operationName": "EnvGroups",
+            "type": "query"
+          },
+          {
+            "operationName": "Services",
+            "type": "query"
+          },
+          {
+            "operationName": "Databases",
+            "type": "query"
+          },
+          {
+            "operationName": "KeyValues",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 105,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 106,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 107,
+        "operations": [
+          {
+            "operationName": "DeleteEnvironment",
+            "type": "mutation"
+          }
+        ]
+      },
+      {
+        "index": 108,
+        "operations": [
+          {
+            "operationName": "Projects",
+            "type": "query"
+          },
+          {
+            "operationName": "Environments",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 109,
+        "operations": [
+          {
+            "operationName": "Environments",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 110,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 111,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 115,
+        "operations": [
+          {
+            "operationName": "EnvGroups",
+            "type": "query"
+          },
+          {
+            "operationName": "Services",
+            "type": "query"
+          },
+          {
+            "operationName": "Databases",
+            "type": "query"
+          },
+          {
+            "operationName": "KeyValues",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 117,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 118,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 119,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 120,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 121,
+        "operations": [
+          {
+            "operationName": "Projects",
+            "type": "query"
+          },
+          {
+            "operationName": "Environments",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 122,
+        "operations": [
+          {
+            "operationName": "DeleteEnvironment",
+            "type": "mutation"
+          }
+        ]
+      },
+      {
+        "index": 123,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 124,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 125,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 126,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 127,
+        "operations": [
+          {
+            "operationName": "Environments",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 128,
+        "operations": [
+          {
+            "operationName": "EnvGroups",
+            "type": "query"
+          },
+          {
+            "operationName": "Services",
+            "type": "query"
+          },
+          {
+            "operationName": "Databases",
+            "type": "query"
+          },
+          {
+            "operationName": "KeyValues",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 129,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 130,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 134,
+        "operations": [
+          {
+            "operationName": "Projects",
+            "type": "query"
+          },
+          {
+            "operationName": "Environments",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 135,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 136,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 137,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 149,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 152,
+        "operations": [
+          {
+            "operationName": "Projects",
+            "type": "query"
+          },
+          {
+            "operationName": "BillingReadiness",
+            "type": "query"
+          },
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 160,
+        "operations": [
+          {
+            "operationName": "DeleteProject",
+            "type": "mutation"
+          }
+        ]
+      },
+      {
+        "index": 165,
+        "operations": [
+          {
+            "operationName": "Services",
+            "type": "query"
+          },
+          {
+            "operationName": "Projects",
+            "type": "query"
+          },
+          {
+            "operationName": "Databases",
+            "type": "query"
+          },
+          {
+            "operationName": "KeyValues",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 166,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 167,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 168,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 169,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 170,
+        "operations": [
+          {
+            "operationName": "DatabaseInstanceTypes",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 172,
+        "operations": [
+          {
+            "operationName": "Project",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 188,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 191,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 192,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 193,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 194,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 195,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 204,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 205,
+        "operations": [
+          {
+            "operationName": "Projects",
+            "type": "query"
+          },
+          {
+            "operationName": "BillingReadiness",
+            "type": "query"
+          },
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          },
+          {
+            "operationName": "KeyValueInstanceTypes",
+            "type": "query"
+          },
+          {
+            "operationName": "KeyValueIpAllowList",
+            "type": "query"
+          },
+          {
+            "operationName": "KeyValueMaxmemoryPolicy",
+            "type": "query"
+          },
+          {
+            "operationName": "KeyValuePersistenceMode",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 214,
+        "operations": [
+          {
+            "operationName": "DeleteKeyValue",
+            "type": "mutation"
+          }
+        ]
+      },
+      {
+        "index": 219,
+        "operations": [
+          {
+            "operationName": "Services",
+            "type": "query"
+          },
+          {
+            "operationName": "Projects",
+            "type": "query"
+          },
+          {
+            "operationName": "Databases",
+            "type": "query"
+          },
+          {
+            "operationName": "KeyValues",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 220,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 221,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 222,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 223,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 224,
+        "operations": [
+          {
+            "operationName": "DatabaseInstanceTypes",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 240,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 243,
+        "operations": [
+          {
+            "operationName": "BillingReadiness",
+            "type": "query"
+          },
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          },
+          {
+            "operationName": "InstanceTypes",
+            "type": "query"
+          },
+          {
+            "operationName": "Deploys",
+            "type": "query"
+          },
+          {
+            "operationName": "DeployHook",
+            "type": "query"
+          },
+          {
+            "operationName": "CustomDomains",
+            "type": "query"
+          },
+          {
+            "operationName": "RegistryCredentials",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 247,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 248,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 254,
+        "operations": [
+          {
+            "operationName": "DeleteService",
+            "type": "mutation"
+          }
+        ]
+      },
+      {
+        "index": 258,
+        "operations": [
+          {
+            "operationName": "Server",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 261,
+        "operations": [
+          {
+            "operationName": "Services",
+            "type": "query"
+          },
+          {
+            "operationName": "Projects",
+            "type": "query"
+          },
+          {
+            "operationName": "Databases",
+            "type": "query"
+          },
+          {
+            "operationName": "KeyValues",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 262,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 263,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 264,
+        "operations": [
+          {
+            "operationName": "DatabaseInstanceTypes",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 265,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 266,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 267,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 268,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 280,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          },
+          {
+            "operationName": "DatabaseInstanceTypes",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 282,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 283,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 285,
+        "operations": [
+          {
+            "operationName": "BillingReadiness",
+            "type": "query"
+          },
+          {
+            "operationName": "Services",
+            "type": "query"
+          },
+          {
+            "operationName": "Databases",
+            "type": "query"
+          },
+          {
+            "operationName": "KeyValues",
+            "type": "query"
+          },
+          {
+            "operationName": "Projects",
+            "type": "query"
+          },
+          {
+            "operationName": "RouterAvailable",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 291,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 292,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 304,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 307,
+        "operations": [
+          {
+            "operationName": "RouterAvailable",
+            "type": "query"
+          },
+          {
+            "operationName": "BillingReadiness",
+            "type": "query"
+          },
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          },
+          {
+            "operationName": "Repos",
+            "type": "query"
+          },
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 313,
+        "operations": [
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 314,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 315,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 316,
+        "operations": [
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 317,
+        "operations": [
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 318,
+        "operations": [
+          {
+            "operationName": "RepoBranches",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 319,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 320,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          },
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 321,
+        "operations": [
+          {
+            "operationName": "BlueprintPreview",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 322,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 323,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          },
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 324,
+        "operations": [
+          {
+            "operationName": "BlueprintPreview",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 325,
+        "operations": [
+          {
+            "operationName": "BlueprintPreview",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 326,
+        "operations": [
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 327,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 328,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          },
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 342,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 345,
+        "operations": [
+          {
+            "operationName": "RouterAvailable",
+            "type": "query"
+          },
+          {
+            "operationName": "BillingReadiness",
+            "type": "query"
+          },
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          },
+          {
+            "operationName": "Repos",
+            "type": "query"
+          },
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 347,
+        "operations": [
+          {
+            "operationName": "RepoBranches",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 353,
+        "operations": [
+          {
+            "operationName": "BlueprintPreview",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 354,
+        "operations": [
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 355,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 356,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 357,
+        "operations": [
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 358,
+        "operations": [
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 359,
+        "operations": [
+          {
+            "operationName": "RepoBranches",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 360,
+        "operations": [
+          {
+            "operationName": "BlueprintPreview",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 361,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 362,
+        "operations": [
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 363,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 364,
+        "operations": [
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 369,
+        "operations": [
+          {
+            "operationName": "RouterAvailable",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 381,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 384,
+        "operations": [
+          {
+            "operationName": "RouterAvailable",
+            "type": "query"
+          },
+          {
+            "operationName": "BillingReadiness",
+            "type": "query"
+          },
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          },
+          {
+            "operationName": "Repos",
+            "type": "query"
+          },
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 386,
+        "operations": [
+          {
+            "operationName": "RepoBranches",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 392,
+        "operations": [
+          {
+            "operationName": "BlueprintPreview",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 393,
+        "operations": [
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 406,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 409,
+        "operations": [
+          {
+            "operationName": "RouterAvailable",
+            "type": "query"
+          },
+          {
+            "operationName": "BillingReadiness",
+            "type": "query"
+          },
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 410,
+        "operations": [
+          {
+            "operationName": "Repos",
+            "type": "query"
+          },
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          },
+          {
+            "operationName": "Projects",
+            "type": "query"
+          },
+          {
+            "operationName": "InstanceTypes",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 417,
+        "operations": [
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 422,
+        "operations": [
+          {
+            "operationName": "Services",
+            "type": "query"
+          },
+          {
+            "operationName": "Projects",
+            "type": "query"
+          },
+          {
+            "operationName": "Databases",
+            "type": "query"
+          },
+          {
+            "operationName": "KeyValues",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 423,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 424,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 425,
+        "operations": [
+          {
+            "operationName": "DatabaseInstanceTypes",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 427,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 428,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 429,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 430,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 431,
+        "operations": [
+          {
+            "operationName": "Databases",
+            "type": "query"
+          },
+          {
+            "operationName": "KeyValues",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 432,
+        "operations": [
+          {
+            "operationName": "Services",
+            "type": "query"
+          },
+          {
+            "operationName": "Projects",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 433,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 434,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 435,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 436,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      }
+    ],
+    "mutations": [
+      {
+        "index": 72,
+        "operationName": "SetEnvironmentServices",
+        "type": "mutation"
+      },
+      {
+        "index": 72,
+        "operationName": "SetEnvironmentKeyValues",
+        "type": "mutation"
+      },
+      {
+        "index": 94,
+        "operationName": "SetEnvironmentServices",
+        "type": "mutation"
+      },
+      {
+        "index": 107,
+        "operationName": "DeleteEnvironment",
+        "type": "mutation"
+      },
+      {
+        "index": 122,
+        "operationName": "DeleteEnvironment",
+        "type": "mutation"
+      },
+      {
+        "index": 160,
+        "operationName": "DeleteProject",
+        "type": "mutation"
+      },
+      {
+        "index": 214,
+        "operationName": "DeleteKeyValue",
+        "type": "mutation"
+      },
+      {
+        "index": 254,
+        "operationName": "DeleteService",
+        "type": "mutation"
+      }
+    ],
+    "createOrSync": [],
+    "unknown": [],
+    "previousSweepRecordedMax": 268,
+    "afterPreviousSweep": [
+      {
+        "index": 280,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          },
+          {
+            "operationName": "DatabaseInstanceTypes",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 282,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 283,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 285,
+        "operations": [
+          {
+            "operationName": "BillingReadiness",
+            "type": "query"
+          },
+          {
+            "operationName": "Services",
+            "type": "query"
+          },
+          {
+            "operationName": "Databases",
+            "type": "query"
+          },
+          {
+            "operationName": "KeyValues",
+            "type": "query"
+          },
+          {
+            "operationName": "Projects",
+            "type": "query"
+          },
+          {
+            "operationName": "RouterAvailable",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 291,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 292,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 304,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 307,
+        "operations": [
+          {
+            "operationName": "RouterAvailable",
+            "type": "query"
+          },
+          {
+            "operationName": "BillingReadiness",
+            "type": "query"
+          },
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          },
+          {
+            "operationName": "Repos",
+            "type": "query"
+          },
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 313,
+        "operations": [
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 314,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 315,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 316,
+        "operations": [
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 317,
+        "operations": [
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 318,
+        "operations": [
+          {
+            "operationName": "RepoBranches",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 319,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 320,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          },
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 321,
+        "operations": [
+          {
+            "operationName": "BlueprintPreview",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 322,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 323,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          },
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 324,
+        "operations": [
+          {
+            "operationName": "BlueprintPreview",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 325,
+        "operations": [
+          {
+            "operationName": "BlueprintPreview",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 326,
+        "operations": [
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 327,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 328,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          },
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 342,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 345,
+        "operations": [
+          {
+            "operationName": "RouterAvailable",
+            "type": "query"
+          },
+          {
+            "operationName": "BillingReadiness",
+            "type": "query"
+          },
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          },
+          {
+            "operationName": "Repos",
+            "type": "query"
+          },
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 347,
+        "operations": [
+          {
+            "operationName": "RepoBranches",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 353,
+        "operations": [
+          {
+            "operationName": "BlueprintPreview",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 354,
+        "operations": [
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 355,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 356,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 357,
+        "operations": [
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 358,
+        "operations": [
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 359,
+        "operations": [
+          {
+            "operationName": "RepoBranches",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 360,
+        "operations": [
+          {
+            "operationName": "BlueprintPreview",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 361,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 362,
+        "operations": [
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 363,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 364,
+        "operations": [
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 369,
+        "operations": [
+          {
+            "operationName": "RouterAvailable",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 381,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 384,
+        "operations": [
+          {
+            "operationName": "RouterAvailable",
+            "type": "query"
+          },
+          {
+            "operationName": "BillingReadiness",
+            "type": "query"
+          },
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          },
+          {
+            "operationName": "Repos",
+            "type": "query"
+          },
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 386,
+        "operations": [
+          {
+            "operationName": "RepoBranches",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 392,
+        "operations": [
+          {
+            "operationName": "BlueprintPreview",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 393,
+        "operations": [
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 406,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 409,
+        "operations": [
+          {
+            "operationName": "RouterAvailable",
+            "type": "query"
+          },
+          {
+            "operationName": "BillingReadiness",
+            "type": "query"
+          },
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 410,
+        "operations": [
+          {
+            "operationName": "Repos",
+            "type": "query"
+          },
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          },
+          {
+            "operationName": "Projects",
+            "type": "query"
+          },
+          {
+            "operationName": "InstanceTypes",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 417,
+        "operations": [
+          {
+            "operationName": "GitConnections",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 422,
+        "operations": [
+          {
+            "operationName": "Services",
+            "type": "query"
+          },
+          {
+            "operationName": "Projects",
+            "type": "query"
+          },
+          {
+            "operationName": "Databases",
+            "type": "query"
+          },
+          {
+            "operationName": "KeyValues",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 423,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 424,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 425,
+        "operations": [
+          {
+            "operationName": "DatabaseInstanceTypes",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 427,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 428,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 429,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 430,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 431,
+        "operations": [
+          {
+            "operationName": "Databases",
+            "type": "query"
+          },
+          {
+            "operationName": "KeyValues",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 432,
+        "operations": [
+          {
+            "operationName": "Services",
+            "type": "query"
+          },
+          {
+            "operationName": "Projects",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 433,
+        "operations": [
+          {
+            "operationName": "ViewerCapabilities",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 434,
+        "operations": [
+          {
+            "operationName": "ServerActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 435,
+        "operations": [
+          {
+            "operationName": "DeployActions",
+            "type": "query"
+          }
+        ]
+      },
+      {
+        "index": 436,
+        "operations": [
+          {
+            "operationName": "Workspaces",
+            "type": "query"
+          }
+        ]
+      }
+    ],
+    "mutationsAfterPreviousSweep": [],
+    "httpAfterPreviousSweep": [
+      {
+        "index": 280,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 281,
+        "method": "POST",
+        "url": "https://dashboard.bex.co/cdn-cgi/rum",
+        "status": "204"
+      },
+      {
+        "index": 282,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "FAILED"
+      },
+      {
+        "index": 283,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 284,
+        "method": "GET",
+        "url": "https://auth.bex.co/sessions/whoami",
+        "status": "200"
+      },
+      {
+        "index": 285,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 290,
+        "method": "POST",
+        "url": "https://m.stripe.com/6",
+        "status": "200"
+      },
+      {
+        "index": 291,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 292,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 303,
+        "method": "POST",
+        "url": "https://dashboard.bex.co/cdn-cgi/rum",
+        "status": "204"
+      },
+      {
+        "index": 304,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 307,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 312,
+        "method": "POST",
+        "url": "https://m.stripe.com/6",
+        "status": "200"
+      },
+      {
+        "index": 313,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 314,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 315,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 316,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 317,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 318,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 319,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 320,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 321,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 322,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 323,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 324,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 325,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 326,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "FAILED"
+      },
+      {
+        "index": 327,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 328,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 329,
+        "method": "GET",
+        "url": "https://auth.bex.co/sessions/whoami",
+        "status": "200"
+      },
+      {
+        "index": 332,
+        "method": "POST",
+        "url": "https://dashboard.bex.co/cdn-cgi/rum",
+        "status": "204"
+      },
+      {
+        "index": 342,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 345,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 346,
+        "method": "POST",
+        "url": "https://dashboard.bex.co/cdn-cgi/rum",
+        "status": "204"
+      },
+      {
+        "index": 347,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 352,
+        "method": "POST",
+        "url": "https://m.stripe.com/6",
+        "status": "200"
+      },
+      {
+        "index": 353,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 354,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "FAILED"
+      },
+      {
+        "index": 355,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 356,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 357,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 358,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 359,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 360,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 361,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 362,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 363,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 364,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "FAILED"
+      },
+      {
+        "index": 365,
+        "method": "POST",
+        "url": "https://m.stripe.com/6",
+        "status": "200"
+      },
+      {
+        "index": 366,
+        "method": "GET",
+        "url": "https://auth.bex.co/sessions/whoami",
+        "status": "200"
+      },
+      {
+        "index": 369,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 370,
+        "method": "POST",
+        "url": "https://dashboard.bex.co/cdn-cgi/rum",
+        "status": null
+      },
+      {
+        "index": 371,
+        "method": "POST",
+        "url": "https://dashboard.bex.co/cdn-cgi/rum",
+        "status": null
+      },
+      {
+        "index": 381,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 384,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 385,
+        "method": "POST",
+        "url": "https://dashboard.bex.co/cdn-cgi/rum",
+        "status": "204"
+      },
+      {
+        "index": 386,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 391,
+        "method": "POST",
+        "url": "https://m.stripe.com/6",
+        "status": "200"
+      },
+      {
+        "index": 392,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 393,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "FAILED"
+      },
+      {
+        "index": 394,
+        "method": "GET",
+        "url": "https://auth.bex.co/sessions/whoami",
+        "status": "200"
+      },
+      {
+        "index": 397,
+        "method": "POST",
+        "url": "https://dashboard.bex.co/cdn-cgi/rum",
+        "status": "204"
+      },
+      {
+        "index": 406,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 409,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 410,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 411,
+        "method": "POST",
+        "url": "https://dashboard.bex.co/cdn-cgi/rum",
+        "status": "204"
+      },
+      {
+        "index": 416,
+        "method": "POST",
+        "url": "https://m.stripe.com/6",
+        "status": "200"
+      },
+      {
+        "index": 417,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "FAILED"
+      },
+      {
+        "index": 418,
+        "method": "GET",
+        "url": "https://auth.bex.co/sessions/whoami",
+        "status": "200"
+      },
+      {
+        "index": 420,
+        "method": "POST",
+        "url": "https://dashboard.bex.co/cdn-cgi/rum",
+        "status": "204"
+      },
+      {
+        "index": 422,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 423,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 424,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 425,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 426,
+        "method": "POST",
+        "url": "https://m.stripe.com/6",
+        "status": "200"
+      },
+      {
+        "index": 427,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 428,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 429,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 430,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 431,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 432,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 433,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 434,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 435,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      },
+      {
+        "index": 436,
+        "method": "POST",
+        "url": "https://api.bex.co/graphql",
+        "status": "200"
+      }
+    ],
+    "httpStatusCounts": {
+      "200": 69,
+      "204": 8,
+      "FAILED": 6,
+      "unrecorded": 2
+    }
+  },
+  "sourceExcerpts": [
+    {
+      "file": "dashboard/src/routes/blueprints.new.tsx",
+      "startLine": 61,
+      "endLine": 133,
+      "fileSha256": "42bc2c7fef41c85a514de3a3f76eeeee9d307457ef91dc4aeae98abc0ff9802a",
+      "text": "  const [nameEdited, setNameEdited] = useState(false);\n  const [branch, setBranch] = useState(\"\");\n  // A Public Git Branch left behind by a tab switch, bound to its URL: the same\n  // URL restores it, any other starts blank (w4/331, as w4/240 for services).\n  const [gitBranchDraft, setGitBranchDraft] = useState<{\n    gitUrl: string;\n    branch: string;\n  } | null>(null);\n  const [path, setPath] = useState(\"render.yaml\");\n  // The server's refusal awaiting its phrase: a protected environment, or a\n  // Blueprint takeover that names what it replaces.\n  const [pendingConfirmation, setPendingConfirmation] =\n    useState<BlueprintConfirmationRequired | null>(null);\n  // sync:false prompt values, keyed by env var name. Secrets: kept only in\n  // this component's memory until submit, never in router state or URLs.\n  const [envVarValues, setEnvVarValues] = useState<Record<string, string>>({});\n\n  const sourceRepo =\n    tab === \"github\"\n      ? (selectedRepo?.cloneUrl ?? \"\")\n      : isValidGitUrl(gitUrl)\n        ? gitUrl.trim()\n        : \"\";\n\n  const { branches } = useRepoBranches(sourceRepo || null);\n  const {\n    preview,\n    loading: previewLoading,\n    error: previewError,\n    refetch: refetchPreview,\n  } = useBlueprintPreview(sourceRepo, branch.trim(), path.trim());\n\n  // Auto-fill name + branch from the selected source while the user hasn't\n  // hand-edited the name (same pattern as services.new: the effect reacts to\n  // selection changes, so a synchronous set is the desired behavior).\n  useEffect(() => {\n    if (tab === \"github\" && selectedRepo) {\n      // eslint-disable-next-line react-hooks/set-state-in-effect\n      setBranch((b) => b || selectedRepo.defaultBranch);\n      if (!nameEdited) {\n        setName(repoNameSlug(selectedRepo.fullName));\n      }\n    } else if (tab === \"git\" && gitUrl && !nameEdited) {\n      const slug = gitUrlSlug(gitUrl);\n      if (slug) setName(slug);\n    }\n  }, [tab, selectedRepo, gitUrl, nameEdited]);\n\n  const branchOptions = useMemo(\n    () => branches.map((b) => ({ value: b, label: b })),\n    [branches],\n  );\n\n  const sourceValid = sourceRepo !== \"\";\n  // Render parity: Deploy stays disabled until the file fetches + parses. A\n  // transport-level preview failure does not block — the backend re-validates\n  // on create anyway.\n  const previewConflictOnly = isTakeoverOnlyConflict(\n    preview?.validation?.errorDetails ?? [],\n  );\n  const previewBlocks =\n    preview != null &&\n    (!preview.found ||\n      (preview.validation?.valid !== true && !previewConflictOnly));\n  const canSubmit =\n    sourceValid &&\n    branch.trim() !== \"\" &&\n    !busy &&\n    !previewLoading &&\n    !previewBlocks;\n\n  async function handleCreate(confirmation?: string) {\n    const suppliedValues = Object.entries(envVarValues)"
+    },
+    {
+      "file": "dashboard/src/routes/blueprints.new.tsx",
+      "startLine": 247,
+      "endLine": 273,
+      "fileSha256": "42bc2c7fef41c85a514de3a3f76eeeee9d307457ef91dc4aeae98abc0ff9802a",
+      "text": "                <ServiceSourcePicker\n                  titleKey=\"blueprints.createSourceTitle\"\n                  idPrefix=\"bp\"\n                  tab={tab}\n                  onTabChange={(next) => {\n                    const draft =\n                      tab === \"git\" ? { gitUrl, branch } : gitBranchDraft;\n                    setGitBranchDraft(draft);\n                    setTab(next);\n                    setSelectedRepo(null);\n                    setBranch(\n                      next === \"git\" && draft?.gitUrl === gitUrl\n                        ? draft.branch\n                        : \"\",\n                    );\n                  }}\n                  selectedRepo={selectedRepo}\n                  onSelectRepo={setSelectedRepo}\n                  gitUrl={gitUrl}\n                  onGitUrlChange={setGitUrl}\n                />\n\n                {/* Settings */}\n                <div className=\"space-y-4\">\n                  <div className=\"space-y-2\">\n                    <Label htmlFor=\"bp-name\">\n                      {t(\"blueprints.createNameLabel\")}"
+    },
+    {
+      "file": "dashboard/src/features/blueprints/hooks/use-blueprint-preview.ts",
+      "startLine": 41,
+      "endLine": 88,
+      "fileSha256": "b7c838b70d04a4017c76b0b9596321f008fb49414268723c5d847c2508202d11",
+      "text": "  useEffect(() => {\n    const handle = setTimeout(\n      () => setDebounced({ repo, branch, path }),\n      DEBOUNCE_MS,\n    );\n    return () => clearTimeout(handle);\n  }, [repo, branch, path]);\n\n  const skip = !debounced.repo || !debounced.branch;\n  const { data, loading, error, refetch } = useQuery(BlueprintPreviewDocument, {\n    variables: {\n      repo: debounced.repo,\n      branch: debounced.branch,\n      path: debounced.path || null,\n      ownerId: currentWorkspaceId,\n      blueprintId: forBlueprintId ?? null,\n    },\n    skip,\n    fetchPolicy: \"cache-and-network\",\n    errorPolicy: \"all\",\n  });\n\n  const settled =\n    debounced.repo === repo &&\n    debounced.branch === branch &&\n    debounced.path === path;\n\n  const preview = useMemo(\n    () =>\n      data?.blueprintPreview\n        ? toBlueprintPreviewResult(data.blueprintPreview)\n        : null,\n    [data],\n  );\n\n  // Inputs that just became complete are pending from that very render: the\n  // query is still skipped for one debounce, and a caller that read \"not\n  // loading\" then would offer its action before anything was reviewed.\n  const awaitingDebounce =\n    !settled && (!skip || (repo !== \"\" && branch !== \"\"));\n\n  return {\n    preview: skip ? null : preview,\n    loading: awaitingDebounce || (!skip && loading),\n    error,\n    refetch,\n  };\n}"
+    },
+    {
+      "file": "dashboard/src/routes/__tests__/blueprints-new.test.tsx",
+      "startLine": 591,
+      "endLine": 637,
+      "fileSha256": "5c819ef1316fcedf1185b1eff5494518cfc61224f45332d14eb6780d70953e12",
+      "text": "  it(\"restores a Public Git branch when returning to the same URL\", async () => {\n    previewState.preview = validPreview();\n    const user = userEvent.setup();\n    renderPage();\n\n    await user.click(await screen.findByRole(\"tab\", { name: /public git/i }));\n    await user.type(\n      screen.getByLabelText(\"Repository URL\"),\n      \"https://github.com/acme/public-app\",\n    );\n    await user.type(screen.getByRole(\"combobox\", { name: /branch/i }), \"main\");\n    await user.click(screen.getByRole(\"tab\", { name: /github/i }));\n    await user.click(screen.getByRole(\"tab\", { name: /public git/i }));\n\n    expect(screen.getByLabelText(\"Repository URL\")).toHaveValue(\n      \"https://github.com/acme/public-app\",\n    );\n    expect(screen.getByRole(\"combobox\", { name: /branch/i })).toHaveValue(\n      \"main\",\n    );\n    const deploy = screen.getByRole(\"button\", { name: /deploy blueprint/i });\n    expect(deploy).toBeEnabled();\n    await user.click(deploy);\n    expect(create).toHaveBeenCalledWith(\n      \"https://github.com/acme/public-app\",\n      \"main\",\n      \"render.yaml\",\n      \"public-app\",\n      undefined,\n      [],\n    );\n  });\n\n  it(\"does not copy a GitHub repository's branch into the Public Git draft\", async () => {\n    reposState.repos = [repo()];\n    const user = userEvent.setup();\n    renderPage();\n\n    // A GitHub selection fills its own default branch…\n    await user.click(await screen.findByText(\"acme/hello-go\"));\n    expect(screen.getByRole(\"combobox\", { name: /branch/i })).toHaveValue(\n      \"main\",\n    );\n    // …which Public Git, with no draft of its own, does not inherit.\n    await user.click(screen.getByRole(\"tab\", { name: /public git/i }));\n    expect(screen.getByRole(\"combobox\", { name: /branch/i })).toHaveValue(\"\");\n  });"
+    },
+    {
+      "file": "dashboard/src/features/services/hooks/use-new-service-form.ts",
+      "startLine": 125,
+      "endLine": 180,
+      "fileSha256": "504ec1b5ba0c26250aadbaa21cdc0ea45ec11de88c6b03ef71006543a1348676",
+      "text": "\n  // Paid-only types (workers, private services, cron jobs; ADR030 §7) are not offered Free,\n  // so the plan grid renders the filtered catalog, the default is its first\n  // (cheapest paid) tier, and a Free selection made under another service type\n  // never survives a switch into a paid-only-type submission — an override the current\n  // type is not offered falls back to the default.\n  const offeredTypes = offeredInstanceTypes(fields.serviceType, instanceTypes);\n  const planOverride =\n    fields.planOverride != null &&\n    offeredTypes.some((it) => it.id === fields.planOverride)\n      ? fields.planOverride\n      : null;\n\n  const form: NewServiceForm = {\n    ...fields,\n    name: name.name,\n    runtime: build.runtime,\n    buildCommand: build.buildCommand,\n    startCommand: build.startCommand,\n    dockerfilePath: build.dockerfilePath,\n    plan: planOverride ?? offeredTypes[0]?.id ?? \"\",\n  };\n\n  // Switching source tab abandons whatever the previous tab had selected —\n  // except a Public Git Branch, which returning to the same URL restores\n  // (w4/240); it never carries over to a different repository URL.\n  const setTab = useCallback(\n    (tab: SourceTab) =>\n      set((current) => {\n        const gitBranchDraft =\n          current.tab === \"git\"\n            ? { gitUrl: current.gitUrl, branch: current.branch }\n            : current.gitBranchDraft;\n        const branch =\n          tab === \"git\" && gitBranchDraft?.gitUrl === current.gitUrl\n            ? gitBranchDraft.branch\n            : \"\";\n        return { tab, selectedRepo: null, branch, gitBranchDraft };\n      }),\n    [set],\n  );\n\n  // A static site builds from a Git repo (ADR029) — it has no image source, so\n  // arriving on Static Site from the Existing Image tab moves the selection\n  // back to GitHub exactly as a manual tab switch would.\n  const setServiceType = useCallback(\n    (serviceType: ServiceType) =>\n      set((current) =>\n        serviceType === \"static_site\" && current.tab === \"image\"\n          ? { serviceType, tab: \"github\", selectedRepo: null, branch: \"\" }\n          : { serviceType },\n      ),\n    [set],\n  );\n\n  return {"
+    }
+  ],
+  "callerCensus": {
+    "ServiceSourcePicker": [
+      "dashboard/src/routes/blueprints.new.tsx:247",
+      "dashboard/src/routes/services.new.tsx:167",
+      "dashboard/src/features/services/components/service-source-card.tsx:207"
+    ],
+    "useBlueprintPreview": [
+      "dashboard/src/routes/blueprints.new.tsx:91",
+      "dashboard/src/routes/blueprints.$blueprintId.tsx:218"
+    ]
+  },
+  "acceptanceMap": [
+    {
+      "requirement": "Fresh desktop original Public Git URL round trip retains branch, fields, successful preview and eligibility",
+      "records": ["a884DesktopExactRoundtrip"]
+    },
+    {
+      "requirement": "Fresh390 original round trip, active-tab and ordinary name-edit controls",
+      "records": ["a884MobileHelloPreview", "a884MobileTabRoundtrip"]
+    },
+    {
+      "requirement": "GitHub onefx uses master; returning Public Git uses its own branch or intentionally blank value",
+      "records": ["a884GithubDefaultPreview", "a884GithubAndBlankControls"]
+    },
+    {
+      "requirement": "Independent service-create branch retention and Cancel",
+      "records": ["a884ServiceRoundtripControl"]
+    },
+    {
+      "requirement": "No unreviewed initial deployment eligibility",
+      "records": ["a884DesktopExactRoundtrip.pending"]
+    },
+    {
+      "requirement": "No Create/Sync and no inventory/session debt",
+      "records": [
+        "operationAudit",
+        "a884InventoryCleanup",
+        "a884SessionCleared",
+        "a884FinishSummary"
+      ]
+    }
+  ],
+  "extraControls": [
+    "A found Kubernetes App YAML is truthfully invalid at line4/column1 and disables Deploy without draft loss.",
+    "Corrected hello-go path returns one Create action and no fixed-price line.",
+    "Stack-demo returns three Create actions and worker Starter4.90 estimate; UI agrees. No apply."
+  ],
+  "cleanup": {
+    "createdResourceIds": [],
+    "physicalTeardown": "Not applicable: no resource was created.",
+    "inventory": {
+      "at": "2026-10-17T13:06:41.769Z",
+      "inventoryStatus": 200,
+      "ids": {
+        "blueprints": ["blp-d9nqg95cavls73fp8m10"],
+        "databases": [
+          "dpg-d9nqg95cavls73fp8m20",
+          "dpg-d9rrkoc4h4mc73edurp0",
+          "dpg-d9rs3ee0ccis738kc7c0",
+          "dpg-db34l9bor55s73cqpq9g"
+        ],
+        "envGroups": ["evg-db0s94c48ccs739jikr0"],
+        "keyValues": ["red-d9p49kdrtmes73c34ovg", "red-da4086iii7bs73drbqh0"],
+        "projects": [
+          "prj-d9dgeo0bd9nc73a0vh1g",
+          "prj-d9e5qct5qe4s73b1mjn0",
+          "prj-d9sgfnbjghus73cg6hg0"
+        ],
+        "services": [
+          "srv-d9bj8s3eg85c7390eb9g",
+          "srv-d9bkcspg9s7c73d0n8ug",
+          "srv-d9e40ei9086p3l1jri30",
+          "srv-d9ndt8hmcglc739fkp50",
+          "srv-d9nqg9dcavls73fp8m2g"
+        ],
+        "webhookEndpoints": []
+      },
+      "comparison": {
+        "blueprints": true,
+        "databases": true,
+        "envGroups": true,
+        "keyValues": true,
+        "projects": true,
+        "services": true,
+        "webhookEndpoints": true
+      },
+      "details": []
+    },
+    "session": {
+      "logoutConfirmed": true,
+      "exitCode": 0,
+      "browser": {
+        "at": "2026-10-17T13:07:22.377Z",
+        "whoami": 401,
+        "cookies": 0,
+        "pages": 1,
+        "url": "about:blank"
+      },
+      "handlesRemoved": true
+    }
+  },
+  "limits": [
+    "Actual serving dashboard SHA was not established.",
+    "Service-create Deploy was disabled at both branch-control captures. Its complete eligibility and runtime were not accepted.",
+    "The GitHub onefx selected file is absent; master selection is a default-branch control, not a successful-file claim.",
+    "The operation audit includes a883 tail as a superset; its8 earlier mutations precede previousSweepRecordedMax268. All63 later GraphQL request bodies are queries.",
+    "HTTP snapshot after the old boundary has6 ERR_ABORTED navigation reads and2 RUM requests without recorded completion. No hang or backend failure is inferred.",
+    "No new product tests were run for this acceptance-only board update. Earlier implementation tests/checks remain historical; current retained-branch/Create and no-inherited-GitHub tests were source-inspected.",
+    "Arbitrary branch/URL, error/timeout, existing-service source, detail sync, Chinese and authenticated Render variants were not reaccepted.",
+    "A wrong tab-label lookup timed out before a product action and is excluded."
+  ]
+}
