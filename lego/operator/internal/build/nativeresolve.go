@@ -308,7 +308,7 @@ func readVersionFile(sourceDir, name string) ([]byte, bool) {
 // line) for the chosen line, refusing anything it did not generate.
 func rewriteNativeBase(dockerfile, defaultImage, image string) (string, error) {
 	want := "FROM " + defaultImage + "\n"
-	if strings.Count(dockerfile, "\nFROM ") != 1 || !strings.Contains(dockerfile, "\n"+want) {
+	if strings.Count(dockerfile, "\n"+want) != 1 {
 		return "", fmt.Errorf("generated Dockerfile does not carry the expected base %s", defaultImage)
 	}
 	return strings.Replace(dockerfile, "\n"+want, "\nFROM "+image+"\n", 1), nil

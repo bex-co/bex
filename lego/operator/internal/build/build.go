@@ -738,7 +738,8 @@ var buildkitProcessFailure = regexp.MustCompile(`(?:failed to solve: )?process (
 // unquoting, so it is not JSON: quotes and backslashes come out bare and a
 // newline stays a literal \n, which a \n the command itself contains reads the
 // same as. Group 1 is the command as printed. BuildKit's error summary ends
-// the header with a colon (` > [stage-0 5/5] RUN …:`) and its progress log
+// the header with a colon (` > [stage-0 5/5] RUN …:`; a static build's main stage
+// follows its Hugo helper stages, so it is stage-5) and its progress log
 // does not; group 2 keeps it.
 var buildkitNativeRunStep = regexp.MustCompile(`(?m)RUN --mount=type=secret,id=render-env,target=` +
 	regexp.QuoteMeta(nativeEnvSecretPath) + `(?: --mount=\S+)* \["/bin/bash","-c","` +
