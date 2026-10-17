@@ -321,7 +321,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
-- [ ] **333** — [Expose the active project resource-type filter](blocked/333.md) — **BLOCKED (release pipeline deploys the dashboard; QA repeats a834 on `/project/prj-d9dgeo0bd9nc73a0vh1g?env=unassigned`: at 390 Space on Services(2) and at 1440 a fresh `kind=databases` load show a `Resource type` group with exactly the selected button pressed and the other four not pressed; read-only)**. Implementation done 2026-10-16: native group role plus aria-pressed on both callers; dashboard suite and lint pass.
+- [x] **333** — [Expose the active project resource-type filter](done/333.md) — **DONE 2026-10-17, a889.** Native390px Space and fresh1440px URL-kind reads expose the Resource type group and exactly one pressed button; All, pointer/Enter, search/ID and other-kind controls pass. [Durable acceptance and additional m227 evidence](evidence/333-m227-a889.json); 66 native request bodies/112 operations are queries only, seven inventories unchanged and exact session revoked. The initial false-empty catalog remains open in m227.
 
 - [ ] **332** — [Require a Publish Directory before enabling Static Site deployment](blocked/332.md) — **BLOCKED (release pipeline deploys the dashboard; QA repeats the a802 journeys on `/services/new?type=static_site`: at 1440 with Publish Directory empty and at 390 with three spaces, Deploy Service stays disabled, the field shows the Required guidance and no CreateService is sent; `.` enables it; no create)**. Implementation done 2026-10-16: static-only nonblank publish-path predicate plus required hint; dashboard suite and lint pass.
 
