@@ -315,6 +315,11 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "返回上一页",
     description: "Button label that navigates to the previous page",
   },
+  "common.planCatalogUnavailable": {
+    message: "套餐列表加载失败，暂时无法选择套餐。您填写的其他内容已保留。",
+    description:
+      "A plan picker whose catalog read failed or returned no plans; shown with a Try again button that re-reads only the catalog (w4/m218)",
+  },
   "common.tryAgain": {
     message: "重试",
     description: "Button label that retries after an error",

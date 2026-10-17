@@ -37,11 +37,15 @@ const instanceTypesState: {
   loading: boolean;
   error: Error | undefined;
   byID: (id: string | null | undefined) => InstanceTypeView | undefined;
+  retry: () => Promise<void>;
+  retrying: boolean;
 } = {
   instanceTypes: [],
   loading: false,
   error: undefined,
   byID: () => undefined,
+  retry: vi.fn(async () => undefined),
+  retrying: false,
 };
 
 vi.mock("@/features/services/hooks/use-instance-types", () => ({
@@ -287,6 +291,8 @@ function renderPageWithHead(initialEntry = "/") {
 
 beforeEach(() => {
   instanceTypesState.instanceTypes = [FREE, STARTER];
+  instanceTypesState.loading = false;
+  instanceTypesState.error = undefined;
   reposState.repos = [REPO];
   connectionState.connections = [
     {
@@ -1562,6 +1568,7 @@ describe("NewServicePage plan region while the catalog loads (w4/329)", () => {
     ["cron_job", 6],
   ])("%s previews %i inert tier slots", async (type, slots) => {
     instanceTypesState.instanceTypes = [];
+    instanceTypesState.loading = true;
     renderPage(`/?type=${type}`);
     const label = await screen.findByText("Instance Type");
     const region = label.parentElement!;
@@ -1575,5 +1582,40 @@ describe("NewServicePage plan region while the catalog loads (w4/329)", () => {
     renderPage("/?type=static_site");
     await screen.findByRole("heading", { level: 1 });
     expect(screen.queryByText("Instance Type")).toBeNull();
+  });
+});
+
+// w4/m218 (a785): a settled catalog error left the plan region as a pending
+// preview forever. It now explains itself with an in-place Retry, Deploy stays
+// off without a plan, and the draft survives the recovery.
+describe("NewServicePage with a failed plan catalog (w4/m218)", () => {
+  it("explains the failure, retries in place and keeps the draft", async () => {
+    const user = userEvent.setup();
+    instanceTypesState.instanceTypes = [];
+    instanceTypesState.error = new Error("catalog unavailable");
+    const retry = vi.mocked(instanceTypesState.retry);
+    retry.mockClear();
+    renderPage("/?type=web_service");
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Plans couldn't load");
+    expect(within(alert.parentElement!).queryAllByRole("radio")).toHaveLength(
+      0,
+    );
+    const name = screen.getByLabelText("Name");
+    await user.clear(name);
+    await user.type(name, "qa-a785-web");
+    await user.click(within(alert).getByRole("button", { name: "Try again" }));
+    expect(retry).toHaveBeenCalledOnce();
+
+    instanceTypesState.instanceTypes = [FREE, STARTER];
+    instanceTypesState.error = undefined;
+    await user.type(name, "x"); // any render
+    expect(screen.getByLabelText("Name")).toHaveValue("qa-a785-webx");
+    expect(screen.getByRole("radio", { name: /Free/ })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(screen.queryByText("Plans couldn't load")).toBeNull();
   });
 });

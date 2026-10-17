@@ -4,7 +4,7 @@
 
 ## Reproduce and controls
 
-Create owned private Free Postgres and Key Value fixtures and wait until Available. Cold-open `/databases/<owned-id>#plan` or `/keyvalue/<owned-id>#plan`. The [durable evidence](../evidence/m218-a796-details.json) contains the replay factory and17 receipts. Before navigation it intercepts the native DatabaseInstanceTypes or KeyValueInstanceTypes operation, fetches the real upstream response (HTTP200, three tiers), and replaces only its corresponding entry with `data:null` and `QA injected detail catalog failure` (`INTERNAL_SERVER_ERROR`, the matching catalog field path). Sibling entries stay unchanged. The handler remains installed through a5s mounted observation and is removed before return; **each of these four runs intercepted exactly one catalog request**.
+Create owned private Free Postgres and Key Value fixtures and wait until Available. Cold-open `/databases/<owned-id>#plan` or `/keyvalue/<owned-id>#plan`. The [durable evidence](../../evidence/m218-a796-details.json) contains the replay factory and17 receipts. Before navigation it intercepts the native DatabaseInstanceTypes or KeyValueInstanceTypes operation, fetches the real upstream response (HTTP200, three tiers), and replaces only its corresponding entry with `data:null` and `QA injected detail catalog failure` (`INTERNAL_SERVER_ERROR`, the matching catalog field path). Sibling entries stay unchanged. The handler remains installed through a5s mounted observation and is removed before return; **each of these four runs intercepted exactly one catalog request**.
 
 | Fresh page | UTC | Settled plan region |
 | --- | --- | --- |

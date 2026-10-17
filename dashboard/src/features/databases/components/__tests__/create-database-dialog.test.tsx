@@ -13,11 +13,20 @@ beforeAll(() => {
   }
 });
 
+const retryCatalog = vi.fn(async () => undefined);
 const instanceTypesState: {
   instanceTypes: DatabaseInstanceTypeView[];
   loading: boolean;
   error: Error | undefined;
-} = { instanceTypes: [], loading: false, error: undefined };
+  retry: () => Promise<void>;
+  retrying: boolean;
+} = {
+  instanceTypes: [],
+  loading: false,
+  error: undefined,
+  retry: retryCatalog,
+  retrying: false,
+};
 
 vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
   useDatabaseInstanceTypes: () => instanceTypesState,
@@ -72,6 +81,7 @@ const BASIC: DatabaseInstanceTypeView = {
 
 beforeEach(() => {
   instanceTypesState.instanceTypes = [FREE, BASIC];
+  instanceTypesState.error = undefined;
   create.mockReset();
   create.mockResolvedValue("shop-db");
 });
@@ -304,5 +314,37 @@ describe("CreateDatabaseDialog", () => {
         name: /Basic 1GB .*\$14\.00\/month/,
       }),
     ).toBeInTheDocument();
+  });
+});
+
+// w4/m218 (a785): a failed catalog left an empty plan selector with no
+// explanation. It now says so and re-reads in place, keeping the typed name.
+describe("CreateDatabaseDialog with a failed plan catalog (w4/m218)", () => {
+  it("explains the failure, retries in place and keeps the name", async () => {
+    const saved = instanceTypesState.instanceTypes;
+    instanceTypesState.instanceTypes = [];
+    instanceTypesState.error = new Error("catalog unavailable");
+    retryCatalog.mockClear();
+    const user = userEvent.setup();
+    render(<CreateDatabaseDialog onCreated={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: "New Database" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Name"), "shop-db");
+    const alert = within(dialog).getByRole("alert");
+    expect(alert).toHaveTextContent("Plans couldn't load");
+    expect(
+      within(dialog).getByRole("button", { name: "Create database" }),
+    ).toBeDisabled();
+    await user.click(within(alert).getByRole("button", { name: "Try again" }));
+    expect(retryCatalog).toHaveBeenCalledOnce();
+
+    instanceTypesState.instanceTypes = saved;
+    instanceTypesState.error = undefined;
+    await user.type(within(dialog).getByLabelText("Name"), "2"); // any render
+    expect(within(dialog).getByLabelText("Name")).toHaveValue("shop-db2");
+    expect(within(dialog).queryByText("Plans couldn't load")).toBeNull();
+    expect(
+      within(dialog).getByRole("button", { name: "Create database" }),
+    ).toBeEnabled();
   });
 });
