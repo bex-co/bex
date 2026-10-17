@@ -4484,11 +4484,12 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.environmentRestoredTitle": {
     message: "已恢复未保存的更改",
     description:
-      "Heading of the banner shown when an env draft is recovered after a session-expiry redirect (w3/m80)",
+      "Heading of the banner shown when an unsaved env draft is recovered in this tab, after a reload or a session-expiry sign-in (w3/m80)",
   },
   "services.environmentRestoredBody": {
-    message: "已为您找回重新登录前正在编辑的环境变量。请检查后选择保存或放弃。",
-    description: "Body of the restored-draft banner",
+    message: "已恢复未保存的环境更改。请检查后保存或放弃。",
+    description:
+      "Body of the restored-draft banner. Names no cause: an ordinary reload restores the draft as a sign-in does (w4/337)",
   },
   "services.environmentRestoredDiscard": {
     message: "放弃已恢复的更改",
