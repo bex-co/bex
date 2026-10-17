@@ -570,21 +570,8 @@ func TestNativeSecretFilesPinnedBuildKit(t *testing.T) {
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("prepare: %v: %s", err, out)
 		}
-		// The Job's exact buildctl args, including its OCI archive output.
-		args := containerByName(BuildJob(o, o.ImageRef()).Spec.Template.Spec.InitContainers, "buildkit").Args
-		for i := range args {
-			if strings.HasPrefix(args[i], "context=") {
-				args[i] = "context=/src"
-			}
-		}
-		run := append([]string{"run", "--rm", "--privileged", "--entrypoint", "buildctl-daemonless.sh",
-			"-v", filepath.Join(dir, "src") + ":/src:ro", "-v", filepath.Join(dir, "native") + ":/native:ro",
-			"-v", filepath.Join(dir, "out") + ":" + outputMount, "-v", cacheVolume + ":/var/lib/buildkit",
-			defaultBuildkitImage}, args...)
-		out, err := exec.Command("docker", run...).CombinedOutput()
-		if err != nil {
-			t.Fatalf("buildkit: %v\n%s", err, out)
-		}
+		out := runJobBuildctl(t, o, filepath.Join(dir, "src"), filepath.Join(dir, "native"), filepath.Join(dir, "out"),
+			"-v", cacheVolume+":/var/lib/buildkit")
 		if strings.Contains(string(out), marker) {
 			t.Fatalf("build log carries the file contents:\n%s", out)
 		}
@@ -1139,6 +1126,27 @@ func TestNativeImageRunsJSToolsBesidePrimaries(t *testing.T) {
 			}
 		})
 	}
+}
+
+// runJobBuildctl runs o's exact Job buildctl args, OCI archive output
+// included, through the pinned BuildKit image against the src checkout and
+// the native preparer directory, writing to out; extra are further docker run
+// arguments (a cache volume). It returns BuildKit's log.
+func runJobBuildctl(t *testing.T, o Options, src, native, out string, extra ...string) []byte {
+	t.Helper()
+	args := containerByName(BuildJob(o, o.ImageRef()).Spec.Template.Spec.InitContainers, "buildkit").Args
+	for i := range args {
+		if strings.HasPrefix(args[i], "context=") {
+			args[i] = "context=/src"
+		}
+	}
+	run := append([]string{"run", "--rm", "--privileged", "--entrypoint", "buildctl-daemonless.sh",
+		"-v", src + ":/src:ro", "-v", native + ":/native:ro", "-v", out + ":" + outputMount}, extra...)
+	log, err := exec.Command("docker", append(append(run, defaultBuildkitImage), args...)...).CombinedOutput()
+	if err != nil {
+		t.Fatalf("buildkit: %v\n%s", err, log)
+	}
+	return log
 }
 
 // buildResolvedImage runs the resolve phase over o's generated Dockerfile with

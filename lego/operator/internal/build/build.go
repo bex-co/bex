@@ -953,6 +953,12 @@ func BuildJob(o Options, image string) *batchv1.Job {
 		for i, name := range o.NativeFiles {
 			args = append(args, "--secret", "id="+nativeFileSecretID(i)+",src=/native/files/"+name)
 		}
+		if nativeServingInit(o) {
+			args = append(args,
+				"--local", nativeInitContext+"="+nativeInitDir,
+				"--opt", "context:"+nativeInitContext+"=local:"+nativeInitContext,
+			)
+		}
 	} else {
 		args = append(args, "--local", "dockerfile="+dockerfileDir)
 		if o.DockerfilePath != "" {

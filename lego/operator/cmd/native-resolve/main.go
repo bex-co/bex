@@ -25,7 +25,8 @@ limitations under the License.
 //
 // Environment: BEX_NATIVE_RUNTIME, BEX_NATIVE_SOURCE_DIR (the service's root
 // directory in the checkout). It reads /native/render-env and rewrites
-// /native/Dockerfile, both written by the preparer.
+// /native/Dockerfile, both written by the preparer. With BEX_NATIVE_INIT set
+// it also stages the image's /native-init there for the build (w8/m88).
 package main
 
 import (
@@ -38,8 +39,15 @@ import (
 )
 
 func main() {
-	os.Exit(run(os.Getenv("BEX_NATIVE_RUNTIME"), os.Getenv("BEX_NATIVE_SOURCE_DIR"),
-		"/native/render-env", "/native/Dockerfile", os.Stdout, os.Stderr))
+	code := run(os.Getenv("BEX_NATIVE_RUNTIME"), os.Getenv("BEX_NATIVE_SOURCE_DIR"),
+		"/native/render-env", "/native/Dockerfile", os.Stdout, os.Stderr)
+	if dest := os.Getenv(build.NativeInitEnv); code == 0 && dest != "" {
+		if err := build.StageNativeInit(build.NativeInitBinary, dest); err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "native-resolve: %v\n", err)
+			code = 1
+		}
+	}
+	os.Exit(code)
 }
 
 func run(runtime, sourceDir, bundle, dockerfile string, stdout, stderr io.Writer) int {
