@@ -19,7 +19,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m88** — [Preserve graceful shutdown through native npm startup](m88/README.md) (8 tasks) — **major, researched sweep386:** both native root restarts drop the old40s POST with502 while new short reads200; only-start-command direct Node and local supervision controls pass. Exact2-parent/6-child cleanup verified.
 
-- [ ] **m87** — [Make psql Ctrl+C stop external PostgreSQL queries](m87/README.md) (8 tasks,435m) ← major functional CLI sweep365; both native queries ignore Ctrl+C, modern control cancels in0.7s; original fixture fully cleaned.
+- [ ] **m87** — [Make psql Ctrl+C stop external PostgreSQL queries](blocked/m87/README.md) (8 tasks,435m) — **BLOCKED (2026-10-16: t001 done — [design](blocked/m87/design.md): psql's legacy PQcancel carries only PID+key with no SNI, so it can be routed only if `pg-sni-proxy` terminates client TLS with each database's own CNPG serving pair to observe BackendKeyData; needs the user to accept that trust-boundary change (internet-facing proxy holds every tenant DB server key and sees plaintext; ADR009 passthrough revised; security re-review) or decide to keep passthrough and document modern-libpq-only cancellation)**
 
 - [x] **m86** — [Install automatic npm dependencies for static builds](done/m86/README.md) (6 tasks) — **DONE 2026-10-16:** sweep379 accepts both original native first default deployments plus an explicit-skip/manual control; exact source/dependency/page hashes, nine shared readbacks and complete three-parent/child cleanup pass.
 
