@@ -42,8 +42,13 @@ export const DATASTORE_METRIC_IDS = [
   "disk_capacity",
   "db_connections",
   "replication_lag",
-  "kv_memory",
   "kv_connections",
+  // The datastore's own container (w1/m180). A Key Value's memory is its
+  // used-memory series (bex-api resolves MEMORY per kind).
+  "cpu",
+  "cpu_limit",
+  "memory",
+  "memory_limit",
 ] as const;
 
 export type DatastoreMetricId = (typeof DATASTORE_METRIC_IDS)[number];
@@ -60,8 +65,11 @@ export const RENDER_DATASTORE_METRIC_NAMES: Record<DatastoreMetricId, string> =
     disk_capacity: "DISK_CAPACITY",
     db_connections: "DB_CONNECTIONS",
     replication_lag: "REPLICATION_LAG",
-    kv_memory: "MEMORY",
     kv_connections: "CONNECTIONS",
+    cpu: "CPU",
+    cpu_limit: "CPU_LIMIT",
+    memory: "MEMORY",
+    memory_limit: "MEMORY_LIMIT",
   };
 
 // A metric point with guaranteed (non-null) fields — what charts consume.

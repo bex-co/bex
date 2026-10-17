@@ -348,6 +348,10 @@ type Service struct {
 	// connected-clients history (redis_exporter via Prometheus, w5/011); nil =>
 	// kv_memory/kv_connections report core.ErrMetricsUnavailable.
 	KeyValueStats KeyValueStatsSource
+	// DatastoreResource reads a managed Postgres or Key Value instance's own
+	// container cpu/memory and their limits (w1/m180). nil =>
+	// ErrMetricsUnavailable.
+	DatastoreResource DatastoreResourceSource
 	// MaxQueryHours, when positive, caps the start–end window accepted by every
 	// metrics read. Enforced in the shared service (Metrics/DatastoreMetrics),
 	// so REST, GraphQL, and MCP cannot drift (codex r7 #13 — it previously

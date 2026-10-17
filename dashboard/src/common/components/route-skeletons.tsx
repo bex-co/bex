@@ -2443,11 +2443,14 @@ export function DatastoreLogsSkeleton() {
 const DATASTORE_METRIC_SECTIONS = {
   keyvalue: [
     "metrics.diskTitle",
+    "metrics.datastoreCpuTitle",
     "metrics.memoryTitle",
     "metrics.kvConnectionsTitle",
   ],
   database: [
     "metrics.diskTitle",
+    "metrics.datastoreCpuTitle",
+    "metrics.memoryTitle",
     "metrics.connectionsTitle",
     "metrics.replicationLagTitle",
   ],
