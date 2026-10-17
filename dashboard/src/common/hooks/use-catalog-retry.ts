@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState } from "react";
 
 /**
- * A plan catalog's in-place Retry (w4/m218). The app's queries keep
+ * A failed read's in-place Retry (plan catalogs w4/m218, placement lists
+ * w4/m221). The app's queries keep
  * `notifyOnNetworkStatusChange` off so a refetch never unmounts a draft, which
  * also means `loading` stays false during one — so the busy state is tracked
  * here. A second click while a retry is in flight starts nothing; a failed

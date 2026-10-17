@@ -1,4 +1,12 @@
-import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeAll,
+  beforeEach,
+  onTestFinished,
+} from "vitest";
 import { within, act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import i18n from "@/i18n/init";
@@ -179,7 +187,10 @@ vi.mock("@/features/projects/hooks/use-projects", () => ({
   useProjects: () => ({ ...projectsState, loading: false }),
 }));
 
-const environmentsState = {
+const environmentsState: {
+  environments: Array<Record<string, unknown>>;
+  error?: Error;
+} = {
   environments: [
     {
       id: "env-production",
@@ -635,6 +646,34 @@ describe("NewServicePage", () => {
       expect(
         screen.getByRole("combobox", { name: "Environment" }),
       ).toHaveTextContent("Production");
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({ environmentId: "env-production" }),
+      );
+    });
+
+    // w4/m221 (a856): a failed Environments read once cleared the contextual
+    // Environment, and Deploy then created an unassigned service.
+    it("keeps the contextual Environment in the create request when its list fails to load", async () => {
+      const saved = environmentsState.environments;
+      environmentsState.environments = [];
+      environmentsState.error = new Error("lookup failed");
+      onTestFinished(() => {
+        environmentsState.environments = saved;
+        environmentsState.error = undefined;
+      });
+      const user = userEvent.setup();
+      renderPage("/?projectId=prj-platform&environmentId=env-production");
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        /couldn't load projects or environments/i,
+      );
+      expect(
+        screen.getByRole("combobox", { name: "Environment" }),
+      ).not.toHaveTextContent("No environment");
       await user.click(
         await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
       );

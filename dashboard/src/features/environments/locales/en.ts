@@ -361,6 +361,22 @@ const enEnvironments: Record<string, TranslationEntry> = {
     message: "No environment",
     description: "Unassigned Environment selector option",
   },
+  "environments.assignmentSelectedLoading": {
+    message: "Loading…",
+    description:
+      "Label for a kept Project/Environment selection while its list is still loading",
+  },
+  "environments.assignmentSelectedUnavailable": {
+    message: "Selected (name unavailable)",
+    description:
+      "Label for a kept Project/Environment selection whose list failed to load",
+  },
+  "environments.assignmentReadError": {
+    message:
+      "Couldn't load projects or environments. Try again; any selection you made is kept.",
+    description:
+      "Inline alert when the create form's Project or Environment list fails to load; the selection is kept",
+  },
   "environments.assignmentHint": {
     message:
       "When creating a resource, selecting a Project filters its Environments. Choose an Environment to add the resource to that Project. Leaving No environment selected creates the resource outside any Project. If the Project has no Environment yet, create one from the Project's page first.",

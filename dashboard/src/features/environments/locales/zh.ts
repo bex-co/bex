@@ -346,6 +346,21 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     message: "无环境",
     description: "Unassigned Environment selector option",
   },
+  "environments.assignmentSelectedLoading": {
+    message: "加载中…",
+    description:
+      "Label for a kept Project/Environment selection while its list is still loading",
+  },
+  "environments.assignmentSelectedUnavailable": {
+    message: "已选择（名称不可用）",
+    description:
+      "Label for a kept Project/Environment selection whose list failed to load",
+  },
+  "environments.assignmentReadError": {
+    message: "项目或环境加载失败。请重试；你已做的选择会保留。",
+    description:
+      "Inline alert when the create form's Project or Environment list fails to load; the selection is kept",
+  },
   "environments.assignmentHint": {
     message:
       "创建资源时，选择项目只会筛选其环境列表。选择一个环境，资源才会加入该环境所属的项目。保持“无环境”会在所有项目之外创建资源。如果项目还没有环境，请先在项目页面创建一个。",
